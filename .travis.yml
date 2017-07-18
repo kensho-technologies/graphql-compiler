@@ -1,0 +1,18 @@
+sudo: false
+language: python
+cache: pip
+python:
+  - "2.7"
+  # - "3.6"  # enable when compliant
+install:
+  - pip install -r dev-requirements.txt
+  - pip install -r requirements.txt
+  - pip install -e .
+script:
+  - pydocstyle graphql_compiler/
+  - isort --check-only --verbose --recursive graphql_compiler/
+  - pylint graphql_compiler/
+  - bandit -r graphql_compiler/
+  - py.test --cov=graphql_compiler graphql_compiler/tests
+after_success:
+  - coveralls
