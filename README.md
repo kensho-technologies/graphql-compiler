@@ -43,7 +43,7 @@ A: We really use GraphQL. Any query that the compiler will accept is entirely va
    However, since the database queries produced by compiling GraphQL are subject to the limitations
    of the database system they run on, our execution model is somewhat different compared to
    the one described in the standard GraphQL specification. See the
-   [Execution model](#user-content-execution-model) section for more details.
+   [Execution model](#execution-model) section for more details.
 
 **Q: Does this project come with a GraphQL server implementation?**
 
@@ -60,7 +60,7 @@ A: We currently support a single database, OrientDB version 2.2.18+, and two que
    query language that we refer to as `MATCH`, after the name of its graph traversal operator.
    With OrientDB, `MATCH` should be the preferred choice for most users, since it tends to run
    faster than `gremlin`, and has other desirable properties. See the
-   [Execution model](#user-content-execution-model) section for more details.
+   [Execution model](#execution-model) section for more details.
 
 **Q: Do you plan to support other databases / more GraphQL features in the future?**
 
@@ -221,7 +221,7 @@ Applied on a property field, it assigns a name to the value of that property fie
 value to then be used as part of a `@filter` directive.
 
 To supply a tagged value to a `@filter` directive, place the tag name (prefixed with a `%` symbol)
-in the `@filter`'s `value` array. See [Passing Parameters](#user-content-passing-parameters)
+in the `@filter`'s `value` array. See [Passing parameters](#passing-parameters)
 for more details.
 
 #### Example Use
@@ -252,7 +252,7 @@ the name of its parent.
 Allows filtering of the data to be returned, based on any of a set of filtering operations.
 Conceptually, it is the GraphQL equivalent of the SQL `WHERE` keyword.
 
-See [Supported filtering operations](#user-content-supported-filtering-operations)
+See [Supported filtering operations](#supported-filtering-operations)
 for details on the various types of filtering that the compiler currently supports.
 These operations are currently hardcoded in the compiler; in the future,
 we may enable the addition of custom filtering operations via compiler plugins.
@@ -444,7 +444,7 @@ the `ancestor` field.
 
 ### @output_source
 
-See the [Completeness of returned results](#user-content-completeness-of-returned-results) section
+See the [Completeness of returned results](#completeness-of-returned-results) section
 for a description of the directive and examples.
 
 #### Constraints and Rules
