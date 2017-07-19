@@ -2,6 +2,11 @@
 
 [![Build Status](https://travis-ci.org/kensho-technologies/graphql-compiler.svg?branch=master)](https://travis-ci.org/kensho-technologies/graphql-compiler)
 [![Coverage Status](https://coveralls.io/repos/github/kensho-technologies/graphql-compiler/badge.svg?branch=master)](https://coveralls.io/github/kensho-technologies/graphql-compiler?branch=master)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![PyPI Python](https://img.shields.io/pypi/pyversions/graphql-compiler.svg)](https://pypi.python.org/pypi/graphql-compiler)
+[![PyPI Version](https://img.shields.io/pypi/v/graphql-compiler.svg)](https://pypi.python.org/pypi/graphql-compiler)
+[![PyPI Status](https://img.shields.io/pypi/status/graphql-compiler.svg)](https://pypi.python.org/pypi/graphql-compiler)
+[![PyPI Wheel](https://img.shields.io/pypi/wheel/graphql-compiler.svg)](https://pypi.python.org/pypi/graphql-compiler)
 
 Turn complex GraphQL queries into optimized database queries.
 
