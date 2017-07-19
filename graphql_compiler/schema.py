@@ -187,7 +187,7 @@ RecurseDirective = GraphQLDirective(
 
 
 def _unused_function(*args, **kwargs):
-    """Function placeholder for functions that are required but aren't used."""
+    """Must not be called. Placeholder for functions that are required but aren't used."""
     raise NotImplementedError(u'The function you tried to call is not implemented, args / kwargs: '
                               u'{} {}'.format(args, kwargs))
 

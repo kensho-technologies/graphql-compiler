@@ -87,7 +87,7 @@ def get_uniquely_named_objects_by_name(object_list):
 
 
 def safe_quoted_string(value):
-    """Return the provided string, surrounded by single quotes. Unsafe strings cause exceptions!"""
+    """Return the provided string, surrounded by single quotes. Unsafe strings cause exceptions."""
     validate_safe_string(value)
     return u'\'{}\''.format(value)
 

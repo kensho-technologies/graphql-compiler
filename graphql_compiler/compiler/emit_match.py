@@ -6,7 +6,7 @@ from .blocks import QueryRoot, Recurse, Traverse
 
 
 def _get_vertex_location_name(location):
-    """Helper to get the location name from a location that is expected to point to a vertex."""
+    """Get the location name from a location that is expected to point to a vertex."""
     mark_name, field_name = location.get_location_name()
     if field_name is not None:
         raise AssertionError(u'Location unexpectedly pointed to a field: {}'.format(location))

@@ -6,7 +6,7 @@ from funcy import pairwise
 from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, OutputSource,
                      QueryRoot, Recurse, Traverse)
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
-                          Literal, NullLiteral, TrueLiteral)
+                          NullLiteral, TrueLiteral)
 from .helpers import validate_safe_string
 
 

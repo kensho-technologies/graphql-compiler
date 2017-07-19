@@ -13,11 +13,11 @@ from .helpers import (get_ast_field_name, get_uniquely_named_objects_by_name, is
 def scalar_leaf_only(operator):
     """Ensure the filter function is only applied to scalar leaf types."""
     def decorator(f):
-        """Decorator function applied to the inner function "f"."""
+        """Decorate the supplied function with the "scalar_leaf_only" logic."""
         @wraps(f)
         def wrapper(schema, current_schema_type, ast, context,
                     directive, parameters, *args, **kwargs):
-            """Wrapper function for the decorator."""
+            """Check that the type on which the operator operates is a scalar leaf type."""
             if 'operator' in kwargs:
                 current_operator = kwargs['operator']
             else:
@@ -38,11 +38,11 @@ def scalar_leaf_only(operator):
 def takes_parameters(count):
     """Ensure the filter function has "count" parameters specified."""
     def decorator(f):
-        """Decorator function applied to the inner function "f"."""
+        """Decorate the supplied function with the "takes_parameters" logic."""
         @wraps(f)
         def wrapper(schema, current_schema_type, ast, context,
                     directive, parameters, *args, **kwargs):
-            """Wrapper function for the decorator."""
+            """Check that the supplied number of parameters equals the expected number."""
             if len(parameters) != count:
                 raise GraphQLCompilationError(u'Incorrect number of parameters, expected {} got '
                                               u'{}: {}'.format(count, len(parameters), parameters))

@@ -407,9 +407,16 @@ class OutputSource(BasicBlock):
         self.validate()
 
     def validate(self):
-        """OutputSource blocks are always valid in isolation."""
+        """Ensure that the OutputSource block is valid.
+
+        OutputSource blocks are always valid in isolation.
+        """
         pass
 
     def to_gremlin(self):
-        """OutputSource blocks have no explicit Gremlin representation."""
+        """Return the unicode representation of this BasicBlock.
+
+        The correct Gremlin representation of OutputSource blocks is an empty string.
+        Their effect is applied during code generation and optimization passes.
+        """
         return u''
