@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 package_name = 'graphql-compiler'
-version = '1.0.0rc1'
+version = '1.0.0'
 
 setup(name=package_name,
       version=version,
