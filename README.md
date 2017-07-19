@@ -10,6 +10,10 @@
 
 Turn complex GraphQL queries into optimized database queries.
 
+```
+pip install graphql-compiler
+```
+
 For a more detailed overview and getting started guide, please see
 [our blog post](https://medium.com/@predrag.gruevski/compiled-graphql-as-a-database-query-language-72e106844282).
 
