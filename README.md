@@ -1,5 +1,8 @@
 # graphql-compiler
 
+[![Build Status](https://travis-ci.org/kensho-technologies/graphql-compiler.svg?branch=master)](https://travis-ci.org/kensho-technologies/graphql-compiler)
+[![Coverage Status](https://coveralls.io/repos/github/kensho-technologies/graphql-compiler/badge.svg?branch=master)](https://coveralls.io/github/kensho-technologies/graphql-compiler?branch=master)
+
 Turn complex GraphQL queries into optimized database queries.
 
 For a more detailed overview and getting started guide, please see
