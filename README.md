@@ -572,8 +572,7 @@ containing the `Animal`'s name and color in columns named `animal_name` and `col
     }
 }
 ```
-This returns one row for every `Animal` whose name may consist `$substring`,
-containing the `Animal`'s name in a column named `animal_name`.
+This returns one row for every `Animal` whose name contains the value supplied for the `$substring` parameter. Each row contains the matching `Animal`’s name in a column named `animal_name`.
 
 ### contains
 #### Example Use
