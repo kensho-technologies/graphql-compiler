@@ -7,9 +7,8 @@
 try:               # Python 2
     basestring = basestring
     unicode = unicode
-    xrange = xrange          
+    xrange = xrange
 except NameError:  # Python 3
-    basestring = str  
+    basestring = str
     unicode = str
     xrange = range  # pylint: disable=redefined-variable-type
- 
