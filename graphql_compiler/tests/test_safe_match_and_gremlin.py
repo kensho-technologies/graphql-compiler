@@ -59,7 +59,7 @@ class SafeMatchFormattingTests(unittest.TestCase):
             u'injection: ${ -> (2 + 2 == 4)}': u'"injection: ${ -> (2 + 2 == 4)}"',
         }
 
-        for input_data, expected_value in test_data.iteritems():
+        for input_data, expected_value in test_data.items():
             unicode_string = input_data
             bytes_string = input_data.encode('utf-8')
 
@@ -72,8 +72,8 @@ class SafeMatchFormattingTests(unittest.TestCase):
             self.assertEquals(expected_value, _safe_match_argument(GraphQLID, bytes_string))
 
     def test_incorrect_graphql_type_causes_errors(self):
-        for correct_graphql_type, value in REPRESENTATIVE_DATA_FOR_EACH_TYPE.iteritems():
-            for other_graphql_type in REPRESENTATIVE_DATA_FOR_EACH_TYPE.iterkeys():
+        for correct_graphql_type, value in REPRESENTATIVE_DATA_FOR_EACH_TYPE.items():
+            for other_graphql_type in REPRESENTATIVE_DATA_FOR_EACH_TYPE:
                 if correct_graphql_type.is_same_type(other_graphql_type):
                     # No error -- GraphQL type is correct.
                     _safe_match_argument(correct_graphql_type, value)
@@ -115,7 +115,7 @@ class SafeGremlinFormattingTests(unittest.TestCase):
             u'injection: ${ -> (2 + 2 == 4)}': u"'injection: ${ -> (2 + 2 == 4)}'",  # noqa
         }
 
-        for input_data, expected_value in test_data.iteritems():
+        for input_data, expected_value in test_data.items():
             unicode_string = input_data
             bytes_string = input_data.encode('utf-8')
 
@@ -128,8 +128,8 @@ class SafeGremlinFormattingTests(unittest.TestCase):
             self.assertEquals(expected_value, _safe_gremlin_argument(GraphQLID, bytes_string))
 
     def test_incorrect_graphql_type_causes_errors(self):
-        for correct_graphql_type, value in REPRESENTATIVE_DATA_FOR_EACH_TYPE.iteritems():
-            for other_graphql_type in REPRESENTATIVE_DATA_FOR_EACH_TYPE.iterkeys():
+        for correct_graphql_type, value in REPRESENTATIVE_DATA_FOR_EACH_TYPE.items():
+            for other_graphql_type in REPRESENTATIVE_DATA_FOR_EACH_TYPE:
                 if correct_graphql_type.is_same_type(other_graphql_type):
                     # No error -- GraphQL type is correct.
                     _safe_gremlin_argument(correct_graphql_type, value)
