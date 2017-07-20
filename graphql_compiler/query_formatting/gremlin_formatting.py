@@ -12,6 +12,7 @@ from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
 from ..schema import GraphQLDate, GraphQLDateTime
 from .representations import represent_float_as_str, type_check_and_str
+import ..compat.py
 
 
 def _safe_gremlin_string(value):
