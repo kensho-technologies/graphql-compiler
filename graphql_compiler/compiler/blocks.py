@@ -4,6 +4,7 @@ from .helpers import (CompilerEntity, ensure_unicode_string, safe_quoted_string,
                       validate_marked_location, validate_safe_string)
 from ..compat import basestring, xrange
 
+
 class BasicBlock(CompilerEntity):
     """A basic operation block of the GraphQL compiler."""
 
