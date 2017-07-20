@@ -204,7 +204,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
 
-        no_outputs_in_fold_block = '''{
+        no_outputs_inside_fold_block = '''{
             Animal {
                 out_Animal_ParentOf @fold {
                     name
@@ -217,7 +217,7 @@ class IrGenerationErrorTests(unittest.TestCase):
                         traversal_inside_fold_block,
                         filter_on_fold_block,
                         filter_inside_fold_block,
-                        no_outputs_in_fold_block):
+                        no_outputs_inside_fold_block):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, graphql)
 
