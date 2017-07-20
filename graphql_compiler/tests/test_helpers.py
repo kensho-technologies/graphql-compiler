@@ -60,7 +60,7 @@ def compare_gremlin(test_case, expected, received):
 def compare_input_metadata(test_case, expected, received):
     """Compare two dicts of input metadata, using proper GraphQL type comparison operators."""
     # First, assert that the sets of keys in both dicts are equal.
-    test_case.assertEquals(set(expected.iterkeys()), set(received.iterkeys()))
+    test_case.assertEquals(set(expected.keys()), set(received.keys()))
 
     # Then, compare the values for each key in both dicts.
     for key in expected:
@@ -195,5 +195,5 @@ def construct_location_types(location_types_as_strings):
 
     return {
         location: schema.get_type(type_name)
-        for location, type_name in location_types_as_strings.iteritems()
+        for location, type_name in location_types_as_strings.items()
     }
