@@ -7,7 +7,9 @@
 # pylint: disable=redefined-builtin
 
 try:               # Python 2
-    basestring
+    basestring = basestring
+    unicode = unicode
+    xrange = xrange
 except NameError:  # Python 3
     basestring = str  
     unicode = str
