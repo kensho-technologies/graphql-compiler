@@ -122,7 +122,7 @@ def insert_arguments_into_match_query(compilation_result, arguments):
     # The arguments are assumed to have already been validated against the query.
     sanitized_arguments = {
         key: _safe_match_argument(argument_types[key], value)
-        for key, value in arguments.iteritems()
+        for key, value in arguments.items()
     }
 
     return base_query.format(**sanitized_arguments)
