@@ -3,7 +3,7 @@ language: python
 cache: pip
 python:
   - "2.7"
-  # - "3.6"  # enable when compliant
+  - "3.6"
 install:
   - pip install -r dev-requirements.txt
   - pip install -r requirements.txt
