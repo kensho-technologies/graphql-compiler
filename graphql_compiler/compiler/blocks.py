@@ -1,7 +1,7 @@
 # Copyright 2017 Kensho Technologies, Inc.
 from .expressions import Expression
 from .helpers import (basestring, CompilerEntity, ensure_unicode_string,
-                      safe_quoted_string, unicode, validate_marked_location,
+                      safe_quoted_string, validate_marked_location,
                       validate_safe_string, xrange)
 
 
