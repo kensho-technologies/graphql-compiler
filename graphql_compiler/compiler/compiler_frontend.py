@@ -225,7 +225,7 @@ if not (vertex_directives_prohibited_on_root <= vertex_only_directives):
 
 def _validate_property_directives(directives):
     """Validate the directives that appear at a property field."""
-    for directive_name in directives.iterkeys():
+    for directive_name in directives:
         if directive_name in vertex_only_directives:
             raise GraphQLCompilationError(
                 u'Found vertex-only directive {} set on property.'.format(directive_name))
@@ -233,7 +233,7 @@ def _validate_property_directives(directives):
 
 def _validate_vertex_directives(directives):
     """Validate the directives that appear at a vertex field."""
-    for directive_name in directives.iterkeys():
+    for directive_name in directives:
         if directive_name in property_only_directives:
             raise GraphQLCompilationError(
                 u'Found property-only directive {} set on vertex.'.format(directive_name))
@@ -681,7 +681,7 @@ def _compile_root_ast_to_ir(schema, ast):
 
     # Ensure the GraphQL query root doesn't have any vertex directives
     # that are disallowed on the root node.
-    directives_present_at_root = set(_get_directives(base_ast).iterkeys())
+    directives_present_at_root = set(_get_directives(base_ast))
     disallowed_directives = directives_present_at_root & vertex_directives_prohibited_on_root
     if disallowed_directives:
         raise GraphQLCompilationError(u'Found prohibited directives on root vertex: '
@@ -697,7 +697,7 @@ def _compile_root_ast_to_ir(schema, ast):
     basic_blocks.append(_compile_output_step(outputs_context))
     output_metadata = {
         name: OutputMetadata(type=value['type'], optional=value['optional'])
-        for name, value in outputs_context.iteritems()
+        for name, value in outputs_context.items()
     }
 
     return basic_blocks, output_metadata, context['inputs'], context['location_types']
@@ -719,7 +719,7 @@ def _compile_output_step(outputs):
                                       u'one field with the @output directive.')
 
     output_fields = {}
-    for output_name, output_context in outputs.iteritems():
+    for output_name, output_context in outputs.items():
         location = output_context['location']
         optional = output_context['optional']
         graphql_type = output_context['type']
