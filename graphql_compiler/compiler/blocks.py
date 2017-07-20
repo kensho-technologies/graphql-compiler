@@ -1,6 +1,6 @@
 # Copyright 2017 Kensho Technologies, Inc.
 
-from ..compat import basestring, xrange
+from ..compat import basestring, xrange  # pylint: disable=redefined-builtin
 from .expressions import Expression
 from .helpers import (CompilerEntity, ensure_unicode_string, safe_quoted_string,
                       validate_marked_location, validate_safe_string)
