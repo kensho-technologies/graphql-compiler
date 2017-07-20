@@ -206,6 +206,7 @@ class IrGenerationErrorTests(unittest.TestCase):
 
         no_outputs_inside_fold_block = '''{
             Animal {
+                uuid @output(out_name: "uuid")
                 out_Animal_ParentOf @fold {
                     name
                 }
