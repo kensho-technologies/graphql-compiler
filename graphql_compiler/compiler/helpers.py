@@ -6,6 +6,14 @@ from graphql import GraphQLEnumType, GraphQLNonNull, GraphQLScalarType, GraphQLS
 
 from ..exceptions import GraphQLCompilationError
 
+try:               # Python 2
+    unicode = unicode
+    basestring = basestring
+    xrange = xrange
+except NameError:  # Python 3
+    basestring = str  
+    unicode = str
+    xrange = range
 
 VARIABLE_ALLOWED_CHARS = frozenset(unicode(string.ascii_letters + string.digits + '_'))
 
