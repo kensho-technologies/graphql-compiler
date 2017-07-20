@@ -6,6 +6,7 @@ try:
     basestring        # Python 2
 except NameError
     basestring = str  # Python 3
+    unicode = str
 try:
     xrange            # Python 2
 except NameError:
