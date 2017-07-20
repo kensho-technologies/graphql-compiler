@@ -4,7 +4,7 @@ import string
 
 from graphql import GraphQLEnumType, GraphQLNonNull, GraphQLScalarType, GraphQLString, is_type
 
-from ..compat import basestring, unicode
+from ..compat import basestring, unicode  # pylint: disable=redefined-builtin
 from ..exceptions import GraphQLCompilationError
 
 
