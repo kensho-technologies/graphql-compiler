@@ -10,8 +10,8 @@ def _ensure_arguments_are_provided(expected_types, arguments):
     """Ensure that all arguments expected by the query were actually provided."""
     # This function only checks that the arguments were specified,
     # and does not check types. Type checking is done as part of the actual formatting step.
-    expected_arg_names = set(expected_types.iterkeys())
-    provided_arg_names = set(arguments.iterkeys())
+    expected_arg_names = set(expected_types.keys())
+    provided_arg_names = set(arguments.keys())
 
     if expected_arg_names != provided_arg_names:
         missing_args = expected_arg_names - provided_arg_names
