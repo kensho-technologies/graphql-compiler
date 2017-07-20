@@ -144,7 +144,7 @@ def insert_arguments_into_gremlin_query(compilation_result, arguments):
     # The arguments are assumed to have already been validated against the query.
     sanitized_arguments = {
         key: _safe_gremlin_argument(argument_types[key], value)
-        for key, value in arguments.iteritems()
+        for key, value in arguments.items()
     }
 
     return Template(base_query).substitute(sanitized_arguments)
