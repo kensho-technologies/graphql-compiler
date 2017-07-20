@@ -1,5 +1,6 @@
 # Copyright 2017 Kensho Technologies, Inc.
 import re
+import .compat.py
 
 
 def remove_custom_formatting(query):
