@@ -27,5 +27,5 @@ setup(name=package_name,
           'Programming Language :: Python :: 2.7',
       ],
       keywords='graphql database compiler orientdb',
-      python_requires='>=2.7, <3',
+      python_requires='>=2.7, <3.7',
       )
