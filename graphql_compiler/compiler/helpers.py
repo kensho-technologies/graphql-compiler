@@ -5,6 +5,7 @@ import string
 from graphql import GraphQLEnumType, GraphQLNonNull, GraphQLScalarType, GraphQLString, is_type
 
 from ..exceptions import GraphQLCompilationError
+import ..compat.py
 
 
 VARIABLE_ALLOWED_CHARS = frozenset(unicode(string.ascii_letters + string.digits + '_'))
