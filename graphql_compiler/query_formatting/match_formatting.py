@@ -6,12 +6,12 @@ import json
 import arrow
 from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 
+from ..compat import basestring, unicode
 from ..compiler import MATCH_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
 from ..schema import GraphQLDate, GraphQLDateTime
 from .representations import represent_float_as_str, type_check_and_str
-import ..compat.py
 
 
 def _safe_match_string(value):
