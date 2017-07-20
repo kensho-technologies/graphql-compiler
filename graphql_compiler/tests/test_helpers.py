@@ -7,6 +7,7 @@ from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
+import ..compat.py
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
