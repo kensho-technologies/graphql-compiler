@@ -5,6 +5,7 @@ from ..exceptions import GraphQLCompilationError
 from ..schema import GraphQLDate, GraphQLDateTime
 from .helpers import (CompilerEntity, Location, ensure_unicode_string, is_graphql_type,
                       safe_quoted_string, strip_non_null_from_type, validate_safe_string)
+import ..compat.py
 
 
 # Since MATCH uses $-prefixed keywords to indicate special values,
