@@ -1,6 +1,6 @@
 # Copyright 2017 Kensho Technologies, Inc.
 import re
-from .compat import xrange
+from .compat import xrange  # pylint: disable=redefined-builtin
 
 
 def remove_custom_formatting(query):
