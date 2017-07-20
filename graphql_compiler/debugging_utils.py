@@ -1,6 +1,6 @@
 # Copyright 2017 Kensho Technologies, Inc.
-from .compat import xrange
 import re
+from .compat import xrange
 
 
 def remove_custom_formatting(query):
