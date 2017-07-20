@@ -33,6 +33,8 @@ This project follows the
 
 Additionally, any contributions must pass the following set of lint and style checks with no issues:
 ```
+flake8 graphql_compiler/
+
 pydocstyle graphql_compiler/
 
 isort --check-only --verbose --recursive graphql_compiler/
