@@ -254,8 +254,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location, context, l
                           directives present on the current AST node *only*
     """
     _validate_property_directives(local_directives)
-    fold = context.get('fold', None)
-    is_in_fold = fold is not None
+    is_in_fold = context.get('fold', None) is not None
 
     # step P-2: process property-only directives
     tag_directive = local_directives.get('tag', None)
