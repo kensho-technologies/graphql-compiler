@@ -3,9 +3,13 @@ from .expressions import Expression
 from .helpers import (CompilerEntity, ensure_unicode_string, safe_quoted_string,
                       validate_marked_location, validate_safe_string)
 try:
-  basestring        # Python 2
+    basestring        # Python 2
 except NameError
-  basestring = str  # Python 3
+    basestring = str  # Python 3
+try:
+    xrange            # Python 2
+except NameError:
+    xrange = range    # Python 3
 
 
 class BasicBlock(CompilerEntity):
