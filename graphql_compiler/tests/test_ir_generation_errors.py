@@ -5,6 +5,7 @@ import unittest
 from ..compiler.compiler_frontend import graphql_to_ir
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
 from .test_helpers import get_schema
+import ..compat.py
 
 
 class IrGenerationErrorTests(unittest.TestCase):
