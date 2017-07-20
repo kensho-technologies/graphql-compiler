@@ -1,6 +1,11 @@
 # Copyright 2017 Kensho Technologies, Inc.
 import re
 
+try:
+    xrange          # Python 2
+except NameError:
+    xrange = range  # Python 3
+
 
 def remove_custom_formatting(query):
     """Prepare the query string for pretty-printing by removing all unusual formatting."""

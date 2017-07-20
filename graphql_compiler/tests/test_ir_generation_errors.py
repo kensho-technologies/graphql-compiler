@@ -438,7 +438,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             if num_args >= len(variable_names):
                 raise AssertionError('Invalid test data, too many variables to represent.')
 
-            args = (variable_names[i] for i in xrange(num_args))
+            args = (variable_names[i] for i in range(num_args))
             array_contents = u','.join(u'"${}"'.format(x) for x in args)
             return u'[{}]'.format(array_contents)
 

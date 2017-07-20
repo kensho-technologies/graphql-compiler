@@ -34,8 +34,7 @@ def compare_ir_blocks(test_case, expected_blocks, received_blocks):
         test_case.fail(u'Not the same number of blocks:\n\n'
                        u'{}'.format(mismatch_message))
 
-    for i in xrange(len(expected_blocks)):
-        expected = expected_blocks[i]
+    for i, expected in enumerate(expected_blocks):
         received = received_blocks[i]
         test_case.assertEquals(expected, received,
                                msg=u'Blocks at position {} were different: {} vs {}\n\n'
