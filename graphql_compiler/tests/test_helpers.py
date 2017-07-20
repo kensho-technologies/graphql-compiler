@@ -7,7 +7,6 @@ from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
-import ..compat.py
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
@@ -35,8 +34,7 @@ def compare_ir_blocks(test_case, expected_blocks, received_blocks):
         test_case.fail(u'Not the same number of blocks:\n\n'
                        u'{}'.format(mismatch_message))
 
-    for i in xrange(len(expected_blocks)):
-        expected = expected_blocks[i]
+    for i, expected in enumerate(expected_blocks):
         received = received_blocks[i]
         test_case.assertEquals(expected, received,
                                msg=u'Blocks at position {} were different: {} vs {}\n\n'
@@ -65,7 +63,7 @@ def compare_input_metadata(test_case, expected, received):
     test_case.assertEquals(set(expected.iterkeys()), set(received.iterkeys()))
 
     # Then, compare the values for each key in both dicts.
-    for key in expected.iterkeys():
+    for key in expected:
         expected_value = expected[key]
         received_value = received[key]
 
