@@ -125,7 +125,7 @@ class ConstructResult(BasicBlock):
         """
         self.fields = {
             ensure_unicode_string(key): value
-            for key, value in fields.iteritems()
+            for key, value in fields.items()
         }
 
         # All key values are normalized to unicode before being passed to the parent constructor,
@@ -139,7 +139,7 @@ class ConstructResult(BasicBlock):
             raise TypeError(u'Expected dict fields, got: {} {}'.format(
                 type(self.fields).__name__, self.fields))
 
-        for key, value in self.fields.iteritems():
+        for key, value in self.fields.items():
             validate_safe_string(key)
             if not isinstance(value, Expression):
                 raise TypeError(
@@ -150,7 +150,7 @@ class ConstructResult(BasicBlock):
         """Create an updated version (if needed) of the ConstructResult via the visitor pattern."""
         new_fields = {}
 
-        for key, value in self.fields.iteritems():
+        for key, value in self.fields.items():
             new_value = value.visit_and_update(visitor_fn)
             if new_value is not value:
                 new_fields[key] = new_value
