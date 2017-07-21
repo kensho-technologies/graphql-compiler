@@ -532,7 +532,7 @@ def _validate_fold_has_outputs(fold_data, outputs):
     for output in outputs.values():
         if output['fold'] is fold_data:
             return True
-    
+
     raise GraphQLCompilationError(u'Each @fold scope must contain at least one field '
                                   u'marked @output. Encountered a @fold with no outputs '
                                   u'at query location: {}'.format(fold_data['root']))
