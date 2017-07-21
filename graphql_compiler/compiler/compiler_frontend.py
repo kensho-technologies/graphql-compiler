@@ -538,7 +538,6 @@ def _validate_fold_has_outputs(fold_data, outputs):
                                   u'at query location: {}'.format(fold_data['root']))
 
 
-
 def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     """Return a list of basic blocks corresponding to the inline fragment at this AST node.
 
