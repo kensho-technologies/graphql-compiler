@@ -500,6 +500,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         basic_blocks.extend(inner_basic_blocks)
 
         if fold_directive:
+            _validate_fold_has_outputs(context['fold'], context['outputs'])
             del context['fold']
 
         if in_topmost_optional_block:
@@ -523,6 +524,18 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 basic_blocks.append(blocks.Backtrack(location))
 
     return basic_blocks
+
+
+def _validate_fold_has_outputs(fold_data, outputs):
+    # At least one output in the outputs list must point to the fold_data,
+    # or the scope corresponding to fold_data had no @outputs and is illegal.
+    for output in outputs.values():
+        if output['fold'] is fold_data:
+            return True
+
+    raise GraphQLCompilationError(u'Each @fold scope must contain at least one field '
+                                  u'marked @output. Encountered a @fold with no outputs '
+                                  u'at query location: {}'.format(fold_data['root']))
 
 
 def _compile_fragment_ast(schema, current_schema_type, ast, location, context):

@@ -204,11 +204,21 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
 
+        no_outputs_inside_fold_block = '''{
+            Animal {
+                uuid @output(out_name: "uuid")
+                out_Animal_ParentOf @fold {
+                    name
+                }
+            }
+        }'''
+
         for graphql in (fold_on_property_field,
                         fold_on_root_vertex,
                         traversal_inside_fold_block,
                         filter_on_fold_block,
-                        filter_inside_fold_block):
+                        filter_inside_fold_block,
+                        no_outputs_inside_fold_block):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, graphql)
 
