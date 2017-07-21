@@ -233,6 +233,12 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }''')
 
+        output_with_name_starting_with_digit = (GraphQLCompilationError, '''{
+            Animal @filter(op_name: "name_or_alias", value: ["$animal_name"]) {
+                name @output(out_name: "1uuid")
+            }
+        }''')
+
         output_with_duplicated_name = (GraphQLCompilationError, '''{
             Animal @filter(op_name: "name_or_alias", value: ["$animal_name"]) {
                 uuid @output(out_name: "uuid")
@@ -252,7 +258,8 @@ class IrGenerationErrorTests(unittest.TestCase):
                                         output_without_name,
                                         output_with_duplicated_name,
                                         output_with_illegal_name,
-                                        output_with_empty_name,):
+                                        output_with_empty_name,
+                                        output_with_name_starting_with_digit):
             with self.assertRaises(expected_error):
                 graphql_to_ir(self.schema, graphql)
 
