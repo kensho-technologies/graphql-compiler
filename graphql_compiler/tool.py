@@ -12,7 +12,7 @@ def main():
     """Read a GraphQL query from standard input, and output it pretty-printed to standard output."""
     query = ' '.join(sys.stdin.readlines())
 
-    print pretty_print_graphql(query)  # noqa
+    sys.stdout.write(pretty_print_graphql(query))
 
 
 if __name__ == '__main__':
