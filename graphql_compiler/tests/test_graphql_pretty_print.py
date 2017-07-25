@@ -2,6 +2,7 @@
 import unittest
 
 from ..query_formatting.graphql_formatting import pretty_print_graphql
+from textwrap import dedent
 
 
 class GraphQLPrettyPrintTests(unittest.TestCase):
@@ -12,22 +13,23 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
             }
         }'''
 
-        # indentation starts at 0
-        four_space_output = '''{
-    Animal {
-        name @output(out_name: "name")
-    }
-}
-'''
+        four_space_output = dedent('''\
+        {
+            Animal {
+                name @output(out_name: "name")
+            }
+        }
+        ''')
 
-        two_space_output = '''{
-  Animal {
-    name @output(out_name: "name")
-  }
-}
-'''
+        two_space_output = dedent('''\
+        {
+          Animal {
+            name @output(out_name: "name")
+          }
+        }
+        ''')
         self.assertEquals(four_space_output, pretty_print_graphql(bad_query))
-        self.assertEquals(two_space_output, pretty_print_graphql(bad_query, use_four_spaces=False))
+        self.assertEquals(two_space_output, pretty_print_graphql(bad_query, spaces=2))
 
     def test_filter_directive_order(self):
         bad_query = '''{
@@ -43,16 +45,17 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
             }
         }'''
 
-        expected_output = '''{
-    Animal @filter(op_name: "name_or_alias", value: ["$name"]) {
-        uuid @filter(op_name: "<=", value: ["$max_uuid"])
-        out_Entity_Related {
-            ... on Species {
-                name @output(out_name: "related_species")
+        expected_output = dedent('''\
+        {
+            Animal @filter(op_name: "name_or_alias", value: ["$name"]) {
+                uuid @filter(op_name: "<=", value: ["$max_uuid"])
+                out_Entity_Related {
+                    ... on Species {
+                        name @output(out_name: "related_species")
+                    }
+                }
             }
         }
-    }
-}
-'''
+        ''')
 
         self.assertEquals(expected_output, pretty_print_graphql(bad_query))
