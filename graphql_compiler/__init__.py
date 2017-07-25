@@ -3,6 +3,7 @@
 from .compiler import CompilationResult, OutputMetadata  # noqa
 from .compiler import compile_graphql_to_gremlin, compile_graphql_to_match  # noqa
 from .query_formatting import insert_arguments_into_query  # noqa
+from .query_formatting.graphql_formatting import pretty_print_graphql  # noqa
 
 from .exceptions import GraphQLError  # noqa
 from .exceptions import GraphQLParsingError, GraphQLCompilationError  # noqa

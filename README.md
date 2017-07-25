@@ -17,6 +17,12 @@ pip install graphql-compiler
 For a more detailed overview and getting started guide, please see
 [our blog post](https://blog.kensho.com/compiled-graphql-as-a-database-query-language-72e106844282).
 
+To pretty-print GraphQL queries, use the included pretty-printer:
+```
+python -m graphql_compiler.tool <input_file.graphql >output_file.graphql
+```
+It's modeled after Python's `json.tool`, reading from stdin and writing to stdout.
+
 ## Table of contents
   * [FAQ](#faq)
   * [Definitions](#definitions)
@@ -572,7 +578,7 @@ containing the `Animal`'s name and color in columns named `animal_name` and `col
     }
 }
 ```
-This returns one row for every `Animal` whose name contains the value supplied 
+This returns one row for every `Animal` whose name contains the value supplied
 for the `$substring` parameter. Each row contains the matching `Animal`’s name
 in a column named `animal_name`.
 
