@@ -21,11 +21,9 @@ def pretty_print_graphql(query, spaces=4):
         if maybe_str:
             return maybe_str.replace('\n', '\n' + ' ' * spaces)
         return maybe_str
-
     graphql.language.printer.indent = indent_override
 
-    output = visit(parse(query), CustomPrintingVisitor())
-    return output
+    return visit(parse(query), CustomPrintingVisitor())
 
 
 class CustomPrintingVisitor(PrintingVisitor):
