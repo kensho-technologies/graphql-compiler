@@ -1,10 +1,10 @@
 # Copyright 2017 Kensho Technologies, Inc.
+from collections import OrderedDict
 from datetime import date, datetime
 
 import arrow
 from graphql import (DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLInt, GraphQLList,
                      GraphQLNonNull, GraphQLScalarType, GraphQLString)
-from collections import OrderedDict
 
 
 # Constraints:

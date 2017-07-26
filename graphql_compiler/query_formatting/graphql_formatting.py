@@ -1,7 +1,8 @@
 # Copyright 2017 Kensho Technologies, Inc.
 from graphql import parse
-from graphql.language.printer import PrintingVisitor, wrap, join
+from graphql.language.printer import PrintingVisitor, join, wrap
 from graphql.language.visitor import visit
+
 from ..schema import DIRECTIVES
 
 
