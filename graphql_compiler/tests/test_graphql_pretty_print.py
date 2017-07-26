@@ -1,8 +1,8 @@
 # Copyright 2017 Kensho Technologies, Inc.
+from textwrap import dedent
 import unittest
 
 from ..query_formatting.graphql_formatting import pretty_print_graphql
-from textwrap import dedent
 
 
 class GraphQLPrettyPrintTests(unittest.TestCase):
