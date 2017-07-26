@@ -4,6 +4,7 @@ from datetime import date, datetime
 import arrow
 from graphql import (DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLInt, GraphQLList,
                      GraphQLNonNull, GraphQLScalarType, GraphQLString)
+from collections import OrderedDict
 
 
 # Constraints:
@@ -14,16 +15,16 @@ from graphql import (DirectiveLocation, GraphQLArgument, GraphQLDirective, Graph
 #   to the query at execution time.
 FilterDirective = GraphQLDirective(
     name='filter',
-    args={
-        'op_name': GraphQLArgument(
+    args=OrderedDict([(
+        'op_name', GraphQLArgument(
             type=GraphQLNonNull(GraphQLString),
             description='Name of the filter operation to perform.',
-        ),
-        'value': GraphQLArgument(
+        )),
+        ('value', GraphQLArgument(
             type=GraphQLNonNull(GraphQLList(GraphQLNonNull(GraphQLString))),
             description='List of string operands for the operator.',
-        ),
-    },
+        ))]
+    ),
     locations=[
         DirectiveLocation.FIELD,
         DirectiveLocation.INLINE_FRAGMENT,
@@ -38,12 +39,12 @@ FilterDirective = GraphQLDirective(
 # - cannot be applied to fields within a scope marked @fold.
 TagDirective = GraphQLDirective(
     name='tag',
-    args={
-        'tag_name': GraphQLArgument(
+    args=OrderedDict([
+        ('tag_name', GraphQLArgument(
             type=GraphQLNonNull(GraphQLString),
             description='Name to apply to the given property field.',
-        ),
-    },
+        )),
+    ]),
     locations=[
         DirectiveLocation.FIELD,
     ]
@@ -56,12 +57,12 @@ TagDirective = GraphQLDirective(
 # - can only be applied to property fields.
 OutputDirective = GraphQLDirective(
     name='output',
-    args={
-        'out_name': GraphQLArgument(
+    args=OrderedDict([
+        ('out_name', GraphQLArgument(
             type=GraphQLNonNull(GraphQLString),
             description='What to designate the output field generated from this property field.',
-        ),
-    },
+        )),
+    ]),
     locations=[
         DirectiveLocation.FIELD,
     ]
@@ -173,13 +174,13 @@ FoldDirective = GraphQLDirective(
 #   and its immediate neighbors along the specified edge.
 RecurseDirective = GraphQLDirective(
     name='recurse',
-    args={
-        'depth': GraphQLArgument(
+    args=OrderedDict([
+        ('depth', GraphQLArgument(
             type=GraphQLNonNull(GraphQLInt),
             description='Recurse up to this many times on this edge. A depth of 1 produces '
                         'the current vertex and its immediate neighbors along the given edge.',
-        ),
-    },
+        )),
+    ]),
     locations=[
         DirectiveLocation.FIELD,
     ]
