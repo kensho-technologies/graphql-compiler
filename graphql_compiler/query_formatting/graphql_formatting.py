@@ -51,9 +51,10 @@ class CustomPrinter(PrintingVisitor):
                 # still pretty print it
                 return -1
 
-        for directive in DIRECTIVES:
-            if directive.name == node.name:
-                args = list(sorted(args, key=lambda a, d=directive: _arg_order(a, d)))
-                break
+        try:
+            directive = next(d for d in DIRECTIVES if d.name == node.name)
+            args = list(sorted(args, key=lambda a: _arg_order(a, directive)))
+        except StopIteration:
+            pass
 
         return '@' + node.name + wrap('(', join(args, ', '), ')')
