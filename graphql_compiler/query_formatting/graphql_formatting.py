@@ -29,11 +29,11 @@ def pretty_print_graphql(query, spaces=4):
 
 
 class CustomPrintingVisitor(PrintingVisitor):
-    # Directives are easier to read if they are in the order in which we defined
-    # them in the schema. For example, @filter directives are much easier to
-    # read if the operation comes before the values. The arguments of the
-    # directives specified in the schema are defined as OrderedDicts which
-    # allows us to sort the provided arguments to match.
+    # Directives are easier to read if their arguments appear in the order in
+    # which we defined them in the schema. For example, @filter directives are
+    # much easier to read if the operation comes before the values. The
+    # arguments of the directives specified in the schema are defined as
+    # OrderedDicts which allows us to sort the provided arguments to match.
     def leave_Directive(self, node, *args):
         args = node.arguments
 
