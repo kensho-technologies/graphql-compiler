@@ -39,8 +39,21 @@ class CustomPrinter(PrintingVisitor):
     def leave_Directive(self, node, *args):
         args = node.arguments
 
+        def _arg_order(arg, directive):
+            defined_arg_names = directive.args.keys()
+            # Taking [0] is ok here because the graphql parser checks for the
+            # existence of ':' in directive arguments
+            arg_name = arg.split(':')[0]
+            try:
+                return defined_arg_names.index(arg_name)
+            except ValueError:
+                # This argument name isn't defined in our schema but we should
+                # still pretty print it
+                return -1
+
         for directive in DIRECTIVES:
             if directive.name == node.name:
-                args = list(sorted(args, key=lambda a: directive.args.keys().index(a.split(':')[0])))
+                args = list(sorted(args, key=lambda a, d=directive: _arg_order(a, d)))
+                break
 
         return '@' + node.name + wrap('(', join(args, ', '), ')')
