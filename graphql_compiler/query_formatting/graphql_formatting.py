@@ -17,14 +17,13 @@ def pretty_print_graphql(query, spaces=4):
     # opposed to copying the entire class.
     import graphql
 
-    def _indent_override(spaces):
-        def indent(maybe_str):
-            if maybe_str:
-                return maybe_str.replace('\n', '\n' + ' ' * spaces)
-            return maybe_str
-        return indent
-    graphql.language.printer.indent = _indent_override(spaces)
-    
+    def indent_override(maybe_str):
+        if maybe_str:
+            return maybe_str.replace('\n', '\n' + ' ' * spaces)
+        return maybe_str
+
+    graphql.language.printer.indent = indent_override
+
     output = visit(parse(query), CustomPrintingVisitor())
     return output
 
