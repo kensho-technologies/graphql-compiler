@@ -29,7 +29,8 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
         }
         ''')
         self.assertEquals(four_space_output, pretty_print_graphql(bad_query))
-        self.assertEquals(two_space_output, pretty_print_graphql(bad_query, spaces=2))
+        self.assertEquals(two_space_output,
+                          pretty_print_graphql(bad_query, spaces=2))
 
     def test_filter_directive_order(self):
         bad_query = '''{
@@ -105,6 +106,34 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
             Animal @filter(value: ["$name"]) {
                 uuid @filter(op_name: "<=", value: ["$max_uuid"])
                 out_Entity_Related {
+                    ... on Species {
+                        name @output(out_name: "related_species")
+                    }
+                }
+            }
+        }
+        ''')
+
+        self.assertEquals(expected_output, pretty_print_graphql(bad_query))
+
+    def test_other_directive(self):
+        bad_query = '''{
+            Animal @filter(value: ["$name"]) {
+                uuid @filter(value: ["$max_uuid"], op_name: "<=")
+
+                out_Entity_Related @other(arg1: "val1", arg2: "val2") {
+                  ...on Species{
+                      name @output(out_name: "related_species")
+                    }
+                }
+            }
+        }'''
+
+        expected_output = dedent('''\
+        {
+            Animal @filter(value: ["$name"]) {
+                uuid @filter(op_name: "<=", value: ["$max_uuid"])
+                out_Entity_Related @other(arg1: "val1", arg2: "val2") {
                     ... on Species {
                         name @output(out_name: "related_species")
                     }
