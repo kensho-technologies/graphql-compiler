@@ -34,6 +34,7 @@ class CustomPrintingVisitor(PrintingVisitor):
     # arguments of the directives specified in the schema are defined as
     # OrderedDicts which allows us to sort the provided arguments to match.
     def leave_Directive(self, node, *args):
+        """Call when exiting a directive node in the ast."""
         args = node.arguments
 
         def _arg_index(arg, directive):
