@@ -30,7 +30,7 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
         ''')
         self.assertEquals(four_space_output, pretty_print_graphql(bad_query))
         self.assertEquals(two_space_output,
-                          pretty_print_graphql(bad_query, spaces=2))
+                          pretty_print_graphql(bad_query, use_four_spaces=False))
 
     def test_filter_directive_order(self):
         bad_query = '''{
@@ -62,7 +62,7 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
 
     def test_args_not_in_schema(self):
         bad_query = '''{
-            Animal @filter(value: ["$name"], op_name: "name_or_alias", unkown_arg: "value") {
+            Animal @filter(value: ["$name"], unkown_arg: "value", op_name: "name_or_alias") {
                 uuid @filter(value: ["$max_uuid"], op_name: "<=")
 
                 out_Entity_Related {
@@ -75,7 +75,7 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
 
         expected_output = dedent('''\
         {
-            Animal @filter(unkown_arg: "value", op_name: "name_or_alias", value: ["$name"]) {
+            Animal @filter(op_name: "name_or_alias", value: ["$name"], unkown_arg: "value") {
                 uuid @filter(op_name: "<=", value: ["$max_uuid"])
                 out_Entity_Related {
                     ... on Species {

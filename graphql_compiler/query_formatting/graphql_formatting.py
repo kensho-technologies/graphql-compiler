@@ -6,25 +6,15 @@ from graphql.language.visitor import visit
 from ..schema import DIRECTIVES
 
 
-def pretty_print_graphql(query, spaces=4):
+def pretty_print_graphql(query, use_four_spaces=True):
     """Take a GraphQL query, pretty print it, and return it."""
-    # The graphql-core printer module has an indent function outside of the
-    # PrintingVisitor class which has two spaces hard coded. Ideally, it would
-    # be a member of the class and we could simply override it in our custom
-    # printer. To work around this we can set the function inside the module
-    # forcefully. This is undesireable as it has a global effect and relies on
-    # the implementation details of the print_ast() function, but has the
-    # advantage of only modifying the leave_Directive() method on the class as
-    # opposed to copying the entire class.
-    import graphql
+    output = visit(parse(query), CustomPrintingVisitor())
+    if use_four_spaces:
+        return fix_indentation_depth(output)
+    return output
 
-    def indent_override(maybe_str):
-        if maybe_str:
-            return maybe_str.replace('\n', '\n' + ' ' * spaces)
-        return maybe_str
-    graphql.language.printer.indent = indent_override
 
-    return visit(parse(query), CustomPrintingVisitor())
+DIRECTIVES_BY_NAME = {d.name: d for d in DIRECTIVES}
 
 
 class CustomPrintingVisitor(PrintingVisitor):
@@ -36,25 +26,38 @@ class CustomPrintingVisitor(PrintingVisitor):
     def leave_Directive(self, node, *args):
         """Call when exiting a directive node in the ast."""
         args = node.arguments
+        arg_names = [a.split(':', 1)[0] for a in args]
 
-        def _arg_index(arg, directive):
-            defined_arg_names = directive.args.keys()
-            # Taking [0] is ok here because the graphql parser checks for the
-            # existence of ':' in directive arguments
-            arg_name = arg.split(':', 1)[0]
-            try:
-                return defined_arg_names.index(arg_name)
-            except ValueError:
-                # This argument name isn't defined in our schema but we should
-                # still pretty print it anyway
-                return -1
-
-        try:
-            directive = next(d for d in DIRECTIVES if d.name == node.name)
-            args = list(sorted(args, key=lambda a: _arg_index(a, directive)))
-        except StopIteration:
-            # The directive wasn't defined in our schema, use whatever order
-            # the args appeared in within the query
-            pass
+        directive = DIRECTIVES_BY_NAME.get(node.name)
+        if directive:
+            sorted_args = []
+            for defined_arg in directive.args.keys():
+                if defined_arg in arg_names:
+                    arg = args.pop(arg_names.index(defined_arg))
+                    sorted_args.append(arg)
+            args = sorted_args + args
 
         return '@' + node.name + wrap('(', join(args, ', '), ')')
+
+
+def fix_indentation_depth(query):
+    """Make indentation use 4 spaces, rather than the 2 spaces GraphQL normally uses."""
+    lines = query.split('\n')
+    final_lines = []
+
+    for line in lines:
+        consecutive_spaces = 0
+        for char in line:
+            if char == ' ':
+                consecutive_spaces += 1
+            else:
+                break
+
+        if consecutive_spaces % 2 != 0:
+            raise AssertionError(u'Indentation was not a multiple of two: '
+                                 u'{}'.format(consecutive_spaces))
+
+        final_lines.append(('  ' * consecutive_spaces) +
+                           line[consecutive_spaces:])
+
+    return '\n'.join(final_lines)
