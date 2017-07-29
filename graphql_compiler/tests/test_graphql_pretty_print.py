@@ -75,7 +75,7 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
 
         expected_output = dedent('''\
         {
-            Animal @filter(op_name: "name_or_alias", value: ["$name"], unkown_arg: "value") {
+            Animal @filter(op_name: "name_or_alias", value: ["$name"], unknown_arg: "value") {
                 uuid @filter(op_name: "<=", value: ["$max_uuid"])
                 out_Entity_Related {
                     ... on Species {
