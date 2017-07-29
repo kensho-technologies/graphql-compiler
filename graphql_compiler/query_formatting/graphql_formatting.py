@@ -8,7 +8,12 @@ from ..schema import DIRECTIVES
 
 def pretty_print_graphql(query, use_four_spaces=True):
     """Take a GraphQL query, pretty print it, and return it."""
+    # Use our custom visitor, which fixes directive argument order
+    # to get the canonical representation
     output = visit(parse(query), CustomPrintingVisitor())
+
+    # Using four spaces for indentation makes it easier to edit in
+    # Python source files.
     if use_four_spaces:
         return fix_indentation_depth(output)
     return output
@@ -25,7 +30,10 @@ class CustomPrintingVisitor(PrintingVisitor):
     # OrderedDicts which allows us to sort the provided arguments to match.
     def leave_Directive(self, node, *args):
         """Call when exiting a directive node in the ast."""
-        args = node.arguments
+        # Make a copy of the arguemnts so that we can safely pop
+        args = list(node.arguments)
+        # Taking [0] is ok here because the graphql parser checks for the
+        # existence of ':' in directive arguments
         arg_names = [a.split(':', 1)[0] for a in args]
 
         directive = DIRECTIVES_BY_NAME.get(node.name)
@@ -57,7 +65,6 @@ def fix_indentation_depth(query):
             raise AssertionError(u'Indentation was not a multiple of two: '
                                  u'{}'.format(consecutive_spaces))
 
-        final_lines.append(('  ' * consecutive_spaces) +
-                           line[consecutive_spaces:])
+        final_lines.append(('  ' * consecutive_spaces) + line[consecutive_spaces:])
 
     return '\n'.join(final_lines)

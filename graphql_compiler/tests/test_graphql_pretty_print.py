@@ -62,7 +62,7 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
 
     def test_args_not_in_schema(self):
         bad_query = '''{
-            Animal @filter(value: ["$name"], unkown_arg: "value", op_name: "name_or_alias") {
+            Animal @filter(value: ["$name"], unknown_arg: "value", op_name: "name_or_alias") {
                 uuid @filter(value: ["$max_uuid"], op_name: "<=")
 
                 out_Entity_Related {
