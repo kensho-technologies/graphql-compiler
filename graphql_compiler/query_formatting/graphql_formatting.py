@@ -1,7 +1,51 @@
 # Copyright 2017 Kensho Technologies, Inc.
-import re
+from graphql import parse
+from graphql.language.printer import PrintingVisitor, join, wrap
+from graphql.language.visitor import visit
 
-from graphql import parse, print_ast
+from ..schema import DIRECTIVES
+
+
+def pretty_print_graphql(query, use_four_spaces=True):
+    """Take a GraphQL query, pretty print it, and return it."""
+    # Use our custom visitor, which fixes directive argument order
+    # to get the canonical representation
+    output = visit(parse(query), CustomPrintingVisitor())
+
+    # Using four spaces for indentation makes it easier to edit in
+    # Python source files.
+    if use_four_spaces:
+        return fix_indentation_depth(output)
+    return output
+
+
+DIRECTIVES_BY_NAME = {d.name: d for d in DIRECTIVES}
+
+
+class CustomPrintingVisitor(PrintingVisitor):
+    # Directives are easier to read if their arguments appear in the order in
+    # which we defined them in the schema. For example, @filter directives are
+    # much easier to read if the operation comes before the values. The
+    # arguments of the directives specified in the schema are defined as
+    # OrderedDicts which allows us to sort the provided arguments to match.
+    def leave_Directive(self, node, *args):
+        """Call when exiting a directive node in the ast."""
+        # Make a copy of the arguemnts so that we can safely pop
+        args = list(node.arguments)
+        # Taking [0] is ok here because the graphql parser checks for the
+        # existence of ':' in directive arguments
+        arg_names = [a.split(':', 1)[0] for a in args]
+
+        directive = DIRECTIVES_BY_NAME.get(node.name)
+        if directive:
+            sorted_args = []
+            for defined_arg in directive.args.keys():
+                if defined_arg in arg_names:
+                    arg = args.pop(arg_names.index(defined_arg))
+                    sorted_args.append(arg)
+            args = sorted_args + args
+
+        return '@' + node.name + wrap('(', join(args, ', '), ')')
 
 
 def fix_indentation_depth(query):
@@ -24,40 +68,3 @@ def fix_indentation_depth(query):
         final_lines.append(('  ' * consecutive_spaces) + line[consecutive_spaces:])
 
     return '\n'.join(final_lines)
-
-
-def fix_filter_directive_order(query):
-    """Reverse the order of filter arguments. GraphQL insists on printing them backwards."""
-    filter_directive_pattern = (
-        r'@filter\('
-        r'value: \['
-        r'("[$%][a-zA-Z0-9_]+"'         # start of capture group 1 at start of this line
-        r'(?:, "[$%][a-zA-Z0-9_]+")*)'  # end of capture group 1 at end of this line
-        r'\], '
-        r'op_name: '
-        r'("[^"]+")'                    # capture group 2 on this line
-        r'\)'
-    )
-
-    replacement_pattern = (
-        r'@filter(op_name: \2, value: [\1])'
-    )
-
-    return re.sub(filter_directive_pattern, replacement_pattern, query)
-
-
-def pretty_print_graphql(query, use_four_spaces=True):
-    """Take a GraphQL query, pretty print it, and return it."""
-    # Use the built-in AST printer to get the canonical representation.
-    output = print_ast(parse(query))
-
-    # Use four spaces for indentation, to make it easier up to edit in Python source files.
-    if use_four_spaces:
-        output = fix_indentation_depth(output)
-
-    # @filter directives are much easier to read if the operation comes before the values.
-    # The default AST printer seems to like outputting the values before the operation, so
-    # the filtering operation ends up written in postfix order. Use regex to correct that.
-    output = fix_filter_directive_order(output)
-
-    return output

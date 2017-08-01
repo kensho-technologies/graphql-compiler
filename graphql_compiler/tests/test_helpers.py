@@ -89,7 +89,7 @@ def get_schema():
 
         directive @recurse(depth: Int!) on FIELD
 
-        directive @filter(value: [String!]!, op_name: String!) on FIELD | INLINE_FRAGMENT
+        directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
 
         directive @tag(tag_name: String!) on FIELD
 
