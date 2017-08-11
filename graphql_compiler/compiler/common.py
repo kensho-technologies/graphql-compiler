@@ -17,13 +17,6 @@ MATCH_LANGUAGE = 'MATCH'
 GREMLIN_LANGUAGE = 'Gremlin'
 
 
-def _preprocess_graphql_string(graphql_string):
-    """Apply any necessary preprocessing to the input GraphQL string, returning the new version."""
-    # HACK(predrag): Workaround for graphql-core issue, to avoid needless errors:
-    #                https://github.com/graphql-python/graphql-core/issues/98
-    return graphql_string + '\n'
-
-
 def compile_graphql_to_match(schema, graphql_string):
     """Compile the GraphQL input using the schema into a MATCH query and associated metadata.
 
@@ -34,8 +27,6 @@ def compile_graphql_to_match(schema, graphql_string):
     Returns:
         a CompilationResult object
     """
-    graphql_string = _preprocess_graphql_string(graphql_string)
-
     ir_blocks, output_metadata, input_metadata, location_types = \
         graphql_to_ir(schema, graphql_string)
 
@@ -74,8 +65,6 @@ def compile_graphql_to_gremlin(schema, graphql_string, type_equivalence_hints=No
     Returns:
         a CompilationResult object
     """
-    graphql_string = _preprocess_graphql_string(graphql_string)
-
     ir_blocks, output_metadata, input_metadata, location_types = \
         graphql_to_ir(schema, graphql_string)
 
