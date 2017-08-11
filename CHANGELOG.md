@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.2
+
+- Make the `graphql_to_ir()` easier to use by making it automatically add a
+  new line to the end of the GraphQL query string. Works around an issue in
+  the `graphql-core`dependency library: https://github.com/graphql-python/graphql-core/issues/98
+- Robustness improvements for the pretty-printer [#27](https://github.com/kensho-technologies/graphql-compiler/pull/27)
+
+Thanks to `benlongo` for their contributions.
+
 ## v1.0.1
 
 - Add GraphQL pretty printer: `python -m graphql_compiler.tool` [#23](https://github.com/kensho-technologies/graphql-compiler/pull/23)
