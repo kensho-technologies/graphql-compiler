@@ -760,6 +760,13 @@ def _compile_output_step(outputs):
     return blocks.ConstructResult(output_fields)
 
 
+def _preprocess_graphql_string(graphql_string):
+    """Apply any necessary preprocessing to the input GraphQL string, returning the new version."""
+    # HACK(predrag): Workaround for graphql-core issue, to avoid needless errors:
+    #                https://github.com/graphql-python/graphql-core/issues/98
+    return graphql_string + '\n'
+
+
 ##############
 # Public API #
 ##############
@@ -789,6 +796,7 @@ def graphql_to_ir(schema, graphql_string):
 
     In the case of implementation bugs, could also raise ValueError, TypeError, or AssertionError.
     """
+    graphql_string = _preprocess_graphql_string(graphql_string)
     try:
         ast = parse(graphql_string)
     except GraphQLSyntaxError as e:
