@@ -1,6 +1,7 @@
 # Copyright 2017 Kensho Technologies, Inc.
 from graphql import GraphQLList, GraphQLNonNull
 
+from ..compat import basestring, unicode  # pylint: disable=redefined-builtin
 from ..exceptions import GraphQLCompilationError
 from ..schema import GraphQLDate, GraphQLDateTime
 from .helpers import (CompilerEntity, Location, ensure_unicode_string, is_graphql_type,

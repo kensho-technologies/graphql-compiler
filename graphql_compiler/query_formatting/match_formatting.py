@@ -6,6 +6,7 @@ import json
 import arrow
 from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 
+from ..compat import basestring, unicode  # pylint: disable=redefined-builtin
 from ..compiler import MATCH_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
@@ -121,7 +122,7 @@ def insert_arguments_into_match_query(compilation_result, arguments):
     # The arguments are assumed to have already been validated against the query.
     sanitized_arguments = {
         key: _safe_match_argument(argument_types[key], value)
-        for key, value in arguments.iteritems()
+        for key, value in arguments.items()
     }
 
     return base_query.format(**sanitized_arguments)

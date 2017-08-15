@@ -1,6 +1,8 @@
 # Copyright 2017 Kensho Technologies, Inc.
 import re
 
+from .compat import xrange  # pylint: disable=redefined-builtin
+
 
 def remove_custom_formatting(query):
     """Prepare the query string for pretty-printing by removing all unusual formatting."""

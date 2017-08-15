@@ -25,7 +25,7 @@ def check_test_data(test_case, graphql_input, expected_match, expected_gremlin,
         schema_based_type_equivalence_hints = {}
         name_format = 'temp_union_{}'
         name_counter = 0
-        for key, value in type_equivalence_hints.iteritems():
+        for key, value in type_equivalence_hints.items():
             new_key = test_case.schema.get_type(key)
 
             new_value_name = name_format.format(name_counter)

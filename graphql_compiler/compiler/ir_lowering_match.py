@@ -261,7 +261,7 @@ def _flatten_location_translations(location_translations):
         location_translations: dict of Location -> Location, where the key translates to the value.
                                Mutated in place for efficiency and simplicity of implementation.
     """
-    sources_to_process = set(location_translations.iterkeys())
+    sources_to_process = set(location_translations)
 
     def _update_translation(source):
         """Return the proper (fully-flattened) translation for the given location."""

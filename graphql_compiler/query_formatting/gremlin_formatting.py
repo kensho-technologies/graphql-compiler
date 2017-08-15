@@ -7,6 +7,7 @@ from string import Template
 import arrow
 from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 
+from ..compat import basestring, unicode  # pylint: disable=redefined-builtin
 from ..compiler import GREMLIN_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
@@ -143,7 +144,7 @@ def insert_arguments_into_gremlin_query(compilation_result, arguments):
     # The arguments are assumed to have already been validated against the query.
     sanitized_arguments = {
         key: _safe_gremlin_argument(argument_types[key], value)
-        for key, value in arguments.iteritems()
+        for key, value in arguments.items()
     }
 
     return Template(base_query).substitute(sanitized_arguments)

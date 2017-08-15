@@ -44,7 +44,7 @@ class SchemaTests(unittest.TestCase):
             '1991-12-31': date(1991, 12, 31),
         }
 
-        for iso_date, date_obj in test_data.iteritems():
+        for iso_date, date_obj in test_data.items():
             self.assertEquals(iso_date, schema.GraphQLDate.serialize(date_obj))
             self.assertEquals(date_obj, schema.GraphQLDate.parse_value(iso_date))
 
@@ -71,6 +71,6 @@ class SchemaTests(unittest.TestCase):
         self.assertEquals(datetime(2017, 1, 1, 0, 0, 0, tzinfo=pytz.utc),
                           schema.GraphQLDateTime.parse_value('2017-01-01T00:00:00Z'))
 
-        for iso_datetime, datetime_obj in test_data.iteritems():
+        for iso_datetime, datetime_obj in test_data.items():
             self.assertEquals(iso_datetime, schema.GraphQLDateTime.serialize(datetime_obj))
             self.assertEquals(datetime_obj, schema.GraphQLDateTime.parse_value(iso_datetime))
