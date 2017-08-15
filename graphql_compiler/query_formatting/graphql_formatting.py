@@ -30,22 +30,37 @@ class CustomPrintingVisitor(PrintingVisitor):
     # OrderedDicts which allows us to sort the provided arguments to match.
     def leave_Directive(self, node, *args):
         """Call when exiting a directive node in the ast."""
-        # Make a copy of the arguemnts so that we can safely pop
-        args = list(node.arguments)
-        # Taking [0] is ok here because the graphql parser checks for the
-        # existence of ':' in directive arguments
-        arg_names = [a.split(':', 1)[0] for a in args]
+        name_to_arg_value = {
+            # Taking [0] is ok here because the GraphQL parser checks for the
+            # existence of ':' in directive arguments.
+            arg.split(':', 1)[0]: arg
+            for arg in node.arguments
+        }
 
+        ordered_args = node.arguments
         directive = DIRECTIVES_BY_NAME.get(node.name)
         if directive:
             sorted_args = []
-            for defined_arg in directive.args.keys():
-                if defined_arg in arg_names:
-                    arg = args.pop(arg_names.index(defined_arg))
-                    sorted_args.append(arg)
-            args = sorted_args + args
+            encountered_argument_names = set()
 
-        return '@' + node.name + wrap('(', join(args, ', '), ')')
+            # Iterate through all defined arguments in the directive schema.
+            for defined_arg_name in directive.args.keys():
+                if defined_arg_name in name_to_arg_value:
+                    # The argument was present in the query, print it in the correct order.
+                    encountered_argument_names.add(defined_arg_name)
+                    sorted_args.append(name_to_arg_value[defined_arg_name])
+
+            # Get all the arguments that weren't defined in the directive schema.
+            # They will be printed after all the arguments that were in the schema.
+            unsorted_args = [
+                value
+                for name, value in name_to_arg_value.items()
+                if name not in encountered_argument_names
+            ]
+
+            ordered_args = sorted_args + unsorted_args
+
+        return '@' + node.name + wrap('(', join(ordered_args, ', '), ')')
 
 
 def fix_indentation_depth(query):
