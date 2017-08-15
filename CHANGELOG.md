@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.3
+
+- Fix a minor bug in the GraphQL pretty-printer [#30](https://github.com/kensho-technologies/graphql-compiler/pull/30)
+
 ## v1.0.2
 
 - Make the `graphql_to_ir()` easier to use by making it automatically add a
