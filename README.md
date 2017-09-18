@@ -46,6 +46,7 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
   * [The GraphQL schema](#the-graphql-schema)
   * [Execution model](#execution-model)
   * [Miscellaneous](#miscellaneous)
+     * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
   * [License](#license)
 
 ## FAQ
@@ -229,8 +230,12 @@ If a given `Animal` has no children, its `child_names` list is empty.
 #### Constraints and Rules
 - `@fold` can only be applied to vertex fields, except the root vertex field.
 - May not exist at the same vertex field as `@recurse`, `@optional`, `@output_source`, or `@filter`.
-- Type coercions, expanding vertex fields, and use of the `@filter` directive are
-  not allowed within a scope marked `@fold`.
+- Expanding vertex fields and use of the `@filter` directive are not allowed
+  within a scope marked `@fold`.
+- Type coercions are allowed in a `@fold` scope only if the compiler is able to prove that
+  the type coercion is actually a no-op. See the
+  [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
+  section for more details.
 - `@tag` and `@fold` may not be used within a scope marked `@fold`.
 
 ### @tag
@@ -858,7 +863,7 @@ the opposite order:
 
 ## Miscellaneous
 
-### The optional `type_equivalence_hints` parameter
+### Optional `type_equivalence_hints` parameter
 
 This compilation parameter is a workaround for the limitations of the GraphQL and Gremlin
 type systems:
@@ -880,6 +885,10 @@ type Dog {
 }
 
 union AnimalCatDog = Animal | Cat | Dog
+
+type Foo {
+    adjacent_animal: AnimalCatDog
+}
 ```
 
 An appropriate `type_equivalence_hints` value here would be `{ Animal: AnimalCatDog }`.
@@ -888,6 +897,20 @@ the `Animal` type, as there are no other types that inherit from `Animal` in the
 This allows the compiler to perform accurate type coercions in Gremlin, as well as optimize away
 type coercions across edges of union type if the coercion is coercing to the
 union's equivalent type.
+
+Setting `type_equivalence_hints = { Animal: AnimalCatDog }` during compilation
+would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`:
+```
+{
+    Foo {
+        adjacent_animal @fold {
+            ... on Animal {
+                name @output(out_name: "name")
+            }
+        }
+    }
+}
+```
 
 ## License
 
