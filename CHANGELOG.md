@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.0
+
+- Add support for Python 3 [#31](https://github.com/kensho-technologies/graphql-compiler/pull/31)
+- Make it possible to use `@fold` together with union-typed vertex fields [#32](https://github.com/kensho-technologies/graphql-compiler/pull/32)
+
+Thanks to `ColCarroll` for making the compiler support Python 3!
+
 ## v1.0.3
 
 - Fix a minor bug in the GraphQL pretty-printer [#30](https://github.com/kensho-technologies/graphql-compiler/pull/30)
