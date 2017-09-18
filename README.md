@@ -45,6 +45,7 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
   * [Meta fields](#meta-fields)
   * [The GraphQL schema](#the-graphql-schema)
   * [Execution model](#execution-model)
+  * [Miscellaneous](#miscellaneous)
   * [License](#license)
 
 ## FAQ
@@ -854,6 +855,39 @@ the opposite order:
     }
 }
 ```
+
+## Miscellaneous
+
+### The optional `type_equivalence_hints` parameter
+
+This compilation parameter is a workaround for the limitations of the GraphQL and Gremlin
+type systems:
+- GraphQL does not allow `type` to inherit from another `type`, only to implement an `interface`.
+- Gremlin does not have first-class support for inheritance at all.
+
+Assume the following GraphQL schema:
+```
+type Animal {
+    name: String
+}
+
+type Cat {
+    name: String
+}
+
+type Dog {
+    name: String
+}
+
+union AnimalCatDog = Animal | Cat | Dog
+```
+
+An appropriate `type_equivalence_hints` value here would be `{ Animal: AnimalCatDog }`.
+This lets the compiler know that the `AnimalCatDog` union type is implicitly equivalent to
+the `Animal` type, as there are no other types that inherit from `Animal` in the database schema.
+This allows the compiler to perform accurate type coercions in Gremlin, as well as optimize away
+type coercions across edges of union type if the coercion is coercing to the
+union's equivalent type.
 
 ## License
 
