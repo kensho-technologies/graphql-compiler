@@ -887,3 +887,62 @@ class IrGenerationErrorTests(unittest.TestCase):
         for invalid_graphql in invalid_queries:
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, invalid_graphql)
+
+    def test_filter_within_fold_scope(self):
+        # Filtering within a fold scope is currently not allowed.
+        invalid_queries = [
+            '''{
+                Animal {
+                    name @output(out_name: "name")
+                    out_Animal_ParentOf @fold {
+                        name @filter(op_name: "=", value: ["$desired"]) @output(out_name: "child")
+                    }
+                }
+            }''',
+
+            '''{
+                Animal {
+                    name @output(out_name: "name")
+                    out_Animal_ParentOf @fold
+                                        @filter(op_name: "name_or_alias", value: ["$desired"]) {
+                        name @output(out_name: "child")
+                    }
+                }
+            }''',
+        ]
+
+        for invalid_graphql in invalid_queries:
+            with self.assertRaises(GraphQLCompilationError):
+                graphql_to_ir(self.schema, invalid_graphql)
+
+    def test_non_no_op_coercion_within_fold_scope(self):
+        # Applying a type coercion that is not a no-op (e.g. not coercing to
+        # the base type of a union type, or to the current type of the scope)
+        # is currently not allowed within a fold scope.
+        invalid_queries = [
+            '''{
+                Animal {
+                    name @output(out_name: "name")
+                    out_Entity_Related @fold {
+                        ... on Animal {
+                            name @output(out_name: "related")
+                        }
+                    }
+                }
+            }''',
+
+            '''{
+                Animal {
+                    name @output(out_name: "name")
+                    out_Animal_ImportantEvent @fold {
+                        ... on BirthEvent {
+                            name @output(out_name: "related")
+                        }
+                    }
+                }
+            }''',
+        ]
+
+        for invalid_graphql in invalid_queries:
+            with self.assertRaises(GraphQLCompilationError):
+                graphql_to_ir(self.schema, invalid_graphql)

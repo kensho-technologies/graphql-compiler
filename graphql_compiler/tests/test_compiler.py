@@ -2,7 +2,7 @@
 """End-to-end tests of the GraphQL compiler."""
 import unittest
 
-from graphql import GraphQLID, GraphQLList, GraphQLString, GraphQLUnionType
+from graphql import GraphQLID, GraphQLList, GraphQLString
 import six
 
 from ..compiler import OutputMetadata, compile_graphql_to_gremlin, compile_graphql_to_match
@@ -14,35 +14,21 @@ from .test_helpers import compare_gremlin, compare_input_metadata, compare_match
 def check_test_data(test_case, graphql_input, expected_match, expected_gremlin,
                     expected_output_metadata, expected_input_metadata, type_equivalence_hints=None):
     """Assert that the GraphQL input generates all expected MATCH and Gremlin data."""
-    result = compile_graphql_to_match(test_case.schema, graphql_input)
+    if type_equivalence_hints:
+        # For test convenience, we accept the type equivalence hints in string form.
+        # Here, we convert them to the required GraphQL types.
+        schema_based_type_equivalence_hints = {
+            test_case.schema.get_type(key): test_case.schema.get_type(value)
+            for key, value in six.iteritems(type_equivalence_hints)
+        }
+    else:
+        schema_based_type_equivalence_hints = None
+
+    result = compile_graphql_to_match(test_case.schema, graphql_input,
+                                      type_equivalence_hints=schema_based_type_equivalence_hints)
     compare_match(test_case, expected_match, result.query)
     test_case.assertEqual(expected_output_metadata, result.output_metadata)
     compare_input_metadata(test_case, expected_input_metadata, result.input_metadata)
-
-    if type_equivalence_hints:
-        # For test convenience, we accept the type equivalence hints in string form.
-        # Here, we convert them to the required GraphQL types, generating meaningless
-        # temporary names for the new interfaces.
-        schema_based_type_equivalence_hints = {}
-        name_format = 'temp_union_{}'
-        name_counter = 0
-        for key, value in six.iteritems(type_equivalence_hints):
-            new_key = test_case.schema.get_type(key)
-
-            new_value_name = name_format.format(name_counter)
-            name_counter += 1
-
-            # The 'resolve_type' argument below is only to side-step an unnecessary sanity-check
-            # in the underlying GraphQL library. The library assumes we are going to use
-            # its execution system, so it complains that we don't provide a means to resolve which
-            # of the allowed types in the union is actually present. We don't care, because we
-            # simply compile the GraphQL query directly to a database query.
-            new_value = GraphQLUnionType(new_value_name,
-                                         types=[test_case.schema.get_type(x) for x in value],
-                                         resolve_type=lambda: None)
-            schema_based_type_equivalence_hints[new_key] = new_value
-    else:
-        schema_based_type_equivalence_hints = None
 
     result = compile_graphql_to_gremlin(test_case.schema, graphql_input,
                                         type_equivalence_hints=schema_based_type_equivalence_hints)
@@ -1681,7 +1667,7 @@ FROM (
             }
         }'''
         type_equivalence_hints = {
-            'Event': {'Event', 'BirthEvent'}
+            'Event': 'EventOrBirthEvent'
         }
 
         expected_match = '''
@@ -2093,6 +2079,109 @@ FROM (
             'child_birthdays_list': OutputMetadata(type=GraphQLList(GraphQLDate), optional=False),
             'fed_at_datetimes_list': OutputMetadata(
                 type=GraphQLList(GraphQLDateTime), optional=False),
+        }
+        expected_input_metadata = {}
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata)
+
+    def test_coercion_to_union_base_type_inside_fold(self):
+        # Given type_equivalence_hints = { Event: EventOrBirthEvent },
+        # the coercion should be optimized away as a no-op.
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "animal_name")
+                out_Animal_ImportantEvent @fold {
+                    ... on Event {
+                        name @output(out_name: "important_events")
+                    }
+                }
+            }
+        }'''
+        type_equivalence_hints = {
+            'Event': 'EventOrBirthEvent'
+        }
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                Animal___1.out("Animal_ImportantEvent").name AS `important_events`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                important_events: (
+                    (m.Animal___1.out_Animal_ImportantEvent == null) ? [] : (
+                        m.Animal___1.out_Animal_ImportantEvent.collect{
+                            entry -> entry.inV.next().name
+                        }
+                    )
+                )
+            ])}
+        '''
+
+        expected_output_metadata = {
+            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+            'important_events': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {}
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata,
+                        type_equivalence_hints=type_equivalence_hints)
+
+    def test_no_op_coercion_inside_fold(self):
+        # The type where the coercion is applied is already Entity, so the coercion is a no-op.
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "animal_name")
+                out_Entity_Related @fold {
+                    ... on Entity {
+                        name @output(out_name: "related_entities")
+                    }
+                }
+            }
+        }'''
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                Animal___1.out("Entity_Related").name AS `related_entities`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                related_entities: (
+                    (m.Animal___1.out_Entity_Related == null) ? [] : (
+                        m.Animal___1.out_Entity_Related.collect{
+                            entry -> entry.inV.next().name
+                        }
+                    )
+                )
+            ])}
+        '''
+
+        expected_output_metadata = {
+            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+            'related_entities': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
         }
         expected_input_metadata = {}
 

@@ -43,7 +43,7 @@ def compile_graphql_to_match(schema, graphql_string, type_equivalence_hints=None
         a CompilationResult object
     """
     ir_blocks, output_metadata, input_metadata, location_types = \
-        graphql_to_ir(schema, graphql_string)
+        graphql_to_ir(schema, graphql_string, type_equivalence_hints=type_equivalence_hints)
 
     lowered_ir_blocks = ir_lowering_match.lower_ir(ir_blocks, location_types,
                                                    type_equivalence_hints=type_equivalence_hints)
@@ -83,7 +83,7 @@ def compile_graphql_to_gremlin(schema, graphql_string, type_equivalence_hints=No
         a CompilationResult object
     """
     ir_blocks, output_metadata, input_metadata, location_types = \
-        graphql_to_ir(schema, graphql_string)
+        graphql_to_ir(schema, graphql_string, type_equivalence_hints=type_equivalence_hints)
 
     lowered_ir_blocks = ir_lowering_gremlin.lower_ir(ir_blocks, location_types,
                                                      type_equivalence_hints=type_equivalence_hints)

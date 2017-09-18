@@ -528,6 +528,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
 
 def _validate_fold_has_outputs(fold_data, outputs):
+    """Ensure the @fold scope has at least one output."""
     # At least one output in the outputs list must point to the fold_data,
     # or the scope corresponding to fold_data had no @outputs and is illegal.
     for output in six.itervalues(outputs):
@@ -556,8 +557,36 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     coerces_to_type_name = ast.type_condition.name.value
     coerces_to_type_obj = schema.get_type(coerces_to_type_name)
 
-    # step F-2. Emit an appropriate type coercion block, then recurse into the fragment's selection.
-    basic_blocks = [blocks.CoerceType({coerces_to_type_name})]
+    basic_blocks = []
+
+    if 'fold' not in context:
+        # step F-2. Emit an appropriate type coercion block,
+        #           then recurse into the fragment's selection.
+        basic_blocks.append(blocks.CoerceType({coerces_to_type_name}))
+    else:
+        # We are trying to do a type coercion within a @fold scope.
+        # This is currently only allowed if coercing to the type of the scope,
+        # or if the scope is of union type, to the base type of the union as defined by
+        # the type_equivalence_hints compilation parameter.
+        is_same_type_as_scope = current_schema_type.is_same_type(coerces_to_type_obj)
+
+        equivalent_union_type = context['type_equivalence_hints'].get(coerces_to_type_obj, None)
+        is_base_type_of_union = (
+            isinstance(current_schema_type, GraphQLUnionType) and
+            current_schema_type.is_same_type(equivalent_union_type)
+        )
+
+        if is_same_type_as_scope or is_base_type_of_union:
+            # In both of these cases, the coercion is a no-op and is elided.
+            pass
+        else:
+            raise GraphQLCompilationError(
+                u'Cannot apply type coercion inside @fold scope unless '
+                u'coercing to the current type or to the base type of '
+                u'a union type. Scope type: "{}", coercing to: "{}", '
+                u'equivalent union type: '
+                u'"{}".'.format(current_schema_type, coerces_to_type_obj, equivalent_union_type))
+
     inner_basic_blocks = _compile_ast_node_to_ir(
         schema, coerces_to_type_obj, ast, location, context)
     basic_blocks.extend(inner_basic_blocks)
@@ -641,13 +670,14 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     return basic_blocks
 
 
-def _compile_root_ast_to_ir(schema, ast):
+def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     """Compile a full GraphQL abstract syntax tree (AST) to intermediate representation.
 
     Args:
         schema: GraphQL schema object, obtained from the graphql library
         ast: the root GraphQL AST node for the query, obtained from the graphql library,
              and already validated against the schema for type-correctness
+        type_equivalence_hints: optional dict of GraphQL type to equivalent GraphQL union
 
     Returns:
         tuple of:
@@ -672,6 +702,7 @@ def _compile_root_ast_to_ir(schema, ast):
         'outputs': dict(),
         'inputs': dict(),
         'location_types': dict(),
+        'type_equivalence_hints': type_equivalence_hints or dict(),
     }
 
     # Add the query root basic block to the output.
@@ -772,12 +803,27 @@ def _preprocess_graphql_string(graphql_string):
 # Public API #
 ##############
 
-def graphql_to_ir(schema, graphql_string):
+def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
     """Convert the given GraphQL string into compiler IR, using the given schema object.
 
     Args:
         schema: GraphQL schema object, created using the GraphQL library
         graphql_string: string containing the GraphQL to compile to compiler IR
+        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
+                                Used as a workaround for GraphQL's lack of support for
+                                inheritance across "types" (i.e. non-interfaces), as well as a
+                                workaround for Gremlin's total lack of inheritance-awareness.
+                                The key-value pairs in the dict specify that the "key" type
+                                is equivalent to the "value" type, i.e. that the GraphQL type or
+                                interface in the key is the most-derived common supertype
+                                of every GraphQL type in the "value" GraphQL union.
+                                Recursive expansion of type equivalence hints is not performed,
+                                and only type-level correctness of this argument is enforced.
+                                See README.md for more details on everything this parameter does.
+                                *****
+                                Be very careful with this option, as bad input here will
+                                lead to incorrect output queries being generated.
+                                *****
 
     Returns:
         tuple of:
@@ -813,4 +859,4 @@ def graphql_to_ir(schema, graphql_string):
                              u'been caught in validation: \n{}\n{}'.format(graphql_string, ast))
     base_ast = ast.definitions[0]
 
-    return _compile_root_ast_to_ir(schema, base_ast)
+    return _compile_root_ast_to_ir(schema, base_ast, type_equivalence_hints=type_equivalence_hints)
