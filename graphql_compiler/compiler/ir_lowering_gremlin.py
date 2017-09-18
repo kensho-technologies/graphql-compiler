@@ -133,15 +133,16 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
         ir_blocks: list of IR blocks to lower into Gremlin-compatible form
         location_types: a dict of location objects -> GraphQL type objects at that location
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
-                                Used as a workaround for Gremlin's lack of inheritance-awareness
-                                When this parameter is not specified or is empty, type coercion
-                                coerces to the *exact* type being coerced to without regard for
-                                subclasses of that type. This parameter allows the user to
-                                manually specify which GraphQL interfaces and types are
-                                superclasses of which other types, and emits Gremlin code
-                                that performs type coercion with this information in mind.
-                                No recursive expansion of type equivalence hints will be performed,
-                                and only type-level correctness of the hints is enforced.
+                                Used as a workaround for GraphQL's lack of support for
+                                inheritance across "types" (i.e. non-interfaces), as well as a
+                                workaround for Gremlin's total lack of inheritance-awareness.
+                                The key-value pairs in the dict specify that the "key" type
+                                is equivalent to the "value" type, i.e. that the GraphQL type or
+                                interface in the key is the most-derived common supertype
+                                of every GraphQL type in the "value" GraphQL union.
+                                Recursive expansion of type equivalence hints is not performed,
+                                and only type-level correctness of this argument is enforced.
+                                See README.md for more details on everything this parameter does.
                                 *****
                                 Be very careful with this option, as bad input here will
                                 lead to incorrect output queries being generated.

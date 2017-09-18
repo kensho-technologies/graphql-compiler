@@ -126,6 +126,7 @@ def get_schema():
             out_Animal_OfSpecies: [Species]
             out_Animal_FedAt: [Event]
             out_Animal_BornAt: [BirthEvent]
+            out_Animal_ImportantEvent: [EventOrBirthEvent]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
         }
@@ -161,6 +162,7 @@ def get_schema():
             uuid: ID
             event_date: DateTime
             in_Animal_FedAt: [Animal]
+            in_Animal_ImportantEvent: [Animal]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
         }
@@ -173,9 +175,13 @@ def get_schema():
             event_date: DateTime
             in_Animal_FedAt: [Animal]
             in_Animal_BornAt: [Animal]
+            in_Animal_ImportantEvent: [Animal]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
         }
+
+        # Because of the above, the base type for this union is Event.
+        union EventOrBirthEvent = Event | BirthEvent
 
         type RootSchemaQuery {
             Animal: Animal
