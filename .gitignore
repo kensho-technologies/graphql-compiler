@@ -38,3 +38,7 @@ nosetests.xml
 # Sphinx docs
 tools/sphinx_docgen/docs_rst
 tools/sphinx_docgen/docs_html
+
+# Python package publishing directories
+build/
+dist/
