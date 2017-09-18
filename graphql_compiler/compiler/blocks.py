@@ -1,4 +1,6 @@
 # Copyright 2017 Kensho Technologies, Inc.
+import six
+
 from .expressions import Expression
 from .helpers import (CompilerEntity, ensure_unicode_string, safe_quoted_string,
                       validate_marked_location, validate_safe_string)
@@ -37,7 +39,7 @@ class QueryRoot(BasicBlock):
         """Construct a QueryRoot object that starts querying at the specified class name.
 
         Args:
-            start_class: set of basestring, class names from which to start the query.
+            start_class: set of string, class names from which to start the query.
                          This will generally be a set of length 1, except when using Gremlin
                          with a non-final class, where we have to include all subclasses
                          of the start class. This is done using a Gremlin-only IR lowering step.
@@ -52,8 +54,8 @@ class QueryRoot(BasicBlock):
     def validate(self):
         """Ensure that the QueryRoot block is valid."""
         if not (isinstance(self.start_class, set) and
-                all(isinstance(x, basestring) for x in self.start_class)):
-            raise TypeError(u'Expected set of basestring start_class, got: {} {}'.format(
+                all(isinstance(x, six.string_types) for x in self.start_class)):
+            raise TypeError(u'Expected set of string start_class, got: {} {}'.format(
                 type(self.start_class).__name__, self.start_class))
 
         for cls in self.start_class:
@@ -80,7 +82,7 @@ class CoerceType(BasicBlock):
         """Construct a CoerceType object that filters out any data that is not of the given types.
 
         Args:
-            target_class: set of basestring, class names from which to start the query.
+            target_class: set of string, class names from which to start the query.
                           This will generally be a set of length 1, except when using Gremlin
                           with a non-final class, where we have to include all subclasses
                           of the target class. This is done using a Gremlin-only IR lowering step.
@@ -95,8 +97,8 @@ class CoerceType(BasicBlock):
     def validate(self):
         """Ensure that the CoerceType block is valid."""
         if not (isinstance(self.target_class, set) and
-                all(isinstance(x, basestring) for x in self.target_class)):
-            raise TypeError(u'Expected set of basestring target_class, got: {} {}'.format(
+                all(isinstance(x, six.string_types) for x in self.target_class)):
+            raise TypeError(u'Expected set of string target_class, got: {} {}'.format(
                 type(self.target_class).__name__, self.target_class))
 
         for cls in self.target_class:
@@ -115,7 +117,7 @@ class ConstructResult(BasicBlock):
         """Construct a ConstructResult object that maps the given field names to their expressions.
 
         Args:
-            fields: dict, variable name basestring -> Expression
+            fields: dict, variable name string -> Expression
                     see rules for variable names in validate_safe_string().
 
         Returns:
@@ -123,7 +125,7 @@ class ConstructResult(BasicBlock):
         """
         self.fields = {
             ensure_unicode_string(key): value
-            for key, value in fields.iteritems()
+            for key, value in six.iteritems(fields)
         }
 
         # All key values are normalized to unicode before being passed to the parent constructor,
@@ -137,7 +139,7 @@ class ConstructResult(BasicBlock):
             raise TypeError(u'Expected dict fields, got: {} {}'.format(
                 type(self.fields).__name__, self.fields))
 
-        for key, value in self.fields.iteritems():
+        for key, value in six.iteritems(self.fields):
             validate_safe_string(key)
             if not isinstance(value, Expression):
                 raise TypeError(
@@ -148,7 +150,7 @@ class ConstructResult(BasicBlock):
         """Create an updated version (if needed) of the ConstructResult via the visitor pattern."""
         new_fields = {}
 
-        for key, value in self.fields.iteritems():
+        for key, value in six.iteritems(self.fields):
             new_value = value.visit_and_update(visitor_fn)
             if new_value is not value:
                 new_fields[key] = new_value
@@ -237,8 +239,8 @@ class Traverse(BasicBlock):
         """Create a new Traverse block in the given direction and across the given edge.
 
         Args:
-            direction: basestring, 'in' or 'out'
-            edge_name: basestring obeying variable name rules (see validate_safe_string).
+            direction: string, 'in' or 'out'
+            edge_name: string obeying variable name rules (see validate_safe_string).
             optional: optional bool, specifying whether the traversal to the given location
                       is optional (i.e. non-filtering) or mandatory (filtering).
 
@@ -253,8 +255,8 @@ class Traverse(BasicBlock):
 
     def validate(self):
         """Ensure that the Traverse block is valid."""
-        if not isinstance(self.direction, basestring):
-            raise TypeError(u'Expected basestring direction, got: {} {}'.format(
+        if not isinstance(self.direction, six.string_types):
+            raise TypeError(u'Expected string direction, got: {} {}'.format(
                 type(self.direction).__name__, self.direction))
 
         if self.direction not in {u'in', u'out'}:
@@ -302,8 +304,8 @@ class Recurse(BasicBlock):
         """Create a new Recurse block which traverses the given edge up to "depth" times.
 
         Args:
-            direction: basestring, 'in' or 'out'.
-            edge_name: basestring obeying variable name rules (see validate_safe_string).
+            direction: string, 'in' or 'out'.
+            edge_name: string obeying variable name rules (see validate_safe_string).
             depth: int, always greater than or equal to 1.
 
         Returns:
@@ -317,8 +319,8 @@ class Recurse(BasicBlock):
 
     def validate(self):
         """Ensure that the Traverse block is valid."""
-        if not isinstance(self.direction, basestring):
-            raise TypeError(u'Expected basestring direction, got: {} {}'.format(
+        if not isinstance(self.direction, six.string_types):
+            raise TypeError(u'Expected string direction, got: {} {}'.format(
                 type(self.direction).__name__, self.direction))
 
         if self.direction not in {u'in', u'out'}:
@@ -344,7 +346,7 @@ class Recurse(BasicBlock):
 
         recurse_steps = [
             recurse_base + (recurse_traversal * i)
-            for i in xrange(self.depth + 1)
+            for i in six.moves.xrange(self.depth + 1)
         ]
         return template.format(recurse=','.join(recurse_steps))
 

@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 package_name = 'graphql-compiler'
-version = '1.0.3'
+version = '1.1.0'
 
 setup(name=package_name,
       version=version,
@@ -15,7 +15,8 @@ setup(name=package_name,
           'arrow>=0.7.0',
           'funcy>=1.6',
           'graphql-core==1.1',
-          'pytz>=2016.10'
+          'pytz>=2016.10',
+          'six>=1.10.0',
       ],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
@@ -25,7 +26,10 @@ setup(name=package_name,
           'License :: OSI Approved :: Apache Software License',
           'Programming Language :: Python :: 2',
           'Programming Language :: Python :: 2.7',
+          'Programming Language :: Python :: 3',
+          'Programming Language :: Python :: 3.5',
+          'Programming Language :: Python :: 3.6',
       ],
       keywords='graphql database compiler orientdb',
-      python_requires='>=2.7, <3',
+      python_requires='>=2.7',
       )

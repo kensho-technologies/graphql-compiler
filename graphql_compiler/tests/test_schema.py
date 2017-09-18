@@ -6,6 +6,7 @@ import unittest
 from graphql.type import GraphQLField, GraphQLObjectType, GraphQLSchema, GraphQLString
 from graphql.utils.schema_printer import print_schema
 import pytz
+import six
 
 from .. import schema
 from .test_helpers import get_schema
@@ -35,7 +36,7 @@ class SchemaTests(unittest.TestCase):
 
         test_directives = _get_directives_in_string_form(get_schema().get_directives())
         actual_directives = _get_directives_in_string_form(schema.DIRECTIVES)
-        self.assertEquals(test_directives, actual_directives)
+        self.assertEqual(test_directives, actual_directives)
 
     def test_date_serialization_and_parsing(self):
         test_data = {
@@ -44,9 +45,9 @@ class SchemaTests(unittest.TestCase):
             '1991-12-31': date(1991, 12, 31),
         }
 
-        for iso_date, date_obj in test_data.iteritems():
-            self.assertEquals(iso_date, schema.GraphQLDate.serialize(date_obj))
-            self.assertEquals(date_obj, schema.GraphQLDate.parse_value(iso_date))
+        for iso_date, date_obj in six.iteritems(test_data):
+            self.assertEqual(iso_date, schema.GraphQLDate.serialize(date_obj))
+            self.assertEqual(date_obj, schema.GraphQLDate.parse_value(iso_date))
 
     def test_datetime_serialization_and_parsing(self):
         eastern_us_tz = pytz.timezone('US/Eastern')
@@ -68,9 +69,9 @@ class SchemaTests(unittest.TestCase):
         }
 
         # Special case: a "Z" suffix == "00:00" timezone
-        self.assertEquals(datetime(2017, 1, 1, 0, 0, 0, tzinfo=pytz.utc),
-                          schema.GraphQLDateTime.parse_value('2017-01-01T00:00:00Z'))
+        self.assertEqual(datetime(2017, 1, 1, 0, 0, 0, tzinfo=pytz.utc),
+                         schema.GraphQLDateTime.parse_value('2017-01-01T00:00:00Z'))
 
-        for iso_datetime, datetime_obj in test_data.iteritems():
-            self.assertEquals(iso_datetime, schema.GraphQLDateTime.serialize(datetime_obj))
-            self.assertEquals(datetime_obj, schema.GraphQLDateTime.parse_value(iso_datetime))
+        for iso_datetime, datetime_obj in six.iteritems(test_data):
+            self.assertEqual(iso_datetime, schema.GraphQLDateTime.serialize(datetime_obj))
+            self.assertEqual(datetime_obj, schema.GraphQLDateTime.parse_value(iso_datetime))

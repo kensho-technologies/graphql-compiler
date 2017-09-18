@@ -28,9 +28,9 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
           }
         }
         ''')
-        self.assertEquals(four_space_output, pretty_print_graphql(bad_query))
-        self.assertEquals(two_space_output,
-                          pretty_print_graphql(bad_query, use_four_spaces=False))
+        self.assertEqual(four_space_output, pretty_print_graphql(bad_query))
+        self.assertEqual(two_space_output,
+                         pretty_print_graphql(bad_query, use_four_spaces=False))
 
     def test_filter_directive_order(self):
         bad_query = '''{
@@ -58,7 +58,7 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
         }
         ''')
 
-        self.assertEquals(expected_output, pretty_print_graphql(bad_query))
+        self.assertEqual(expected_output, pretty_print_graphql(bad_query))
 
     def test_args_not_in_schema(self):
         bad_query = '''{
@@ -86,7 +86,7 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
         }
         ''')
 
-        self.assertEquals(expected_output, pretty_print_graphql(bad_query))
+        self.assertEqual(expected_output, pretty_print_graphql(bad_query))
 
     def test_missing_args(self):
         bad_query = '''{
@@ -114,7 +114,7 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
         }
         ''')
 
-        self.assertEquals(expected_output, pretty_print_graphql(bad_query))
+        self.assertEqual(expected_output, pretty_print_graphql(bad_query))
 
     def test_other_directive(self):
         bad_query = '''{
@@ -142,4 +142,4 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
         }
         ''')
 
-        self.assertEquals(expected_output, pretty_print_graphql(bad_query))
+        self.assertEqual(expected_output, pretty_print_graphql(bad_query))

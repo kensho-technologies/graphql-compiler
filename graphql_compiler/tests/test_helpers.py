@@ -5,6 +5,7 @@ import re
 
 from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
+import six
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 
@@ -34,12 +35,12 @@ def compare_ir_blocks(test_case, expected_blocks, received_blocks):
         test_case.fail(u'Not the same number of blocks:\n\n'
                        u'{}'.format(mismatch_message))
 
-    for i in xrange(len(expected_blocks)):
+    for i in six.moves.xrange(len(expected_blocks)):
         expected = expected_blocks[i]
         received = received_blocks[i]
-        test_case.assertEquals(expected, received,
-                               msg=u'Blocks at position {} were different: {} vs {}\n\n'
-                                   u'{}'.format(i, expected, received, mismatch_message))
+        test_case.assertEqual(expected, received,
+                              msg=u'Blocks at position {} were different: {} vs {}\n\n'
+                                  u'{}'.format(i, expected, received, mismatch_message))
 
 
 def compare_match(test_case, expected, received, parameterized=True):
@@ -61,10 +62,10 @@ def compare_gremlin(test_case, expected, received):
 def compare_input_metadata(test_case, expected, received):
     """Compare two dicts of input metadata, using proper GraphQL type comparison operators."""
     # First, assert that the sets of keys in both dicts are equal.
-    test_case.assertEquals(set(expected.iterkeys()), set(received.iterkeys()))
+    test_case.assertEqual(set(six.iterkeys(expected)), set(six.iterkeys(received)))
 
     # Then, compare the values for each key in both dicts.
-    for key in expected.iterkeys():
+    for key in six.iterkeys(expected):
         expected_value = expected[key]
         received_value = received[key]
 
@@ -74,7 +75,7 @@ def compare_input_metadata(test_case, expected, received):
 
 def compare_ignoring_whitespace(test_case, expected, received, msg):
     """Compare expected and received code, ignoring whitespace, with the given failure message."""
-    test_case.assertEquals(transform(expected), transform(received), msg=msg)
+    test_case.assertEqual(transform(expected), transform(received), msg=msg)
 
 
 def get_schema():
@@ -196,5 +197,5 @@ def construct_location_types(location_types_as_strings):
 
     return {
         location: schema.get_type(type_name)
-        for location, type_name in location_types_as_strings.iteritems()
+        for location, type_name in six.iteritems(location_types_as_strings)
     }

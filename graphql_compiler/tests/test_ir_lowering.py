@@ -26,9 +26,9 @@ def check_test_data(test_case, expected_object, received_object):
                                                            received_object))
 
     if isinstance(expected_object, MatchQuery):
-        test_case.assertEquals(expected_object, received_object,
-                               msg=u'\n{}\n\n!=\n\n{}'.format(pformat(expected_object),
-                                                              pformat(received_object)))
+        test_case.assertEqual(expected_object, received_object,
+                              msg=u'\n{}\n\n!=\n\n{}'.format(pformat(expected_object),
+                                                             pformat(received_object)))
     else:
         compare_ir_blocks(test_case, expected_object, received_object)
 
@@ -723,7 +723,7 @@ class MatchIrLoweringTests(unittest.TestCase):
 
         final_query = ir_lowering_match.lower_ir(ir_blocks, location_types)
 
-        self.assertEquals(
+        self.assertEqual(
             expected_match_query, final_query,
             msg=u'\n{}\n\n!=\n\n{}'.format(pformat(expected_match_query), pformat(final_query)))
 

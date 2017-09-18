@@ -3,6 +3,7 @@ import unittest
 
 from graphql import GraphQLID, GraphQLList, GraphQLString
 import pytest
+import six
 
 from ..compiler import blocks, expressions, helpers
 from ..compiler.compiler_frontend import OutputMetadata, graphql_to_ir
@@ -17,16 +18,16 @@ def check_test_data(test_case, graphql_input, expected_blocks,
         graphql_to_ir(test_case.schema, graphql_input)
 
     compare_ir_blocks(test_case, expected_blocks, received_blocks)
-    test_case.assertEquals(expected_output_metadata, output_metadata)
+    test_case.assertEqual(expected_output_metadata, output_metadata)
     compare_input_metadata(test_case, expected_input_metadata, input_metadata)
-    test_case.assertEquals(expected_location_types, comparable_location_types(location_types))
+    test_case.assertEqual(expected_location_types, comparable_location_types(location_types))
 
 
 def comparable_location_types(location_types):
-    """Convert the dict of Location -> GraphQL object type into a dict of Location -> basestring."""
+    """Convert the dict of Location -> GraphQL object type into a dict of Location -> string."""
     return {
         location: graphql_type.name
-        for location, graphql_type in location_types.iteritems()
+        for location, graphql_type in six.iteritems(location_types)
     }
 
 

@@ -1,7 +1,7 @@
 # Copyright 2017 Kensho Technologies, Inc.
 """Language-independent IR lowering and optimization functions."""
 
-from funcy import pairwise
+from funcy.py2 import pairwise
 
 from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, OutputSource,
                      QueryRoot, Recurse, Traverse)

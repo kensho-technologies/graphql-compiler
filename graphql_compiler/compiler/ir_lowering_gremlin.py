@@ -9,6 +9,7 @@ us to convert this Expression into other Expressions, using data already present
 to simplify the final code generation step.
 """
 from graphql.type import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
+import six
 
 from ..exceptions import GraphQLCompilationError
 from .blocks import Backtrack, CoerceType, Filter, Traverse
@@ -28,7 +29,7 @@ def lower_coerce_type_block_type_data(ir_blocks, type_equivalence_hints):
     allowed_value_type_spec = GraphQLUnionType
 
     # Validate that the type_equivalence_hints parameter has correct types.
-    for key, value in type_equivalence_hints.iteritems():
+    for key, value in six.iteritems(type_equivalence_hints):
         if (not isinstance(key, allowed_key_type_spec) or
                 not isinstance(value, allowed_value_type_spec)):
             msg = (u'Invalid type equivalence hints received! Hint {} ({}) -> {} ({}) '
@@ -43,7 +44,7 @@ def lower_coerce_type_block_type_data(ir_blocks, type_equivalence_hints):
     # a dict of type name -> set of names of equivalent types, which can be used more readily.
     equivalent_type_names = {
         key.name: {x.name for x in value.types}
-        for key, value in type_equivalence_hints.iteritems()
+        for key, value in six.iteritems(type_equivalence_hints)
     }
 
     new_ir_blocks = []

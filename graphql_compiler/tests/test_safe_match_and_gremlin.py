@@ -5,6 +5,7 @@ import unittest
 import arrow
 from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 import pytz
+import six
 
 from ..exceptions import GraphQLInvalidArgumentError
 from ..query_formatting.gremlin_formatting import _safe_gremlin_argument
@@ -59,21 +60,21 @@ class SafeMatchFormattingTests(unittest.TestCase):
             u'injection: ${ -> (2 + 2 == 4)}': u'"injection: ${ -> (2 + 2 == 4)}"',
         }
 
-        for input_data, expected_value in test_data.iteritems():
+        for input_data, expected_value in six.iteritems(test_data):
             unicode_string = input_data
             bytes_string = input_data.encode('utf-8')
 
             # String type
-            self.assertEquals(expected_value, _safe_match_argument(GraphQLString, unicode_string))
-            self.assertEquals(expected_value, _safe_match_argument(GraphQLString, bytes_string))
+            self.assertEqual(expected_value, _safe_match_argument(GraphQLString, unicode_string))
+            self.assertEqual(expected_value, _safe_match_argument(GraphQLString, bytes_string))
 
             # ID type -- IDs can be strings
-            self.assertEquals(expected_value, _safe_match_argument(GraphQLID, unicode_string))
-            self.assertEquals(expected_value, _safe_match_argument(GraphQLID, bytes_string))
+            self.assertEqual(expected_value, _safe_match_argument(GraphQLID, unicode_string))
+            self.assertEqual(expected_value, _safe_match_argument(GraphQLID, bytes_string))
 
     def test_incorrect_graphql_type_causes_errors(self):
-        for correct_graphql_type, value in REPRESENTATIVE_DATA_FOR_EACH_TYPE.iteritems():
-            for other_graphql_type in REPRESENTATIVE_DATA_FOR_EACH_TYPE.iterkeys():
+        for correct_graphql_type, value in six.iteritems(REPRESENTATIVE_DATA_FOR_EACH_TYPE):
+            for other_graphql_type in six.iterkeys(REPRESENTATIVE_DATA_FOR_EACH_TYPE):
                 if correct_graphql_type.is_same_type(other_graphql_type):
                     # No error -- GraphQL type is correct.
                     _safe_match_argument(correct_graphql_type, value)
@@ -115,21 +116,21 @@ class SafeGremlinFormattingTests(unittest.TestCase):
             u'injection: ${ -> (2 + 2 == 4)}': u"'injection: ${ -> (2 + 2 == 4)}'",  # noqa
         }
 
-        for input_data, expected_value in test_data.iteritems():
+        for input_data, expected_value in six.iteritems(test_data):
             unicode_string = input_data
             bytes_string = input_data.encode('utf-8')
 
             # String type
-            self.assertEquals(expected_value, _safe_gremlin_argument(GraphQLString, unicode_string))
-            self.assertEquals(expected_value, _safe_gremlin_argument(GraphQLString, bytes_string))
+            self.assertEqual(expected_value, _safe_gremlin_argument(GraphQLString, unicode_string))
+            self.assertEqual(expected_value, _safe_gremlin_argument(GraphQLString, bytes_string))
 
             # ID type -- IDs can be strings
-            self.assertEquals(expected_value, _safe_gremlin_argument(GraphQLID, unicode_string))
-            self.assertEquals(expected_value, _safe_gremlin_argument(GraphQLID, bytes_string))
+            self.assertEqual(expected_value, _safe_gremlin_argument(GraphQLID, unicode_string))
+            self.assertEqual(expected_value, _safe_gremlin_argument(GraphQLID, bytes_string))
 
     def test_incorrect_graphql_type_causes_errors(self):
-        for correct_graphql_type, value in REPRESENTATIVE_DATA_FOR_EACH_TYPE.iteritems():
-            for other_graphql_type in REPRESENTATIVE_DATA_FOR_EACH_TYPE.iterkeys():
+        for correct_graphql_type, value in six.iteritems(REPRESENTATIVE_DATA_FOR_EACH_TYPE):
+            for other_graphql_type in six.iterkeys(REPRESENTATIVE_DATA_FOR_EACH_TYPE):
                 if correct_graphql_type.is_same_type(other_graphql_type):
                     # No error -- GraphQL type is correct.
                     _safe_gremlin_argument(correct_graphql_type, value)
@@ -143,4 +144,4 @@ class SafeGremlinFormattingTests(unittest.TestCase):
         graphql_type = GraphQLList(GraphQLList(GraphQLInt))
 
         expected_output = u'[[1,2,3],[4,5,6]]'
-        self.assertEquals(expected_output, _safe_gremlin_argument(graphql_type, value))
+        self.assertEqual(expected_output, _safe_gremlin_argument(graphql_type, value))

@@ -8,6 +8,8 @@ to generate directly from this Expression object. An output-language-aware IR lo
 us to convert this Expression into other Expressions, using data already present in the IR,
 to simplify the final code generation step.
 """
+import six
+
 from .blocks import Backtrack, MarkLocation, QueryRoot, Traverse
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
                           Literal, TernaryConditional, TrueLiteral)
@@ -261,7 +263,7 @@ def _flatten_location_translations(location_translations):
         location_translations: dict of Location -> Location, where the key translates to the value.
                                Mutated in place for efficiency and simplicity of implementation.
     """
-    sources_to_process = set(location_translations.iterkeys())
+    sources_to_process = set(six.iterkeys(location_translations))
 
     def _update_translation(source):
         """Return the proper (fully-flattened) translation for the given location."""

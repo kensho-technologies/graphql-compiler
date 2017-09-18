@@ -2,3 +2,4 @@ arrow==0.10.0
 funcy==1.7.3
 graphql-core==1.1
 pytz==2017.2
+six==1.10.0

@@ -3,11 +3,12 @@ from abc import ABCMeta
 import string
 
 from graphql import GraphQLEnumType, GraphQLNonNull, GraphQLScalarType, GraphQLString, is_type
+import six
 
 from ..exceptions import GraphQLCompilationError
 
 
-VARIABLE_ALLOWED_CHARS = frozenset(unicode(string.ascii_letters + string.digits + '_'))
+VARIABLE_ALLOWED_CHARS = frozenset(six.text_type(string.ascii_letters + string.digits + '_'))
 
 
 def get_ast_field_name(ast):
@@ -56,10 +57,10 @@ def is_graphql_type(graphql_type):
 
 
 def ensure_unicode_string(value):
-    """Ensure the value is a basestring, and return it as unicode."""
-    if not isinstance(value, basestring):
-        raise TypeError(u'Expected basestring value, got: {}'.format(value))
-    return unicode(value)
+    """Ensure the value is a string, and return it as unicode."""
+    if not isinstance(value, six.string_types):
+        raise TypeError(u'Expected string value, got: {}'.format(value))
+    return six.text_type(value)
 
 
 def get_uniquely_named_objects_by_name(object_list):
@@ -97,8 +98,8 @@ def validate_safe_string(value):
     # The following strings are explicitly allowed, despite having otherwise-illegal chars.
     legal_strings_with_special_chars = frozenset({'@rid', '@class', '@this', '%'})
 
-    if not isinstance(value, basestring):
-        raise TypeError(u'Expected basestring value, got: {} {}'.format(
+    if not isinstance(value, six.string_types):
+        raise TypeError(u'Expected string value, got: {} {}'.format(
             type(value).__name__, value))
 
     if not value:
@@ -122,6 +123,7 @@ def validate_marked_location(location):
         raise GraphQLCompilationError(u'Cannot mark location at a field: {}'.format(location))
 
 
+@six.python_2_unicode_compatible
 class Location(object):
     def __init__(self, query_path, field=None, visit_counter=1):
         """Create a new Location object.
@@ -143,9 +145,9 @@ class Location(object):
               should have different 'visit_counter' values.
 
         Args:
-            query_path: tuple of basestrings, in-order, one for each vertex in the
+            query_path: tuple of strings, in-order, one for each vertex in the
                         current nested position in the graph
-            field: basestring if at a field in a vertex, or None if at a vertex
+            field: string if at a field in a vertex, or None if at a vertex
             visit_counter: int, number that allows semantic disambiguation of otherwise equivalent
                            Location objects -- see the explanation above.
 
@@ -155,8 +157,8 @@ class Location(object):
         if not isinstance(query_path, tuple):
             raise TypeError(u'Expected query_path to be a tuple, was: '
                             u'{} {}'.format(type(query_path).__name__, query_path))
-        if field and not isinstance(field, basestring):
-            raise TypeError(u'Expected field to be None or basestring, was: '
+        if field and not isinstance(field, six.string_types):
+            raise TypeError(u'Expected field to be None or string, was: '
                             u'{} {}'.format(type(field).__name__, field))
 
         self.query_path = query_path
@@ -182,8 +184,8 @@ class Location(object):
 
     def navigate_to_subpath(self, child):
         """Return a new Location object at a child vertex of the current Location's vertex."""
-        if not isinstance(child, basestring):
-            raise TypeError(u'Expected child to be a basestring, was: {}'.format(child))
+        if not isinstance(child, six.string_types):
+            raise TypeError(u'Expected child to be a string, was: {}'.format(child))
         if self.field:
             raise AssertionError(u'Currently at a field, cannot go to child: {}'.format(self))
         return Location(self.query_path + (child,))
@@ -196,16 +198,12 @@ class Location(object):
 
     def get_location_name(self):
         """Return a tuple of a unique name of the Location, and the current field name (or None)."""
-        mark_name = u'__'.join(self.query_path) + u'___' + unicode(self.visit_counter)
+        mark_name = u'__'.join(self.query_path) + u'___' + six.text_type(self.visit_counter)
         return (mark_name, self.field)
-
-    def __unicode__(self):
-        """Return a human-readable unicode representation of the Location object."""
-        return u'Location({}, {}, {})'.format(self.query_path, self.field, self.visit_counter)
 
     def __str__(self):
         """Return a human-readable str representation of the Location object."""
-        return self.__unicode__().encode('utf-8')
+        return u'Location({}, {}, {})'.format(self.query_path, self.field, self.visit_counter)
 
     def __repr__(self):
         """Return a human-readable str representation of the Location object."""
@@ -226,10 +224,10 @@ class Location(object):
         return hash(self.query_path) ^ hash(self.field) ^ hash(self.visit_counter)
 
 
+@six.python_2_unicode_compatible
+@six.add_metaclass(ABCMeta)
 class CompilerEntity(object):
     """An abstract compiler entity. Can represent things like basic blocks and expressions."""
-
-    __metaclass__ = ABCMeta
 
     def __init__(self, *args, **kwargs):
         """Construct a new CompilerEntity."""
@@ -240,7 +238,7 @@ class CompilerEntity(object):
         """Ensure that the CompilerEntity is valid."""
         pass
 
-    def __unicode__(self):
+    def __str__(self):
         """Return a human-readable unicode representation of this CompilerEntity."""
         printed_args = []
         if self._print_args:
@@ -252,10 +250,6 @@ class CompilerEntity(object):
         return template.format(cls_name=type(self).__name__,
                                args=self._print_args,
                                kwargs=self._print_kwargs)
-
-    def __str__(self):
-        """Return a human-readable str representation of this CompilerEntity."""
-        return self.__unicode__().encode('utf-8')
 
     def __repr__(self):
         """Return a human-readable str representation of the CompilerEntity object."""

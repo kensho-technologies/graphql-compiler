@@ -2,6 +2,7 @@
 from graphql import parse
 from graphql.language.printer import PrintingVisitor, join, wrap
 from graphql.language.visitor import visit
+import six
 
 from ..schema import DIRECTIVES
 
@@ -44,7 +45,7 @@ class CustomPrintingVisitor(PrintingVisitor):
             encountered_argument_names = set()
 
             # Iterate through all defined arguments in the directive schema.
-            for defined_arg_name in directive.args.keys():
+            for defined_arg_name in six.iterkeys(directive.args):
                 if defined_arg_name in name_to_arg_value:
                     # The argument was present in the query, print it in the correct order.
                     encountered_argument_names.add(defined_arg_name)
@@ -54,7 +55,7 @@ class CustomPrintingVisitor(PrintingVisitor):
             # They will be printed after all the arguments that were in the schema.
             unsorted_args = [
                 value
-                for name, value in name_to_arg_value.items()
+                for name, value in six.iteritems(name_to_arg_value)
                 if name not in encountered_argument_names
             ]
 

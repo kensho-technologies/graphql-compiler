@@ -18,13 +18,13 @@ def graphql_to_match(schema, graphql_query, parameters):
 
     Args:
         schema: GraphQL schema object describing the schema of the graph to be queried
-        graphql_string: the GraphQL query to compile to MATCH, as a basestring
+        graphql_string: the GraphQL query to compile to MATCH, as a string
         parameters: dict, mapping argument name to its value, for every parameter the query expects.
 
     Returns:
         a CompilationResult object, containing:
-            - query: basestring, the resulting compiled and parameterized query string
-            - language: basestring, specifying the language to which the query was compiled
+            - query: string, the resulting compiled and parameterized query string
+            - language: string, specifying the language to which the query was compiled
             - output_metadata: dict, output name -> OutputMetadata namedtuple object
             - input_metadata: dict, name of input variables -> inferred GraphQL type, based on use
     """
@@ -38,7 +38,7 @@ def graphql_to_gremlin(schema, graphql_query, parameters, type_equivalence_hints
 
     Args:
         schema: GraphQL schema object describing the schema of the graph to be queried
-        graphql_string: the GraphQL query to compile to Gremlin, as a basestring
+        graphql_string: the GraphQL query to compile to Gremlin, as a string
         parameters: dict, mapping argument name to its value, for every parameter the query expects.
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
                                 Used as a workaround for Gremlin's lack of inheritance-awareness.
@@ -57,8 +57,8 @@ def graphql_to_gremlin(schema, graphql_query, parameters, type_equivalence_hints
 
     Returns:
         a CompilationResult object, containing:
-            - query: basestring, the resulting compiled and parameterized query string
-            - language: basestring, specifying the language to which the query was compiled
+            - query: string, the resulting compiled and parameterized query string
+            - language: string, specifying the language to which the query was compiled
             - output_metadata: dict, output name -> OutputMetadata namedtuple object
             - input_metadata: dict, name of input variables -> inferred GraphQL type, based on use
     """
