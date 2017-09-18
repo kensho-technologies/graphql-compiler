@@ -420,7 +420,8 @@ def process_filter_directive(schema, current_schema_type, ast, context, directiv
         a Filter basic block that performs the requested filtering operation
     """
     if 'fold' in context:
-        raise GraphQLCompilationError(u'Filtering within a @fold scope is not allowed!')
+        raise AssertionError(u'Filtering within a @fold scope is not allowed, '
+                             u'and should have been caught earlier!')
 
     args = get_uniquely_named_objects_by_name(directive.arguments)
     if 'op_name' not in args:
