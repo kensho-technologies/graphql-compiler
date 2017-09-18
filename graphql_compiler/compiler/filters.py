@@ -64,7 +64,7 @@ def _represent_argument(schema, ast, context, argument, inferred_type):
              uniformity at the moment -- it is currently not used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        argument: basestring, the name of the argument to the directive
+        argument: string, the name of the argument to the directive
         inferred_type: GraphQL type object specifying the inferred type of the argument
 
     Returns:

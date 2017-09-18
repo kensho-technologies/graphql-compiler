@@ -117,7 +117,7 @@ def insert_arguments_into_match_query(compilation_result, arguments):
         arguments: dict, mapping argument name to its value, for every parameter the query expects.
 
     Returns:
-        basestring, a MATCH query with inserted argument data
+        string, a MATCH query with inserted argument data
     """
     if compilation_result.language != MATCH_LANGUAGE:
         raise AssertionError(u'Unexpected query output language: {}'.format(compilation_result))

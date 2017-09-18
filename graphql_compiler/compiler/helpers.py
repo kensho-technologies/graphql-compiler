@@ -57,9 +57,9 @@ def is_graphql_type(graphql_type):
 
 
 def ensure_unicode_string(value):
-    """Ensure the value is a basestring, and return it as unicode."""
+    """Ensure the value is a string, and return it as unicode."""
     if not isinstance(value, six.string_types):
-        raise TypeError(u'Expected basestring value, got: {}'.format(value))
+        raise TypeError(u'Expected string value, got: {}'.format(value))
     return six.text_type(value)
 
 
@@ -99,7 +99,7 @@ def validate_safe_string(value):
     legal_strings_with_special_chars = frozenset({'@rid', '@class', '@this', '%'})
 
     if not isinstance(value, six.string_types):
-        raise TypeError(u'Expected basestring value, got: {} {}'.format(
+        raise TypeError(u'Expected string value, got: {} {}'.format(
             type(value).__name__, value))
 
     if not value:
@@ -145,9 +145,9 @@ class Location(object):
               should have different 'visit_counter' values.
 
         Args:
-            query_path: tuple of basestrings, in-order, one for each vertex in the
+            query_path: tuple of strings, in-order, one for each vertex in the
                         current nested position in the graph
-            field: basestring if at a field in a vertex, or None if at a vertex
+            field: string if at a field in a vertex, or None if at a vertex
             visit_counter: int, number that allows semantic disambiguation of otherwise equivalent
                            Location objects -- see the explanation above.
 
@@ -158,7 +158,7 @@ class Location(object):
             raise TypeError(u'Expected query_path to be a tuple, was: '
                             u'{} {}'.format(type(query_path).__name__, query_path))
         if field and not isinstance(field, six.string_types):
-            raise TypeError(u'Expected field to be None or basestring, was: '
+            raise TypeError(u'Expected field to be None or string, was: '
                             u'{} {}'.format(type(field).__name__, field))
 
         self.query_path = query_path
@@ -185,7 +185,7 @@ class Location(object):
     def navigate_to_subpath(self, child):
         """Return a new Location object at a child vertex of the current Location's vertex."""
         if not isinstance(child, six.string_types):
-            raise TypeError(u'Expected child to be a basestring, was: {}'.format(child))
+            raise TypeError(u'Expected child to be a string, was: {}'.format(child))
         if self.field:
             raise AssertionError(u'Currently at a field, cannot go to child: {}'.format(self))
         return Location(self.query_path + (child,))

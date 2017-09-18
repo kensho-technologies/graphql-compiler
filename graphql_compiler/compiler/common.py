@@ -6,8 +6,8 @@ from .compiler_frontend import graphql_to_ir
 
 
 # The CompilationResult will have the following types for its members:
-# - query: basestring, the resulting compiled query string, with placeholders for parameters
-# - language: basestring, specifying the language to which the query was compiled
+# - query: string, the resulting compiled query string, with placeholders for parameters
+# - language: string, specifying the language to which the query was compiled
 # - output_metadata: dict, output name -> OutputMetadata namedtuple object
 # - input_metadata: dict, name of input variables -> inferred GraphQL type, based on use
 CompilationResult = namedtuple('CompilationResult',
@@ -22,7 +22,7 @@ def compile_graphql_to_match(schema, graphql_string):
 
     Args:
         schema: GraphQL schema object describing the schema of the graph to be queried
-        graphql_string: the GraphQL query to compile to MATCH, as a basestring
+        graphql_string: the GraphQL query to compile to MATCH, as a string
 
     Returns:
         a CompilationResult object
@@ -46,7 +46,7 @@ def compile_graphql_to_gremlin(schema, graphql_string, type_equivalence_hints=No
 
     Args:
         schema: GraphQL schema object describing the schema of the graph to be queried
-        graphql_string: the GraphQL query to compile to Gremlin, as a basestring
+        graphql_string: the GraphQL query to compile to Gremlin, as a string
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
                                 Used as a workaround for Gremlin's lack of inheritance-awareness.
                                 When this parameter is not specified or is empty, type coercion

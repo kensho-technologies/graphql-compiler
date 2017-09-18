@@ -24,7 +24,7 @@ def check_test_data(test_case, graphql_input, expected_blocks,
 
 
 def comparable_location_types(location_types):
-    """Convert the dict of Location -> GraphQL object type into a dict of Location -> basestring."""
+    """Convert the dict of Location -> GraphQL object type into a dict of Location -> string."""
     return {
         location: graphql_type.name
         for location, graphql_type in six.iteritems(location_types)

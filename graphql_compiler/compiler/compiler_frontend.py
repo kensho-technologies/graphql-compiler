@@ -96,7 +96,7 @@ def _get_directives(ast):
         ast: GraphQL AST node, obtained from the graphql library
 
     Returns:
-        dict of basestring to directive object, mapping directive names to their data
+        dict of string to directive object, mapping directive names to their data
     """
     try:
         return get_uniquely_named_objects_by_name(ast.directives)
@@ -652,8 +652,8 @@ def _compile_root_ast_to_ir(schema, ast):
     Returns:
         tuple of:
         - a list of IR basic block objects
-        - a dict of output name (basestring) -> OutputMetadata object
-        - a dict of expected input parameters (basestring) -> inferred GraphQL type, based on use
+        - a dict of output name (string) -> OutputMetadata object
+        - a dict of expected input parameters (string) -> inferred GraphQL type, based on use
         - a dict of location objects -> GraphQL type objects at that location
     """
     if len(ast.selection_set.selections) != 1:
@@ -721,7 +721,7 @@ def _compile_output_step(outputs):
     """Construct the final ConstructResult basic block that defines the output format of the query.
 
     Args:
-        outputs: dict, output name (basestring) -> output data dict, specifying the location
+        outputs: dict, output name (string) -> output data dict, specifying the location
                  from where to get the data, and whether the data is optional (and therefore
                  may be missing); missing optional data is replaced with 'null'
 
@@ -777,13 +777,13 @@ def graphql_to_ir(schema, graphql_string):
 
     Args:
         schema: GraphQL schema object, created using the GraphQL library
-        graphql_string: basestring containing the GraphQL to compile to compiler IR
+        graphql_string: string containing the GraphQL to compile to compiler IR
 
     Returns:
         tuple of:
         - a list of IR basic block objects
-        - a dict of output name (basestring) -> OutputMetadata object
-        - a dict of expected input parameters (basestring) -> inferred GraphQL type, based on use
+        - a dict of output name (string) -> OutputMetadata object
+        - a dict of expected input parameters (string) -> inferred GraphQL type, based on use
         - a dict of location objects -> GraphQL type objects at that location
 
     Raises flavors of GraphQLError in the following cases:

@@ -35,7 +35,7 @@ def insert_arguments_into_query(compilation_result, arguments):
         arguments: dict, mapping argument name to its value, for every parameter the query expects.
 
     Returns:
-        basestring, a query in the appropriate output language, with inserted argument data
+        string, a query in the appropriate output language, with inserted argument data
     """
     _ensure_arguments_are_provided(compilation_result.input_metadata, arguments)
 

@@ -139,7 +139,7 @@ def insert_arguments_into_gremlin_query(compilation_result, arguments):
         arguments: dict, mapping argument name to its value, for every parameter the query expects.
 
     Returns:
-        basestring, a Gremlin query with inserted argument data
+        string, a Gremlin query with inserted argument data
     """
     if compilation_result.language != GREMLIN_LANGUAGE:
         raise AssertionError(u'Unexpected query output language: {}'.format(compilation_result))

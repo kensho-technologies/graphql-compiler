@@ -129,7 +129,7 @@ class Variable(Expression):
         """Construct a new Variable object for the given variable name.
 
         Args:
-            variable_name: basestring, should start with '$' and then obey variable naming rules
+            variable_name: string, should start with '$' and then obey variable naming rules
                            (see validate_safe_string())
             inferred_type: GraphQL type object, specifying the inferred type of the variable
 
@@ -416,7 +416,7 @@ class FoldedOutputContextField(Expression):
             root_location: Location, specifying where the @fold was applied.
             relative_position: tuple of (edge_direction, edge_name) specifying the field's
                                enclosing vertex field, relative to the root_location.
-            field_name: basestring, the name of the field being output.
+            field_name: string, the name of the field being output.
             field_type: GraphQL type object, specifying the type of the field being output.
                         Since the field is folded, this must be a GraphQLList of some kind.
 
