@@ -2,6 +2,8 @@
 import string
 import unittest
 
+import six
+
 from ..compiler.compiler_frontend import graphql_to_ir
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
 from .test_helpers import get_schema
@@ -462,7 +464,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             if num_args >= len(variable_names):
                 raise AssertionError('Invalid test data, too many variables to represent.')
 
-            args = (variable_names[i] for i in xrange(num_args))
+            args = (variable_names[i] for i in six.moves.xrange(num_args))
             array_contents = u','.join(u'"${}"'.format(x) for x in args)
             return u'[{}]'.format(array_contents)
 

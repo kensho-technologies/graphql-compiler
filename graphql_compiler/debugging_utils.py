@@ -1,6 +1,8 @@
 # Copyright 2017 Kensho Technologies, Inc.
 import re
 
+import six
+
 
 def remove_custom_formatting(query):
     """Prepare the query string for pretty-printing by removing all unusual formatting."""
@@ -16,12 +18,12 @@ def pretty_print_gremlin(gremlin):
     # Put the ) and } back on.
     parts = [
         too_many_parts[i] + too_many_parts[i + 1]
-        for i in xrange(0, len(too_many_parts) - 1, 2)
+        for i in six.moves.xrange(0, len(too_many_parts) - 1, 2)
     ]
     parts.append(too_many_parts[-1])
 
     # Put the . back on.
-    for i in xrange(1, len(parts)):
+    for i in six.moves.xrange(1, len(parts)):
         parts[i] = '.' + parts[i]
 
     indentation = 0
@@ -84,7 +86,7 @@ def pretty_print_match(match, parameterized=True):
                 # For every subsequent item, the keyword and value are separated; join them
                 # back together, outputting the comma, newline and indentation before them.
                 output.append(indent + separate_keywords[0].lstrip())
-                for i in xrange(1, len(separate_keywords) - 1, 2):
+                for i in six.moves.xrange(1, len(separate_keywords) - 1, 2):
                     output.append(',\n{indent}{keyword} {value}'.format(
                         keyword=separate_keywords[i].strip(),
                         value=separate_keywords[i + 1].strip(),

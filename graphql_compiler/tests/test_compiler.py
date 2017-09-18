@@ -3,6 +3,7 @@
 import unittest
 
 from graphql import GraphQLID, GraphQLList, GraphQLString, GraphQLUnionType
+import six
 
 from ..compiler import OutputMetadata, compile_graphql_to_gremlin, compile_graphql_to_match
 from ..exceptions import GraphQLCompilationError
@@ -15,7 +16,7 @@ def check_test_data(test_case, graphql_input, expected_match, expected_gremlin,
     """Assert that the GraphQL input generates all expected MATCH and Gremlin data."""
     result = compile_graphql_to_match(test_case.schema, graphql_input)
     compare_match(test_case, expected_match, result.query)
-    test_case.assertEquals(expected_output_metadata, result.output_metadata)
+    test_case.assertEqual(expected_output_metadata, result.output_metadata)
     compare_input_metadata(test_case, expected_input_metadata, result.input_metadata)
 
     if type_equivalence_hints:
@@ -25,7 +26,7 @@ def check_test_data(test_case, graphql_input, expected_match, expected_gremlin,
         schema_based_type_equivalence_hints = {}
         name_format = 'temp_union_{}'
         name_counter = 0
-        for key, value in type_equivalence_hints.iteritems():
+        for key, value in six.iteritems(type_equivalence_hints):
             new_key = test_case.schema.get_type(key)
 
             new_value_name = name_format.format(name_counter)
@@ -46,7 +47,7 @@ def check_test_data(test_case, graphql_input, expected_match, expected_gremlin,
     result = compile_graphql_to_gremlin(test_case.schema, graphql_input,
                                         type_equivalence_hints=schema_based_type_equivalence_hints)
     compare_gremlin(test_case, expected_gremlin, result.query)
-    test_case.assertEquals(expected_output_metadata, result.output_metadata)
+    test_case.assertEqual(expected_output_metadata, result.output_metadata)
     compare_input_metadata(test_case, expected_input_metadata, result.input_metadata)
 
 

@@ -6,6 +6,7 @@ from string import Template
 
 import arrow
 from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
+import six
 
 from ..compiler import GREMLIN_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
@@ -16,9 +17,12 @@ from .representations import represent_float_as_str, type_check_and_str
 
 def _safe_gremlin_string(value):
     """Sanitize and represent a string argument in Gremlin."""
-    if not isinstance(value, basestring):
-        raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
-                                          u'{}'.format(value))
+    if not isinstance(value, six.string_types):
+        if isinstance(value, bytes):  # should only happen in py3
+            value = value.decode('utf-8')
+        else:
+            raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
+                                              u'{}'.format(value))
 
     # Using JSON encoding means that all unicode literals and special chars
     # (e.g. newlines and backslashes) are replaced by appropriate escape sequences.
@@ -86,8 +90,11 @@ def _safe_gremlin_argument(expected_type, argument_value):
     elif GraphQLID.is_same_type(expected_type):
         # IDs can be strings or numbers, but the GraphQL library coerces them to strings.
         # We will follow suit and treat them as strings.
-        if not isinstance(argument_value, basestring):
-            argument_value = unicode(argument_value)
+        if not isinstance(argument_value, six.string_types):
+            if isinstance(argument_value, bytes):  # should only happen in py3
+                argument_value = argument_value.decode('utf-8')
+            else:
+                argument_value = six.text_type(argument_value)
         return _safe_gremlin_string(argument_value)
     elif GraphQLFloat.is_same_type(expected_type):
         return represent_float_as_str(argument_value)
@@ -143,7 +150,7 @@ def insert_arguments_into_gremlin_query(compilation_result, arguments):
     # The arguments are assumed to have already been validated against the query.
     sanitized_arguments = {
         key: _safe_gremlin_argument(argument_types[key], value)
-        for key, value in arguments.iteritems()
+        for key, value in six.iteritems(arguments)
     }
 
     return Template(base_query).substitute(sanitized_arguments)

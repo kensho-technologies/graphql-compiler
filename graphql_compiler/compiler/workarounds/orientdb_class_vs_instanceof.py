@@ -4,7 +4,7 @@
 For details, see:
 https://github.com/orientechnologies/orientdb/issues/7225
 """
-import funcy
+import funcy.py2 as funcy
 
 from ..blocks import Filter, Recurse, Traverse
 from ..expressions import BinaryComposition, Literal, LocalField

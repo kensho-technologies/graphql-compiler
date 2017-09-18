@@ -1,5 +1,7 @@
 # Copyright 2017 Kensho Technologies, Inc.
 """Safely insert runtime arguments into compiled GraphQL queries."""
+import six
+
 from ..compiler import GREMLIN_LANGUAGE, MATCH_LANGUAGE
 from ..exceptions import GraphQLInvalidArgumentError
 from .gremlin_formatting import insert_arguments_into_gremlin_query
@@ -10,8 +12,8 @@ def _ensure_arguments_are_provided(expected_types, arguments):
     """Ensure that all arguments expected by the query were actually provided."""
     # This function only checks that the arguments were specified,
     # and does not check types. Type checking is done as part of the actual formatting step.
-    expected_arg_names = set(expected_types.iterkeys())
-    provided_arg_names = set(arguments.iterkeys())
+    expected_arg_names = set(six.iterkeys(expected_types))
+    provided_arg_names = set(six.iterkeys(arguments))
 
     if expected_arg_names != provided_arg_names:
         missing_args = expected_arg_names - provided_arg_names

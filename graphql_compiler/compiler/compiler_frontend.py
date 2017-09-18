@@ -60,6 +60,7 @@ from graphql.language.parser import parse
 from graphql.type.definition import (GraphQLInterfaceType, GraphQLList, GraphQLObjectType,
                                      GraphQLUnionType)
 from graphql.validation import validate
+import six
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
@@ -225,7 +226,7 @@ if not (vertex_directives_prohibited_on_root <= vertex_only_directives):
 
 def _validate_property_directives(directives):
     """Validate the directives that appear at a property field."""
-    for directive_name in directives.iterkeys():
+    for directive_name in six.iterkeys(directives):
         if directive_name in vertex_only_directives:
             raise GraphQLCompilationError(
                 u'Found vertex-only directive {} set on property.'.format(directive_name))
@@ -233,7 +234,7 @@ def _validate_property_directives(directives):
 
 def _validate_vertex_directives(directives):
     """Validate the directives that appear at a vertex field."""
-    for directive_name in directives.iterkeys():
+    for directive_name in six.iterkeys(directives):
         if directive_name in property_only_directives:
             raise GraphQLCompilationError(
                 u'Found property-only directive {} set on vertex.'.format(directive_name))
@@ -529,7 +530,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 def _validate_fold_has_outputs(fold_data, outputs):
     # At least one output in the outputs list must point to the fold_data,
     # or the scope corresponding to fold_data had no @outputs and is illegal.
-    for output in outputs.values():
+    for output in six.itervalues(outputs):
         if output['fold'] is fold_data:
             return True
 
@@ -694,7 +695,7 @@ def _compile_root_ast_to_ir(schema, ast):
 
     # Ensure the GraphQL query root doesn't have any vertex directives
     # that are disallowed on the root node.
-    directives_present_at_root = set(_get_directives(base_ast).iterkeys())
+    directives_present_at_root = set(six.iterkeys(_get_directives(base_ast)))
     disallowed_directives = directives_present_at_root & vertex_directives_prohibited_on_root
     if disallowed_directives:
         raise GraphQLCompilationError(u'Found prohibited directives on root vertex: '
@@ -710,7 +711,7 @@ def _compile_root_ast_to_ir(schema, ast):
     basic_blocks.append(_compile_output_step(outputs_context))
     output_metadata = {
         name: OutputMetadata(type=value['type'], optional=value['optional'])
-        for name, value in outputs_context.iteritems()
+        for name, value in six.iteritems(outputs_context)
     }
 
     return basic_blocks, output_metadata, context['inputs'], context['location_types']
@@ -732,7 +733,7 @@ def _compile_output_step(outputs):
                                       u'one field with the @output directive.')
 
     output_fields = {}
-    for output_name, output_context in outputs.iteritems():
+    for output_name, output_context in six.iteritems(outputs):
         location = output_context['location']
         optional = output_context['optional']
         graphql_type = output_context['type']

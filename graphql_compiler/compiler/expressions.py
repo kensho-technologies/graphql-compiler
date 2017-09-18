@@ -1,5 +1,6 @@
 # Copyright 2017 Kensho Technologies, Inc.
 from graphql import GraphQLList, GraphQLNonNull
+import six
 
 from ..exceptions import GraphQLCompilationError
 from ..schema import GraphQLDate, GraphQLDateTime
@@ -75,7 +76,7 @@ class Literal(Expression):
             return
 
         # Literal safe strings are correctly representable and supported.
-        if isinstance(self.value, basestring):
+        if isinstance(self.value, six.string_types):
             validate_safe_string(self.value)
             return
 
@@ -99,12 +100,12 @@ class Literal(Expression):
             return u'true'
         elif self.value is False:
             return u'false'
-        elif isinstance(self.value, basestring):
+        elif isinstance(self.value, six.string_types):
             return safe_quoted_string(self.value)
         elif isinstance(self.value, list):
             if len(self.value) == 0:
                 return '[]'
-            elif all(isinstance(x, basestring) for x in self.value):
+            elif all(isinstance(x, six.string_types) for x in self.value):
                 list_contents = ', '.join(safe_quoted_string(x) for x in sorted(self.value))
                 return '[' + list_contents + ']'
         else:
@@ -179,7 +180,7 @@ class Variable(Expression):
         # We don't want the dollar sign as part of the variable name.
         variable_with_no_dollar_sign = self.variable_name[1:]
 
-        match_variable_name = '{%s}' % (unicode(variable_with_no_dollar_sign),)
+        match_variable_name = '{%s}' % (six.text_type(variable_with_no_dollar_sign),)
 
         # We can't directly pass a Date or DateTime object, so we have to pass it as a string
         # and then parse it inline. For date format parameter meanings, see:
@@ -203,7 +204,7 @@ class Variable(Expression):
         elif GraphQLDateTime.is_same_type(self.inferred_type):
             return u'Date.parse("{}", {})'.format(STANDARD_DATETIME_FORMAT, self.variable_name)
         else:
-            return unicode(self.variable_name)
+            return six.text_type(self.variable_name)
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
@@ -234,7 +235,7 @@ class LocalField(Expression):
     def to_match(self):
         """Return a unicode object with the MATCH representation of this LocalField."""
         self.validate()
-        return unicode(self.field_name)
+        return six.text_type(self.field_name)
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this expression."""
@@ -616,7 +617,7 @@ class BinaryComposition(Expression):
 
     def validate(self):
         """Validate that the BinaryComposition is correctly representable."""
-        if not isinstance(self.operator, unicode):
+        if not isinstance(self.operator, six.text_type):
             raise TypeError(u'Expected unicode operator, got: {} {}'.format(
                 type(self.operator).__name__, self.operator))
 

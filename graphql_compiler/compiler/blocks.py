@@ -1,4 +1,6 @@
 # Copyright 2017 Kensho Technologies, Inc.
+import six
+
 from .expressions import Expression
 from .helpers import (CompilerEntity, ensure_unicode_string, safe_quoted_string,
                       validate_marked_location, validate_safe_string)
@@ -52,7 +54,7 @@ class QueryRoot(BasicBlock):
     def validate(self):
         """Ensure that the QueryRoot block is valid."""
         if not (isinstance(self.start_class, set) and
-                all(isinstance(x, basestring) for x in self.start_class)):
+                all(isinstance(x, six.string_types) for x in self.start_class)):
             raise TypeError(u'Expected set of basestring start_class, got: {} {}'.format(
                 type(self.start_class).__name__, self.start_class))
 
@@ -95,7 +97,7 @@ class CoerceType(BasicBlock):
     def validate(self):
         """Ensure that the CoerceType block is valid."""
         if not (isinstance(self.target_class, set) and
-                all(isinstance(x, basestring) for x in self.target_class)):
+                all(isinstance(x, six.string_types) for x in self.target_class)):
             raise TypeError(u'Expected set of basestring target_class, got: {} {}'.format(
                 type(self.target_class).__name__, self.target_class))
 
@@ -123,7 +125,7 @@ class ConstructResult(BasicBlock):
         """
         self.fields = {
             ensure_unicode_string(key): value
-            for key, value in fields.iteritems()
+            for key, value in six.iteritems(fields)
         }
 
         # All key values are normalized to unicode before being passed to the parent constructor,
@@ -137,7 +139,7 @@ class ConstructResult(BasicBlock):
             raise TypeError(u'Expected dict fields, got: {} {}'.format(
                 type(self.fields).__name__, self.fields))
 
-        for key, value in self.fields.iteritems():
+        for key, value in six.iteritems(self.fields):
             validate_safe_string(key)
             if not isinstance(value, Expression):
                 raise TypeError(
@@ -148,7 +150,7 @@ class ConstructResult(BasicBlock):
         """Create an updated version (if needed) of the ConstructResult via the visitor pattern."""
         new_fields = {}
 
-        for key, value in self.fields.iteritems():
+        for key, value in six.iteritems(self.fields):
             new_value = value.visit_and_update(visitor_fn)
             if new_value is not value:
                 new_fields[key] = new_value
@@ -253,7 +255,7 @@ class Traverse(BasicBlock):
 
     def validate(self):
         """Ensure that the Traverse block is valid."""
-        if not isinstance(self.direction, basestring):
+        if not isinstance(self.direction, six.string_types):
             raise TypeError(u'Expected basestring direction, got: {} {}'.format(
                 type(self.direction).__name__, self.direction))
 
@@ -317,7 +319,7 @@ class Recurse(BasicBlock):
 
     def validate(self):
         """Ensure that the Traverse block is valid."""
-        if not isinstance(self.direction, basestring):
+        if not isinstance(self.direction, six.string_types):
             raise TypeError(u'Expected basestring direction, got: {} {}'.format(
                 type(self.direction).__name__, self.direction))
 
@@ -344,7 +346,7 @@ class Recurse(BasicBlock):
 
         recurse_steps = [
             recurse_base + (recurse_traversal * i)
-            for i in xrange(self.depth + 1)
+            for i in six.moves.xrange(self.depth + 1)
         ]
         return template.format(recurse=','.join(recurse_steps))
 
