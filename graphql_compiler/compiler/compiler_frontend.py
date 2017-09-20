@@ -20,7 +20,7 @@ To get from GraphQL AST to IR, we follow the following pattern:
           property fields and vertex fields; all property fields must precede the vertex fields
           for the AST to be valid;
 
-    step 1. apply @filter directive, if present on the current AST node
+    step 1. apply all @filter directives, if present on the current AST node
             (see _compile_ast_node_to_ir())
 
     We now proceed with one of three cases (P, V and F), depending on whether
@@ -96,8 +96,26 @@ def _get_directives(ast):
         ast: GraphQL AST node, obtained from the graphql library
 
     Returns:
-        dict of string to directive object, mapping directive names to their data
+        dict of string to:
+        - directive object, if the directive is only allowed to appear at most once, or
+        - list of directive objects, if the directive is allowed to appear multiple times
     """
+    if not ast.directives:
+        return dict()
+
+    result = dict()
+    for directive_obj in ast.directives:
+        directive_name = directive_obj.name.value
+        if directive_name in ALLOWED_DUPLICATED_DIRECTIVES:
+            result.setdefault(directive_name, []).append(directive_obj)
+        elif directive_name in result:
+            raise GraphQLCompilationError(u'Directive was unexpectedly applied twice in the same '
+                                          u'location: {} {}'.format(directive_name, ast.directives))
+        else:
+            result[directive_name] = directive_obj
+
+    return result
+
     try:
         return get_uniquely_named_objects_by_name(ast.directives)
     except ValueError as e:
@@ -214,20 +232,21 @@ def _process_output_source_directive(schema, current_schema_type, ast,
         return None
 
 
-vertex_only_directives = {'optional', 'output_source', 'recurse', 'fold'}
-property_only_directives = {'tag', 'output'}
-vertex_directives_prohibited_on_root = {'optional', 'recurse', 'fold'}
+ALLOWED_DUPLICATED_DIRECTIVES = frozenset({'filter'})
+VERTEX_ONLY_DIRECTIVES = frozenset({'optional', 'output_source', 'recurse', 'fold'})
+PROPERTY_ONLY_DIRECTIVES = frozenset({'tag', 'output'})
+VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT = frozenset({'optional', 'recurse', 'fold'})
 
-if not (vertex_directives_prohibited_on_root <= vertex_only_directives):
+if not (VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT <= VERTEX_ONLY_DIRECTIVES):
     raise AssertionError(u'The set of directives prohibited on the root vertex is not a subset '
                          u'of the set of vertex directives: {}'
-                         u'{}'.format(vertex_directives_prohibited_on_root, vertex_only_directives))
+                         u'{}'.format(VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT, VERTEX_ONLY_DIRECTIVES))
 
 
 def _validate_property_directives(directives):
     """Validate the directives that appear at a property field."""
     for directive_name in six.iterkeys(directives):
-        if directive_name in vertex_only_directives:
+        if directive_name in VERTEX_ONLY_DIRECTIVES:
             raise GraphQLCompilationError(
                 u'Found vertex-only directive {} set on property.'.format(directive_name))
 
@@ -235,7 +254,7 @@ def _validate_property_directives(directives):
 def _validate_vertex_directives(directives):
     """Validate the directives that appear at a vertex field."""
     for directive_name in six.iterkeys(directives):
-        if directive_name in property_only_directives:
+        if directive_name in PROPERTY_ONLY_DIRECTIVES:
             raise GraphQLCompilationError(
                 u'Found property-only directive {} set on vertex.'.format(directive_name))
 
@@ -350,13 +369,13 @@ def _validate_context_for_visiting_vertex_field(location, context):
 
 def _validate_vertex_field_directive_interactions(location, directives):
     """Ensure that the specified vertex field directives are not mutually disallowed."""
-    filter_directive = directives.get('filter', None)
+    filter_directives = directives.get('filter', None)
     fold_directive = directives.get('fold', None)
     optional_directive = directives.get('optional', None)
     output_source_directive = directives.get('output_source', None)
     recurse_directive = directives.get('recurse', None)
 
-    if filter_directive and fold_directive:
+    if filter_directives and fold_directive:
         raise GraphQLCompilationError(u'@filter and @fold may not appear at the same '
                                       u'vertex field! Location: {}'.format(location))
 
@@ -637,15 +656,16 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
                                  u'{} {}'.format(location, property_fields))
 
     # step 1: apply local filter, if any
-    filter_directive = local_directives.get('filter', None)
-    if filter_directive:
+    filter_directives = local_directives.get('filter', None)
+    if filter_directives:
         if 'fold' in context:
             raise GraphQLCompilationError(u'Cannot apply filters inside a @fold vertex field! '
                                           u'Location: {}'.format(location))
 
-        basic_blocks.append(
-            process_filter_directive(schema, current_schema_type,
-                                     ast, context, filter_directive))
+        for filter_directive in filter_directives:
+            basic_blocks.append(
+                process_filter_directive(schema, current_schema_type,
+                                         ast, context, filter_directive))
 
     if location.field is not None:
         # The location is at a property, compile the property data following P-steps.
@@ -727,7 +747,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     # Ensure the GraphQL query root doesn't have any vertex directives
     # that are disallowed on the root node.
     directives_present_at_root = set(six.iterkeys(_get_directives(base_ast)))
-    disallowed_directives = directives_present_at_root & vertex_directives_prohibited_on_root
+    disallowed_directives = directives_present_at_root & VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT
     if disallowed_directives:
         raise GraphQLCompilationError(u'Found prohibited directives on root vertex: '
                                       u'{}'.format(disallowed_directives))

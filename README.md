@@ -281,6 +281,9 @@ for details on the various types of filtering that the compiler currently suppor
 These operations are currently hardcoded in the compiler; in the future,
 we may enable the addition of custom filtering operations via compiler plugins.
 
+Multiple `@filter` directives may be applied to the same field at once. Conceptually,
+it is as if the different `@filter` directives were joined by SQL `AND` keywords.
+
 #### Passing Parameters
 
 The `@filter` directive accepts two types of parameters: runtime parameters and tagged parameters.

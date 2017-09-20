@@ -105,6 +105,46 @@ class IrGenerationTests(unittest.TestCase):
                             expected_output_metadata, expected_input_metadata,
                             expected_location_types)
 
+    def test_multiple_filters(self):
+        graphql_input = '''{
+            Animal {
+                name @filter(op_name: ">=", value: ["$lower_bound"])
+                     @filter(op_name: "<", value: ["$upper_bound"])
+                     @output(out_name: "animal_name")
+            }
+        }'''
+
+        base_location = helpers.Location(('Animal',))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(expressions.BinaryComposition(
+                u'>=', expressions.LocalField('name'),
+                expressions.Variable('$lower_bound', GraphQLString))),
+            blocks.Filter(expressions.BinaryComposition(
+                u'<', expressions.LocalField('name'),
+                expressions.Variable('$upper_bound', GraphQLString))),
+            blocks.MarkLocation(base_location),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString)
+            }),
+        ]
+        expected_output_metadata = {
+            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        }
+        expected_input_metadata = {
+            'lower_bound': GraphQLString,
+            'upper_bound': GraphQLString,
+        }
+        expected_location_types = {
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, graphql_input, expected_blocks,
+                        expected_output_metadata, expected_input_metadata,
+                        expected_location_types)
+
     def test_traverse_and_output(self):
         graphql_input = '''{
             Animal {
