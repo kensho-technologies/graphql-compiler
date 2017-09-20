@@ -116,11 +116,6 @@ def _get_directives(ast):
 
     return result
 
-    try:
-        return get_uniquely_named_objects_by_name(ast.directives)
-    except ValueError as e:
-        raise GraphQLCompilationError(e)
-
 
 def _is_vertex_field_name(field_name):
     """Return True if the field name denotes a vertex field, or False if it's a property field."""
