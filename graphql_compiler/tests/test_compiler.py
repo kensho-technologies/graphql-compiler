@@ -118,6 +118,45 @@ class CompilerTests(unittest.TestCase):
             check_test_data(self, graphql_input, expected_match, expected_gremlin,
                             expected_output_metadata, expected_input_metadata)
 
+    def test_multiple_filters(self):
+        graphql_input = '''{
+            Animal {
+                name @filter(op_name: ">=", value: ["$lower_bound"])
+                     @filter(op_name: "<", value: ["$upper_bound"])
+                     @output(out_name: "animal_name")
+            }
+        }'''
+
+        expected_match = '''
+            SELECT Animal___1.name AS `animal_name` FROM (
+                MATCH {{
+                    class: Animal,
+                    where: (((name >= {lower_bound}) AND (name < {upper_bound}))),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> ((it.name >= $lower_bound) && (it.name < $upper_bound))}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+        expected_output_metadata = {
+            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        }
+        expected_input_metadata = {
+            'lower_bound': GraphQLString,
+            'upper_bound': GraphQLString,
+        }
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata)
+
     def test_traverse_and_output(self):
         graphql_input = '''{
             Animal {

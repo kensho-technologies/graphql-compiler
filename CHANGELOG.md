@@ -1,5 +1,9 @@
 # Changelog
 
+## Current development version
+
+- Allow having multiple `@filter` directives on the same field
+
 ## v1.1.0
 
 - Add support for Python 3 [#31](https://github.com/kensho-technologies/graphql-compiler/pull/31)
