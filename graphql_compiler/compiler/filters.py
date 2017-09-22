@@ -6,6 +6,7 @@ from graphql.language.ast import ListValue
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
+from .context_helpers import is_in_fold_scope
 from .helpers import (get_ast_field_name, get_uniquely_named_objects_by_name, is_real_leaf_type,
                       strip_non_null_from_type, validate_safe_string)
 
@@ -419,7 +420,7 @@ def process_filter_directive(schema, current_schema_type, ast, context, directiv
     Returns:
         a Filter basic block that performs the requested filtering operation
     """
-    if 'fold' in context:
+    if is_in_fold_scope(context):
         raise AssertionError(u'Filtering within a @fold scope is not allowed, '
                              u'and should have been caught earlier!')
 

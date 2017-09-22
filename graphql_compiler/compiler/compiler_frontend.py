@@ -64,6 +64,11 @@ import six
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
+from .context_helpers import (has_encountered_output_source, is_in_fold_scope, is_in_optional_scope,
+                              validate_context_for_visiting_vertex_field)
+from .directive_helpers import (get_directives, validate_property_directives,
+                                validate_root_vertex_directives, validate_vertex_directives,
+                                validate_vertex_field_directive_interactions)
 from .filters import process_filter_directive
 from .helpers import (Location, get_ast_field_name, get_field_type_from_schema,
                       get_uniquely_named_objects_by_name, strip_non_null_from_type,
@@ -84,37 +89,6 @@ class OutputMetadata(namedtuple('OutputMetadata', ('type', 'optional'))):
     def __ne__(self, other):
         """Check another OutputMetadata object for non-equality against this one."""
         return not self.__eq__(other)
-
-
-def _get_directives(ast):
-    """Return a dict of directive name to directive object for the given AST node.
-
-    Also verifies that each directive is only present once on any given AST node,
-    raising GraphQLCompilationError if that is not the case.
-
-    Args:
-        ast: GraphQL AST node, obtained from the graphql library
-
-    Returns:
-        dict of string to:
-        - directive object, if the directive is only allowed to appear at most once, or
-        - list of directive objects, if the directive is allowed to appear multiple times
-    """
-    if not ast.directives:
-        return dict()
-
-    result = dict()
-    for directive_obj in ast.directives:
-        directive_name = directive_obj.name.value
-        if directive_name in ALLOWED_DUPLICATED_DIRECTIVES:
-            result.setdefault(directive_name, []).append(directive_obj)
-        elif directive_name in result:
-            raise GraphQLCompilationError(u'Directive was unexpectedly applied twice in the same '
-                                          u'location: {} {}'.format(directive_name, ast.directives))
-        else:
-            result[directive_name] = directive_obj
-
-    return result
 
 
 def _is_vertex_field_name(field_name):
@@ -217,41 +191,14 @@ def _process_output_source_directive(schema, current_schema_type, ast,
     # The 'ast' variable is only for function signature uniformity, and is currently not used.
     output_source_directive = local_directives.get('output_source', None)
     if output_source_directive:
-        if 'output_source' in context:
+        if has_encountered_output_source(context):
             raise GraphQLCompilationError(u'Cannot have more than one output source!')
-        if 'optional' in context:
+        if is_in_optional_scope(context):
             raise GraphQLCompilationError(u'Cannot have the output source in an optional block!')
         context['output_source'] = location
         return blocks.OutputSource()
     else:
         return None
-
-
-ALLOWED_DUPLICATED_DIRECTIVES = frozenset({'filter'})
-VERTEX_ONLY_DIRECTIVES = frozenset({'optional', 'output_source', 'recurse', 'fold'})
-PROPERTY_ONLY_DIRECTIVES = frozenset({'tag', 'output'})
-VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT = frozenset({'optional', 'recurse', 'fold'})
-
-if not (VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT <= VERTEX_ONLY_DIRECTIVES):
-    raise AssertionError(u'The set of directives prohibited on the root vertex is not a subset '
-                         u'of the set of vertex directives: {}'
-                         u'{}'.format(VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT, VERTEX_ONLY_DIRECTIVES))
-
-
-def _validate_property_directives(directives):
-    """Validate the directives that appear at a property field."""
-    for directive_name in six.iterkeys(directives):
-        if directive_name in VERTEX_ONLY_DIRECTIVES:
-            raise GraphQLCompilationError(
-                u'Found vertex-only directive {} set on property.'.format(directive_name))
-
-
-def _validate_vertex_directives(directives):
-    """Validate the directives that appear at a vertex field."""
-    for directive_name in six.iterkeys(directives):
-        if directive_name in PROPERTY_ONLY_DIRECTIVES:
-            raise GraphQLCompilationError(
-                u'Found property-only directive {} set on vertex.'.format(directive_name))
 
 
 def _compile_property_ast(schema, current_schema_type, ast, location, context, local_directives):
@@ -268,13 +215,12 @@ def _compile_property_ast(schema, current_schema_type, ast, location, context, l
         local_directives: dict, directive name string -> directive object, containing the
                           directives present on the current AST node *only*
     """
-    _validate_property_directives(local_directives)
-    is_in_fold = context.get('fold', None) is not None
+    validate_property_directives(local_directives)
 
     # step P-2: process property-only directives
     tag_directive = local_directives.get('tag', None)
     if tag_directive:
-        if is_in_fold:
+        if is_in_fold_scope(context):
             raise GraphQLCompilationError(u'Tagging values within a @fold vertex field is '
                                           u'not allowed! Location: {}'.format(location))
 
@@ -285,7 +231,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location, context, l
         validate_safe_string(tag_name)
         context['tags'][tag_name] = {
             'location': location,
-            'optional': 'optional' in context,
+            'optional': is_in_optional_scope(context),
             'type': strip_non_null_from_type(current_schema_type),
         }
 
@@ -299,12 +245,12 @@ def _compile_property_ast(schema, current_schema_type, ast, location, context, l
         validate_safe_string(output_name)
 
         graphql_type = strip_non_null_from_type(current_schema_type)
-        if is_in_fold:
+        if is_in_fold_scope(context):
             graphql_type = GraphQLList(graphql_type)
 
         context['outputs'][output_name] = {
             'location': location,
-            'optional': 'optional' in context,
+            'optional': is_in_optional_scope(context),
             'type': graphql_type,
             'fold': context.get('fold', None),
         }
@@ -347,54 +293,6 @@ def _validate_recurse_directive_types(current_schema_type, field_schema_type):
                                       u'{}'.format(current_schema_type, field_schema_type))
 
 
-def _validate_context_for_visiting_vertex_field(location, context):
-    """Ensure that the current context allows for visiting a vertex field."""
-    if 'optional' in context:
-        raise GraphQLCompilationError(u'Traversing inside an optional block is currently not '
-                                      u'supported! Location: {}'.format(location))
-
-    if 'fold' in context:
-        raise GraphQLCompilationError(u'Traversing inside a @fold block is not supported! '
-                                      u'Location: {}'.format(location))
-
-    if 'output_source' in context:
-        raise GraphQLCompilationError(u'Found vertex field after the vertex marked '
-                                      u'output source! Location: {}'.format(location))
-
-
-def _validate_vertex_field_directive_interactions(location, directives):
-    """Ensure that the specified vertex field directives are not mutually disallowed."""
-    filter_directives = directives.get('filter', None)
-    fold_directive = directives.get('fold', None)
-    optional_directive = directives.get('optional', None)
-    output_source_directive = directives.get('output_source', None)
-    recurse_directive = directives.get('recurse', None)
-
-    if filter_directives and fold_directive:
-        raise GraphQLCompilationError(u'@filter and @fold may not appear at the same '
-                                      u'vertex field! Location: {}'.format(location))
-
-    if fold_directive and optional_directive:
-        raise GraphQLCompilationError(u'@fold and @optional may not appear at the same '
-                                      u'vertex field! Location: {}'.format(location))
-
-    if fold_directive and output_source_directive:
-        raise GraphQLCompilationError(u'@fold and @output_source may not appear at the same '
-                                      u'vertex field! Location: {}'.format(location))
-
-    if fold_directive and recurse_directive:
-        raise GraphQLCompilationError(u'@fold and @recurse may not appear at the same '
-                                      u'vertex field! Location: {}'.format(location))
-
-    if optional_directive and output_source_directive:
-        raise GraphQLCompilationError(u'@optional and @output_source may not appear at the same '
-                                      u'vertex field! Location: {}'.format(location))
-
-    if optional_directive and recurse_directive:
-        raise GraphQLCompilationError(u'@optional and @recurse may not appear at the same '
-                                      u'vertex field! Location: {}'.format(location))
-
-
 def _compile_vertex_ast(schema, current_schema_type, ast,
                         location, context, local_directives, fields):
     """Return a list of basic blocks corresponding to the vertex AST node.
@@ -417,7 +315,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     basic_blocks = []
     vertex_fields, property_fields = fields
 
-    _validate_vertex_directives(local_directives)
+    validate_vertex_directives(local_directives)
 
     # step V-2: step into property fields
     for field_ast in property_fields:
@@ -430,7 +328,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         basic_blocks.extend(inner_basic_blocks)
 
     # step V-3: mark the graph position, and process output_source directive
-    if 'fold' not in context:
+    if not is_in_fold_scope(context):
         # We only mark the position if we aren't in a folded scope.
         # Folded scopes don't actually traverse to the location, so it's never really visited.
         context['location_types'][location] = strip_non_null_from_type(current_schema_type)
@@ -445,7 +343,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     for field_ast in vertex_fields:
         field_name = get_ast_field_name(field_ast)
         inner_location = location.navigate_to_subpath(field_name)
-        _validate_context_for_visiting_vertex_field(inner_location, context)
+        validate_context_for_visiting_vertex_field(inner_location, context)
 
         # The field itself is of type GraphQLList, and this is
         # what get_field_type_from_schema returns.
@@ -459,8 +357,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                                     edge_schema_type))
         field_schema_type = edge_schema_type.of_type
 
-        inner_directives = _get_directives(field_ast)
-        _validate_vertex_field_directive_interactions(inner_location, inner_directives)
+        inner_directives = get_directives(field_ast)
+        validate_vertex_field_directive_interactions(inner_location, inner_directives)
 
         recurse_directive = inner_directives.get('recurse', None)
         optional_directive = inner_directives.get('optional', None)
@@ -524,7 +422,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         # If we are currently evaluating a @fold vertex,
         # we didn't Traverse into it, so we don't need to backtrack out either.
         # Alternatively, we don't backtrack if we've reached an @output_source.
-        backtracking_required = (not fold_directive) and ('output_source' not in context)
+        backtracking_required = (
+            (not fold_directive) and (not has_encountered_output_source(context)))
         if backtracking_required:
             if optional_directive is not None:
                 basic_blocks.append(blocks.Backtrack(location, optional=True))
@@ -573,7 +472,7 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
 
     basic_blocks = []
 
-    if 'fold' not in context:
+    if not is_in_fold_scope(context):
         # step F-2. Emit an appropriate type coercion block,
         #           then recurse into the fragment's selection.
         basic_blocks.append(blocks.CoerceType({coerces_to_type_name}))
@@ -625,7 +524,7 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     basic_blocks = []
 
     # step 0: preprocessing
-    local_directives = _get_directives(ast)
+    local_directives = get_directives(ast)
     fields = _get_fields(ast)
     vertex_fields, property_fields = fields
     fragment = _get_inline_fragment(ast)
@@ -653,7 +552,7 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     # step 1: apply local filter, if any
     filter_directives = local_directives.get('filter', None)
     if filter_directives:
-        if 'fold' in context:
+        if is_in_fold_scope(context):
             raise GraphQLCompilationError(u'Cannot apply filters inside a @fold vertex field! '
                                           u'Location: {}'.format(location))
 
@@ -741,11 +640,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
 
     # Ensure the GraphQL query root doesn't have any vertex directives
     # that are disallowed on the root node.
-    directives_present_at_root = set(six.iterkeys(_get_directives(base_ast)))
-    disallowed_directives = directives_present_at_root & VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT
-    if disallowed_directives:
-        raise GraphQLCompilationError(u'Found prohibited directives on root vertex: '
-                                      u'{}'.format(disallowed_directives))
+    validate_root_vertex_directives(get_directives(base_ast))
 
     # Compile and add the basic blocks for the query's base AST vertex.
     new_basic_blocks = _compile_ast_node_to_ir(
