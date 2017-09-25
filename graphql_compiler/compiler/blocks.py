@@ -1,11 +1,16 @@
 # Copyright 2017 Kensho Technologies, Inc.
+"""Definitions of the basic blocks of the compiler."""
+
+from abc import ABCMeta
+
 import six
 
 from .expressions import Expression
-from .helpers import (CompilerEntity, ensure_unicode_string, safe_quoted_string,
+from .helpers import (CompilerEntity, ensure_unicode_string, Location, safe_quoted_string,
                       validate_marked_location, validate_safe_string)
 
 
+@six.add_metaclass(ABCMeta)
 class BasicBlock(CompilerEntity):
     """A basic operation block of the GraphQL compiler."""
 
@@ -30,6 +35,18 @@ class BasicBlock(CompilerEntity):
         # Most BasicBlocks do not contain expressions, and immediately return 'self'.
         # Any BasicBlocks that contain Expressions will override this method.
         return self
+
+
+@six.add_metaclass(ABCMeta)
+class MarkerBlock(BasicBlock):
+    """A block that is used to mark that a context-affecting operation with no output happened."""
+
+    def to_gremlin(self):
+        """Return the Gremlin representation of the block, which should almost always be empty.
+
+        The effect of MarkerBlocks is applied during optimization and code generation steps.
+        """
+        return u''
 
 
 class QueryRoot(BasicBlock):
@@ -392,7 +409,7 @@ class Backtrack(BasicBlock):
             mark_name=safe_quoted_string(mark_name))
 
 
-class OutputSource(BasicBlock):
+class OutputSource(MarkerBlock):
     """A block that declares the output should have >= 1 row for each value at that location.
 
     This block, together with the @output_source directive that generates it,
@@ -403,22 +420,30 @@ class OutputSource(BasicBlock):
     See the comment on the @output_source directive in schema.py on why this is necessary.
     """
 
-    def __init__(self):
-        """Create a new OutputSource block."""
-        super(OutputSource, self).__init__()
+    def validate():
+        """OutputSource blocks are always valid in isolation."""
+        pass
+
+
+class Fold(MarkerBlock):
+    """A marker for the start of a @fold context."""
+
+    def __init__(self, root_location):
+        """Create a new Fold block rooted at the given location."""
+        super(Fold, self).__init__()
+        self.root_location = root_location
         self.validate()
 
     def validate(self):
-        """Ensure that the OutputSource block is valid.
+        """Ensure the Fold block is valid."""
+        if not isinstance(self.root_location, Location):
+            raise ValueError(u'Expected a Location for root_location, got: '
+                             u'{}'.format(self.root_location))
 
-        OutputSource blocks are always valid in isolation.
-        """
+
+class Unfold(MarkerBlock):
+    """A marker for the end of a @fold context."""
+
+    def validate():
+        """Unfold blocks are always valid in isolation."""
         pass
-
-    def to_gremlin(self):
-        """Return the unicode representation of this BasicBlock.
-
-        The correct Gremlin representation of OutputSource blocks is an empty string.
-        Their effect is applied during code generation and optimization passes.
-        """
-        return u''

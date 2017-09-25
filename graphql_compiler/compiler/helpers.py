@@ -1,5 +1,7 @@
 # Copyright 2017 Kensho Technologies, Inc.
-from abc import ABCMeta
+"""Common helper objects, base classes and methods."""
+
+from abc import ABCMeta, abstractmethod
 import string
 
 from graphql import GraphQLEnumType, GraphQLNonNull, GraphQLScalarType, GraphQLString, is_type
@@ -234,9 +236,10 @@ class CompilerEntity(object):
         self._print_args = args
         self._print_kwargs = kwargs
 
+    @abstractmethod
     def validate(self):
         """Ensure that the CompilerEntity is valid."""
-        pass
+        raise NotImplementedError()
 
     def __str__(self):
         """Return a human-readable unicode representation of this CompilerEntity."""
@@ -267,10 +270,7 @@ class CompilerEntity(object):
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
 
+    @abstractmethod
     def to_gremlin(self):
         """Return the Gremlin unicode string representation of this object."""
-        raise NotImplementedError()
-
-    def to_match(self):
-        """Return the MATCH unicode string representation of this object."""
         raise NotImplementedError()

@@ -1,3 +1,4 @@
+# Copyright 2017 Kensho Technologies, Inc.
 """Helper functions for dealing with the frontend "context" object."""
 
 from ..exceptions import GraphQLCompilationError

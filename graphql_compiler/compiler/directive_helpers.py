@@ -1,3 +1,4 @@
+# Copyright 2017 Kensho Technologies, Inc.
 """Helper functions for dealing with GraphQL directives."""
 
 import six
