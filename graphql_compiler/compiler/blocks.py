@@ -438,7 +438,7 @@ class Fold(MarkerBlock):
         """Ensure the Fold block is valid."""
         if not isinstance(self.root_location, Location):
             raise ValueError(u'Expected a Location for root_location, got: '
-                             u'{}'.format(self.root_location))
+                             u'{} {}'.format(type(self.root_location), self.root_location))
 
 
 class Unfold(MarkerBlock):
