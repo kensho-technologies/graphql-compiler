@@ -6,7 +6,7 @@ from abc import ABCMeta
 import six
 
 from .expressions import Expression
-from .helpers import (CompilerEntity, ensure_unicode_string, Location, safe_quoted_string,
+from .helpers import (CompilerEntity, Location, ensure_unicode_string, safe_quoted_string,
                       validate_marked_location, validate_safe_string)
 
 
@@ -420,7 +420,7 @@ class OutputSource(MarkerBlock):
     See the comment on the @output_source directive in schema.py on why this is necessary.
     """
 
-    def validate():
+    def validate(self):
         """Validate the OutputSource block. An OutputSource block is always valid in isolation."""
         pass
 
@@ -444,6 +444,6 @@ class Fold(MarkerBlock):
 class Unfold(MarkerBlock):
     """A marker for the end of a @fold context."""
 
-    def validate():
+    def validate(self):
         """Unfold blocks are always valid in isolation."""
         pass

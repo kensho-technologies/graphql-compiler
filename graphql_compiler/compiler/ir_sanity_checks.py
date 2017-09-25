@@ -25,7 +25,6 @@ def sanity_check_ir_blocks_from_frontend(ir_blocks):
     _sanity_check_query_root_block(ir_blocks)
     _sanity_check_output_source_follower_blocks(ir_blocks)
     _sanity_check_block_pairwise_constraints(ir_blocks)
-    _sanity_check_blocks_between_mark_location_blocks(ir_blocks)
     _sanity_check_every_location_is_marked(ir_blocks)
 
 
@@ -119,24 +118,6 @@ def _sanity_check_block_pairwise_constraints(ir_blocks):
             if not isinstance(first_block, MarkLocation):
                 raise AssertionError(u'Expected MarkLocation before Recurse, but none was found: '
                                      u'{}'.format(ir_blocks))
-
-
-def _sanity_check_blocks_between_mark_location_blocks(ir_blocks):
-    """Ensure there's exactly one location-changing block between any two MarkLocation blocks."""
-    # There's exactly one QueryRoot / Traverse / Recurse / Backtrack block (total)
-    # between any two MarkLocation blocks.
-    traversal_blocks = 0
-    for block in ir_blocks:
-        # Treat QueryRoot as a Backtrack / Recurse / Traverse block,
-        # to handle the first MarkLocation.
-        if isinstance(object, (Backtrack, Traverse, Recurse, QueryRoot)):
-            traversal_blocks += 1
-        elif isinstance(object, MarkLocation):
-            if traversal_blocks != 1:
-                raise AssertionError(u'Expected 1 traversal block between '
-                                     u'MarkLocation blocks, but found: '
-                                     u'{} {}'.format(traversal_blocks, ir_blocks))
-            traversal_blocks = 0
 
 
 def _sanity_check_every_location_is_marked(ir_blocks):
