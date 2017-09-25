@@ -14,8 +14,8 @@ from .blocks import Backtrack, MarkLocation, QueryRoot, Traverse
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
                           Literal, TernaryConditional, TrueLiteral)
 from .ir_lowering_common import (lower_context_field_existence, merge_consecutive_filter_clauses,
-                                 optimize_boolean_expression_comparisons,
-                                 sanity_check_ir_blocks_from_frontend)
+                                 optimize_boolean_expression_comparisons)
+from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .match_query import MatchStep, convert_to_match_query
 from .workarounds import orientdb_class_vs_instanceof, orientdb_eval_scheduling
 
