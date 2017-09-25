@@ -421,7 +421,7 @@ class OutputSource(MarkerBlock):
     """
 
     def validate():
-        """This type of block is always valid in isolation."""
+        """Validate the OutputSource block. An OutputSource block is always valid in isolation."""
         pass
 
 
