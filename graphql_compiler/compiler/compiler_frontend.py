@@ -293,6 +293,21 @@ def _validate_recurse_directive_types(current_schema_type, field_schema_type):
                                       u'{}'.format(current_schema_type, field_schema_type))
 
 
+def _get_edge_direction_and_name(vertex_field_name):
+    """Get the edge direction and name from a non-root vertex field name."""
+    edge_direction = None
+    edge_name = None
+    if vertex_field_name.startswith('out_'):
+        edge_direction = 'out'
+        edge_name = vertex_field_name[4:]
+    elif vertex_field_name.startswith('in_'):
+        edge_direction = 'in'
+        edge_name = vertex_field_name[3:]
+    else:
+        raise AssertionError(u'Unreachable condition reached:', vertex_field_name)
+    return edge_direction, edge_name
+
+
 def _compile_vertex_ast(schema, current_schema_type, ast,
                         location, context, local_directives, fields):
     """Return a list of basic blocks corresponding to the vertex AST node.
@@ -382,16 +397,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 context['optional'] = inner_location
                 in_topmost_optional_block = True
 
-        edge_direction = None
-        edge_name = None
-        if field_name.startswith('out_'):
-            edge_direction = 'out'
-            edge_name = field_name[4:]
-        elif field_name.startswith('in_'):
-            edge_direction = 'in'
-            edge_name = field_name[3:]
-        else:
-            raise AssertionError(u'Unreachable condition reached:', field_name)
+        edge_direction, edge_name = _get_edge_direction_and_name(field_name)
 
         if fold_directive:
             fold_block = blocks.Fold(location, (edge_direction, edge_name))
