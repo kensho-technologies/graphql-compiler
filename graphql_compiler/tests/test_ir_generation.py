@@ -1823,17 +1823,18 @@ class IrGenerationTests(unittest.TestCase):
         }'''
 
         base_location = helpers.Location(('Animal',))
+        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
-            blocks.Fold(base_location, ('out', 'Animal_ParentOf')),
+            blocks.Fold(base_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_names_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_ParentOf'), 'name', GraphQLList(GraphQLString)),
+                    base_fold, 'name', GraphQLList(GraphQLString)),
             }),
         ]
         expected_output_metadata = {
@@ -1863,21 +1864,21 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        parent_fold = helpers.FoldScopeLocation(parent_location, ('out', 'Animal_ParentOf'))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Traverse('in', 'Animal_ParentOf'),
             blocks.MarkLocation(parent_location),
-            blocks.Fold(parent_location, ('out', 'Animal_ParentOf')),
+            blocks.Fold(parent_fold),
             blocks.Unfold(),
             blocks.Backtrack(base_location),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'sibling_and_self_names_list': expressions.FoldedOutputContextField(
-                    parent_location, ('out', 'Animal_ParentOf'),
-                    'name', GraphQLList(GraphQLString)),
+                    parent_fold, 'name', GraphQLList(GraphQLString)),
             }),
         ]
         expected_output_metadata = {
@@ -1907,19 +1908,20 @@ class IrGenerationTests(unittest.TestCase):
         }'''
 
         base_location = helpers.Location(('Animal',))
+        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
-            blocks.Fold(base_location, ('out', 'Animal_ParentOf')),
+            blocks.Fold(base_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_names_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_ParentOf'), 'name', GraphQLList(GraphQLString)),
+                    base_fold, 'name', GraphQLList(GraphQLString)),
                 'child_uuids_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_ParentOf'), 'uuid', GraphQLList(GraphQLID)),
+                    base_fold, 'uuid', GraphQLList(GraphQLID)),
             }),
         ]
         expected_output_metadata = {
@@ -1952,25 +1954,27 @@ class IrGenerationTests(unittest.TestCase):
         }'''
 
         base_location = helpers.Location(('Animal',))
+        base_out_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        base_in_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
-            blocks.Fold(base_location, ('out', 'Animal_ParentOf')),
+            blocks.Fold(base_out_fold),
             blocks.Unfold(),
-            blocks.Fold(base_location, ('in', 'Animal_ParentOf')),
+            blocks.Fold(base_in_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_names_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_ParentOf'), 'name', GraphQLList(GraphQLString)),
+                    base_out_fold, 'name', GraphQLList(GraphQLString)),
                 'child_uuids_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_ParentOf'), 'uuid', GraphQLList(GraphQLID)),
+                    base_out_fold, 'uuid', GraphQLList(GraphQLID)),
                 'parent_names_list': expressions.FoldedOutputContextField(
-                    base_location, ('in', 'Animal_ParentOf'), 'name', GraphQLList(GraphQLString)),
+                    base_in_fold, 'name', GraphQLList(GraphQLString)),
                 'parent_uuids_list': expressions.FoldedOutputContextField(
-                    base_location, ('in', 'Animal_ParentOf'), 'uuid', GraphQLList(GraphQLID)),
+                    base_in_fold, 'uuid', GraphQLList(GraphQLID)),
             }),
         ]
         expected_output_metadata = {
@@ -2003,23 +2007,23 @@ class IrGenerationTests(unittest.TestCase):
         }'''
 
         base_location = helpers.Location(('Animal',))
+        base_parent_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        base_fed_at_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_FedAt'))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
-            blocks.Fold(base_location, ('out', 'Animal_ParentOf')),
+            blocks.Fold(base_parent_fold),
             blocks.Unfold(),
-            blocks.Fold(base_location, ('out', 'Animal_FedAt')),
+            blocks.Fold(base_fed_at_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_birthdays_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_ParentOf'),
-                    'birthday', GraphQLList(GraphQLDate)),
+                    base_parent_fold, 'birthday', GraphQLList(GraphQLDate)),
                 'fed_at_datetimes_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_FedAt'),
-                    'event_date', GraphQLList(GraphQLDateTime)),
+                    base_fed_at_fold, 'event_date', GraphQLList(GraphQLDateTime)),
             }),
         ]
         expected_output_metadata = {

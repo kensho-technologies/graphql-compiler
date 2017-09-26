@@ -1,7 +1,6 @@
 # Copyright 2017 Kensho Technologies, Inc.
 """Common helper objects, base classes and methods."""
 
-from abc import ABCMeta, abstractmethod
 import string
 
 from graphql import GraphQLEnumType, GraphQLNonNull, GraphQLScalarType, GraphQLString, is_type
@@ -223,7 +222,8 @@ class Location(object):
 
     def __eq__(self, other):
         """Return True if the Locations are equal, and False otherwise."""
-        return (self.query_path == other.query_path and
+        return (type(self) == type(other) and
+                self.query_path == other.query_path and
                 self.field == other.field and
                 self.visit_counter == other.visit_counter)
 
@@ -237,50 +237,58 @@ class Location(object):
 
 
 @six.python_2_unicode_compatible
-@six.add_metaclass(ABCMeta)
-class CompilerEntity(object):
-    """An abstract compiler entity. Can represent things like basic blocks and expressions."""
+class FoldScopeLocation(object):
+    def __init__(self, root_location, relative_position):
+        """Create a new FoldScopeLocation object. Used to represent the locations of @fold scopes.
 
-    def __init__(self, *args, **kwargs):
-        """Construct a new CompilerEntity."""
-        self._print_args = args
-        self._print_kwargs = kwargs
+        Args:
+            root_location: Location object defining where the @fold scope is rooted. In other words,
+                           the location of the tightest scope that fully contains the @fold scope.
+            relative_position: (edge_direction, edge_name) tuple, representing where the @fold scope
+                               lies within its root_location scope.
 
-    @abstractmethod
-    def validate(self):
-        """Ensure that the CompilerEntity is valid."""
-        raise NotImplementedError()
+        Returns:
+            a new FoldScopeLocation object
+        """
+        if not isinstance(root_location, Location):
+            raise TypeError(u'Expected a Location for root_location, got: '
+                            u'{} {}'.format(type(root_location), root_location))
+
+        if root_location.field:
+            raise ValueError(u'Expected Location object that points to a vertex, got: '
+                             u'{}'.format(root_location))
+
+        if not isinstance(relative_position, tuple) or not len(relative_position) == 2:
+            raise TypeError(u'Expected relative_position to be a tuple of two elements, got: '
+                            u'{} {}'.format(type(relative_position), relative_position))
+
+        # If we ever allow folds deeper than a single level,
+        # relative_position might need rethinking.
+        edge_direction, edge_name = relative_position
+        validate_edge_direction(edge_direction)
+        validate_safe_string(edge_name)
+
+        self.root_location = root_location
+        self.relative_position = relative_position
 
     def __str__(self):
-        """Return a human-readable unicode representation of this CompilerEntity."""
-        printed_args = []
-        if self._print_args:
-            printed_args.append('{args}')
-        if self._print_kwargs:
-            printed_args.append('{kwargs}')
-
-        template = u'{cls_name}(' + u', '.join(printed_args) + u')'
-        return template.format(cls_name=type(self).__name__,
-                               args=self._print_args,
-                               kwargs=self._print_kwargs)
+        """Return a human-readable str representation of the FoldScopeLocation object."""
+        return u'FoldScopeLocation({}, {})'.format(self.root_location, self.relative_position)
 
     def __repr__(self):
-        """Return a human-readable str representation of the CompilerEntity object."""
+        """Return a human-readable str representation of the FoldScopeLocation object."""
         return self.__str__()
 
-    # pylint: disable=protected-access
     def __eq__(self, other):
-        """Return True if the CompilerEntity objects are equal, and False otherwise."""
+        """Return True if the FoldScopeLocations are equal, and False otherwise."""
         return (type(self) == type(other) and
-                self._print_args == other._print_args and
-                self._print_kwargs == other._print_kwargs)
-    # pylint: enable=protected-access
+                self.root_location == other.root_location and
+                self.relative_position == other.relative_position)
 
     def __ne__(self, other):
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
 
-    @abstractmethod
-    def to_gremlin(self):
-        """Return the Gremlin unicode string representation of this object."""
-        raise NotImplementedError()
+    def __hash__(self):
+        """Return the object's hash value."""
+        return hash(self.root_location) ^ hash(self.relative_position)
