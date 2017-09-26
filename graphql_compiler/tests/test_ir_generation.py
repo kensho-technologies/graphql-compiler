@@ -1827,6 +1827,8 @@ class IrGenerationTests(unittest.TestCase):
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
+            blocks.Fold(base_location, ('out', 'Animal_ParentOf')),
+            blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1867,6 +1869,8 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(base_location),
             blocks.Traverse('in', 'Animal_ParentOf'),
             blocks.MarkLocation(parent_location),
+            blocks.Fold(parent_location, ('out', 'Animal_ParentOf')),
+            blocks.Unfold(),
             blocks.Backtrack(base_location),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -1907,6 +1911,8 @@ class IrGenerationTests(unittest.TestCase):
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
+            blocks.Fold(base_location, ('out', 'Animal_ParentOf')),
+            blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1950,6 +1956,10 @@ class IrGenerationTests(unittest.TestCase):
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
+            blocks.Fold(base_location, ('out', 'Animal_ParentOf')),
+            blocks.Unfold(),
+            blocks.Fold(base_location, ('in', 'Animal_ParentOf')),
+            blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1997,6 +2007,10 @@ class IrGenerationTests(unittest.TestCase):
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
+            blocks.Fold(base_location, ('out', 'Animal_ParentOf')),
+            blocks.Unfold(),
+            blocks.Fold(base_location, ('out', 'Animal_FedAt')),
+            blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),

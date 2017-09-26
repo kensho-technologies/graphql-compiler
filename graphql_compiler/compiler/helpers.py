@@ -115,6 +115,16 @@ def validate_safe_string(value):
         raise GraphQLCompilationError(u'Encountered illegal characters in string: {}'.format(value))
 
 
+def validate_edge_direction(edge_direction):
+    """Ensure the provided edge direction is either "in" or "out"."""
+    if not isinstance(edge_direction, six.string_types):
+        raise TypeError(u'Expected string edge_direction, got: {} {}'.format(
+                        type(edge_direction), edge_direction))
+
+    if edge_direction not in {u'in', u'out'}:
+        raise ValueError(u'Unrecognized edge direction: {}'.format(edge_direction))
+
+
 def validate_marked_location(location):
     """Validate that a Location object is safe for marking, and not at a field."""
     if not isinstance(location, Location):

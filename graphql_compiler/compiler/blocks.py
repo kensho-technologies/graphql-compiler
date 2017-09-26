@@ -7,7 +7,7 @@ import six
 
 from .expressions import Expression
 from .helpers import (CompilerEntity, Location, ensure_unicode_string, safe_quoted_string,
-                      validate_marked_location, validate_safe_string)
+                      validate_edge_direction, validate_marked_location, validate_safe_string)
 
 
 @six.add_metaclass(ABCMeta)
@@ -276,9 +276,7 @@ class Traverse(BasicBlock):
             raise TypeError(u'Expected string direction, got: {} {}'.format(
                 type(self.direction).__name__, self.direction))
 
-        if self.direction not in {u'in', u'out'}:
-            raise ValueError(u'Expected direction to be "in" or "out", got: '
-                             u'{}'.format(self.direction))
+        validate_edge_direction(self.direction)
 
         if not isinstance(self.optional, bool):
             raise TypeError(u'Expected bool optional, got: {} {}'.format(
@@ -336,14 +334,7 @@ class Recurse(BasicBlock):
 
     def validate(self):
         """Ensure that the Traverse block is valid."""
-        if not isinstance(self.direction, six.string_types):
-            raise TypeError(u'Expected string direction, got: {} {}'.format(
-                type(self.direction).__name__, self.direction))
-
-        if self.direction not in {u'in', u'out'}:
-            raise ValueError(u'Expected direction to be "in" or "out", got: '
-                             u'{}'.format(self.direction))
-
+        validate_edge_direction(self.direction)
         validate_safe_string(self.edge_name)
 
         if not isinstance(self.depth, int):
@@ -428,17 +419,28 @@ class OutputSource(MarkerBlock):
 class Fold(MarkerBlock):
     """A marker for the start of a @fold context."""
 
-    def __init__(self, root_location):
+    def __init__(self, root_location, relative_position):
         """Create a new Fold block rooted at the given location."""
-        super(Fold, self).__init__()
+        super(Fold, self).__init__(root_location, relative_position)
         self.root_location = root_location
+        # If we ever allow folds deeper than a single level,
+        # relative_position might need rethinking.
+        self.relative_position = relative_position
         self.validate()
 
     def validate(self):
         """Ensure the Fold block is valid."""
         if not isinstance(self.root_location, Location):
-            raise ValueError(u'Expected a Location for root_location, got: '
-                             u'{} {}'.format(type(self.root_location), self.root_location))
+            raise TypeError(u'Expected a Location for root_location, got: '
+                            u'{} {}'.format(type(self.root_location), self.root_location))
+
+        if not isinstance(self.relative_position, tuple) or not len(self.relative_position) == 2:
+            raise TypeError(u'Expected relative_position to be a tuple of two elements, got: '
+                            u'{} {}'.format(type(self.relative_position), self.relative_position))
+
+        edge_direction, edge_name = self.relative_position
+        validate_edge_direction(edge_direction)
+        validate_safe_string(edge_name)
 
 
 class Unfold(MarkerBlock):

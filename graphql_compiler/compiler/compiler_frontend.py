@@ -394,12 +394,9 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             raise AssertionError(u'Unreachable condition reached:', field_name)
 
         if fold_directive:
-            context['fold'] = {
-                'root': location,
-                # If we allow folds deeper than a single level,
-                # the below will need to become a list.
-                'relative_position': (edge_direction, edge_name),
-            }
+            fold_block = blocks.Fold(location, (edge_direction, edge_name))
+            basic_blocks.append(fold_block)
+            context['fold'] = fold_block
         elif recurse_directive:
             recurse_depth = _get_recurse_directive_depth(field_name, inner_directives)
             _validate_recurse_directive_types(current_schema_type, field_schema_type)
@@ -414,6 +411,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         if fold_directive:
             _validate_fold_has_outputs(context['fold'], context['outputs'])
+            basic_blocks.append(blocks.Unfold())
             del context['fold']
 
         if in_topmost_optional_block:
@@ -449,8 +447,8 @@ def _validate_fold_has_outputs(fold_data, outputs):
             return True
 
     raise GraphQLCompilationError(u'Each @fold scope must contain at least one field '
-                                  u'marked @output. Encountered a @fold with no outputs '
-                                  u'at query location: {}'.format(fold_data['root']))
+                                  u'marked @output. Encountered a @fold with no outputs: '
+                                  u'{}'.format(fold_data))
 
 
 def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
@@ -688,7 +686,8 @@ def _compile_output_step(outputs):
 
             _, field_name = location.get_location_name()
             expression = expressions.FoldedOutputContextField(
-                fold_data['root'], fold_data['relative_position'], field_name, graphql_type)
+                fold_data.root_location, fold_data.relative_position,
+                field_name, graphql_type)
         else:
             expression = expressions.OutputContextField(location, graphql_type)
 
