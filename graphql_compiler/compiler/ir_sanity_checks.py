@@ -21,11 +21,24 @@ def sanity_check_ir_blocks_from_frontend(ir_blocks):
     if not ir_blocks:
         raise AssertionError(u'Received no ir_blocks: {}'.format(ir_blocks))
 
+    _sanity_check_fold_scope_locations_are_unique(ir_blocks)
     _sanity_check_no_nested_folds(ir_blocks)
     _sanity_check_query_root_block(ir_blocks)
     _sanity_check_output_source_follower_blocks(ir_blocks)
     _sanity_check_block_pairwise_constraints(ir_blocks)
     _sanity_check_every_location_is_marked(ir_blocks)
+
+
+def _sanity_check_fold_scope_locations_are_unique(ir_blocks):
+    """Assert that every FoldScopeLocation that exists on a Fold block is unique."""
+    observed_locations = dict()
+    for block in ir_blocks:
+        if isinstance(block, Fold):
+            alternate = observed_locations.get(block.fold_scope_location, None)
+            if alternate is not None:
+                raise AssertionError(u'Found two Fold blocks with identical FoldScopeLocations: '
+                                     u'{} {} {}'.format(alternate, block, ir_blocks))
+            observed_locations[block.fold_scope_location] = block
 
 
 def _sanity_check_no_nested_folds(ir_blocks):
