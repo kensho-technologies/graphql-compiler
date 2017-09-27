@@ -427,7 +427,7 @@ class FoldedOutputContextField(Expression):
         self.validate()
         edge_direction, edge_name = self.fold_scope_location.relative_position
 
-        mark_name, _ = self.fold_scope_location.root_location.get_location_name()
+        mark_name, _ = self.fold_scope_location.base_location.get_location_name()
         validate_safe_string(mark_name)
 
         template = u'%(mark_name)s.%(direction)s("%(edge_name)s").%(field_name)s'
@@ -460,7 +460,7 @@ class FoldedOutputContextField(Expression):
         }
         inverse_direction = inverse_direction_table[edge_direction]
 
-        mark_name, _ = self.fold_scope_location.root_location.get_location_name()
+        mark_name, _ = self.fold_scope_location.base_location.get_location_name()
         validate_safe_string(mark_name)
 
         # This template generates code like:

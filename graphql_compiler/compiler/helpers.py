@@ -238,25 +238,25 @@ class Location(object):
 
 @six.python_2_unicode_compatible
 class FoldScopeLocation(object):
-    def __init__(self, root_location, relative_position):
+    def __init__(self, base_location, relative_position):
         """Create a new FoldScopeLocation object. Used to represent the locations of @fold scopes.
 
         Args:
-            root_location: Location object defining where the @fold scope is rooted. In other words,
+            base_location: Location object defining where the @fold scope is rooted. In other words,
                            the location of the tightest scope that fully contains the @fold scope.
             relative_position: (edge_direction, edge_name) tuple, representing where the @fold scope
-                               lies within its root_location scope.
+                               lies within its base_location scope.
 
         Returns:
             a new FoldScopeLocation object
         """
-        if not isinstance(root_location, Location):
-            raise TypeError(u'Expected a Location for root_location, got: '
-                            u'{} {}'.format(type(root_location), root_location))
+        if not isinstance(base_location, Location):
+            raise TypeError(u'Expected a Location for base_location, got: '
+                            u'{} {}'.format(type(base_location), base_location))
 
-        if root_location.field:
+        if base_location.field:
             raise ValueError(u'Expected Location object that points to a vertex, got: '
-                             u'{}'.format(root_location))
+                             u'{}'.format(base_location))
 
         if not isinstance(relative_position, tuple) or not len(relative_position) == 2:
             raise TypeError(u'Expected relative_position to be a tuple of two elements, got: '
@@ -268,12 +268,12 @@ class FoldScopeLocation(object):
         validate_edge_direction(edge_direction)
         validate_safe_string(edge_name)
 
-        self.root_location = root_location
+        self.base_location = base_location
         self.relative_position = relative_position
 
     def __str__(self):
         """Return a human-readable str representation of the FoldScopeLocation object."""
-        return u'FoldScopeLocation({}, {})'.format(self.root_location, self.relative_position)
+        return u'FoldScopeLocation({}, {})'.format(self.base_location, self.relative_position)
 
     def __repr__(self):
         """Return a human-readable str representation of the FoldScopeLocation object."""
@@ -282,7 +282,7 @@ class FoldScopeLocation(object):
     def __eq__(self, other):
         """Return True if the FoldScopeLocations are equal, and False otherwise."""
         return (type(self) == type(other) and
-                self.root_location == other.root_location and
+                self.base_location == other.base_location and
                 self.relative_position == other.relative_position)
 
     def __ne__(self, other):
@@ -291,4 +291,4 @@ class FoldScopeLocation(object):
 
     def __hash__(self):
         """Return the object's hash value."""
-        return hash(self.root_location) ^ hash(self.relative_position)
+        return hash(self.base_location) ^ hash(self.relative_position)
