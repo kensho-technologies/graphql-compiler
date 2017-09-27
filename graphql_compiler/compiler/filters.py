@@ -1,8 +1,8 @@
 # Copyright 2017 Kensho Technologies, Inc.
 from functools import partial, wraps
 
-from graphql import (GraphQLInterfaceType, GraphQLList, GraphQLObjectType,
-                     GraphQLScalarType, GraphQLString)
+from graphql import (GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLScalarType,
+                     GraphQLString)
 from graphql.language.ast import ListValue
 
 from . import blocks, expressions
