@@ -286,6 +286,57 @@ class IrGenerationTests(unittest.TestCase):
         check_test_data(self, graphql_input, expected_blocks,
                         expected_output_metadata, expected_input_metadata, expected_location_types)
 
+    def test_name_or_alias_filter_on_interface_type(self):
+        graphql_input = '''{
+            Animal {
+                out_Entity_Related @filter(op_name: "name_or_alias", value: ["$wanted"]) {
+                    name @output(out_name: "related_entity")
+                }
+            }
+        }'''
+
+        base_location = helpers.Location(('Animal',))
+        child_location = base_location.navigate_to_subpath('out_Entity_Related')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('out', 'Entity_Related'),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'||',
+                    expressions.BinaryComposition(
+                        u'=',
+                        expressions.LocalField('name'),
+                        expressions.Variable('$wanted', GraphQLString)
+                    ), expressions.BinaryComposition(
+                        u'contains',
+                        expressions.LocalField('alias'),
+                        expressions.Variable('$wanted', GraphQLString)
+                    )
+                )
+            ),
+            blocks.MarkLocation(child_location),
+            blocks.Backtrack(base_location),
+            blocks.ConstructResult({
+                'related_entity': expressions.OutputContextField(
+                    child_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_output_metadata = {
+            'related_entity': OutputMetadata(type=GraphQLString, optional=False),
+        }
+        expected_input_metadata = {
+            'wanted': GraphQLString,
+        }
+        expected_location_types = {
+            base_location: 'Animal',
+            child_location: 'Entity',
+        }
+
+        check_test_data(self, graphql_input, expected_blocks,
+                        expected_output_metadata, expected_input_metadata, expected_location_types)
+
     def test_output_source_and_complex_output(self):
         graphql_input = '''{
             Animal {
