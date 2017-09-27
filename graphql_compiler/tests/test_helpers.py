@@ -108,6 +108,7 @@ def get_schema():
 
         interface Entity {
             name: String
+            alias: [String]
             description: String
             uuid: ID
             in_Entity_Related: [Entity]
@@ -129,6 +130,13 @@ def get_schema():
             out_Animal_ImportantEvent: [EventOrBirthEvent]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
+            out_Animal_LivesIn: [Location]
+        }
+
+        type Location {
+            name: String
+            uuid: ID
+            in_Animal_LivesIn: [Animal]
         }
 
         type Species implements Entity {
@@ -158,6 +166,7 @@ def get_schema():
 
         type Event implements Entity {
             name: String
+            alias: [String]
             description: String
             uuid: ID
             event_date: DateTime
@@ -170,6 +179,7 @@ def get_schema():
         # Assume that in the database, the below type is actually a subclass of Event.
         type BirthEvent implements Entity {
             name: String
+            alias: [String]
             description: String
             uuid: ID
             event_date: DateTime
@@ -190,6 +200,7 @@ def get_schema():
             Event: Event
             Food: Food
             Species: Species
+            Location: Location
         }
     '''
 

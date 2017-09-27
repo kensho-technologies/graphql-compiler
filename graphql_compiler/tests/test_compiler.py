@@ -294,6 +294,48 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, graphql_input, expected_match, expected_gremlin,
                         expected_output_metadata, expected_input_metadata)
 
+    def test_name_or_alias_filter_on_interface_type(self):
+        graphql_input = '''{
+            Animal {
+                out_Entity_Related @filter(op_name: "name_or_alias", value: ["$wanted"]) {
+                    name @output(out_name: "related_entity")
+                }
+            }
+        }'''
+
+        expected_match = '''
+            SELECT Animal__out_Entity_Related___1.name AS `related_entity` FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Entity_Related') {{
+                    where: (((name = {wanted}) OR (alias CONTAINS {wanted}))),
+                    as: Animal__out_Entity_Related___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .out('Entity_Related')
+            .filter{it, m -> ((it.name == $wanted) || it.alias.contains($wanted))}
+            .as('Animal__out_Entity_Related___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                related_entity: m.Animal__out_Entity_Related___1.name
+            ])}
+        '''
+        expected_output_metadata = {
+            'related_entity': OutputMetadata(type=GraphQLString, optional=False),
+        }
+        expected_input_metadata = {
+            'wanted': GraphQLString,
+        }
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata)
+
     def test_output_source_and_complex_output(self):
         graphql_input = '''{
             Animal {

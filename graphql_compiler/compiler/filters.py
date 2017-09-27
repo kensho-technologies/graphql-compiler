@@ -1,7 +1,8 @@
 # Copyright 2017 Kensho Technologies, Inc.
 from functools import partial, wraps
 
-from graphql import GraphQLList, GraphQLObjectType, GraphQLScalarType, GraphQLString
+from graphql import (GraphQLInterfaceType, GraphQLList, GraphQLObjectType,
+                     GraphQLScalarType, GraphQLString)
 from graphql.language.ast import ListValue
 
 from . import blocks, expressions
@@ -190,9 +191,10 @@ def _process_name_or_alias_filter_directive(schema, current_schema_type, ast,
     Returns:
         a Filter basic block that performs the check against the name or alias
     """
-    if not isinstance(current_schema_type, GraphQLObjectType):
-        raise GraphQLCompilationError(u'Cannot apply "name_or_alias" to non-object '
-                                      u'type {}'.format(current_schema_type))
+    if not isinstance(current_schema_type, (GraphQLInterfaceType, GraphQLObjectType)):
+        raise GraphQLCompilationError(u'Cannot apply "name_or_alias" to non-object, '
+                                      u'non-interface type {} '
+                                      u'{}'.format(current_schema_type, type(current_schema_type)))
 
     current_type_fields = current_schema_type.fields
     name_field = current_type_fields.get('name', None)

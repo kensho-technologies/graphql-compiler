@@ -430,7 +430,7 @@ class IrGenerationErrorTests(unittest.TestCase):
                 }
             }''',
             '''{
-                Event @filter(op_name: "name_or_alias", value: ["$foo"]) {
+                Location @filter(op_name: "name_or_alias", value: ["$foo"]) {
                     name @output(out_name: "name")
                 }
             }''',

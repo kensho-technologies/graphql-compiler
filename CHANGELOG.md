@@ -2,7 +2,8 @@
 
 ## Current development version
 
-- Allow having multiple `@filter` directives on the same field
+- Allow having multiple `@filter` directives on the same field [#33](https://github.com/kensho-technologies/graphql-compiler/pull/33)
+- Allow using the `name_or_alias` filtering operation on interface types
 
 ## v1.1.0
 
