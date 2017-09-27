@@ -1,52 +1,11 @@
 # Copyright 2017 Kensho Technologies, Inc.
 """Definitions of the basic blocks of the compiler."""
 
-from abc import ABCMeta
-
 import six
 
-from .expressions import Expression
-from .helpers import (CompilerEntity, Location, ensure_unicode_string, safe_quoted_string,
-                      validate_marked_location, validate_safe_string)
-
-
-@six.add_metaclass(ABCMeta)
-class BasicBlock(CompilerEntity):
-    """A basic operation block of the GraphQL compiler."""
-
-    def visit_and_update_expressions(self, visitor_fn):
-        """Create an updated version (if needed) of the BasicBlock via the visitor pattern.
-
-        Args:
-            visitor_fn: function that takes an Expression argument, and returns an Expression.
-                        This function is recursively called on all child Expressions that may
-                        exist within this BasicBlock. If the visitor_fn does not return the
-                        exact same object that was passed in, this is interpreted as an update
-                        request, and the visit_and_update() method will return a new BasicBlock
-                        with the given update applied. No Expressions or BasicBlocks are
-                        mutated in-place.
-
-        Returns:
-            - If the visitor_fn does not request any updates (by always returning the exact same
-              object it was called with), this method returns 'self'.
-            - Otherwise, this method returns a new BasicBlock object that reflects the updates
-              requested by the visitor_fn.
-        """
-        # Most BasicBlocks do not contain expressions, and immediately return 'self'.
-        # Any BasicBlocks that contain Expressions will override this method.
-        return self
-
-
-@six.add_metaclass(ABCMeta)
-class MarkerBlock(BasicBlock):
-    """A block that is used to mark that a context-affecting operation with no output happened."""
-
-    def to_gremlin(self):
-        """Return the Gremlin representation of the block, which should almost always be empty.
-
-        The effect of MarkerBlocks is applied during optimization and code generation steps.
-        """
-        return u''
+from .compiler_entities import BasicBlock, Expression, MarkerBlock
+from .helpers import (FoldScopeLocation, ensure_unicode_string, safe_quoted_string,
+                      validate_edge_direction, validate_marked_location, validate_safe_string)
 
 
 class QueryRoot(BasicBlock):
@@ -276,9 +235,7 @@ class Traverse(BasicBlock):
             raise TypeError(u'Expected string direction, got: {} {}'.format(
                 type(self.direction).__name__, self.direction))
 
-        if self.direction not in {u'in', u'out'}:
-            raise ValueError(u'Expected direction to be "in" or "out", got: '
-                             u'{}'.format(self.direction))
+        validate_edge_direction(self.direction)
 
         if not isinstance(self.optional, bool):
             raise TypeError(u'Expected bool optional, got: {} {}'.format(
@@ -336,14 +293,7 @@ class Recurse(BasicBlock):
 
     def validate(self):
         """Ensure that the Traverse block is valid."""
-        if not isinstance(self.direction, six.string_types):
-            raise TypeError(u'Expected string direction, got: {} {}'.format(
-                type(self.direction).__name__, self.direction))
-
-        if self.direction not in {u'in', u'out'}:
-            raise ValueError(u'Expected direction to be "in" or "out", got: '
-                             u'{}'.format(self.direction))
-
+        validate_edge_direction(self.direction)
         validate_safe_string(self.edge_name)
 
         if not isinstance(self.depth, int):
@@ -428,17 +378,17 @@ class OutputSource(MarkerBlock):
 class Fold(MarkerBlock):
     """A marker for the start of a @fold context."""
 
-    def __init__(self, root_location):
+    def __init__(self, fold_scope_location):
         """Create a new Fold block rooted at the given location."""
-        super(Fold, self).__init__()
-        self.root_location = root_location
+        super(Fold, self).__init__(fold_scope_location)
+        self.fold_scope_location = fold_scope_location
         self.validate()
 
     def validate(self):
         """Ensure the Fold block is valid."""
-        if not isinstance(self.root_location, Location):
-            raise ValueError(u'Expected a Location for root_location, got: '
-                             u'{}'.format(self.root_location))
+        if not isinstance(self.fold_scope_location, FoldScopeLocation):
+            raise TypeError(u'Expected a FoldScopeLocation for fold_scope_location, got: {} '
+                            u'{}'.format(type(self.fold_scope_location), self.fold_scope_location))
 
 
 class Unfold(MarkerBlock):

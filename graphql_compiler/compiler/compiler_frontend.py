@@ -70,7 +70,7 @@ from .directive_helpers import (get_directives, validate_property_directives,
                                 validate_root_vertex_directives, validate_vertex_directives,
                                 validate_vertex_field_directive_interactions)
 from .filters import process_filter_directive
-from .helpers import (Location, get_ast_field_name, get_field_type_from_schema,
+from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_field_type_from_schema,
                       get_uniquely_named_objects_by_name, strip_non_null_from_type,
                       validate_safe_string)
 
@@ -293,6 +293,21 @@ def _validate_recurse_directive_types(current_schema_type, field_schema_type):
                                       u'{}'.format(current_schema_type, field_schema_type))
 
 
+def _get_edge_direction_and_name(vertex_field_name):
+    """Get the edge direction and name from a non-root vertex field name."""
+    edge_direction = None
+    edge_name = None
+    if vertex_field_name.startswith('out_'):
+        edge_direction = 'out'
+        edge_name = vertex_field_name[4:]
+    elif vertex_field_name.startswith('in_'):
+        edge_direction = 'in'
+        edge_name = vertex_field_name[3:]
+    else:
+        raise AssertionError(u'Unreachable condition reached:', vertex_field_name)
+    return edge_direction, edge_name
+
+
 def _compile_vertex_ast(schema, current_schema_type, ast,
                         location, context, local_directives, fields):
     """Return a list of basic blocks corresponding to the vertex AST node.
@@ -382,24 +397,13 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 context['optional'] = inner_location
                 in_topmost_optional_block = True
 
-        edge_direction = None
-        edge_name = None
-        if field_name.startswith('out_'):
-            edge_direction = 'out'
-            edge_name = field_name[4:]
-        elif field_name.startswith('in_'):
-            edge_direction = 'in'
-            edge_name = field_name[3:]
-        else:
-            raise AssertionError(u'Unreachable condition reached:', field_name)
+        edge_direction, edge_name = _get_edge_direction_and_name(field_name)
 
         if fold_directive:
-            context['fold'] = {
-                'root': location,
-                # If we allow folds deeper than a single level,
-                # the below will need to become a list.
-                'relative_position': (edge_direction, edge_name),
-            }
+            fold_scope_location = FoldScopeLocation(location, (edge_direction, edge_name))
+            fold_block = blocks.Fold(fold_scope_location)
+            basic_blocks.append(fold_block)
+            context['fold'] = fold_scope_location
         elif recurse_directive:
             recurse_depth = _get_recurse_directive_depth(field_name, inner_directives)
             _validate_recurse_directive_types(current_schema_type, field_schema_type)
@@ -414,6 +418,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         if fold_directive:
             _validate_fold_has_outputs(context['fold'], context['outputs'])
+            basic_blocks.append(blocks.Unfold())
             del context['fold']
 
         if in_topmost_optional_block:
@@ -440,17 +445,17 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     return basic_blocks
 
 
-def _validate_fold_has_outputs(fold_data, outputs):
+def _validate_fold_has_outputs(fold_scope_location, outputs):
     """Ensure the @fold scope has at least one output."""
-    # At least one output in the outputs list must point to the fold_data,
-    # or the scope corresponding to fold_data had no @outputs and is illegal.
+    # At least one output in the outputs list must point to the fold_scope_location,
+    # or the scope corresponding to fold_scope_location had no @outputs and is illegal.
     for output in six.itervalues(outputs):
-        if output['fold'] is fold_data:
+        if output['fold'] == fold_scope_location:
             return True
 
     raise GraphQLCompilationError(u'Each @fold scope must contain at least one field '
-                                  u'marked @output. Encountered a @fold with no outputs '
-                                  u'at query location: {}'.format(fold_data['root']))
+                                  u'marked @output. Encountered a @fold with no outputs: '
+                                  u'{}'.format(fold_scope_location))
 
 
 def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
@@ -678,17 +683,17 @@ def _compile_output_step(outputs):
         location = output_context['location']
         optional = output_context['optional']
         graphql_type = output_context['type']
-        fold_data = output_context['fold']
+        fold_scope_location = output_context['fold']
 
         expression = None
-        if fold_data:
+        if fold_scope_location:
             if optional:
                 raise AssertionError(u'Unreachable state reached, optional in fold: '
                                      u'{}'.format(output_context))
 
             _, field_name = location.get_location_name()
             expression = expressions.FoldedOutputContextField(
-                fold_data['root'], fold_data['relative_position'], field_name, graphql_type)
+                fold_scope_location, field_name, graphql_type)
         else:
             expression = expressions.OutputContextField(location, graphql_type)
 
