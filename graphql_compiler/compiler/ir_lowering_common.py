@@ -3,7 +3,7 @@
 
 from funcy.py2 import pairwise
 
-from .blocks import ConstructResult, Filter
+from .blocks import ConstructResult, Filter, Fold, Unfold
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
                           NullLiteral, TrueLiteral)
 from .helpers import validate_safe_string
@@ -162,3 +162,46 @@ def optimize_boolean_expression_comparisons(ir_blocks):
         new_ir_blocks.append(new_block)
 
     return new_ir_blocks
+
+
+def extract_folds_from_ir_blocks(ir_blocks):
+    """Extract all @fold data from the IR blocks, and cut the folded IR blocks out of the IR.
+
+    Args:
+        ir_blocks: list of IR blocks to extract fold data from
+
+    Returns:
+        tuple (folds, remaining_ir_blocks):
+        - folds: dict of FoldScopeLocation -> list of IR blocks corresponding to that @fold scope.
+                 The list does not contain Fold or Unfold blocks.
+        - remaining_ir_blocks: list of IR blocks that were not part of a Fold-Unfold section.
+    """
+    folds = dict()
+    remaining_ir_blocks = []
+    current_folded_blocks = []
+    in_fold_location = None
+
+    for block in ir_blocks:
+        if isinstance(block, Fold):
+            if in_fold_location is not None:
+                raise AssertionError(u'in_fold_location was not None at a Fold block: {} {} '
+                                     u'{}'.format(current_folded_blocks, remaining_ir_blocks,
+                                                  ir_blocks))
+
+            in_fold_location = block.fold_scope_location
+        elif isinstance(block, Unfold):
+            if in_fold_location is None:
+                raise AssertionError(u'in_fold_location was None at an Unfold block: {} {} '
+                                     u'{}'.format(current_folded_blocks, remaining_ir_blocks,
+                                                  ir_blocks))
+
+            folds[in_fold_location] = current_folded_blocks
+            current_folded_blocks = []
+            in_fold_location = None
+        else:
+            if in_fold_location is not None:
+                current_folded_blocks.append(block)
+            else:
+                remaining_ir_blocks.append(block)
+
+    return folds, remaining_ir_blocks

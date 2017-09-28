@@ -5,8 +5,9 @@ import six
 from ..exceptions import GraphQLCompilationError
 from ..schema import GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression
-from .helpers import (FoldScopeLocation, Location, ensure_unicode_string, is_graphql_type,
-                      safe_quoted_string, strip_non_null_from_type, validate_safe_string)
+from .helpers import (STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
+                      ensure_unicode_string, is_graphql_type, safe_quoted_string,
+                      strip_non_null_from_type, validate_safe_string)
 
 
 # Since MATCH uses $-prefixed keywords to indicate special values,
@@ -21,11 +22,6 @@ RESERVED_MATCH_KEYWORDS = frozenset({
     u'$depth',
     u'$currentMatch'
 })
-
-
-# These are the Java (OrientDB) representations of the ISO-8601 standard date and datetime formats.
-STANDARD_DATE_FORMAT = 'yyyy-MM-dd'
-STANDARD_DATETIME_FORMAT = 'yyyy-MM-dd\'T\'HH:mm:ssX'
 
 
 class Literal(Expression):
@@ -451,49 +447,8 @@ class FoldedOutputContextField(Expression):
         return template % template_data
 
     def to_gremlin(self):
-        """Return a unicode object with the Gremlin representation of this expression."""
-        self.validate()
-        edge_direction, edge_name = self.fold_scope_location.relative_position
-        inverse_direction_table = {
-            'out': 'in',
-            'in': 'out',
-        }
-        inverse_direction = inverse_direction_table[edge_direction]
-
-        mark_name, _ = self.fold_scope_location.base_location.get_location_name()
-        validate_safe_string(mark_name)
-
-        # This template generates code like:
-        # (
-        #     (m.base.in_Animal_ParentOf == null) ?
-        #     [] : (
-        #         m.base.in_Animal_ParentOf.collect{entry -> entry.outV.next().uuid}
-        #     )
-        # )
-        template = (
-            u'((m.{mark_name}.{direction}_{edge_name} == null) ? [] : ('
-            u'm.{mark_name}.{direction}_{edge_name}.collect{{'
-            u'entry -> entry.{inverse_direction}V.next().{field_name}{maybe_format}'
-            u'}}'
-            u'))'
-        )
-
-        maybe_format = ''
-        inner_type = strip_non_null_from_type(self.field_type.of_type)
-        if GraphQLDate.is_same_type(inner_type):
-            maybe_format = '.format("' + STANDARD_DATE_FORMAT + '")'
-        elif GraphQLDateTime.is_same_type(inner_type):
-            maybe_format = '.format("' + STANDARD_DATETIME_FORMAT + '")'
-
-        template_data = {
-            'mark_name': mark_name,
-            'direction': edge_direction,
-            'edge_name': edge_name,
-            'field_name': self.field_name,
-            'inverse_direction': inverse_direction,
-            'maybe_format': maybe_format,
-        }
-        return template.format(**template_data)
+        """Must never be called."""
+        raise NotImplementedError()
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""

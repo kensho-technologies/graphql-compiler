@@ -8,13 +8,20 @@ to generate directly from this Expression object. An output-language-aware IR lo
 us to convert this Expression into other Expressions, using data already present in the IR,
 to simplify the final code generation step.
 """
+from graphql import GraphQLList
 from graphql.type import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 import six
 
 from ..exceptions import GraphQLCompilationError
-from .blocks import Backtrack, CoerceType, Filter, Traverse
-from .expressions import BinaryComposition, Literal, LocalField, NullLiteral
-from .ir_lowering_common import (lower_context_field_existence, merge_consecutive_filter_clauses,
+from ..schema import GraphQLDate, GraphQLDateTime
+from .blocks import Backtrack, CoerceType, ConstructResult, Filter, Traverse
+from .compiler_entities import BasicBlock, Expression
+from .helpers import (STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation,
+                      strip_non_null_from_type, validate_safe_string)
+from .expressions import (BinaryComposition, FoldedOutputContextField, Literal, LocalField,
+                          NullLiteral)
+from .ir_lowering_common import (extract_folds_from_ir_blocks, lower_context_field_existence,
+                                 merge_consecutive_filter_clauses,
                                  optimize_boolean_expression_comparisons)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 
@@ -122,6 +129,181 @@ def rewrite_filters_in_optional_blocks(ir_blocks):
     return new_ir_blocks
 
 
+class GremlinFoldedOutputContextField(Expression):
+    """A Gremlin-specific FoldedOutputContextField that knows how to output itself as Gremlin."""
+
+    def __init__(self, fold_scope_location, folded_ir_blocks, field_name, field_type):
+        """Create a new GremlinFoldedOutputContextField."""
+        super(GremlinFoldedOutputContextField, self).__init__(
+            fold_scope_location, folded_ir_blocks, field_name, field_type)
+        self.fold_scope_location = fold_scope_location
+        self.folded_ir_blocks = folded_ir_blocks
+        self.field_name = field_name
+        self.field_type = field_type
+        self.validate()
+
+    def validate(self):
+        """Validate that the GremlinFoldedOutputContextField is correctly representable."""
+        if not isinstance(self.fold_scope_location, FoldScopeLocation):
+            raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
+                type(self.fold_scope_location), self.fold_scope_location))
+
+        for block in self.folded_ir_blocks:
+            if not isinstance(block, GremlinFoldedFilter):
+                raise AssertionError(u'Found non-GremlinFoldedFilter in folded_ir_blocks: {} {} '
+                                     u'{}'.format(type(block), block, self.folded_ir_blocks))
+
+        validate_safe_string(self.field_name)
+
+        if not isinstance(self.field_type, GraphQLList):
+            raise ValueError(u'Invalid value of "field_type", expected a list type but got: '
+                             u'{}'.format(self.field_type))
+
+        inner_type = strip_non_null_from_type(self.field_type.of_type)
+        if isinstance(inner_type, GraphQLList):
+            raise GraphQLCompilationError(u'Outputting list-valued fields in a @fold context is '
+                                          u'currently not supported: {} '
+                                          u'{}'.format(self.field_name, self.field_type.of_type))
+
+    def to_match(self):
+        """Must never be called."""
+        raise NotImplementedError()
+
+    def to_gremlin(self):
+        """Return a unicode object with the Gremlin representation of this expression."""
+        self.validate()
+        edge_direction, edge_name = self.fold_scope_location.relative_position
+        inverse_direction_table = {
+            'out': 'in',
+            'in': 'out',
+        }
+        inverse_direction = inverse_direction_table[edge_direction]
+
+        mark_name, _ = self.fold_scope_location.base_location.get_location_name()
+        validate_safe_string(mark_name)
+
+        if not self.folded_ir_blocks:
+            # There is no filtering nor type coercions applied to this @fold scope.
+            #
+            # This template generates code like:
+            # (
+            #     (m.base.in_Animal_ParentOf == null) ?
+            #     [] : (
+            #         m.base.in_Animal_ParentOf.collect{entry -> entry.outV.next().uuid}
+            #     )
+            # )
+            template = (
+                u'((m.{mark_name}.{direction}_{edge_name} == null) ? [] : ('
+                u'm.{mark_name}.{direction}_{edge_name}.collect{{'
+                u'entry -> entry.{inverse_direction}V.next().{field_name}{maybe_format}'
+                u'}}'
+                u'))'
+            )
+            filter_data = ''
+        else:
+            # There is filtering or type coercions in this @fold scope.
+            #
+            # This template generates code like:
+            # (
+            #     (m.base.in_Animal_ParentOf == null) ?
+            #     [] : (
+            #         m.base.in_Animal_ParentOf
+            #          .collect{entry -> entry.outV.next()}
+            #          .findAll{it.alias.contains($wanted)}
+            #          .collect{it.uuid}
+            #     )
+            # )
+            template = (
+                u'((m.{mark_name}.{direction}_{edge_name} == null) ? [] : ('
+                u'm.{mark_name}.{direction}_{edge_name}.collect{{'
+                u'entry -> entry.{inverse_direction}V.next()'
+                u'}}'
+                u'.{filters}'
+                u'.collect{{it.{field_name}{maybe_format}}}'
+                u'))'
+            )
+            filter_data = u'.'.join(block.to_gremlin() for block in self.folded_ir_blocks)
+
+        maybe_format = ''
+        inner_type = strip_non_null_from_type(self.field_type.of_type)
+        if GraphQLDate.is_same_type(inner_type):
+            maybe_format = '.format("' + STANDARD_DATE_FORMAT + '")'
+        elif GraphQLDateTime.is_same_type(inner_type):
+            maybe_format = '.format("' + STANDARD_DATETIME_FORMAT + '")'
+
+        template_data = {
+            'mark_name': mark_name,
+            'direction': edge_direction,
+            'edge_name': edge_name,
+            'field_name': self.field_name,
+            'inverse_direction': inverse_direction,
+            'maybe_format': maybe_format,
+            'filters': filter_data,
+        }
+        return template.format(**template_data)
+
+
+class GremlinFoldedFilter(Filter):
+    """A Gremlin-specific Filter block to be used only within @fold scopes."""
+
+    def to_gremlin(self):
+        """Return a unicode object with the Gremlin representation of this block."""
+        self.validate()
+        return u'findAll{{it, m -> {}}}'.format(self.predicate.to_gremlin())
+
+
+def _convert_folded_filter_blocks(folded_ir_blocks):
+    """Convert Filter blocks inside a @fold scope into GremlinFoldedFilter blocks."""
+    new_folded_ir_blocks = []
+    for block in folded_ir_blocks:
+        new_block = block
+
+        if isinstance(block, Filter):
+            new_block = GremlinFoldedFilter(block.predicate)
+
+        new_folded_ir_blocks.append(new_block)
+
+    return new_folded_ir_blocks
+
+
+def lower_folded_outputs(ir_blocks):
+    """Lower standard folded output fields into GremlinFoldedOutputContextField objects."""
+    folds, remaining_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
+
+    if not remaining_ir_blocks:
+        raise AssertionError(u'Expected at least one non-folded block to remain: {} {} '
+                             u'{}'.format(folds, remaining_ir_blocks, ir_blocks))
+    output_block = remaining_ir_blocks[-1]
+    if not isinstance(output_block, ConstructResult):
+        raise AssertionError(u'Expected the last non-folded block to be ConstructResult, '
+                             u'but instead was: {} {} '
+                             u'{}'.format(type(output_block), output_block, ir_blocks))
+
+    # Turn folded Filter blocks into GremlinFoldedFilter blocks.
+    converted_folds = {
+        key: _convert_folded_filter_blocks(folded_ir_blocks)
+        for key, folded_ir_blocks in six.iteritems(folds)
+    }
+
+    new_output_fields = dict()
+    for output_name, output_expression in six.iteritems(output_block.fields):
+        new_output_expression = output_expression
+
+        # Turn FoldedOutputContextField expressions into GremlinFoldedOutputContextField ones.
+        if isinstance(output_expression, FoldedOutputContextField):
+            # Get the matching folded IR blocks and put them in the new context field.
+            folded_ir_blocks = converted_folds[output_expression.fold_scope_location]
+            new_output_expression = GremlinFoldedOutputContextField(
+                output_expression.fold_scope_location, folded_ir_blocks,
+                output_expression.field_name, output_expression.field_type)
+
+        new_output_fields[output_name] = new_output_expression
+
+    new_ir_blocks = remaining_ir_blocks[:-1]
+    new_ir_blocks.append(ConstructResult(new_output_fields))
+    return new_ir_blocks
+
+
 ##############
 # Public API #
 ##############
@@ -162,5 +344,6 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     ir_blocks = lower_coerce_type_blocks(ir_blocks)
     ir_blocks = rewrite_filters_in_optional_blocks(ir_blocks)
     ir_blocks = merge_consecutive_filter_clauses(ir_blocks)
+    ir_blocks = lower_folded_outputs(ir_blocks)
 
     return ir_blocks

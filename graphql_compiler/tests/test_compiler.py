@@ -2269,29 +2269,23 @@ FROM (
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                animal_name: m.Animal___1.name,
-                child_list: (
-                    (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
-                        m.Animal___1.out_Animal_ParentOf.collect{
-                            entry -> entry.inV.next()
-                        }.findAll{
-                            it.name == $desired
-                        }.collect{
-                            it.name
-                        }
-                    )
-                ),
                 child_descriptions: (
                     (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
-                        m.Animal___1.out_Animal_ParentOf.collect{
-                            entry -> entry.inV.next()
-                        }.findAll{
-                            it.name == $desired
-                        }.collect{
-                            it.description
-                        }
+                        m.Animal___1.out_Animal_ParentOf
+                         .collect{entry -> entry.inV.next()}
+                         .findAll{it, m -> (it.name == $desired)}
+                         .collect{it.description}
                     )
-                )
+                ),
+                child_list: (
+                    (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.out_Animal_ParentOf
+                         .collect{entry -> entry.inV.next()}
+                         .findAll{it, m -> (it.name == $desired)}
+                         .collect{it.name}
+                    )
+                ),
+                name: m.Animal___1.name
             ])}
         '''
 
