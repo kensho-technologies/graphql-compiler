@@ -16,10 +16,10 @@ from ..exceptions import GraphQLCompilationError
 from ..schema import GraphQLDate, GraphQLDateTime
 from .blocks import Backtrack, CoerceType, ConstructResult, Filter, Traverse
 from .compiler_entities import Expression
-from .helpers import (STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation,
-                      strip_non_null_from_type, validate_safe_string)
 from .expressions import (BinaryComposition, FoldedOutputContextField, Literal, LocalField,
                           NullLiteral)
+from .helpers import (STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation,
+                      strip_non_null_from_type, validate_safe_string)
 from .ir_lowering_common import (extract_folds_from_ir_blocks, lower_context_field_existence,
                                  merge_consecutive_filter_clauses,
                                  optimize_boolean_expression_comparisons)

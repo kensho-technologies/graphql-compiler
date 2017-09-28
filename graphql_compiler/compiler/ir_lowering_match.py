@@ -13,12 +13,12 @@ import six
 
 from .blocks import Backtrack, CoerceType, Filter, MarkLocation, QueryRoot, Traverse
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
-                          LocalField, Literal, TernaryConditional, TrueLiteral)
+                          Literal, LocalField, TernaryConditional, TrueLiteral)
 from .ir_lowering_common import (lower_context_field_existence, merge_consecutive_filter_clauses,
                                  optimize_boolean_expression_comparisons)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .match_query import MatchStep, convert_to_match_query
-from .workarounds import orientdb_class_vs_instanceof, orientdb_eval_scheduling
+from .workarounds import orientdb_eval_scheduling
 
 
 ##################################

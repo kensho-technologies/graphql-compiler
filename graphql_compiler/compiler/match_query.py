@@ -3,8 +3,8 @@
 
 from collections import namedtuple
 
-from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation,
-                     OutputSource, QueryRoot, Recurse, Traverse, Unfold)
+from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, OutputSource,
+                     QueryRoot, Recurse, Traverse)
 from .ir_lowering_common import extract_folds_from_ir_blocks
 
 

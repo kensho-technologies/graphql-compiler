@@ -6,7 +6,6 @@ from graphql.language.ast import ListValue
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
-from .context_helpers import is_in_fold_scope
 from .helpers import (get_ast_field_name, get_uniquely_named_objects_by_name, is_real_leaf_type,
                       strip_non_null_from_type, validate_safe_string)
 
