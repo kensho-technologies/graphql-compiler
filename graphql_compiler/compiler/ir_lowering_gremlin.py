@@ -265,7 +265,7 @@ def _convert_folded_filter_blocks(folded_ir_blocks):
     new_folded_ir_blocks = []
 
     def folded_context_visitor(expression):
-        """Transforms LocalField objects into their Gremlin-specific counterpart."""
+        """Transform LocalField objects into their Gremlin-specific counterpart."""
         if not isinstance(expression, LocalField):
             return expression
 
