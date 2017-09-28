@@ -219,7 +219,7 @@ class GremlinFoldedOutputContextField(Expression):
                 u'entry -> entry.{inverse_direction}V.next()'
                 u'}}'
                 u'.{filters}'
-                u'.collect{{it.{field_name}{maybe_format}}}'
+                u'.collect{{entry -> entry.{field_name}{maybe_format}}}'
                 u'))'
             )
             filter_data = u'.'.join(block.to_gremlin() for block in self.folded_ir_blocks)
@@ -249,17 +249,34 @@ class GremlinFoldedFilter(Filter):
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this block."""
         self.validate()
-        return u'findAll{{it, m -> {}}}'.format(self.predicate.to_gremlin())
+        return u'findAll{{entry -> {}}}'.format(self.predicate.to_gremlin())
+
+
+class GremlinFoldedLocalField(LocalField):
+    """A Gremlin-specific LocalField expressionto be used only within @fold scopes."""
+
+    def get_local_object_gremlin_name(self):
+        """Return the Gremlin name of the local object whose field is being produced."""
+        return u'entry'
 
 
 def _convert_folded_filter_blocks(folded_ir_blocks):
-    """Convert Filter blocks inside a @fold scope into GremlinFoldedFilter blocks."""
+    """Convert Filter blocks and LocalField expressions inside a @fold into Gremlin-type objects."""
     new_folded_ir_blocks = []
+
+    def folded_context_visitor(expression):
+        """Transforms LocalField objects into their Gremlin-specific counterpart."""
+        if not isinstance(expression, LocalField):
+            return expression
+
+        return GremlinFoldedLocalField(expression.field_name)
+
     for block in folded_ir_blocks:
         new_block = block
 
         if isinstance(block, Filter):
-            new_block = GremlinFoldedFilter(block.predicate)
+            new_predicate = block.predicate.visit_and_update(folded_context_visitor)
+            new_block = GremlinFoldedFilter(new_predicate)
 
         new_folded_ir_blocks.append(new_block)
 

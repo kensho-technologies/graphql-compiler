@@ -200,6 +200,10 @@ class LocalField(Expression):
         self.field_name = field_name
         self.validate()
 
+    def get_local_object_gremlin_name(self):
+        """Return the Gremlin name of the local object whose field is being produced."""
+        return u'it'
+
     def validate(self):
         """Validate that the LocalField is correctly representable."""
         validate_safe_string(self.field_name)
@@ -213,13 +217,15 @@ class LocalField(Expression):
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
 
+        local_object_name = self.get_local_object_gremlin_name()
+
         if self.field_name == '@this':
-            return u'it'
+            return local_object_name
 
         if '@' in self.field_name:
-            return u'it[\'{}\']'.format(self.field_name)
+            return u'{}[\'{}\']'.format(local_object_name, self.field_name)
         else:
-            return u'it.{}'.format(self.field_name)
+            return u'{}.{}'.format(local_object_name, self.field_name)
 
 
 class ContextField(Expression):
