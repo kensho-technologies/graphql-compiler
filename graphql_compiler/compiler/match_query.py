@@ -143,36 +143,36 @@ def _extract_folds_from_ir_blocks(ir_blocks):
     Returns:
         tuple (folds, remaining_ir_blocks):
         - folds: dict of FoldScopeLocation -> list of IR blocks corresponding to that @fold scope.
-                 The list is guaranteed to start with a Fold and end with an Unfold block.
+                 The list does not contain Fold or Unfold blocks.
         - remaining_ir_blocks: list of IR blocks that were not part of a Fold-Unfold section.
     """
     folds = dict()
     remaining_ir_blocks = []
     current_folded_blocks = []
-    in_fold = False
+    in_fold_location = None
 
     for block in ir_blocks:
         if isinstance(block, Fold):
-            in_fold = True
+            if in_fold_location is not None:
+                raise AssertionError(u'in_fold_location was not None at a Fold block: {} {} '
+                                     u'{}'.format(current_folded_blocks, remaining_ir_blocks,
+                                                  ir_blocks))
 
-        if in_fold:
-            current_folded_blocks.append(block)
+            in_fold_location = block.fold_scope_location
+        elif isinstance(block, Unfold):
+            if in_fold_location is None:
+                raise AssertionError(u'in_fold_location was None at an Unfold block: {} {} '
+                                     u'{}'.format(current_folded_blocks, remaining_ir_blocks,
+                                                  ir_blocks))
+
+            folds[in_fold_location] = current_folded_blocks
+            current_folded_blocks = []
+            in_fold_location = None
         else:
-            remaining_ir_blocks.append(block)
-
-        if isinstance(block, Unfold):
-            in_fold = False
-            first_folded_block = current_folded_blocks[0]
-            last_folded_block = current_folded_blocks[-1]
-
-            if not isinstance(first_folded_block, Fold):
-                raise AssertionError(u'Expected the first folded block to be Fold, but was: '
-                                     u'{} {}'.format(first_folded_block, ir_blocks))
-            if not isinstance(last_folded_block, Unfold):
-                raise AssertionError(u'Expected the last folded block to be Unfold, but was: '
-                                     u'{} {}'.format(last_folded_block, ir_blocks))
-
-            folds[first_folded_block.fold_scope_location] = current_folded_blocks
+            if in_fold_location is not None:
+                current_folded_blocks.append(block)
+            else:
+                remaining_ir_blocks.append(block)
 
     return folds, remaining_ir_blocks
 

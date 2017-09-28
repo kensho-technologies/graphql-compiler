@@ -427,10 +427,10 @@ class FoldedOutputContextField(Expression):
         self.validate()
         edge_direction, edge_name = self.fold_scope_location.relative_position
 
-        mark_name, _ = self.fold_scope_location.base_location.get_location_name()
+        mark_name = self.fold_scope_location.get_location_name()
         validate_safe_string(mark_name)
 
-        template = u'%(mark_name)s.%(direction)s("%(edge_name)s").%(field_name)s'
+        template = u'$%(mark_name)s.%(field_name)s'
 
         inner_type = strip_non_null_from_type(self.field_type.of_type)
         if GraphQLDate.is_same_type(inner_type):

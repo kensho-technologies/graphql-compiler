@@ -2,7 +2,10 @@
 """Convert lowered IR basic blocks to MATCH query strings."""
 from collections import deque
 
-from .blocks import QueryRoot, Recurse, Traverse
+import six
+
+from .blocks import Filter, QueryRoot, Recurse, Traverse
+from .helpers import validate_safe_string
 
 
 def _get_vertex_location_name(location):
@@ -62,10 +65,6 @@ def _subsequent_step_to_match(match_step):
 
     parts = []
     if match_step.coerce_type_block:
-        if is_recursing:
-            raise AssertionError(u'Found MATCH type coercion block within Recurse step: '
-                                 u'{}'.format(match_step))
-
         coerce_type_set = match_step.coerce_type_block.target_class
         if len(coerce_type_set) != 1:
             raise AssertionError(u'Found MATCH type coercion block with more than one target class:'
@@ -103,6 +102,35 @@ def _represent_match_traversal(match_traversal):
     return u''.join(output)
 
 
+def _represent_fold(fold_location, fold_ir_blocks):
+    """Emit a LET clause corresponding to the IR blocks for a @fold scope."""
+    base_template = u'$%(mark_name)s = %(base_location)s.%(direction)s("%(edge_name)s")'
+    edge_direction, edge_name = fold_location.relative_position
+    mark_name = fold_location.get_location_name()
+    base_location_name, _ = fold_location.base_location.get_location_name()
+
+    validate_safe_string(mark_name)
+    validate_safe_string(base_location_name)
+    validate_safe_string(edge_direction)
+    validate_safe_string(edge_name)
+
+    template_data = {
+        'mark_name': mark_name,
+        'base_location': base_location_name,
+        'direction': edge_direction,
+        'edge_name': edge_name,
+    }
+    final_string = base_template % template_data
+
+    for block in fold_ir_blocks:
+        if not isinstance(block, Filter):
+            raise AssertionError(u'Found a non-Filter IR block in the folded IR blocks: {} {} '
+                                 u'{}'.format(type(block), block, fold_ir_blocks))
+        final_string += u'[' + block.predicate.to_match() + u']'
+
+    return final_string
+
+
 def _construct_output_to_match(output_block):
     """Transform a ConstructResult block into a MATCH query string."""
     output_block.validate()
@@ -127,11 +155,11 @@ def emit_code_from_ir(match_query):
         raise AssertionError(u'Unexpected falsy value for match_query.match_traversals received: '
                              u'{} {}'.format(match_query.match_traversals, match_query))
 
+    # Represent and add the MATCH traversal steps.
     match_traversal_data = [
         _represent_match_traversal(x)
         for x in match_query.match_traversals
     ]
-
     query_data.append(match_traversal_data[0])
     for traversal_data in match_traversal_data[1:]:
         query_data.append(u', ')
@@ -139,6 +167,20 @@ def emit_code_from_ir(match_query):
 
     query_data.appendleft(u' (')            # Prepare to wrap the MATCH in a SELECT.
     query_data.append(u'RETURN $matches)')  # Finish the MATCH query and the wrapping ().
+
+    # Represent and add the LET clauses for any @fold scopes that might be part of the query.
+    fold_data = [
+        _represent_fold(fold_location, fold_ir_blocks)
+        for fold_location, fold_ir_blocks in six.iteritems(match_query.folds)
+    ]
+    if fold_data:
+        query_data.append(u' LET ')
+        query_data.append(fold_data[0])
+        for fold_clause in fold_data[1:]:
+            query_data.append(u', ')
+            query_data.append(fold_clause)
+
+    # Represent and add the SELECT clauses with the proper output data.
     query_data.appendleft(_construct_output_to_match(match_query.output_block))
 
     return u' '.join(query_data)

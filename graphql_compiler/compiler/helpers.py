@@ -271,6 +271,12 @@ class FoldScopeLocation(object):
         self.base_location = base_location
         self.relative_position = relative_position
 
+    def get_location_name(self):
+        """Return a unique name for the FoldScopeLocation."""
+        edge_direction, edge_name = self.relative_position
+        return (self.base_location.get_location_name()[0] + u'___' +
+                edge_direction + u'_' + edge_name)
+
     def __str__(self):
         """Return a human-readable str representation of the FoldScopeLocation object."""
         return u'FoldScopeLocation({}, {})'.format(self.base_location, self.relative_position)

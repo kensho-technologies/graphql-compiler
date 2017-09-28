@@ -2154,6 +2154,7 @@ class IrGenerationTests(unittest.TestCase):
                 name @output(out_name: "name")
                 out_Animal_ParentOf @fold {
                     name @filter(op_name: "=", value: ["$desired"]) @output(out_name: "child_list")
+                    description @output(out_name: "child_descriptions")
                 }
             }
         }'''
@@ -2178,11 +2179,15 @@ class IrGenerationTests(unittest.TestCase):
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_list': expressions.FoldedOutputContextField(
                     base_parent_fold, 'name', GraphQLList(GraphQLString)),
+                'child_descriptions': expressions.FoldedOutputContextField(
+                    base_parent_fold, 'description', GraphQLList(GraphQLString)),
             }),
         ]
         expected_output_metadata = {
             'name': OutputMetadata(type=GraphQLString, optional=False),
             'child_list': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+            'child_descriptions': OutputMetadata(
                 type=GraphQLList(GraphQLString), optional=False),
         }
         expected_input_metadata = {

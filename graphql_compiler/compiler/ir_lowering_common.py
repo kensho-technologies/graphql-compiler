@@ -11,6 +11,9 @@ from .helpers import validate_safe_string
 
 def merge_consecutive_filter_clauses(ir_blocks):
     """Merge consecutive Filter(x), Filter(y) blocks into Filter(x && y) block."""
+    if not ir_blocks:
+        return ir_blocks
+
     new_ir_blocks = [ir_blocks[0]]
 
     for previous_block, current_block in pairwise(ir_blocks):
