@@ -2,6 +2,10 @@
 
 ## Current development version
 
+- ** BREAKING **: Requires OrientDB 2.2.28+, since it depends on two OrientDB bugs being fixed: [bug 1](https://github.com/orientechnologies/orientdb/issues/7225) [bug 2](https://github.com/orientechnologies/orientdb/issues/7754)
+- Fix bug where `@filter` directives could end up ignored if more than two were in the same scope
+- Optimize type coercions in `@optional` and `@recurse` scopes.
+- Optimize multiple outputs from the same `@fold` scope.
 - Allow having multiple `@filter` directives on the same field
 
 ## v1.1.0

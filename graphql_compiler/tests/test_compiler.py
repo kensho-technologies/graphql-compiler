@@ -2409,3 +2409,133 @@ FROM (
 
         check_test_data(self, graphql_input, expected_match, expected_gremlin,
                         expected_output_metadata, expected_input_metadata)
+
+    def test_coercion_on_union_within_fold_scope(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_ImportantEvent @fold {
+                    ... on BirthEvent {
+                        name @output(out_name: "birth_events")
+                    }
+                }
+            }
+        }'''
+
+        expected_match = '''
+            SELECT
+                $Animal___1___out_Animal_ImportantEvent.name AS `birth_events`,
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___out_Animal_ImportantEvent =
+                    Animal___1.out("Animal_ImportantEvent")[(@this INSTANCEOF 'BirthEvent')]
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                birth_events: (
+                    (m.Animal___1.out_Animal_ImportantEvent == null) ? [] : (
+                        m.Animal___1.out_Animal_ImportantEvent
+                         .collect{entry -> entry.inV.next()}
+                         .findAll{entry -> ['BirthEvent'].contains(entry['@class'])}
+                         .collect{entry -> entry.name}
+                    )
+                ),
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        expected_output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False),
+            'birth_events': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {}
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata)
+
+    def test_coercion_filters_and_multiple_outputs_within_fold_scope(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Entity_Related @fold {
+                    ... on Animal {
+                        name @filter(op_name: "has_substring", value: ["$substring"])
+                             @output(out_name: "related_animals")
+                        birthday @filter(op_name: "<=", value: ["$latest"])
+                                 @output(out_name: "related_birthdays")
+                    }
+                }
+            }
+        }'''
+
+        expected_match = '''
+    SELECT
+        Animal___1.name AS `name`,
+        $Animal___1___out_Entity_Related.name AS `related_animals`,
+        $Animal___1___out_Entity_Related.birthday.format("yyyy-MM-dd") AS `related_birthdays`
+    FROM (
+        MATCH {{
+            class: Animal,
+            as: Animal___1
+        }}
+        RETURN $matches
+    ) LET
+        $Animal___1___out_Entity_Related =
+            Animal___1.out("Entity_Related")[(
+                (@this INSTANCEOF 'Animal') AND
+                ((name LIKE ('%' + ({substring} + '%'))) AND
+                (birthday <= date({latest}, "yyyy-MM-dd"))))]
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name,
+                related_animals: (
+                    (m.Animal___1.out_Entity_Related == null) ? [] : (
+                        m.Animal___1.out_Entity_Related
+                         .collect{entry -> entry.inV.next()}
+                         .findAll{entry -> (
+                            (['Animal'].contains(entry['@class']) &&
+                             entry.name.contains($substring)) &&
+                             (entry.birthday <= Date.parse("yyyy-MM-dd", $latest)))}
+                         .collect{entry -> entry.name}
+                    )
+                ),
+                related_birthdays: (
+                    (m.Animal___1.out_Entity_Related == null) ? [] : (
+                        m.Animal___1.out_Entity_Related
+                         .collect{entry -> entry.inV.next()}
+                         .findAll{entry -> (
+                            (['Animal'].contains(entry['@class']) &&
+                             entry.name.contains($substring)) &&
+                             (entry.birthday <= Date.parse("yyyy-MM-dd", $latest)))}
+                         .collect{entry -> entry.birthday.format("yyyy-MM-dd")}
+                    )
+                )
+            ])}
+        '''
+
+        expected_output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False),
+            'related_animals': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+            'related_birthdays': OutputMetadata(
+                type=GraphQLList(GraphQLDate), optional=False),
+        }
+        expected_input_metadata = {
+            'substring': GraphQLString,
+            'latest': GraphQLDate,
+        }
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata)

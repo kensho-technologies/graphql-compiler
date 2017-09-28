@@ -2342,3 +2342,69 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, graphql_input, expected_blocks,
                         expected_output_metadata, expected_input_metadata, expected_location_types)
+
+    def test_coercion_filters_and_multiple_outputs_within_fold_scope(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Entity_Related @fold {
+                    ... on Animal {
+                        name @filter(op_name: "has_substring", value: ["$substring"])
+                             @output(out_name: "related_animals")
+                        birthday @filter(op_name: "<=", value: ["$latest"])
+                                 @output(out_name: "related_birthdays")
+                    }
+                }
+            }
+        }'''
+
+        base_location = helpers.Location(('Animal',))
+        base_parent_fold = helpers.FoldScopeLocation(base_location, ('out', 'Entity_Related'))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_parent_fold),
+            blocks.CoerceType({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'has_substring',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$substring', GraphQLString)
+                )
+            ),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'<=',
+                    expressions.LocalField('birthday'),
+                    expressions.Variable('$latest', GraphQLDate)
+                )
+            ),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'related_animals': expressions.FoldedOutputContextField(
+                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+                'related_birthdays': expressions.FoldedOutputContextField(
+                    base_parent_fold, 'birthday', GraphQLList(GraphQLDate)),
+            }),
+        ]
+        expected_output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False),
+            'related_animals': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+            'related_birthdays': OutputMetadata(
+                type=GraphQLList(GraphQLDate), optional=False),
+        }
+        expected_input_metadata = {
+            'substring': GraphQLString,
+            'latest': GraphQLDate,
+        }
+        expected_location_types = {
+            # The folded location was never traversed to, so it does not appear here.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, graphql_input, expected_blocks,
+                        expected_output_metadata, expected_input_metadata, expected_location_types)

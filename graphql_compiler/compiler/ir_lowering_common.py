@@ -1,8 +1,6 @@
 # Copyright 2017 Kensho Technologies, Inc.
 """Language-independent IR lowering and optimization functions."""
 
-from funcy.py2 import pairwise
-
 from .blocks import ConstructResult, Filter, Fold, Unfold
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
                           NullLiteral, TrueLiteral)
@@ -16,12 +14,13 @@ def merge_consecutive_filter_clauses(ir_blocks):
 
     new_ir_blocks = [ir_blocks[0]]
 
-    for previous_block, current_block in pairwise(ir_blocks):
-        if isinstance(previous_block, Filter) and isinstance(current_block, Filter):
+    for block in ir_blocks[1:]:
+        last_block = new_ir_blocks[-1]
+        if isinstance(last_block, Filter) and isinstance(block, Filter):
             new_ir_blocks[-1] = Filter(
-                BinaryComposition(u'&&', previous_block.predicate, current_block.predicate))
+                BinaryComposition(u'&&', last_block.predicate, block.predicate))
         else:
-            new_ir_blocks.append(current_block)
+            new_ir_blocks.append(block)
 
     return new_ir_blocks
 
