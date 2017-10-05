@@ -1,35 +1,11 @@
 # Copyright 2017 Kensho Technologies, Inc.
+"""Definitions of the basic blocks of the compiler."""
+
 import six
 
-from .expressions import Expression
-from .helpers import (CompilerEntity, ensure_unicode_string, safe_quoted_string,
-                      validate_marked_location, validate_safe_string)
-
-
-class BasicBlock(CompilerEntity):
-    """A basic operation block of the GraphQL compiler."""
-
-    def visit_and_update_expressions(self, visitor_fn):
-        """Create an updated version (if needed) of the BasicBlock via the visitor pattern.
-
-        Args:
-            visitor_fn: function that takes an Expression argument, and returns an Expression.
-                        This function is recursively called on all child Expressions that may
-                        exist within this BasicBlock. If the visitor_fn does not return the
-                        exact same object that was passed in, this is interpreted as an update
-                        request, and the visit_and_update() method will return a new BasicBlock
-                        with the given update applied. No Expressions or BasicBlocks are
-                        mutated in-place.
-
-        Returns:
-            - If the visitor_fn does not request any updates (by always returning the exact same
-              object it was called with), this method returns 'self'.
-            - Otherwise, this method returns a new BasicBlock object that reflects the updates
-              requested by the visitor_fn.
-        """
-        # Most BasicBlocks do not contain expressions, and immediately return 'self'.
-        # Any BasicBlocks that contain Expressions will override this method.
-        return self
+from .compiler_entities import BasicBlock, Expression, MarkerBlock
+from .helpers import (FoldScopeLocation, ensure_unicode_string, safe_quoted_string,
+                      validate_edge_direction, validate_marked_location, validate_safe_string)
 
 
 class QueryRoot(BasicBlock):
@@ -259,9 +235,7 @@ class Traverse(BasicBlock):
             raise TypeError(u'Expected string direction, got: {} {}'.format(
                 type(self.direction).__name__, self.direction))
 
-        if self.direction not in {u'in', u'out'}:
-            raise ValueError(u'Expected direction to be "in" or "out", got: '
-                             u'{}'.format(self.direction))
+        validate_edge_direction(self.direction)
 
         if not isinstance(self.optional, bool):
             raise TypeError(u'Expected bool optional, got: {} {}'.format(
@@ -319,14 +293,7 @@ class Recurse(BasicBlock):
 
     def validate(self):
         """Ensure that the Traverse block is valid."""
-        if not isinstance(self.direction, six.string_types):
-            raise TypeError(u'Expected string direction, got: {} {}'.format(
-                type(self.direction).__name__, self.direction))
-
-        if self.direction not in {u'in', u'out'}:
-            raise ValueError(u'Expected direction to be "in" or "out", got: '
-                             u'{}'.format(self.direction))
-
+        validate_edge_direction(self.direction)
         validate_safe_string(self.edge_name)
 
         if not isinstance(self.depth, int):
@@ -392,7 +359,7 @@ class Backtrack(BasicBlock):
             mark_name=safe_quoted_string(mark_name))
 
 
-class OutputSource(BasicBlock):
+class OutputSource(MarkerBlock):
     """A block that declares the output should have >= 1 row for each value at that location.
 
     This block, together with the @output_source directive that generates it,
@@ -403,22 +370,30 @@ class OutputSource(BasicBlock):
     See the comment on the @output_source directive in schema.py on why this is necessary.
     """
 
-    def __init__(self):
-        """Create a new OutputSource block."""
-        super(OutputSource, self).__init__()
+    def validate(self):
+        """Validate the OutputSource block. An OutputSource block is always valid in isolation."""
+        pass
+
+
+class Fold(MarkerBlock):
+    """A marker for the start of a @fold context."""
+
+    def __init__(self, fold_scope_location):
+        """Create a new Fold block rooted at the given location."""
+        super(Fold, self).__init__(fold_scope_location)
+        self.fold_scope_location = fold_scope_location
         self.validate()
 
     def validate(self):
-        """Ensure that the OutputSource block is valid.
+        """Ensure the Fold block is valid."""
+        if not isinstance(self.fold_scope_location, FoldScopeLocation):
+            raise TypeError(u'Expected a FoldScopeLocation for fold_scope_location, got: {} '
+                            u'{}'.format(type(self.fold_scope_location), self.fold_scope_location))
 
-        OutputSource blocks are always valid in isolation.
-        """
+
+class Unfold(MarkerBlock):
+    """A marker for the end of a @fold context."""
+
+    def validate(self):
+        """Unfold blocks are always valid in isolation."""
         pass
-
-    def to_gremlin(self):
-        """Return the unicode representation of this BasicBlock.
-
-        The correct Gremlin representation of OutputSource blocks is an empty string.
-        Their effect is applied during code generation and optimization passes.
-        """
-        return u''

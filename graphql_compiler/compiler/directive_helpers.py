@@ -1,3 +1,4 @@
+# Copyright 2017 Kensho Technologies, Inc.
 """Helper functions for dealing with GraphQL directives."""
 
 import six
@@ -75,15 +76,10 @@ def validate_root_vertex_directives(directives):
 
 def validate_vertex_field_directive_interactions(location, directives):
     """Ensure that the specified vertex field directives are not mutually disallowed."""
-    filter_directives = directives.get('filter', None)
     fold_directive = directives.get('fold', None)
     optional_directive = directives.get('optional', None)
     output_source_directive = directives.get('output_source', None)
     recurse_directive = directives.get('recurse', None)
-
-    if filter_directives and fold_directive:
-        raise GraphQLCompilationError(u'@filter and @fold may not appear at the same '
-                                      u'vertex field! Location: {}'.format(location))
 
     if fold_directive and optional_directive:
         raise GraphQLCompilationError(u'@fold and @optional may not appear at the same '

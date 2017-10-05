@@ -4,8 +4,10 @@ import six
 
 from ..exceptions import GraphQLCompilationError
 from ..schema import GraphQLDate, GraphQLDateTime
-from .helpers import (CompilerEntity, Location, ensure_unicode_string, is_graphql_type,
-                      safe_quoted_string, strip_non_null_from_type, validate_safe_string)
+from .compiler_entities import Expression
+from .helpers import (STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
+                      ensure_unicode_string, is_graphql_type, safe_quoted_string,
+                      strip_non_null_from_type, validate_safe_string)
 
 
 # Since MATCH uses $-prefixed keywords to indicate special values,
@@ -20,36 +22,6 @@ RESERVED_MATCH_KEYWORDS = frozenset({
     u'$depth',
     u'$currentMatch'
 })
-
-
-# These are the Java (OrientDB) representations of the ISO-8601 standard date and datetime formats.
-STANDARD_DATE_FORMAT = 'yyyy-MM-dd'
-STANDARD_DATETIME_FORMAT = 'yyyy-MM-dd\'T\'HH:mm:ssX'
-
-
-class Expression(CompilerEntity):
-    """An expression that produces a value in the GraphQL compiler."""
-
-    def visit_and_update(self, visitor_fn):
-        """Create an updated version (if needed) of the Expression via the visitor pattern.
-
-        Args:
-            visitor_fn: function that takes an Expression argument, and returns an Expression.
-                        This function is recursively called on all child Expressions that may
-                        exist within this expression. If the visitor_fn does not return the
-                        exact same object that was passed in, this is interpreted as an update
-                        request, and the visit_and_update() method will return a new Expression
-                        with the given update applied. No Expressions are mutated in-place.
-
-        Returns:
-            - If the visitor_fn does not request any updates (by always returning the exact same
-              object it was called with), this method returns 'self'.
-            - Otherwise, this method returns a new Expression object that reflects the updates
-              requested by the visitor_fn.
-        """
-        # Most Expressions simply visit themselves.
-        # Any Expressions that contain Expressions will override this method.
-        return visitor_fn(self)
 
 
 class Literal(Expression):
@@ -228,6 +200,10 @@ class LocalField(Expression):
         self.field_name = field_name
         self.validate()
 
+    def get_local_object_gremlin_name(self):
+        """Return the Gremlin name of the local object whose field is being produced."""
+        return u'it'
+
     def validate(self):
         """Validate that the LocalField is correctly representable."""
         validate_safe_string(self.field_name)
@@ -241,13 +217,15 @@ class LocalField(Expression):
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
 
+        local_object_name = self.get_local_object_gremlin_name()
+
         if self.field_name == '@this':
-            return u'it'
+            return local_object_name
 
         if '@' in self.field_name:
-            return u'it[\'{}\']'.format(self.field_name)
+            return u'{}[\'{}\']'.format(local_object_name, self.field_name)
         else:
-            return u'it.{}'.format(self.field_name)
+            return u'{}.{}'.format(local_object_name, self.field_name)
 
 
 class ContextField(Expression):
@@ -409,13 +387,12 @@ class OutputContextField(Expression):
 class FoldedOutputContextField(Expression):
     """An expression used to output data captured in a @fold scope."""
 
-    def __init__(self, root_location, relative_position, field_name, field_type):
+    def __init__(self, fold_scope_location, field_name, field_type):
         """Construct a new FoldedOutputContextField object for this folded field.
 
         Args:
-            root_location: Location, specifying where the @fold was applied.
-            relative_position: tuple of (edge_direction, edge_name) specifying the field's
-                               enclosing vertex field, relative to the root_location.
+            fold_scope_location: FoldScopeLocation specifying the start of the @fold scope
+                                 where this output context field was captured.
             field_name: string, the name of the field being output.
             field_type: GraphQL type object, specifying the type of the field being output.
                         Since the field is folded, this must be a GraphQLList of some kind.
@@ -423,35 +400,17 @@ class FoldedOutputContextField(Expression):
         Returns:
             new FoldedOutputContextField object
         """
-        super(FoldedOutputContextField, self).__init__(root_location, relative_position,
-                                                       field_name, field_type)
-        self.root_location = root_location
-        self.relative_position = relative_position
+        super(FoldedOutputContextField, self).__init__(fold_scope_location, field_name, field_type)
+        self.fold_scope_location = fold_scope_location
         self.field_name = field_name
         self.field_type = field_type
         self.validate()
 
     def validate(self):
         """Validate that the FoldedOutputContextField is correctly representable."""
-        if not isinstance(self.root_location, Location):
-            raise TypeError(u'Expected Location root_location, got: {} {}'.format(
-                type(self.root_location).__name__, self.root_location))
-
-        if self.root_location.field:
-            raise ValueError(u'Expected Location object that points to a vertex, got: '
-                             u'{}'.format(self.root_location))
-
-        if not isinstance(self.relative_position, tuple) or len(self.relative_position) != 2:
-            raise ValueError(u'Expected relative_position to be a tuple '
-                             u'(edge_direction, edge_name) but got: '
-                             u'{}'.format(self.relative_position))
-
-        edge_direction, edge_name = self.relative_position
-        validate_safe_string(edge_direction)
-        validate_safe_string(edge_name)
-        if edge_direction not in {'out', 'in'}:
-            raise ValueError(u'Expected relative_position[0] to be "in" or "out", '
-                             u'but got: {}'.format(edge_direction))
+        if not isinstance(self.fold_scope_location, FoldScopeLocation):
+            raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
+                type(self.fold_scope_location), self.fold_scope_location))
 
         validate_safe_string(self.field_name)
 
@@ -468,12 +427,12 @@ class FoldedOutputContextField(Expression):
     def to_match(self):
         """Return a unicode object with the MATCH representation of this expression."""
         self.validate()
-        edge_direction, edge_name = self.relative_position
+        edge_direction, edge_name = self.fold_scope_location.relative_position
 
-        mark_name, _ = self.root_location.get_location_name()
+        mark_name = self.fold_scope_location.get_location_name()
         validate_safe_string(mark_name)
 
-        template = u'%(mark_name)s.%(direction)s("%(edge_name)s").%(field_name)s'
+        template = u'$%(mark_name)s.%(field_name)s'
 
         inner_type = strip_non_null_from_type(self.field_type.of_type)
         if GraphQLDate.is_same_type(inner_type):
@@ -494,57 +453,15 @@ class FoldedOutputContextField(Expression):
         return template % template_data
 
     def to_gremlin(self):
-        """Return a unicode object with the Gremlin representation of this expression."""
-        self.validate()
-        edge_direction, edge_name = self.relative_position
-        inverse_direction_table = {
-            'out': 'in',
-            'in': 'out',
-        }
-        inverse_direction = inverse_direction_table[edge_direction]
-
-        mark_name, _ = self.root_location.get_location_name()
-        validate_safe_string(mark_name)
-
-        # This template generates code like:
-        # (
-        #     (m.base.in_Animal_ParentOf == null) ?
-        #     [] : (
-        #         m.base.in_Animal_ParentOf.collect{entry -> entry.outV.next().uuid}
-        #     )
-        # )
-        template = (
-            u'((m.{mark_name}.{direction}_{edge_name} == null) ? [] : ('
-            u'm.{mark_name}.{direction}_{edge_name}.collect{{'
-            u'entry -> entry.{inverse_direction}V.next().{field_name}{maybe_format}'
-            u'}}'
-            u'))'
-        )
-
-        maybe_format = ''
-        inner_type = strip_non_null_from_type(self.field_type.of_type)
-        if GraphQLDate.is_same_type(inner_type):
-            maybe_format = '.format("' + STANDARD_DATE_FORMAT + '")'
-        elif GraphQLDateTime.is_same_type(inner_type):
-            maybe_format = '.format("' + STANDARD_DATETIME_FORMAT + '")'
-
-        template_data = {
-            'mark_name': mark_name,
-            'direction': edge_direction,
-            'edge_name': edge_name,
-            'field_name': self.field_name,
-            'inverse_direction': inverse_direction,
-            'maybe_format': maybe_format,
-        }
-        return template.format(**template_data)
+        """Must never be called."""
+        raise NotImplementedError()
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
         # Since this object has a GraphQL type as a variable, which doesn't implement
         # the equality operator, we have to override equality and call is_same_type() here.
         return (type(self) == type(other) and
-                self.root_location == other.root_location and
-                self.relative_position == other.relative_position and
+                self.fold_scope_location == other.fold_scope_location and
                 self.field_name == other.field_name and
                 self.field_type.is_same_type(other.field_type))
 

@@ -5,6 +5,7 @@ from collections import namedtuple
 
 from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, OutputSource,
                      QueryRoot, Recurse, Traverse)
+from .ir_lowering_common import extract_folds_from_ir_blocks
 
 
 ###
@@ -12,8 +13,10 @@ from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocatio
 # compilation unit. It consists of two parts:
 #   - match_traversals: a list of lists of MatchStep objects, where each list of MatchStep objects
 #                       defines a single traversal chain in the MATCH query.
+#   - folds: a dict of FoldScopeLocation -> list of IR blocks defining that @fold scope,
+#            not including the Fold and Unfold blocks that signal the start and end of the @fold.
 #   - output_block: a ConstructResult IR block, which defines how the query's results are returned.
-MatchQuery = namedtuple('MatchQuery', ('match_traversals', 'output_block'))
+MatchQuery = namedtuple('MatchQuery', ('match_traversals', 'folds', 'output_block'))
 
 
 ###
@@ -143,8 +146,11 @@ def convert_to_match_query(ir_blocks):
         raise AssertionError(u'Expected last IR block to be ConstructResult, found: '
                              u'{} {}'.format(output_block, ir_blocks))
 
-    match_steps = _split_ir_into_match_steps(ir_blocks[:-1])
+    ir_except_output = ir_blocks[:-1]
+    folds, ir_except_output_and_folds = extract_folds_from_ir_blocks(ir_except_output)
+
+    match_steps = _split_ir_into_match_steps(ir_except_output_and_folds)
 
     match_traversals = _split_match_steps_into_match_traversals(match_steps)
 
-    return MatchQuery(match_traversals=match_traversals, output_block=output_block)
+    return MatchQuery(match_traversals=match_traversals, folds=folds, output_block=output_block)

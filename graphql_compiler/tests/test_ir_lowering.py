@@ -5,7 +5,7 @@ import unittest
 from graphql import GraphQLString
 import pytest
 
-from ..compiler import ir_lowering_common, ir_lowering_gremlin, ir_lowering_match
+from ..compiler import ir_lowering_common, ir_lowering_gremlin, ir_lowering_match, ir_sanity_checks
 from ..compiler.blocks import Backtrack, ConstructResult, Filter, MarkLocation, QueryRoot, Traverse
 from ..compiler.expressions import (BinaryComposition, ContextField, ContextFieldExistence,
                                     FalseLiteral, Literal, LocalField, NullLiteral,
@@ -13,6 +13,7 @@ from ..compiler.expressions import (BinaryComposition, ContextField, ContextFiel
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
 from ..compiler.match_query import MatchQuery, convert_to_match_query
+from ..schema import GraphQLDate
 from .test_helpers import compare_ir_blocks, construct_location_types
 
 
@@ -100,7 +101,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 )
             })
         ]
-        ir_lowering_common.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
         # The expected final blocks just have a rewritten ConstructResult block,
         # where the ContextFieldExistence expression is replaced with a null check.
@@ -151,7 +152,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             })
         ]
-        ir_lowering_common.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
         # The expected final blocks have a rewritten ContextFieldExistence expression
         # inside the TernaryConditional expression of the Filter block.
@@ -202,7 +203,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             })
         ]
-        ir_lowering_common.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
         location_types = construct_location_types({
             base_location: 'Animal',
@@ -249,7 +250,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             })
         ]
-        ir_lowering_common.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
         location_types = construct_location_types({
             base_location: 'Animal',
@@ -300,7 +301,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             })
         ]
-        ir_lowering_common.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
         location_types = construct_location_types({
             base_location: 'Animal',
@@ -356,7 +357,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                     species_location.navigate_to_field('name'), GraphQLString),
             }),
         ]
-        ir_lowering_common.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
         location_types = construct_location_types({
             base_location: 'Animal',
@@ -438,7 +439,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'species_uuid': ContextField(species_location.navigate_to_field('uuid')),
             }),
         ]
-        ir_lowering_common.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
         location_types = construct_location_types({
             base_location: 'Animal',
@@ -491,6 +492,13 @@ class MatchIrLoweringTests(unittest.TestCase):
             QueryRoot({'Animal'}),
             Filter(
                 BinaryComposition(
+                    u'<=',
+                    LocalField(u'birthday'),
+                    Variable('$foo_birthday', GraphQLDate)
+                )
+            ),
+            Filter(
+                BinaryComposition(
                     u'=',
                     LocalField(u'name'),
                     Variable('$foo_name', GraphQLString)
@@ -508,7 +516,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'animal_name': ContextField(base_name_location),
             })
         ]
-        ir_lowering_common.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
         # The expected final blocks have one Filter block with the predicates joined by an AND.
         expected_final_blocks = [
@@ -517,9 +525,17 @@ class MatchIrLoweringTests(unittest.TestCase):
                 BinaryComposition(
                     u'&&',
                     BinaryComposition(
-                        u'=',
-                        LocalField(u'name'),
-                        Variable('$foo_name', GraphQLString)
+                        u'&&',
+                        BinaryComposition(
+                            u'<=',
+                            LocalField(u'birthday'),
+                            Variable('$foo_birthday', GraphQLDate)
+                        ),
+                        BinaryComposition(
+                            u'=',
+                            LocalField(u'name'),
+                            Variable('$foo_name', GraphQLString)
+                        )
                     ),
                     BinaryComposition(
                         u'=',
@@ -686,7 +702,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 ),
             })
         ]
-        ir_lowering_common.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
         location_types = construct_location_types({
             base_location: 'Animal',
@@ -754,7 +770,7 @@ class GremlinIrLoweringTests(unittest.TestCase):
                 )
             })
         ]
-        ir_lowering_common.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
         # The expected final blocks just have a rewritten ConstructResult block,
         # where the ContextFieldExistence expression is replaced with a marked vertex null check.

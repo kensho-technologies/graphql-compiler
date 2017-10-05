@@ -12,10 +12,22 @@ from .test_helpers import compare_input_metadata, compare_ir_blocks, get_schema
 
 
 def check_test_data(test_case, graphql_input, expected_blocks,
-                    expected_output_metadata, expected_input_metadata, expected_location_types):
+                    expected_output_metadata, expected_input_metadata, expected_location_types,
+                    type_equivalence_hints=None):
     """Assert that the GraphQL input generates all expected IR data."""
-    received_blocks, output_metadata, input_metadata, location_types = \
-        graphql_to_ir(test_case.schema, graphql_input)
+    if type_equivalence_hints:
+        # For test convenience, we accept the type equivalence hints in string form.
+        # Here, we convert them to the required GraphQL types.
+        schema_based_type_equivalence_hints = {
+            test_case.schema.get_type(key): test_case.schema.get_type(value)
+            for key, value in six.iteritems(type_equivalence_hints)
+        }
+    else:
+        schema_based_type_equivalence_hints = None
+
+    compilation_results = graphql_to_ir(test_case.schema, graphql_input,
+                                        type_equivalence_hints=schema_based_type_equivalence_hints)
+    received_blocks, output_metadata, input_metadata, location_types = compilation_results
 
     compare_ir_blocks(test_case, expected_blocks, received_blocks)
     test_case.assertEqual(expected_output_metadata, output_metadata)
@@ -1874,15 +1886,18 @@ class IrGenerationTests(unittest.TestCase):
         }'''
 
         base_location = helpers.Location(('Animal',))
+        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
+            blocks.Fold(base_fold),
+            blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_names_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_ParentOf'), 'name', GraphQLList(GraphQLString)),
+                    base_fold, 'name', GraphQLList(GraphQLString)),
             }),
         ]
         expected_output_metadata = {
@@ -1912,19 +1927,21 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        parent_fold = helpers.FoldScopeLocation(parent_location, ('out', 'Animal_ParentOf'))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Traverse('in', 'Animal_ParentOf'),
             blocks.MarkLocation(parent_location),
+            blocks.Fold(parent_fold),
+            blocks.Unfold(),
             blocks.Backtrack(base_location),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'sibling_and_self_names_list': expressions.FoldedOutputContextField(
-                    parent_location, ('out', 'Animal_ParentOf'),
-                    'name', GraphQLList(GraphQLString)),
+                    parent_fold, 'name', GraphQLList(GraphQLString)),
             }),
         ]
         expected_output_metadata = {
@@ -1954,17 +1971,20 @@ class IrGenerationTests(unittest.TestCase):
         }'''
 
         base_location = helpers.Location(('Animal',))
+        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
+            blocks.Fold(base_fold),
+            blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_names_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_ParentOf'), 'name', GraphQLList(GraphQLString)),
+                    base_fold, 'name', GraphQLList(GraphQLString)),
                 'child_uuids_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_ParentOf'), 'uuid', GraphQLList(GraphQLID)),
+                    base_fold, 'uuid', GraphQLList(GraphQLID)),
             }),
         ]
         expected_output_metadata = {
@@ -1997,21 +2017,27 @@ class IrGenerationTests(unittest.TestCase):
         }'''
 
         base_location = helpers.Location(('Animal',))
+        base_out_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        base_in_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
+            blocks.Fold(base_out_fold),
+            blocks.Unfold(),
+            blocks.Fold(base_in_fold),
+            blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_names_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_ParentOf'), 'name', GraphQLList(GraphQLString)),
+                    base_out_fold, 'name', GraphQLList(GraphQLString)),
                 'child_uuids_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_ParentOf'), 'uuid', GraphQLList(GraphQLID)),
+                    base_out_fold, 'uuid', GraphQLList(GraphQLID)),
                 'parent_names_list': expressions.FoldedOutputContextField(
-                    base_location, ('in', 'Animal_ParentOf'), 'name', GraphQLList(GraphQLString)),
+                    base_in_fold, 'name', GraphQLList(GraphQLString)),
                 'parent_uuids_list': expressions.FoldedOutputContextField(
-                    base_location, ('in', 'Animal_ParentOf'), 'uuid', GraphQLList(GraphQLID)),
+                    base_in_fold, 'uuid', GraphQLList(GraphQLID)),
             }),
         ]
         expected_output_metadata = {
@@ -2044,19 +2070,23 @@ class IrGenerationTests(unittest.TestCase):
         }'''
 
         base_location = helpers.Location(('Animal',))
+        base_parent_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        base_fed_at_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_FedAt'))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
+            blocks.Fold(base_parent_fold),
+            blocks.Unfold(),
+            blocks.Fold(base_fed_at_fold),
+            blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_birthdays_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_ParentOf'),
-                    'birthday', GraphQLList(GraphQLDate)),
+                    base_parent_fold, 'birthday', GraphQLList(GraphQLDate)),
                 'fed_at_datetimes_list': expressions.FoldedOutputContextField(
-                    base_location, ('out', 'Animal_FedAt'),
-                    'event_date', GraphQLList(GraphQLDateTime)),
+                    base_fed_at_fold, 'event_date', GraphQLList(GraphQLDateTime)),
             }),
         ]
         expected_output_metadata = {
@@ -2066,6 +2096,362 @@ class IrGenerationTests(unittest.TestCase):
                 type=GraphQLList(GraphQLDateTime), optional=False),
         }
         expected_input_metadata = {}
+        expected_location_types = {
+            # The folded location was never traversed to, so it does not appear here.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, graphql_input, expected_blocks,
+                        expected_output_metadata, expected_input_metadata, expected_location_types)
+
+    def test_coercion_to_union_base_type_inside_fold(self):
+        # Given type_equivalence_hints = { Event: EventOrBirthEvent },
+        # the coercion should be optimized away as a no-op.
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "animal_name")
+                out_Animal_ImportantEvent @fold {
+                    ... on Event {
+                        name @output(out_name: "important_events")
+                    }
+                }
+            }
+        }'''
+        type_equivalence_hints = {
+            'Event': 'EventOrBirthEvent'
+        }
+
+        base_location = helpers.Location(('Animal',))
+        base_parent_fold = helpers.FoldScopeLocation(
+            base_location, ('out', 'Animal_ImportantEvent'))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_parent_fold),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'important_events': expressions.FoldedOutputContextField(
+                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_output_metadata = {
+            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+            'important_events': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {}
+        expected_location_types = {
+            # The folded location was never traversed to, so it does not appear here.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, graphql_input, expected_blocks,
+                        expected_output_metadata, expected_input_metadata, expected_location_types,
+                        type_equivalence_hints=type_equivalence_hints)
+
+    def test_no_op_coercion_inside_fold(self):
+        # The type where the coercion is applied is already Entity, so the coercion is a no-op.
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "animal_name")
+                out_Entity_Related @fold {
+                    ... on Entity {
+                        name @output(out_name: "related_entities")
+                    }
+                }
+            }
+        }'''
+        type_equivalence_hints = {
+            'Event': 'EventOrBirthEvent'
+        }
+
+        base_location = helpers.Location(('Animal',))
+        base_parent_fold = helpers.FoldScopeLocation(
+            base_location, ('out', 'Entity_Related'))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_parent_fold),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'related_entities': expressions.FoldedOutputContextField(
+                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_output_metadata = {
+            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+            'related_entities': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {}
+        expected_location_types = {
+            # The folded location was never traversed to, so it does not appear here.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, graphql_input, expected_blocks,
+                        expected_output_metadata, expected_input_metadata, expected_location_types,
+                        type_equivalence_hints=type_equivalence_hints)
+
+    def test_filter_within_fold_scope(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_ParentOf @fold {
+                    name @filter(op_name: "=", value: ["$desired"]) @output(out_name: "child_list")
+                    description @output(out_name: "child_descriptions")
+                }
+            }
+        }'''
+
+        base_location = helpers.Location(('Animal',))
+        base_parent_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_parent_fold),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'=',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$desired', GraphQLString)
+                )
+            ),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'child_list': expressions.FoldedOutputContextField(
+                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+                'child_descriptions': expressions.FoldedOutputContextField(
+                    base_parent_fold, 'description', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False),
+            'child_list': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+            'child_descriptions': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {
+            'desired': GraphQLString,
+        }
+        expected_location_types = {
+            # The folded location was never traversed to, so it does not appear here.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, graphql_input, expected_blocks,
+                        expected_output_metadata, expected_input_metadata, expected_location_types)
+
+    def test_filter_on_fold_scope(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_ParentOf @fold
+                                    @filter(op_name: "name_or_alias", value: ["$desired"]) {
+                    name @output(out_name: "child_list")
+                }
+            }
+        }'''
+
+        base_location = helpers.Location(('Animal',))
+        base_parent_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_parent_fold),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'||',
+                    expressions.BinaryComposition(
+                        u'=',
+                        expressions.LocalField('name'),
+                        expressions.Variable('$desired', GraphQLString)
+                    ),
+                    expressions.BinaryComposition(
+                        u'contains',
+                        expressions.LocalField('alias'),
+                        expressions.Variable('$desired', GraphQLString)
+                    )
+                )
+            ),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'child_list': expressions.FoldedOutputContextField(
+                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False),
+            'child_list': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {
+            'desired': GraphQLString,
+        }
+        expected_location_types = {
+            # The folded location was never traversed to, so it does not appear here.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, graphql_input, expected_blocks,
+                        expected_output_metadata, expected_input_metadata, expected_location_types)
+
+    def test_coercion_on_interface_within_fold_scope(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Entity_Related @fold {
+                    ... on Animal {
+                        name @output(out_name: "related_animals")
+                    }
+                }
+            }
+        }'''
+
+        base_location = helpers.Location(('Animal',))
+        base_parent_fold = helpers.FoldScopeLocation(base_location, ('out', 'Entity_Related'))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_parent_fold),
+            blocks.CoerceType({'Animal'}),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'related_animals': expressions.FoldedOutputContextField(
+                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False),
+            'related_animals': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {}
+        expected_location_types = {
+            # The folded location was never traversed to, so it does not appear here.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, graphql_input, expected_blocks,
+                        expected_output_metadata, expected_input_metadata, expected_location_types)
+
+    def test_coercion_on_union_within_fold_scope(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_ImportantEvent @fold {
+                    ... on BirthEvent {
+                        name @output(out_name: "birth_events")
+                    }
+                }
+            }
+        }'''
+
+        base_location = helpers.Location(('Animal',))
+        base_parent_fold = helpers.FoldScopeLocation(
+            base_location, ('out', 'Animal_ImportantEvent'))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_parent_fold),
+            blocks.CoerceType({'BirthEvent'}),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'birth_events': expressions.FoldedOutputContextField(
+                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False),
+            'birth_events': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {}
+        expected_location_types = {
+            # The folded location was never traversed to, so it does not appear here.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, graphql_input, expected_blocks,
+                        expected_output_metadata, expected_input_metadata, expected_location_types)
+
+    def test_coercion_filters_and_multiple_outputs_within_fold_scope(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Entity_Related @fold {
+                    ... on Animal {
+                        name @filter(op_name: "has_substring", value: ["$substring"])
+                             @output(out_name: "related_animals")
+                        birthday @filter(op_name: "<=", value: ["$latest"])
+                                 @output(out_name: "related_birthdays")
+                    }
+                }
+            }
+        }'''
+
+        base_location = helpers.Location(('Animal',))
+        base_parent_fold = helpers.FoldScopeLocation(base_location, ('out', 'Entity_Related'))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_parent_fold),
+            blocks.CoerceType({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'has_substring',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$substring', GraphQLString)
+                )
+            ),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'<=',
+                    expressions.LocalField('birthday'),
+                    expressions.Variable('$latest', GraphQLDate)
+                )
+            ),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'related_animals': expressions.FoldedOutputContextField(
+                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+                'related_birthdays': expressions.FoldedOutputContextField(
+                    base_parent_fold, 'birthday', GraphQLList(GraphQLDate)),
+            }),
+        ]
+        expected_output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False),
+            'related_animals': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+            'related_birthdays': OutputMetadata(
+                type=GraphQLList(GraphQLDate), optional=False),
+        }
+        expected_input_metadata = {
+            'substring': GraphQLString,
+            'latest': GraphQLDate,
+        }
         expected_location_types = {
             # The folded location was never traversed to, so it does not appear here.
             base_location: 'Animal',
