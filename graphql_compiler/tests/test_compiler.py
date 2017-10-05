@@ -1164,8 +1164,8 @@ FROM (
                     class: Animal,
                     as: Animal___1
                 }}.in('Entity_Related') {{
+                    class: Animal,
                     while: ($depth < 4),
-                    where: ((@this INSTANCEOF 'Animal')),
                     as: Animal__in_Entity_Related___1
                 }}
                 RETURN $matches
@@ -1218,8 +1218,9 @@ FROM (
                     class: Animal,
                     as: Animal___1
                 }}.in('Entity_Related') {{
+                    class: Animal,
                     while: ($depth < 4),
-                    where: (((@this INSTANCEOF 'Animal') AND (color = {color}))),
+                    where: ((color = {color})),
                     as: Animal__in_Entity_Related___1
                 }}
                 RETURN $matches
@@ -1665,7 +1666,7 @@ FROM (
                     class: Species,
                     as: Species___1
                 }}.out('Species_Eats') {{
-                    where: ((@this INSTANCEOF 'Food')),
+                    class: Food,
                     optional: true,
                     as: Species__out_Species_Eats___1
                 }}
@@ -1855,14 +1856,16 @@ FROM (
         expected_match = '''
             SELECT
                 Animal___1.name AS `animal_name`,
-                Animal___1.out("Animal_ParentOf").name AS `child_names_list`
+                $Animal___1___out_Animal_ParentOf.name AS `child_names_list`
             FROM (
                 MATCH {{
                     class: Animal,
                     as: Animal___1
                 }}
                 RETURN $matches
-            )
+            ) LET
+                $Animal___1___out_Animal_ParentOf =
+                    Animal___1.out("Animal_ParentOf")
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -1901,7 +1904,7 @@ FROM (
         expected_match = '''
             SELECT
                 Animal___1.name AS `animal_name`,
-                Animal__in_Animal_ParentOf___1.out("Animal_ParentOf").name
+                $Animal__in_Animal_ParentOf___1___out_Animal_ParentOf.name
                     AS `sibling_and_self_names_list`
             FROM (
                 MATCH {{
@@ -1911,7 +1914,9 @@ FROM (
                     as: Animal__in_Animal_ParentOf___1
                 }}
                 RETURN $matches
-            )
+            ) LET
+                $Animal__in_Animal_ParentOf___1___out_Animal_ParentOf =
+                    Animal__in_Animal_ParentOf___1.out("Animal_ParentOf")
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -1955,15 +1960,16 @@ FROM (
         expected_match = '''
             SELECT
                 Animal___1.name AS `animal_name`,
-                Animal___1.out("Animal_ParentOf").name AS `child_names_list`,
-                Animal___1.out("Animal_ParentOf").uuid AS `child_uuids_list`
+                $Animal___1___out_Animal_ParentOf.name AS `child_names_list`,
+                $Animal___1___out_Animal_ParentOf.uuid AS `child_uuids_list`
             FROM (
                 MATCH {{
                     class: Animal,
                     as: Animal___1
                 }}
                 RETURN $matches
-            )
+            ) LET
+                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf")
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2011,17 +2017,19 @@ FROM (
         expected_match = '''
             SELECT
                 Animal___1.name AS `animal_name`,
-                Animal___1.out("Animal_ParentOf").name AS `child_names_list`,
-                Animal___1.out("Animal_ParentOf").uuid AS `child_uuids_list`,
-                Animal___1.in("Animal_ParentOf").name AS `parent_names_list`,
-                Animal___1.in("Animal_ParentOf").uuid AS `parent_uuids_list`
+                $Animal___1___out_Animal_ParentOf.name AS `child_names_list`,
+                $Animal___1___out_Animal_ParentOf.uuid AS `child_uuids_list`,
+                $Animal___1___in_Animal_ParentOf.name AS `parent_names_list`,
+                $Animal___1___in_Animal_ParentOf.uuid AS `parent_uuids_list`
             FROM (
                 MATCH {{
                     class: Animal,
                     as: Animal___1
                 }}
                 RETURN $matches
-            )
+            ) LET
+                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf"),
+                $Animal___1___in_Animal_ParentOf = Animal___1.in("Animal_ParentOf")
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2079,9 +2087,9 @@ FROM (
         expected_match = '''
             SELECT
                 Animal___1.name AS `animal_name`,
-                Animal___1.out("Animal_ParentOf").birthday.format("yyyy-MM-dd")
+                $Animal___1___out_Animal_ParentOf.birthday.format("yyyy-MM-dd")
                     AS `child_birthdays_list`,
-                Animal___1.out("Animal_FedAt").event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                $Animal___1___out_Animal_FedAt.event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
                     AS `fed_at_datetimes_list`
             FROM (
                 MATCH {{
@@ -2089,7 +2097,9 @@ FROM (
                     as: Animal___1
                 }}
                 RETURN $matches
-            )
+            ) LET
+                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf"),
+                $Animal___1___out_Animal_FedAt = Animal___1.out("Animal_FedAt")
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2144,14 +2154,15 @@ FROM (
         expected_match = '''
             SELECT
                 Animal___1.name AS `animal_name`,
-                Animal___1.out("Animal_ImportantEvent").name AS `important_events`
+                $Animal___1___out_Animal_ImportantEvent.name AS `important_events`
             FROM (
                 MATCH {{
                     class: Animal,
                     as: Animal___1
                 }}
                 RETURN $matches
-            )
+            ) LET
+                $Animal___1___out_Animal_ImportantEvent = Animal___1.out("Animal_ImportantEvent")
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2194,14 +2205,15 @@ FROM (
         expected_match = '''
             SELECT
                 Animal___1.name AS `animal_name`,
-                Animal___1.out("Entity_Related").name AS `related_entities`
+                $Animal___1___out_Entity_Related.name AS `related_entities`
             FROM (
                 MATCH {{
                     class: Animal,
                     as: Animal___1
                 }}
                 RETURN $matches
-            )
+            ) LET
+                $Animal___1___out_Entity_Related = Animal___1.out("Entity_Related")
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2223,6 +2235,307 @@ FROM (
             'related_entities': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
         }
         expected_input_metadata = {}
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata)
+
+    def test_filter_within_fold_scope(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_ParentOf @fold {
+                    name @filter(op_name: "=", value: ["$desired"]) @output(out_name: "child_list")
+                    description @output(out_name: "child_descriptions")
+                }
+            }
+        }'''
+
+        expected_match = '''
+            SELECT
+                $Animal___1___out_Animal_ParentOf.description AS `child_descriptions`,
+                $Animal___1___out_Animal_ParentOf.name AS `child_list`,
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___out_Animal_ParentOf =
+                    Animal___1.out("Animal_ParentOf")[(name = {desired})]
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                child_descriptions: (
+                    (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.out_Animal_ParentOf
+                         .collect{entry -> entry.inV.next()}
+                         .findAll{entry -> (entry.name == $desired)}
+                         .collect{entry -> entry.description}
+                    )
+                ),
+                child_list: (
+                    (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.out_Animal_ParentOf
+                         .collect{entry -> entry.inV.next()}
+                         .findAll{entry -> (entry.name == $desired)}
+                         .collect{entry -> entry.name}
+                    )
+                ),
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        expected_output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False),
+            'child_list': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+            'child_descriptions': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {
+            'desired': GraphQLString,
+        }
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata)
+
+    def test_filter_on_fold_scope(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_ParentOf @fold
+                                    @filter(op_name: "name_or_alias", value: ["$desired"]) {
+                    name @output(out_name: "child_list")
+                }
+            }
+        }'''
+
+        expected_match = '''
+            SELECT
+                $Animal___1___out_Animal_ParentOf.name AS `child_list`,
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___out_Animal_ParentOf =
+                    Animal___1.out("Animal_ParentOf")[((name = {desired})
+                                                      OR (alias CONTAINS {desired}))]
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                child_list: (
+                    (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.out_Animal_ParentOf
+                         .collect{entry -> entry.inV.next()}
+                         .findAll{entry -> (
+                            (entry.name == $desired) || entry.alias.contains($desired))}
+                         .collect{entry -> entry.name}
+                    )
+                ),
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        expected_output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False),
+            'child_list': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {
+            'desired': GraphQLString,
+        }
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata)
+
+    def test_coercion_on_interface_within_fold_scope(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Entity_Related @fold {
+                    ... on Animal {
+                        name @output(out_name: "related_animals")
+                    }
+                }
+            }
+        }'''
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`,
+                $Animal___1___out_Entity_Related.name AS `related_animals`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___out_Entity_Related =
+                    Animal___1.out("Entity_Related")[(@this INSTANCEOF 'Animal')]
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name,
+                related_animals: (
+                    (m.Animal___1.out_Entity_Related == null) ? [] : (
+                        m.Animal___1.out_Entity_Related
+                         .collect{entry -> entry.inV.next()}
+                         .findAll{entry -> ['Animal'].contains(entry['@class'])}
+                         .collect{entry -> entry.name}
+                    )
+                )
+            ])}
+        '''
+
+        expected_output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False),
+            'related_animals': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {}
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata)
+
+    def test_coercion_on_union_within_fold_scope(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_ImportantEvent @fold {
+                    ... on BirthEvent {
+                        name @output(out_name: "birth_events")
+                    }
+                }
+            }
+        }'''
+
+        expected_match = '''
+            SELECT
+                $Animal___1___out_Animal_ImportantEvent.name AS `birth_events`,
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___out_Animal_ImportantEvent =
+                    Animal___1.out("Animal_ImportantEvent")[(@this INSTANCEOF 'BirthEvent')]
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                birth_events: (
+                    (m.Animal___1.out_Animal_ImportantEvent == null) ? [] : (
+                        m.Animal___1.out_Animal_ImportantEvent
+                         .collect{entry -> entry.inV.next()}
+                         .findAll{entry -> ['BirthEvent'].contains(entry['@class'])}
+                         .collect{entry -> entry.name}
+                    )
+                ),
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        expected_output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False),
+            'birth_events': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {}
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata)
+
+    def test_coercion_filters_and_multiple_outputs_within_fold_scope(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Entity_Related @fold {
+                    ... on Animal {
+                        name @filter(op_name: "has_substring", value: ["$substring"])
+                             @output(out_name: "related_animals")
+                        birthday @filter(op_name: "<=", value: ["$latest"])
+                                 @output(out_name: "related_birthdays")
+                    }
+                }
+            }
+        }'''
+
+        expected_match = '''
+    SELECT
+        Animal___1.name AS `name`,
+        $Animal___1___out_Entity_Related.name AS `related_animals`,
+        $Animal___1___out_Entity_Related.birthday.format("yyyy-MM-dd") AS `related_birthdays`
+    FROM (
+        MATCH {{
+            class: Animal,
+            as: Animal___1
+        }}
+        RETURN $matches
+    ) LET
+        $Animal___1___out_Entity_Related =
+            Animal___1.out("Entity_Related")[(
+                (@this INSTANCEOF 'Animal') AND
+                ((name LIKE ('%' + ({substring} + '%'))) AND
+                (birthday <= date({latest}, "yyyy-MM-dd"))))]
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name,
+                related_animals: (
+                    (m.Animal___1.out_Entity_Related == null) ? [] : (
+                        m.Animal___1.out_Entity_Related
+                         .collect{entry -> entry.inV.next()}
+                         .findAll{entry -> (
+                            (['Animal'].contains(entry['@class']) &&
+                             entry.name.contains($substring)) &&
+                             (entry.birthday <= Date.parse("yyyy-MM-dd", $latest)))}
+                         .collect{entry -> entry.name}
+                    )
+                ),
+                related_birthdays: (
+                    (m.Animal___1.out_Entity_Related == null) ? [] : (
+                        m.Animal___1.out_Entity_Related
+                         .collect{entry -> entry.inV.next()}
+                         .findAll{entry -> (
+                            (['Animal'].contains(entry['@class']) &&
+                             entry.name.contains($substring)) &&
+                             (entry.birthday <= Date.parse("yyyy-MM-dd", $latest)))}
+                         .collect{entry -> entry.birthday.format("yyyy-MM-dd")}
+                    )
+                )
+            ])}
+        '''
+
+        expected_output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False),
+            'related_animals': OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False),
+            'related_birthdays': OutputMetadata(
+                type=GraphQLList(GraphQLDate), optional=False),
+        }
+        expected_input_metadata = {
+            'substring': GraphQLString,
+            'latest': GraphQLDate,
+        }
 
         check_test_data(self, graphql_input, expected_match, expected_gremlin,
                         expected_output_metadata, expected_input_metadata)

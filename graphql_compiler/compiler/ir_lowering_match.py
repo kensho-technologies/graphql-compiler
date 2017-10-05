@@ -8,16 +8,17 @@ to generate directly from this Expression object. An output-language-aware IR lo
 us to convert this Expression into other Expressions, using data already present in the IR,
 to simplify the final code generation step.
 """
+import funcy.py2 as funcy
 import six
 
-from .blocks import Backtrack, MarkLocation, QueryRoot, Traverse
+from .blocks import Backtrack, CoerceType, Filter, MarkLocation, QueryRoot, Traverse
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
-                          Literal, TernaryConditional, TrueLiteral)
+                          Literal, LocalField, TernaryConditional, TrueLiteral)
 from .ir_lowering_common import (lower_context_field_existence, merge_consecutive_filter_clauses,
                                  optimize_boolean_expression_comparisons)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .match_query import MatchStep, convert_to_match_query
-from .workarounds import orientdb_class_vs_instanceof, orientdb_eval_scheduling
+from .workarounds import orientdb_eval_scheduling
 
 
 ##################################
@@ -343,6 +344,31 @@ def _translate_equivalent_locations(match_query, location_translations):
                                 output_block=new_output_block)
 
 
+def lower_folded_coerce_types_into_filter_blocks(folded_ir_blocks):
+    """Lower CoerceType blocks into "INSTANCEOF" Filter blocks. Indended for folded IR blocks."""
+    new_folded_ir_blocks = []
+    for block in folded_ir_blocks:
+        new_block = block
+
+        if isinstance(block, CoerceType):
+            coerce_type_target = block.target_class
+            if len(coerce_type_target) != 1:
+                raise AssertionError(u'Unexpected "coerce_type_target" for MATCH query: '
+                                     u'{}'.format(coerce_type_target))
+            coerce_type_target = funcy.first(coerce_type_target)
+
+            # INSTANCEOF requires the target class to be passed in as a string,
+            # so we make the target class a string literal.
+            new_predicate = BinaryComposition(
+                u'INSTANCEOF', LocalField('@this'), Literal(coerce_type_target))
+
+            new_block = Filter(new_predicate)
+
+        new_folded_ir_blocks.append(new_block)
+
+    return new_folded_ir_blocks
+
+
 ##############
 # Public API #
 ##############
@@ -389,6 +415,13 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     match_query = lower_optional_traverse_blocks(match_query, location_types)
     match_query = lower_backtrack_blocks(match_query, location_types)
     match_query = truncate_repeated_single_step_traversals(match_query)
-    match_query = orientdb_class_vs_instanceof.lower_type_coercions(match_query)
+
+    # Optimize and lower the IR blocks inside @fold scopes.
+    new_folds = {
+        key: merge_consecutive_filter_clauses(
+            lower_folded_coerce_types_into_filter_blocks(folded_ir_blocks))
+        for key, folded_ir_blocks in six.iteritems(match_query.folds)
+    }
+    match_query = match_query._replace(folds=new_folds)
 
     return match_query

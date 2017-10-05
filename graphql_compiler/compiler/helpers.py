@@ -9,6 +9,10 @@ import six
 from ..exceptions import GraphQLCompilationError
 
 
+# These are the Java (OrientDB) representations of the ISO-8601 standard date and datetime formats.
+STANDARD_DATE_FORMAT = 'yyyy-MM-dd'
+STANDARD_DATETIME_FORMAT = 'yyyy-MM-dd\'T\'HH:mm:ssX'
+
 VARIABLE_ALLOWED_CHARS = frozenset(six.text_type(string.ascii_letters + string.digits + '_'))
 
 
@@ -270,6 +274,12 @@ class FoldScopeLocation(object):
 
         self.base_location = base_location
         self.relative_position = relative_position
+
+    def get_location_name(self):
+        """Return a unique name for the FoldScopeLocation."""
+        edge_direction, edge_name = self.relative_position
+        return (self.base_location.get_location_name()[0] + u'___' +
+                edge_direction + u'_' + edge_name)
 
     def __str__(self):
         """Return a human-readable str representation of the FoldScopeLocation object."""

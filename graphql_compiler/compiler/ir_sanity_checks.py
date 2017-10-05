@@ -27,6 +27,7 @@ def sanity_check_ir_blocks_from_frontend(ir_blocks):
     _sanity_check_output_source_follower_blocks(ir_blocks)
     _sanity_check_block_pairwise_constraints(ir_blocks)
     _sanity_check_every_location_is_marked(ir_blocks)
+    _sanity_check_coerce_type_outside_of_fold(ir_blocks)
 
 
 def _sanity_check_fold_scope_locations_are_unique(ir_blocks):
@@ -114,12 +115,6 @@ def _sanity_check_block_pairwise_constraints(ir_blocks):
                 raise AssertionError(u'Expected MarkLocation, CoerceType or Filter after Traverse '
                                      u'with optional=True. Found: {}'.format(ir_blocks))
 
-        # CoerceType blocks are immediately followed by a MarkLocation or Filter block.
-        if isinstance(first_block, CoerceType):
-            if not isinstance(second_block, (MarkLocation, Filter)):
-                raise AssertionError(u'Expected MarkLocation or Filter after CoerceType, '
-                                     u'but none was found: {}'.format(ir_blocks))
-
         # Backtrack blocks with optional=True are immediately followed by a MarkLocation block.
         if isinstance(first_block, Backtrack) and first_block.optional:
             if not isinstance(second_block, MarkLocation):
@@ -154,3 +149,19 @@ def _sanity_check_every_location_is_marked(ir_blocks):
         elif isinstance(block, (QueryRoot, Traverse, Recurse)):
             found_start_block = True
             mark_location_blocks = 0
+
+
+def _sanity_check_coerce_type_outside_of_fold(ir_blocks):
+    """Ensure that CoerceType not in a @fold are followed by a MarkLocation or Filter block."""
+    is_in_fold = False
+    for first_block, second_block in pairwise(ir_blocks):
+        if isinstance(first_block, Fold):
+            is_in_fold = True
+
+        if not is_in_fold and isinstance(first_block, CoerceType):
+            if not isinstance(second_block, (MarkLocation, Filter)):
+                raise AssertionError(u'Expected MarkLocation or Filter after CoerceType, '
+                                     u'but none was found: {}'.format(ir_blocks))
+
+        if isinstance(second_block, Unfold):
+            is_in_fold = False

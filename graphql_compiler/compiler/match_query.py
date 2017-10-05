@@ -3,8 +3,9 @@
 
 from collections import namedtuple
 
-from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, Fold, MarkLocation,
-                     OutputSource, QueryRoot, Recurse, Traverse, Unfold)
+from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, OutputSource,
+                     QueryRoot, Recurse, Traverse)
+from .ir_lowering_common import extract_folds_from_ir_blocks
 
 
 ###
@@ -12,8 +13,8 @@ from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, Fold, MarkL
 # compilation unit. It consists of two parts:
 #   - match_traversals: a list of lists of MatchStep objects, where each list of MatchStep objects
 #                       defines a single traversal chain in the MATCH query.
-#   - folds: a dict of FoldScopeLocation -> list of IR blocks defining that @fold scope.
-#            The list of blocks is guaranteed to start with a Fold and end with an Unfold block.
+#   - folds: a dict of FoldScopeLocation -> list of IR blocks defining that @fold scope,
+#            not including the Fold and Unfold blocks that signal the start and end of the @fold.
 #   - output_block: a ConstructResult IR block, which defines how the query's results are returned.
 MatchQuery = namedtuple('MatchQuery', ('match_traversals', 'folds', 'output_block'))
 
@@ -134,49 +135,6 @@ def _split_match_steps_into_match_traversals(match_steps):
     return output
 
 
-def _extract_folds_from_ir_blocks(ir_blocks):
-    """Extract all @fold data from the IR blocks, and cut the folded IR blocks out of the IR.
-
-    Args:
-        ir_blocks: list of IR blocks to extract fold data from
-
-    Returns:
-        tuple (folds, remaining_ir_blocks):
-        - folds: dict of FoldScopeLocation -> list of IR blocks corresponding to that @fold scope.
-                 The list is guaranteed to start with a Fold and end with an Unfold block.
-        - remaining_ir_blocks: list of IR blocks that were not part of a Fold-Unfold section.
-    """
-    folds = dict()
-    remaining_ir_blocks = []
-    current_folded_blocks = []
-    in_fold = False
-
-    for block in ir_blocks:
-        if isinstance(block, Fold):
-            in_fold = True
-
-        if in_fold:
-            current_folded_blocks.append(block)
-        else:
-            remaining_ir_blocks.append(block)
-
-        if isinstance(block, Unfold):
-            in_fold = False
-            first_folded_block = current_folded_blocks[0]
-            last_folded_block = current_folded_blocks[-1]
-
-            if not isinstance(first_folded_block, Fold):
-                raise AssertionError(u'Expected the first folded block to be Fold, but was: '
-                                     u'{} {}'.format(first_folded_block, ir_blocks))
-            if not isinstance(last_folded_block, Unfold):
-                raise AssertionError(u'Expected the last folded block to be Unfold, but was: '
-                                     u'{} {}'.format(last_folded_block, ir_blocks))
-
-            folds[first_folded_block.fold_scope_location] = current_folded_blocks
-
-    return folds, remaining_ir_blocks
-
-
 ##############
 # Public API #
 ##############
@@ -189,7 +147,7 @@ def convert_to_match_query(ir_blocks):
                              u'{} {}'.format(output_block, ir_blocks))
 
     ir_except_output = ir_blocks[:-1]
-    folds, ir_except_output_and_folds = _extract_folds_from_ir_blocks(ir_except_output)
+    folds, ir_except_output_and_folds = extract_folds_from_ir_blocks(ir_except_output)
 
     match_steps = _split_ir_into_match_steps(ir_except_output_and_folds)
 

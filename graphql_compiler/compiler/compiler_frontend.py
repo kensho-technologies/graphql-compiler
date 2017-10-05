@@ -49,7 +49,7 @@ To get from GraphQL AST to IR, we follow the following pattern:
     ***************
 
     *** F-steps ***
-    step F-2. Emit an appropriate type coercion block, then recurse into the fragment's selection.
+    step F-2. Emit a type coercion block if appropriate, then recurse into the fragment's selection.
     ***************
 """
 from collections import namedtuple
@@ -472,38 +472,27 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     Returns:
         list of basic blocks, the compiled output of the vertex AST node
     """
+    # step F-2. Emit a type coercion block if appropriate,
+    #           then recurse into the fragment's selection.
     coerces_to_type_name = ast.type_condition.name.value
     coerces_to_type_obj = schema.get_type(coerces_to_type_name)
 
     basic_blocks = []
 
-    if not is_in_fold_scope(context):
-        # step F-2. Emit an appropriate type coercion block,
-        #           then recurse into the fragment's selection.
+    # Check if the coercion is necessary.
+    # No coercion is necessary if coercing to the current type of the scope,
+    # or if the scope is of union type, to the base type of the union as defined by
+    # the type_equivalence_hints compilation parameter.
+    is_same_type_as_scope = current_schema_type.is_same_type(coerces_to_type_obj)
+    equivalent_union_type = context['type_equivalence_hints'].get(coerces_to_type_obj, None)
+    is_base_type_of_union = (
+        isinstance(current_schema_type, GraphQLUnionType) and
+        current_schema_type.is_same_type(equivalent_union_type)
+    )
+
+    if not (is_same_type_as_scope or is_base_type_of_union):
+        # Coercion is required.
         basic_blocks.append(blocks.CoerceType({coerces_to_type_name}))
-    else:
-        # We are trying to do a type coercion within a @fold scope.
-        # This is currently only allowed if coercing to the type of the scope,
-        # or if the scope is of union type, to the base type of the union as defined by
-        # the type_equivalence_hints compilation parameter.
-        is_same_type_as_scope = current_schema_type.is_same_type(coerces_to_type_obj)
-
-        equivalent_union_type = context['type_equivalence_hints'].get(coerces_to_type_obj, None)
-        is_base_type_of_union = (
-            isinstance(current_schema_type, GraphQLUnionType) and
-            current_schema_type.is_same_type(equivalent_union_type)
-        )
-
-        if is_same_type_as_scope or is_base_type_of_union:
-            # In both of these cases, the coercion is a no-op and is elided.
-            pass
-        else:
-            raise GraphQLCompilationError(
-                u'Cannot apply type coercion inside @fold scope unless '
-                u'coercing to the current type or to the base type of '
-                u'a union type. Scope type: "{}", coercing to: "{}", '
-                u'equivalent union type: '
-                u'"{}".'.format(current_schema_type, coerces_to_type_obj, equivalent_union_type))
 
     inner_basic_blocks = _compile_ast_node_to_ir(
         schema, coerces_to_type_obj, ast, location, context)
@@ -557,10 +546,6 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     # step 1: apply local filter, if any
     filter_directives = local_directives.get('filter', None)
     if filter_directives:
-        if is_in_fold_scope(context):
-            raise GraphQLCompilationError(u'Cannot apply filters inside a @fold vertex field! '
-                                          u'Location: {}'.format(location))
-
         for filter_directive in filter_directives:
             basic_blocks.append(
                 process_filter_directive(schema, current_schema_type,

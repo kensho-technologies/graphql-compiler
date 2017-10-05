@@ -13,6 +13,7 @@ from ..compiler.expressions import (BinaryComposition, ContextField, ContextFiel
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
 from ..compiler.match_query import MatchQuery, convert_to_match_query
+from ..schema import GraphQLDate
 from .test_helpers import compare_ir_blocks, construct_location_types
 
 
@@ -491,6 +492,13 @@ class MatchIrLoweringTests(unittest.TestCase):
             QueryRoot({'Animal'}),
             Filter(
                 BinaryComposition(
+                    u'<=',
+                    LocalField(u'birthday'),
+                    Variable('$foo_birthday', GraphQLDate)
+                )
+            ),
+            Filter(
+                BinaryComposition(
                     u'=',
                     LocalField(u'name'),
                     Variable('$foo_name', GraphQLString)
@@ -517,9 +525,17 @@ class MatchIrLoweringTests(unittest.TestCase):
                 BinaryComposition(
                     u'&&',
                     BinaryComposition(
-                        u'=',
-                        LocalField(u'name'),
-                        Variable('$foo_name', GraphQLString)
+                        u'&&',
+                        BinaryComposition(
+                            u'<=',
+                            LocalField(u'birthday'),
+                            Variable('$foo_birthday', GraphQLDate)
+                        ),
+                        BinaryComposition(
+                            u'=',
+                            LocalField(u'name'),
+                            Variable('$foo_name', GraphQLString)
+                        )
                     ),
                     BinaryComposition(
                         u'=',
