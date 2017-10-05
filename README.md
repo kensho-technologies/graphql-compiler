@@ -229,14 +229,15 @@ If a given `Animal` has no children, its `child_names` list is empty.
 
 #### Constraints and Rules
 - `@fold` can only be applied to vertex fields, except the root vertex field.
-- May not exist at the same vertex field as `@recurse`, `@optional`, `@output_source`, or `@filter`.
-- Expanding vertex fields and use of the `@filter` directive are not allowed
-  within a scope marked `@fold`.
-- Type coercions are allowed in a `@fold` scope only if the compiler is able to prove that
-  the type coercion is actually a no-op. See the
+- May not exist at the same vertex field as `@recurse`, `@optional`, or `@output_source`.
+- Expanding vertex fields is not allowed within a scope marked `@fold`.
+- `@tag` and `@fold` may not be used within a scope marked `@fold`.
+- Use of type coercions or `@filter` at or within the vertex field marked `@fold` is allowed.
+  Only data that satisfies the given type coercions and filters is returned by the `@fold`.
+- If the compiler is able to prove that the type coercion in the `@fold` scope is actually a no-op,
+  it may optimize it away. See the
   [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
   section for more details.
-- `@tag` and `@fold` may not be used within a scope marked `@fold`.
 
 ### @tag
 
@@ -347,7 +348,6 @@ as `@filter` parameters, for several reasons:
   at an acceptable cost.
 
 #### Constraints and Rules
-- Cannot be applied to fields within a scope marked `@fold`.
 - The value provided for `op_name` may only consist of upper or lower case letters
   (`A-Z`, `a-z`), or underscores (`_`).
 - Values provided in the `value` list must start with either `$`
