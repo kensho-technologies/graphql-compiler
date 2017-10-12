@@ -128,6 +128,10 @@ def _represent_fold(fold_location, fold_ir_blocks):
                                  u'{}'.format(type(block), block, fold_ir_blocks))
         final_string += u'[' + block.predicate.to_match() + u']'
 
+    # Workaround for OrientDB's inconsistent return type when filtering a list.
+    # https://github.com/orientechnologies/orientdb/issues/7811
+    final_string += '.asList()'
+
     return final_string
 
 

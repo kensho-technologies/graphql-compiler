@@ -2,6 +2,8 @@
 
 ## Current development version
 
+- Add workaround for [OrientDB type inconsistency when filtering lists](https://github.com/orientechnologies/orientdb/issues/7811)
+
 ## v1.2.0
 
 - **BREAKING**: Requires OrientDB 2.2.28+, since it depends on two OrientDB bugs being fixed: [bug 1](https://github.com/orientechnologies/orientdb/issues/7225) [bug 2](https://github.com/orientechnologies/orientdb/issues/7754)

@@ -1907,7 +1907,7 @@ FROM (
                 RETURN $matches
             ) LET
                 $Animal___1___out_Animal_ParentOf =
-                    Animal___1.out("Animal_ParentOf")
+                    Animal___1.out("Animal_ParentOf").asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -1958,7 +1958,7 @@ FROM (
                 RETURN $matches
             ) LET
                 $Animal__in_Animal_ParentOf___1___out_Animal_ParentOf =
-                    Animal__in_Animal_ParentOf___1.out("Animal_ParentOf")
+                    Animal__in_Animal_ParentOf___1.out("Animal_ParentOf").asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2011,7 +2011,7 @@ FROM (
                 }}
                 RETURN $matches
             ) LET
-                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf")
+                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2070,8 +2070,8 @@ FROM (
                 }}
                 RETURN $matches
             ) LET
-                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf"),
-                $Animal___1___in_Animal_ParentOf = Animal___1.in("Animal_ParentOf")
+                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList(),
+                $Animal___1___in_Animal_ParentOf = Animal___1.in("Animal_ParentOf").asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2140,8 +2140,8 @@ FROM (
                 }}
                 RETURN $matches
             ) LET
-                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf"),
-                $Animal___1___out_Animal_FedAt = Animal___1.out("Animal_FedAt")
+                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList(),
+                $Animal___1___out_Animal_FedAt = Animal___1.out("Animal_FedAt").asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2204,7 +2204,8 @@ FROM (
                 }}
                 RETURN $matches
             ) LET
-                $Animal___1___out_Animal_ImportantEvent = Animal___1.out("Animal_ImportantEvent")
+                $Animal___1___out_Animal_ImportantEvent =
+                    Animal___1.out("Animal_ImportantEvent").asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2255,7 +2256,7 @@ FROM (
                 }}
                 RETURN $matches
             ) LET
-                $Animal___1___out_Entity_Related = Animal___1.out("Entity_Related")
+                $Animal___1___out_Entity_Related = Animal___1.out("Entity_Related").asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2305,7 +2306,7 @@ FROM (
                 RETURN $matches
             ) LET
                 $Animal___1___out_Animal_ParentOf =
-                    Animal___1.out("Animal_ParentOf")[(name = {desired})]
+                    Animal___1.out("Animal_ParentOf")[(name = {desired})].asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2369,7 +2370,7 @@ FROM (
             ) LET
                 $Animal___1___out_Animal_ParentOf =
                     Animal___1.out("Animal_ParentOf")[((name = {desired})
-                                                      OR (alias CONTAINS {desired}))]
+                                                      OR (alias CONTAINS {desired}))].asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2424,7 +2425,7 @@ FROM (
                 RETURN $matches
             ) LET
                 $Animal___1___out_Entity_Related =
-                    Animal___1.out("Entity_Related")[(@this INSTANCEOF 'Animal')]
+                    Animal___1.out("Entity_Related")[(@this INSTANCEOF 'Animal')].asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2476,7 +2477,7 @@ FROM (
                 RETURN $matches
             ) LET
                 $Animal___1___out_Animal_ImportantEvent =
-                    Animal___1.out("Animal_ImportantEvent")[(@this INSTANCEOF 'BirthEvent')]
+                   Animal___1.out("Animal_ImportantEvent")[(@this INSTANCEOF 'BirthEvent')].asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -2535,7 +2536,7 @@ FROM (
             Animal___1.out("Entity_Related")[(
                 (@this INSTANCEOF 'Animal') AND
                 ((name LIKE ('%' + ({substring} + '%'))) AND
-                (birthday <= date({latest}, "yyyy-MM-dd"))))]
+                (birthday <= date({latest}, "yyyy-MM-dd"))))].asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
