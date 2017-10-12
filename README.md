@@ -75,7 +75,7 @@ A: No -- there are many existing frameworks for running a web server. We simply 
 
 **Q: What databases and query languages does the compiler support?**
 
-A: We currently support a single database, OrientDB version 2.2.18+, and two query languages
+A: We currently support a single database, OrientDB version 2.2.28+, and two query languages
    that OrientDB supports: the OrientDB dialect of `gremlin`, and OrientDB's own custom SQL-like
    query language that we refer to as `MATCH`, after the name of its graph traversal operator.
    With OrientDB, `MATCH` should be the preferred choice for most users, since it tends to run
