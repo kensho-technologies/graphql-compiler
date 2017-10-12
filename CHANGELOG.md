@@ -2,7 +2,9 @@
 
 ## Current development version
 
-- Add workaround for [OrientDB type inconsistency when filtering lists](https://github.com/orientechnologies/orientdb/issues/7811)
+## v1.2.1
+
+- Add workaround for [OrientDB type inconsistency when filtering lists](https://github.com/orientechnologies/orientdb/issues/7811) [#42](https://github.com/kensho-technologies/graphql-compiler/pull/42)
 
 ## v1.2.0
 
