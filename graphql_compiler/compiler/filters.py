@@ -2,8 +2,8 @@
 from functools import partial, wraps
 
 from graphql import GraphQLList, GraphQLScalarType, GraphQLString, GraphQLUnionType
-from graphql.type.definition import is_leaf_type
 from graphql.language.ast import ListValue
+from graphql.type.definition import is_leaf_type
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
