@@ -1,13 +1,13 @@
 # Copyright 2017 Kensho Technologies, Inc.
 from functools import partial, wraps
 
-from graphql import (GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLScalarType,
-                     GraphQLString)
+from graphql import GraphQLList, GraphQLScalarType, GraphQLString, GraphQLUnionType
 from graphql.language.ast import ListValue
+from graphql.type.definition import is_leaf_type
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
-from .helpers import (get_ast_field_name, get_uniquely_named_objects_by_name, is_real_leaf_type,
+from .helpers import (get_ast_field_name, get_uniquely_named_objects_by_name, is_vertex_field_type,
                       strip_non_null_from_type, validate_safe_string)
 
 
@@ -25,8 +25,33 @@ def scalar_leaf_only(operator):
                 # Because "operator" is from an enclosing scope, it is immutable in Python 2.x.
                 current_operator = operator
 
-            if not is_real_leaf_type(current_schema_type):
+            if not is_leaf_type(current_schema_type):
                 raise GraphQLCompilationError(u'Cannot apply "{}" filter to non-leaf type'
+                                              u'{}'.format(current_operator, current_schema_type))
+            return f(schema, current_schema_type, ast, context,
+                     directive, parameters, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def vertex_field_only(operator):
+    """Ensure the filter function is only applied to vertex field types."""
+    def decorator(f):
+        """Decorate the supplied function with the "vertex_field_only" logic."""
+        @wraps(f)
+        def wrapper(schema, current_schema_type, ast, context,
+                    directive, parameters, *args, **kwargs):
+            """Check that the type on which the operator operates is a vertex field type."""
+            if 'operator' in kwargs:
+                current_operator = kwargs['operator']
+            else:
+                # Because "operator" is from an enclosing scope, it is immutable in Python 2.x.
+                current_operator = operator
+
+            if not is_vertex_field_type(current_schema_type):
+                raise GraphQLCompilationError(u'Cannot apply "{}" filter to non-vertex field:'
                                               u'{}'.format(current_operator, current_schema_type))
             return f(schema, current_schema_type, ast, context,
                      directive, parameters, *args, **kwargs)
@@ -172,6 +197,7 @@ def _process_comparison_filter_directive(schema, current_schema_type, ast,
     return blocks.Filter(final_expression)
 
 
+@vertex_field_only(u'name_or_alias')
 @takes_parameters(1)
 def _process_name_or_alias_filter_directive(schema, current_schema_type, ast,
                                             context, directive, parameters):
@@ -190,10 +216,9 @@ def _process_name_or_alias_filter_directive(schema, current_schema_type, ast,
     Returns:
         a Filter basic block that performs the check against the name or alias
     """
-    if not isinstance(current_schema_type, (GraphQLInterfaceType, GraphQLObjectType)):
-        raise GraphQLCompilationError(u'Cannot apply "name_or_alias" to non-object, '
-                                      u'non-interface type {} '
-                                      u'{}'.format(current_schema_type, type(current_schema_type)))
+    if isinstance(current_schema_type, GraphQLUnionType):
+        raise GraphQLCompilationError(u'Cannot apply "name_or_alias" to union type '
+                                      u'{}'.format(current_schema_type))
 
     current_type_fields = current_schema_type.fields
     name_field = current_type_fields.get('name', None)
