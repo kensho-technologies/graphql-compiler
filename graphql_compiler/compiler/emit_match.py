@@ -173,10 +173,11 @@ def emit_code_from_ir(match_query):
     query_data.append(u'RETURN $matches)')  # Finish the MATCH query and the wrapping ().
 
     # Represent and add the LET clauses for any @fold scopes that might be part of the query.
-    fold_data = [
+    # Sort for deterministic order of clauses.
+    fold_data = sorted([
         _represent_fold(fold_location, fold_ir_blocks)
         for fold_location, fold_ir_blocks in six.iteritems(match_query.folds)
-    ]
+    ])
     if fold_data:
         query_data.append(u' LET ')
         query_data.append(fold_data[0])

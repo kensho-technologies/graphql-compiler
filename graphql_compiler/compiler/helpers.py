@@ -3,7 +3,8 @@
 
 import string
 
-from graphql import GraphQLEnumType, GraphQLNonNull, GraphQLScalarType, GraphQLString, is_type
+from graphql import GraphQLNonNull, GraphQLString, is_type
+from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 import six
 
 from ..exceptions import GraphQLCompilationError
@@ -47,12 +48,11 @@ def strip_non_null_from_type(graphql_type):
     return graphql_type
 
 
-def is_real_leaf_type(graphql_type):
-    """Return True if the argument is a leaf type, and False otherwise."""
-    # HACK(predrag): Workaround for graphql-core issue:
-    #                https://github.com/graphql-python/graphql-core/issues/105
-    return isinstance(strip_non_null_from_type(graphql_type),
-                      (GraphQLScalarType, GraphQLEnumType))
+def is_vertex_field_type(graphql_type):
+    """Return True if the argument is a vertex field type, and False otherwise."""
+    # This will need to change if we ever support complex embedded types or edge field types.
+    underlying_type = strip_non_null_from_type(graphql_type)
+    return isinstance(underlying_type, (GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType))
 
 
 def is_graphql_type(graphql_type):
