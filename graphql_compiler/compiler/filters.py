@@ -81,6 +81,16 @@ def takes_parameters(count):
     return decorator
 
 
+def _is_variable_argument(argument_name):
+    """Return True if the argument is a runtime variable, and False otherwise."""
+    return argument_name.startswith('$')
+
+
+def _is_tag_argument(argument_name):
+    """Return True if the argument is a tagged value, and False otherwise."""
+    return argument_name.startswith('%')
+
+
 def _represent_argument(schema, ast, context, argument, inferred_type):
     """Return a two-element tuple that represents the argument to the directive being processed.
 
@@ -106,7 +116,7 @@ def _represent_argument(schema, ast, context, argument, inferred_type):
     argument_name = argument[1:]
     validate_safe_string(argument_name)
 
-    if argument.startswith('$'):
+    if _is_variable_argument(argument):
         existing_type = context['inputs'].get(argument_name, inferred_type)
         if not inferred_type.is_same_type(existing_type):
             raise GraphQLCompilationError(u'Incompatible types inferred for argument {}. '
@@ -116,7 +126,7 @@ def _represent_argument(schema, ast, context, argument, inferred_type):
         context['inputs'][argument_name] = inferred_type
 
         return (expressions.Variable(argument, inferred_type), None)
-    elif argument.startswith('%'):
+    elif _is_tag_argument(argument):
         argument_context = context['tags'].get(argument_name, None)
         if argument_context is None:
             raise GraphQLCompilationError(u'Undeclared argument used: {}'.format(argument))
@@ -164,7 +174,7 @@ def _process_comparison_filter_directive(schema, current_schema_type, ast,
                  is optional, etc.). May be mutated in-place in this function!
         directive: GraphQL directive object, obtained from the AST node
         parameters: list of 1 element, containing the value to perform the comparison against;
-                    if the parameter is optional and missing, the check is performed against 'null'
+                    if the parameter is optional and missing, the check will return True
         operator: unicode, a comparison operator, like '=', '!=', '>=' etc.
                   This is a kwarg only to preserve the same positional arguments in the
                   function signature, to ease validation.
@@ -211,7 +221,7 @@ def _process_name_or_alias_filter_directive(schema, current_schema_type, ast,
                  is optional, etc.). May be mutated in-place in this function!
         directive: GraphQL directive object, obtained from the AST node
         parameters: list of 1 element, containing the value to check the name or alias against;
-                    if the parameter is optional and missing, the check is performed against 'null'
+                    if the parameter is optional and missing, the check will return True
 
     Returns:
         a Filter basic block that performs the check against the name or alias
@@ -326,7 +336,7 @@ def _process_in_collection_filter_directive(schema, current_schema_type, ast,
                  is optional, etc.). May be mutated in-place in this function!
         directive: GraphQL directive object, obtained from the AST node
         parameters: list of 1 element, specifying the collection in which the value must exist;
-                    if the collection is optional and missing, the check is assumed to be False
+                    if the collection is optional and missing, the check will return True
 
     Returns:
         a Filter basic block that performs the collection existence check
@@ -362,7 +372,7 @@ def _process_has_substring_filter_directive(schema, current_schema_type, ast,
                  is optional, etc.). May be mutated in-place in this function!
         directive: GraphQL directive object, obtained from the AST node
         parameters: list of 1 element, specifying the collection in which the value must exist;
-                    if the collection is optional and missing, the check is assumed to be False
+                    if the collection is optional and missing, the check will return True
 
     Returns:
         a Filter basic block that performs the substring check
@@ -401,7 +411,7 @@ def _process_contains_filter_directive(schema, current_schema_type, ast,
                  is optional, etc.). May be mutated in-place in this function!
         directive: GraphQL directive object, obtained from the AST node
         parameters: list of 1 element, specifying the collection in which the value must exist;
-                    if the collection is optional and missing, the check is assumed to be False
+                    if the collection is optional and missing, the check will return True
 
     Returns:
         a Filter basic block that performs the substring check

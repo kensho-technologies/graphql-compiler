@@ -48,6 +48,17 @@ def strip_non_null_from_type(graphql_type):
     return graphql_type
 
 
+def is_vertex_field_name(field_name):
+    """Return True if the field's name indicates it is a non-root vertex field."""
+    return field_name.startswith('out_') or field_name.startswith('in_')
+
+
+def is_non_root_vertex_field(ast, graphql_type):
+    """Return True if the AST belongs to a vertex field that is not the root vertex."""
+    field_name = get_ast_field_name(ast)
+    return is_vertex_field_name(field_name) and is_vertex_field_type(graphql_type)
+
+
 def is_vertex_field_type(graphql_type):
     """Return True if the argument is a vertex field type, and False otherwise."""
     # This will need to change if we ever support complex embedded types or edge field types.

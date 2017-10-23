@@ -71,8 +71,8 @@ from .directive_helpers import (get_directives, validate_property_directives,
                                 validate_vertex_field_directive_interactions)
 from .filters import process_filter_directive
 from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_field_type_from_schema,
-                      get_uniquely_named_objects_by_name, strip_non_null_from_type,
-                      validate_safe_string)
+                      get_uniquely_named_objects_by_name, is_vertex_field_name,
+                      strip_non_null_from_type, validate_safe_string)
 
 
 # The OutputMetadata will have the following types for its members:
@@ -89,11 +89,6 @@ class OutputMetadata(namedtuple('OutputMetadata', ('type', 'optional'))):
     def __ne__(self, other):
         """Check another OutputMetadata object for non-equality against this one."""
         return not self.__eq__(other)
-
-
-def _is_vertex_field_name(field_name):
-    """Return True if the field name denotes a vertex field, or False if it's a property field."""
-    return field_name.startswith('out_') or field_name.startswith('in_')
 
 
 def _get_fields(ast):
@@ -132,7 +127,7 @@ def _get_fields(ast):
         seen_field_names.add(name)
 
         # Vertex fields start with 'out_' or 'in_', denoting the edge direction to that vertex.
-        if _is_vertex_field_name(name):
+        if is_vertex_field_name(name):
             switched_to_vertices = True
             vertex_fields.append(field_ast)
         else:
