@@ -52,6 +52,10 @@ class Literal(Expression):
             validate_safe_string(self.value)
             return
 
+        # Literal ints are correctly representable and supported.
+        if isinstance(self.value, int):
+            return
+
         # Literal empty lists, and non-empty lists of safe strings, are
         # correctly representable and supported.
         if isinstance(self.value, list):
@@ -74,6 +78,8 @@ class Literal(Expression):
             return u'false'
         elif isinstance(self.value, six.string_types):
             return safe_quoted_string(self.value)
+        elif isinstance(self.value, int):
+            return six.text_type(self.value)
         elif isinstance(self.value, list):
             if len(self.value) == 0:
                 return '[]'
@@ -92,6 +98,7 @@ NullLiteral = Literal(None)
 TrueLiteral = Literal(True)
 FalseLiteral = Literal(False)
 EmptyListLiteral = Literal([])
+ZeroLiteral = Literal(0)
 
 
 class Variable(Expression):
@@ -508,6 +515,82 @@ class ContextFieldExistence(Expression):
         raise AssertionError(u'ContextFieldExistence.to_gremlin() was called: {}'.format(self))
 
 
+def _validate_operator_name(operator, supported_operators):
+    """Ensure the named operator is valid and supported."""
+    if not isinstance(operator, six.text_type):
+        raise TypeError(u'Expected unicode operator, got: {} {}'.format(
+            type(operator).__name__, operator))
+
+    if operator not in supported_operators:
+        raise GraphQLCompilationError(u'Unrecognized operator: {}'.format(operator))
+
+
+class UnaryTransformation(Expression):
+    """An expression that modifies an underlying expression with a unary operator."""
+
+    SUPPORTED_OPERATORS = frozenset(
+        {u'size'})
+
+    def __init__(self, operator, inner_expression):
+        """Construct a UnaryExpression that modifies the given inner expression."""
+        super(UnaryTransformation, self).__init__(operator, inner_expression)
+        self.operator = operator
+        self.inner_expression = inner_expression
+
+    def validate(self):
+        """Validate that the UnaryTransformation is correctly representable."""
+        _validate_operator_name(self.operator, UnaryTransformation.SUPPORTED_OPERATORS)
+
+        if not isinstance(self.inner_expression, Expression):
+            raise TypeError(u'Expected Expression inner_expression, got {} {}'.format(
+                type(self.inner_expression).__name__, self.inner_expression))
+
+    def visit_and_update(self, visitor_fn):
+        """Create an updated version (if needed) of UnaryTransformation via the visitor pattern."""
+        new_inner = self.inner_expression.visit_and_update(visitor_fn)
+
+        if new_inner is not self.inner_expression:
+            return visitor_fn(UnaryTransformation(self.operator, new_inner))
+        else:
+            return visitor_fn(self)
+
+    def to_match(self):
+        """Return a unicode object with the MATCH representation of this UnaryTransformation."""
+        self.validate()
+
+        translation_table = {
+            u'size': u'size()',
+        }
+        match_operator = translation_table.get(self.operator)
+        if not match_operator:
+            raise AssertionError(u'Unrecognized operator used: '
+                                 u'{} {}'.format(self.operator, self))
+
+        template = u'%(inner)s.%(operator)s'
+        args = {
+            'inner': self.inner_expression.to_match(),
+            'operator': match_operator,
+        }
+        return template % args
+
+    def to_gremlin(self):
+        """Return a unicode object with the Gremlin representation of this expression."""
+        translation_table = {
+            u'size': u'count()',
+        }
+        gremlin_operator = translation_table.get(self.operator)
+        if not gremlin_operator:
+            raise AssertionError(u'Unrecognized operator used: '
+                                 u'{} {}'.format(self.operator, self))
+
+        template = u'{inner}.{operator}'
+        args = {
+            'inner': self.inner_expression.to_gremlin(),
+            'operator': gremlin_operator,
+        }
+        return template.format(**args)
+
+
 class BinaryComposition(Expression):
     """An expression created by composing two expressions together."""
 
@@ -534,12 +617,7 @@ class BinaryComposition(Expression):
 
     def validate(self):
         """Validate that the BinaryComposition is correctly representable."""
-        if not isinstance(self.operator, six.text_type):
-            raise TypeError(u'Expected unicode operator, got: {} {}'.format(
-                type(self.operator).__name__, self.operator))
-
-        if self.operator not in BinaryComposition.SUPPORTED_OPERATORS:
-            raise GraphQLCompilationError(u'Unrecognized operator: {}'.format(self.operator))
+        _validate_operator_name(self.operator, BinaryComposition.SUPPORTED_OPERATORS)
 
         if not isinstance(self.left, Expression):
             raise TypeError(u'Expected Expression left, got: {} {}'.format(
