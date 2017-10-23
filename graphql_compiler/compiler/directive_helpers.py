@@ -66,12 +66,16 @@ def get_local_filter_directives(ast, inner_vertex_fields):
     Returns:
         list of filter directive objects
     """
-    ast_directives_obj = ast.directives or []  # ast.directives can be None
-    result = [
-        directive_obj
-        for directive_obj in ast_directives_obj
-        if directive_obj.name.value == 'filter'
-    ]
+    result = []
+    if ast.directives:  # it'll be None if the AST has no directives at that node
+        for directive_obj in ast.directives:
+            if directive_obj.name.value != 'filter':
+                continue
+
+            # Of all filters that appear *on the field itself*, only the ones that apply
+            # to the outer scope are not considered "local" and are not to be returned.
+            if not is_filter_with_outer_scope_vertex_field_operator(directive_obj):
+                result.append(directive_obj)
 
     if inner_vertex_fields:  # allow the argument to be None
         for inner_ast in inner_vertex_fields:
@@ -79,6 +83,8 @@ def get_local_filter_directives(ast, inner_vertex_fields):
                 if directive_obj.name.value != 'filter':
                     continue
 
+                # Of all filters that appear on an inner vertex field, only the ones that apply
+                # to the outer scope are "local" to the outer field and therefore to be returned.
                 if is_filter_with_outer_scope_vertex_field_operator(directive_obj):
                     result.append(directive_obj)
 
