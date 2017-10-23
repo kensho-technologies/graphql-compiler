@@ -518,7 +518,7 @@ class ContextFieldExistence(Expression):
 def _validate_operator_name(operator, supported_operators):
     """Ensure the named operator is valid and supported."""
     if not isinstance(operator, six.text_type):
-        raise TypeError(u'Expected unicode operator, got: {} {}'.format(
+        raise TypeError(u'Expected operator as unicode string, got: {} {}'.format(
             type(operator).__name__, operator))
 
     if operator not in supported_operators:
