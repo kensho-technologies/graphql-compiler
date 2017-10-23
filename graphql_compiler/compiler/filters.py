@@ -438,9 +438,61 @@ def _process_contains_filter_directive(schema, current_schema_type, ast,
     return blocks.Filter(filter_predicate)
 
 
+def _get_filter_op_name_and_values(directive):
+    """Extract the (op_name, operator_params) tuple from a directive object."""
+    args = get_uniquely_named_objects_by_name(directive.arguments)
+    if 'op_name' not in args:
+        raise AssertionError(u'op_name not found in filter directive arguments!'
+                             u'Validation should have caught this: {}'.format(directive))
+
+    # HACK(predrag): Workaround for graphql-core validation issue
+    #                https://github.com/graphql-python/graphql-core/issues/97
+    if not isinstance(args['value'].value, ListValue):
+        raise GraphQLValidationError(u'Filter directive value was not a list: {}'.format(directive))
+
+    op_name = args['op_name'].value.value
+    operator_params = [x.value for x in args['value'].value.values]
+
+    return (op_name, operator_params)
+
+
 ###
 # Public API
 ###
+
+COMPARISON_OPERATORS = frozenset({u'=', u'!=', u'>', u'<', u'>=', u'<='})
+PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset({
+    u'between',
+    u'in_collection',
+    u'contains',
+    u'has_substring',
+})
+
+# Vertex field filtering operators can apply to the inner scope or the outer scope.
+# Consider:
+# {
+#     Foo {
+#         out_Foo_Bar @filter(op_name: "...", value: [...]) {
+#             ...
+#         }
+#     }
+# }
+#
+# If the filter on out_Foo_Bar filters the Foo, we say that it filters the outer scope.
+# Instead, if the filter filters the Bar connected to the Foo, it filters the inner scope.
+INNER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset({'name_or_alias'})
+OUTER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset()
+
+VERTEX_FIELD_OPERATORS = INNER_SCOPE_VERTEX_FIELD_OPERATORS | OUTER_SCOPE_VERTEX_FIELD_OPERATORS
+
+ALL_OPERATORS = PROPERTY_FIELD_OPERATORS | VERTEX_FIELD_OPERATORS
+
+
+def is_filter_with_outer_scope_vertex_field_operator(directive):
+    """Return True if the directive's operator is an outer scope vertex field operator."""
+    op_name, _ = _get_filter_op_name_and_values(directive)
+    return op_name in OUTER_SCOPE_VERTEX_FIELD_OPERATORS
+
 
 def process_filter_directive(schema, current_schema_type, ast, context, directive):
     """Return a Filter basic block that corresponds to the filter operation in the directive.
@@ -456,32 +508,25 @@ def process_filter_directive(schema, current_schema_type, ast, context, directiv
     Returns:
         a Filter basic block that performs the requested filtering operation
     """
-    args = get_uniquely_named_objects_by_name(directive.arguments)
-    if 'op_name' not in args:
-        raise AssertionError(u'op_name not found in filter directive arguments!'
-                             u'Validation should have caught this: {}'.format(directive))
+    op_name, operator_params = _get_filter_op_name_and_values(directive)
 
-    # HACK(predrag): Workaround for graphql-core validation issue
-    #                https://github.com/graphql-python/graphql-core/issues/97
-    if not isinstance(args['value'].value, ListValue):
-        raise GraphQLValidationError(u'Filter directive value was not a list: {}'.format(directive))
+    non_comparison_filters = {
+        u'name_or_alias': _process_name_or_alias_filter_directive,
+        u'between': _process_between_filter_directive,
+        u'in_collection': _process_in_collection_filter_directive,
+        u'has_substring': _process_has_substring_filter_directive,
+        u'contains': _process_contains_filter_directive,
+    }
+    all_recognized_filters = frozenset(non_comparison_filters.keys()) | COMPARISON_OPERATORS
+    if all_recognized_filters != ALL_OPERATORS:
+        unrecognized_filters = ALL_OPERATORS - all_recognized_filters
+        raise AssertionError(u'Some filtering operators are defined but do not have an associated '
+                             u'processing function. This is a bug: {}'.format(unrecognized_filters))
 
-    op_name = args['op_name'].value.value
-    operator_params = [x.value for x in args['value'].value.values]
-
-    comparison_operators = {u'=', u'!=', u'>', u'<', u'>=', u'<='}
-
-    if op_name in comparison_operators:
+    if op_name in COMPARISON_OPERATORS:
         process_func = partial(_process_comparison_filter_directive, operator=op_name)
     else:
-        known_filter_types = {
-            u'name_or_alias': _process_name_or_alias_filter_directive,
-            u'between': _process_between_filter_directive,
-            u'in_collection': _process_in_collection_filter_directive,
-            u'has_substring': _process_has_substring_filter_directive,
-            u'contains': _process_contains_filter_directive,
-        }
-        process_func = known_filter_types.get(op_name, None)
+        process_func = non_comparison_filters.get(op_name, None)
 
     if process_func is None:
         raise GraphQLCompilationError(u'Unknown op_name for filter directive: {}'.format(op_name))

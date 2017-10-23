@@ -4,6 +4,7 @@
 import six
 
 from ..exceptions import GraphQLCompilationError
+from .filters import is_filter_with_outer_scope_vertex_field_operator
 
 
 ALLOWED_DUPLICATED_DIRECTIVES = frozenset({'filter'})
@@ -18,19 +19,18 @@ if not (VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT <= VERTEX_ONLY_DIRECTIVES):
                          u'{}'.format(VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT, VERTEX_ONLY_DIRECTIVES))
 
 
-def get_directives(ast):
+def get_unique_directives(ast):
     """Return a dict of directive name to directive object for the given AST node.
 
-    Also verifies that each directive is only present once on any given AST node,
-    raising GraphQLCompilationError if that is not the case.
+    Any directives that are allowed to exist more than once on any AST node are ignored.
+    For any directives that can only exist up to once, we verify that they are not duplicated
+    raising GraphQLCompilationError in case we find them more than once on the AST node.
 
     Args:
         ast: GraphQL AST node, obtained from the graphql library
 
     Returns:
-        dict of string to:
-        - directive object, if the directive is only allowed to appear at most once, or
-        - list of directive objects, if the directive is allowed to appear multiple times
+        dict of string to directive object
     """
     if not ast.directives:
         return dict()
@@ -39,12 +39,48 @@ def get_directives(ast):
     for directive_obj in ast.directives:
         directive_name = directive_obj.name.value
         if directive_name in ALLOWED_DUPLICATED_DIRECTIVES:
-            result.setdefault(directive_name, []).append(directive_obj)
+            pass  # We don't return these.
         elif directive_name in result:
             raise GraphQLCompilationError(u'Directive was unexpectedly applied twice in the same '
                                           u'location: {} {}'.format(directive_name, ast.directives))
         else:
             result[directive_name] = directive_obj
+
+    return result
+
+
+def get_local_filter_directives(ast, inner_vertex_fields):
+    """Get all filter directives that apply to the current field.
+
+    This helper abstracts away the fact that some vertex field filtering operators apply on the
+    inner scope (the scope of the inner vertex field on which they are applied), whereas some apply
+    on the outer scope (the scope that contains the inner vertex field).
+    See filters.py for more information.
+
+    Args:
+        ast: a GraphQL AST object for which to load local filters, from the graphql library
+        inner_vertex_fields: a list of inner AST objects representing vertex fields that are within
+                             the current field. If currently processing a property field (i.e.
+                             there are no inner vertex fields), this argument may be set to None.
+
+    Returns:
+        list of filter directive objects
+    """
+    ast_directives_obj = ast.directives or []  # ast.directives can be None
+    result = [
+        directive_obj
+        for directive_obj in ast_directives_obj
+        if directive_obj.name.value == 'filter'
+    ]
+
+    if inner_vertex_fields:  # allow the argument to be None
+        for inner_ast in inner_vertex_fields:
+            for directive_obj in inner_ast.directives:
+                if directive_obj.name.value != 'filter':
+                    continue
+
+                if is_filter_with_outer_scope_vertex_field_operator(directive_obj):
+                    result.append(directive_obj)
 
     return result
 
@@ -65,9 +101,13 @@ def validate_vertex_directives(directives):
                 u'Found property-only directive {} set on vertex.'.format(directive_name))
 
 
-def validate_root_vertex_directives(directives):
+def validate_root_vertex_directives(root_ast):
     """Validate the directives that appear at the root vertex field."""
-    directives_present_at_root = set(six.iterkeys(directives))
+    directives_present_at_root = set()
+    for directive_obj in root_ast.directives:
+        directive_name = directive_obj.name.value
+        directives_present_at_root.add(directive_name)
+
     disallowed_directives = directives_present_at_root & VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT
     if disallowed_directives:
         raise GraphQLCompilationError(u'Found prohibited directives on root vertex: '
