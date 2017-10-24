@@ -1,14 +1,14 @@
 # Copyright 2017 Kensho Technologies, Inc.
 from functools import partial, wraps
 
-from graphql import GraphQLList, GraphQLScalarType, GraphQLString, GraphQLUnionType
-from graphql.language.ast import ListValue
+from graphql import GraphQLInt, GraphQLList, GraphQLScalarType, GraphQLString, GraphQLUnionType
+from graphql.language.ast import InlineFragment, ListValue
 from graphql.type.definition import is_leaf_type
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
-from .helpers import (get_uniquely_named_objects_by_name, is_vertex_field_type,
-                      strip_non_null_from_type, validate_safe_string)
+from .helpers import (get_uniquely_named_objects_by_name, is_vertex_field_name,
+                      is_vertex_field_type, strip_non_null_from_type, validate_safe_string)
 
 
 def scalar_leaf_only(operator):
@@ -196,6 +196,80 @@ def _process_comparison_filter_directive(filter_operation_info, context, paramet
         final_expression = comparison_expression
 
     return blocks.Filter(final_expression)
+
+
+@vertex_field_only(u'has_edge_degree')
+@takes_parameters(1)
+def _process_has_edge_degree_filter_directive(filter_operation_info, context, parameters):
+    """Return a Filter basic block that checks the degree of the edge to the given vertex field.
+
+    Args:
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
+        context: dict, various per-compilation data (e.g. declared tags, whether the current block
+                 is optional, etc.). May be mutated in-place in this function!
+        parameters: list of 1 element, containing the value to check the edge degree against;
+                    if the parameter is optional and missing, the check will return True
+
+    Returns:
+        a Filter basic block that performs the check
+    """
+    if isinstance(filter_operation_info.field_ast, InlineFragment):
+        raise AssertionError(u'Received InlineFragment AST node in "has_edge_degree" filter '
+                             u'handler. This should have been caught earlier: '
+                             u'{}'.format(filter_operation_info.field_ast))
+
+    filtered_field_name = filter_operation_info.field_name
+    if filtered_field_name is None or not is_vertex_field_name(filtered_field_name):
+        raise AssertionError(u'Invalid value for "filtered_field_name" in "has_edge_degree" '
+                             u'filter: {}'.format(filtered_field_name))
+
+    if not is_vertex_field_type(filter_operation_info.field_type):
+        raise AssertionError(u'Invalid value for "filter_operation_info.field_type" in '
+                             u'"has_edge_degree" filter: {}'.format(filter_operation_info))
+
+    argument = parameters[0]
+    if not _is_variable_argument(argument):
+        raise GraphQLCompilationError(u'The "has_edge_degree" filter only supports runtime '
+                                      u'variable arguments. Tagged values are not supported.'
+                                      u'Argument name: {}'.format(argument))
+
+    argument_inferred_type = GraphQLInt
+    argument_expression, non_existence_expression = _represent_argument(
+        context, argument, argument_inferred_type)
+
+    if non_existence_expression is not None:
+        raise AssertionError(u'Since we do not support tagged values, non_existence_expression '
+                             u'should have been None. However, it was: '
+                             u'{}'.format(non_existence_expression))
+
+    # If no edges to the vertex field exist, the edges' field in the database may be "null".
+    # We also don't know ahead of time whether the supplied argument is zero or not.
+    # We have to accommodate these facts in our generated comparison code.
+    # We construct the following expression to check if the edge degree is zero:
+    #   ({argument} == 0) && (edge_field == null)
+    argument_is_zero = expressions.BinaryComposition(
+        u'=', argument_expression, expressions.ZeroLiteral)
+    edge_field_is_null = expressions.BinaryComposition(
+        u'=', expressions.LocalField(filtered_field_name), expressions.NullLiteral)
+    edge_degree_is_zero = expressions.BinaryComposition(
+        u'&&', argument_is_zero, edge_field_is_null)
+
+    # The following expression will check for a non-zero edge degree equal to the argument.
+    #  (edge_field != null) && (edge_field.size() == {argument})
+    edge_field_is_not_null = expressions.BinaryComposition(
+        u'!=', expressions.LocalField(filtered_field_name), expressions.NullLiteral)
+    edge_degree = expressions.UnaryTransformation(
+        u'size', expressions.LocalField(filtered_field_name))
+    edge_degree_matches_argument = expressions.BinaryComposition(
+        u'=', edge_degree, argument_expression)
+    edge_degree_is_non_zero = expressions.BinaryComposition(
+        u'&&', edge_field_is_not_null, edge_degree_matches_argument)
+
+    # We combine the two cases with a logical-or to handle both situations:
+    filter_predicate = expressions.BinaryComposition(
+        u'||', edge_degree_is_zero, edge_degree_is_non_zero)
+    return blocks.Filter(filter_predicate)
 
 
 @vertex_field_only(u'name_or_alias')
@@ -447,6 +521,7 @@ PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset({
     u'in_collection',
     u'contains',
     u'has_substring',
+    u'has_edge_degree',
 })
 
 # Vertex field filtering operators can apply to the inner scope or the outer scope.
@@ -462,7 +537,7 @@ PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset({
 # If the filter on out_Foo_Bar filters the Foo, we say that it filters the outer scope.
 # Instead, if the filter filters the Bar connected to the Foo, it filters the inner scope.
 INNER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset({u'name_or_alias'})
-OUTER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset()
+OUTER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset({u'has_edge_degree'})
 
 VERTEX_FIELD_OPERATORS = INNER_SCOPE_VERTEX_FIELD_OPERATORS | OUTER_SCOPE_VERTEX_FIELD_OPERATORS
 
@@ -499,6 +574,7 @@ def process_filter_directive(filter_operation_info, context):
         u'in_collection': _process_in_collection_filter_directive,
         u'has_substring': _process_has_substring_filter_directive,
         u'contains': _process_contains_filter_directive,
+        u'has_edge_degree': _process_has_edge_degree_filter_directive,
     }
     all_recognized_filters = frozenset(non_comparison_filters.keys()) | COMPARISON_OPERATORS
     if all_recognized_filters != ALL_OPERATORS:
