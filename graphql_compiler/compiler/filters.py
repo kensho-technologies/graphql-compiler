@@ -7,7 +7,7 @@ from graphql.type.definition import is_leaf_type
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
-from .helpers import (get_ast_field_name, get_uniquely_named_objects_by_name, is_vertex_field_type,
+from .helpers import (get_uniquely_named_objects_by_name, is_vertex_field_type,
                       strip_non_null_from_type, validate_safe_string)
 
 
@@ -16,8 +16,7 @@ def scalar_leaf_only(operator):
     def decorator(f):
         """Decorate the supplied function with the "scalar_leaf_only" logic."""
         @wraps(f)
-        def wrapper(schema, current_schema_type, ast, context,
-                    directive, parameters, *args, **kwargs):
+        def wrapper(filter_operation_info, context, parameters, *args, **kwargs):
             """Check that the type on which the operator operates is a scalar leaf type."""
             if 'operator' in kwargs:
                 current_operator = kwargs['operator']
@@ -25,11 +24,10 @@ def scalar_leaf_only(operator):
                 # Because "operator" is from an enclosing scope, it is immutable in Python 2.x.
                 current_operator = operator
 
-            if not is_leaf_type(current_schema_type):
+            if not is_leaf_type(filter_operation_info.field_type):
                 raise GraphQLCompilationError(u'Cannot apply "{}" filter to non-leaf type'
-                                              u'{}'.format(current_operator, current_schema_type))
-            return f(schema, current_schema_type, ast, context,
-                     directive, parameters, *args, **kwargs)
+                                              u'{}'.format(current_operator, filter_operation_info))
+            return f(filter_operation_info, context, parameters, *args, **kwargs)
 
         return wrapper
 
@@ -41,8 +39,7 @@ def vertex_field_only(operator):
     def decorator(f):
         """Decorate the supplied function with the "vertex_field_only" logic."""
         @wraps(f)
-        def wrapper(schema, current_schema_type, ast, context,
-                    directive, parameters, *args, **kwargs):
+        def wrapper(filter_operation_info, context, parameters, *args, **kwargs):
             """Check that the type on which the operator operates is a vertex field type."""
             if 'operator' in kwargs:
                 current_operator = kwargs['operator']
@@ -50,11 +47,11 @@ def vertex_field_only(operator):
                 # Because "operator" is from an enclosing scope, it is immutable in Python 2.x.
                 current_operator = operator
 
-            if not is_vertex_field_type(current_schema_type):
-                raise GraphQLCompilationError(u'Cannot apply "{}" filter to non-vertex field:'
-                                              u'{}'.format(current_operator, current_schema_type))
-            return f(schema, current_schema_type, ast, context,
-                     directive, parameters, *args, **kwargs)
+            if not is_vertex_field_type(filter_operation_info.field_type):
+                raise GraphQLCompilationError(
+                    u'Cannot apply "{}" filter to non-vertex field: '
+                    u'{}'.format(current_operator, filter_operation_info.field_name))
+            return f(filter_operation_info, context, parameters, *args, **kwargs)
 
         return wrapper
 
@@ -66,15 +63,13 @@ def takes_parameters(count):
     def decorator(f):
         """Decorate the supplied function with the "takes_parameters" logic."""
         @wraps(f)
-        def wrapper(schema, current_schema_type, ast, context,
-                    directive, parameters, *args, **kwargs):
+        def wrapper(filter_operation_info, context, parameters, *args, **kwargs):
             """Check that the supplied number of parameters equals the expected number."""
             if len(parameters) != count:
                 raise GraphQLCompilationError(u'Incorrect number of parameters, expected {} got '
                                               u'{}: {}'.format(count, len(parameters), parameters))
 
-            return f(schema, current_schema_type, ast, context,
-                     directive, parameters, *args, **kwargs)
+            return f(filter_operation_info, context, parameters, *args, **kwargs)
 
         return wrapper
 
@@ -91,13 +86,10 @@ def _is_tag_argument(argument_name):
     return argument_name.startswith('%')
 
 
-def _represent_argument(schema, ast, context, argument, inferred_type):
+def _represent_argument(context, argument, inferred_type):
     """Return a two-element tuple that represents the argument to the directive being processed.
 
     Args:
-        schema: GraphQL schema object, obtained from the graphql library
-        ast: GraphQL AST node, obtained from the graphql library. Only for function signature
-             uniformity at the moment -- it is currently not used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         argument: string, the name of the argument to the directive
@@ -162,17 +154,14 @@ def _represent_argument(schema, ast, context, argument, inferred_type):
 
 @scalar_leaf_only(u'comparison operator')
 @takes_parameters(1)
-def _process_comparison_filter_directive(schema, current_schema_type, ast,
-                                         context, directive, parameters, operator=None):
+def _process_comparison_filter_directive(filter_operation_info, context, parameters, operator=None):
     """Return a Filter basic block that performs the given comparison against the property field.
 
     Args:
-        schema: GraphQL schema object, obtained from the graphql library
-        current_schema_type: GraphQLType, the schema type at the current location
-        ast: GraphQL AST node, obtained from the graphql library
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        directive: GraphQL directive object, obtained from the AST node
         parameters: list of 1 element, containing the value to perform the comparison against;
                     if the parameter is optional and missing, the check will return True
         operator: unicode, a comparison operator, like '=', '!=', '>=' etc.
@@ -187,13 +176,15 @@ def _process_comparison_filter_directive(schema, current_schema_type, ast,
         raise AssertionError(u'Expected a valid comparison operator ({}), but got '
                              u'{}'.format(comparison_operators, operator))
 
-    argument_inferred_type = strip_non_null_from_type(current_schema_type)
-    argument_expression, non_existence_expression = _represent_argument(
-        schema, ast, context, parameters[0], argument_inferred_type)
+    filtered_field_type = filter_operation_info.field_type
+    filtered_field_name = filter_operation_info.field_name
 
-    field_name = get_ast_field_name(ast)
+    argument_inferred_type = strip_non_null_from_type(filtered_field_type)
+    argument_expression, non_existence_expression = _represent_argument(
+        context, parameters[0], argument_inferred_type)
+
     comparison_expression = expressions.BinaryComposition(
-        operator, expressions.LocalField(field_name), argument_expression)
+        operator, expressions.LocalField(filtered_field_name), argument_expression)
 
     final_expression = None
     if non_existence_expression is not None:
@@ -209,55 +200,53 @@ def _process_comparison_filter_directive(schema, current_schema_type, ast,
 
 @vertex_field_only(u'name_or_alias')
 @takes_parameters(1)
-def _process_name_or_alias_filter_directive(schema, current_schema_type, ast,
-                                            context, directive, parameters):
+def _process_name_or_alias_filter_directive(filter_operation_info, context, parameters):
     """Return a Filter basic block that checks for a match against an Entity's name or alias.
 
     Args:
-        schema: GraphQL schema object, obtained from the graphql library
-        current_schema_type: GraphQLType, the schema type at the current location
-        ast: GraphQL AST node, obtained from the graphql library
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        directive: GraphQL directive object, obtained from the AST node
         parameters: list of 1 element, containing the value to check the name or alias against;
                     if the parameter is optional and missing, the check will return True
 
     Returns:
         a Filter basic block that performs the check against the name or alias
     """
-    if isinstance(current_schema_type, GraphQLUnionType):
+    filtered_field_type = filter_operation_info.field_type
+    if isinstance(filtered_field_type, GraphQLUnionType):
         raise GraphQLCompilationError(u'Cannot apply "name_or_alias" to union type '
-                                      u'{}'.format(current_schema_type))
+                                      u'{}'.format(filtered_field_type))
 
-    current_type_fields = current_schema_type.fields
+    current_type_fields = filtered_field_type.fields
     name_field = current_type_fields.get('name', None)
     alias_field = current_type_fields.get('alias', None)
     if not name_field or not alias_field:
         raise GraphQLCompilationError(u'Cannot apply "name_or_alias" to type {} because it lacks a '
-                                      u'"name" or "alias" field.'.format(current_schema_type))
+                                      u'"name" or "alias" field.'.format(filtered_field_type))
 
     name_field_type = strip_non_null_from_type(name_field.type)
     alias_field_type = strip_non_null_from_type(alias_field.type)
 
     if not isinstance(name_field_type, GraphQLScalarType):
         raise GraphQLCompilationError(u'Cannot apply "name_or_alias" to type {} because its "name" '
-                                      u'field is not a scalar.'.format(current_schema_type))
+                                      u'field is not a scalar.'.format(filtered_field_type))
     if not isinstance(alias_field_type, GraphQLList):
         raise GraphQLCompilationError(u'Cannot apply "name_or_alias" to type {} because its '
-                                      u'"alias" field is not a list.'.format(current_schema_type))
+                                      u'"alias" field is not a list.'.format(filtered_field_type))
 
     alias_field_inner_type = strip_non_null_from_type(alias_field_type.of_type)
     if alias_field_inner_type != name_field_type:
         raise GraphQLCompilationError(u'Cannot apply "name_or_alias" to type {} because the '
                                       u'"name" field and the inner type of the "alias" field '
-                                      u'do not match: {} vs {}'.format(current_schema_type,
+                                      u'do not match: {} vs {}'.format(filtered_field_type,
                                                                        name_field_type,
                                                                        alias_field_inner_type))
 
     argument_inferred_type = name_field_type
     argument_expression, non_existence_expression = _represent_argument(
-        schema, ast, context, parameters[0], argument_inferred_type)
+        context, parameters[0], argument_inferred_type)
 
     check_against_name = expressions.BinaryComposition(
         u'=', expressions.LocalField('name'), argument_expression)
@@ -277,17 +266,14 @@ def _process_name_or_alias_filter_directive(schema, current_schema_type, ast,
 
 @scalar_leaf_only(u'between')
 @takes_parameters(2)
-def _process_between_filter_directive(schema, current_schema_type, ast,
-                                      context, directive, parameters):
+def _process_between_filter_directive(filter_operation_info, context, parameters):
     """Return a Filter basic block that checks that a field is between two values, inclusive.
 
     Args:
-        schema: GraphQL schema object, obtained from the graphql library
-        current_schema_type: GraphQLType, the schema type at the current location
-        ast: GraphQL AST node, obtained from the graphql library
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        directive: GraphQL directive object, obtained from the AST node
         parameters: list of 2 elements, specifying the time range in which the data must lie;
                     if either of the elements is optional and missing,
                     their side of the check is assumed to be True
@@ -295,23 +281,24 @@ def _process_between_filter_directive(schema, current_schema_type, ast,
     Returns:
         a Filter basic block that performs the range check
     """
-    field_name = get_ast_field_name(ast)
+    filtered_field_type = filter_operation_info.field_type
+    filtered_field_name = filter_operation_info.field_name
 
-    argument_inferred_type = strip_non_null_from_type(current_schema_type)
+    argument_inferred_type = strip_non_null_from_type(filtered_field_type)
     arg1_expression, arg1_non_existence = _represent_argument(
-        schema, ast, context, parameters[0], argument_inferred_type)
+        context, parameters[0], argument_inferred_type)
     arg2_expression, arg2_non_existence = _represent_argument(
-        schema, ast, context, parameters[1], argument_inferred_type)
+        context, parameters[1], argument_inferred_type)
 
     lower_bound_clause = expressions.BinaryComposition(
-        u'>=', expressions.LocalField(field_name), arg1_expression)
+        u'>=', expressions.LocalField(filtered_field_name), arg1_expression)
     if arg1_non_existence is not None:
         # The argument is optional, and if it doesn't exist, this side of the check should pass.
         lower_bound_clause = expressions.BinaryComposition(
             u'||', arg1_non_existence, lower_bound_clause)
 
     upper_bound_clause = expressions.BinaryComposition(
-        u'<=', expressions.LocalField(field_name), arg2_expression)
+        u'<=', expressions.LocalField(filtered_field_name), arg2_expression)
     if arg2_non_existence is not None:
         # The argument is optional, and if it doesn't exist, this side of the check should pass.
         upper_bound_clause = expressions.BinaryComposition(
@@ -324,31 +311,29 @@ def _process_between_filter_directive(schema, current_schema_type, ast,
 
 @scalar_leaf_only(u'in_collection')
 @takes_parameters(1)
-def _process_in_collection_filter_directive(schema, current_schema_type, ast,
-                                            context, directive, parameters):
+def _process_in_collection_filter_directive(filter_operation_info, context, parameters):
     """Return a Filter basic block that checks for a value's existence in a collection.
 
     Args:
-        schema: GraphQL schema object, obtained from the graphql library
-        current_schema_type: GraphQLType, the schema type at the current location
-        ast: GraphQL AST node, obtained from the graphql library
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        directive: GraphQL directive object, obtained from the AST node
         parameters: list of 1 element, specifying the collection in which the value must exist;
                     if the collection is optional and missing, the check will return True
 
     Returns:
         a Filter basic block that performs the collection existence check
     """
-    field_name = get_ast_field_name(ast)
+    filtered_field_type = filter_operation_info.field_type
+    filtered_field_name = filter_operation_info.field_name
 
-    argument_inferred_type = GraphQLList(strip_non_null_from_type(current_schema_type))
+    argument_inferred_type = GraphQLList(strip_non_null_from_type(filtered_field_type))
     argument_expression, non_existence_expression = _represent_argument(
-        schema, ast, context, parameters[0], argument_inferred_type)
+        context, parameters[0], argument_inferred_type)
 
     filter_predicate = expressions.BinaryComposition(
-        u'contains', argument_expression, expressions.LocalField(field_name))
+        u'contains', argument_expression, expressions.LocalField(filtered_field_name))
     if non_existence_expression is not None:
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
@@ -360,35 +345,33 @@ def _process_in_collection_filter_directive(schema, current_schema_type, ast,
 
 @scalar_leaf_only(u'has_substring')
 @takes_parameters(1)
-def _process_has_substring_filter_directive(schema, current_schema_type, ast,
-                                            context, directive, parameters):
+def _process_has_substring_filter_directive(filter_operation_info, context, parameters):
     """Return a Filter basic block that checks if the directive arg is a substring of the field.
 
     Args:
-        schema: GraphQL schema object, obtained from the graphql library
-        current_schema_type: GraphQLType, the schema type at the current location
-        ast: GraphQL AST node, obtained from the graphql library
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        directive: GraphQL directive object, obtained from the AST node
         parameters: list of 1 element, specifying the collection in which the value must exist;
                     if the collection is optional and missing, the check will return True
 
     Returns:
         a Filter basic block that performs the substring check
     """
-    if not strip_non_null_from_type(current_schema_type).is_same_type(GraphQLString):
+    filtered_field_type = filter_operation_info.field_type
+    filtered_field_name = filter_operation_info.field_name
+
+    if not strip_non_null_from_type(filtered_field_type).is_same_type(GraphQLString):
         raise GraphQLCompilationError(u'Cannot apply "has_substring" to non-string '
-                                      u'type {}'.format(current_schema_type))
+                                      u'type {}'.format(filtered_field_type))
     argument_inferred_type = GraphQLString
 
-    field_name = get_ast_field_name(ast)
-
     argument_expression, non_existence_expression = _represent_argument(
-        schema, ast, context, parameters[0], argument_inferred_type)
+        context, parameters[0], argument_inferred_type)
 
     filter_predicate = expressions.BinaryComposition(
-        u'has_substring', expressions.LocalField(field_name), argument_expression)
+        u'has_substring', expressions.LocalField(filtered_field_name), argument_expression)
     if non_existence_expression is not None:
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
@@ -399,36 +382,34 @@ def _process_has_substring_filter_directive(schema, current_schema_type, ast,
 
 
 @takes_parameters(1)
-def _process_contains_filter_directive(schema, current_schema_type, ast,
-                                       context, directive, parameters):
+def _process_contains_filter_directive(filter_operation_info, context, parameters):
     """Return a Filter basic block that checks if the directive arg is contained in the field.
 
     Args:
-        schema: GraphQL schema object, obtained from the graphql library
-        current_schema_type: GraphQLType, the schema type at the current location
-        ast: GraphQL AST node, obtained from the graphql library
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        directive: GraphQL directive object, obtained from the AST node
         parameters: list of 1 element, specifying the collection in which the value must exist;
                     if the collection is optional and missing, the check will return True
 
     Returns:
         a Filter basic block that performs the substring check
     """
-    base_field_type = strip_non_null_from_type(current_schema_type)
+    filtered_field_type = filter_operation_info.field_type
+    filtered_field_name = filter_operation_info.field_name
+
+    base_field_type = strip_non_null_from_type(filtered_field_type)
     if not isinstance(base_field_type, GraphQLList):
         raise GraphQLCompilationError(u'Cannot apply "contains" to non-list '
-                                      u'type {}'.format(current_schema_type))
-
-    field_name = get_ast_field_name(ast)
+                                      u'type {}'.format(filtered_field_type))
 
     argument_inferred_type = strip_non_null_from_type(base_field_type.of_type)
     argument_expression, non_existence_expression = _represent_argument(
-        schema, ast, context, parameters[0], argument_inferred_type)
+        context, parameters[0], argument_inferred_type)
 
     filter_predicate = expressions.BinaryComposition(
-        u'contains', expressions.LocalField(field_name), argument_expression)
+        u'contains', expressions.LocalField(filtered_field_name), argument_expression)
     if non_existence_expression is not None:
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
@@ -480,7 +461,7 @@ PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset({
 #
 # If the filter on out_Foo_Bar filters the Foo, we say that it filters the outer scope.
 # Instead, if the filter filters the Bar connected to the Foo, it filters the inner scope.
-INNER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset({'name_or_alias'})
+INNER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset({u'name_or_alias'})
 OUTER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset()
 
 VERTEX_FIELD_OPERATORS = INNER_SCOPE_VERTEX_FIELD_OPERATORS | OUTER_SCOPE_VERTEX_FIELD_OPERATORS
@@ -489,18 +470,20 @@ ALL_OPERATORS = PROPERTY_FIELD_OPERATORS | VERTEX_FIELD_OPERATORS
 
 
 def is_filter_with_outer_scope_vertex_field_operator(directive):
-    """Return True if the directive's operator is an outer scope vertex field operator."""
+    """Return True if we have a filter directive whose operator applies to the outer scope."""
+    if directive.name.value != 'filter':
+        return False
+
     op_name, _ = _get_filter_op_name_and_values(directive)
     return op_name in OUTER_SCOPE_VERTEX_FIELD_OPERATORS
 
 
-def process_filter_directive(schema, current_schema_type, ast, context, directive):
+def process_filter_directive(filter_operation_info, context):
     """Return a Filter basic block that corresponds to the filter operation in the directive.
 
     Args:
-        schema: GraphQL schema object, obtained from the graphql library
-        current_schema_type: GraphQLType, the schema type at the current location
-        ast: GraphQL AST node, obtained from the graphql library
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         directive: GraphQL @filter directive object, obtained from the AST node
@@ -508,7 +491,7 @@ def process_filter_directive(schema, current_schema_type, ast, context, directiv
     Returns:
         a Filter basic block that performs the requested filtering operation
     """
-    op_name, operator_params = _get_filter_op_name_and_values(directive)
+    op_name, operator_params = _get_filter_op_name_and_values(filter_operation_info.directive)
 
     non_comparison_filters = {
         u'name_or_alias': _process_name_or_alias_filter_directive,
@@ -531,4 +514,14 @@ def process_filter_directive(schema, current_schema_type, ast, context, directiv
     if process_func is None:
         raise GraphQLCompilationError(u'Unknown op_name for filter directive: {}'.format(op_name))
 
-    return process_func(schema, current_schema_type, ast, context, directive, operator_params)
+    # Operators that do not affect the inner scope require a field name to which they apply.
+    # There is no field name on InlineFragment ASTs, which is why only operators that affect
+    # the inner scope make semantic sense when applied to InlineFragments.
+    # Here, we ensure that we either have a field name to which the filter applies,
+    # or that the operator affects the inner scope.
+    if (filter_operation_info.field_name is None and
+            op_name not in INNER_SCOPE_VERTEX_FIELD_OPERATORS):
+        raise GraphQLCompilationError(u'The filter with op_name "{}" must be applied on a field. '
+                                      u'It may not be applied on a type coercion.'.format(op_name))
+
+    return process_func(filter_operation_info, context, operator_params)

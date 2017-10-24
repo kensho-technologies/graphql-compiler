@@ -72,8 +72,8 @@ from .directive_helpers import (get_local_filter_directives, get_unique_directiv
                                 validate_vertex_field_directive_interactions)
 from .filters import process_filter_directive
 from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_field_type_from_schema,
-                      get_uniquely_named_objects_by_name, is_vertex_field_name,
-                      strip_non_null_from_type, validate_safe_string)
+                      get_uniquely_named_objects_by_name, get_vertex_field_type,
+                      is_vertex_field_name, strip_non_null_from_type, validate_safe_string)
 
 
 # The OutputMetadata will have the following types for its members:
@@ -357,17 +357,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         inner_location = location.navigate_to_subpath(field_name)
         validate_context_for_visiting_vertex_field(inner_location, context)
 
-        # The field itself is of type GraphQLList, and this is
-        # what get_field_type_from_schema returns.
-        # We care about what the type *inside* the list is,
-        # i.e., the type on the other side of the edge (hence .of_type).
-        # Validation guarantees that the field must exist in the schema.
-        edge_schema_type = get_field_type_from_schema(current_schema_type, field_name)
-        if not isinstance(strip_non_null_from_type(edge_schema_type), GraphQLList):
-            raise AssertionError(u'Found an edge whose schema type was not GraphQLList: '
-                                 u'{} {} {}'.format(current_schema_type, field_name,
-                                                    edge_schema_type))
-        field_schema_type = edge_schema_type.of_type
+        field_schema_type = get_vertex_field_type(current_schema_type, field_name)
 
         inner_unique_directives = get_unique_directives(field_ast)
         validate_vertex_field_directive_interactions(inner_location, inner_unique_directives)
@@ -519,7 +509,8 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     fields = _get_fields(ast)
     vertex_fields, property_fields = fields
     fragment = _get_inline_fragment(ast)
-    local_filters_directives = get_local_filter_directives(ast, vertex_fields)
+    filter_operations = get_local_filter_directives(
+        ast, current_schema_type, vertex_fields)
 
     # We don't support type coercion while at the same time selecting fields.
     # Either there are no fields, or there is no fragment, otherwise we raise a compilation error.
@@ -542,10 +533,9 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
                                  u'{} {}'.format(location, property_fields))
 
     # step 1: apply local filter, if any
-    for filter_directive in local_filters_directives:
+    for filter_operation_info in filter_operations:
         basic_blocks.append(
-            process_filter_directive(schema, current_schema_type,
-                                     ast, context, filter_directive))
+            process_filter_directive(filter_operation_info, context))
 
     if location.field is not None:
         # The location is at a property, compile the property data following P-steps.

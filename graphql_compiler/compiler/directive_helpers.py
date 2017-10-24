@@ -1,10 +1,13 @@
 # Copyright 2017 Kensho Technologies, Inc.
 """Helper functions for dealing with GraphQL directives."""
 
+from graphql.language.ast import InlineFragment
 import six
 
 from ..exceptions import GraphQLCompilationError
 from .filters import is_filter_with_outer_scope_vertex_field_operator
+from .helpers import (FilterOperationInfo, get_ast_field_name, get_ast_field_name_or_none,
+                      get_vertex_field_type, is_vertex_field_type)
 
 
 ALLOWED_DUPLICATED_DIRECTIVES = frozenset({'filter'})
@@ -49,7 +52,7 @@ def get_unique_directives(ast):
     return result
 
 
-def get_local_filter_directives(ast, inner_vertex_fields):
+def get_local_filter_directives(ast, current_schema_type, inner_vertex_fields):
     """Get all filter directives that apply to the current field.
 
     This helper abstracts away the fact that some vertex field filtering operators apply on the
@@ -59,34 +62,59 @@ def get_local_filter_directives(ast, inner_vertex_fields):
 
     Args:
         ast: a GraphQL AST object for which to load local filters, from the graphql library
+        current_schema_type: GraphQLType, the schema type at the current AST location
         inner_vertex_fields: a list of inner AST objects representing vertex fields that are within
                              the current field. If currently processing a property field (i.e.
                              there are no inner vertex fields), this argument may be set to None.
 
     Returns:
-        list of filter directive objects
+        list of FilterOperationInfo objects.
+        If the field_ast field is of type InlineFragment, the field_name field is set to None.
     """
     result = []
     if ast.directives:  # it'll be None if the AST has no directives at that node
         for directive_obj in ast.directives:
-            if directive_obj.name.value != 'filter':
-                continue
-
             # Of all filters that appear *on the field itself*, only the ones that apply
             # to the outer scope are not considered "local" and are not to be returned.
-            if not is_filter_with_outer_scope_vertex_field_operator(directive_obj):
-                result.append(directive_obj)
+            if directive_obj.name.value == 'filter':
+                filtered_field_name = get_ast_field_name_or_none(ast)
+                if is_filter_with_outer_scope_vertex_field_operator(directive_obj):
+                    # We found a filter that affects the outer scope vertex. Let's make sure
+                    # we are at a vertex field. If we are actually at a property field,
+                    # that is a compilation error.
+                    if not is_vertex_field_type(current_schema_type):
+                        raise GraphQLCompilationError(
+                            u'Found disallowed filter on a property field: {} {} '
+                            u'{}'.format(directive_obj, current_schema_type, filtered_field_name))
+                    elif isinstance(ast, InlineFragment):
+                        raise GraphQLCompilationError(
+                            u'Found disallowed filter on a type coercion: {} '
+                            u'{}'.format(directive_obj, current_schema_type))
+                    else:
+                        # The filter is valid and non-local, since it is applied at this AST node
+                        # but affects the outer scope vertex field. Skip over it.
+                        pass
+                else:
+                    operation = FilterOperationInfo(
+                        directive=directive_obj, field_name=filtered_field_name,
+                        field_type=current_schema_type, field_ast=ast)
+                    result.append(operation)
 
     if inner_vertex_fields:  # allow the argument to be None
         for inner_ast in inner_vertex_fields:
             for directive_obj in inner_ast.directives:
-                if directive_obj.name.value != 'filter':
-                    continue
-
                 # Of all filters that appear on an inner vertex field, only the ones that apply
                 # to the outer scope are "local" to the outer field and therefore to be returned.
                 if is_filter_with_outer_scope_vertex_field_operator(directive_obj):
-                    result.append(directive_obj)
+                    # The inner AST must not be an InlineFragment, so it must have a field name.
+                    filtered_field_name = get_ast_field_name(inner_ast)
+                    filtered_field_type = get_vertex_field_type(
+                        current_schema_type, filtered_field_name)
+
+                    operation = FilterOperationInfo(
+                        directive=directive_obj, field_name=filtered_field_name,
+                        field_type=filtered_field_type, field_ast=inner_ast)
+                    result.append(operation)
 
     return result
 
@@ -112,6 +140,11 @@ def validate_root_vertex_directives(root_ast):
     directives_present_at_root = set()
     for directive_obj in root_ast.directives:
         directive_name = directive_obj.name.value
+
+        if is_filter_with_outer_scope_vertex_field_operator(directive_obj):
+            raise GraphQLCompilationError(u'Found a filter directive with an operator that is not'
+                                          u'allowed on the root vertex: {}'.format(directive_obj))
+
         directives_present_at_root.add(directive_name)
 
     disallowed_directives = directives_present_at_root & VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT
