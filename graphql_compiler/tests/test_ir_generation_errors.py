@@ -868,3 +868,63 @@ class IrGenerationErrorTests(unittest.TestCase):
         for invalid_graphql in invalid_queries:
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, invalid_graphql)
+
+    def test_invalid_edge_degree_queries(self):
+        invalid_queries = [
+            # Can't filter with "has_edge_degree" on the root vertex field -- there's no edge.
+            '''{
+                Animal @filter(op_name: "has_edge_degree", value: ["$degree"]) {
+                    name @output(out_name: "name")
+                }
+            }''',
+
+            # Can't filter with "has_edge_degree" on a property field -- there's no edge.
+            '''{
+                Animal {
+                    name @output(out_name: "name")
+                         @filter(op_name: "has_edge_degree", value: ["$degree"])
+                }
+            }''',
+
+            # Can't filter with "has_edge_degree" on a type coercion -- it has to be on the field.
+            '''{
+                Animal {
+                    out_Entity_Related {
+                        ... on Animal @filter(op_name: "has_edge_degree", value: ["$degree"]) {
+                            name @output(out_name: "related")
+                        }
+                    }
+                }
+            }''',
+
+            # Can't filter with "has_edge_degree" with a tagged value that isn't of Int type.
+            '''{
+                Animal {
+                    out_Animal_ParentOf {
+                        name @output(out_name: "name") @tag(tag_name: "parent")
+                    }
+
+                    out_Animal_OfSpecies @filter(op_name: "has_edge_degree", value: ["%parent"]) {
+                        name @output(out_name: "species")
+                    }
+                }
+            }''',
+
+            # We currently do not support tagged values as "has_edge_degree" arguments.
+            '''{
+                Animal {
+                    name @output(out_name: "animal_name")
+                    out_Animal_OfSpecies @optional {
+                        limbs @tag(tag_name: "limb_count")
+                    }
+                    out_Animal_ParentOf
+                            @filter(op_name: "has_edge_degree", value: ["%limb_count"]) {
+                        name @output(out_name: "child_name")
+                    }
+                }
+            }'''
+        ]
+
+        for invalid_graphql in invalid_queries:
+            with self.assertRaises(GraphQLCompilationError):
+                graphql_to_ir(self.schema, invalid_graphql)

@@ -2,7 +2,7 @@
 """End-to-end tests of the GraphQL compiler."""
 import unittest
 
-from graphql import GraphQLID, GraphQLList, GraphQLString
+from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 import six
 
 from ..compiler import OutputMetadata, compile_graphql_to_gremlin, compile_graphql_to_match
@@ -1580,6 +1580,210 @@ FROM (
             'animal_name': OutputMetadata(type=GraphQLString, optional=False),
         }
         expected_input_metadata = {}
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata)
+
+    def test_has_edge_degree_op_filter(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "animal_name")
+                out_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
+                                    @output_source {
+                    name @output(out_name: "child_name")
+                }
+            }
+        }'''
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                Animal__out_Animal_ParentOf___1.name AS `child_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((
+                        (({child_count} = 0) AND (out_Animal_ParentOf IS null)) OR
+                        ((out_Animal_ParentOf IS NOT null) AND
+                            (out_Animal_ParentOf.size() = {child_count}))
+                    )),
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    as: Animal__out_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (
+                (($child_count == 0) && (it.out_Animal_ParentOf == null)) ||
+                ((it.out_Animal_ParentOf != null) &&
+                    (it.out_Animal_ParentOf.count() == $child_count))
+            )}
+            .as('Animal___1')
+            .out('Animal_ParentOf')
+            .as('Animal__out_Animal_ParentOf___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                child_name: m.Animal__out_Animal_ParentOf___1.name
+            ])}
+        '''
+        expected_output_metadata = {
+            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+            'child_name': OutputMetadata(type=GraphQLString, optional=False),
+        }
+        expected_input_metadata = {
+            'child_count': GraphQLInt,
+        }
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata)
+
+    def test_has_edge_degree_op_filter_with_optional(self):
+        graphql_input = '''{
+            Species {
+                name @output(out_name: "species_name")
+
+                in_Animal_OfSpecies {
+                    name @output(out_name: "parent_name")
+
+                    out_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
+                                        @optional {
+                        name @output(out_name: "child_name")
+                    }
+                }
+            }
+        }'''
+
+        expected_match = '''
+            SELECT
+                if(eval("(Species__in_Animal_OfSpecies__out_Animal_ParentOf___1 IS NOT null)"),
+                   Species__in_Animal_OfSpecies__out_Animal_ParentOf___1.name,
+                   null
+                ) AS `child_name`,
+                Species__in_Animal_OfSpecies___1.name AS `parent_name`,
+                Species___1.name AS `species_name`
+            FROM (
+                MATCH {{
+                    class: Species,
+                    as: Species___1
+                }}.in('Animal_OfSpecies') {{
+                    where: ((
+                        (({child_count} = 0) AND (out_Animal_ParentOf IS null)) OR
+                        ((out_Animal_ParentOf IS NOT null) AND
+                            (out_Animal_ParentOf.size() = {child_count}))
+                    )),
+                    as: Species__in_Animal_OfSpecies___1
+                }}.out('Animal_ParentOf') {{
+                    optional: true,
+                    as: Species__in_Animal_OfSpecies__out_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Species')
+            .as('Species___1')
+            .in('Animal_OfSpecies')
+            .filter{it, m -> (
+                (($child_count == 0) && (it.out_Animal_ParentOf == null)) ||
+                ((it.out_Animal_ParentOf != null) &&
+                    (it.out_Animal_ParentOf.count() == $child_count))
+            )}
+            .as('Species__in_Animal_OfSpecies___1')
+            .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
+            .as('Species__in_Animal_OfSpecies__out_Animal_ParentOf___1')
+            .optional('Species__in_Animal_OfSpecies___1')
+            .as('Species__in_Animal_OfSpecies___2')
+            .back('Species___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                child_name: (
+                    (m.Species__in_Animal_OfSpecies__out_Animal_ParentOf___1 != null) ?
+                    m.Species__in_Animal_OfSpecies__out_Animal_ParentOf___1.name : null),
+                parent_name: m.Species__in_Animal_OfSpecies___1.name,
+                species_name: m.Species___1.name
+            ])}
+        '''
+        expected_output_metadata = {
+            'species_name': OutputMetadata(type=GraphQLString, optional=False),
+            'parent_name': OutputMetadata(type=GraphQLString, optional=False),
+            'child_name': OutputMetadata(type=GraphQLString, optional=True),
+        }
+        expected_input_metadata = {
+            'child_count': GraphQLInt,
+        }
+
+        check_test_data(self, graphql_input, expected_match, expected_gremlin,
+                        expected_output_metadata, expected_input_metadata)
+
+    def test_has_edge_degree_op_filter_with_fold(self):
+        graphql_input = '''{
+            Species {
+                name @output(out_name: "species_name")
+
+                in_Animal_OfSpecies {
+                    name @output(out_name: "parent_name")
+
+                    out_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
+                                        @fold {
+                        name @output(out_name: "child_names")
+                    }
+                }
+            }
+        }'''
+
+        expected_match = '''
+            SELECT
+                $Species__in_Animal_OfSpecies___1___out_Animal_ParentOf.name AS `child_names`,
+                Species__in_Animal_OfSpecies___1.name AS `parent_name`,
+                Species___1.name AS `species_name`
+            FROM (
+                MATCH {{
+                    class: Species,
+                    as: Species___1
+                }}.in('Animal_OfSpecies') {{
+                    where: ((
+                        (({child_count} = 0) AND (out_Animal_ParentOf IS null)) OR
+                        ((out_Animal_ParentOf IS NOT null) AND
+                            (out_Animal_ParentOf.size() = {child_count}))
+                    )),
+                    as: Species__in_Animal_OfSpecies___1
+                }}
+                RETURN $matches
+            ) LET
+                $Species__in_Animal_OfSpecies___1___out_Animal_ParentOf =
+                    Species__in_Animal_OfSpecies___1.out("Animal_ParentOf").asList()
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Species')
+            .as('Species___1')
+            .in('Animal_OfSpecies')
+            .filter{it, m -> (
+                (($child_count == 0) && (it.out_Animal_ParentOf == null)) ||
+                ((it.out_Animal_ParentOf != null) &&
+                    (it.out_Animal_ParentOf.count() == $child_count))
+            )}
+            .as('Species__in_Animal_OfSpecies___1')
+            .back('Species___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                child_names: (
+    (m.Species__in_Animal_OfSpecies___1.out_Animal_ParentOf == null) ?
+    [] :
+    (m.Species__in_Animal_OfSpecies___1.out_Animal_ParentOf.collect{entry -> entry.inV.next().name})
+                ),
+                parent_name: m.Species__in_Animal_OfSpecies___1.name,
+                species_name: m.Species___1.name
+            ])}
+        '''
+        expected_output_metadata = {
+            'species_name': OutputMetadata(type=GraphQLString, optional=False),
+            'parent_name': OutputMetadata(type=GraphQLString, optional=False),
+            'child_names': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {
+            'child_count': GraphQLInt,
+        }
 
         check_test_data(self, graphql_input, expected_match, expected_gremlin,
                         expected_output_metadata, expected_input_metadata)

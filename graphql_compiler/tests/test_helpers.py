@@ -143,6 +143,7 @@ def get_schema():
             name: String
             description: String
             alias: [String]
+            limbs: Int
             uuid: ID
             out_Species_Eats: [FoodOrSpecies]
             in_Species_Eats: [Species]

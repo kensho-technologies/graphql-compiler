@@ -1,7 +1,7 @@
 # Copyright 2017 Kensho Technologies, Inc.
 import unittest
 
-from graphql import GraphQLID, GraphQLList, GraphQLString
+from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 import pytest
 import six
 
@@ -1790,6 +1790,264 @@ class IrGenerationTests(unittest.TestCase):
             revisited_base_location: 'Animal',
             parent_location: 'Animal',
             child_location: 'Animal',
+        }
+
+        check_test_data(self, graphql_input, expected_blocks,
+                        expected_output_metadata, expected_input_metadata, expected_location_types)
+
+    def test_has_edge_degree_op_filter(self):
+        graphql_input = '''{
+            Animal {
+                name @output(out_name: "animal_name")
+                out_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
+                                    @output_source {
+                    name @output(out_name: "child_name")
+                }
+            }
+        }'''
+
+        base_location = helpers.Location(('Animal',))
+        child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'||',
+                    expressions.BinaryComposition(  # the zero-edge check
+                        u'&&',
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.Variable('$child_count', GraphQLInt),
+                            expressions.ZeroLiteral
+                        ),
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.NullLiteral
+                        )
+                    ),
+                    expressions.BinaryComposition(  # the non-zero-edge check
+                        u'&&',
+                        expressions.BinaryComposition(
+                            u'!=',
+                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.NullLiteral
+                        ),
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.UnaryTransformation(
+                                u'size',
+                                expressions.LocalField('out_Animal_ParentOf')
+                            ),
+                            expressions.Variable('$child_count', GraphQLInt),
+                        )
+                    )
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.MarkLocation(child_location),
+            blocks.OutputSource(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'child_name': expressions.OutputContextField(
+                    child_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_output_metadata = {
+            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+            'child_name': OutputMetadata(type=GraphQLString, optional=False),
+        }
+        expected_input_metadata = {
+            'child_count': GraphQLInt,
+        }
+        expected_location_types = {
+            base_location: 'Animal',
+            child_location: 'Animal',
+        }
+
+        check_test_data(self, graphql_input, expected_blocks,
+                        expected_output_metadata, expected_input_metadata, expected_location_types)
+
+    def test_has_edge_degree_op_filter_with_optional(self):
+        graphql_input = '''{
+            Species {
+                name @output(out_name: "species_name")
+
+                in_Animal_OfSpecies {
+                    name @output(out_name: "parent_name")
+
+                    out_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
+                                        @optional {
+                        name @output(out_name: "child_name")
+                    }
+                }
+            }
+        }'''
+
+        base_location = helpers.Location(('Species',))
+        animal_location = base_location.navigate_to_subpath('in_Animal_OfSpecies')
+        child_location = animal_location.navigate_to_subpath('out_Animal_ParentOf')
+        revisited_animal_location = animal_location.revisit()
+
+        expected_blocks = [
+            blocks.QueryRoot({'Species'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('in', 'Animal_OfSpecies'),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'||',
+                    expressions.BinaryComposition(  # the zero-edge check
+                        u'&&',
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.Variable('$child_count', GraphQLInt),
+                            expressions.ZeroLiteral
+                        ),
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.NullLiteral
+                        )
+                    ),
+                    expressions.BinaryComposition(  # the non-zero-edge check
+                        u'&&',
+                        expressions.BinaryComposition(
+                            u'!=',
+                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.NullLiteral
+                        ),
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.UnaryTransformation(
+                                u'size',
+                                expressions.LocalField('out_Animal_ParentOf')
+                            ),
+                            expressions.Variable('$child_count', GraphQLInt),
+                        )
+                    )
+                )
+            ),
+            blocks.MarkLocation(animal_location),
+            blocks.Traverse('out', 'Animal_ParentOf', optional=True),
+            blocks.MarkLocation(child_location),
+            blocks.Backtrack(animal_location, optional=True),
+            blocks.MarkLocation(revisited_animal_location),
+            blocks.Backtrack(base_location),
+            blocks.ConstructResult({
+                'species_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'parent_name': expressions.OutputContextField(
+                    animal_location.navigate_to_field('name'), GraphQLString),
+                'child_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(child_location),
+                    expressions.OutputContextField(
+                        child_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral),
+            }),
+        ]
+        expected_output_metadata = {
+            'species_name': OutputMetadata(type=GraphQLString, optional=False),
+            'parent_name': OutputMetadata(type=GraphQLString, optional=False),
+            'child_name': OutputMetadata(type=GraphQLString, optional=True),
+        }
+        expected_input_metadata = {
+            'child_count': GraphQLInt,
+        }
+        expected_location_types = {
+            base_location: 'Species',
+            animal_location: 'Animal',
+            child_location: 'Animal',
+            revisited_animal_location: 'Animal',
+        }
+
+        check_test_data(self, graphql_input, expected_blocks,
+                        expected_output_metadata, expected_input_metadata, expected_location_types)
+
+    def test_has_edge_degree_op_filter_with_fold(self):
+        graphql_input = '''{
+            Species {
+                name @output(out_name: "species_name")
+
+                in_Animal_OfSpecies {
+                    name @output(out_name: "parent_name")
+
+                    out_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
+                                        @fold {
+                        name @output(out_name: "child_names")
+                    }
+                }
+            }
+        }'''
+
+        base_location = helpers.Location(('Species',))
+        animal_location = base_location.navigate_to_subpath('in_Animal_OfSpecies')
+        animal_fold = helpers.FoldScopeLocation(animal_location, ('out', 'Animal_ParentOf'))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Species'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('in', 'Animal_OfSpecies'),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'||',
+                    expressions.BinaryComposition(  # the zero-edge check
+                        u'&&',
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.Variable('$child_count', GraphQLInt),
+                            expressions.ZeroLiteral
+                        ),
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.NullLiteral
+                        )
+                    ),
+                    expressions.BinaryComposition(  # the non-zero-edge check
+                        u'&&',
+                        expressions.BinaryComposition(
+                            u'!=',
+                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.NullLiteral
+                        ),
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.UnaryTransformation(
+                                u'size',
+                                expressions.LocalField('out_Animal_ParentOf')
+                            ),
+                            expressions.Variable('$child_count', GraphQLInt),
+                        )
+                    )
+                )
+            ),
+            blocks.MarkLocation(animal_location),
+            blocks.Fold(animal_fold),
+            blocks.Unfold(),
+            blocks.Backtrack(base_location),
+            blocks.ConstructResult({
+                'species_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'parent_name': expressions.OutputContextField(
+                    animal_location.navigate_to_field('name'), GraphQLString),
+                'child_names': expressions.FoldedOutputContextField(
+                    animal_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_output_metadata = {
+            'species_name': OutputMetadata(type=GraphQLString, optional=False),
+            'parent_name': OutputMetadata(type=GraphQLString, optional=False),
+            'child_names': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+        }
+        expected_input_metadata = {
+            'child_count': GraphQLInt,
+        }
+        expected_location_types = {
+            base_location: 'Species',
+            animal_location: 'Animal',
         }
 
         check_test_data(self, graphql_input, expected_blocks,
