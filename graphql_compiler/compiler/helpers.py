@@ -1,9 +1,10 @@
 # Copyright 2017 Kensho Technologies, Inc.
 """Common helper objects, base classes and methods."""
-
+from collections import namedtuple
 import string
 
-from graphql import GraphQLNonNull, GraphQLString, is_type
+from graphql import GraphQLList, GraphQLNonNull, GraphQLString, is_type
+from graphql.language.ast import InlineFragment
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 import six
 
@@ -17,6 +18,11 @@ STANDARD_DATETIME_FORMAT = 'yyyy-MM-dd\'T\'HH:mm:ssX'
 VARIABLE_ALLOWED_CHARS = frozenset(six.text_type(string.ascii_letters + string.digits + '_'))
 
 
+FilterOperationInfo = namedtuple(
+    'FilterOperationInfo',
+    ('directive', 'field_ast', 'field_name', 'field_type'))
+
+
 def get_ast_field_name(ast):
     """Return the normalized field name for the given AST node."""
     replacements = {
@@ -26,6 +32,13 @@ def get_ast_field_name(ast):
     base_field_name = ast.name.value
     normalized_name = replacements.get(base_field_name, base_field_name)
     return normalized_name
+
+
+def get_ast_field_name_or_none(ast):
+    """Return the field name for the AST node, or None if the AST is an InlineFragment."""
+    if isinstance(ast, InlineFragment):
+        return None
+    return get_ast_field_name(ast)
 
 
 def get_field_type_from_schema(schema_type, field_name):
@@ -41,6 +54,24 @@ def get_field_type_from_schema(schema_type, field_name):
         return schema_type.fields[field_name].type
 
 
+def get_vertex_field_type(current_schema_type, vertex_field_name):
+    """Return the type of the vertex within the specified vertex field name of the given type."""
+    # According to the schema, the vertex field itself is of type GraphQLList, and this is
+    # what get_field_type_from_schema returns. We care about what the type *inside* the list is,
+    # i.e., the type on the other side of the edge (hence .of_type).
+    # Validation guarantees that the field must exist in the schema.
+    if not is_vertex_field_name(vertex_field_name):
+        raise AssertionError(u'Trying to load the vertex field type of a non-vertex field: '
+                             u'{} {}'.format(current_schema_type, vertex_field_name))
+
+    raw_field_type = get_field_type_from_schema(current_schema_type, vertex_field_name)
+    if not isinstance(strip_non_null_from_type(raw_field_type), GraphQLList):
+        raise AssertionError(u'Found an edge whose schema type was not GraphQLList: '
+                             u'{} {} {}'.format(current_schema_type, vertex_field_name,
+                                                raw_field_type))
+    return raw_field_type.of_type
+
+
 def strip_non_null_from_type(graphql_type):
     """Return the GraphQL type stripped of its GraphQLNonNull annotations."""
     while isinstance(graphql_type, GraphQLNonNull):
@@ -51,12 +82,6 @@ def strip_non_null_from_type(graphql_type):
 def is_vertex_field_name(field_name):
     """Return True if the field's name indicates it is a non-root vertex field."""
     return field_name.startswith('out_') or field_name.startswith('in_')
-
-
-def is_non_root_vertex_field(ast, graphql_type):
-    """Return True if the AST belongs to a vertex field that is not the root vertex."""
-    field_name = get_ast_field_name(ast)
-    return is_vertex_field_name(field_name) and is_vertex_field_type(graphql_type)
 
 
 def is_vertex_field_type(graphql_type):
