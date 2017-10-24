@@ -41,6 +41,7 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
      * [in_collection](#in_collection)
      * [has_substring](#has_substring)
      * [contains](#contains)
+     * [has_edge_degree](#has_edge_degree)
   * [Type coercions](#type-coercions)
   * [Meta fields](#meta-fields)
   * [The GraphQL schema](#the-graphql-schema)
@@ -577,6 +578,9 @@ containing the animal's name in a column named `name`.
 This returns one row for every `Animal` which has a color contained in a list of colors,
 containing the `Animal`'s name and color in columns named `animal_name` and `color`, respectively.
 
+#### Constraints and Rules
+- Must be on a property field that is not of list type.
+
 ### has_substring
 #### Example Use
 ```
@@ -588,8 +592,11 @@ containing the `Animal`'s name and color in columns named `animal_name` and `col
 }
 ```
 This returns one row for every `Animal` whose name contains the value supplied
-for the `$substring` parameter. Each row contains the matching `Animal`’s name
+for the `$substring` parameter. Each row contains the matching `Animal`'s name
 in a column named `animal_name`.
+
+#### Constraints and Rules
+- Must be on a property field of string type.
 
 ### contains
 #### Example Use
@@ -604,6 +611,38 @@ in a column named `animal_name`.
 This returns one row for every `Animal` whose list of aliases contains the value supplied
 for the `$wanted` parameter. Each row contains the matching `Animal`'s name
 in a column named `animal_name`.
+
+#### Constraints and Rules
+- Must be on a property field of list type.
+
+### has_edge_degree
+#### Example Use
+```
+{
+    Animal {
+        name @output(out_name: "animal_name")
+
+        out_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"]) @optional {
+            uuid
+        }
+    }
+}
+```
+This returns one row for every `Animal` that has exactly `$child_count` children
+(i.e. where the `out_Animal_ParentOf` edge appears exactly `$child_count` times).
+Each row contains the matching `Animal`'s name, in a column named `animal_name`.
+
+*N.B.:* Please note the `@optional` directive on the vertex field being filtered above.
+This directive is necessary if the `$child_count` parameter can be set to `0`,
+as without it, the query semantics require `out_Animal_ParentOf` to simultaneously exist
+(because of the absence of `@optional`) and not exist (because of the `@filter` with `0` count),
+which will of course produce an empty result set.
+
+#### Constraints and Rules
+- Must be on a vertex field that is not the root vertex of the query.
+- Tagged values are not supported as parameters for this filter.
+- If the runtime parameter for this operator can be `0`, it is *strongly recommended* to also apply
+`@optional` to the vertex field being filtered (see N.B. above for details).
 
 ## Type coercions
 
