@@ -20,8 +20,8 @@ To get from GraphQL AST to IR, we follow the following pattern:
           property fields and vertex fields; all property fields must precede the vertex fields
           for the AST to be valid;
 
-    step 1. apply all @filter directives, if present on the current AST node
-            (see _compile_ast_node_to_ir())
+    step 1. apply all @filter directives that apply to the current field
+            (see _compile_ast_node_to_ir() and directive_helpers.get_local_filter_directives())
 
     We now proceed with one of three cases (P, V and F), depending on whether
     the current AST node is a property AST node, vertex AST node, or inline fragment, respectively.
@@ -36,8 +36,8 @@ To get from GraphQL AST to IR, we follow the following pattern:
               (property fields cannot have property fields of their own, see _compile_vertex_ast()).
 
     step V-3. Property field processing complete:  (see _compile_vertex_ast())
-        - mark the current location in the query, since all @filter directives on this AST node
-          have already been processed;
+        - mark the current location in the query, since all @filter directives that apply to the
+          current field have already been processed;
         - process the output_source directive, if it exists
 
     step V-4. Recurse into any vertex field children of the current AST node:
@@ -66,13 +66,14 @@ from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
 from .context_helpers import (has_encountered_output_source, is_in_fold_scope, is_in_optional_scope,
                               validate_context_for_visiting_vertex_field)
-from .directive_helpers import (get_directives, validate_property_directives,
-                                validate_root_vertex_directives, validate_vertex_directives,
+from .directive_helpers import (get_local_filter_directives, get_unique_directives,
+                                validate_property_directives, validate_root_vertex_directives,
+                                validate_vertex_directives,
                                 validate_vertex_field_directive_interactions)
 from .filters import process_filter_directive
 from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_field_type_from_schema,
-                      get_uniquely_named_objects_by_name, is_vertex_field_name,
-                      strip_non_null_from_type, validate_safe_string)
+                      get_uniquely_named_objects_by_name, get_vertex_field_type,
+                      is_vertex_field_name, strip_non_null_from_type, validate_safe_string)
 
 
 # The OutputMetadata will have the following types for its members:
@@ -167,7 +168,7 @@ def _mark_location(location):
 
 
 def _process_output_source_directive(schema, current_schema_type, ast,
-                                     location, context, local_directives):
+                                     location, context, local_unique_directives):
     """Process the output_source directive, modifying the context as appropriate.
 
     Args:
@@ -177,14 +178,14 @@ def _process_output_source_directive(schema, current_schema_type, ast,
         location: Location object representing the current location in the query
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        local_directives: dict, directive name string -> directive object, containing the
-                          directives present on the current AST node *only*
+        local_unique_directives: dict, directive name string -> directive object, containing
+                                 unique directives present on the current AST node *only*
 
     Returns:
         an OutputSource block, if one should be emitted, or None otherwise
     """
     # The 'ast' variable is only for function signature uniformity, and is currently not used.
-    output_source_directive = local_directives.get('output_source', None)
+    output_source_directive = local_unique_directives.get('output_source', None)
     if output_source_directive:
         if has_encountered_output_source(context):
             raise GraphQLCompilationError(u'Cannot have more than one output source!')
@@ -196,7 +197,8 @@ def _process_output_source_directive(schema, current_schema_type, ast,
         return None
 
 
-def _compile_property_ast(schema, current_schema_type, ast, location, context, local_directives):
+def _compile_property_ast(schema, current_schema_type, ast, location,
+                          context, unique_local_directives):
     """Process property directives at this AST node, updating the query context as appropriate.
 
     Args:
@@ -207,13 +209,13 @@ def _compile_property_ast(schema, current_schema_type, ast, location, context, l
         location: Location object representing the current location in the query
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        local_directives: dict, directive name string -> directive object, containing the
-                          directives present on the current AST node *only*
+        unique_local_directives: dict, directive name string -> directive object, containing
+                                 unique directives present on the current AST node *only*
     """
-    validate_property_directives(local_directives)
+    validate_property_directives(unique_local_directives)
 
     # step P-2: process property-only directives
-    tag_directive = local_directives.get('tag', None)
+    tag_directive = unique_local_directives.get('tag', None)
     if tag_directive:
         if is_in_fold_scope(context):
             raise GraphQLCompilationError(u'Tagging values within a @fold vertex field is '
@@ -230,7 +232,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location, context, l
             'type': strip_non_null_from_type(current_schema_type),
         }
 
-    output_directive = local_directives.get('output', None)
+    output_directive = unique_local_directives.get('output', None)
     if output_directive:
         # Schema validation has ensured that the fields below exist.
         output_name = output_directive.arguments[0].value.value
@@ -304,7 +306,7 @@ def _get_edge_direction_and_name(vertex_field_name):
 
 
 def _compile_vertex_ast(schema, current_schema_type, ast,
-                        location, context, local_directives, fields):
+                        location, context, unique_local_directives, fields):
     """Return a list of basic blocks corresponding to the vertex AST node.
 
     Args:
@@ -314,8 +316,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         location: Location object representing the current location in the query
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        local_directives: dict, directive name string -> directive object, containing the
-                          directives present on the current AST node *only*
+        unique_local_directives: dict, directive name string -> directive object, containing
+                                 unique directives present on the current AST node *only*
         fields: tuple of lists (property_fields, vertex_fields), with lists of field objects
                 present on the current vertex AST node
 
@@ -325,7 +327,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     basic_blocks = []
     vertex_fields, property_fields = fields
 
-    validate_vertex_directives(local_directives)
+    validate_vertex_directives(unique_local_directives)
 
     # step V-2: step into property fields
     for field_ast in property_fields:
@@ -345,7 +347,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         basic_blocks.append(_mark_location(location))
 
     output_source = _process_output_source_directive(schema, current_schema_type, ast,
-                                                     location, context, local_directives)
+                                                     location, context, unique_local_directives)
     if output_source:
         basic_blocks.append(output_source)
 
@@ -355,24 +357,14 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         inner_location = location.navigate_to_subpath(field_name)
         validate_context_for_visiting_vertex_field(inner_location, context)
 
-        # The field itself is of type GraphQLList, and this is
-        # what get_field_type_from_schema returns.
-        # We care about what the type *inside* the list is,
-        # i.e., the type on the other side of the edge (hence .of_type).
-        # Validation guarantees that the field must exist in the schema.
-        edge_schema_type = get_field_type_from_schema(current_schema_type, field_name)
-        if not isinstance(strip_non_null_from_type(edge_schema_type), GraphQLList):
-            raise AssertionError(u'Found an edge whose schema type was not GraphQLList: '
-                                 u'{} {} {}'.format(current_schema_type, field_name,
-                                                    edge_schema_type))
-        field_schema_type = edge_schema_type.of_type
+        field_schema_type = get_vertex_field_type(current_schema_type, field_name)
 
-        inner_directives = get_directives(field_ast)
-        validate_vertex_field_directive_interactions(inner_location, inner_directives)
+        inner_unique_directives = get_unique_directives(field_ast)
+        validate_vertex_field_directive_interactions(inner_location, inner_unique_directives)
 
-        recurse_directive = inner_directives.get('recurse', None)
-        optional_directive = inner_directives.get('optional', None)
-        fold_directive = inner_directives.get('fold', None)
+        recurse_directive = inner_unique_directives.get('recurse', None)
+        optional_directive = inner_unique_directives.get('optional', None)
+        fold_directive = inner_unique_directives.get('fold', None)
         in_topmost_optional_block = False
 
         edge_traversal_is_optional = optional_directive is not None
@@ -400,7 +392,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             basic_blocks.append(fold_block)
             context['fold'] = fold_scope_location
         elif recurse_directive:
-            recurse_depth = _get_recurse_directive_depth(field_name, inner_directives)
+            recurse_depth = _get_recurse_directive_depth(field_name, inner_unique_directives)
             _validate_recurse_directive_types(current_schema_type, field_schema_type)
             basic_blocks.append(blocks.Recurse(edge_direction, edge_name, recurse_depth))
         else:
@@ -513,10 +505,12 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     basic_blocks = []
 
     # step 0: preprocessing
-    local_directives = get_directives(ast)
+    local_unique_directives = get_unique_directives(ast)
     fields = _get_fields(ast)
     vertex_fields, property_fields = fields
     fragment = _get_inline_fragment(ast)
+    filter_operations = get_local_filter_directives(
+        ast, current_schema_type, vertex_fields)
 
     # We don't support type coercion while at the same time selecting fields.
     # Either there are no fields, or there is no fragment, otherwise we raise a compilation error.
@@ -539,17 +533,14 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
                                  u'{} {}'.format(location, property_fields))
 
     # step 1: apply local filter, if any
-    filter_directives = local_directives.get('filter', None)
-    if filter_directives:
-        for filter_directive in filter_directives:
-            basic_blocks.append(
-                process_filter_directive(schema, current_schema_type,
-                                         ast, context, filter_directive))
+    for filter_operation_info in filter_operations:
+        basic_blocks.append(
+            process_filter_directive(filter_operation_info, context))
 
     if location.field is not None:
         # The location is at a property, compile the property data following P-steps.
         _compile_property_ast(schema, current_schema_type, ast,
-                              location, context, local_directives)
+                              location, context, local_unique_directives)
     else:
         # The location is at a vertex.
         if fragment_exists:
@@ -564,7 +555,7 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
             # Compile the vertex data following V-steps.
             basic_blocks.extend(
                 _compile_vertex_ast(schema, current_schema_type, ast,
-                                    location, context, local_directives, fields))
+                                    location, context, local_unique_directives, fields))
 
     return basic_blocks
 
@@ -625,7 +616,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
 
     # Ensure the GraphQL query root doesn't have any vertex directives
     # that are disallowed on the root node.
-    validate_root_vertex_directives(get_directives(base_ast))
+    validate_root_vertex_directives(base_ast)
 
     # Compile and add the basic blocks for the query's base AST vertex.
     new_basic_blocks = _compile_ast_node_to_ir(
