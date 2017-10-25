@@ -637,10 +637,11 @@ the GraphQL syntax rule that requires at least one field to exist within any `{}
 Since this field is not marked with any directive, it has no effect on the query.
 
 *N.B.:* Please note the `@optional` directive on the vertex field being filtered above.
-This directive is necessary if the `$child_count` parameter can be set to `0`,
-as without it, the query semantics require `out_Animal_ParentOf` to simultaneously exist
-(because of the absence of `@optional`) and not exist (because of the `@filter` with `0` count),
-which will of course produce an empty result set.
+If in your use case you expect to set `$child_count` to 0, you must also mark that
+vertex field `@optional`. Recall that absence of `@optional` implies that at least one
+such edge must exist. If the `has_edge_degree` filter is used with a parameter set to 0,
+that requires the edge to not exist. Therefore, if the `@optional` is not present in this situation,
+no valid result sets can be produced, and the resulting query will return no results.
 
 #### Constraints and Rules
 - Must be on a vertex field that is not the root vertex of the query.
