@@ -2,6 +2,8 @@
 
 ## Current development version
 
+- Add a new `@filter` operator: `has_edge_degree`.
+
 ## v1.2.1
 
 - Add workaround for [OrientDB type inconsistency when filtering lists](https://github.com/orientechnologies/orientdb/issues/7811) [#42](https://github.com/kensho-technologies/graphql-compiler/pull/42)
