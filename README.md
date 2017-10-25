@@ -632,6 +632,10 @@ This returns one row for every `Animal` that has exactly `$child_count` children
 (i.e. where the `out_Animal_ParentOf` edge appears exactly `$child_count` times).
 Each row contains the matching `Animal`'s name, in a column named `animal_name`.
 
+The `uuid` field within the `out_Animal_ParentOf` vertex field is added simply to satisfy
+the GraphQL syntax rule that requires at least one field to exist within any `{}`.
+Since this field is not marked with any directive, it has no effect on the query.
+
 *N.B.:* Please note the `@optional` directive on the vertex field being filtered above.
 This directive is necessary if the `$child_count` parameter can be set to `0`,
 as without it, the query semantics require `out_Animal_ParentOf` to simultaneously exist
