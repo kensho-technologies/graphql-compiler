@@ -2,7 +2,10 @@
 
 ## Current development version
 
-- Add a new `@filter` operator: `has_edge_degree`.
+## v1.3.0
+
+- Add a new `@filter` operator: `has_edge_degree`. [#52](https://github.com/kensho-technologies/graphql-compiler/pull/52)
+- Lots of under-the-hood cleanup and improvements.
 
 ## v1.2.1
 
