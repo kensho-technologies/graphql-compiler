@@ -9,6 +9,7 @@ from . import test_input_data
 from ..compiler import OutputMetadata, compile_graphql_to_gremlin, compile_graphql_to_match
 from .test_helpers import compare_gremlin, compare_input_metadata, compare_match, get_schema
 
+
 def check_test_data(test_case, test_data, expected_match, expected_gremlin):
     """Assert that the GraphQL input generates all expected MATCH and Gremlin data."""
     if test_data.type_equivalence_hints:
@@ -32,6 +33,7 @@ def check_test_data(test_case, test_data, expected_match, expected_gremlin):
     compare_gremlin(test_case, expected_gremlin, result.query)
     test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
     compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+
 
 class CompilerTests(unittest.TestCase):
     def setUp(self):
