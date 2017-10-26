@@ -4,11 +4,11 @@ import unittest
 from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 import six
 
+from . import test_input_data
 from ..compiler import blocks, expressions, helpers
 from ..compiler.compiler_frontend import OutputMetadata, graphql_to_ir
 from ..schema import GraphQLDate, GraphQLDateTime
 from .test_helpers import compare_input_metadata, compare_ir_blocks, get_schema
-from . import test_input_data
 
 
 def check_test_data(test_case, test_data, expected_blocks, expected_location_types):

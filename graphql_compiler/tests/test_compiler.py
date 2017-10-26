@@ -2,13 +2,12 @@
 """End-to-end tests of the GraphQL compiler."""
 import unittest
 
-from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString
+from graphql import GraphQLID, GraphQLString
 import six
 
+from . import test_input_data
 from ..compiler import OutputMetadata, compile_graphql_to_gremlin, compile_graphql_to_match
 from .test_helpers import compare_gremlin, compare_input_metadata, compare_match, get_schema
-from . import test_input_data
-
 
 def check_test_data(test_case, test_data, expected_match, expected_gremlin):
     """Assert that the GraphQL input generates all expected MATCH and Gremlin data."""
@@ -33,7 +32,6 @@ def check_test_data(test_case, test_data, expected_match, expected_gremlin):
     compare_gremlin(test_case, expected_gremlin, result.query)
     test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
     compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
-
 
 class CompilerTests(unittest.TestCase):
     def setUp(self):
@@ -1650,7 +1648,6 @@ FROM (
             ])}
         '''
 
-
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
     def test_fold_after_traverse(self):
@@ -1691,7 +1688,6 @@ FROM (
             ])}
         '''
 
-
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
     def test_multiple_outputs_in_same_fold(self):
@@ -1728,7 +1724,6 @@ FROM (
                 )
             ])}
         '''
-
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
@@ -1780,7 +1775,6 @@ FROM (
             ])}
         '''
 
-
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
     def test_fold_date_and_datetime_fields(self):
@@ -1825,17 +1819,12 @@ FROM (
             ])}
         '''
 
-
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
     def test_coercion_to_union_base_type_inside_fold(self):
         # Given type_equivalence_hints = { Event: EventOrBirthEvent },
         # the coercion should be optimized away as a no-op.
         test_data = test_input_data.coercion_to_union_base_type_inside_fold()
-
-        type_equivalence_hints = {
-            'Event': 'EventOrBirthEvent'
-        }
 
         expected_match = '''
             SELECT
@@ -1865,7 +1854,6 @@ FROM (
                 )
             ])}
         '''
-
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
@@ -1900,7 +1888,6 @@ FROM (
                 )
             ])}
         '''
-
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
@@ -1946,7 +1933,6 @@ FROM (
             ])}
         '''
 
-
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
     def test_filter_on_fold_scope(self):
@@ -1984,7 +1970,6 @@ FROM (
             ])}
         '''
 
-
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
     def test_coercion_on_interface_within_fold_scope(self):
@@ -2020,7 +2005,6 @@ FROM (
             ])}
         '''
 
-
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
     def test_coercion_on_union_within_fold_scope(self):
@@ -2055,7 +2039,6 @@ FROM (
                 name: m.Animal___1.name
             ])}
         '''
-
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
@@ -2109,6 +2092,5 @@ FROM (
                 )
             ])}
         '''
-
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
