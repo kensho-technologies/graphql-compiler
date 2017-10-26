@@ -9,6 +9,7 @@ from ..compiler import OutputMetadata, compile_graphql_to_gremlin, compile_graph
 from ..exceptions import GraphQLCompilationError
 from ..schema import GraphQLDate, GraphQLDateTime
 from .test_helpers import compare_gremlin, compare_input_metadata, compare_match, get_schema
+from . import test_input_data
 
 
 def check_test_data(test_case, graphql_input, expected_match, expected_gremlin,
@@ -44,11 +45,7 @@ class CompilerTests(unittest.TestCase):
         self.schema = get_schema()
 
     def test_immediate_output(self):
-        graphql_input = '''{
-            Animal {
-                name @output(out_name: "animal_name")
-            }
-        }'''
+        test_data = test_input_data.immediate_output()
 
         expected_match = '''
             SELECT Animal___1.name AS `animal_name` FROM (
@@ -66,13 +63,9 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal___1.name
             ])}
         '''
-        expected_output_metadata = {
-            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
-        }
-        expected_input_metadata = {}
 
-        check_test_data(self, graphql_input, expected_match, expected_gremlin,
-                        expected_output_metadata, expected_input_metadata)
+        check_test_data(self, test_data.graphql_input, expected_match, expected_gremlin,
+                        test_data.expected_output_metadata, test_data.expected_input_metadata)
 
     def test_immediate_filter_and_output(self):
         # Ensure that all basic comparison operators output correct code in this simple case.

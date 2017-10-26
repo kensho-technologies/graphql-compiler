@@ -9,6 +9,7 @@ from ..compiler import blocks, expressions, helpers
 from ..compiler.compiler_frontend import OutputMetadata, graphql_to_ir
 from ..schema import GraphQLDate, GraphQLDateTime
 from .test_helpers import compare_input_metadata, compare_ir_blocks, get_schema
+from . import test_input_data
 
 
 def check_test_data(test_case, graphql_input, expected_blocks,
@@ -52,11 +53,7 @@ class IrGenerationTests(unittest.TestCase):
         self.schema = get_schema()
 
     def test_immediate_output(self):
-        graphql_input = '''{
-            Animal {
-                name @output(out_name: "animal_name")
-            }
-        }'''
+        test_data = test_input_data.immediate_output()
 
         base_location = helpers.Location(('Animal',))
 
@@ -68,16 +65,13 @@ class IrGenerationTests(unittest.TestCase):
                     base_location.navigate_to_field('name'), GraphQLString)
             }),
         ]
-        expected_output_metadata = {
-            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
-        }
-        expected_input_metadata = {}
         expected_location_types = {
             base_location: 'Animal',
         }
 
-        check_test_data(self, graphql_input, expected_blocks,
-                        expected_output_metadata, expected_input_metadata, expected_location_types)
+        check_test_data(self, test_data.graphql_input, expected_blocks,
+                        test_data.expected_output_metadata, test_data.expected_input_metadata,
+                        expected_location_types)
 
     def test_immediate_filter_and_output(self):
         # Ensure that all basic comparison operators output correct code in this simple case.
