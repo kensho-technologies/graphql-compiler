@@ -17,6 +17,23 @@ class IrGenerationErrorTests(unittest.TestCase):
         self.maxDiff = None
         self.schema = get_schema()
 
+    def test_no_traversing_from_optional_scope(self):
+        # Until OrientDB fixes the limitation against traversing from an optional vertex,
+        # attempting to do so will raise GraphQLCompilationError.
+        # For details, see https://github.com/orientechnologies/orientdb/issues/6788
+        graphql_input = '''{
+            Animal {
+                out_Animal_ParentOf @optional {
+                    out_Animal_FedAt {
+                        name @output(out_name: "name")
+                    }
+                }
+            }
+        }'''
+
+        with self.assertRaises(GraphQLCompilationError):
+            graphql_to_ir(self.schema, graphql_input)
+
     def test_repeated_field_name(self):
         repeated_property_field = '''{
             Animal {
