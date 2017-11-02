@@ -42,19 +42,12 @@ def compile_graphql_to_match(schema, graphql_string, type_equivalence_hints=None
     Returns:
         a CompilationResult object
     """
-    ir_blocks, output_metadata, input_metadata, location_types = \
-        graphql_to_ir(schema, graphql_string, type_equivalence_hints=type_equivalence_hints)
+    lowering_func = ir_lowering_match.lower_ir
+    query_emitter_func = emit_match.emit_code_from_ir
 
-    lowered_ir_blocks = ir_lowering_match.lower_ir(ir_blocks, location_types,
-                                                   type_equivalence_hints=type_equivalence_hints)
-
-    query = emit_match.emit_code_from_ir(lowered_ir_blocks)
-
-    return CompilationResult(
-        query=query,
-        language=MATCH_LANGUAGE,
-        output_metadata=output_metadata,
-        input_metadata=input_metadata)
+    return _compile_graphql_generic(
+        MATCH_LANGUAGE, lowering_func, query_emitter_func,
+        schema, graphql_string, type_equivalence_hints)
 
 
 def compile_graphql_to_gremlin(schema, graphql_string, type_equivalence_hints=None):
@@ -82,16 +75,28 @@ def compile_graphql_to_gremlin(schema, graphql_string, type_equivalence_hints=No
     Returns:
         a CompilationResult object
     """
-    ir_blocks, output_metadata, input_metadata, location_types = \
-        graphql_to_ir(schema, graphql_string, type_equivalence_hints=type_equivalence_hints)
+    lowering_func = ir_lowering_gremlin.lower_ir
+    query_emitter_func = emit_gremlin.emit_code_from_ir
 
-    lowered_ir_blocks = ir_lowering_gremlin.lower_ir(ir_blocks, location_types,
-                                                     type_equivalence_hints=type_equivalence_hints)
+    return _compile_graphql_generic(
+        GREMLIN_LANGUAGE, lowering_func, query_emitter_func,
+        schema, graphql_string, type_equivalence_hints)
 
-    query = emit_gremlin.emit_code_from_ir(lowered_ir_blocks)
+
+def _compile_graphql_generic(language, lowering_func, query_emitter_func,
+                             schema, graphql_string, type_equivalence_hints):
+    """Compile the GraphQL input, lowering and emitting the query using the given functions."""
+    ir_and_metadata = graphql_to_ir(
+        schema, graphql_string, type_equivalence_hints=type_equivalence_hints)
+
+    lowered_ir_blocks = lowering_func(
+        ir_and_metadata.ir_blocks, ir_and_metadata.location_types,
+        type_equivalence_hints=type_equivalence_hints)
+
+    query = query_emitter_func(lowered_ir_blocks)
 
     return CompilationResult(
         query=query,
-        language=GREMLIN_LANGUAGE,
-        output_metadata=output_metadata,
-        input_metadata=input_metadata)
+        language=language,
+        output_metadata=ir_and_metadata.output_metadata,
+        input_metadata=ir_and_metadata.input_metadata)

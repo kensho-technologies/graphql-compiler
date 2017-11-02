@@ -25,7 +25,10 @@ def check_test_data(test_case, test_data, expected_blocks, expected_location_typ
 
     compilation_results = graphql_to_ir(test_case.schema, test_data.graphql_input,
                                         type_equivalence_hints=schema_based_type_equivalence_hints)
-    received_blocks, output_metadata, input_metadata, location_types = compilation_results
+    received_blocks = compilation_results.ir_blocks
+    input_metadata = compilation_results.input_metadata
+    output_metadata = compilation_results.output_metadata
+    location_types = compilation_results.location_types
 
     compare_ir_blocks(test_case, expected_blocks, received_blocks)
     test_case.assertEqual(test_data.expected_output_metadata, output_metadata)

@@ -92,6 +92,16 @@ class OutputMetadata(namedtuple('OutputMetadata', ('type', 'optional'))):
         return not self.__eq__(other)
 
 
+IrAndMetadata = namedtuple(
+    'IrAndMetadata', (
+        'ir_blocks',
+        'input_metadata',
+        'output_metadata',
+        'location_types',
+    )
+)
+
+
 def _get_fields(ast):
     """Return a list of property fields, and a list of vertex fields, for the given AST node.
 
@@ -570,11 +580,11 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         type_equivalence_hints: optional dict of GraphQL type to equivalent GraphQL union
 
     Returns:
-        tuple of:
-        - a list of IR basic block objects
-        - a dict of output name (string) -> OutputMetadata object
-        - a dict of expected input parameters (string) -> inferred GraphQL type, based on use
-        - a dict of location objects -> GraphQL type objects at that location
+        IrAndMetadata named tuple, containing fields:
+        - ir_blocks: a list of IR basic block objects
+        - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
+        - output_metadata: a dict of output name (string) -> OutputMetadata object
+        - location_types: a dict of location objects -> GraphQL type objects at that location
     """
     if len(ast.selection_set.selections) != 1:
         raise GraphQLCompilationError(u'Cannot process AST with more than one root selection!')
@@ -631,7 +641,11 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         for name, value in six.iteritems(outputs_context)
     }
 
-    return basic_blocks, output_metadata, context['inputs'], context['location_types']
+    return IrAndMetadata(
+        ir_blocks=basic_blocks,
+        input_metadata=context['inputs'],
+        output_metadata=output_metadata,
+        location_types=context['location_types'])
 
 
 def _compile_output_step(outputs):
@@ -712,11 +726,11 @@ def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        tuple of:
-        - a list of IR basic block objects
-        - a dict of output name (string) -> OutputMetadata object
-        - a dict of expected input parameters (string) -> inferred GraphQL type, based on use
-        - a dict of location objects -> GraphQL type objects at that location
+        IrAndMetadata named tuple, containing fields:
+        - ir_blocks: a list of IR basic block objects
+        - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
+        - output_metadata: a dict of output name (string) -> OutputMetadata object
+        - location_types: a dict of location objects -> GraphQL type objects at that location
 
     Raises flavors of GraphQLError in the following cases:
         - if the query is invalid GraphQL (GraphQLParsingError);
