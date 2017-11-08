@@ -25,15 +25,14 @@ def check_test_data(test_case, test_data, expected_blocks, expected_location_typ
 
     compilation_results = graphql_to_ir(test_case.schema, test_data.graphql_input,
                                         type_equivalence_hints=schema_based_type_equivalence_hints)
-    received_blocks = compilation_results.ir_blocks
-    input_metadata = compilation_results.input_metadata
-    output_metadata = compilation_results.output_metadata
-    location_types = compilation_results.location_types
 
-    compare_ir_blocks(test_case, expected_blocks, received_blocks)
-    test_case.assertEqual(test_data.expected_output_metadata, output_metadata)
-    compare_input_metadata(test_case, test_data.expected_input_metadata, input_metadata)
-    test_case.assertEqual(expected_location_types, comparable_location_types(location_types))
+    compare_ir_blocks(test_case, expected_blocks, compilation_results.ir_blocks)
+    compare_input_metadata(
+        test_case, test_data.expected_input_metadata, compilation_results.input_metadata)
+    test_case.assertEqual(
+        test_data.expected_output_metadata, compilation_results.output_metadata)
+    test_case.assertEqual(
+        expected_location_types, comparable_location_types(compilation_results.location_types))
 
 
 def comparable_location_types(location_types):
