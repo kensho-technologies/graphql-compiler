@@ -881,8 +881,8 @@ FROM (
                     class: Animal,
                     as: Animal___1
                 }}.in('Entity_Related') {{
-                    class: Animal,
                     while: ($depth < 4),
+                    where: ((@this INSTANCEOF 'Animal')),
                     as: Animal__in_Entity_Related___1
                 }}
                 RETURN $matches
@@ -921,9 +921,8 @@ FROM (
                     class: Animal,
                     as: Animal___1
                 }}.in('Entity_Related') {{
-                    class: Animal,
                     while: ($depth < 4),
-                    where: ((color = {color})),
+                    where: (((@this INSTANCEOF 'Animal') AND (color = {color}))),
                     as: Animal__in_Entity_Related___1
                 }}
                 RETURN $matches
