@@ -18,7 +18,7 @@ from .ir_lowering_common import (lower_context_field_existence, merge_consecutiv
                                  optimize_boolean_expression_comparisons)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .match_query import MatchStep, convert_to_match_query
-from .workarounds import orientdb_eval_scheduling, orientdb_class_with_while
+from .workarounds import orientdb_class_with_while, orientdb_eval_scheduling
 
 
 ##################################
