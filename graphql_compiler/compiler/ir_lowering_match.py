@@ -18,7 +18,7 @@ from .ir_lowering_common import (lower_context_field_existence, merge_consecutiv
                                  optimize_boolean_expression_comparisons)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .match_query import MatchStep, convert_to_match_query
-from .workarounds import orientdb_eval_scheduling
+from .workarounds import orientdb_class_with_while, orientdb_eval_scheduling
 
 
 ##################################
@@ -415,6 +415,7 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     match_query = lower_optional_traverse_blocks(match_query, location_types)
     match_query = lower_backtrack_blocks(match_query, location_types)
     match_query = truncate_repeated_single_step_traversals(match_query)
+    match_query = orientdb_class_with_while.workaround_type_coercions_in_recursions(match_query)
 
     # Optimize and lower the IR blocks inside @fold scopes.
     new_folds = {
