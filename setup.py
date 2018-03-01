@@ -30,7 +30,7 @@ def find_version():
 def find_name():
     """Only define name in one place"""
     name_file = read_file('__init__.py')
-    name_match = re.search(r'^__name__ = ["\']([^"\']*)["\']',
+    name_match = re.search(r'^__package_name__ = ["\']([^"\']*)["\']',
                            name_file, re.M)
     if name_match:
         return name_match.group(1)

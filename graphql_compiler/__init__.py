@@ -13,7 +13,7 @@ from .schema import DIRECTIVES  # noqa
 from .schema import GraphQLDate, GraphQLDateTime  # noqa
 
 
-__name__ = 'graphql-compiler'
+__package_name__ = 'graphql-compiler'
 __version__ = '1.3.0'
 
 
