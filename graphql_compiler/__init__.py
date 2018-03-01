@@ -14,7 +14,7 @@ from .schema import GraphQLDate, GraphQLDateTime  # noqa
 
 
 __package_name__ = 'graphql-compiler'
-__version__ = '1.3.0'
+__version__ = '1.3.1'
 
 
 def graphql_to_match(schema, graphql_query, parameters, type_equivalence_hints=None):

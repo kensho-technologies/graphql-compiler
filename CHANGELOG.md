@@ -2,6 +2,11 @@
 
 ## Current development version
 
+## v1.3.1
+
+- Add a workaround for a bug in OrientDB related to `@recurse` with type coercions [#55](https://github.com/kensho-technologies/graphql-compiler/pull/55)
+- Exposed the package name and version in the root `__init__.py` file [#57](https://github.com/kensho-technologies/graphql-compiler/pull/57)
+
 ## v1.3.0
 
 - Add a new `@filter` operator: `has_edge_degree`. [#52](https://github.com/kensho-technologies/graphql-compiler/pull/52)
