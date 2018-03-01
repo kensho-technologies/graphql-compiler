@@ -1,10 +1,44 @@
+import codecs
+import os
+import re
 from setuptools import find_packages, setup
 
-package_name = 'graphql-compiler'
-version = '1.3.0'
+#  https://packaging.python.org/guides/single-sourcing-package-version/
+#  #single-sourcing-the-version
 
-setup(name=package_name,
-      version=version,
+
+def read_file(filename):
+    """Read package file as text to get name and version"""
+    # intentionally *not* adding an encoding option to open
+    # see here:
+    # https://github.com/pypa/virtualenv/issues/201#issuecomment-3145690
+    here = os.path.abspath(os.path.dirname(__file__))
+    with codecs.open(os.path.join(here, 'graphql_compiler', filename), 'r') as f:
+        return f.read()
+
+
+def find_version():
+    """Only define version in one place"""
+    version_file = read_file('__init__.py')
+    version_match = re.search(r'^__version__ = ["\']([^"\']*)["\']',
+                              version_file, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError('Unable to find version string.')
+
+
+def find_name():
+    """Only define name in one place"""
+    name_file = read_file('__init__.py')
+    name_match = re.search(r'^__package_name__ = ["\']([^"\']*)["\']',
+                           name_file, re.M)
+    if name_match:
+        return name_match.group(1)
+    raise RuntimeError('Unable to find name string.')
+
+
+setup(name=find_name(),
+      version=find_version(),
       description='Turn complex GraphQL queries into optimized database queries.',
       url='https://github.com/kensho-technologies/graphql-compiler',
       author='Kensho Technologies, Inc.',
