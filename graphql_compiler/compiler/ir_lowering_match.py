@@ -370,6 +370,7 @@ def lower_folded_coerce_types_into_filter_blocks(folded_ir_blocks):
 
 
 def remove_backtrack_blocks_from_fold(folded_ir_blocks):
+    '''Return a list of IR blocks with all Backtrack blocks removed.'''
     new_folded_ir_blocks = []
     for block in folded_ir_blocks:
         if not isinstance(block, Backtrack):
