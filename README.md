@@ -231,7 +231,7 @@ If a given `Animal` has no children, its `child_names` list is empty.
 #### Constraints and Rules
 - `@fold` can only be applied to vertex fields, except the root vertex field.
 - May not exist at the same vertex field as `@recurse`, `@optional`, or `@output_source`.
-- Only one vertex field may be expanded within a scope marked `@fold`. Note that this applies for all nested scopes within.
+- At most one vertex field may be expanded in a scope within a `@fold` marked scope. Note that this applies for all nested scopes (see example below).
 - `@tag`, `@recurse`, `@optional`, `@output_source` and `@fold` may not be used anywhere within a scope marked `@fold`.
 - Use of type coercions or `@filter` at or within the vertex field marked `@fold` is allowed.
   Only data that satisfies the given type coercions and filters is returned by the `@fold`.
@@ -239,6 +239,34 @@ If a given `Animal` has no children, its `child_names` list is empty.
   it may optimize it away. See the
   [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
   section for more details.
+
+#### Example
+```
+    out_Animal_ParentOf @fold {
+        name @output ...
+        in_Animal_ParentOf {
+            in_Animal_PeerOf {
+                ...
+            }
+            out_Animal_RelatedTo {
+                ...
+            }
+        }
+    }
+```
+This fragment is not allowed because two vertex fields are expanded inside `in_Animal_ParentOf`, which is within a `@fold` scope. It is also invalid to `output` at any level except the innermost one.
+```
+    out_Animal_ParentOf @fold {
+        in_Animal_ParentOf {
+            in_Animal_PeerOf {
+                out_Animal_RelatedTo {
+                    name @output ...
+                }
+            }
+        }
+    }
+```
+This is a valid use of `@fold`.
 
 ### @tag
 
