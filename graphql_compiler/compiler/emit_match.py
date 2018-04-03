@@ -4,7 +4,7 @@ from collections import deque
 
 import six
 
-from .blocks import Backtrack, Filter, QueryRoot, Recurse, Traverse
+from .blocks import Filter, QueryRoot, Recurse, Traverse
 from .helpers import validate_safe_string
 
 
