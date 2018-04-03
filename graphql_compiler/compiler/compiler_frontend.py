@@ -255,6 +255,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
         graphql_type = strip_non_null_from_type(current_schema_type)
         if is_in_fold_scope(context):
             graphql_type = GraphQLList(graphql_type)
+            # Fold outputs are only allowed at the last level of traversal
             context['fold_last_level'] = None
 
         context['outputs'][output_name] = {
