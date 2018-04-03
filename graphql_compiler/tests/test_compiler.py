@@ -1719,23 +1719,6 @@ FROM (
                 $Animal___1___in_Animal_ParentOf =
                     Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList()
         '''
-        expected_gremlin = '''
-            g.V('@class', 'Animal')
-            .as('Animal___1')
-            .in('Animal_ParentOf')
-            .as('Animal__in_Animal_ParentOf___1')
-            .back('Animal___1')
-            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                animal_name: m.Animal___1.name,
-                sibling_and_self_names_list: (
-                    (m.Animal__in_Animal_ParentOf___1.out_Animal_ParentOf == null) ? [] : (
-                        m.Animal__in_Animal_ParentOf___1.out_Animal_ParentOf.collect{
-                            entry -> entry.inV.next().name
-                        }
-                    )
-                )
-            ])}
-        '''
 
         check_test_data(self, test_data, expected_match)
 
@@ -1760,23 +1743,6 @@ FROM (
                     Animal__in_Animal_ParentOf___1
                         .out("Animal_ParentOf")
                         .in("Animal_ParentOf").asList()
-        '''
-        expected_gremlin = '''
-            g.V('@class', 'Animal')
-            .as('Animal___1')
-            .in('Animal_ParentOf')
-            .as('Animal__in_Animal_ParentOf___1')
-            .back('Animal___1')
-            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                animal_name: m.Animal___1.name,
-                sibling_and_self_names_list: (
-                    (m.Animal__in_Animal_ParentOf___1.out_Animal_ParentOf == null) ? [] : (
-                        m.Animal__in_Animal_ParentOf___1.out_Animal_ParentOf.collect{
-                            entry -> entry.inV.next().name
-                        }
-                    )
-                )
-            ])}
         '''
 
         check_test_data(self, test_data, expected_match)
@@ -1835,23 +1801,6 @@ FROM (
             ) LET
                 $Animal___1___in_Animal_ParentOf =
                     Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList()
-        '''
-        expected_gremlin = '''
-            g.V('@class', 'Animal')
-            .as('Animal___1')
-            .in('Animal_ParentOf')
-            .as('Animal__in_Animal_ParentOf___1')
-            .back('Animal___1')
-            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                animal_name: m.Animal___1.name,
-                sibling_and_self_names_list: (
-                    (m.Animal__in_Animal_ParentOf___1.out_Animal_ParentOf == null) ? [] : (
-                        m.Animal__in_Animal_ParentOf___1.out_Animal_ParentOf.collect{
-                            entry -> entry.inV.next().name
-                        }
-                    )
-                )
-            ])}
         '''
 
         check_test_data(self, test_data, expected_match)

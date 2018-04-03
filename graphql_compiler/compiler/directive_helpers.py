@@ -2,7 +2,6 @@
 """Helper functions for dealing with GraphQL directives."""
 
 from graphql.language.ast import InlineFragment
-
 import six
 
 from ..exceptions import GraphQLCompilationError
@@ -190,19 +189,19 @@ def validate_vertex_field_directive_in_context(location, directives, context):
     recurse_directive = directives.get('recurse', None)
 
     fold_context = 'fold' in context
-    optional_context = 'optional' in context
-    output_context = 'output' in context
-    recurse_context = 'recurse' in context
+    # optional_context = 'optional' in context
+    # output_context = 'output' in context
+    # recurse_context = 'recurse' in context
 
     if fold_directive and fold_context:
-        raise GraphQLCompilationError(u'@fold is not allowed within a @fold traversal ! '
+        raise GraphQLCompilationError(u'@fold is not allowed within a @fold traversal! '
                                       u'Location: {}'.format(location))
     if optional_directive and fold_context:
-        raise GraphQLCompilationError(u'@optional is not allowed within a @fold traversal ! '
+        raise GraphQLCompilationError(u'@optional is not allowed within a @fold traversal! '
                                       u'Location: {}'.format(location))
     if output_source_directive and fold_context:
-        raise GraphQLCompilationError(u'@output_source is not allowed within a @fold traversal ! '
+        raise GraphQLCompilationError(u'@output_source is not allowed within a @fold traversal! '
                                       u'Location: {}'.format(location))
     if recurse_directive and fold_context:
-        raise GraphQLCompilationError(u'@recurse is not allowed within a @fold traversal ! '
+        raise GraphQLCompilationError(u'@recurse is not allowed within a @fold traversal! '
                                       u'Location: {}'.format(location))
