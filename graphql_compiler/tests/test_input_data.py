@@ -1096,6 +1096,40 @@ def multiple_folds():
         type_equivalence_hints=None)
 
 
+def multiple_folds_and_traverse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_ParentOf @fold {
+                in_Animal_ParentOf {
+                    name @output(out_name: "child_names_list")
+                    uuid @output(out_name: "child_uuids_list")
+                }
+            }
+            in_Animal_ParentOf @fold {
+                out_Animal_ParentOf {
+                    name @output(out_name: "parent_names_list")
+                    uuid @output(out_name: "parent_uuids_list")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'child_names_list': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+        'child_uuids_list': OutputMetadata(type=GraphQLList(GraphQLID), optional=False),
+        'parent_names_list': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+        'parent_uuids_list': OutputMetadata(type=GraphQLList(GraphQLID), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def fold_date_and_datetime_fields():
     graphql_input = '''{
         Animal {

@@ -1855,6 +1855,31 @@ FROM (
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_multiple_folds_and_traverse(self):
+        test_data = test_input_data.multiple_folds_and_traverse()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal___1___out_Animal_ParentOf.name AS `child_names_list`,
+                $Animal___1___out_Animal_ParentOf.uuid AS `child_uuids_list`,
+                $Animal___1___in_Animal_ParentOf.name AS `parent_names_list`,
+                $Animal___1___in_Animal_ParentOf.uuid AS `parent_uuids_list`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList(),
+                $Animal___1___out_Animal_ParentOf =
+                    Animal___1.out("Animal_ParentOf").in("Animal_ParentOf").asList()
+        '''
+
+        check_test_data(self, test_data, expected_match)
+
     def test_fold_date_and_datetime_fields(self):
         test_data = test_input_data.fold_date_and_datetime_fields()
 
