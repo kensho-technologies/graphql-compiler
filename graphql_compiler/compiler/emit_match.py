@@ -4,7 +4,7 @@ from collections import deque
 
 import six
 
-from .blocks import Filter, QueryRoot, Recurse, Traverse
+from .blocks import Backtrack, Filter, QueryRoot, Recurse, Traverse
 from .helpers import validate_safe_string
 
 
@@ -104,7 +104,9 @@ def _represent_match_traversal(match_traversal):
 
 def _represent_fold(fold_location, fold_ir_blocks):
     """Emit a LET clause corresponding to the IR blocks for a @fold scope."""
-    base_template = u'$%(mark_name)s = %(base_location)s.%(direction)s("%(edge_name)s")'
+    start_let_template = u'$%(mark_name)s = %(base_location)s'
+    traverse_edge_template = u'.%(direction)s("%(edge_name)s")'
+    base_template = start_let_template + traverse_edge_template
     edge_direction, edge_name = fold_location.relative_position
     mark_name = fold_location.get_location_name()
     base_location_name, _ = fold_location.base_location.get_location_name()
@@ -123,10 +125,18 @@ def _represent_fold(fold_location, fold_ir_blocks):
     final_string = base_template % template_data
 
     for block in fold_ir_blocks:
-        if not isinstance(block, Filter):
-            raise AssertionError(u'Found a non-Filter IR block in the folded IR blocks: {} {} '
-                                 u'{}'.format(type(block), block, fold_ir_blocks))
-        final_string += u'[' + block.predicate.to_match() + u']'
+        if isinstance(block, Filter):
+            final_string += u'[' + block.predicate.to_match() + u']'
+        elif isinstance(block, Traverse):
+            template_data = {
+                'direction': block.direction,
+                'edge_name': block.edge_name,
+            }
+            final_string += traverse_edge_template % template_data
+            pass
+        elif not isinstance(block, Backtrack):
+            raise AssertionError(u'Found a non-Filter/Traverse IR block in the folded IR blocks: '
+                                 u'{} {} {}'.format(type(block), block, fold_ir_blocks))
 
     # Workaround for OrientDB's inconsistent return type when filtering a list.
     # https://github.com/orientechnologies/orientdb/issues/7811

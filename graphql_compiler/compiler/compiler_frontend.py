@@ -420,7 +420,12 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             _validate_fold_has_outputs(context['fold'], context['outputs'])
             basic_blocks.append(blocks.Unfold())
             del context['fold']
-            del context['fold_last_level']
+            try:
+                del context['fold_last_level']
+            except KeyError:
+                raise GraphQLCompilationError(u'Output inside @fold scope did not add '
+                                              u'"fold_last_level" to context! '
+                                              u'Location: {}'.format(fold_scope_location))
 
         if in_topmost_optional_block:
             del context['optional']

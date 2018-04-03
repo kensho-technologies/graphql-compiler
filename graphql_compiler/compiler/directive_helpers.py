@@ -2,6 +2,7 @@
 """Helper functions for dealing with GraphQL directives."""
 
 from graphql.language.ast import InlineFragment
+
 import six
 
 from ..exceptions import GraphQLCompilationError
@@ -182,7 +183,7 @@ def validate_vertex_field_directive_interactions(location, directives):
 
 
 def validate_vertex_field_directive_in_context(location, directives, context):
-    """Ensure that the specified vertex field directives are allowed in the current context"""
+    """Ensure that the specified vertex field directives are allowed in the current context."""
     fold_directive = directives.get('fold', None)
     optional_directive = directives.get('optional', None)
     output_source_directive = directives.get('output_source', None)

@@ -149,6 +149,9 @@ def _sanity_check_every_location_is_marked(ir_blocks):
         elif isinstance(block, (QueryRoot, Traverse, Recurse)):
             found_start_block = True
             mark_location_blocks = 0
+        # Don't need to mark locations after a fold block
+        elif isinstance(block, Fold):
+            break
 
 
 def _sanity_check_coerce_type_outside_of_fold(ir_blocks):
