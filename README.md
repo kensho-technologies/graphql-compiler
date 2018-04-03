@@ -231,8 +231,8 @@ If a given `Animal` has no children, its `child_names` list is empty.
 #### Constraints and Rules
 - `@fold` can only be applied to vertex fields, except the root vertex field.
 - May not exist at the same vertex field as `@recurse`, `@optional`, or `@output_source`.
-- Expanding vertex fields is not allowed within a scope marked `@fold`.
-- `@tag` and `@fold` may not be used within a scope marked `@fold`.
+- Only one vertex field may be expanded within a scope marked `@fold`. Note that this applies for all nested scopes within.
+- `@tag`, `@recurse`, `@optional`, `@output_source` and `@fold` may not be used at any level within a scope marked `@fold`.
 - Use of type coercions or `@filter` at or within the vertex field marked `@fold` is allowed.
   Only data that satisfies the given type coercions and filters is returned by the `@fold`.
 - If the compiler is able to prove that the type coercion in the `@fold` scope is actually a no-op,
