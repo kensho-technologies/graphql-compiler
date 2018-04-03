@@ -4,9 +4,9 @@
 from ..exceptions import GraphQLCompilationError
 
 
-def is_in_fold_last_level_scope(context):
+def is_in_fold_innermost_scope_scope(context):
     """Return True if the current context is within a scope marked @fold."""
-    return 'fold_last_level' in context
+    return 'fold_innermost_scope' in context
 
 
 def is_in_fold_scope(context):
@@ -30,7 +30,7 @@ def validate_context_for_visiting_vertex_field(location, context):
         raise GraphQLCompilationError(u'Traversing inside an optional block is currently not '
                                       u'supported! Location: {}'.format(location))
 
-    if is_in_fold_last_level_scope(context):
+    if is_in_fold_innermost_scope_scope(context):
         raise GraphQLCompilationError(u'Traversing inside a @fold block after output is '
                                       u'not supported! Location: {}'.format(location))
 

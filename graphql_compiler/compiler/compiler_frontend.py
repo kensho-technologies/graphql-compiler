@@ -256,7 +256,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
         if is_in_fold_scope(context):
             graphql_type = GraphQLList(graphql_type)
             # Fold outputs are only allowed at the last level of traversal
-            context['fold_last_level'] = None
+            context['fold_innermost_scope'] = None
 
         context['outputs'][output_name] = {
             'location': location,
@@ -421,11 +421,11 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             _validate_fold_has_outputs(context['fold'], context['outputs'])
             basic_blocks.append(blocks.Unfold())
             del context['fold']
-            try:
-                del context['fold_last_level']
-            except KeyError:
+            if 'fold_innermost_scope' in context:
+                del context['fold_innermost_scope']
+            else:
                 raise GraphQLCompilationError(u'Output inside @fold scope did not add '
-                                              u'"fold_last_level" to context! '
+                                              u'"fold_innermost_scope" to context! '
                                               u'Location: {}'.format(fold_scope_location))
 
         if in_topmost_optional_block:
