@@ -369,6 +369,14 @@ def lower_folded_coerce_types_into_filter_blocks(folded_ir_blocks):
     return new_folded_ir_blocks
 
 
+def remove_backtrack_blocks_from_fold(folded_ir_blocks):
+    new_folded_ir_blocks = []
+    for block in folded_ir_blocks:
+        if not isinstance(block, Backtrack):
+            new_folded_ir_blocks.append(block)
+    return new_folded_ir_blocks
+
+
 ##############
 # Public API #
 ##############
@@ -420,7 +428,10 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     # Optimize and lower the IR blocks inside @fold scopes.
     new_folds = {
         key: merge_consecutive_filter_clauses(
-            lower_folded_coerce_types_into_filter_blocks(folded_ir_blocks))
+            remove_backtrack_blocks_from_fold(
+                lower_folded_coerce_types_into_filter_blocks(folded_ir_blocks)
+            )
+        )
         for key, folded_ir_blocks in six.iteritems(match_query.folds)
     }
     match_query = match_query._replace(folds=new_folds)

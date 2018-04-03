@@ -133,7 +133,7 @@ def _represent_fold(fold_location, fold_ir_blocks):
                 'edge_name': block.edge_name,
             }
             final_string += traverse_edge_template % template_data
-        elif not isinstance(block, Backtrack):
+        else:
             raise AssertionError(u'Found a non-Filter/Traverse IR block in the folded IR blocks: '
                                  u'{} {} {}'.format(type(block), block, fold_ir_blocks))
 
