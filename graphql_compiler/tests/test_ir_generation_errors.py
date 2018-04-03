@@ -196,11 +196,23 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
 
-        traversal_inside_fold_block = '''{
+        multi_level_outputs_inside_fold_block = '''{
             Animal {
                 out_Animal_ParentOf @fold {
+                    uuid @output(out_name: "uuid")
                     out_Animal_FedAt {
                         uuid @output(out_name: "uuid")
+                    }
+                }
+            }
+        }'''
+
+        traversal_inside_fold_block_after_output = '''{
+            Animal {
+                out_Animal_ParentOf @fold {
+                    uuid @output(out_name: "uuid")
+                    out_Animal_FedAt {
+                        uuid
                     }
                 }
             }
@@ -217,7 +229,8 @@ class IrGenerationErrorTests(unittest.TestCase):
 
         for graphql in (fold_on_property_field,
                         fold_on_root_vertex,
-                        traversal_inside_fold_block,
+                        multi_level_outputs_inside_fold_block,
+                        traversal_inside_fold_block_after_output,
                         no_outputs_inside_fold_block):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, graphql)

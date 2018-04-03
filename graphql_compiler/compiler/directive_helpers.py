@@ -179,3 +179,23 @@ def validate_vertex_field_directive_interactions(location, directives):
     if optional_directive and recurse_directive:
         raise GraphQLCompilationError(u'@optional and @recurse may not appear at the same '
                                       u'vertex field! Location: {}'.format(location))
+
+
+def validate_vertex_field_directive_in_context(location, directives, context):
+    """Ensure that the specified vertex field directives are allowed in the current context"""
+    fold_directive = directives.get('fold', None)
+    optional_directive = directives.get('optional', None)
+    output_source_directive = directives.get('output_source', None)
+    recurse_directive = directives.get('recurse', None)
+
+    fold_context = 'fold' in context
+    optional_context = 'optional' in context
+    output_context = 'output' in context
+    recurse_context = 'recurse' in context
+
+    if optional_directive and fold_context:
+        raise GraphQLCompilationError(u'@optional is not allowed within a @fold traversal ! '
+                                      u'Location: {}'.format(location))
+    if recurse_directive and fold_context:
+        raise GraphQLCompilationError(u'@recurse is not allowed within a @fold traversal ! '
+                                      u'Location: {}'.format(location))
