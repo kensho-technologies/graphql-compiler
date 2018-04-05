@@ -33,7 +33,3 @@ def validate_context_for_visiting_vertex_field(location, context):
     if is_in_fold_innermost_scope_scope(context):
         raise GraphQLCompilationError(u'Traversing inside a @fold block after output is '
                                       u'not supported! Location: {}'.format(location))
-
-    if has_encountered_output_source(context):
-        raise GraphQLCompilationError(u'Found vertex field after the vertex marked '
-                                      u'output source! Location: {}'.format(location))
