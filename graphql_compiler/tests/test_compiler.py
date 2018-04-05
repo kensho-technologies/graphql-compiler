@@ -10,7 +10,23 @@ from ..compiler import OutputMetadata, compile_graphql_to_gremlin, compile_graph
 from .test_helpers import compare_gremlin, compare_input_metadata, compare_match, get_schema
 
 
-def check_test_data(test_case, test_data, expected_match, expected_gremlin):
+def check_test_data_match(test_case, test_data, expected, schema_based_type_equivalence_hints):
+    result = compile_graphql_to_match(test_case.schema, test_data.graphql_input,
+                                      type_equivalence_hints=schema_based_type_equivalence_hints)
+    compare_match(test_case, expected, result.query)
+    test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+    compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+
+
+def check_test_data_gremlin(test_case, test_data, expected, schema_based_type_equivalence_hints):
+    result = compile_graphql_to_gremlin(test_case.schema, test_data.graphql_input,
+                                        type_equivalence_hints=schema_based_type_equivalence_hints)
+    compare_gremlin(test_case, expected, result.query)
+    test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+    compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+
+
+def check_test_data(test_case, test_data, expected_match, expected_gremlin=None):
     """Assert that the GraphQL input generates all expected MATCH and Gremlin data."""
     if test_data.type_equivalence_hints:
         # For test convenience, we accept the type equivalence hints in string form.
@@ -22,17 +38,11 @@ def check_test_data(test_case, test_data, expected_match, expected_gremlin):
     else:
         schema_based_type_equivalence_hints = None
 
-    result = compile_graphql_to_match(test_case.schema, test_data.graphql_input,
-                                      type_equivalence_hints=schema_based_type_equivalence_hints)
-    compare_match(test_case, expected_match, result.query)
-    test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-    compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
-
-    result = compile_graphql_to_gremlin(test_case.schema, test_data.graphql_input,
-                                        type_equivalence_hints=schema_based_type_equivalence_hints)
-    compare_gremlin(test_case, expected_gremlin, result.query)
-    test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-    compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+    check_test_data_match(test_case, test_data, expected_match,
+                          schema_based_type_equivalence_hints)
+    if expected_gremlin:
+        check_test_data_gremlin(test_case, test_data, expected_gremlin,
+                                schema_based_type_equivalence_hints)
 
 
 class CompilerTests(unittest.TestCase):
@@ -1691,6 +1701,52 @@ FROM (
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_fold_and_traverse(self):
+        test_data = test_input_data.fold_and_traverse()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal___1___in_Animal_ParentOf.name
+                    AS `sibling_and_self_names_list`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList()
+        '''
+
+        check_test_data(self, test_data, expected_match)
+
+    def test_traverse_and_fold_and_traverse(self):
+        test_data = test_input_data.traverse_and_fold_and_traverse()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal__in_Animal_ParentOf___1___out_Animal_ParentOf.name
+                    AS `sibling_and_self_names_list`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    as: Animal__in_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal__in_Animal_ParentOf___1___out_Animal_ParentOf =
+                    Animal__in_Animal_ParentOf___1
+                        .out("Animal_ParentOf")
+                        .in("Animal_ParentOf").asList()
+        '''
+
+        check_test_data(self, test_data, expected_match)
+
     def test_multiple_outputs_in_same_fold(self):
         test_data = test_input_data.multiple_outputs_in_same_fold()
 
@@ -1727,6 +1783,27 @@ FROM (
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_multiple_outputs_in_same_fold_and_traverse(self):
+        test_data = test_input_data.multiple_outputs_in_same_fold_and_traverse()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal___1___in_Animal_ParentOf.name AS `sibling_and_self_names_list`,
+                $Animal___1___in_Animal_ParentOf.uuid AS `sibling_and_self_uuids_list`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList()
+        '''
+
+        check_test_data(self, test_data, expected_match)
 
     def test_multiple_folds(self):
         test_data = test_input_data.multiple_folds()
@@ -1777,6 +1854,31 @@ FROM (
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_multiple_folds_and_traverse(self):
+        test_data = test_input_data.multiple_folds_and_traverse()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal___1___out_Animal_ParentOf.name AS `child_names_list`,
+                $Animal___1___out_Animal_ParentOf.uuid AS `child_uuids_list`,
+                $Animal___1___in_Animal_ParentOf.name AS `parent_names_list`,
+                $Animal___1___in_Animal_ParentOf.uuid AS `parent_uuids_list`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList(),
+                $Animal___1___out_Animal_ParentOf =
+                    Animal___1.out("Animal_ParentOf").in("Animal_ParentOf").asList()
+        '''
+
+        check_test_data(self, test_data, expected_match)
 
     def test_fold_date_and_datetime_fields(self):
         test_data = test_input_data.fold_date_and_datetime_fields()

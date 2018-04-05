@@ -133,8 +133,18 @@ def _sanity_check_every_location_is_marked(ir_blocks):
     # Exactly one MarkLocation block is found between a QueryRoot / Traverse / Recurse block,
     # and the first subsequent Traverse, Recurse, Backtrack or ConstructResult block.
     found_start_block = False
+    found_fold_block = False
     mark_location_blocks = 0
+
     for block in ir_blocks:
+        # Don't need to mark locations after a fold block
+        if isinstance(block, Fold):
+            found_fold_block = True
+        if found_fold_block:
+            if isinstance(block, Unfold):
+                found_fold_block = False
+            continue
+
         # Terminate started intervals before opening new ones.
         end_interval_types = (Backtrack, ConstructResult, Recurse, Traverse)
         if isinstance(block, end_interval_types) and found_start_block:

@@ -69,6 +69,7 @@ from .context_helpers import (has_encountered_output_source, is_in_fold_scope, i
 from .directive_helpers import (get_local_filter_directives, get_unique_directives,
                                 validate_property_directives, validate_root_vertex_directives,
                                 validate_vertex_directives,
+                                validate_vertex_field_directive_in_context,
                                 validate_vertex_field_directive_interactions)
 from .filters import process_filter_directive
 from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_field_type_from_schema,
@@ -254,6 +255,8 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
         graphql_type = strip_non_null_from_type(current_schema_type)
         if is_in_fold_scope(context):
             graphql_type = GraphQLList(graphql_type)
+            # Fold outputs are only allowed at the last level of traversal
+            context['fold_innermost_scope'] = None
 
         context['outputs'][output_name] = {
             'location': location,
@@ -371,6 +374,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         inner_unique_directives = get_unique_directives(field_ast)
         validate_vertex_field_directive_interactions(inner_location, inner_unique_directives)
+        validate_vertex_field_directive_in_context(inner_location, inner_unique_directives, context)
 
         recurse_directive = inner_unique_directives.get('recurse', None)
         optional_directive = inner_unique_directives.get('optional', None)
@@ -417,6 +421,12 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             _validate_fold_has_outputs(context['fold'], context['outputs'])
             basic_blocks.append(blocks.Unfold())
             del context['fold']
+            if 'fold_innermost_scope' in context:
+                del context['fold_innermost_scope']
+            else:
+                raise GraphQLCompilationError(u'Output inside @fold scope did not add '
+                                              u'"fold_innermost_scope" to context! '
+                                              u'Location: {}'.format(fold_scope_location))
 
         if in_topmost_optional_block:
             del context['optional']
