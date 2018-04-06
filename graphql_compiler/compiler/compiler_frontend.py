@@ -382,6 +382,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         in_topmost_optional_block = False
 
         edge_traversal_is_optional = optional_directive is not None
+        in_optional_context = 'optional' in context and not edge_traversal_is_optional
         if edge_traversal_is_optional:
             # Entering an optional block!
             # Make sure there's a tag right before it for the optional Backtrack to jump back to.
@@ -411,7 +412,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             basic_blocks.append(blocks.Recurse(edge_direction, edge_name, recurse_depth))
         else:
             basic_blocks.append(blocks.Traverse(edge_direction, edge_name,
-                                                optional=edge_traversal_is_optional))
+                                                optional=edge_traversal_is_optional,
+                                                in_optional_context=in_optional_context))
 
         inner_basic_blocks = _compile_ast_node_to_ir(schema, field_schema_type, field_ast,
                                                      inner_location, context)
