@@ -1719,8 +1719,26 @@ FROM (
                 $Animal___1___in_Animal_ParentOf =
                     Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList()
         '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                sibling_and_self_names_list: (
+                    (m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.in_Animal_ParentOf
+                            .collect{
+                                entry -> entry.outV.next()
+                            }
+                            .collectMany{entry -> entry.out_Animal_ParentOf.collect{
+                                edge -> edge.inV.next()}
+                            }
+                            .collect{entry -> entry.name}
+                    ))
+            ])}
+        '''
 
-        check_test_data(self, test_data, expected_match)
+        check_test_data(self, test_data, expected_match, expected_gremlin)
 
     def test_traverse_and_fold_and_traverse(self):
         test_data = test_input_data.traverse_and_fold_and_traverse()
@@ -1744,8 +1762,30 @@ FROM (
                         .out("Animal_ParentOf")
                         .in("Animal_ParentOf").asList()
         '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .in('Animal_ParentOf')
+                .as('Animal__in_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                sibling_and_self_names_list: (
+                    (m.Animal__in_Animal_ParentOf___1.out_Animal_ParentOf == null) ? [] : (
+                        m.Animal__in_Animal_ParentOf___1.out_Animal_ParentOf
+                            .collect{
+                                entry -> entry.inV.next()
+                            }
+                            .collectMany{entry -> entry.in_Animal_ParentOf
+                            .collect{
+                                edge -> edge.outV.next()}
+                            }
+                            .collect{entry -> entry.name}
+                    ))
+            ])}
+        '''
 
-        check_test_data(self, test_data, expected_match)
+        check_test_data(self, test_data, expected_match, expected_gremlin)
 
     def test_multiple_outputs_in_same_fold(self):
         test_data = test_input_data.multiple_outputs_in_same_fold()
@@ -1771,12 +1811,14 @@ FROM (
                 animal_name: m.Animal___1.name,
                 child_names_list: (
                     (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
-                        m.Animal___1.out_Animal_ParentOf.collect{entry -> entry.inV.next().name}
+                        m.Animal___1.out_Animal_ParentOf
+                            .collect{entry -> entry.inV.next().name}
                     )
                 ),
                 child_uuids_list: (
                     (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
-                        m.Animal___1.out_Animal_ParentOf.collect{entry -> entry.inV.next().uuid}
+                        m.Animal___1.out_Animal_ParentOf
+                            .collect{entry -> entry.inV.next().uuid}
                     )
                 )
             ])}
@@ -1802,8 +1844,37 @@ FROM (
                 $Animal___1___in_Animal_ParentOf =
                     Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList()
         '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                sibling_and_self_names_list:
+                    ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.in_Animal_ParentOf
+                            .collect{entry -> entry.outV.next()}
+                            .collectMany{
+                                entry -> entry.out_Animal_ParentOf.collect{
+                                    edge -> edge.inV.next()
+                                }
+                            }
+                            .collect{entry -> entry.name}
+                    )),
+                sibling_and_self_uuids_list:
+                    ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.in_Animal_ParentOf
+                            .collect{entry -> entry.outV.next()}
+                            .collectMany{
+                                entry -> entry.out_Animal_ParentOf.collect{
+                                    edge -> edge.inV.next()
+                                }
+                            }
+                            .collect{entry -> entry.uuid}
+                    ))
+            ])}
+        '''
 
-        check_test_data(self, test_data, expected_match)
+        check_test_data(self, test_data, expected_match, expected_gremlin)
 
     def test_multiple_folds(self):
         test_data = test_input_data.multiple_folds()
@@ -1877,8 +1948,55 @@ FROM (
                 $Animal___1___out_Animal_ParentOf =
                     Animal___1.out("Animal_ParentOf").in("Animal_ParentOf").asList()
         '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                child_names_list: ((m.Animal___1.out_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.out_Animal_ParentOf
+                        .collect{entry -> entry.inV.next()}
+                        .collectMany{
+                            entry -> entry.in_Animal_ParentOf.collect{
+                                edge -> edge.outV.next()
+                            }
+                        }
+                        .collect{entry -> entry.name}
+                )),
+                child_uuids_list: ((m.Animal___1.out_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.out_Animal_ParentOf
+                        .collect{entry -> entry.inV.next()}
+                        .collectMany{
+                            entry -> entry.in_Animal_ParentOf.collect{
+                                edge -> edge.outV.next()
+                            }
+                        }
+                        .collect{entry -> entry.uuid}
+                )),
+                parent_names_list: ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.in_Animal_ParentOf
+                        .collect{entry -> entry.outV.next()}
+                        .collectMany{
+                            entry -> entry.out_Animal_ParentOf.collect{
+                                edge -> edge.inV.next()
+                            }
+                        }
+                        .collect{entry -> entry.name}
+                )),
+                parent_uuids_list: ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.in_Animal_ParentOf
+                        .collect{entry -> entry.outV.next()}
+                        .collectMany{
+                            entry -> entry.out_Animal_ParentOf.collect{
+                                edge -> edge.inV.next()
+                            }
+                        }
+                        .collect{entry -> entry.uuid}
+                ))
+            ])}
+        '''
 
-        check_test_data(self, test_data, expected_match)
+        check_test_data(self, test_data, expected_match, expected_gremlin)
 
     def test_fold_date_and_datetime_fields(self):
         test_data = test_input_data.fold_date_and_datetime_fields()
