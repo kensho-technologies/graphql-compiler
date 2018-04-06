@@ -1729,8 +1729,10 @@ FROM (
                             .collect{
                                 entry -> entry.outV.next()
                             }
-                            .collectMany{entry -> entry.out_Animal_ParentOf.collect{
-                                edge -> edge.inV.next()}
+                            .collectMany{entry -> entry.out_Animal_ParentOf
+                                .collect{
+                                    edge -> edge.inV.next()
+                                }
                             }
                             .collect{entry -> entry.name}
                     ))
