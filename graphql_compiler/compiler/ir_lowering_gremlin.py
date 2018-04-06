@@ -151,10 +151,10 @@ class GremlinFoldedOutputContextField(Expression):
         allowed_block_types = (GremlinFoldedFilter, GremlinFoldedTraverse, Backtrack)
         for block in self.folded_ir_blocks:
             if not isinstance(block, allowed_block_types):
-                raise AssertionError(u'Found invalid block of type {} in folded_ir_blocks: {} '
-                                     u'Allowed types are {}. '
-                                     .format(type(block), self.folded_ir_blocks,
-                                             allowed_block_types))
+                raise AssertionError(
+                    u'Found invalid block of type {} in folded_ir_blocks: {} '
+                    u'Allowed types are {}.'
+                    .format(type(block), self.folded_ir_blocks, allowed_block_types))
 
         validate_safe_string(self.field_name)
 
@@ -265,7 +265,7 @@ class GremlinFoldedTraverse(Traverse):
         if isinstance(traverse_block, Traverse):
             return cls(traverse_block.direction, traverse_block.edge_name)
         else:
-            raise RuntimeError(u'Tried to initialize an instance of GremlinFoldedTraverse '
+            raise AssertionError(u'Tried to initialize an instance of GremlinFoldedTraverse '
                                u'with block of type {}'.format(type(traverse_block)))
 
     def to_gremlin(self):

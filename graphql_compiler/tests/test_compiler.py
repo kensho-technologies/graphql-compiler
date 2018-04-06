@@ -1729,10 +1729,11 @@ FROM (
                             .collect{
                                 entry -> entry.outV.next()
                             }
-                            .collectMany{entry -> entry.out_Animal_ParentOf
-                                .collect{
-                                    edge -> edge.inV.next()
-                                }
+                            .collectMany{
+                                entry -> entry.out_Animal_ParentOf
+                                    .collect{
+                                        edge -> edge.inV.next()
+                                    }
                             }
                             .collect{entry -> entry.name}
                     ))
@@ -1777,9 +1778,11 @@ FROM (
                             .collect{
                                 entry -> entry.inV.next()
                             }
-                            .collectMany{entry -> entry.in_Animal_ParentOf
-                            .collect{
-                                edge -> edge.outV.next()}
+                            .collectMany{
+                                entry -> entry.in_Animal_ParentOf
+                                    .collect{
+                                        edge -> edge.outV.next()
+                                    }
                             }
                             .collect{entry -> entry.name}
                     ))
@@ -1855,9 +1858,10 @@ FROM (
                         m.Animal___1.in_Animal_ParentOf
                             .collect{entry -> entry.outV.next()}
                             .collectMany{
-                                entry -> entry.out_Animal_ParentOf.collect{
-                                    edge -> edge.inV.next()
-                                }
+                                entry -> entry.out_Animal_ParentOf
+                                    .collect{
+                                        edge -> edge.inV.next()
+                                    }
                             }
                             .collect{entry -> entry.name}
                     )),
@@ -1866,9 +1870,10 @@ FROM (
                         m.Animal___1.in_Animal_ParentOf
                             .collect{entry -> entry.outV.next()}
                             .collectMany{
-                                entry -> entry.out_Animal_ParentOf.collect{
-                                    edge -> edge.inV.next()
-                                }
+                                entry -> entry.out_Animal_ParentOf
+                                    .collect{
+                                        edge -> edge.inV.next()
+                                    }
                             }
                             .collect{entry -> entry.uuid}
                     ))
@@ -1958,9 +1963,10 @@ FROM (
                     m.Animal___1.out_Animal_ParentOf
                         .collect{entry -> entry.inV.next()}
                         .collectMany{
-                            entry -> entry.in_Animal_ParentOf.collect{
-                                edge -> edge.outV.next()
-                            }
+                            entry -> entry.in_Animal_ParentOf
+                                .collect{
+                                    edge -> edge.outV.next()
+                                }
                         }
                         .collect{entry -> entry.name}
                 )),
@@ -1968,9 +1974,10 @@ FROM (
                     m.Animal___1.out_Animal_ParentOf
                         .collect{entry -> entry.inV.next()}
                         .collectMany{
-                            entry -> entry.in_Animal_ParentOf.collect{
-                                edge -> edge.outV.next()
-                            }
+                            entry -> entry.in_Animal_ParentOf
+                                .collect{
+                                    edge -> edge.outV.next()
+                                }
                         }
                         .collect{entry -> entry.uuid}
                 )),
@@ -1978,9 +1985,10 @@ FROM (
                     m.Animal___1.in_Animal_ParentOf
                         .collect{entry -> entry.outV.next()}
                         .collectMany{
-                            entry -> entry.out_Animal_ParentOf.collect{
-                                edge -> edge.inV.next()
-                            }
+                            entry -> entry.out_Animal_ParentOf
+                                .collect{
+                                    edge -> edge.inV.next()
+                                }
                         }
                         .collect{entry -> entry.name}
                 )),
@@ -1988,9 +1996,10 @@ FROM (
                     m.Animal___1.in_Animal_ParentOf
                         .collect{entry -> entry.outV.next()}
                         .collectMany{
-                            entry -> entry.out_Animal_ParentOf.collect{
-                                edge -> edge.inV.next()
-                            }
+                            entry -> entry.out_Animal_ParentOf
+                                .collect{
+                                    edge -> edge.inV.next()
+                                }
                         }
                         .collect{entry -> entry.uuid}
                 ))
