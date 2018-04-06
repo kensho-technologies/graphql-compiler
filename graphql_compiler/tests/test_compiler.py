@@ -26,7 +26,7 @@ def check_test_data_gremlin(test_case, test_data, expected, schema_based_type_eq
     compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
 
-def check_test_data(test_case, test_data, expected_match, expected_gremlin=None):
+def check_test_data(test_case, test_data, expected_match, expected_gremlin):
     """Assert that the GraphQL input generates all expected MATCH and Gremlin data."""
     if test_data.type_equivalence_hints:
         # For test convenience, we accept the type equivalence hints in string form.
@@ -40,9 +40,8 @@ def check_test_data(test_case, test_data, expected_match, expected_gremlin=None)
 
     check_test_data_match(test_case, test_data, expected_match,
                           schema_based_type_equivalence_hints)
-    if expected_gremlin:
-        check_test_data_gremlin(test_case, test_data, expected_gremlin,
-                                schema_based_type_equivalence_hints)
+    check_test_data_gremlin(test_case, test_data, expected_gremlin,
+                            schema_based_type_equivalence_hints)
 
 
 class CompilerTests(unittest.TestCase):
