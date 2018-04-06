@@ -266,7 +266,7 @@ class GremlinFoldedTraverse(Traverse):
             return cls(traverse_block.direction, traverse_block.edge_name)
         else:
             raise AssertionError(u'Tried to initialize an instance of GremlinFoldedTraverse '
-                               u'with block of type {}'.format(type(traverse_block)))
+                                 u'with block of type {}'.format(type(traverse_block)))
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this block."""
