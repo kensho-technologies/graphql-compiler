@@ -148,7 +148,6 @@ class GremlinFoldedOutputContextField(Expression):
             raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
                 type(self.fold_scope_location), self.fold_scope_location))
 
-        # TODO(shankha): Remove Backtrack blocks <05-04-18> # 
         allowed_block_types = (GremlinFoldedFilter, Traverse, Backtrack)
         for block in self.folded_ir_blocks:
             if not isinstance(block, allowed_block_types):
@@ -257,9 +256,15 @@ class GremlinFoldedFilter(Filter):
 
 class GremlinFoldedTraverse(Traverse):
     """A Gremlin-specific Traverse block to be used only within @fold scopes."""
+
     def __init__(self, traverse_block):
-        super(GremlinFoldedTraverse, self).__init__(
-            traverse_block.direction, traverse_block.edge_name)
+        """Initialize a normal Traverse block using as a copy of the given block."""
+        if isinstance(traverse_block, Traverse):
+            super(GremlinFoldedTraverse, self).__init__(
+                traverse_block.direction, traverse_block.edge_name)
+        else:
+            raise RuntimeError(u'Tried to initialize an instance of GremlinFoldedTraverse '
+                               u'with block of type {}'.format(type(traverse_block)))
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this block."""
