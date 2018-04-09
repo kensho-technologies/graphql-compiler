@@ -1742,6 +1742,57 @@ FROM (
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_fold_and_deep_traverse(self):
+        test_data = test_input_data.fold_and_deep_traverse()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal___1___in_Animal_ParentOf.name AS `sibling_and_self_names_list`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1.in("Animal_ParentOf")
+                              .out("Animal_ParentOf")
+                              .in("Animal_ParentOf")
+                              .asList()
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                sibling_and_self_names_list: (
+                    (m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.in_Animal_ParentOf.
+                            collect{
+                                entry -> entry.outV.next()
+                            }
+                            .collectMany{
+                                entry -> entry.out_Animal_ParentOf
+                                    .collect{
+                                        edge -> edge.inV.next()
+                                    }
+                            }
+                            .collectMany{
+                                entry -> entry.in_Animal_ParentOf
+                                    .collect{
+                                        edge -> edge.outV.next()
+                                    }
+                            }
+                            .collect{entry -> entry.name}
+                    )
+                )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_traverse_and_fold_and_traverse(self):
         test_data = test_input_data.traverse_and_fold_and_traverse()
 

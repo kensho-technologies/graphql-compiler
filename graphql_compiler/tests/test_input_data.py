@@ -937,6 +937,31 @@ def fold_on_output_variable():
         type_equivalence_hints=None)
 
 
+def fold_after_traverse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf {
+                out_Animal_ParentOf @fold {
+                    name @output(out_name: "sibling_and_self_names_list")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'sibling_and_self_names_list': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def fold_and_traverse():
     graphql_input = '''{
         Animal {
@@ -962,13 +987,15 @@ def fold_and_traverse():
         type_equivalence_hints=None)
 
 
-def fold_after_traverse():
+def fold_and_deep_traverse():
     graphql_input = '''{
         Animal {
             name @output(out_name: "animal_name")
-            in_Animal_ParentOf {
-                out_Animal_ParentOf @fold {
-                    name @output(out_name: "sibling_and_self_names_list")
+            in_Animal_ParentOf @fold {
+                out_Animal_ParentOf {
+                    in_Animal_ParentOf {
+                        name @output(out_name: "sibling_and_self_names_list")
+                    }
                 }
             }
         }
