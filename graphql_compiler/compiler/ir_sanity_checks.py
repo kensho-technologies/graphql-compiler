@@ -139,11 +139,10 @@ def _sanity_check_every_location_is_marked(ir_blocks):
     for block in ir_blocks:
         if isinstance(block, Fold):
             found_fold_block = True
+        # Don't need to check for mark locations within a fold traversal
         if found_fold_block:
-            # Don't need to check for mark locations after a fold block
             if isinstance(block, Unfold):
                 found_fold_block = False
-
         else:
             # Terminate started intervals before opening new ones.
             end_interval_types = (Backtrack, ConstructResult, Recurse, Traverse)
