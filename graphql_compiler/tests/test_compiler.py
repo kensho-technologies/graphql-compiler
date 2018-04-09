@@ -1770,20 +1770,14 @@ FROM (
                 sibling_and_self_names_list: (
                     (m.Animal___1.in_Animal_ParentOf == null) ? [] : (
                         m.Animal___1.in_Animal_ParentOf.
-                            collect{
-                                entry -> entry.outV.next()
-                            }
+                            collect{entry -> entry.outV.next()}
                             .collectMany{
                                 entry -> entry.out_Animal_ParentOf
-                                    .collect{
-                                        edge -> edge.inV.next()
-                                    }
+                                    .collect{edge -> edge.inV.next()}
                             }
                             .collectMany{
                                 entry -> entry.in_Animal_ParentOf
-                                    .collect{
-                                        edge -> edge.outV.next()
-                                    }
+                                    .collect{edge -> edge.outV.next()}
                             }
                             .collect{entry -> entry.name}
                     )
@@ -2289,6 +2283,49 @@ FROM (
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_coercion_on_interface_within_fold_traversal(self):
+        test_data = test_input_data.coercion_on_interface_within_fold_traversal()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal___1___in_Animal_ParentOf.name AS `related_animals`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1.in("Animal_ParentOf")
+                              .out("Entity_Related")[(@this INSTANCEOF 'Animal')]
+                              .out("Animal_ParentOf").asList()
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                related_animals: ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.in_Animal_ParentOf
+                    .collect{entry -> entry.outV.next()}
+                    .collectMany{
+                        entry -> entry.out_Entity_Related
+                            .collect{edge -> edge.inV.next()}
+                    }
+                    .findAll{entry -> ['Animal'].contains(entry['@class'])}
+                    .collectMany{
+                        entry -> entry.out_Animal_ParentOf
+                            .collect{edge -> edge.inV.next()}
+                    }
+                    .collect{entry -> entry.name}
+                ))
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_coercion_on_union_within_fold_scope(self):
         test_data = test_input_data.coercion_on_union_within_fold_scope()
 
@@ -2370,6 +2407,70 @@ FROM (
                              entry.name.contains($substring)) &&
                              (entry.birthday <= Date.parse("yyyy-MM-dd", $latest)))}
                          .collect{entry -> entry.birthday.format("yyyy-MM-dd")}
+                    )
+                )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_coercion_filters_and_multiple_outputs_within_fold_traversal(self):
+        test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_traversal()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`,
+                $Animal___1___in_Animal_ParentOf.name AS `related_animals`,
+                $Animal___1___in_Animal_ParentOf.birthday.format("yyyy-MM-dd")
+                    AS `related_birthdays`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1
+                        .in("Animal_ParentOf")
+                        .out("Entity_Related")[(
+                            (@this INSTANCEOF 'Animal') AND
+                            ((name LIKE ('%' + ({substring} + '%'))) AND
+                            (birthday <= date({latest}, "yyyy-MM-dd"))))].asList()
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name,
+                related_animals: (
+                    (m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                         m.Animal___1.in_Animal_ParentOf
+                             .collect{entry -> entry.outV.next()}
+                             .collectMany{
+                                 entry -> entry.out_Entity_Related
+                                     .collect{edge -> edge.inV.next()}
+                             }
+                             .findAll{entry -> (
+                                  (['Animal'].contains(entry['@class']) &&
+                                  entry.name.contains($substring)) &&
+                                  (entry.birthday <= Date.parse("yyyy-MM-dd", $latest)))}
+                             .collect{entry -> entry.name}
+                    )
+                ),
+                related_birthdays: (
+                    (m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                         m.Animal___1.in_Animal_ParentOf
+                             .collect{entry -> entry.outV.next()}
+                             .collectMany{
+                                 entry -> entry.out_Entity_Related
+                                     .collect{edge -> edge.inV.next()}
+                             }
+                             .findAll{entry -> (
+                                  (['Animal'].contains(entry['@class']) &&
+                                  entry.name.contains($substring)) &&
+                                  (entry.birthday <= Date.parse("yyyy-MM-dd", $latest)))}
+                             .collect{entry -> entry.birthday.format("yyyy-MM-dd")}
                     )
                 )
             ])}
