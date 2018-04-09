@@ -1785,7 +1785,7 @@ FROM (
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal__in_Animal_ParentOf___1___out_Animal_ParentOf.name
-                    AS `sibling_and_self_names_list`
+                    AS `sibling_and_self_species_list`
             FROM (
                 MATCH {{
                     class: Animal,
@@ -1798,7 +1798,7 @@ FROM (
                 $Animal__in_Animal_ParentOf___1___out_Animal_ParentOf =
                     Animal__in_Animal_ParentOf___1
                         .out("Animal_ParentOf")
-                        .in("Animal_ParentOf").asList()
+                        .out("Animal_OfSpecies").asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -1808,16 +1808,16 @@ FROM (
             .back('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name,
-                sibling_and_self_names_list: (
+                sibling_and_self_species_list: (
                     (m.Animal__in_Animal_ParentOf___1.out_Animal_ParentOf == null) ? [] : (
                         m.Animal__in_Animal_ParentOf___1.out_Animal_ParentOf
                             .collect{
                                 entry -> entry.inV.next()
                             }
                             .collectMany{
-                                entry -> entry.in_Animal_ParentOf
+                                entry -> entry.out_Animal_OfSpecies
                                     .collect{
-                                        edge -> edge.outV.next()
+                                        edge -> edge.inV.next()
                                     }
                             }
                             .collect{entry -> entry.name}

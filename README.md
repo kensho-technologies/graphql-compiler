@@ -250,7 +250,7 @@ It is invalid to expand vertex fields within a `@fold` after encountering a `@ou
         out_Animal_ParentOf @fold {
             name @output ...
             in_Animal_ParentOf {
-                in_Animal_PeerOf {
+                in_Animal_ParentOf {
                     ...
                 }
                 out_Animal_RelatedTo {
@@ -269,7 +269,7 @@ It is also invalid to `output` at any level except the innermost one.
     Animal {
         out_Animal_ParentOf @fold {
             in_Animal_ParentOf {
-                in_Animal_PeerOf {
+                in_Animal_ParentOf {
                     out_Animal_RelatedTo {
                         name @output ...
                     }

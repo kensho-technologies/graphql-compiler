@@ -1020,8 +1020,8 @@ def traverse_and_fold_and_traverse():
             name @output(out_name: "animal_name")
             in_Animal_ParentOf {
                 out_Animal_ParentOf @fold {
-                    in_Animal_ParentOf {
-                        name @output(out_name: "sibling_and_self_names_list")
+                    out_Animal_OfSpecies {
+                        name @output(out_name: "sibling_and_self_species_list")
                     }
                 }
             }
@@ -1029,7 +1029,7 @@ def traverse_and_fold_and_traverse():
     }'''
     expected_output_metadata = {
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
-        'sibling_and_self_names_list': OutputMetadata(
+        'sibling_and_self_species_list': OutputMetadata(
             type=GraphQLList(GraphQLString), optional=False),
     }
     expected_input_metadata = {}
