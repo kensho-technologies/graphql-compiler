@@ -993,8 +993,8 @@ def fold_and_deep_traverse():
             name @output(out_name: "animal_name")
             in_Animal_ParentOf @fold {
                 out_Animal_ParentOf {
-                    in_Animal_ParentOf {
-                        name @output(out_name: "sibling_and_self_names_list")
+                    out_Animal_OfSpecies {
+                        name @output(out_name: "sibling_and_self_species_list")
                     }
                 }
             }
@@ -1002,7 +1002,7 @@ def fold_and_deep_traverse():
     }'''
     expected_output_metadata = {
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
-        'sibling_and_self_names_list': OutputMetadata(
+        'sibling_and_self_species_list': OutputMetadata(
             type=GraphQLList(GraphQLString), optional=False),
     }
     expected_input_metadata = {}
@@ -1329,8 +1329,8 @@ def coercion_on_interface_within_fold_traversal():
             in_Animal_ParentOf @fold {
                 out_Entity_Related {
                     ... on Animal {
-                        out_Animal_ParentOf {
-                            name @output(out_name: "related_animals")
+                        out_Animal_OfSpecies {
+                            name @output(out_name: "related_animal_species")
                         }
                     }
                 }
@@ -1339,7 +1339,7 @@ def coercion_on_interface_within_fold_traversal():
     }'''
     expected_output_metadata = {
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
-        'related_animals': OutputMetadata(
+        'related_animal_species': OutputMetadata(
             type=GraphQLList(GraphQLString), optional=False),
     }
     expected_input_metadata = {}

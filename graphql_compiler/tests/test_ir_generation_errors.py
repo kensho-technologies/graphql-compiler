@@ -210,7 +210,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         traversal_inside_fold_block_after_output = '''{
             Animal {
                 out_Animal_ParentOf @fold {
-                    in_Animal_ParentOf @fold {
+                    in_Animal_ParentOf {
                         uuid @output(out_name: "uuid")
                         out_Animal_FedAt {
                             uuid
@@ -276,7 +276,22 @@ class IrGenerationErrorTests(unittest.TestCase):
                         uuid @output(out_name: "uuid")
                     }
                     in_Animal_ParentOf {
-                        name @output(out_name: "name")
+                        name
+                    }
+                }
+            }
+        }'''
+
+        multiple_vertex_fields_within_fold_after_traverse = '''{
+            Animal {
+                out_Animal_ParentOf @fold {
+                    in_Animal_ParentOf {
+                        out_Animal_FedAt {
+                            uuid @output(out_name: "uuid")
+                        }
+                        out_Animal_OfSpecies {
+                            name
+                        }
                     }
                 }
             }
@@ -291,7 +306,8 @@ class IrGenerationErrorTests(unittest.TestCase):
                         optional_within_fold,
                         recurse_within_fold,
                         output_source_within_fold,
-                        multiple_vertex_fields_within_fold):
+                        multiple_vertex_fields_within_fold,
+                        multiple_vertex_fields_within_fold_after_traverse):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, graphql)
 
