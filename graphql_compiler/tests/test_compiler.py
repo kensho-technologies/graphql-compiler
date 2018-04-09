@@ -10,22 +10,6 @@ from ..compiler import OutputMetadata, compile_graphql_to_gremlin, compile_graph
 from .test_helpers import compare_gremlin, compare_input_metadata, compare_match, get_schema
 
 
-def check_test_data_match(test_case, test_data, expected, schema_based_type_equivalence_hints):
-    result = compile_graphql_to_match(test_case.schema, test_data.graphql_input,
-                                      type_equivalence_hints=schema_based_type_equivalence_hints)
-    compare_match(test_case, expected, result.query)
-    test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-    compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
-
-
-def check_test_data_gremlin(test_case, test_data, expected, schema_based_type_equivalence_hints):
-    result = compile_graphql_to_gremlin(test_case.schema, test_data.graphql_input,
-                                        type_equivalence_hints=schema_based_type_equivalence_hints)
-    compare_gremlin(test_case, expected, result.query)
-    test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-    compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
-
-
 def check_test_data(test_case, test_data, expected_match, expected_gremlin):
     """Assert that the GraphQL input generates all expected MATCH and Gremlin data."""
     if test_data.type_equivalence_hints:
@@ -38,10 +22,17 @@ def check_test_data(test_case, test_data, expected_match, expected_gremlin):
     else:
         schema_based_type_equivalence_hints = None
 
-    check_test_data_match(test_case, test_data, expected_match,
-                          schema_based_type_equivalence_hints)
-    check_test_data_gremlin(test_case, test_data, expected_gremlin,
-                            schema_based_type_equivalence_hints)
+    result = compile_graphql_to_match(test_case.schema, test_data.graphql_input,
+                                      type_equivalence_hints=schema_based_type_equivalence_hints)
+    compare_match(test_case, expected_match, result.query)
+    test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+    compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+
+    result = compile_graphql_to_gremlin(test_case.schema, test_data.graphql_input,
+                                        type_equivalence_hints=schema_based_type_equivalence_hints)
+    compare_gremlin(test_case, expected_gremlin, result.query)
+    test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+    compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
 
 class CompilerTests(unittest.TestCase):
