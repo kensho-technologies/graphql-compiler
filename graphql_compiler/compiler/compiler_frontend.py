@@ -425,8 +425,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 del context['fold_innermost_scope']
             else:
                 raise AssertionError(u'Output inside @fold scope did not add '
-                                              u'"fold_innermost_scope" to context! '
-                                              u'Location: {}'.format(fold_scope_location))
+                                     u'"fold_innermost_scope" to context! '
+                                     u'Location: {}'.format(fold_scope_location))
 
         if in_topmost_optional_block:
             del context['optional']
