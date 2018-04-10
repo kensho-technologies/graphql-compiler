@@ -148,10 +148,13 @@ class GremlinFoldedOutputContextField(Expression):
             raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
                 type(self.fold_scope_location), self.fold_scope_location))
 
+        allowed_block_types = (GremlinFoldedFilter, GremlinFoldedTraverse, Backtrack)
         for block in self.folded_ir_blocks:
-            if not isinstance(block, GremlinFoldedFilter):
-                raise AssertionError(u'Found non-GremlinFoldedFilter in folded_ir_blocks: {} {} '
-                                     u'{}'.format(type(block), block, self.folded_ir_blocks))
+            if not isinstance(block, allowed_block_types):
+                raise AssertionError(
+                    u'Found invalid block of type {} in folded_ir_blocks: {} '
+                    u'Allowed types are {}.'
+                    .format(type(block), self.folded_ir_blocks, allowed_block_types))
 
         validate_safe_string(self.field_name)
 
@@ -199,7 +202,7 @@ class GremlinFoldedOutputContextField(Expression):
                 u'}}'
                 u'))'
             )
-            filter_data = ''
+            filter_and_traverse_data = ''
         else:
             # There is filtering or type coercions in this @fold scope.
             #
@@ -218,11 +221,12 @@ class GremlinFoldedOutputContextField(Expression):
                 u'm.{mark_name}.{direction}_{edge_name}.collect{{'
                 u'entry -> entry.{inverse_direction}V.next()'
                 u'}}'
-                u'.{filters}'
+                u'.{filters_and_traverses}'
                 u'.collect{{entry -> entry.{field_name}{maybe_format}}}'
                 u'))'
             )
-            filter_data = u'.'.join(block.to_gremlin() for block in self.folded_ir_blocks)
+            filter_and_traverse_data = u'.'.join(block.to_gremlin()
+                                                 for block in self.folded_ir_blocks)
 
         maybe_format = ''
         inner_type = strip_non_null_from_type(self.field_type.of_type)
@@ -238,7 +242,7 @@ class GremlinFoldedOutputContextField(Expression):
             'field_name': self.field_name,
             'inverse_direction': inverse_direction,
             'maybe_format': maybe_format,
-            'filters': filter_data,
+            'filters_and_traverses': filter_and_traverse_data,
         }
         return template.format(**template_data)
 
@@ -252,6 +256,31 @@ class GremlinFoldedFilter(Filter):
         return u'findAll{{entry -> {}}}'.format(self.predicate.to_gremlin())
 
 
+class GremlinFoldedTraverse(Traverse):
+    """A Gremlin-specific Traverse block to be used only within @fold scopes."""
+
+    @classmethod
+    def from_traverse(cls, traverse_block):
+        """Create a GremlinFoldedTraverse block as a copy of the given Traverse block."""
+        if isinstance(traverse_block, Traverse):
+            return cls(traverse_block.direction, traverse_block.edge_name)
+        else:
+            raise AssertionError(u'Tried to initialize an instance of GremlinFoldedTraverse '
+                                 u'with block of type {}'.format(type(traverse_block)))
+
+    def to_gremlin(self):
+        """Return a unicode object with the Gremlin representation of this block."""
+        self.validate()
+        template_data = {
+            'direction': self.direction,
+            'edge_name': self.edge_name,
+            'inverse_direction': 'in' if self.direction == 'out' else 'out'
+        }
+        return (u'collectMany{{entry -> entry.{direction}_{edge_name}'
+                u'.collect{{edge -> edge.{inverse_direction}V.next()}}}}'
+                .format(**template_data))
+
+
 class GremlinFoldedLocalField(LocalField):
     """A Gremlin-specific LocalField expressionto be used only within @fold scopes."""
 
@@ -260,8 +289,8 @@ class GremlinFoldedLocalField(LocalField):
         return u'entry'
 
 
-def _convert_folded_filter_blocks(folded_ir_blocks):
-    """Convert Filter blocks and LocalField expressions inside a @fold into Gremlin-type objects."""
+def _convert_folded_blocks(folded_ir_blocks):
+    """Convert Filter/Traverse blocks and LocalField expressions within @fold to Gremlin objects."""
     new_folded_ir_blocks = []
 
     def folded_context_visitor(expression):
@@ -277,6 +306,10 @@ def _convert_folded_filter_blocks(folded_ir_blocks):
         if isinstance(block, Filter):
             new_predicate = block.predicate.visit_and_update(folded_context_visitor)
             new_block = GremlinFoldedFilter(new_predicate)
+        elif isinstance(block, Traverse):
+            new_block = GremlinFoldedTraverse.from_traverse(block)
+        else:
+            continue
 
         new_folded_ir_blocks.append(new_block)
 
@@ -298,7 +331,7 @@ def lower_folded_outputs(ir_blocks):
 
     # Turn folded Filter blocks into GremlinFoldedFilter blocks.
     converted_folds = {
-        key: _convert_folded_filter_blocks(folded_ir_blocks)
+        key: _convert_folded_blocks(folded_ir_blocks)
         for key, folded_ir_blocks in six.iteritems(folds)
     }
 

@@ -133,22 +133,31 @@ def _sanity_check_every_location_is_marked(ir_blocks):
     # Exactly one MarkLocation block is found between a QueryRoot / Traverse / Recurse block,
     # and the first subsequent Traverse, Recurse, Backtrack or ConstructResult block.
     found_start_block = False
+    found_fold_block = False
     mark_location_blocks = 0
-    for block in ir_blocks:
-        # Terminate started intervals before opening new ones.
-        end_interval_types = (Backtrack, ConstructResult, Recurse, Traverse)
-        if isinstance(block, end_interval_types) and found_start_block:
-            found_start_block = False
-            if mark_location_blocks != 1:
-                raise AssertionError(u'Expected 1 MarkLocation block between traversals, found: '
-                                     u'{} {}'.format(mark_location_blocks, ir_blocks))
 
-        # Now consider opening new intervals or processing MarkLocation blocks.
-        if isinstance(block, MarkLocation):
-            mark_location_blocks += 1
-        elif isinstance(block, (QueryRoot, Traverse, Recurse)):
-            found_start_block = True
-            mark_location_blocks = 0
+    for block in ir_blocks:
+        if isinstance(block, Fold):
+            found_fold_block = True
+        # Don't need to check for mark locations within a fold traversal
+        if found_fold_block:
+            if isinstance(block, Unfold):
+                found_fold_block = False
+        else:
+            # Terminate started intervals before opening new ones.
+            end_interval_types = (Backtrack, ConstructResult, Recurse, Traverse)
+            if isinstance(block, end_interval_types) and found_start_block:
+                found_start_block = False
+                if mark_location_blocks != 1:
+                    raise AssertionError(u'Expected 1 MarkLocation block between traversals, '
+                                         u'found: {} {}'.format(mark_location_blocks, ir_blocks))
+
+            # Now consider opening new intervals or processing MarkLocation blocks.
+            if isinstance(block, MarkLocation):
+                mark_location_blocks += 1
+            elif isinstance(block, (QueryRoot, Traverse, Recurse)):
+                found_start_block = True
+                mark_location_blocks = 0
 
 
 def _sanity_check_coerce_type_outside_of_fold(ir_blocks):

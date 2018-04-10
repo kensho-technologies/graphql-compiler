@@ -1691,6 +1691,142 @@ FROM (
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_fold_and_traverse(self):
+        test_data = test_input_data.fold_and_traverse()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal___1___in_Animal_ParentOf.name
+                    AS `sibling_and_self_names_list`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList()
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                sibling_and_self_names_list: (
+                    (m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.in_Animal_ParentOf
+                            .collect{
+                                entry -> entry.outV.next()
+                            }
+                            .collectMany{
+                                entry -> entry.out_Animal_ParentOf
+                                    .collect{
+                                        edge -> edge.inV.next()
+                                    }
+                            }
+                            .collect{entry -> entry.name}
+                    ))
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_fold_and_deep_traverse(self):
+        test_data = test_input_data.fold_and_deep_traverse()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal___1___in_Animal_ParentOf.name AS `sibling_and_self_species_list`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1.in("Animal_ParentOf")
+                              .out("Animal_ParentOf")
+                              .out("Animal_OfSpecies")
+                              .asList()
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                sibling_and_self_species_list: (
+                    (m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.in_Animal_ParentOf
+                            .collect{entry -> entry.outV.next()}
+                            .collectMany{
+                                entry -> entry.out_Animal_ParentOf
+                                    .collect{edge -> edge.inV.next()}
+                            }
+                            .collectMany{
+                                entry -> entry.out_Animal_OfSpecies
+                                    .collect{edge -> edge.inV.next()}
+                            }
+                            .collect{entry -> entry.name}
+                    )
+                )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_traverse_and_fold_and_traverse(self):
+        test_data = test_input_data.traverse_and_fold_and_traverse()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal__in_Animal_ParentOf___1___out_Animal_ParentOf.name
+                    AS `sibling_and_self_species_list`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    as: Animal__in_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal__in_Animal_ParentOf___1___out_Animal_ParentOf =
+                    Animal__in_Animal_ParentOf___1
+                        .out("Animal_ParentOf")
+                        .out("Animal_OfSpecies").asList()
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .in('Animal_ParentOf')
+                .as('Animal__in_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                sibling_and_self_species_list: (
+                    (m.Animal__in_Animal_ParentOf___1.out_Animal_ParentOf == null) ? [] : (
+                        m.Animal__in_Animal_ParentOf___1.out_Animal_ParentOf
+                            .collect{
+                                entry -> entry.inV.next()
+                            }
+                            .collectMany{
+                                entry -> entry.out_Animal_OfSpecies
+                                    .collect{
+                                        edge -> edge.inV.next()
+                                    }
+                            }
+                            .collect{entry -> entry.name}
+                    ))
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_multiple_outputs_in_same_fold(self):
         test_data = test_input_data.multiple_outputs_in_same_fold()
 
@@ -1715,14 +1851,68 @@ FROM (
                 animal_name: m.Animal___1.name,
                 child_names_list: (
                     (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
-                        m.Animal___1.out_Animal_ParentOf.collect{entry -> entry.inV.next().name}
+                        m.Animal___1.out_Animal_ParentOf
+                            .collect{entry -> entry.inV.next().name}
                     )
                 ),
                 child_uuids_list: (
                     (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
-                        m.Animal___1.out_Animal_ParentOf.collect{entry -> entry.inV.next().uuid}
+                        m.Animal___1.out_Animal_ParentOf
+                            .collect{entry -> entry.inV.next().uuid}
                     )
                 )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_multiple_outputs_in_same_fold_and_traverse(self):
+        test_data = test_input_data.multiple_outputs_in_same_fold_and_traverse()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal___1___in_Animal_ParentOf.name AS `sibling_and_self_names_list`,
+                $Animal___1___in_Animal_ParentOf.uuid AS `sibling_and_self_uuids_list`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList()
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                sibling_and_self_names_list:
+                    ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.in_Animal_ParentOf
+                            .collect{entry -> entry.outV.next()}
+                            .collectMany{
+                                entry -> entry.out_Animal_ParentOf
+                                    .collect{
+                                        edge -> edge.inV.next()
+                                    }
+                            }
+                            .collect{entry -> entry.name}
+                    )),
+                sibling_and_self_uuids_list:
+                    ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.in_Animal_ParentOf
+                            .collect{entry -> entry.outV.next()}
+                            .collectMany{
+                                entry -> entry.out_Animal_ParentOf
+                                    .collect{
+                                        edge -> edge.inV.next()
+                                    }
+                            }
+                            .collect{entry -> entry.uuid}
+                    ))
             ])}
         '''
 
@@ -1773,6 +1963,82 @@ FROM (
                         m.Animal___1.in_Animal_ParentOf.collect{entry -> entry.outV.next().uuid}
                     )
                 )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_multiple_folds_and_traverse(self):
+        test_data = test_input_data.multiple_folds_and_traverse()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal___1___out_Animal_ParentOf.name AS `child_names_list`,
+                $Animal___1___out_Animal_ParentOf.uuid AS `child_uuids_list`,
+                $Animal___1___in_Animal_ParentOf.name AS `parent_names_list`,
+                $Animal___1___in_Animal_ParentOf.uuid AS `parent_uuids_list`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList(),
+                $Animal___1___out_Animal_ParentOf =
+                    Animal___1.out("Animal_ParentOf").in("Animal_ParentOf").asList()
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                child_names_list: ((m.Animal___1.out_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.out_Animal_ParentOf
+                        .collect{entry -> entry.inV.next()}
+                        .collectMany{
+                            entry -> entry.in_Animal_ParentOf
+                                .collect{
+                                    edge -> edge.outV.next()
+                                }
+                        }
+                        .collect{entry -> entry.name}
+                )),
+                child_uuids_list: ((m.Animal___1.out_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.out_Animal_ParentOf
+                        .collect{entry -> entry.inV.next()}
+                        .collectMany{
+                            entry -> entry.in_Animal_ParentOf
+                                .collect{
+                                    edge -> edge.outV.next()
+                                }
+                        }
+                        .collect{entry -> entry.uuid}
+                )),
+                parent_names_list: ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.in_Animal_ParentOf
+                        .collect{entry -> entry.outV.next()}
+                        .collectMany{
+                            entry -> entry.out_Animal_ParentOf
+                                .collect{
+                                    edge -> edge.inV.next()
+                                }
+                        }
+                        .collect{entry -> entry.name}
+                )),
+                parent_uuids_list: ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.in_Animal_ParentOf
+                        .collect{entry -> entry.outV.next()}
+                        .collectMany{
+                            entry -> entry.out_Animal_ParentOf
+                                .collect{
+                                    edge -> edge.inV.next()
+                                }
+                        }
+                        .collect{entry -> entry.uuid}
+                ))
             ])}
         '''
 
@@ -2008,6 +2274,49 @@ FROM (
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_coercion_on_interface_within_fold_traversal(self):
+        test_data = test_input_data.coercion_on_interface_within_fold_traversal()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal___1___in_Animal_ParentOf.name AS `related_animal_species`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1.in("Animal_ParentOf")
+                              .out("Entity_Related")[(@this INSTANCEOF 'Animal')]
+                              .out("Animal_OfSpecies").asList()
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                related_animal_species: ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.in_Animal_ParentOf
+                    .collect{entry -> entry.outV.next()}
+                    .collectMany{
+                        entry -> entry.out_Entity_Related
+                            .collect{edge -> edge.inV.next()}
+                    }
+                    .findAll{entry -> ['Animal'].contains(entry['@class'])}
+                    .collectMany{
+                        entry -> entry.out_Animal_OfSpecies
+                            .collect{edge -> edge.inV.next()}
+                    }
+                    .collect{entry -> entry.name}
+                ))
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_coercion_on_union_within_fold_scope(self):
         test_data = test_input_data.coercion_on_union_within_fold_scope()
 
@@ -2089,6 +2398,70 @@ FROM (
                              entry.name.contains($substring)) &&
                              (entry.birthday <= Date.parse("yyyy-MM-dd", $latest)))}
                          .collect{entry -> entry.birthday.format("yyyy-MM-dd")}
+                    )
+                )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_coercion_filters_and_multiple_outputs_within_fold_traversal(self):
+        test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_traversal()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`,
+                $Animal___1___in_Animal_ParentOf.name AS `related_animals`,
+                $Animal___1___in_Animal_ParentOf.birthday.format("yyyy-MM-dd")
+                    AS `related_birthdays`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1
+                        .in("Animal_ParentOf")
+                        .out("Entity_Related")[(
+                            (@this INSTANCEOF 'Animal') AND
+                            ((name LIKE ('%' + ({substring} + '%'))) AND
+                            (birthday <= date({latest}, "yyyy-MM-dd"))))].asList()
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name,
+                related_animals: (
+                    (m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                         m.Animal___1.in_Animal_ParentOf
+                             .collect{entry -> entry.outV.next()}
+                             .collectMany{
+                                 entry -> entry.out_Entity_Related
+                                     .collect{edge -> edge.inV.next()}
+                             }
+                             .findAll{entry -> (
+                                  (['Animal'].contains(entry['@class']) &&
+                                  entry.name.contains($substring)) &&
+                                  (entry.birthday <= Date.parse("yyyy-MM-dd", $latest)))}
+                             .collect{entry -> entry.name}
+                    )
+                ),
+                related_birthdays: (
+                    (m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                         m.Animal___1.in_Animal_ParentOf
+                             .collect{entry -> entry.outV.next()}
+                             .collectMany{
+                                 entry -> entry.out_Entity_Related
+                                     .collect{edge -> edge.inV.next()}
+                             }
+                             .findAll{entry -> (
+                                  (['Animal'].contains(entry['@class']) &&
+                                  entry.name.contains($substring)) &&
+                                  (entry.birthday <= Date.parse("yyyy-MM-dd", $latest)))}
+                             .collect{entry -> entry.birthday.format("yyyy-MM-dd")}
                     )
                 )
             ])}

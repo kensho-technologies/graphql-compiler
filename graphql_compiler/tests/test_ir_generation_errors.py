@@ -196,11 +196,25 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
 
-        traversal_inside_fold_block = '''{
+        multi_level_outputs_inside_fold_block = '''{
             Animal {
                 out_Animal_ParentOf @fold {
+                    uuid @output(out_name: "uuid")
                     out_Animal_FedAt {
                         uuid @output(out_name: "uuid")
+                    }
+                }
+            }
+        }'''
+
+        traversal_inside_fold_block_after_output = '''{
+            Animal {
+                out_Animal_ParentOf @fold {
+                    in_Animal_ParentOf {
+                        uuid @output(out_name: "uuid")
+                        out_Animal_FedAt {
+                            uuid
+                        }
                     }
                 }
             }
@@ -215,10 +229,85 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
 
+        fold_within_fold = '''{
+            Animal {
+                out_Animal_ParentOf @fold {
+                    out_Animal_FedAt @fold {
+                        uuid @output(out_name: "uuid")
+                    }
+                }
+            }
+        }'''
+
+        optional_within_fold = '''{
+            Animal {
+                out_Animal_ParentOf @fold {
+                    out_Animal_FedAt @optional {
+                        uuid @output(out_name: "uuid")
+                    }
+                }
+            }
+        }'''
+
+        recurse_within_fold = '''{
+            Animal {
+                out_Animal_ParentOf @fold {
+                    in_Animal_ParentOf @recurse(depth: 2) {
+                        uuid @output(out_name: "uuid")
+                    }
+                }
+            }
+        }'''
+
+        output_source_within_fold = '''{
+            Animal {
+                out_Animal_ParentOf @fold {
+                    out_Animal_FedAt @output_source {
+                        uuid @output(out_name: "uuid")
+                    }
+                }
+            }
+        }'''
+
+        multiple_vertex_fields_within_fold = '''{
+            Animal {
+                out_Animal_ParentOf @fold {
+                    out_Animal_FedAt {
+                        uuid @output(out_name: "uuid")
+                    }
+                    in_Animal_ParentOf {
+                        name
+                    }
+                }
+            }
+        }'''
+
+        multiple_vertex_fields_within_fold_after_traverse = '''{
+            Animal {
+                out_Animal_ParentOf @fold {
+                    in_Animal_ParentOf {
+                        out_Animal_FedAt {
+                            uuid @output(out_name: "uuid")
+                        }
+                        out_Animal_OfSpecies {
+                            name
+                        }
+                    }
+                }
+            }
+        }'''
+
         for graphql in (fold_on_property_field,
                         fold_on_root_vertex,
-                        traversal_inside_fold_block,
-                        no_outputs_inside_fold_block):
+                        multi_level_outputs_inside_fold_block,
+                        traversal_inside_fold_block_after_output,
+                        no_outputs_inside_fold_block,
+                        fold_within_fold,
+                        optional_within_fold,
+                        recurse_within_fold,
+                        output_source_within_fold,
+                        multiple_vertex_fields_within_fold,
+                        multiple_vertex_fields_within_fold_after_traverse):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, graphql)
 

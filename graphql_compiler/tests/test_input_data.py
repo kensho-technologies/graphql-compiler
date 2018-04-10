@@ -962,6 +962,85 @@ def fold_after_traverse():
         type_equivalence_hints=None)
 
 
+def fold_and_traverse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf @fold {
+                out_Animal_ParentOf {
+                    name @output(out_name: "sibling_and_self_names_list")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'sibling_and_self_names_list': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def fold_and_deep_traverse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf @fold {
+                out_Animal_ParentOf {
+                    out_Animal_OfSpecies {
+                        name @output(out_name: "sibling_and_self_species_list")
+                    }
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'sibling_and_self_species_list': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def traverse_and_fold_and_traverse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf {
+                out_Animal_ParentOf @fold {
+                    out_Animal_OfSpecies {
+                        name @output(out_name: "sibling_and_self_species_list")
+                    }
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'sibling_and_self_species_list': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def multiple_outputs_in_same_fold():
     graphql_input = '''{
         Animal {
@@ -986,6 +1065,34 @@ def multiple_outputs_in_same_fold():
         type_equivalence_hints=None)
 
 
+def multiple_outputs_in_same_fold_and_traverse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf @fold {
+                out_Animal_ParentOf {
+                    name @output(out_name: "sibling_and_self_names_list")
+                    uuid @output(out_name: "sibling_and_self_uuids_list")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'sibling_and_self_names_list': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+        'sibling_and_self_uuids_list': OutputMetadata(
+            type=GraphQLList(GraphQLID), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def multiple_folds():
     graphql_input = '''{
         Animal {
@@ -997,6 +1104,40 @@ def multiple_folds():
             in_Animal_ParentOf @fold {
                 name @output(out_name: "parent_names_list")
                 uuid @output(out_name: "parent_uuids_list")
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'child_names_list': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+        'child_uuids_list': OutputMetadata(type=GraphQLList(GraphQLID), optional=False),
+        'parent_names_list': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+        'parent_uuids_list': OutputMetadata(type=GraphQLList(GraphQLID), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def multiple_folds_and_traverse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_ParentOf @fold {
+                in_Animal_ParentOf {
+                    name @output(out_name: "child_names_list")
+                    uuid @output(out_name: "child_uuids_list")
+                }
+            }
+            in_Animal_ParentOf @fold {
+                out_Animal_ParentOf {
+                    name @output(out_name: "parent_names_list")
+                    uuid @output(out_name: "parent_uuids_list")
+                }
             }
         }
     }'''
@@ -1181,6 +1322,35 @@ def coercion_on_interface_within_fold_scope():
         type_equivalence_hints=None)
 
 
+def coercion_on_interface_within_fold_traversal():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf @fold {
+                out_Entity_Related {
+                    ... on Animal {
+                        out_Animal_OfSpecies {
+                            name @output(out_name: "related_animal_species")
+                        }
+                    }
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'related_animal_species': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def coercion_on_union_within_fold_scope():
     graphql_input = '''{
         Animal {
@@ -1216,6 +1386,41 @@ def coercion_filters_and_multiple_outputs_within_fold_scope():
                          @output(out_name: "related_animals")
                     birthday @filter(op_name: "<=", value: ["$latest"])
                              @output(out_name: "related_birthdays")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False),
+        'related_animals': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+        'related_birthdays': OutputMetadata(
+            type=GraphQLList(GraphQLDate), optional=False),
+    }
+    expected_input_metadata = {
+        'substring': GraphQLString,
+        'latest': GraphQLDate,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def coercion_filters_and_multiple_outputs_within_fold_traversal():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "name")
+            in_Animal_ParentOf @fold {
+                out_Entity_Related {
+                    ... on Animal {
+                        name @filter(op_name: "has_substring", value: ["$substring"])
+                             @output(out_name: "related_animals")
+                        birthday @filter(op_name: "<=", value: ["$latest"])
+                                 @output(out_name: "related_birthdays")
+                    }
                 }
             }
         }
