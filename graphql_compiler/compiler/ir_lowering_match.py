@@ -187,7 +187,7 @@ def lower_optional_traverse_blocks(match_query, location_types):
         new_traversal = []
         for step in current_match_traversal:
             new_traversal.append(step)
-            if isinstance(step.root_block, Traverse) and step.root_block.optional:
+            if isinstance(step.root_block, Backtrack) and step.root_block.optional:
                 # 1. Upon seeing a step with an optional Traverse root block,
                 #    make that step the last step in its MATCH traversal.
                 new_match_traversals.append(new_traversal)

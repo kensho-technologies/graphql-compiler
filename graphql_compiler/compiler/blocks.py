@@ -267,6 +267,10 @@ class Traverse(BasicBlock):
                         edge_name=self.edge_name,
                         edge_quoted=safe_quoted_string(self.edge_name)))
         elif self.in_optional_context:
+            # During a traversal, the pipeline element may be null.
+            # The following code returns null when the current pipeline entity is null
+            # (an optional edge did not exist at some earlier traverse).
+            # Otherwise it performs a normal traversal (previous optional edge did exist).
             return (u'ifThenElse{{it == null}}'
                     u'{{null}}{{it.{direction}({edge_quoted})}}'.format(
                         direction=self.direction,
