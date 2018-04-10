@@ -231,8 +231,14 @@ If a given `Animal` has no children, its `child_names` list is empty.
 #### Constraints and Rules
 - `@fold` can only be applied to vertex fields, except the root vertex field.
 - May not exist at the same vertex field as `@recurse`, `@optional`, or `@output_source`.
-- At most one vertex field may be expanded in a scope within a `@fold` marked scope. Note that this applies for all nested scopes (see example below).
-- `@tag`, `@recurse`, `@optional`, `@output_source` and `@fold` may not be used anywhere within a scope marked `@fold`.
+- Any scope that is either marked with `@fold` or is nested within a `@fold` marked scope,
+  may expand at most one vertex field.
+- In a scope marked `@fold` and any scope nested within, at most one vertex field may be expanded.
+- There must be at least one `@output` field within a `@fold` scope.
+- All `@output` fields within a `@fold` traversal must be present at the innermost scope.
+  It is invalid to expand vertex fields within a `@fold` after encountering an `@output` directive.
+- `@tag`, `@recurse`, `@optional`, `@output_source` and `@fold` may not be used anywhere
+  within a scope marked `@fold`.
 - Use of type coercions or `@filter` at or within the vertex field marked `@fold` is allowed.
   Only data that satisfies the given type coercions and filters is returned by the `@fold`.
 - If the compiler is able to prove that the type coercion in the `@fold` scope is actually a no-op,
@@ -241,32 +247,44 @@ If a given `Animal` has no children, its `child_names` list is empty.
   section for more details.
 
 #### Example
+The following GraphQL is *not allowed* and will produce a `GraphQLCompilationError`.
+This query is *invalid* for two separate reasons:
+- It expands vertex fields after an `@output` directive (outputting `animal_name`)
+- The `in_Animal_ParentOf` scope, which is within a scope marked `@fold`,
+  expands two vertex fields instead of at most one.
 ```
-    out_Animal_ParentOf @fold {
-        name @output ...
-        in_Animal_ParentOf {
-            in_Animal_PeerOf {
-                ...
-            }
-            out_Animal_RelatedTo {
-                ...
-            }
-        }
-    }
-```
-This fragment is not allowed because two vertex fields are expanded inside `in_Animal_ParentOf`, which is within a `@fold` scope. It is also invalid to `output` at any level except the innermost one.
-```
-    out_Animal_ParentOf @fold {
-        in_Animal_ParentOf {
-            in_Animal_PeerOf {
+{
+    Animal {
+        out_Animal_ParentOf @fold {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf {
+                out_Animal_OfSpecies {
+                    uuid @output(out_name: "species_id")
+                }
                 out_Animal_RelatedTo {
-                    name @output ...
+                    name @output(out_name: "relative_name")
                 }
             }
         }
     }
+}
 ```
-This is a valid use of `@fold`.
+The following is a valid use of `@fold`:
+```
+{
+    Animal {
+        out_Animal_ParentOf @fold {
+            in_Animal_ParentOf {
+                in_Animal_ParentOf {
+                    out_Animal_RelatedTo {
+                        name @output(out_name: "final_name")
+                    }
+                }
+            }
+        }
+    }
+}
+```
 
 ### @tag
 

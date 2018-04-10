@@ -424,9 +424,9 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             if 'fold_innermost_scope' in context:
                 del context['fold_innermost_scope']
             else:
-                raise GraphQLCompilationError(u'Output inside @fold scope did not add '
-                                              u'"fold_innermost_scope" to context! '
-                                              u'Location: {}'.format(fold_scope_location))
+                raise AssertionError(u'Output inside @fold scope did not add '
+                                     u'"fold_innermost_scope" to context! '
+                                     u'Location: {}'.format(fold_scope_location))
 
         if in_topmost_optional_block:
             del context['optional']
