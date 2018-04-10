@@ -4,7 +4,7 @@
 
 ## v1.4.0
 
-- Enable expanding vertex fields inside @fold
+- Enable expanding vertex fields inside `@fold` [#64](https://github.com/kensho-technologies/graphql-compiler/pull/64)
 
 ## v1.3.1
 
