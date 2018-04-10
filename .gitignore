@@ -1,5 +1,6 @@
 # Py.test generated files
 **/__pycache__/
+.pytest_cache/
 
 # Apple file system litter
 .DS_Store

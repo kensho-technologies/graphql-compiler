@@ -6,6 +6,8 @@
 
 - Enable expanding vertex fields inside `@fold` [#64](https://github.com/kensho-technologies/graphql-compiler/pull/64)
 
+Thanks to `amartyashankha` for this contribution!
+
 ## v1.3.1
 
 - Add a workaround for a bug in OrientDB related to `@recurse` with type coercions [#55](https://github.com/kensho-technologies/graphql-compiler/pull/55)
