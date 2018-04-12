@@ -700,9 +700,11 @@ def _compile_output_step(outputs):
             if optional:
                 existence_check = expressions.ContextFieldExistence(location.at_vertex())
 
+                # pylint: disable=redefined-variable-type
         if existence_check:
             expression = expressions.TernaryConditional(
                 existence_check, expression, expressions.NullLiteral)
+                # pylint: enable=redefined-variable-type
 
         output_fields[output_name] = expression
 
