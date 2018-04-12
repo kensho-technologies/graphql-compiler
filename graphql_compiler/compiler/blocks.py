@@ -246,7 +246,7 @@ class Traverse(BasicBlock):
 
     def get_field_name(self):
         """Return the field name corresponding to the edge being traversed."""
-        return u'{direction}_{edge}'.format(direction=self.direction, edge=self.edge_name)
+        return u'{}_{}'.format(self.direction, self.edge_name)
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this block."""
