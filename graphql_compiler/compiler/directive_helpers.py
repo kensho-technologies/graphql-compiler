@@ -189,6 +189,7 @@ def validate_vertex_field_directive_in_context(location, directives, context):
     recurse_directive = directives.get('recurse', None)
 
     fold_context = 'fold' in context
+    optional_context = 'optional' in context
     output_source_context = 'output_source' in context
 
     if fold_directive and fold_context:
@@ -207,3 +208,13 @@ def validate_vertex_field_directive_in_context(location, directives, context):
     if output_source_context and not fold_directive:
         raise GraphQLCompilationError(u'Found non-fold vertex field after the vertex marked '
                                       u'output source! Location: {}'.format(location))
+
+    if optional_context and fold_directive:
+        raise GraphQLCompilationError(u'@fold is not allowed within a @optional traversal! '
+                                      u'Location: {}'.format(location))
+    if optional_context and recurse_directive:
+        raise GraphQLCompilationError(u'@recurse is not allowed within a @optional traversal! '
+                                      u'Location: {}'.format(location))
+    if optional_context and output_source_directive:
+        raise GraphQLCompilationError(u'@output_source is not allowed within a @optional '
+                                      u'traversal! Location: {}'.format(location))

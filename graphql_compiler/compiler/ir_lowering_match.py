@@ -8,17 +8,28 @@ to generate directly from this Expression object. An output-language-aware IR lo
 us to convert this Expression into other Expressions, using data already present in the IR,
 to simplify the final code generation step.
 """
+from collections import namedtuple
 import funcy.py2 as funcy
+import itertools
 import six
 
-from .blocks import Backtrack, CoerceType, Filter, MarkLocation, QueryRoot, Traverse
-from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
-                          Literal, LocalField, TernaryConditional, TrueLiteral)
+from .blocks import (Backtrack, CoerceType, ConstructResult,
+                     Filter, MarkLocation, QueryRoot, Traverse)
+from .expressions import (BinaryComposition, ContextField, ContextFieldExistence,
+                          FalseLiteral, FoldedOutputContextField, Literal, LocalField,
+                          NullLiteral, OutputContextField, TernaryConditional,
+                          TrueLiteral, UnaryTransformation, ZeroLiteral)
 from .ir_lowering_common import (lower_context_field_existence, merge_consecutive_filter_clauses,
                                  optimize_boolean_expression_comparisons)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
-from .match_query import MatchStep, convert_to_match_query
+from .match_query import MatchQuery, MatchStep, convert_to_match_query
 from .workarounds import orientdb_class_with_while, orientdb_eval_scheduling
+
+
+###
+# A CompoundMatchQuery is a representation of several MatchQuery objects containing
+#   - match_queries: a list MatchQuery objects
+CompoundMatchQuery = namedtuple('CompoundMatchQuery', ('match_queries'))
 
 
 ##################################
@@ -187,6 +198,7 @@ def lower_optional_traverse_blocks(match_query, location_types):
         new_traversal = []
         for step in current_match_traversal:
             new_traversal.append(step)
+            # TODO(shankha): Does this detect all cases? <12-04-18> #
             if isinstance(step.root_block, Backtrack) and step.root_block.optional:
                 # 1. Upon seeing a step with an optional Traverse root block,
                 #    make that step the last step in its MATCH traversal.
@@ -378,6 +390,121 @@ def remove_backtrack_blocks_from_fold(folded_ir_blocks):
     return new_folded_ir_blocks
 
 
+def convert_optional_traversals_to_compound_match_query(match_query):
+    """Return 2^n distinct MatchQueries objects in a CompoundMatchQuery.
+
+    Here, `n` is the number of `@optional` scopes which expand vertex fields.
+    """
+    def filter_local_field_existence(field_name):
+        local_field = LocalField(field_name)
+        local_field_size = UnaryTransformation(u'size', local_field)
+        field_null_check = BinaryComposition(u'=', local_field, NullLiteral)
+        field_size_check = BinaryComposition(u'=', local_field_size, ZeroLiteral)
+        return BinaryComposition(u'||', field_null_check, field_size_check)
+
+    def is_optional_traverse(traverse):
+        return any(
+            isinstance(step.root_block, Traverse) and step.root_block.in_optional_context
+            for step in traverse
+        )
+
+    def no_optional_traverse(traverse):
+        new_traverse = []
+        for step in traverse:
+            if not isinstance(step.root_block, Traverse) or not step.root_block.optional:
+                new_traverse.append(step)
+            else:
+                field_name = step.root_block.get_field_name()
+                new_predicate = filter_local_field_existence(field_name)
+                old_predicate = new_traverse[-1].where_block.predicate
+                if old_predicate:
+                    new_predicate = BinaryComposition(u'&&', old_predicate, new_predicate)
+                new_traverse[-1] = new_traverse[-1]._replace(where_block=Filter(new_predicate))
+                return new_traverse
+        raise AssertionError
+
+    def mandatory_optional_traverse(traverse):
+        new_traverse = []
+        for step in traverse:
+            if not isinstance(step.root_block, Traverse) or not step.root_block.optional:
+                new_traverse.append(step)
+            else:
+                old_block = step.root_block
+                new_root_block = Traverse(old_block.direction, old_block.edge_name)
+                new_traverse.append(step._replace(root_block=new_root_block))
+        return new_traverse
+
+    match_traversals_possibilities = []
+    for traversal in match_query.match_traversals:
+        if is_optional_traverse(traversal):
+            match_traversals_possibilities.append(
+                [no_optional_traverse(traversal), mandatory_optional_traverse(traversal)]
+            )
+        else:
+            match_traversals_possibilities.append([traversal])
+    compound_match_traversals = list(itertools.product(*match_traversals_possibilities))
+
+    return CompoundMatchQuery(
+        match_queries=[
+            MatchQuery(
+                match_traversals=match_traversals,
+                folds=match_query.folds,
+                output_block=match_query.output_block,
+            )
+            for match_traversals in compound_match_traversals
+        ]
+    )
+
+
+def lower_output_blocks_and_folds_in_compound_match_query(compound_match_query):
+    """Remove nonexistent outputs and folds from each MatchQuery in the given CompoundMatchQuery."""
+    match_queries = []
+    for match_query in compound_match_query.match_queries:
+        match_traversals = match_query.match_traversals
+        output_block = match_query.output_block
+        folds = match_query.folds
+        current_locations = set()
+        for traversal in match_traversals:
+            for step in traversal:
+                if step.as_block is not None:
+                    current_locations.add(step.as_block.location.get_location_name()[0])
+
+        new_output_fields = {}
+        for output_name, expression in six.iteritems(output_block.fields):
+            allowed_expression_types = (
+                TernaryConditional,
+                OutputContextField,
+                FoldedOutputContextField
+            )
+            if not isinstance(expression, allowed_expression_types):
+                raise AssertionError(u'Encountered invalid expression of type {} in output block: '
+                                     u'{}'.format(type(expression).__name__, output_block))
+            if not isinstance(expression, TernaryConditional):
+                if expression.location.get_location_name()[0] not in current_locations:
+                    raise AssertionError(u'Non-optional output location {} was not found in '
+                                         u'current_locations: {}'
+                                         .format(expression.location, current_locations))
+                new_output_fields[output_name] = expression
+            elif expression.if_true.location.get_location_name()[0] in current_locations:
+                new_output_fields[output_name] = expression
+
+        new_folds = {
+            fold_scope_location: folded_ir_blocks
+            for fold_scope_location, folded_ir_blocks in six.iteritems(folds)
+            if fold_scope_location.base_location in current_locations
+        }
+
+        match_queries.append(
+            MatchQuery(
+                match_traversals=match_traversals,
+                folds=new_folds,
+                output_block=ConstructResult(new_output_fields)
+            )
+        )
+
+    return CompoundMatchQuery(match_queries=match_queries)
+
+
 ##############
 # Public API #
 ##############
@@ -437,4 +564,9 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     }
     match_query = match_query._replace(folds=new_folds)
 
-    return match_query
+    compound_match_query = convert_optional_traversals_to_compound_match_query(match_query)
+    compound_match_query = lower_output_blocks_and_folds_in_compound_match_query(
+        compound_match_query
+    )
+
+    return compound_match_query

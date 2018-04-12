@@ -42,7 +42,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(match_query)
+        received_match = emit_match.emit_code_from_match_query(match_query)
         compare_match(self, expected_match, received_match)
 
     def test_simple_traverse_filter_output(self):
@@ -84,7 +84,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(match_query)
+        received_match = emit_match.emit_code_from_match_query(match_query)
         compare_match(self, expected_match, received_match)
 
     def test_output_inside_optional_traversal(self):
@@ -133,7 +133,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(match_query)
+        received_match = emit_match.emit_code_from_match_query(match_query)
         compare_match(self, expected_match, received_match)
 
     def test_datetime_variable_representation(self):
@@ -174,7 +174,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(match_query)
+        received_match = emit_match.emit_code_from_match_query(match_query)
         compare_match(self, expected_match, received_match)
 
     def test_datetime_output_representation(self):
@@ -200,7 +200,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(match_query)
+        received_match = emit_match.emit_code_from_match_query(match_query)
         compare_match(self, expected_match, received_match)
 
 

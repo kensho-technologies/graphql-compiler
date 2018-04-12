@@ -383,6 +383,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         edge_traversal_is_optional = optional_directive is not None
         in_optional_context = 'optional' in context and not edge_traversal_is_optional
+
         if edge_traversal_is_optional:
             # Entering an optional block!
             # Make sure there's a tag right before it for the optional Backtrack to jump back to.
@@ -684,13 +685,16 @@ def _compile_output_step(outputs):
 
         expression = None
         if fold_scope_location:
-            if optional:
-                raise AssertionError(u'Unreachable state reached, optional in fold: '
-                                     u'{}'.format(output_context))
-
             _, field_name = location.get_location_name()
             expression = expressions.FoldedOutputContextField(
                 fold_scope_location, field_name, graphql_type)
+
+            if optional:
+                existence_check = expressions.ContextFieldExistence(
+                    fold_scope_location.base_location
+                )
+                expression = expressions.TernaryConditional(
+                    existence_check, expression, expressions.NullLiteral)
         else:
             expression = expressions.OutputContextField(location, graphql_type)
 
