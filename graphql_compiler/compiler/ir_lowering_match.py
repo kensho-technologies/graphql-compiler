@@ -491,7 +491,7 @@ def lower_output_blocks_and_folds_in_compound_match_query(compound_match_query):
         new_folds = {
             fold_scope_location: folded_ir_blocks
             for fold_scope_location, folded_ir_blocks in six.iteritems(folds)
-            if fold_scope_location.base_location in current_locations
+            if fold_scope_location.base_location.get_location_name()[0] in current_locations
         }
 
         match_queries.append(
