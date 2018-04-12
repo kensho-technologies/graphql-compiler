@@ -684,6 +684,7 @@ def _compile_output_step(outputs):
         fold_scope_location = output_context['fold']
 
         expression = None
+        existence_check = None
         if fold_scope_location:
             _, field_name = location.get_location_name()
             expression = expressions.FoldedOutputContextField(
@@ -693,15 +694,15 @@ def _compile_output_step(outputs):
                 existence_check = expressions.ContextFieldExistence(
                     fold_scope_location.base_location
                 )
-                expression = expressions.TernaryConditional(
-                    existence_check, expression, expressions.NullLiteral)
         else:
             expression = expressions.OutputContextField(location, graphql_type)
 
             if optional:
                 existence_check = expressions.ContextFieldExistence(location.at_vertex())
-                expression = expressions.TernaryConditional(
-                    existence_check, expression, expressions.NullLiteral)
+
+        if existence_check:
+            expression = expressions.TernaryConditional(
+                existence_check, expression, expressions.NullLiteral)
 
         output_fields[output_name] = expression
 
