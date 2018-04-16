@@ -211,7 +211,7 @@ class MarkLocation(BasicBlock):
 class Traverse(BasicBlock):
     """A block that encodes a traversal across an edge, in either direction."""
 
-    def __init__(self, direction, edge_name, optional=False, in_optional_context=False):
+    def __init__(self, direction, edge_name, optional=False, within_optional_scope=False):
         """Create a new Traverse block in the given direction and across the given edge.
 
         Args:
@@ -227,7 +227,8 @@ class Traverse(BasicBlock):
         self.direction = direction
         self.edge_name = edge_name
         self.optional = optional
-        self.in_optional_context = in_optional_context
+        # Denotes whether the traversal is occuring after a prior @optional traversal
+        self.within_optional_scope = within_optional_scope
         self.validate()
 
     def validate(self):
@@ -270,7 +271,7 @@ class Traverse(BasicBlock):
                         direction=self.direction,
                         edge_name=self.edge_name,
                         edge_quoted=safe_quoted_string(self.edge_name)))
-        elif self.in_optional_context:
+        elif self.within_optional_scope:
             # During a traversal, the pipeline element may be null.
             # The following code returns null when the current pipeline entity is null
             # (an optional edge did not exist at some earlier traverse).

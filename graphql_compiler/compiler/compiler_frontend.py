@@ -382,7 +382,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         in_topmost_optional_block = False
 
         edge_traversal_is_optional = optional_directive is not None
-        in_optional_context = 'optional' in context and not edge_traversal_is_optional
+        # This is true for any vertex expanded within an @optional scope
+        within_optional_scope = 'optional' in context and not edge_traversal_is_optional
 
         if edge_traversal_is_optional:
             # Entering an optional block!
@@ -414,7 +415,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         else:
             basic_blocks.append(blocks.Traverse(edge_direction, edge_name,
                                                 optional=edge_traversal_is_optional,
-                                                in_optional_context=in_optional_context))
+                                                within_optional_scope=within_optional_scope))
 
         inner_basic_blocks = _compile_ast_node_to_ir(schema, field_schema_type, field_ast,
                                                      inner_location, context)
@@ -692,8 +693,7 @@ def _compile_output_step(outputs):
 
             if optional:
                 existence_check = expressions.ContextFieldExistence(
-                    fold_scope_location.base_location
-                )
+                    fold_scope_location.base_location)
         else:
             expression = expressions.OutputContextField(location, graphql_type)
 

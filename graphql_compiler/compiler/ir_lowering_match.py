@@ -405,7 +405,7 @@ def convert_optional_traversals_to_compound_match_query(match_query):
 
     def is_optional_traverse(traverse):
         return any(
-            isinstance(step.root_block, Traverse) and step.root_block.in_optional_context
+            isinstance(step.root_block, Traverse) and step.root_block.within_optional_scope
             for step in traverse
         )
 
@@ -417,9 +417,9 @@ def convert_optional_traversals_to_compound_match_query(match_query):
             else:
                 field_name = step.root_block.get_field_name()
                 new_predicate = filter_local_field_existence(field_name)
-                old_predicate = new_traverse[-1].where_block.predicate
-                if old_predicate:
-                    new_predicate = BinaryComposition(u'&&', old_predicate, new_predicate)
+                old_filter = new_traverse[-1].where_block
+                if old_filter:
+                    new_predicate = BinaryComposition(u'&&', old_filter.predicate, new_predicate)
                 new_traverse[-1] = new_traverse[-1]._replace(where_block=Filter(new_predicate))
                 return new_traverse
         raise AssertionError
@@ -457,7 +457,7 @@ def convert_optional_traversals_to_compound_match_query(match_query):
     )
 
 
-def lower_output_blocks_and_folds_in_compound_match_query(compound_match_query):
+def prune_output_blocks_and_folds_in_compound_match_query(compound_match_query):
     """Remove nonexistent outputs and folds from each MatchQuery in the given CompoundMatchQuery."""
     match_queries = []
     for match_query in compound_match_query.match_queries:
@@ -465,10 +465,15 @@ def lower_output_blocks_and_folds_in_compound_match_query(compound_match_query):
         output_block = match_query.output_block
         folds = match_query.folds
         current_locations = set()
+        current_non_optional_locations = set()
+
         for traversal in match_traversals:
             for step in traversal:
                 if step.as_block is not None:
-                    current_locations.add(step.as_block.location.get_location_name()[0])
+                    location_name, _ = step.as_block.location.get_location_name()
+                    current_locations.add(location_name)
+                    if isinstance(step.root_block, Traverse) and not step.root_block.optional:
+                        current_non_optional_locations.add(location_name)
 
         new_output_fields = {}
         for output_name, expression in six.iteritems(output_block.fields):
@@ -481,13 +486,19 @@ def lower_output_blocks_and_folds_in_compound_match_query(compound_match_query):
                 raise AssertionError(u'Encountered invalid expression of type {} in output block: '
                                      u'{}'.format(type(expression).__name__, output_block))
             if not isinstance(expression, TernaryConditional):
-                if expression.location.get_location_name()[0] not in current_locations:
+                location_name, _ = expression.location.get_location_name()
+                if location_name not in current_locations:
                     raise AssertionError(u'Non-optional output location {} was not found in '
                                          u'current_locations: {}'
                                          .format(expression.location, current_locations))
                 new_output_fields[output_name] = expression
-            elif expression.if_true.location.get_location_name()[0] in current_locations:
-                new_output_fields[output_name] = expression
+            elif isinstance(expression, TernaryConditional):
+                location_name, _ = expression.if_true.location.get_location_name()
+                if location_name in current_locations:
+                    if location_name in current_non_optional_locations:
+                        new_output_fields[output_name] = expression.if_true
+                    else:
+                        new_output_fields[output_name] = expression
 
         new_folds = {
             fold_scope_location: folded_ir_blocks
@@ -566,8 +577,7 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     match_query = match_query._replace(folds=new_folds)
 
     compound_match_query = convert_optional_traversals_to_compound_match_query(match_query)
-    compound_match_query = lower_output_blocks_and_folds_in_compound_match_query(
-        compound_match_query
-    )
+    compound_match_query = prune_output_blocks_and_folds_in_compound_match_query(
+        compound_match_query)
 
     return compound_match_query

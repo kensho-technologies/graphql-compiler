@@ -1442,3 +1442,29 @@ def coercion_filters_and_multiple_outputs_within_fold_traversal():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
+
+
+def optional_and_traverse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "name")
+            in_Animal_ParentOf @optional {
+                name @output(out_name: "parent_name")
+                in_Animal_ParentOf {
+                    name @output(out_name: "grandparent_name")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandparent_name': OutputMetadata(type=GraphQLString, optional=True),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
