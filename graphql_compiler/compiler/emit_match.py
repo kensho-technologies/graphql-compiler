@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, Inc.
+# Copyright 2017 Kensho Technologies, LLC.
 """Convert lowered IR basic blocks to MATCH query strings."""
 from collections import deque
 

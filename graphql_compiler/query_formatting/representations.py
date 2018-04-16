@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, Inc.
+# Copyright 2017 Kensho Technologies, LLC.
 """Common representations of various types in Gremlin and MATCH (SQL)."""
 import decimal
 
