@@ -2573,9 +2573,9 @@ FROM (
                                     where: ((name LIKE ('%' + ({wanted} + '%')))),
                                     as: Animal___1
                             }}.in('Animal_ParentOf') {{
-                                    as: Animal__in_Animal_ParentOf___1 
+                                    as: Animal__in_Animal_ParentOf___1
                             }}.in('Animal_ParentOf') {{
-                                    as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 
+                                    as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
                             }}
                             RETURN $matches
                         )
