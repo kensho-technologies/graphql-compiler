@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, Inc.
+# Copyright 2017 Kensho Technologies, LLC.
 """Common GraphQL test inputs and expected outputs."""
 
 from collections import namedtuple

@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, Inc.
+# Copyright 2017 Kensho Technologies, LLC.
 """Perform optimizations and lowering of the IR that allows the compiler to emit MATCH queries.
 
 The compiler IR allows blocks and expressions that cannot be directly compiled to Gremlin or MATCH.

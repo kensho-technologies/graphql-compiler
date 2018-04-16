@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, Inc.
+# Copyright 2017 Kensho Technologies, LLC.
 """Common helper objects, base classes and methods."""
 from collections import namedtuple
 import string
