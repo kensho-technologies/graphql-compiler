@@ -422,7 +422,7 @@ def convert_optional_traversals_to_compound_match_query(match_query):
                     new_predicate = BinaryComposition(u'&&', old_filter.predicate, new_predicate)
                 new_traverse[-1] = new_traverse[-1]._replace(where_block=Filter(new_predicate))
                 return new_traverse
-        raise AssertionError
+        raise AssertionError(u"No optional traverse found in: {}".format(traverse))
 
     def mandatory_optional_traverse(traverse):
         new_traverse = []
