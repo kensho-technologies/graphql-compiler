@@ -457,7 +457,7 @@ def convert_optional_traversals_to_compound_match_query(match_query):
     )
 
 
-def prune_output_blocks_and_folds_in_compound_match_query(compound_match_query):
+def prune_output_blocks_in_compound_match_query(compound_match_query):
     """Remove nonexistent outputs and folds from each MatchQuery in the given CompoundMatchQuery."""
     match_queries = []
     for match_query in compound_match_query.match_queries:
@@ -500,16 +500,10 @@ def prune_output_blocks_and_folds_in_compound_match_query(compound_match_query):
                     else:
                         new_output_fields[output_name] = expression
 
-        new_folds = {
-            fold_scope_location: folded_ir_blocks
-            for fold_scope_location, folded_ir_blocks in six.iteritems(folds)
-            if fold_scope_location.base_location.get_location_name()[0] in current_locations
-        }
-
         match_queries.append(
             MatchQuery(
                 match_traversals=match_traversals,
-                folds=new_folds,
+                folds=folds,
                 output_block=ConstructResult(new_output_fields)
             )
         )
@@ -577,7 +571,7 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     match_query = match_query._replace(folds=new_folds)
 
     compound_match_query = convert_optional_traversals_to_compound_match_query(match_query)
-    compound_match_query = prune_output_blocks_and_folds_in_compound_match_query(
+    compound_match_query = prune_output_blocks_in_compound_match_query(
         compound_match_query)
 
     return compound_match_query
