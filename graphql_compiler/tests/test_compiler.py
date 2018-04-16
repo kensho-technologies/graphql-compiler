@@ -2645,7 +2645,8 @@ FROM (
                         }}.out('Animal_ParentOf') {{
                             as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
                         }}.out('Animal_OfSpecies') {{
-                            as: Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
+                            as: Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                                __out_Animal_OfSpecies___1
                         }}
                         RETURN $matches
                     )
@@ -2660,7 +2661,8 @@ FROM (
                     .ifThenElse{it == null}{null}{it.out('Animal_ParentOf')}
                     .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf___1')
                         .ifThenElse{it == null}{null}{it.out('Animal_OfSpecies')}
-                        .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1')
+                        .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                             __out_Animal_OfSpecies___1')
                     .back('Animal__in_Animal_ParentOf__out_Animal_ParentOf___1')
                 .back('Animal__in_Animal_ParentOf___1')
             .optional('Animal___1')
@@ -2673,8 +2675,10 @@ FROM (
                         m.Animal__in_Animal_ParentOf___1.name : null
                 ),
                 sibling_and_self_species: (
-                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1 != null) ?
-                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
+                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                       __out_Animal_OfSpecies___1 != null) ?
+                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                          __out_Animal_OfSpecies___1.name
                         : null
                 ),
                 sibling_name: (
@@ -2700,7 +2704,11 @@ FROM (
                             class: Animal,
                             as: Animal___1
                         }}.in('Animal_ParentOf') {{
-                            where: (((out_Animal_ParentOf IS null) OR (out_Animal_ParentOf.size() = 0))),
+                            where: ((
+                                (out_Animal_ParentOf IS null)
+                                OR
+                                (out_Animal_ParentOf.size() = 0)
+                            )),
                             as: Animal__in_Animal_ParentOf___1
                         }}
                         RETURN $matches
@@ -2721,7 +2729,8 @@ FROM (
                         }}.out('Animal_ParentOf') {{
                             as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
                         }}.out('Animal_OfSpecies') {{
-                            as: Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
+                            as: Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                                __out_Animal_OfSpecies___1
                         }}
                         RETURN $matches
                     )
@@ -2737,7 +2746,8 @@ FROM (
                     .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
                     .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf___1')
                         .ifThenElse{it == null}{null}{it.out('Animal_OfSpecies')}
-                        .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1')
+                        .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                             __out_Animal_OfSpecies___1')
                     .back('Animal__in_Animal_ParentOf__out_Animal_ParentOf___1')
                 .optional('Animal__in_Animal_ParentOf___1')
                 .as('Animal__in_Animal_ParentOf___2')
@@ -2747,8 +2757,10 @@ FROM (
                 animal_name: m.Animal___1.name,
                 parent_name: m.Animal__in_Animal_ParentOf___1.name,
                 sibling_and_self_species: (
-                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1 != null) ?
-                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
+                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                        __out_Animal_OfSpecies___1 != null) ?
+                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                          __out_Animal_OfSpecies___1.name
                         : null
                 ),
                 sibling_name: (
