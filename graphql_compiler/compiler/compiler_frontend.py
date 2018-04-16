@@ -42,10 +42,17 @@ To get from GraphQL AST to IR, we follow the following pattern:
 
     step V-4. Recurse into any vertex field children of the current AST node:
               (see _compile_vertex_ast())
-        - before recursing into each vertex, process any @optional directive
-          present on the child AST node;
-        - after returning from each vertex, return to the marked query location using
-          the appropriate manner, depending on whether @optional was present on the child or not.
+        - before recursing into each at_vertex
+            - process any @optional directive present on the child AST node;
+            - process @optional and @fold directives, by updating the context
+            - If an output is encountered within a@fold context, update the context
+              to indicate `fold_innermost_scope`, which prevents further traversal.
+        - after returning from each vertex
+            - return to the marked query location using the appropriate manner,
+              depending on whether @optional was present on the child or not.
+            - if the current vertex had a @fold or @optional directive,
+              update the context by deleting the relevant scope indicator(s)
+              ('fold', 'optional' or 'fold_innermost_scope')
     ***************
 
     *** F-steps ***
