@@ -1534,8 +1534,9 @@ def traverse_and_optional_and_traverse():
         Animal {
             name @output(out_name: "animal_name")
             in_Animal_ParentOf {
+                name @output(out_name: "parent_name")
                 out_Animal_ParentOf @optional {
-                    name @output(out_name: "parent_name")
+                    name @output(out_name: "sibling_name")
                     out_Animal_OfSpecies {
                         name @output(out_name: "sibling_and_self_species")
                     }
@@ -1545,7 +1546,8 @@ def traverse_and_optional_and_traverse():
     }'''
     expected_output_metadata = {
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
-        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=False),
+        'sibling_name': OutputMetadata(type=GraphQLString, optional=True),
         'sibling_and_self_species': OutputMetadata(type=GraphQLString, optional=True)
     }
     expected_input_metadata = {}

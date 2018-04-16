@@ -2619,13 +2619,13 @@ FROM (
                 SELECT Animal___1.name AS `animal_name`
                     FROM (
                         MATCH {{
-                            class: Animal,
-                            where: ((
-                                (in_Animal_ParentOf IS null)
-                                OR
-                                (in_Animal_ParentOf.size() = 0)
-                            )),
-                            as: Animal___1
+                                class: Animal,
+                                where: ((
+                                    (in_Animal_ParentOf IS null)
+                                    OR
+                                    (in_Animal_ParentOf.size() = 0)
+                                )),
+                                as: Animal___1
                         }}
                         RETURN $matches
                     )
@@ -2634,7 +2634,7 @@ FROM (
                 SELECT Animal___1.name AS `animal_name`,
                     Animal__in_Animal_ParentOf___1.name AS `parent_name`,
                     Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
-                        AS `sibling_and_self_species`.
+                        AS `sibling_and_self_species`,
                     Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `sibling_name`
                     FROM (
                         MATCH {{
@@ -2672,14 +2672,14 @@ FROM (
                     (m.Animal__in_Animal_ParentOf___1 != null) ?
                         m.Animal__in_Animal_ParentOf___1.name : null
                 ),
-                sibling_name: (
-                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 != null) ?
-                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
-                ),
                 sibling_and_self_species: (
                     (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1 != null) ?
                         m.Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
                         : null
+                ),
+                sibling_name: (
+                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 != null) ?
+                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
                 )
             ])}
         '''
@@ -2693,7 +2693,8 @@ FROM (
             SELECT EXPAND($result)
             LET
             $optional__0 = (
-                SELECT Animal___1.name AS `animal_name`
+                SELECT Animal___1.name AS `animal_name`,
+                    Animal__in_Animal_ParentOf___1.name AS `parent_name`
                     FROM (
                         MATCH {{
                             class: Animal,
@@ -2707,8 +2708,10 @@ FROM (
             ),
             $optional__1 = (
                 SELECT Animal___1.name AS `animal_name`,
+                    Animal__in_Animal_ParentOf___1.name AS `parent_name`,
                     Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
-                        AS `sibling_and_self_species`
+                        AS `sibling_and_self_species`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `sibling_name`
                     FROM (
                         MATCH {{
                             class: Animal,
@@ -2742,10 +2745,15 @@ FROM (
             .transform{it,
                 m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name,
+                parent_name: m.Animal__in_Animal_ParentOf___1.name,
                 sibling_and_self_species: (
                     (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1 != null) ?
                         m.Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
                         : null
+                ),
+                sibling_name: (
+                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 != null) ?
+                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
                 )
             ])}
         '''
