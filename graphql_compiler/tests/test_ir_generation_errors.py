@@ -121,6 +121,26 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
 
+        output_source_inside_optional_block = '''{
+            Animal {
+                out_Animal_ParentOf @optional {
+                    out_Animal_FedAt @output_source {
+                        uuid @output(out_name: "uuid")
+                    }
+                }
+            }
+        }'''
+
+        recurse_traversal_inside_optional_block = '''{
+            Animal {
+                out_Animal_ParentOf @optional {
+                out_Animal_FedAt @recurse(depth: 3) {
+                        uuid @output(out_name: "uuid")
+                    }
+                }
+            }
+        }'''
+
         fold_traversal_inside_optional_block = '''{
             Animal {
                 out_Animal_ParentOf @optional {
@@ -157,6 +177,8 @@ class IrGenerationErrorTests(unittest.TestCase):
 
         for graphql in (optional_on_property_field,
                         optional_on_root_vertex,
+                        output_source_inside_optional_block,
+                        recurse_traversal_inside_optional_block,
                         fold_traversal_inside_optional_block,
                         optional_on_output_source_vertex_field,
                         optional_on_recurse_vertex_field,
