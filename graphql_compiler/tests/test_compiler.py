@@ -2771,3 +2771,173 @@ FROM (
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_multiple_optional_traversals(self):
+        test_data = test_input_data.multiple_optional_traversals()
+
+        expected_match = '''
+            SELECT EXPAND($result)
+            LET
+            $optional__0 = (
+                SELECT Animal___1.name AS `animal_name`
+                    FROM (
+                        MATCH {{
+                            class: Animal,
+                            where: ((
+                                (
+                                    (out_Animal_ParentOf IS null)
+                                    OR
+                                    (out_Animal_ParentOf.size() = 0)
+                                )
+                                AND
+                                (
+                                    (name LIKE ('%' + ({wanted} + '%')))
+                                    AND
+                                    (
+                                        (in_Animal_ParentOf IS null)
+                                        OR
+                                        (in_Animal_ParentOf.size() = 0)
+                                    )
+                                )
+                            )),
+                            as: Animal___1
+                        }} ,
+                        {{
+                            class: Animal,
+                            as: Animal___1
+                        }}
+                        RETURN $matches
+                    )
+            ),
+            $optional__1 = (
+                SELECT Animal___1.name AS `animal_name`,
+                        Animal__out_Animal_ParentOf___1.name AS `child_name`,
+                        Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
+                            AS `child_species`
+                    FROM (
+                        MATCH {{
+                            class: Animal,
+                            where: ((
+                                (name LIKE ('%' + ({wanted} + '%')))
+                                AND
+                                (
+                                    (in_Animal_ParentOf IS null)
+                                    OR
+                                    (in_Animal_ParentOf.size() = 0)
+                                )
+                            )),
+                            as: Animal___1
+                        }} ,
+                        {{
+                            class: Animal,
+                            as: Animal___1
+                        }}.out('Animal_ParentOf') {{
+                            as: Animal__out_Animal_ParentOf___1
+                        }}.out('Animal_OfSpecies') {{
+                            as: Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1
+                        }}
+                        RETURN $matches
+                    )
+            ),
+            $optional__2 = (
+                SELECT Animal___1.name AS `animal_name`,
+                        Animal__in_Animal_ParentOf___1.name AS `parent_name`,
+                        Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `sibling_name`
+                    FROM (
+                        MATCH {{
+                            class: Animal,
+                            where: ((
+                                (
+                                    (out_Animal_ParentOf IS null)
+                                    OR
+                                    (out_Animal_ParentOf.size() = 0)
+                                )
+                                AND
+                                (name LIKE ('%' + ({wanted} + '%')))
+                            )),
+                            as: Animal___1
+                        }}.in('Animal_ParentOf') {{
+                            as: Animal__in_Animal_ParentOf___1
+                        }}.out('Animal_ParentOf') {{
+                            as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
+                        }} ,
+                        {{
+                            class: Animal,
+                            as: Animal___1
+                        }}
+                        RETURN $matches
+                    )
+            ),
+            $optional__3 = (
+                SELECT Animal___1.name AS `animal_name`,
+                        Animal__out_Animal_ParentOf___1.name AS `child_name`,
+                        Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
+                            AS `child_species`,
+                        Animal__in_Animal_ParentOf___1.name AS `parent_name`,
+                        Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `sibling_name`
+                    FROM (
+                        MATCH {{
+                            class: Animal,
+                            where: ((name LIKE ('%' + ({wanted} + '%')))),
+                            as: Animal___1
+                        }}.in('Animal_ParentOf') {{
+                            as: Animal__in_Animal_ParentOf___1
+                        }}.out('Animal_ParentOf') {{
+                            as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
+                        }} ,
+                        {{
+                            class: Animal,
+                            as: Animal___1
+                        }}.out('Animal_ParentOf') {{
+                            as: Animal__out_Animal_ParentOf___1
+                        }}.out('Animal_OfSpecies') {{
+                            as: Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1
+                        }}
+                        RETURN $matches
+                    )
+            ),
+            $result = UNIONALL($optional__0, $optional__1, $optional__2, $optional__3)
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it,
+                m -> it.name.contains($wanted)}
+            .as('Animal___1')
+                .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+                .as('Animal__in_Animal_ParentOf___1')
+                    .ifThenElse{it == null}{null}{it.out('Animal_ParentOf')}
+                    .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf___1')
+                .back('Animal__in_Animal_ParentOf___1')
+            .optional('Animal___1')
+            .as('Animal___2')
+                .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
+                .as('Animal__out_Animal_ParentOf___1')
+                    .ifThenElse{it == null}{null}{it.out('Animal_OfSpecies')}
+                    .as('Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1')
+                .back('Animal__out_Animal_ParentOf___1')
+            .optional('Animal___2')
+            .as('Animal___3')
+            .transform{it,
+                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                child_name: (
+                    (m.Animal__out_Animal_ParentOf___1 != null) ?
+                        m.Animal__out_Animal_ParentOf___1.name : null
+                ),
+                child_species: (
+                    (m.Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1 != null) ?
+                        m.Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name : null
+                ),
+                parent_name: (
+                    (m.Animal__in_Animal_ParentOf___1 != null) ?
+                        m.Animal__in_Animal_ParentOf___1.name : null
+                ),
+                sibling_name: (
+                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 != null) ?
+                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
+                )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
