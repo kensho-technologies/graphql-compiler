@@ -2772,13 +2772,8 @@ FROM (
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
-<<<<<<< c6a6baf166890b7cf96cc0b7c11e3977f44e16b1
     def test_multiple_optional_traversals_with_starting_filter(self):
         test_data = test_input_data.multiple_optional_traversals_with_starting_filter()
-=======
-    def test_multiple_optional_traversals(self):
-        test_data = test_input_data.multiple_optional_traversals()
->>>>>>> Fixed multiple concurrent filters for same location issue. Added test case for the same.
 
         expected_match = '''
             SELECT EXPAND($result)
