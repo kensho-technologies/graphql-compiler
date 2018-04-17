@@ -1559,7 +1559,7 @@ def traverse_and_optional_and_traverse():
         type_equivalence_hints=None)
 
 
-def multiple_optional_traversals():
+def multiple_optional_traversals_with_starting_filter():
     graphql_input = '''{
         Animal {
             name @output(out_name: "animal_name")
@@ -1582,6 +1582,39 @@ def multiple_optional_traversals():
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
         'parent_name': OutputMetadata(type=GraphQLString, optional=True),
         'sibling_name': OutputMetadata(type=GraphQLString, optional=True),
+        'child_name': OutputMetadata(type=GraphQLString, optional=True),
+        'child_species': OutputMetadata(type=GraphQLString, optional=True),
+    }
+    expected_input_metadata = {
+        'wanted': GraphQLString,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def optional_traversal_and_optional_without_traversal():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+                 @filter(op_name: "has_substring", value: ["$wanted"])
+            in_Animal_ParentOf @optional {
+                name @output(out_name: "parent_name")
+            }
+            out_Animal_ParentOf @optional {
+                name @output(out_name: "child_name")
+                out_Animal_OfSpecies {
+                    name @output(out_name: "child_species")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
         'child_name': OutputMetadata(type=GraphQLString, optional=True),
         'child_species': OutputMetadata(type=GraphQLString, optional=True),
     }
