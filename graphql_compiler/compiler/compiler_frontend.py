@@ -42,17 +42,15 @@ To get from GraphQL AST to IR, we follow the following pattern:
 
     step V-4. Recurse into any vertex field children of the current AST node:
               (see _compile_vertex_ast())
-        - before recursing into each at_vertex
-            - process any @optional directive present on the child AST node;
-            - process @optional and @fold directives, by updating the context
-            - If an output is encountered within a@fold context, update the context
-              to indicate `fold_innermost_scope`, which prevents further traversal.
-        - after returning from each vertex
+              - before recursing into each at_vertex:
+            - process any @optional and @fold directives present on the child AST node;
+            - process any @output within a @fold context,
+              and prevent further traversal if one is present;
+              - after returning from each vertex:
             - return to the marked query location using the appropriate manner,
-              depending on whether @optional was present on the child or not.
-            - if the current vertex had a @fold or @optional directive,
-              update the context by deleting the relevant scope indicator(s)
-              ('fold', 'optional' or 'fold_innermost_scope')
+              depending on whether @optional was present on the child or not;
+            - if the visited vertex had a @fold or @optional directive,
+              undo the processing performed at previous steps;
     ***************
 
     *** F-steps ***
@@ -390,6 +388,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         edge_traversal_is_optional = optional_directive is not None
         # This is true for any vertex expanded within an @optional scope
+        # Currently @optional is not allowed within @optional
+        # Thi will need to change if nested @optionals have to be supported
         within_optional_scope = 'optional' in context and not edge_traversal_is_optional
 
         if edge_traversal_is_optional:

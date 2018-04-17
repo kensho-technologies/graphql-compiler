@@ -413,9 +413,6 @@ class FoldedOutputContextField(Expression):
         self.field_type = field_type
         self.validate()
 
-        # Allows access to location in the same manner as OutputContextField
-        self.location = fold_scope_location.base_location
-
     def validate(self):
         """Validate that the FoldedOutputContextField is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):

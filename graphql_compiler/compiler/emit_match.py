@@ -160,7 +160,7 @@ def _construct_output_to_match(output_block):
 # Public API #
 ##############
 
-def emit_code_from_match_query(match_query):
+def emit_code_from_single_match_query(match_query):
     """Return a MATCH query string from a list of IR blocks."""
     query_data = deque([u'MATCH '])
 
@@ -200,10 +200,36 @@ def emit_code_from_match_query(match_query):
     return u' '.join(query_data)
 
 
+def emit_code_from_multiple_match_queries(match_queries):
+    """Return a MATCH query string from a list of MatchQuery namedtuples."""
+    optional_variable_base_name = '$optional__'
+    union_variable_name = '$result'
+    query_data = deque([u'SELECT EXPAND(', union_variable_name, u')', u' LET '])
+
+    optional_variables = []
+    sub_queries = [emit_code_from_single_match_query(match_query)
+                   for match_query in match_queries]
+    for (i, sub_query) in enumerate(sub_queries):
+        variable_name = optional_variable_base_name + str(i)
+        variable_assignment = variable_name + u' = ('
+        sub_query_end = u'),'
+        query_data.append(variable_assignment)
+        query_data.append(sub_query)
+        query_data.append(sub_query_end)
+        optional_variables.append(variable_name)
+
+    query_data.append(union_variable_name)
+    query_data.append(u' = UNIONALL(')
+    query_data.append(u', '.join(optional_variables))
+    query_data.append(u')')
+
+    return u' '.join(query_data)
+
+
 def emit_code_from_ir(compound_match_query):
-    """Return a MATCH query string from a list of MATCH queries (compound match query)."""
+    """Return a MATCH query string from a CompoundMatchQuery."""
     # If the compound match query contains only one match query,
-    # just call `emit_code_from_match_query`
+    # just call `emit_code_from_single_match_query`
     # If there are multiple match queries, construct the query string for each
     # individual query and combine them as follows.
     #
@@ -225,24 +251,11 @@ def emit_code_from_ir(compound_match_query):
 
     match_queries = compound_match_query.match_queries
     if len(match_queries) == 1:
-        query_string = emit_code_from_match_query(match_queries[0])
-
+        query_string = emit_code_from_single_match_query(match_queries[0])
     elif len(match_queries) > 1:
-        optional_variable_base_name = 'optional__'
-        union_variable_name = 'result'
-        query_string = u'SELECT EXPAND($' + union_variable_name + u')' + u' LET '
-        union_command_string = u'$' + union_variable_name + u' = UNIONALL('
-        optional_variables = []
-        sub_queries = [emit_code_from_match_query(match_query) for match_query in match_queries]
-        for (i, sub_query) in enumerate(sub_queries):
-            variable_name = u'$' + optional_variable_base_name + str(i)
-            variable_assignment = variable_name + u' = ('
-            sub_query_end = u'),'
-            query_string += variable_assignment + sub_query + sub_query_end
-            optional_variables.append(variable_name)
-
-        query_string += union_command_string
-        query_string += u', '.join(optional_variables)
-        query_string += u')'
+        query_string = emit_code_from_multiple_match_queries(match_queries)
+    else:
+        raise AssertionError(u'Received CompoundMatchQuery with an empty list of MatchQueries'
+                             u': {}'.format(match_queries))
 
     return query_string
