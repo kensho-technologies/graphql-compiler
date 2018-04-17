@@ -538,7 +538,7 @@ def collect_filters_to_first_location_instance(compound_match_query):
             return None
 
         if not isinstance(predicate_list[0], Expression):
-            raise AssertionError(u'Non-predicate object {} found in predicate_list'
+            raise AssertionError(u'Non-Expression object {} found in predicate_list'
                                  .format(predicate_list[0]))
         if len(predicate_list) == 1:
             return predicate_list[0]
