@@ -527,6 +527,76 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
         return CompoundMatchQuery(match_queries=match_queries)
 
 
+def collect_filters_to_first_location_instance(compound_match_query):
+    """Collapse all filters applied to a particular location into a single `as_block`.
+
+    Specifically, for any location `L`, find all filters present on `L`, and apply
+    the conjunction of all these filters to the first occurence of `L` (within its MatchQuery).
+    """
+    def predicate_list_to_where_block(predicate_list):
+        """Convert a list of predicates to an Expression that is the conjunction of all of them."""
+        if not isinstance(predicate_list, list):
+            raise AssertionError(u'Expected `list`, Received {}.'.format(predicate_list))
+        if not predicate_list:
+            return None
+
+        if not isinstance(predicate_list[0], Expression):
+            raise AssertionError(u'Non-predicate object {} found in predicate_list'
+                                 .format(predicate_list[0]))
+        if len(predicate_list) == 1:
+            return predicate_list[0]
+        else:
+            return BinaryComposition(u'&&',
+                                     predicate_list_to_where_block(predicate_list[1:]),
+                                     predicate_list[0])
+
+    new_match_queries = []
+    # Each MatchQuery is processed independently
+    for match_query in compound_match_query.match_queries:
+        location_to_predicates = {}
+        # Construct a dictionary mapping locations --> a list of predicates
+        # applied to the corresponding location (in `where_blocks`)
+        for match_traversal in match_query.match_traversals:
+            for match_step in match_traversal:
+                curr_filter = match_step.where_block
+                if curr_filter:
+                    location_to_predicates.setdefault(match_step.as_block, []).append(
+                        curr_filter.predicate)
+
+        new_match_traversals = []
+        for match_traversal in match_query.match_traversals:
+            new_match_traversal = []
+            for match_step in match_traversal:
+                # Apply all filters for a location to the first occurence of that location
+                if match_step.as_block in location_to_predicates:
+                    where_block = Filter(
+                        predicate_list_to_where_block(
+                            location_to_predicates[match_step.as_block]
+                        )
+                    )
+                    # Delete the location entry. No further filters needed for this location.
+                    del location_to_predicates[match_step.as_block]
+                else:
+                    where_block = None
+                new_match_step = MatchStep(
+                    root_block=match_step.root_block,
+                    coerce_type_block=match_step.coerce_type_block,
+                    where_block=where_block,
+                    as_block=match_step.as_block
+                )
+                new_match_traversal.append(new_match_step)
+            new_match_traversals.append(new_match_traversal)
+        new_match_queries.append(
+            MatchQuery(
+                match_traversals=new_match_traversals,
+                folds=match_query.folds,
+                output_block=match_query.output_block
+            )
+        )
+
+    return CompoundMatchQuery(match_queries=new_match_queries)
+
+
 ##############
 # Public API #
 ##############
@@ -589,5 +659,6 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     compound_match_query = convert_optional_traversals_to_compound_match_query(match_query)
     compound_match_query = prune_output_blocks_in_compound_match_query(
         compound_match_query)
+    compound_match_query = collect_filters_to_first_location_instance(compound_match_query)
 
     return compound_match_query
