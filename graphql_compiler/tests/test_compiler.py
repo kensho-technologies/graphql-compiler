@@ -3046,3 +3046,75 @@ FROM (
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_coercion_on_interface_within_optional_traversal(self):
+        test_data = test_input_data.coercion_on_interface_within_optional_traversal()
+
+        expected_match = '''
+            SELECT EXPAND($result)
+            LET
+            $optional__0 = (
+                SELECT Animal___1.name AS `animal_name`
+                    FROM (
+                        MATCH {{
+                            class: Animal,
+                            where: ((
+                                (in_Animal_ParentOf IS null)
+                                OR
+                                (in_Animal_ParentOf.size() = 0))),
+                            as: Animal___1
+                        }}
+                        RETURN $matches
+                    )
+            ),
+            $optional__1 = (
+                SELECT Animal___1.name AS `animal_name`,
+                    Animal__in_Animal_ParentOf__out_Entity_Related__out_Animal_OfSpecies___1.name
+                        AS `related_animal_species`
+                    FROM (
+                        MATCH {{
+                            class: Animal,
+                            as: Animal___1
+                        }}.in('Animal_ParentOf') {{
+                            as: Animal__in_Animal_ParentOf___1
+                        }}.out('Entity_Related') {{
+                            class: Animal,
+                            as: Animal__in_Animal_ParentOf__out_Entity_Related___1
+                        }}.out('Animal_OfSpecies') {{
+                            as: Animal__in_Animal_ParentOf__out_Entity_Related
+                                __out_Animal_OfSpecies___1
+                        }}
+                        RETURN $matches
+                    )
+            ),
+            $result = UNIONALL($optional__0, $optional__1)
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+                .as('Animal__in_Animal_ParentOf___1')
+                    .ifThenElse{it == null}{null}{it.out('Entity_Related')}
+                    .filter{it, m -> ((it == null) || ['Animal'].contains(it['@class']))}
+                    .as('Animal__in_Animal_ParentOf__out_Entity_Related___1')
+                        .ifThenElse{it == null}{null}{it.out('Animal_OfSpecies')}
+                        .as('Animal__in_Animal_ParentOf__out_Entity_Related
+                             __out_Animal_OfSpecies___1')
+                    .back('Animal__in_Animal_ParentOf__out_Entity_Related___1')
+                .back('Animal__in_Animal_ParentOf___1')
+            .optional('Animal___1')
+            .as('Animal___2')
+            .transform{it,
+                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                related_animal_species: (
+                    (m.Animal__in_Animal_ParentOf__out_Entity_Related
+                        __out_Animal_OfSpecies___1 != null) ?
+                        m.Animal__in_Animal_ParentOf__out_Entity_Related
+                            __out_Animal_OfSpecies___1.name : null
+                )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
