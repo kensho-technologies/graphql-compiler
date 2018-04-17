@@ -416,8 +416,8 @@ def convert_optional_traversals_to_compound_match_query(match_query):
             for step in traverse
         )
 
-    def no_optional_traverse(traverse):
-        """Return a new traversal, removing everything following the optional traverse."""
+    def remove_optional_traverse(traverse):
+        """Return a new traversal, removing the optional traverse and all following steps."""
         new_traverse = []
         for step in traverse:
             if not isinstance(step.root_block, Traverse) or not step.root_block.optional:
@@ -432,7 +432,7 @@ def convert_optional_traversals_to_compound_match_query(match_query):
                 return new_traverse
         raise AssertionError(u"No optional traverse found in: {}".format(traverse))
 
-    def mandatory_optional_traverse(traverse):
+    def make_mandatory_traverse(traverse):
         """Return a new traversal, without the optional condition."""
         new_traverse = []
         for step in traverse:
@@ -448,8 +448,8 @@ def convert_optional_traversals_to_compound_match_query(match_query):
     for traversal in match_query.match_traversals:
         if is_optional_traverse(traversal):
             current_posibilities = [
-                no_optional_traverse(traversal),
-                mandatory_optional_traverse(traversal)
+                remove_optional_traverse(traversal),
+                make_mandatory_traverse(traversal)
             ]
         else:
             current_posibilities = [traversal]

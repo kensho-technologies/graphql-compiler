@@ -387,10 +387,11 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         in_topmost_optional_block = False
 
         edge_traversal_is_optional = optional_directive is not None
-        # This is true for any vertex expanded within an @optional scope
-        # Currently @optional is not allowed within @optional
-        # Thi will need to change if nested @optionals have to be supported
+
+        # This is true for any vertex expanded within an @optional scope.
         within_optional_scope = 'optional' in context and not edge_traversal_is_optional
+        # Currently @optional is not allowed within @optional.
+        # This will need to change if nested @optionals have to be supported.
 
         if edge_traversal_is_optional:
             # Entering an optional block!

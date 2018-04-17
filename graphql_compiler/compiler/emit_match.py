@@ -235,13 +235,13 @@ def emit_code_from_ir(compound_match_query):
     #
     # SELECT EXPAND($result)
     # LET
-    #    $optional_0 = (
+    #    $optional__0 = (
     #        <query_string_0>
     #    ),
-    #    $optional_1 = (
+    #    $optional__1 = (
     #        <query_string_1>
     #    ),
-    #    $optional_2 = (
+    #    $optional__2 = (
     #        <query_string_2>
     #    ),
     #
