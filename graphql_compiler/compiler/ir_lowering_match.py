@@ -546,11 +546,7 @@ def _predicate_list_to_where_block(predicate_list):
 
 
 def collect_filters_to_first_location_instance(compound_match_query):
-    """Collapse all filters applied to a particular location into a single `as_block`.
-
-    Specifically, for any location `L`, find all filters present on `L`, and apply
-    the conjunction of all these filters to the first occurence of `L` (within its MatchQuery).
-    """
+    """Collate all filters for a particular location to the first instance of the location."""
     new_match_queries = []
     # Each MatchQuery is processed independently
     for match_query in compound_match_query.match_queries:
