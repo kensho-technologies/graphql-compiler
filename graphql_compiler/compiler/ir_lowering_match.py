@@ -18,9 +18,8 @@ import six
 from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, QueryRoot,
                      Traverse)
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, Expression,
-                          FalseLiteral, FoldedOutputContextField, Literal, LocalField, NullLiteral,
-                          OutputContextField, TernaryConditional, TrueLiteral, UnaryTransformation,
-                          ZeroLiteral)
+                          FalseLiteral, Literal, LocalField, NullLiteral, OutputContextField,
+                          TernaryConditional, TrueLiteral, UnaryTransformation, ZeroLiteral)
 from .ir_lowering_common import (lower_context_field_existence, merge_consecutive_filter_clauses,
                                  optimize_boolean_expression_comparisons)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
