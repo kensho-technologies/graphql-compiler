@@ -1627,3 +1627,31 @@ def optional_traversal_and_optional_without_traversal():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
+
+
+def coercion_on_interface_within_optional_traversal():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf @optional {
+                out_Entity_Related {
+                    ... on Animal {
+                        out_Animal_OfSpecies {
+                            name @output(out_name: "related_animal_species")
+                        }
+                    }
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'related_animal_species': OutputMetadata(type=GraphQLString, optional=True),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
