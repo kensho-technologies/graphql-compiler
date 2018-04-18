@@ -436,7 +436,7 @@ def make_mandatory_traverse(traverse):
             new_traverse.append(step._replace(root_block=new_root_block))
     return new_traverse
 
-  
+
 def convert_optional_traversals_to_compound_match_query(match_query):
     """Return 2^n distinct MatchQuery objects in a CompoundMatchQuery.
 
@@ -596,7 +596,7 @@ def collect_filters_to_first_location_instance(compound_match_query):
 
     return CompoundMatchQuery(match_queries=new_match_queries)
 
-  
+
 ##############
 # Public API #
 ##############
