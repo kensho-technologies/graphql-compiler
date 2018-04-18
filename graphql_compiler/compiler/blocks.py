@@ -211,7 +211,7 @@ class MarkLocation(BasicBlock):
 class Traverse(BasicBlock):
     """A block that encodes a traversal across an edge, in either direction."""
 
-    def __init__(self, direction, edge_name, optional=False):
+    def __init__(self, direction, edge_name, optional=False, within_optional_scope=False):
         """Create a new Traverse block in the given direction and across the given edge.
 
         Args:
@@ -227,6 +227,8 @@ class Traverse(BasicBlock):
         self.direction = direction
         self.edge_name = edge_name
         self.optional = optional
+        # Denotes whether the traversal is occuring after a prior @optional traversal
+        self.within_optional_scope = within_optional_scope
         self.validate()
 
     def validate(self):
@@ -242,6 +244,10 @@ class Traverse(BasicBlock):
                 type(self.optional).__name__, self.optional))
 
         validate_safe_string(self.edge_name)
+
+    def get_field_name(self):
+        """Return the field name corresponding to the edge being traversed."""
+        return u'{}_{}'.format(self.direction, self.edge_name)
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this block."""
@@ -264,6 +270,15 @@ class Traverse(BasicBlock):
                     u'{{null}}{{it.{direction}({edge_quoted})}}'.format(
                         direction=self.direction,
                         edge_name=self.edge_name,
+                        edge_quoted=safe_quoted_string(self.edge_name)))
+        elif self.within_optional_scope:
+            # During a traversal, the pipeline element may be null.
+            # The following code returns null when the current pipeline entity is null
+            # (an optional edge did not exist at some earlier traverse).
+            # Otherwise it performs a normal traversal (previous optional edge did exist).
+            return (u'ifThenElse{{it == null}}'
+                    u'{{null}}{{it.{direction}({edge_quoted})}}'.format(
+                        direction=self.direction,
                         edge_quoted=safe_quoted_string(self.edge_name)))
         else:
             return u'{direction}({edge})'.format(
