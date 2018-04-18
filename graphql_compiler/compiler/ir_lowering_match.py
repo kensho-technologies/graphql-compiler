@@ -498,9 +498,6 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
                     TernaryConditional,
                     OutputContextField
                 )
-                if not isinstance(expression, allowed_expression_types):
-                    raise AssertionError(u'Invalid expression of type {} in output block'
-                                         u': {}'.format(type(expression).__name__, output_block))
                 if isinstance(expression, OutputContextField):
                     location_name, _ = expression.location.get_location_name()
                     if location_name not in current_locations:
@@ -515,6 +512,9 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
                             new_output_fields[output_name] = expression.if_true
                         else:
                             new_output_fields[output_name] = expression
+                else:
+                    raise AssertionError(u'Invalid expression of type {} in output block'
+                                         u': {}'.format(type(expression).__name__, output_block))
 
             match_queries.append(
                 MatchQuery(
