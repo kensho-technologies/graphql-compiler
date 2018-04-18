@@ -17,9 +17,10 @@ import six
 
 from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, QueryRoot,
                      Traverse)
-from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, Expression,
-                          FalseLiteral, Literal, LocalField, NullLiteral, OutputContextField,
-                          TernaryConditional, TrueLiteral, UnaryTransformation, ZeroLiteral)
+
+from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
+                          Literal, LocalField, NullLiteral, OutputContextField, TernaryConditional,
+                          TrueLiteral, UnaryTransformation, ZeroLiteral)
 from .ir_lowering_common import (lower_context_field_existence, merge_consecutive_filter_clauses,
                                  optimize_boolean_expression_comparisons)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
@@ -436,7 +437,7 @@ def make_mandatory_traverse(traverse):
             new_traverse.append(step._replace(root_block=new_root_block))
     return new_traverse
 
-
+  
 def convert_optional_traversals_to_compound_match_query(match_query):
     """Return 2^n distinct MatchQuery objects in a CompoundMatchQuery.
 
@@ -596,7 +597,7 @@ def collect_filters_to_first_location_instance(compound_match_query):
 
     return CompoundMatchQuery(match_queries=new_match_queries)
 
-
+  
 ##############
 # Public API #
 ##############
