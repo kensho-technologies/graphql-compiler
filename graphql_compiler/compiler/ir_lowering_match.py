@@ -494,10 +494,6 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
             new_output_fields = {}
             for output_name, expression in six.iteritems(output_block.fields):
                 # If @fold is allowed within @optional, this should include FoldedOutputContextField
-                allowed_expression_types = (
-                    TernaryConditional,
-                    OutputContextField
-                )
                 if isinstance(expression, OutputContextField):
                     location_name, _ = expression.location.get_location_name()
                     if location_name not in current_locations:
