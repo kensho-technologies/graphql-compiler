@@ -1442,3 +1442,118 @@ def coercion_filters_and_multiple_outputs_within_fold_traversal():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
+
+
+def optional_and_traverse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "name")
+            in_Animal_ParentOf @optional {
+                name @output(out_name: "parent_name")
+                in_Animal_ParentOf {
+                    name @output(out_name: "grandparent_name")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandparent_name': OutputMetadata(type=GraphQLString, optional=True),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def optional_and_traverse_after_filter():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "name")
+                 @filter(op_name: "has_substring", value: ["$wanted"])
+            in_Animal_ParentOf @optional {
+                name @output(out_name: "parent_name")
+                in_Animal_ParentOf {
+                    name @output(out_name: "grandparent_name")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandparent_name': OutputMetadata(type=GraphQLString, optional=True),
+    }
+    expected_input_metadata = {
+        'wanted': GraphQLString,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def optional_and_deep_traverse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf @optional {
+                name @output(out_name: "parent_name")
+                out_Animal_ParentOf {
+                    name @output(out_name: "sibling_name")
+                    out_Animal_OfSpecies {
+                        name @output(out_name: "sibling_and_self_species")
+                    }
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'sibling_name': OutputMetadata(type=GraphQLString, optional=True),
+        'sibling_and_self_species': OutputMetadata(type=GraphQLString, optional=True),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def traverse_and_optional_and_traverse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf {
+                name @output(out_name: "parent_name")
+                out_Animal_ParentOf @optional {
+                    name @output(out_name: "sibling_name")
+                    out_Animal_OfSpecies {
+                        name @output(out_name: "sibling_and_self_species")
+                    }
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=False),
+        'sibling_name': OutputMetadata(type=GraphQLString, optional=True),
+        'sibling_and_self_species': OutputMetadata(type=GraphQLString, optional=True)
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)

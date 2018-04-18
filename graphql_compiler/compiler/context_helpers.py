@@ -26,10 +26,6 @@ def has_encountered_output_source(context):
 
 def validate_context_for_visiting_vertex_field(location, context):
     """Ensure that the current context allows for visiting a vertex field."""
-    if is_in_optional_scope(context):
-        raise GraphQLCompilationError(u'Traversing inside an optional block is currently not '
-                                      u'supported! Location: {}'.format(location))
-
     if is_in_fold_innermost_scope_scope(context):
         raise GraphQLCompilationError(u'Traversing inside a @fold block after output is '
                                       u'not supported! Location: {}'.format(location))
