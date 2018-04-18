@@ -595,6 +595,65 @@ def collect_filters_to_first_location_instance(compound_match_query):
     return CompoundMatchQuery(match_queries=new_match_queries)
 
 
+def lower_filter_expressions_in_compound_match_query(compound_match_query):
+    def update_expression(expression, current_locations):
+        """Expression visitor function that .............."""
+        if isinstance(expression, BinaryComposition):
+            if isinstance(expression.left, ContextField):
+                context_field = expression.left
+            elif isinstance(expression.right, ContextField):
+                context_field = expression.right
+            else:
+                return expression
+            location_name, _ = context_field.location.get_location_name()
+            if location_name not in current_locations:
+                return TrueLiteral
+            else:
+                return expression
+        else:
+            return expression
+        return visitor_fn
+
+    if len(compound_match_query.match_queries) == 1:
+        return compound_match_query
+    elif len(compound_match_query.match_queries) == 0:
+        raise AssertionError(u'Received CompoundMatchQuery with an empty list of MatchQueries.')
+    else:
+        new_match_queries = []
+        for match_query in compound_match_query.match_queries:
+            match_traversals = match_query.match_traversals
+            current_locations = set()
+
+            for traversal in match_traversals:
+                for step in traversal:
+                    if step.as_block is not None:
+                        location_name, _ = step.as_block.location.get_location_name()
+                        current_locations.add(location_name)
+
+            current_visitor_fn = lambda expression: update_expression(expression, current_locations)
+            new_match_traversals = []
+            for traversal in match_traversals:
+                new_match_traversal = []
+                for step in traversal:
+                    if step.where_block is not None:
+                        new_filter = step.where_block.visit_and_update_expressions(
+                            current_visitor_fn)
+                        new_step = step._replace(where_block=new_filter)
+                    else:
+                        new_step = step
+                    new_match_traversal.append(new_step)
+                new_match_traversals.append(new_match_traversal)
+            new_match_queries.append(
+                MatchQuery(
+                    match_traversals=new_match_traversals,
+                    folds=match_query.folds,
+                    output_block=match_query.output_block
+                )
+            )
+
+    return CompoundMatchQuery(match_queries=new_match_queries)
+
+
 ##############
 # Public API #
 ##############
@@ -658,5 +717,6 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     compound_match_query = prune_output_blocks_in_compound_match_query(
         compound_match_query)
     compound_match_query = collect_filters_to_first_location_instance(compound_match_query)
+    compound_match_query = lower_filter_expressions_in_compound_match_query(compound_match_query)
 
     return compound_match_query
