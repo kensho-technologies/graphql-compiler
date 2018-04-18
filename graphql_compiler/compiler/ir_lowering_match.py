@@ -399,7 +399,7 @@ def filter_local_field_existence(field_name):
     return BinaryComposition(u'||', field_null_check, field_size_check)
 
 
-def is_optional_traverse(traverse):
+def _is_optional_traverse(traverse):
     """Return True if `traverse` contains any traversal within an @optional scope."""
     return any(
         isinstance(step.root_block, Traverse) and step.root_block.within_optional_scope
@@ -407,7 +407,7 @@ def is_optional_traverse(traverse):
     )
 
 
-def remove_optional_traverse(traverse):
+def _remove_optional_traverse(traverse):
     """Return a new traversal, removing the optional traverse and all following steps."""
     new_traverse = []
     for step in traverse:
@@ -424,7 +424,7 @@ def remove_optional_traverse(traverse):
     raise AssertionError(u'No optional traverse found in: {}'.format(traverse))
 
 
-def make_mandatory_traverse(traverse):
+def _make_mandatory_traverse(traverse):
     """Return a new traversal, without the optional condition."""
     new_traverse = []
     for step in traverse:
@@ -450,10 +450,10 @@ def convert_optional_traversals_to_compound_match_query(match_query):
     """
     match_traversals_possibilities = []
     for traversal in match_query.match_traversals:
-        if is_optional_traverse(traversal):
+        if _is_optional_traverse(traversal):
             current_posibilities = [
-                remove_optional_traverse(traversal),
-                make_mandatory_traverse(traversal)
+                _remove_optional_traverse(traversal),
+                _make_mandatory_traverse(traversal)
             ]
         else:
             current_posibilities = [traversal]
@@ -527,29 +527,30 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
         return CompoundMatchQuery(match_queries=match_queries)
 
 
+def _predicate_list_to_where_block(predicate_list):
+    """Convert a list of predicates to an Expression that is the conjunction of all of them."""
+    if not isinstance(predicate_list, list):
+        raise AssertionError(u'Expected `list`, Received {}.'.format(predicate_list))
+    if not predicate_list:
+        return None
+
+    if not isinstance(predicate_list[0], Expression):
+        raise AssertionError(u'Non-predicate object {} found in predicate_list'
+                             .format(predicate_list[0]))
+    if len(predicate_list) == 1:
+        return predicate_list[0]
+    else:
+        return BinaryComposition(u'&&',
+                                 _predicate_list_to_where_block(predicate_list[1:]),
+                                 predicate_list[0])
+
+
 def collect_filters_to_first_location_instance(compound_match_query):
     """Collapse all filters applied to a particular location into a single `as_block`.
 
     Specifically, for any location `L`, find all filters present on `L`, and apply
     the conjunction of all these filters to the first occurence of `L` (within its MatchQuery).
     """
-    def predicate_list_to_where_block(predicate_list):
-        """Convert a list of predicates to an Expression that is the conjunction of all of them."""
-        if not isinstance(predicate_list, list):
-            raise AssertionError(u'Expected `list`, Received {}.'.format(predicate_list))
-        if not predicate_list:
-            return None
-
-        if not isinstance(predicate_list[0], Expression):
-            raise AssertionError(u'Non-predicate object {} found in predicate_list'
-                                 .format(predicate_list[0]))
-        if len(predicate_list) == 1:
-            return predicate_list[0]
-        else:
-            return BinaryComposition(u'&&',
-                                     predicate_list_to_where_block(predicate_list[1:]),
-                                     predicate_list[0])
-
     new_match_queries = []
     # Each MatchQuery is processed independently
     for match_query in compound_match_query.match_queries:
@@ -558,24 +559,25 @@ def collect_filters_to_first_location_instance(compound_match_query):
         # applied to the corresponding location (in `where_blocks`)
         for match_traversal in match_query.match_traversals:
             for match_step in match_traversal:
-                curr_filter = match_step.where_block
-                if curr_filter:
-                    location_to_predicates.setdefault(match_step.as_block, []).append(
-                        curr_filter.predicate)
+                current_filter = match_step.where_block
+                if current_filter:
+                    current_location = match_step.as_block.location
+                    location_to_predicates.setdefault(current_location, []).append(
+                        current_filter.predicate)
 
         new_match_traversals = []
         for match_traversal in match_query.match_traversals:
             new_match_traversal = []
             for match_step in match_traversal:
                 # Apply all filters for a location to the first occurence of that location
-                if match_step.as_block in location_to_predicates:
+                if match_step.as_block.location in location_to_predicates:
                     where_block = Filter(
-                        predicate_list_to_where_block(
-                            location_to_predicates[match_step.as_block]
+                        _predicate_list_to_where_block(
+                            location_to_predicates[match_step.as_block.location]
                         )
                     )
                     # Delete the location entry. No further filters needed for this location.
-                    del location_to_predicates[match_step.as_block]
+                    del location_to_predicates[match_step.as_block.location]
                 else:
                     where_block = None
                 new_match_step = MatchStep(

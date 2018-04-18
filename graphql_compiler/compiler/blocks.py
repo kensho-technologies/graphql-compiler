@@ -207,10 +207,6 @@ class MarkLocation(BasicBlock):
         mark_name, _ = self.location.get_location_name()
         return u'as({})'.format(safe_quoted_string(mark_name))
 
-    def __hash__(self):
-        """Return the object's hash value."""
-        return hash(self.location)
-
 
 class Traverse(BasicBlock):
     """A block that encodes a traversal across an edge, in either direction."""
