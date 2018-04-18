@@ -390,6 +390,53 @@ def remove_backtrack_blocks_from_fold(folded_ir_blocks):
     return new_folded_ir_blocks
 
 
+def filter_local_field_existence(field_name):
+    """Return an Expression that is True iff `field_name` does not exist."""
+    local_field = LocalField(field_name)
+    local_field_size = UnaryTransformation(u'size', local_field)
+    field_null_check = BinaryComposition(u'=', local_field, NullLiteral)
+    field_size_check = BinaryComposition(u'=', local_field_size, ZeroLiteral)
+    return BinaryComposition(u'||', field_null_check, field_size_check)
+
+
+def is_optional_traverse(traverse):
+    """Return True if `traverse` contains any traversal within an @optional scope."""
+    return any(
+        isinstance(step.root_block, Traverse) and step.root_block.within_optional_scope
+        for step in traverse
+    )
+
+
+def remove_optional_traverse(traverse):
+    """Return a new traversal, removing the optional traverse and all following steps."""
+    new_traverse = []
+    for step in traverse:
+        if not isinstance(step.root_block, Traverse) or not step.root_block.optional:
+            new_traverse.append(step)
+        else:
+            field_name = step.root_block.get_field_name()
+            new_predicate = filter_local_field_existence(field_name)
+            old_filter = new_traverse[-1].where_block
+            if old_filter:
+                new_predicate = BinaryComposition(u'&&', old_filter.predicate, new_predicate)
+            new_traverse[-1] = new_traverse[-1]._replace(where_block=Filter(new_predicate))
+            return new_traverse
+    raise AssertionError(u'No optional traverse found in: {}'.format(traverse))
+
+
+def make_mandatory_traverse(traverse):
+    """Return a new traversal, without the optional condition."""
+    new_traverse = []
+    for step in traverse:
+        if not isinstance(step.root_block, Traverse) or not step.root_block.optional:
+            new_traverse.append(step)
+        else:
+            old_block = step.root_block
+            new_root_block = Traverse(old_block.direction, old_block.edge_name)
+            new_traverse.append(step._replace(root_block=new_root_block))
+    return new_traverse
+
+
 def convert_optional_traversals_to_compound_match_query(match_query):
     """Return 2^n distinct MatchQuery objects in a CompoundMatchQuery.
 
@@ -401,49 +448,6 @@ def convert_optional_traversals_to_compound_match_query(match_query):
         CompoundMatchQuery object containing 2^n MatchQuery objects,
         one for each possible subset of the n optional edges being followed
     """
-    def filter_local_field_existence(field_name):
-        """Return an Expression that is True iff `field_name` does not exist."""
-        local_field = LocalField(field_name)
-        local_field_size = UnaryTransformation(u'size', local_field)
-        field_null_check = BinaryComposition(u'=', local_field, NullLiteral)
-        field_size_check = BinaryComposition(u'=', local_field_size, ZeroLiteral)
-        return BinaryComposition(u'||', field_null_check, field_size_check)
-
-    def is_optional_traverse(traverse):
-        """Return True if `traverse` contains any traversal within an @optional scope."""
-        return any(
-            isinstance(step.root_block, Traverse) and step.root_block.within_optional_scope
-            for step in traverse
-        )
-
-    def remove_optional_traverse(traverse):
-        """Return a new traversal, removing the optional traverse and all following steps."""
-        new_traverse = []
-        for step in traverse:
-            if not isinstance(step.root_block, Traverse) or not step.root_block.optional:
-                new_traverse.append(step)
-            else:
-                field_name = step.root_block.get_field_name()
-                new_predicate = filter_local_field_existence(field_name)
-                old_filter = new_traverse[-1].where_block
-                if old_filter:
-                    new_predicate = BinaryComposition(u'&&', old_filter.predicate, new_predicate)
-                new_traverse[-1] = new_traverse[-1]._replace(where_block=Filter(new_predicate))
-                return new_traverse
-        raise AssertionError(u"No optional traverse found in: {}".format(traverse))
-
-    def make_mandatory_traverse(traverse):
-        """Return a new traversal, without the optional condition."""
-        new_traverse = []
-        for step in traverse:
-            if not isinstance(step.root_block, Traverse) or not step.root_block.optional:
-                new_traverse.append(step)
-            else:
-                old_block = step.root_block
-                new_root_block = Traverse(old_block.direction, old_block.edge_name)
-                new_traverse.append(step._replace(root_block=new_root_block))
-        return new_traverse
-
     match_traversals_possibilities = []
     for traversal in match_query.match_traversals:
         if is_optional_traverse(traversal):
@@ -509,8 +513,8 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
                         else:
                             new_output_fields[output_name] = expression
                 else:
-                    raise AssertionError(u'Invalid expression of type {} in output block'
-                                         u': {}'.format(type(expression).__name__, output_block))
+                    raise AssertionError(u'Invalid expression of type {} in output block: '
+                                         u'{}'.format(type(expression).__name__, output_block))
 
             match_queries.append(
                 MatchQuery(
