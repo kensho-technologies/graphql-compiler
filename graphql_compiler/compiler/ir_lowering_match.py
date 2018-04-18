@@ -17,9 +17,9 @@ import six
 
 from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, QueryRoot,
                      Traverse)
-from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
-                          Literal, LocalField, NullLiteral, OutputContextField, TernaryConditional,
-                          TrueLiteral, UnaryTransformation, ZeroLiteral)
+from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, Expression,
+                          FalseLiteral, Literal, LocalField, NullLiteral, OutputContextField,
+                          TernaryConditional, TrueLiteral, UnaryTransformation, ZeroLiteral)
 from .ir_lowering_common import (lower_context_field_existence, merge_consecutive_filter_clauses,
                                  optimize_boolean_expression_comparisons)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
@@ -390,6 +390,53 @@ def remove_backtrack_blocks_from_fold(folded_ir_blocks):
     return new_folded_ir_blocks
 
 
+def _filter_local_field_existence(field_name):
+    """Return an Expression that is True iff `field_name` does not exist."""
+    local_field = LocalField(field_name)
+    local_field_size = UnaryTransformation(u'size', local_field)
+    field_null_check = BinaryComposition(u'=', local_field, NullLiteral)
+    field_size_check = BinaryComposition(u'=', local_field_size, ZeroLiteral)
+    return BinaryComposition(u'||', field_null_check, field_size_check)
+
+
+def _is_optional_traverse(traverse):
+    """Return True if `traverse` contains any traversal within an @optional scope."""
+    return any(
+        isinstance(step.root_block, Traverse) and step.root_block.within_optional_scope
+        for step in traverse
+    )
+
+
+def _remove_optional_traverse(traverse):
+    """Return a new traversal, removing the optional traverse and all following steps."""
+    new_traverse = []
+    for step in traverse:
+        if not isinstance(step.root_block, Traverse) or not step.root_block.optional:
+            new_traverse.append(step)
+        else:
+            field_name = step.root_block.get_field_name()
+            new_predicate = _filter_local_field_existence(field_name)
+            old_filter = new_traverse[-1].where_block
+            if old_filter:
+                new_predicate = BinaryComposition(u'&&', old_filter.predicate, new_predicate)
+            new_traverse[-1] = new_traverse[-1]._replace(where_block=Filter(new_predicate))
+            return new_traverse
+    raise AssertionError(u'No optional traverse found in: {}'.format(traverse))
+
+
+def _make_mandatory_traverse(traverse):
+    """Return a new traversal, without the optional condition."""
+    new_traverse = []
+    for step in traverse:
+        if not isinstance(step.root_block, Traverse) or not step.root_block.optional:
+            new_traverse.append(step)
+        else:
+            old_block = step.root_block
+            new_root_block = Traverse(old_block.direction, old_block.edge_name)
+            new_traverse.append(step._replace(root_block=new_root_block))
+    return new_traverse
+
+
 def convert_optional_traversals_to_compound_match_query(match_query):
     """Return 2^n distinct MatchQuery objects in a CompoundMatchQuery.
 
@@ -401,55 +448,12 @@ def convert_optional_traversals_to_compound_match_query(match_query):
         CompoundMatchQuery object containing 2^n MatchQuery objects,
         one for each possible subset of the n optional edges being followed
     """
-    def filter_local_field_existence(field_name):
-        """Return an Expression that is True iff `field_name` does not exist."""
-        local_field = LocalField(field_name)
-        local_field_size = UnaryTransformation(u'size', local_field)
-        field_null_check = BinaryComposition(u'=', local_field, NullLiteral)
-        field_size_check = BinaryComposition(u'=', local_field_size, ZeroLiteral)
-        return BinaryComposition(u'||', field_null_check, field_size_check)
-
-    def is_optional_traverse(traverse):
-        """Return True if `traverse` contains any traversal within an @optional scope."""
-        return any(
-            isinstance(step.root_block, Traverse) and step.root_block.within_optional_scope
-            for step in traverse
-        )
-
-    def remove_optional_traverse(traverse):
-        """Return a new traversal, removing the optional traverse and all following steps."""
-        new_traverse = []
-        for step in traverse:
-            if not isinstance(step.root_block, Traverse) or not step.root_block.optional:
-                new_traverse.append(step)
-            else:
-                field_name = step.root_block.get_field_name()
-                new_predicate = filter_local_field_existence(field_name)
-                old_filter = new_traverse[-1].where_block
-                if old_filter:
-                    new_predicate = BinaryComposition(u'&&', old_filter.predicate, new_predicate)
-                new_traverse[-1] = new_traverse[-1]._replace(where_block=Filter(new_predicate))
-                return new_traverse
-        raise AssertionError(u"No optional traverse found in: {}".format(traverse))
-
-    def make_mandatory_traverse(traverse):
-        """Return a new traversal, without the optional condition."""
-        new_traverse = []
-        for step in traverse:
-            if not isinstance(step.root_block, Traverse) or not step.root_block.optional:
-                new_traverse.append(step)
-            else:
-                old_block = step.root_block
-                new_root_block = Traverse(old_block.direction, old_block.edge_name)
-                new_traverse.append(step._replace(root_block=new_root_block))
-        return new_traverse
-
     match_traversals_possibilities = []
     for traversal in match_query.match_traversals:
-        if is_optional_traverse(traversal):
+        if _is_optional_traverse(traversal):
             current_posibilities = [
-                remove_optional_traverse(traversal),
-                make_mandatory_traverse(traversal)
+                _remove_optional_traverse(traversal),
+                _make_mandatory_traverse(traversal)
             ]
         else:
             current_posibilities = [traversal]
@@ -509,8 +513,8 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
                         else:
                             new_output_fields[output_name] = expression
                 else:
-                    raise AssertionError(u'Invalid expression of type {} in output block'
-                                         u': {}'.format(type(expression).__name__, output_block))
+                    raise AssertionError(u'Invalid expression of type {} in output block: '
+                                         u'{}'.format(type(expression).__name__, output_block))
 
             match_queries.append(
                 MatchQuery(
@@ -521,6 +525,74 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
             )
 
         return CompoundMatchQuery(match_queries=match_queries)
+
+
+def _predicate_list_to_where_block(predicate_list):
+    """Convert a list of predicates to an Expression that is the conjunction of all of them."""
+    if not isinstance(predicate_list, list):
+        raise AssertionError(u'Expected `list`, Received {}.'.format(predicate_list))
+    if not predicate_list:
+        return None
+
+    if not isinstance(predicate_list[0], Expression):
+        raise AssertionError(u'Non-predicate object {} found in predicate_list'
+                             .format(predicate_list[0]))
+    if len(predicate_list) == 1:
+        return predicate_list[0]
+    else:
+        return BinaryComposition(u'&&',
+                                 _predicate_list_to_where_block(predicate_list[1:]),
+                                 predicate_list[0])
+
+
+def collect_filters_to_first_location_instance(compound_match_query):
+    """Collate all filters for a particular location to the first instance of the location."""
+    new_match_queries = []
+    # Each MatchQuery is processed independently
+    for match_query in compound_match_query.match_queries:
+        location_to_predicates = {}
+        # Construct a dictionary mapping locations --> a list of predicates
+        # applied to the corresponding location (in `where_blocks`)
+        for match_traversal in match_query.match_traversals:
+            for match_step in match_traversal:
+                current_filter = match_step.where_block
+                if current_filter:
+                    current_location = match_step.as_block.location
+                    location_to_predicates.setdefault(current_location, []).append(
+                        current_filter.predicate)
+
+        new_match_traversals = []
+        for match_traversal in match_query.match_traversals:
+            new_match_traversal = []
+            for match_step in match_traversal:
+                # Apply all filters for a location to the first occurence of that location
+                if match_step.as_block.location in location_to_predicates:
+                    where_block = Filter(
+                        _predicate_list_to_where_block(
+                            location_to_predicates[match_step.as_block.location]
+                        )
+                    )
+                    # Delete the location entry. No further filters needed for this location.
+                    del location_to_predicates[match_step.as_block.location]
+                else:
+                    where_block = None
+                new_match_step = MatchStep(
+                    root_block=match_step.root_block,
+                    coerce_type_block=match_step.coerce_type_block,
+                    where_block=where_block,
+                    as_block=match_step.as_block
+                )
+                new_match_traversal.append(new_match_step)
+            new_match_traversals.append(new_match_traversal)
+        new_match_queries.append(
+            MatchQuery(
+                match_traversals=new_match_traversals,
+                folds=match_query.folds,
+                output_block=match_query.output_block
+            )
+        )
+
+    return CompoundMatchQuery(match_queries=new_match_queries)
 
 
 ##############
@@ -585,5 +657,6 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     compound_match_query = convert_optional_traversals_to_compound_match_query(match_query)
     compound_match_query = prune_output_blocks_in_compound_match_query(
         compound_match_query)
+    compound_match_query = collect_filters_to_first_location_instance(compound_match_query)
 
     return compound_match_query

@@ -42,15 +42,15 @@ To get from GraphQL AST to IR, we follow the following pattern:
 
     step V-4. Recurse into any vertex field children of the current AST node:
               (see _compile_vertex_ast())
-          - before recursing into each vertex:
-            - process any @optional and @fold directives present on the child AST node;
-            - process any @output within a @fold context,
-              and prevent further traversal if one is present;
-          - after returning from each vertex:
-            - return to the marked query location using the appropriate manner,
-              depending on whether @optional was present on the child or not;
-            - if the visited vertex had a @fold or @optional directive,
-              undo the processing performed at previous steps;
+        - before recursing into each vertex:
+          - process any @optional and @fold directives present on the child AST node;
+          - process any @output within a @fold context,
+            and prevent further traversal if one is present;
+        - after returning from each vertex:
+          - return to the marked query location using the appropriate manner,
+            depending on whether @optional was present on the child or not;
+          - if the visited vertex had a @fold or @optional directive,
+            undo the processing performed at previous steps;
     ***************
 
     *** F-steps ***
@@ -389,9 +389,9 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         edge_traversal_is_optional = optional_directive is not None
 
         # This is true for any vertex expanded within an @optional scope.
-        within_optional_scope = 'optional' in context and not edge_traversal_is_optional
         # Currently @optional is not allowed within @optional.
         # This will need to change if nested @optionals have to be supported.
+        within_optional_scope = 'optional' in context and not edge_traversal_is_optional
 
         if edge_traversal_is_optional:
             # Entering an optional block!
