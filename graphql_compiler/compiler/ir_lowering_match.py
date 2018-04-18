@@ -390,7 +390,7 @@ def remove_backtrack_blocks_from_fold(folded_ir_blocks):
     return new_folded_ir_blocks
 
 
-def filter_local_field_existence(field_name):
+def _filter_local_field_existence(field_name):
     """Return an Expression that is True iff `field_name` does not exist."""
     local_field = LocalField(field_name)
     local_field_size = UnaryTransformation(u'size', local_field)
@@ -415,7 +415,7 @@ def _remove_optional_traverse(traverse):
             new_traverse.append(step)
         else:
             field_name = step.root_block.get_field_name()
-            new_predicate = filter_local_field_existence(field_name)
+            new_predicate = _filter_local_field_existence(field_name)
             old_filter = new_traverse[-1].where_block
             if old_filter:
                 new_predicate = BinaryComposition(u'&&', old_filter.predicate, new_predicate)
