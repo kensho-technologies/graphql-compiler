@@ -419,7 +419,10 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         elif recurse_directive:
             recurse_depth = _get_recurse_directive_depth(field_name, inner_unique_directives)
             _validate_recurse_directive_types(current_schema_type, field_schema_type)
-            basic_blocks.append(blocks.Recurse(edge_direction, edge_name, recurse_depth))
+            basic_blocks.append( blocks.Recurse(edge_direction,
+                                                edge_name,
+                                                recurse_depth,
+                                                within_optional_scope=within_optional_scope))
         else:
             basic_blocks.append(blocks.Traverse(edge_direction, edge_name,
                                                 optional=edge_traversal_is_optional,

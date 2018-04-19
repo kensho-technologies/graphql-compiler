@@ -16,7 +16,7 @@ import funcy.py2 as funcy
 import six
 
 from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, QueryRoot,
-                     Traverse)
+                     Recurse, Traverse)
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, Expression,
                           FalseLiteral, Literal, LocalField, NullLiteral, OutputContextField,
                           TernaryConditional, TrueLiteral, UnaryTransformation, ZeroLiteral)
@@ -402,7 +402,7 @@ def _filter_local_field_existence(field_name):
 def _is_optional_traverse(traverse):
     """Return True if `traverse` contains any traversal within an @optional scope."""
     return any(
-        isinstance(step.root_block, Traverse) and step.root_block.within_optional_scope
+        isinstance(step.root_block, (Traverse, Recurse)) and step.root_block.within_optional_scope
         for step in traverse
     )
 
