@@ -603,6 +603,20 @@ def lower_filter_expressions_in_compound_match_query(compound_match_query):
                 context_field = expression.left
             elif isinstance(expression.right, ContextField):
                 context_field = expression.right
+            elif expression.operator == u'||':
+                if expression.left == TrueLiteral or expression.right == TrueLiteral:
+                    return TrueLiteral
+                else:
+                    return expression
+            elif expression.operator == u'&&':
+                if expression.left == TrueLiteral and expression.right == TrueLiteral:
+                    return TrueLiteral
+                if expression.left == TrueLiteral:
+                    return expression.right
+                if expression.right == TrueLiteral:
+                    return expression.left
+                else:
+                    return expression
             else:
                 return expression
             location_name, _ = context_field.location.get_location_name()
@@ -610,8 +624,21 @@ def lower_filter_expressions_in_compound_match_query(compound_match_query):
                 return TrueLiteral
             else:
                 return expression
+        elif isinstance(expression, TernaryConditional):
+            if expression.predicate == TrueLiteral:
+                return expression.if_true
+            else:
+                return expression
+        elif isinstance(expression, Filter):
+            if expression.predicate == TrueLiteral:
+                return None
+            else:
+                return expression
         else:
             return expression
+    def construct_visitor_fn(current_locations):
+        def visitor_fn(expression):
+            return update_expression(expression, current_locations)
         return visitor_fn
 
     if len(compound_match_query.match_queries) == 1:
@@ -630,7 +657,7 @@ def lower_filter_expressions_in_compound_match_query(compound_match_query):
                         location_name, _ = step.as_block.location.get_location_name()
                         current_locations.add(location_name)
 
-            current_visitor_fn = lambda expression: update_expression(expression, current_locations)
+            current_visitor_fn = construct_visitor_fn(current_locations)
             new_match_traversals = []
             for traversal in match_traversals:
                 new_match_traversal = []
@@ -638,6 +665,8 @@ def lower_filter_expressions_in_compound_match_query(compound_match_query):
                     if step.where_block is not None:
                         new_filter = step.where_block.visit_and_update_expressions(
                             current_visitor_fn)
+                        if new_filter.predicate == TrueLiteral:
+                            new_filter = None
                         new_step = step._replace(where_block=new_filter)
                     else:
                         new_step = step
