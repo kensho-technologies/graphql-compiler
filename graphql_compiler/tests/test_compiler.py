@@ -3568,16 +3568,10 @@ FROM (
                     .ifThenElse{it == null}{null}{
                         it.copySplit(
                             _(),
-                                _()
-                                    .in('Animal_ParentOf'),
-                                _()
-                                    .in('Animal_ParentOf')
-                                        .in('Animal_ParentOf'),
-                                    _()
-                                        .in('Animal_ParentOf')
-                                            .in('Animal_ParentOf')
-                                                .in('Animal_ParentOf'))
-                                                    .exhaustMerge
+                            _().in('Animal_ParentOf'),
+                            _().in('Animal_ParentOf').in('Animal_ParentOf'),
+                            _().in('Animal_ParentOf').in('Animal_ParentOf').in('Animal_ParentOf')
+                        ).exhaustMerge
                     }
                     .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf___1')
                 .back('Animal__out_Animal_ParentOf___1')
