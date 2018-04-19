@@ -1755,3 +1755,29 @@ def complex_optional_traversal_variables():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
+
+
+def simple_optional_recurse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "name")
+            out_Animal_ParentOf @optional {
+                name @output(out_name: "parent_name")
+                in_Animal_ParentOf @recurse(depth:3) {
+                    name @output(out_name: "ancestor_name")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'ancestor_name': OutputMetadata(type=GraphQLString, optional=True),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)

@@ -334,7 +334,6 @@ class Recurse(BasicBlock):
         ]
         recursion_string = template.format(recurse=','.join(recurse_steps))
         if self.within_optional_scope:
-            __import__('pdb').set_trace()
             # During a traversal, the pipeline element may be null.
             # The following code returns null when the current pipeline entity is null
             # (an optional edge did not exist at some earlier traverse).

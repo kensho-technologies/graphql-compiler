@@ -3515,3 +3515,86 @@ FROM (
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_simple_optional_recurse(self):
+        test_data = test_input_data.simple_optional_recurse()
+
+        expected_match = '''
+            SELECT EXPAND($result)
+            LET
+            $optional__0 = (
+                SELECT Animal___1.name AS `name`
+                    FROM (
+                        MATCH {{
+                            class: Animal,
+                            where: ((
+                                (out_Animal_ParentOf IS null)
+                                OR
+                                (out_Animal_ParentOf.size() = 0))),
+                            as: Animal___1
+                        }}
+                        RETURN $matches
+                    )
+            ),
+            $optional__1 = (
+                SELECT if(eval("(Animal__out_Animal_ParentOf__in_Animal_ParentOf___1 IS NOT null)"),
+                            Animal__out_Animal_ParentOf__in_Animal_ParentOf___1.name,
+                            null
+                        ) AS `ancestor_name`,
+                        Animal___1.name AS `name`,
+                        Animal__out_Animal_ParentOf___1.name AS `parent_name`
+                    FROM (
+                        MATCH {{
+                            class: Animal,
+                            as: Animal___1
+                        }}.out('Animal_ParentOf') {{
+                            as: Animal__out_Animal_ParentOf___1
+                        }}.in('Animal_ParentOf') {{
+                            while: ($depth < 3),
+                            as: Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
+                        }}
+                        RETURN $matches
+                    )
+            ),
+            $result = UNIONALL($optional__0, $optional__1)
+        '''
+
+        expected_gremlin = '''
+            g.V('@class',
+                'Animal')
+            .as('Animal___1')
+                .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
+                .as('Animal__out_Animal_ParentOf___1')
+                    .ifThenElse{it == null}{null}{
+                        it.copySplit(
+                            _(),
+                                _()
+                                    .in('Animal_ParentOf'),
+                                _()
+                                    .in('Animal_ParentOf')
+                                        .in('Animal_ParentOf'),
+                                    _()
+                                        .in('Animal_ParentOf')
+                                            .in('Animal_ParentOf')
+                                                .in('Animal_ParentOf'))
+                                                    .exhaustMerge
+                    }
+                    .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf___1')
+                .back('Animal__out_Animal_ParentOf___1')
+                    .optional('Animal___1')
+                    .as('Animal___2')
+            .transform{it,
+                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                    ancestor_name: (
+                        (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf___1 != null) ?
+                            m.Animal__out_Animal_ParentOf__in_Animal_ParentOf___1.name : null
+                    ),
+                    name: m.Animal___1.name,
+                    parent_name: (
+                        (m.Animal__out_Animal_ParentOf___1 != null) ?
+                            m.Animal__out_Animal_ParentOf___1.name : null
+                    )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
