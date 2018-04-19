@@ -3560,8 +3560,7 @@ FROM (
         '''
 
         expected_gremlin = '''
-            g.V('@class',
-                'Animal')
+            g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
                 .as('Animal__out_Animal_ParentOf___1')
