@@ -322,7 +322,6 @@ class Recurse(BasicBlock):
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this block."""
-        # TODO(shankha): What if within_optional_scope <18-04-18> #
         self.validate()
         template = 'copySplit({recurse}).exhaustMerge'
         recurse_base = '_()'
