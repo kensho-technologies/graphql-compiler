@@ -214,9 +214,6 @@ def validate_vertex_field_directive_in_context(location, directives, context):
     if optional_context and fold_directive:
         raise GraphQLCompilationError(u'@fold is not allowed within a @optional traversal! '
                                       u'Location: {}'.format(location))
-    # if optional_context and recurse_directive:
-        # raise GraphQLCompilationError(u'@recurse is not allowed within a @optional traversal! '
-                                      # u'Location: {}'.format(location))
     if optional_context and output_source_directive:
         raise GraphQLCompilationError(u'@output_source is not allowed within a @optional '
                                       u'traversal! Location: {}'.format(location))
