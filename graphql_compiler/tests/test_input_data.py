@@ -1655,3 +1655,103 @@ def coercion_on_interface_within_optional_traversal():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
+
+
+def filter_on_optional_traversal_equality():
+    # The operand in the @filter directive originates from an optional block.
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_ParentOf {
+                out_Animal_ParentOf @optional {
+                    out_Animal_FedAt {
+                        name @tag(tag_name: "grandchild_fed_at_event")
+                    }
+                }
+            }
+            out_Animal_FedAt @output_source {
+                name @filter(op_name: "=", value: ["%grandchild_fed_at_event"])
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def filter_on_optional_traversal_name_or_alias():
+    # The operand in the @filter directive originates from an optional block.
+    graphql_input = '''{
+        Animal {
+            in_Animal_ParentOf @optional {
+                in_Animal_ParentOf {
+                    name @tag(tag_name: "grandparent_name")
+                }
+            }
+            out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["%grandparent_name"])
+                                @output_source {
+                name @output(out_name: "animal_name")
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def complex_optional_traversal_variables():
+    # The operands in the @filter directives originate from an optional block.
+    graphql_input = '''{
+        Animal {
+            name @filter(op_name: "=", value: ["$animal_name"])
+            out_Animal_ParentOf {
+                out_Animal_FedAt @optional {
+                    name @tag(tag_name: "child_fed_at_event")
+                    event_date @tag(tag_name: "child_fed_at")
+                               @output(out_name: "child_fed_at")
+                }
+                in_Animal_ParentOf @optional {
+                    out_Animal_FedAt {
+                        event_date @tag(tag_name: "other_parent_fed_at")
+                                   @output(out_name: "other_parent_fed_at")
+                    }
+                }
+            }
+            in_Animal_ParentOf {
+                out_Animal_FedAt {
+                    name @filter(op_name: "=", value: ["%child_fed_at_event"])
+                    event_date @output(out_name: "grandparent_fed_at")
+                               @filter(op_name: "between",
+                                       value: ["%other_parent_fed_at", "%child_fed_at"])
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'child_fed_at': OutputMetadata(type=GraphQLDateTime, optional=True),
+        'other_parent_fed_at': OutputMetadata(type=GraphQLDateTime, optional=True),
+        'grandparent_fed_at': OutputMetadata(type=GraphQLDateTime, optional=False),
+    }
+    expected_input_metadata = {
+        'animal_name': GraphQLString,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)

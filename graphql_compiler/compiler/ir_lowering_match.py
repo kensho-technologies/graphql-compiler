@@ -596,8 +596,9 @@ def collect_filters_to_first_location_instance(compound_match_query):
 
 
 def lower_filter_expressions_in_compound_match_query(compound_match_query):
+    """Replace Expressons involving non-existent tags with True."""
     def update_expression(expression, current_locations):
-        """Expression visitor function that .............."""
+        """Replace non-existent tag Expressons with True, and simplify the result."""
         if isinstance(expression, BinaryComposition):
             if isinstance(expression.left, ContextField):
                 context_field = expression.left
@@ -636,7 +637,9 @@ def lower_filter_expressions_in_compound_match_query(compound_match_query):
                 return expression
         else:
             return expression
+
     def construct_visitor_fn(current_locations):
+        """Construct an Expression updater using the given `current_locations`."""
         def visitor_fn(expression):
             return update_expression(expression, current_locations)
         return visitor_fn
