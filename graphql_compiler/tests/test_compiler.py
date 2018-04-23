@@ -3591,3 +3591,87 @@ FROM (
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_multiple_traverse_within_optional(self):
+        test_data = test_input_data.multiple_traverse_within_optional()
+
+        expected_match = '''
+            SELECT EXPAND($result)
+            LET
+            $optional__0 = (
+                SELECT Animal___1.name AS `name`
+                    FROM (
+                        MATCH {{
+                            class: Animal,
+                            where: ((
+                                (out_Animal_ParentOf IS null)
+                                OR
+                                (out_Animal_ParentOf.size() = 0))),
+                            as: Animal___1
+                        }}
+                        RETURN $matches
+                    )
+            ),
+            $optional__1 = (
+                SELECT
+                    Animal__out_Animal_ParentOf__in_Animal_ParentOf___1.name
+                        AS `grandparent_name`,
+                    Animal___1.name AS `name`,
+                    Animal__out_Animal_ParentOf__out_Animal_FedAt___1.name
+                        AS `parent_feeding_time`,
+                    Animal__out_Animal_ParentOf___1.name AS
+                        `parent_name`
+                    FROM (
+                        MATCH {{
+                            class: Animal,
+                            as: Animal___1
+                        }}.out('Animal_ParentOf') {{
+                            as: Animal__out_Animal_ParentOf___1
+                        }}.in('Animal_ParentOf') {{
+                            as: Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
+                        }} ,
+                        {{
+                            class: Animal,
+                            as: Animal__out_Animal_ParentOf___1
+                        }}.out('Animal_FedAt') {{
+                            as: Animal__out_Animal_ParentOf__out_Animal_FedAt___1
+                        }}
+                        RETURN $matches
+                    )
+            ),
+            $result = UNIONALL($optional__0, $optional__1)
+        '''
+
+        expected_gremlin = '''
+            g.V('@class',
+                'Animal')
+            .as('Animal___1')
+                .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
+                .as('Animal__out_Animal_ParentOf___1')
+                    .ifThenElse{it == null}{null}{it.in('Animal_ParentOf')}
+                    .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf___1')
+                .back('Animal__out_Animal_ParentOf___1')
+                    .ifThenElse{it == null}{null}{it.out('Animal_FedAt')}
+                    .as('Animal__out_Animal_ParentOf__out_Animal_FedAt___1')
+                .back('Animal__out_Animal_ParentOf___1')
+            .optional('Animal___1')
+            .as('Animal___2')
+            .transform{it,
+                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                grandparent_name: (
+                    (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf___1 != null) ?
+                        m.Animal__out_Animal_ParentOf__in_Animal_ParentOf___1.name : null
+                ),
+                name: m.Animal___1.name,
+                parent_feeding_time: (
+                    (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
+                        m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.name : null
+                ),
+                parent_name: (
+                    (m.Animal__out_Animal_ParentOf___1 != null) ?
+                        m.Animal__out_Animal_ParentOf___1.name : null
+                )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)

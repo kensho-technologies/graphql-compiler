@@ -16,7 +16,7 @@ import funcy.py2 as funcy
 import six
 
 from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, QueryRoot,
-                     Recurse, Traverse)
+                     Traverse)
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, Expression,
                           FalseLiteral, Literal, LocalField, NullLiteral, OutputContextField,
                           TernaryConditional, TrueLiteral, UnaryTransformation, ZeroLiteral)

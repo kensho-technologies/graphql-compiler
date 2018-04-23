@@ -1781,3 +1781,33 @@ def simple_optional_recurse():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
+
+
+def multiple_traverse_within_optional():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "name")
+            out_Animal_ParentOf @optional {
+                name @output(out_name: "parent_name")
+                in_Animal_ParentOf {
+                    name @output(out_name: "grandparent_name")
+                }
+                out_Animal_FedAt {
+                    name @output(out_name: "parent_feeding_time")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandparent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'parent_feeding_time': OutputMetadata(type=GraphQLString, optional=True),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
