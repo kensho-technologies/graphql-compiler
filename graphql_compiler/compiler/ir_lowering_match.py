@@ -447,8 +447,8 @@ def convert_optional_traversals_to_compound_match_query(
         one for each possible subset of the n optional edges being followed
     """
     optional_location_subsets = itertools.chain(
-        *map(lambda x: itertools.combinations(optional_locations, x),
-             range(0, len(optional_locations)+1))
+        *[itertools.combinations(optional_locations, x)
+            for x in range(0, len(optional_locations)+1)]
     )
     compound_match_traversals = []
     for omitted_locations in reversed(list(optional_location_subsets)):
