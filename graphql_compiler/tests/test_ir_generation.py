@@ -179,6 +179,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(revisited_base_location),
             blocks.Traverse('out', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(child_location),
+            blocks.EndOptional(),
             blocks.Backtrack(revisited_base_location, optional=True),
             blocks.MarkLocation(twice_revisited_base_location),
             blocks.ConstructResult({
@@ -327,6 +328,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(child_location),
             blocks.Traverse('out', 'Animal_FedAt', optional=True),
             blocks.MarkLocation(child_fed_at_location),
+            blocks.EndOptional(),
             blocks.Backtrack(child_location, optional=True),
             blocks.MarkLocation(child_revisited_location),
             blocks.Backtrack(base_location),
@@ -377,6 +379,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(base_location),
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(parent_location),
+            blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(base_revisited_location),
             blocks.Traverse('out', 'Animal_ParentOf'),
@@ -438,6 +441,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(animal_fed_at_location),
+            blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
             blocks.ConstructResult({
@@ -604,6 +608,7 @@ class IrGenerationTests(unittest.TestCase):
 
             blocks.Traverse('out', 'Animal_FedAt', optional=True),
             blocks.MarkLocation(child_fed_at_location),
+            blocks.EndOptional(),
             blocks.Backtrack(child_location, optional=True),
             blocks.MarkLocation(revisited_child_location),
 
@@ -611,6 +616,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(other_parent_location),
             blocks.Traverse('out', 'Animal_FedAt', optional=True),
             blocks.MarkLocation(other_parent_fed_at_location),
+            blocks.EndOptional(),
             blocks.Backtrack(other_parent_location, optional=True),
             blocks.MarkLocation(other_parent_revisited_location),
             blocks.Backtrack(revisited_child_location),
@@ -813,6 +819,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Traverse('out', 'Species_Eats', optional=True),
             blocks.CoerceType({'Food'}),
             blocks.MarkLocation(food_location),
+            blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
             blocks.ConstructResult({
@@ -1103,6 +1110,7 @@ class IrGenerationTests(unittest.TestCase):
 
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(parent_location),
+            blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
 
@@ -1209,6 +1217,7 @@ class IrGenerationTests(unittest.TestCase):
 
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(parent_location),
+            blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
 
@@ -1284,6 +1293,7 @@ class IrGenerationTests(unittest.TestCase):
 
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(parent_location),
+            blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
 
@@ -1428,6 +1438,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(animal_location),
             blocks.Traverse('out', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(child_location),
+            blocks.EndOptional(),
             blocks.Backtrack(animal_location, optional=True),
             blocks.MarkLocation(revisited_animal_location),
             blocks.Backtrack(base_location),

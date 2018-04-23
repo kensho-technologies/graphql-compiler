@@ -444,26 +444,15 @@ def convert_optional_traversals_to_compound_match_query(
 
     Args:
         match_query: MatchQuery object potentially containing n `@optional` scopes
-            which expand vertex fields
+                     which expand vertex fields
+        optional_locations: List of locations with @optional that expand vertex fields within.
+        location_to_optional: Dict mappingall locations within optional scopes
+                              to the corresponding optional tag.
 
     Returns:
         CompoundMatchQuery object containing 2^n MatchQuery objects,
         one for each possible subset of the n optional edges being followed
     """
-    # match_traversals_possibilities = []
-    # for traversal in match_query.match_traversals:
-        # if _is_optional_traverse(traversal):
-            # current_posibilities = [
-                # _remove_optional_traverse(traversal),
-                # _make_mandatory_traverse(traversal)
-            # ]
-        # else:
-            # current_posibilities = [traversal]
-        # match_traversals_possibilities.append(current_posibilities)
-    # compound_match_traversals = list(itertools.product(*match_traversals_possibilities))
-    # if len(compound_match_traversals) != 2**len(optional_locations):
-        # raise AssertionError
-
     optional_location_subsets = itertools.chain(
         *map(lambda x: itertools.combinations(optional_locations, x),
              range(0, len(optional_locations)+1)
