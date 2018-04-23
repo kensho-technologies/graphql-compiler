@@ -1,7 +1,8 @@
 # Copyright 2017 Kensho Technologies, Inc.
 """Language-independent IR lowering and optimization functions."""
 
-from .blocks import ConstructResult, Filter, Fold, Unfold
+from .blocks import (ConstructResult, EndOptional, Filter,
+                     Fold, MarkLocation, Recurse, Traverse, Unfold)
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
                           NullLiteral, TrueLiteral)
 from .helpers import validate_safe_string
@@ -204,3 +205,55 @@ def extract_folds_from_ir_blocks(ir_blocks):
                 remaining_ir_blocks.append(block)
 
     return folds, remaining_ir_blocks
+
+
+def extract_location_to_optional_from_ir_blocks(ir_blocks):
+    """Extract all @fold data from the IR blocks, and cut the folded IR blocks out of the IR.
+
+    Args:
+        ir_blocks: list of IR blocks to extract fold data from
+
+    Returns:
+        tuple (folds, remaining_ir_blocks):
+        - folds: dict of FoldScopeLocation -> list of IR blocks corresponding to that @fold scope.
+                 The list does not contain Fold or Unfold blocks.
+        - remaining_ir_blocks: list of IR blocks that were not part of a Fold-Unfold section.
+    """
+    optional_locations = []
+    location_to_optional = dict()
+    in_optional_location = None
+    encountered_traverse_within_optional = False
+    previous_block = None
+    remaining_ir_blocks = []
+
+    for block in ir_blocks:
+        if isinstance(block, Traverse) and block.optional:
+            if in_optional_location is not None:
+                raise AssertionError(u'in_optional_location was not None at an optional traverse: '
+                                     u'{} {}'.format(block, ir_blocks))
+            if previous_block is None:
+                raise AssertionError(u'First block encountered in ir_blocks was optional: '
+                                     u'{}'.format(ir_blocks))
+            if not isinstance(previous_block, MarkLocation):
+                raise AssertionError(u'No MarkLocation found before an optional traverse: '
+                                     u'{} {}'.format(block, ir_blocks))
+            in_optional_location = previous_block.location
+        elif in_optional_location is not None and isinstance(block, (Traverse, Recurse)):
+            encountered_traverse_within_optional = True
+        elif isinstance(block, EndOptional):
+            if in_optional_location is None:
+                raise AssertionError(u'in_optional_location was None at an EndOptional block: '
+                                     u'{}'.format(ir_blocks))
+            if encountered_traverse_within_optional:
+                optional_locations.append(in_optional_location)
+            in_optional_location = None
+            encountered_traverse_within_optional = False
+        elif isinstance(block, MarkLocation):
+            location_to_optional[block.location] = in_optional_location
+
+        if not isinstance(block, EndOptional):
+            remaining_ir_blocks.append(block)
+
+        previous_block = block
+
+    return optional_locations, location_to_optional, remaining_ir_blocks

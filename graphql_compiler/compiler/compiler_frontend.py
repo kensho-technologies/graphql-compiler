@@ -444,6 +444,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                      u'Location: {}'.format(fold_scope_location))
 
         if in_topmost_optional_block:
+            basic_blocks.append(blocks.EndOptional())
             del context['optional']
 
         # If we are currently evaluating a @fold vertex,

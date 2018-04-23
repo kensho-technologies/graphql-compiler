@@ -20,7 +20,8 @@ from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocatio
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, Expression,
                           FalseLiteral, Literal, LocalField, NullLiteral, OutputContextField,
                           TernaryConditional, TrueLiteral, UnaryTransformation, ZeroLiteral)
-from .ir_lowering_common import (lower_context_field_existence, merge_consecutive_filter_clauses,
+from .ir_lowering_common import (extract_location_to_optional_from_ir_blocks,
+                                 lower_context_field_existence, merge_consecutive_filter_clauses,
                                  optimize_boolean_expression_comparisons)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .match_query import MatchQuery, MatchStep, convert_to_match_query
@@ -437,7 +438,8 @@ def _make_mandatory_traverse(traverse):
     return new_traverse
 
 
-def convert_optional_traversals_to_compound_match_query(match_query):
+def convert_optional_traversals_to_compound_match_query(
+        match_query, optional_locations, location_to_optional):
     """Return 2^n distinct MatchQuery objects in a CompoundMatchQuery.
 
     Args:
@@ -448,17 +450,59 @@ def convert_optional_traversals_to_compound_match_query(match_query):
         CompoundMatchQuery object containing 2^n MatchQuery objects,
         one for each possible subset of the n optional edges being followed
     """
-    match_traversals_possibilities = []
-    for traversal in match_query.match_traversals:
-        if _is_optional_traverse(traversal):
-            current_posibilities = [
-                _remove_optional_traverse(traversal),
-                _make_mandatory_traverse(traversal)
-            ]
-        else:
-            current_posibilities = [traversal]
-        match_traversals_possibilities.append(current_posibilities)
-    compound_match_traversals = list(itertools.product(*match_traversals_possibilities))
+    # match_traversals_possibilities = []
+    # for traversal in match_query.match_traversals:
+        # if _is_optional_traverse(traversal):
+            # current_posibilities = [
+                # _remove_optional_traverse(traversal),
+                # _make_mandatory_traverse(traversal)
+            # ]
+        # else:
+            # current_posibilities = [traversal]
+        # match_traversals_possibilities.append(current_posibilities)
+    # compound_match_traversals = list(itertools.product(*match_traversals_possibilities))
+    # if len(compound_match_traversals) != 2**len(optional_locations):
+        # raise AssertionError
+
+    optional_location_subsets = itertools.chain(
+        *map(lambda x: itertools.combinations(optional_locations, x),
+             range(0, len(optional_locations)+1)
+        )
+    )
+    compound_match_traversals = []
+    for omitted_locations in reversed(list(optional_location_subsets)):
+        new_match_traversals = []
+        for traverse in match_query.match_traversals:
+            location = traverse[0].as_block.location
+            if location_to_optional.get(location, None) not in omitted_locations:
+                new_traverse = []
+                for step in traverse:
+                    if isinstance(step.root_block, Traverse) and step.root_block.optional:
+                        in_optional_location = location_to_optional.get(
+                            step.as_block.location, None)
+                        if in_optional_location in omitted_locations:
+                            field_name = step.root_block.get_field_name()
+                            new_predicate = _filter_local_field_existence(field_name)
+                            old_filter = new_traverse[-1].where_block
+                            if old_filter:
+                                new_predicate = BinaryComposition(
+                                    u'&&', old_filter.predicate, new_predicate)
+                            new_traverse[-1] = new_traverse[-1]._replace(
+                                where_block=Filter(new_predicate))
+                            break
+                        elif in_optional_location in optional_locations:
+                            new_root_block = Traverse(
+                                step.root_block.direction,
+                                step.root_block.edge_name)
+                            new_traverse.append(step._replace(root_block=new_root_block))
+                        else:
+                            new_traverse.append(step)
+                    else:
+                        new_traverse.append(step)
+                new_match_traversals.append(new_traverse)
+            else:
+                continue
+        compound_match_traversals.append(new_match_traversals)
 
     return CompoundMatchQuery(
         match_queries=[
@@ -718,6 +762,8 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     sanity_check_ir_blocks_from_frontend(ir_blocks)
 
     # These lowering / optimization passes work on IR blocks.
+    optional_locations, location_to_optional, ir_blocks \
+        = extract_location_to_optional_from_ir_blocks(ir_blocks)
     ir_blocks = lower_context_field_existence(ir_blocks)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
     ir_blocks = rewrite_binary_composition_inside_ternary_conditional(ir_blocks)
@@ -745,7 +791,8 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     }
     match_query = match_query._replace(folds=new_folds)
 
-    compound_match_query = convert_optional_traversals_to_compound_match_query(match_query)
+    compound_match_query = convert_optional_traversals_to_compound_match_query(
+        match_query, optional_locations, location_to_optional)
     compound_match_query = prune_output_blocks_in_compound_match_query(
         compound_match_query)
     compound_match_query = collect_filters_to_first_location_instance(compound_match_query)

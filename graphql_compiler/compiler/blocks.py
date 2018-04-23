@@ -423,3 +423,11 @@ class Unfold(MarkerBlock):
     def validate(self):
         """Unfold blocks are always valid in isolation."""
         pass
+
+
+class EndOptional(MarkerBlock):
+    """A marker for the end of a @fold context."""
+
+    def validate(self):
+        """Unfold blocks are always valid in isolation."""
+        pass
