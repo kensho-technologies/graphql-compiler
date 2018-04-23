@@ -400,41 +400,34 @@ def _filter_local_field_existence(field_name):
     return BinaryComposition(u'||', field_null_check, field_size_check)
 
 
-def _is_optional_traverse(traverse):
-    """Return True if `traverse` contains any traversal within an @optional scope."""
-    return any(
-        isinstance(step.root_block, (Traverse, Recurse)) and step.root_block.within_optional_scope
-        for step in traverse
-    )
-
-
-def _remove_optional_traverse(traverse):
-    """Return a new traversal, removing the optional traverse and all following steps."""
+def _prune_traverse_using_omitted_locations(traverse,
+                                            omitted_locations,
+                                            optional_locations,
+                                            location_to_optional):
+    """Return a prefix of the given traverse, excluding any blocks after an omitted optional."""
     new_traverse = []
     for step in traverse:
-        if not isinstance(step.root_block, Traverse) or not step.root_block.optional:
-            new_traverse.append(step)
+        if isinstance(step.root_block, Traverse) and step.root_block.optional:
+            in_optional_location = location_to_optional.get(
+                step.as_block.location, None)
+            if in_optional_location in omitted_locations:
+                # Add filter to indicate that the omitted edge(s) shoud not exist
+                field_name = step.root_block.get_field_name()
+                new_predicate = _filter_local_field_existence(field_name)
+                old_filter = new_traverse[-1].where_block
+                if old_filter:
+                    new_predicate = BinaryComposition(u'&&', old_filter.predicate, new_predicate)
+                new_traverse[-1] = new_traverse[-1]._replace(
+                    where_block=Filter(new_predicate))
+                break
+            elif in_optional_location in optional_locations:
+                new_root_block = Traverse(step.root_block.direction, step.root_block.edge_name)
+                new_traverse.append(step._replace(root_block=new_root_block))
+            else:
+                new_traverse.append(step)
         else:
-            field_name = step.root_block.get_field_name()
-            new_predicate = _filter_local_field_existence(field_name)
-            old_filter = new_traverse[-1].where_block
-            if old_filter:
-                new_predicate = BinaryComposition(u'&&', old_filter.predicate, new_predicate)
-            new_traverse[-1] = new_traverse[-1]._replace(where_block=Filter(new_predicate))
-            return new_traverse
-    raise AssertionError(u'No optional traverse found in: {}'.format(traverse))
-
-
-def _make_mandatory_traverse(traverse):
-    """Return a new traversal, without the optional condition."""
-    new_traverse = []
-    for step in traverse:
-        if not isinstance(step.root_block, Traverse) or not step.root_block.optional:
             new_traverse.append(step)
-        else:
-            old_block = step.root_block
-            new_root_block = Traverse(old_block.direction, old_block.edge_name)
-            new_traverse.append(step._replace(root_block=new_root_block))
+
     return new_traverse
 
 
@@ -455,8 +448,7 @@ def convert_optional_traversals_to_compound_match_query(
     """
     optional_location_subsets = itertools.chain(
         *map(lambda x: itertools.combinations(optional_locations, x),
-             range(0, len(optional_locations)+1)
-        )
+             range(0, len(optional_locations)+1))
     )
     compound_match_traversals = []
     for omitted_locations in reversed(list(optional_location_subsets)):
@@ -464,30 +456,12 @@ def convert_optional_traversals_to_compound_match_query(
         for traverse in match_query.match_traversals:
             location = traverse[0].as_block.location
             if location_to_optional.get(location, None) not in omitted_locations:
-                new_traverse = []
-                for step in traverse:
-                    if isinstance(step.root_block, Traverse) and step.root_block.optional:
-                        in_optional_location = location_to_optional.get(
-                            step.as_block.location, None)
-                        if in_optional_location in omitted_locations:
-                            field_name = step.root_block.get_field_name()
-                            new_predicate = _filter_local_field_existence(field_name)
-                            old_filter = new_traverse[-1].where_block
-                            if old_filter:
-                                new_predicate = BinaryComposition(
-                                    u'&&', old_filter.predicate, new_predicate)
-                            new_traverse[-1] = new_traverse[-1]._replace(
-                                where_block=Filter(new_predicate))
-                            break
-                        elif in_optional_location in optional_locations:
-                            new_root_block = Traverse(
-                                step.root_block.direction,
-                                step.root_block.edge_name)
-                            new_traverse.append(step._replace(root_block=new_root_block))
-                        else:
-                            new_traverse.append(step)
-                    else:
-                        new_traverse.append(step)
+                new_traverse = _prune_traverse_using_omitted_locations(
+                    traverse,
+                    omitted_locations,
+                    optional_locations,
+                    location_to_optional
+                )
                 new_match_traversals.append(new_traverse)
             else:
                 continue
