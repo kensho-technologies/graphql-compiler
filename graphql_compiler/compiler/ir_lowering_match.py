@@ -8,12 +8,14 @@ to generate directly from this Expression object. An output-language-aware IR lo
 us to convert this Expression into other Expressions, using data already present in the IR,
 to simplify the final code generation step.
 """
+from collections import deque
+
 import funcy.py2 as funcy
 import six
 
 from .blocks import Backtrack, CoerceType, Filter, MarkLocation, QueryRoot, Traverse
-from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
-                          Literal, LocalField, TernaryConditional, TrueLiteral)
+from .expressions import (BetweenClause, BinaryComposition, ContextField, ContextFieldExistence,
+                          FalseLiteral, Literal, LocalField, TernaryConditional, TrueLiteral)
 from .ir_lowering_common import (lower_context_field_existence, merge_consecutive_filter_clauses,
                                  optimize_boolean_expression_comparisons)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
@@ -378,6 +380,86 @@ def remove_backtrack_blocks_from_fold(folded_ir_blocks):
     return new_folded_ir_blocks
 
 
+def _expression_list_to_conjunction(expression_list):
+    """Return an Expression that is the `&&` of all the expressions in the given list."""
+    if len(expression_list) == 0:
+        raise AssertionError(u'Received empty expression_list: {}'.format(expression_list))
+    elif len(expression_list) == 1:
+        return expression_list[0]
+    else:
+        remaining_conjunction = _expression_list_to_conjunction(expression_list[1:])
+        return BinaryComposition(u'&&', expression_list[0], remaining_conjunction)
+
+
+def _extract_conjuction_elements_from_expression(expression):
+    """Return a list of expressions that are connected by `&&`s in the given expression."""
+    if isinstance(expression, BinaryComposition) and expression.operator == u'&&':
+        expression_list = _extract_conjuction_elements_from_expression(expression.left)
+        expression_list.extend(_extract_conjuction_elements_from_expression(expression.right))
+        return expression_list
+    else:
+        return [expression]
+
+
+def _lower_expressions_to_between(base_expression):
+    """Return a new expression, with any eligible comparisons lowered to `between` clauses."""
+    expression_list = _extract_conjuction_elements_from_expression(base_expression)
+    if len(expression_list) == 0:
+        raise AssertionError
+    if len(expression_list) == 1:
+        return base_expression
+    between_operators = (u'<=', u'>=')
+    local_field_to_expressions = {}
+    new_expression_list = deque([])
+    for expression in expression_list:
+        if isinstance(expression, BinaryComposition) \
+                and expression.operator in between_operators \
+                and isinstance(expression.left, LocalField):
+            field_name = expression.left.field_name
+            expression_dict = local_field_to_expressions.setdefault(field_name, {})
+            expression_dict[expression.operator] = expression
+        else:
+            new_expression_list.append(expression)
+
+    flag = False
+    for field_name in local_field_to_expressions:
+        expressions_dict = local_field_to_expressions[field_name]
+        # TODO(shankha): What if there are multiple exp[ressions with the same operator <23-04-18> #
+        if all(operator in expressions_dict for operator in between_operators):
+            field = LocalField(field_name)
+            lower_bound = expression_dict[u'>='].right
+            upper_bound = expression_dict[u'<='].right
+            new_expression_list.appendleft(BetweenClause(field, lower_bound, upper_bound))
+            flag = True
+        else:
+            for expression in expression_dict.values():
+                new_expression_list.append(expression)
+
+    if flag:
+        return _expression_list_to_conjunction(new_expression_list)
+    else:
+        return base_expression
+
+
+def lower_comparisons_to_between(match_query):
+    """Return a new MatchQuery, with all eligible comparison filters lowered to between clauses."""
+    new_match_traversals = []
+
+    for current_match_traversal in match_query.match_traversals:
+        new_traversal = []
+        for step in current_match_traversal:
+            if step.where_block:
+                expression = step.where_block.predicate
+                new_where_block = Filter(_lower_expressions_to_between(expression))
+                new_traversal.append(step._replace(where_block=new_where_block))
+            else:
+                new_traversal.append(step)
+
+        new_match_traversals.append(new_traversal)
+
+    return match_query._replace(match_traversals=new_match_traversals)
+
+
 ##############
 # Public API #
 ##############
@@ -420,6 +502,8 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     # Here, we lower from raw IR blocks into a MatchQuery object.
     # From this point on, the lowering / optimization passes work on the MatchQuery representation.
     match_query = convert_to_match_query(ir_blocks)
+
+    match_query = lower_comparisons_to_between(match_query)
 
     match_query = lower_optional_traverse_blocks(match_query, location_types)
     match_query = lower_backtrack_blocks(match_query, location_types)

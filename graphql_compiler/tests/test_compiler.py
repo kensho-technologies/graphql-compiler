@@ -447,7 +447,7 @@ FROM (
             FROM (
                 MATCH {{
                     class: Animal,
-                    where: (((name >= {lower}) AND (name <= {upper}))),
+                    where: ((name BETWEEN {lower} AND {upper})),
                     as: Animal___1
                 }}
                 RETURN $matches
@@ -476,8 +476,8 @@ FROM (
                 MATCH {{
                     class: Animal,
                     where: ((
-                        (birthday >= date({lower}, "yyyy-MM-dd")) AND
-                        (birthday <= date({upper}, "yyyy-MM-dd"))
+                        birthday BETWEEN
+                            date({lower}, "yyyy-MM-dd") AND date({upper}, "yyyy-MM-dd")
                     )),
                     as: Animal___1
                 }}
@@ -510,8 +510,9 @@ FROM (
                 MATCH {{
                     class: Event,
                     where: ((
-                        (event_date >= date({lower}, "yyyy-MM-dd'T'HH:mm:ssX")) AND
-                        (event_date <= date({upper}, "yyyy-MM-dd'T'HH:mm:ssX"))
+                        event_date BETWEEN
+                            date({lower}, "yyyy-MM-dd'T'HH:mm:ssX")
+                            AND date({upper}, "yyyy-MM-dd'T'HH:mm:ssX")
                     )),
                     as: Event___1
                 }}
