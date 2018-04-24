@@ -533,6 +533,34 @@ FROM (
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_between_lowering_on_simple_scalar(self):
+        # The "between" filter emits different output depending on what the compared types are.
+        # This test checks for correct code generation when the type is a simple scalar (a String).
+        test_data = test_input_data.between_lowering_on_simple_scalar()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((name BETWEEN {lower} AND {upper})),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> ((it.name <= $upper) && (it.name >= $lower))}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_complex_optional_variables(self):
         # The operands in the @filter directives originate from an optional block,
         # in addition to having very complex filtering logic.
