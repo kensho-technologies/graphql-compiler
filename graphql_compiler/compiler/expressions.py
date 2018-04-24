@@ -834,7 +834,7 @@ class BetweenClause(Expression):
         new_upper_bound = self.upper_bound.visit_and_update(visitor_fn)
 
         if new_lower_bound is not self.lower_bound or new_upper_bound is not self.upper_bound:
-            return visitor_fn(BinaryComposition(self.operator, new_lower_bound, new_upper_bound))
+            return visitor_fn(BetweenClause(self.field, new_lower_bound, new_upper_bound))
         else:
             return visitor_fn(self)
 

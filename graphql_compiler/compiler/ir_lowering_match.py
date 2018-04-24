@@ -417,18 +417,18 @@ def _lower_expressions_to_between(base_expression):
                 and isinstance(expression.left, LocalField):
             field_name = expression.left.field_name
             expression_dict = local_field_to_expressions.setdefault(field_name, {})
-            expression_dict[expression.operator] = expression
+            expression_dict.setdefault(expression.operator, []).append(expression)
         else:
             new_expression_list.append(expression)
 
     flag = False
     for field_name in local_field_to_expressions:
         expressions_dict = local_field_to_expressions[field_name]
-        # TODO(shankha): What if there are multiple exp[ressions with the same operator <23-04-18> #
-        if all(operator in expressions_dict for operator in between_operators):
+        if all(operator in expressions_dict and len(expressions_dict[operator]) == 1
+               for operator in between_operators):
             field = LocalField(field_name)
-            lower_bound = expression_dict[u'>='].right
-            upper_bound = expression_dict[u'<='].right
+            lower_bound = expression_dict[u'>='][0].right
+            upper_bound = expression_dict[u'<='][0].right
             new_expression_list.appendleft(BetweenClause(field, lower_bound, upper_bound))
             flag = True
         else:
