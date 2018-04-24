@@ -14,13 +14,69 @@ import funcy.py2 as funcy
 import six
 
 from .blocks import Backtrack, CoerceType, Filter, MarkLocation, QueryRoot, Traverse
-from .expressions import (BetweenClause, BinaryComposition, ContextField, ContextFieldExistence,
+from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, Expression,
                           FalseLiteral, Literal, LocalField, TernaryConditional, TrueLiteral)
 from .ir_lowering_common import (lower_context_field_existence, merge_consecutive_filter_clauses,
                                  optimize_boolean_expression_comparisons)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .match_query import MatchStep, convert_to_match_query
 from .workarounds import orientdb_class_with_while, orientdb_eval_scheduling
+
+
+class BetweenClause(Expression):
+    """A `BETWEEN` Expression, constraining a field value to lie within a lower and upper bound."""
+
+    def __init__(self, field, lower_bound, upper_bound):
+        """Construct an expression that is true when the field value is within the given bounds.
+
+        Args:
+            field: LocalField Expression, denoting the field in consideration
+            lower_bound: lower bound constraint for given field
+            upper_bound: upper bound constraint for given field
+
+        Returns:
+            a new BetweenClause object
+        """
+        super(BetweenClause, self).__init__(self, field, lower_bound, upper_bound)
+        self.field = field
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
+
+    def validate(self):
+        """Validate that the Between Expression is correctly representable."""
+        if not isinstance(self.field, LocalField):
+            raise TypeError(u'Expected LocalField field, got: {} {}'.format(
+                type(self.field).__name__, self.field))
+
+        if not isinstance(self.lower_bound, Expression):
+            raise TypeError(u'Expected Expression lower_bound, got: {} {}'.format(
+                type(self.lower_bound).__name__, self.lower_bound))
+
+        if not isinstance(self.upper_bound, Expression):
+            raise TypeError(u'Expected Expression upper_bound, got: {} {}'.format(
+                type(self.upper_bound).__name__, self.upper_bound))
+
+    def visit_and_update(self, visitor_fn):
+        """Create an updated version (if needed) of BetweenClause via the visitor pattern."""
+        new_lower_bound = self.lower_bound.visit_and_update(visitor_fn)
+        new_upper_bound = self.upper_bound.visit_and_update(visitor_fn)
+
+        if new_lower_bound is not self.lower_bound or new_upper_bound is not self.upper_bound:
+            return visitor_fn(BetweenClause(self.field, new_lower_bound, new_upper_bound))
+        else:
+            return visitor_fn(self)
+
+    def to_match(self):
+        """Return a unicode object with the MATCH representation of this BetweenClause."""
+        template = u'({field_name} BETWEEN {lower_bound} AND {upper_bound})'
+        return template.format(
+            field_name=self.field.to_match(),
+            lower_bound=self.lower_bound.to_match(),
+            upper_bound=self.upper_bound.to_match())
+
+    def to_gremlin(self):
+        """Must never be called."""
+        raise NotImplementedError()
 
 
 ##################################
@@ -383,7 +439,9 @@ def remove_backtrack_blocks_from_fold(folded_ir_blocks):
 def _expression_list_to_conjunction(expression_list):
     """Return an Expression that is the `&&` of all the expressions in the given list."""
     if len(expression_list) == 0:
-        raise AssertionError(u'Received empty expression_list: {}'.format(expression_list))
+        raise AssertionError(u'Received empty expression_list '
+                             u'(function should never be called with empty list): '
+                             u'{}'.format(expression_list))
     elif len(expression_list) == 1:
         return expression_list[0]
     else:
@@ -394,51 +452,74 @@ def _expression_list_to_conjunction(expression_list):
 def _extract_conjuction_elements_from_expression(expression):
     """Return a list of expressions that are connected by `&&`s in the given expression."""
     if isinstance(expression, BinaryComposition) and expression.operator == u'&&':
-        expression_list = _extract_conjuction_elements_from_expression(expression.left)
-        expression_list.extend(_extract_conjuction_elements_from_expression(expression.right))
-        return expression_list
+        for element in _extract_conjuction_elements_from_expression(expression.left):
+            yield element
+        for element in _extract_conjuction_elements_from_expression(expression.right):
+            yield element
     else:
-        return [expression]
+        yield expression
+
+
+def _construct_field_operator_expression_dict(expression_list, operators):
+    """Construct a mapping from local fields to specified operators, and corresponding expressions.
+
+    Args:
+        expression_list: list of expressions to analyze
+        operators: list of BInaryComposition operators used to select the "important" expressions
+
+    Returns:
+        local_field_to_expressions:
+            dict mapping local field names to "operator => BinaryComposition" dictionaries,
+            for each BinaryComposition operator involving the LocalField
+        remaining_expression_list:
+            list of remaining expressions that were *not*
+            BinaryCompositions on a LocalField using any of the specified operators
+    """
+    local_field_to_expressions = {}
+    remaining_expression_list = deque([])
+    for expression in expression_list:
+        if all([isinstance(expression, BinaryComposition),
+                expression.operator in operators,
+                isinstance(expression.left, LocalField)]):
+            field_name = expression.left.field_name
+            expressions_dict = local_field_to_expressions.setdefault(field_name, {})
+            expressions_dict.setdefault(expression.operator, []).append(expression)
+        else:
+            remaining_expression_list.append(expression)
+    return local_field_to_expressions, remaining_expression_list
 
 
 def _lower_expressions_to_between(base_expression):
     """Return a new expression, with any eligible comparisons lowered to `between` clauses."""
-    expression_list = _extract_conjuction_elements_from_expression(base_expression)
+    expression_list = list(_extract_conjuction_elements_from_expression(base_expression))
     if len(expression_list) == 0:
-        raise AssertionError
-    if len(expression_list) == 1:
+        raise AssertionError(u'Received empty expression_list {} from base_expression: '
+                             u'{}'.format(expression_list, base_expression))
+    elif len(expression_list) == 1:
         return base_expression
-    between_operators = (u'<=', u'>=')
-    local_field_to_expressions = {}
-    new_expression_list = deque([])
-    for expression in expression_list:
-        if isinstance(expression, BinaryComposition) \
-                and expression.operator in between_operators \
-                and isinstance(expression.left, LocalField):
-            field_name = expression.left.field_name
-            expression_dict = local_field_to_expressions.setdefault(field_name, {})
-            expression_dict.setdefault(expression.operator, []).append(expression)
-        else:
-            new_expression_list.append(expression)
-
-    flag = False
-    for field_name in local_field_to_expressions:
-        expressions_dict = local_field_to_expressions[field_name]
-        if all(operator in expressions_dict and len(expressions_dict[operator]) == 1
-               for operator in between_operators):
-            field = LocalField(field_name)
-            lower_bound = expression_dict[u'>='][0].right
-            upper_bound = expression_dict[u'<='][0].right
-            new_expression_list.appendleft(BetweenClause(field, lower_bound, upper_bound))
-            flag = True
-        else:
-            for expression in expression_dict.values():
-                new_expression_list.append(expression)
-
-    if flag:
-        return _expression_list_to_conjunction(new_expression_list)
     else:
-        return base_expression
+        between_operators = (u'<=', u'>=')
+        local_field_to_expressions, new_expression_list = _construct_field_operator_expression_dict(
+            expression_list, between_operators)
+
+        lowering_occurred = False
+        for field_name in local_field_to_expressions:
+            expressions_dict = local_field_to_expressions[field_name]
+            if all(operator in expressions_dict and len(expressions_dict[operator]) == 1
+                   for operator in between_operators):
+                field = LocalField(field_name)
+                lower_bound = expressions_dict[u'>='][0].right
+                upper_bound = expressions_dict[u'<='][0].right
+                new_expression_list.appendleft(BetweenClause(field, lower_bound, upper_bound))
+                lowering_occurred = True
+            else:
+                for expression in expressions_dict.values():
+                    new_expression_list.append(expression)
+
+        if lowering_occurred:
+            return _expression_list_to_conjunction(new_expression_list)
+        else:
+            return base_expression
 
 
 def lower_comparisons_to_between(match_query):
