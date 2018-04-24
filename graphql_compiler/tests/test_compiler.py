@@ -561,6 +561,48 @@ FROM (
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_between_lowering_with_extra_filters(self):
+        test_data = test_input_data.between_lowering_with_extra_filters()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((
+                        (name BETWEEN {lower} AND {upper})
+                        AND
+                        (
+                            (name LIKE ('%' + ({substring} + '%')))
+                            AND
+                            ({fauna} CONTAINS name)
+                        )
+                    )),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (
+                (
+                    ((it.name <= $upper) && it.name.contains($substring))
+                    &&
+                    $fauna.contains(it.name)
+                )
+                &&
+                (it.name >= $lower)
+            )}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_no_between_lowering_on_simple_scalar(self):
         # The "between" filter emits different output depending on what the compared types are.
         # This test checks for correct code generation when the type is a simple scalar (a String).

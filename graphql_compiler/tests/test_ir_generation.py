@@ -598,6 +598,53 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_between_lowering_with_extra_filters(self):
+        test_data = test_input_data.between_lowering_with_extra_filters()
+
+        base_location = helpers.Location(('Animal',))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(
+                    expressions.BinaryComposition(
+                        u'<=',
+                        expressions.LocalField('name'),
+                        expressions.Variable('$upper', GraphQLString)
+                    ),
+            ),
+            blocks.Filter(
+                    expressions.BinaryComposition(
+                        u'has_substring',
+                        expressions.LocalField('name'),
+                        expressions.Variable('$substring', GraphQLString)
+                    ),
+            ),
+            blocks.Filter(
+                    expressions.BinaryComposition(
+                        u'contains',
+                        expressions.Variable('$fauna', GraphQLList(GraphQLString)),
+                        expressions.LocalField('name')
+                    ),
+            ),
+            blocks.Filter(
+                    expressions.BinaryComposition(
+                        u'>=',
+                        expressions.LocalField('name'),
+                        expressions.Variable('$lower', GraphQLString)
+                    ),
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString)
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_no_between_lowering_on_simple_scalar(self):
         test_data = test_input_data.no_between_lowering_on_simple_scalar()
 

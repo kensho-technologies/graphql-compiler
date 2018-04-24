@@ -438,6 +438,9 @@ def remove_backtrack_blocks_from_fold(folded_ir_blocks):
 
 def _expression_list_to_conjunction(expression_list):
     """Return an Expression that is the `&&` of all the expressions in the given list."""
+    if not isinstance(expression_list, list):
+        raise AssertionError(u'Expected list. Received {}: '
+                             u'{}'.format(type(expression_list).__name__, expression_list))
     if len(expression_list) == 0:
         raise AssertionError(u'Received empty expression_list '
                              u'(function should never be called with empty list): '
@@ -517,7 +520,7 @@ def _lower_expressions_to_between(base_expression):
                     new_expression_list.append(expression)
 
         if lowering_occurred:
-            return _expression_list_to_conjunction(new_expression_list)
+            return _expression_list_to_conjunction(list(new_expression_list))
         else:
             return base_expression
 
