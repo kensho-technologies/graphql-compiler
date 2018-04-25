@@ -657,6 +657,7 @@ class MatchIrLoweringTests(unittest.TestCase):
         check_test_data(self, expected_final_blocks, final_block)
 
     def test_between_lowering_inverted_inequalities(self):
+        # Lowering two `>=` inequalities to a BETWEEN clause
         base_location = Location(('Animal',))
 
         filter_block = Filter(
