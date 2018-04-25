@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, Inc.
+# Copyright 2017 Kensho Technologies, LLC.
 """Commonly-used functions and data types from this package."""
 from .compiler import CompilationResult, OutputMetadata  # noqa
 from .compiler import compile_graphql_to_gremlin, compile_graphql_to_match  # noqa

@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, Inc.
+# Copyright 2017 Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
 
 from .blocks import ConstructResult, Filter, Fold, Unfold

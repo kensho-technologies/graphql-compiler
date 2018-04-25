@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, Inc.
+# Copyright 2017 Kensho Technologies, LLC.
 import unittest
 
 from .. import graphql_to_gremlin, graphql_to_match
