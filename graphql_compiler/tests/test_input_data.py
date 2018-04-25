@@ -319,6 +319,86 @@ def between_filter_on_datetime():
         type_equivalence_hints=None)
 
 
+def between_lowering_on_simple_scalar():
+    # The "between" filter emits different output depending on what the compared types are.
+    # This test checks for correct code generation when the type is a simple scalar (a String).
+    graphql_input = '''{
+        Animal {
+            name @filter(op_name: "<=", value: ["$upper"])
+                 @filter(op_name: ">=", value: ["$lower"])
+                 @output(out_name: "name")
+        }
+    }'''
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'lower': GraphQLString,
+        'upper': GraphQLString,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def between_lowering_with_extra_filters():
+    graphql_input = '''{
+        Animal {
+            name @filter(op_name: "<=", value: ["$upper"])
+                 @filter(op_name: "has_substring", value: ["$substring"])
+                 @filter(op_name: "in_collection", value: ["$fauna"])
+                 @filter(op_name: ">=", value: ["$lower"])
+                 @output(out_name: "name")
+        }
+    }'''
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'lower': GraphQLString,
+        'upper': GraphQLString,
+        'substring': GraphQLString,
+        'fauna': GraphQLList(GraphQLString)
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def no_between_lowering_on_simple_scalar():
+    # The following filters do not get lowered to a BETWEEN clause.
+    # This is because the compiler has no way to decide which lower bound to use.
+    # The parameters are not provided to the compiler.
+    graphql_input = '''{
+        Animal {
+            name @filter(op_name: "<=", value: ["$upper"])
+                 @filter(op_name: ">=", value: ["$lower0"])
+                 @filter(op_name: ">=", value: ["$lower1"])
+                 @output(out_name: "name")
+        }
+    }'''
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'lower0': GraphQLString,
+        'lower1': GraphQLString,
+        'upper': GraphQLString,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def complex_optional_variables():
     # The operands in the @filter directives originate from an optional block.
     graphql_input = '''{
