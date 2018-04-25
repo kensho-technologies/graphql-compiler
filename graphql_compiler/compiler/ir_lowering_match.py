@@ -658,55 +658,57 @@ def collect_filters_to_first_location_instance(compound_match_query):
     return CompoundMatchQuery(match_queries=new_match_queries)
 
 
-def lower_filter_expressions_in_compound_match_query(compound_match_query):
-    """Replace Expressons involving non-existent tags with True."""
-    def update_expression(expression, current_locations):
-        """Replace non-existent tag Expressons with True, and simplify the result."""
-        if isinstance(expression, BinaryComposition):
-            if isinstance(expression.left, ContextField):
-                context_field = expression.left
-            elif isinstance(expression.right, ContextField):
-                context_field = expression.right
-            elif expression.operator == u'||':
-                if expression.left == TrueLiteral or expression.right == TrueLiteral:
-                    return TrueLiteral
-                else:
-                    return expression
-            elif expression.operator == u'&&':
-                if expression.left == TrueLiteral and expression.right == TrueLiteral:
-                    return TrueLiteral
-                if expression.left == TrueLiteral:
-                    return expression.right
-                if expression.right == TrueLiteral:
-                    return expression.left
-                else:
-                    return expression
-            else:
-                return expression
-            location_name, _ = context_field.location.get_location_name()
-            if location_name not in current_locations:
+def _update_tagged_expression(expression, current_locations):
+    """Replace non-existent tag Expressons with True, and simplify the result."""
+    if isinstance(expression, BinaryComposition):
+        if isinstance(expression.left, ContextField):
+            context_field = expression.left
+        elif isinstance(expression.right, ContextField):
+            context_field = expression.right
+        elif expression.operator == u'||':
+            if expression.left == TrueLiteral or expression.right == TrueLiteral:
                 return TrueLiteral
             else:
                 return expression
-        elif isinstance(expression, TernaryConditional):
-            if expression.predicate == TrueLiteral:
-                return expression.if_true
-            else:
-                return expression
-        elif isinstance(expression, Filter):
-            if expression.predicate == TrueLiteral:
-                return None
+        elif expression.operator == u'&&':
+            if expression.left == TrueLiteral and expression.right == TrueLiteral:
+                return TrueLiteral
+            if expression.left == TrueLiteral:
+                return expression.right
+            if expression.right == TrueLiteral:
+                return expression.left
             else:
                 return expression
         else:
             return expression
+        location_name, _ = context_field.location.get_location_name()
+        if location_name not in current_locations:
+            return TrueLiteral
+        else:
+            return expression
+    elif isinstance(expression, TernaryConditional):
+        if expression.predicate == TrueLiteral:
+            return expression.if_true
+        else:
+            return expression
+    elif isinstance(expression, Filter):
+        if expression.predicate == TrueLiteral:
+            return None
+        else:
+            return expression
+    else:
+        return expression
 
-    def construct_visitor_fn(current_locations):
-        """Construct an Expression updater using the given `current_locations`."""
-        def visitor_fn(expression):
-            return update_expression(expression, current_locations)
-        return visitor_fn
 
+def _construct_update_tags_visitor_fn(current_locations):
+    """Return an Expression updater using the given `current_locations`."""
+    def visitor_fn(expression):
+        return _update_tagged_expression(expression, current_locations)
+    return visitor_fn
+
+
+def lower_filter_expressions_in_compound_match_query(compound_match_query):
+    """Replace Expressons involving non-existent tags with True."""
     if len(compound_match_query.match_queries) == 1:
         return compound_match_query
     elif len(compound_match_query.match_queries) == 0:
@@ -723,7 +725,7 @@ def lower_filter_expressions_in_compound_match_query(compound_match_query):
                         location_name, _ = step.as_block.location.get_location_name()
                         current_locations.add(location_name)
 
-            current_visitor_fn = construct_visitor_fn(current_locations)
+            current_visitor_fn = _construct_update_tags_visitor_fn(current_locations)
             new_match_traversals = []
             for traversal in match_traversals:
                 new_match_traversal = []
