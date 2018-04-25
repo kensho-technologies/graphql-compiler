@@ -9,7 +9,7 @@ us to convert this Expression into other Expressions, using data already present
 to simplify the final code generation step.
 """
 
-from collections import namedtuple
+from collections import deque, namedtuple
 import itertools
 
 import funcy.py2 as funcy
