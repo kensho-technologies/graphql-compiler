@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, Inc.
+# Copyright 2017 Kensho Technologies, LLC.
 """Tools to create MATCH query objects from partially-lowered IR blocks, for easier manipulation."""
 
 from collections import namedtuple

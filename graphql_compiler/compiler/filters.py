@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, Inc.
+# Copyright 2017 Kensho Technologies, LLC.
 from functools import partial, wraps
 
 from graphql import GraphQLInt, GraphQLList, GraphQLScalarType, GraphQLString, GraphQLUnionType

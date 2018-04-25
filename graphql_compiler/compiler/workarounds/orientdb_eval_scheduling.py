@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, Inc.
+# Copyright 2017 Kensho Technologies, LLC.
 """Workaround for OrientDB query scheduling issue with eval() statements.
 
 OrientDB <2.2.17 (and perhaps future versions as well) fail to pick up $matched
