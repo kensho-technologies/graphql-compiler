@@ -447,7 +447,7 @@ FROM (
             FROM (
                 MATCH {{
                     class: Animal,
-                    where: (((name >= {lower}) AND (name <= {upper}))),
+                    where: ((name BETWEEN {lower} AND {upper})),
                     as: Animal___1
                 }}
                 RETURN $matches
@@ -476,8 +476,8 @@ FROM (
                 MATCH {{
                     class: Animal,
                     where: ((
-                        (birthday >= date({lower}, "yyyy-MM-dd")) AND
-                        (birthday <= date({upper}, "yyyy-MM-dd"))
+                        birthday BETWEEN
+                            date({lower}, "yyyy-MM-dd") AND date({upper}, "yyyy-MM-dd")
                     )),
                     as: Animal___1
                 }}
@@ -510,8 +510,9 @@ FROM (
                 MATCH {{
                     class: Event,
                     where: ((
-                        (event_date >= date({lower}, "yyyy-MM-dd'T'HH:mm:ssX")) AND
-                        (event_date <= date({upper}, "yyyy-MM-dd'T'HH:mm:ssX"))
+                        event_date BETWEEN
+                            date({lower}, "yyyy-MM-dd'T'HH:mm:ssX")
+                            AND date({upper}, "yyyy-MM-dd'T'HH:mm:ssX")
                     )),
                     as: Event___1
                 }}
@@ -528,6 +529,102 @@ FROM (
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 event_date: m.Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
             ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_between_lowering_on_simple_scalar(self):
+        # The "between" filter emits different output depending on what the compared types are.
+        # This test checks for correct code generation when the type is a simple scalar (a String).
+        test_data = test_input_data.between_lowering_on_simple_scalar()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((name BETWEEN {lower} AND {upper})),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> ((it.name <= $upper) && (it.name >= $lower))}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_between_lowering_with_extra_filters(self):
+        test_data = test_input_data.between_lowering_with_extra_filters()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((
+                        (name BETWEEN {lower} AND {upper})
+                        AND
+                        (
+                            (name LIKE ('%' + ({substring} + '%')))
+                            AND
+                            ({fauna} CONTAINS name)
+                        )
+                    )),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (
+                (
+                    ((it.name <= $upper) && it.name.contains($substring))
+                    &&
+                    $fauna.contains(it.name)
+                )
+                &&
+                (it.name >= $lower)
+            )}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_no_between_lowering_on_simple_scalar(self):
+        test_data = test_input_data.no_between_lowering_on_simple_scalar()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((((name <= {upper}) AND (name >= {lower0})) AND (name >= {lower1}))),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+           g.V('@class', 'Animal')
+           .filter{it, m -> (((it.name <= $upper) && (it.name >= $lower0)) && (it.name >= $lower1))}
+           .as('Animal___1')
+           .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+               name: m.Animal___1.name
+           ])}
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
