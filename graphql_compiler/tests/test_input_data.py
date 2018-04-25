@@ -372,8 +372,9 @@ def between_lowering_with_extra_filters():
 
 
 def no_between_lowering_on_simple_scalar():
-    # The "between" filter emits different output depending on what the compared types are.
-    # This test checks for correct code generation when the type is a simple scalar (a String).
+    # The following filters do not get lowered to a BETWEEN clause
+    # This is because the compiler has no way to decide which lower bound to use
+    # The parameters are not provided to the compiler
     graphql_input = '''{
         Animal {
             name @filter(op_name: "<=", value: ["$upper"])

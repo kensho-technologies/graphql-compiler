@@ -453,7 +453,7 @@ def _expression_list_to_conjunction(expression_list):
 
 
 def _extract_conjuction_elements_from_expression(expression):
-    """Return a list of expressions that are connected by `&&`s in the given expression."""
+    """Return a generator for expressions that are connected by `&&`s in the given expression."""
     if isinstance(expression, BinaryComposition) and expression.operator == u'&&':
         for element in _extract_conjuction_elements_from_expression(expression.left):
             yield element
@@ -463,30 +463,38 @@ def _extract_conjuction_elements_from_expression(expression):
         yield expression
 
 
-def _construct_field_operator_expression_dict(expression_list, operators):
+def _construct_field_operator_expression_dict(expression_list):
     """Construct a mapping from local fields to specified operators, and corresponding expressions.
 
     Args:
         expression_list: list of expressions to analyze
-        operators: list of BInaryComposition operators used to select the "important" expressions
 
     Returns:
         local_field_to_expressions:
-            dict mapping local field names to "operator => BinaryComposition" dictionaries,
+            dict mapping local field names to "operator -> BinaryComposition" dictionaries,
             for each BinaryComposition operator involving the LocalField
         remaining_expression_list:
             list of remaining expressions that were *not*
-            BinaryCompositions on a LocalField using any of the specified operators
+            BinaryCompositions on a LocalField using any of the between operators
     """
+    between_operators = (u'<=', u'>=')
+    operator_inverse = {u'>=': u'<=', u'<=': u'>='}
     local_field_to_expressions = {}
     remaining_expression_list = deque([])
     for expression in expression_list:
-        if all([isinstance(expression, BinaryComposition),
-                expression.operator in operators,
-                isinstance(expression.left, LocalField)]):
-            field_name = expression.left.field_name
+        if all((
+            isinstance(expression, BinaryComposition),
+            expression.operator in between_operators,
+            isinstance(expression.left, LocalField) or isinstance(expression.right, LocalField)
+        )):
+            if isinstance(expression.right, LocalField):
+                new_operator = inverse_operator[expression.operator]
+                new_expression = BinaryComposition(new_operator, expression.right, expression.left)
+            else:
+                new_expression = expression
+            field_name = new_expression.left.field_name
             expressions_dict = local_field_to_expressions.setdefault(field_name, {})
-            expressions_dict.setdefault(expression.operator, []).append(expression)
+            expressions_dict.setdefault(expression.operator, []).append(new_expression)
         else:
             remaining_expression_list.append(expression)
     return local_field_to_expressions, remaining_expression_list
@@ -503,7 +511,7 @@ def _lower_expressions_to_between(base_expression):
     else:
         between_operators = (u'<=', u'>=')
         local_field_to_expressions, new_expression_list = _construct_field_operator_expression_dict(
-            expression_list, between_operators)
+            expression_list)
 
         lowering_occurred = False
         for field_name in local_field_to_expressions:

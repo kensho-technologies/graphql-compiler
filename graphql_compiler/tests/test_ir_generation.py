@@ -573,18 +573,18 @@ class IrGenerationTests(unittest.TestCase):
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.Filter(
-                    expressions.BinaryComposition(
-                        u'<=',
-                        expressions.LocalField('name'),
-                        expressions.Variable('$upper', GraphQLString)
-                    ),
+                expressions.BinaryComposition(
+                    u'<=',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$upper', GraphQLString)
+                ),
             ),
             blocks.Filter(
-                    expressions.BinaryComposition(
-                        u'>=',
-                        expressions.LocalField('name'),
-                        expressions.Variable('$lower', GraphQLString)
-                    ),
+                expressions.BinaryComposition(
+                    u'>=',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$lower', GraphQLString)
+                ),
             ),
             blocks.MarkLocation(base_location),
             blocks.ConstructResult({
@@ -606,32 +606,32 @@ class IrGenerationTests(unittest.TestCase):
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.Filter(
-                    expressions.BinaryComposition(
-                        u'<=',
-                        expressions.LocalField('name'),
-                        expressions.Variable('$upper', GraphQLString)
-                    ),
+                expressions.BinaryComposition(
+                    u'<=',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$upper', GraphQLString)
+                ),
             ),
             blocks.Filter(
-                    expressions.BinaryComposition(
-                        u'has_substring',
-                        expressions.LocalField('name'),
-                        expressions.Variable('$substring', GraphQLString)
-                    ),
+                expressions.BinaryComposition(
+                    u'has_substring',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$substring', GraphQLString)
+                ),
             ),
             blocks.Filter(
-                    expressions.BinaryComposition(
-                        u'contains',
-                        expressions.Variable('$fauna', GraphQLList(GraphQLString)),
-                        expressions.LocalField('name')
-                    ),
+                expressions.BinaryComposition(
+                    u'contains',
+                    expressions.Variable('$fauna', GraphQLList(GraphQLString)),
+                    expressions.LocalField('name')
+                ),
             ),
             blocks.Filter(
-                    expressions.BinaryComposition(
-                        u'>=',
-                        expressions.LocalField('name'),
-                        expressions.Variable('$lower', GraphQLString)
-                    ),
+                expressions.BinaryComposition(
+                    u'>=',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$lower', GraphQLString)
+                ),
             ),
             blocks.MarkLocation(base_location),
             blocks.ConstructResult({
@@ -653,25 +653,25 @@ class IrGenerationTests(unittest.TestCase):
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.Filter(
-                    expressions.BinaryComposition(
-                        u'<=',
-                        expressions.LocalField('name'),
-                        expressions.Variable('$upper', GraphQLString)
-                    ),
+                expressions.BinaryComposition(
+                    u'<=',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$upper', GraphQLString)
+                ),
             ),
             blocks.Filter(
-                    expressions.BinaryComposition(
-                        u'>=',
-                        expressions.LocalField('name'),
-                        expressions.Variable('$lower0', GraphQLString)
-                    ),
+                expressions.BinaryComposition(
+                    u'>=',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$lower0', GraphQLString)
+                ),
             ),
             blocks.Filter(
-                    expressions.BinaryComposition(
-                        u'>=',
-                        expressions.LocalField('name'),
-                        expressions.Variable('$lower1', GraphQLString)
-                    ),
+                expressions.BinaryComposition(
+                    u'>=',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$lower1', GraphQLString)
+                ),
             ),
             blocks.MarkLocation(base_location),
             blocks.ConstructResult({

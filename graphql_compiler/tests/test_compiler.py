@@ -604,8 +604,6 @@ FROM (
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
     def test_no_between_lowering_on_simple_scalar(self):
-        # The "between" filter emits different output depending on what the compared types are.
-        # This test checks for correct code generation when the type is a simple scalar (a String).
         test_data = test_input_data.no_between_lowering_on_simple_scalar()
 
         expected_match = '''
