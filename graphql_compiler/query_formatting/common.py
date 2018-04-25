@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, Inc.
+# Copyright 2017 Kensho Technologies, LLC.
 """Safely insert runtime arguments into compiled GraphQL queries."""
 import six
 

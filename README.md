@@ -1012,4 +1012,4 @@ software distributed under the License is distributed on an "AS IS" BASIS, WITHO
 CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 
-Copyright 2017 Kensho Technologies, Inc.
+Copyright 2017 Kensho Technologies, LLC.
