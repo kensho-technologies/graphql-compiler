@@ -656,6 +656,56 @@ class MatchIrLoweringTests(unittest.TestCase):
         final_block = ir_lowering_match.lower_has_substring_binary_compositions(special_ir_block)
         check_test_data(self, expected_final_blocks, final_block)
 
+    def test_between_lowering_inverted_inequalities(self):
+        base_location = Location(('Animal',))
+
+        filter_block = Filter(
+            BinaryComposition(
+                u'&&',
+                BinaryComposition(
+                    u'>=',
+                    Variable('$upper', GraphQLString),
+                    LocalField('name'),
+                ),
+                BinaryComposition(
+                    u'>=',
+                    LocalField('name'),
+                    Variable('$lower', GraphQLString)
+                )
+            )
+        )
+        ir_blocks = [
+            QueryRoot({'Animal'}),
+            filter_block,
+            MarkLocation(base_location),
+            ConstructResult({
+                'name': OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString)
+            }),
+        ]
+        match_query = convert_to_match_query(ir_blocks)
+
+        expected_final_filter_block = Filter(
+            ir_lowering_match.BetweenClause(
+                LocalField('name'),
+                Variable('$lower', GraphQLString),
+                Variable('$upper', GraphQLString)
+            )
+        )
+        expected_final_ir_blocks = [
+            QueryRoot({'Animal'}),
+            expected_final_filter_block,
+            MarkLocation(base_location),
+            ConstructResult({
+                'name': OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString)
+            }),
+        ]
+        expected_final_query = convert_to_match_query(expected_final_ir_blocks)
+
+        final_query = ir_lowering_match.lower_comparisons_to_between(match_query)
+        check_test_data(self, expected_final_query, final_query)
+
     # Disabled until OrientDB fixes the limitation against traversing from an optional vertex.
     # For details, see https://github.com/orientechnologies/orientdb/issues/6788
     @pytest.mark.skip(reason='traversing from an optional node is not currently supported in MATCH')

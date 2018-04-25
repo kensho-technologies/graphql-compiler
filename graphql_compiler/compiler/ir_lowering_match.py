@@ -37,7 +37,7 @@ class BetweenClause(Expression):
         Returns:
             a new BetweenClause object
         """
-        super(BetweenClause, self).__init__(self, field, lower_bound, upper_bound)
+        super(BetweenClause, self).__init__(field, lower_bound, upper_bound)
         self.field = field
         self.lower_bound = lower_bound
         self.upper_bound = upper_bound
@@ -478,7 +478,7 @@ def _construct_field_operator_expression_dict(expression_list):
             BinaryCompositions on a LocalField using any of the between operators
     """
     between_operators = (u'<=', u'>=')
-    operator_inverse = {u'>=': u'<=', u'<=': u'>='}
+    inverse_operator = {u'>=': u'<=', u'<=': u'>='}
     local_field_to_expressions = {}
     remaining_expression_list = deque([])
     for expression in expression_list:
@@ -494,7 +494,7 @@ def _construct_field_operator_expression_dict(expression_list):
                 new_expression = expression
             field_name = new_expression.left.field_name
             expressions_dict = local_field_to_expressions.setdefault(field_name, {})
-            expressions_dict.setdefault(expression.operator, []).append(new_expression)
+            expressions_dict.setdefault(new_expression.operator, []).append(new_expression)
         else:
             remaining_expression_list.append(expression)
     return local_field_to_expressions, remaining_expression_list
