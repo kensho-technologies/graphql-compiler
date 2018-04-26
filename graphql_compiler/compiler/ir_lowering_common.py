@@ -1,5 +1,6 @@
 # Copyright 2017 Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
+import six
 
 from .blocks import (ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse,
                      Unfold)
@@ -261,7 +262,7 @@ def extract_location_to_optional_from_ir_blocks(ir_blocks):
     # Locations not in @optional scope are currently mapped to None.
     # Remove these from the mapping.
     location_to_optional = {location: optional_location
-                            for location, optional_location in location_to_optional.iteritems()
+                            for location, optional_location in six.iteritems(location_to_optional)
                             if optional_location is not None}
 
     return optional_locations, location_to_optional, new_ir_blocks
