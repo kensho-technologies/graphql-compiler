@@ -539,7 +539,7 @@ def convert_optional_traversals_to_compound_match_query(
 
 
 def prune_output_blocks_in_compound_match_query(compound_match_query):
-    """Remove nonexistent outputs and folds from each MatchQuery in the given CompoundMatchQuery."""
+    """Remove nonexistent outputs from each MatchQuery in the given CompoundMatchQuery."""
     if len(compound_match_query.match_queries) == 1:
         return compound_match_query
     elif len(compound_match_query.match_queries) == 0:
@@ -593,6 +593,21 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
         return CompoundMatchQuery(match_queries=match_queries)
 
 
+def _construct_location_to_predicate_list(match_query):
+    """Return a dict mapping location -> list of filter predicates applied at that location."""
+    location_to_predicates = {}
+    # Construct a dictionary mapping locations --> a list of predicates
+    # applied to the corresponding location (in `where_blocks`)
+    for match_traversal in match_query.match_traversals:
+        for match_step in match_traversal:
+            current_filter = match_step.where_block
+            if current_filter:
+                current_location = match_step.as_block.location
+                location_to_predicates.setdefault(current_location, []).append(
+                    current_filter.predicate)
+    return location_to_predicates
+
+
 def _predicate_list_to_where_block(predicate_list):
     """Convert a list of predicates to an Expression that is the conjunction of all of them."""
     if not isinstance(predicate_list, list):
@@ -611,44 +626,42 @@ def _predicate_list_to_where_block(predicate_list):
                                  predicate_list[0])
 
 
+def _collect_filters_to_first_location_in_match_traversal(match_traversal, location_to_predicates):
+    """Compose all filters for a specific location into its first occurence in given traversal."""
+    new_match_traversal = []
+    for match_step in match_traversal:
+        # Apply all filters for a location to the first occurence of that location
+        if match_step.as_block.location in location_to_predicates:
+            where_block = Filter(
+                _predicate_list_to_where_block(
+                    location_to_predicates[match_step.as_block.location]
+                )
+            )
+            # Delete the location entry. No further filters needed for this location.
+            del location_to_predicates[match_step.as_block.location]
+        else:
+            where_block = None
+        new_match_step = MatchStep(
+            root_block=match_step.root_block,
+            coerce_type_block=match_step.coerce_type_block,
+            where_block=where_block,
+            as_block=match_step.as_block
+        )
+        new_match_traversal.append(new_match_step)
+    return new_match_traversal
+
+
 def collect_filters_to_first_location_instance(compound_match_query):
     """Collate all filters for a particular location to the first instance of the location."""
     new_match_queries = []
     # Each MatchQuery is processed independently
     for match_query in compound_match_query.match_queries:
-        location_to_predicates = {}
-        # Construct a dictionary mapping locations --> a list of predicates
-        # applied to the corresponding location (in `where_blocks`)
-        for match_traversal in match_query.match_traversals:
-            for match_step in match_traversal:
-                current_filter = match_step.where_block
-                if current_filter:
-                    current_location = match_step.as_block.location
-                    location_to_predicates.setdefault(current_location, []).append(
-                        current_filter.predicate)
+        location_to_predicates = _construct_location_to_predicate_list(match_query)
 
         new_match_traversals = []
         for match_traversal in match_query.match_traversals:
-            new_match_traversal = []
-            for match_step in match_traversal:
-                # Apply all filters for a location to the first occurence of that location
-                if match_step.as_block.location in location_to_predicates:
-                    where_block = Filter(
-                        _predicate_list_to_where_block(
-                            location_to_predicates[match_step.as_block.location]
-                        )
-                    )
-                    # Delete the location entry. No further filters needed for this location.
-                    del location_to_predicates[match_step.as_block.location]
-                else:
-                    where_block = None
-                new_match_step = MatchStep(
-                    root_block=match_step.root_block,
-                    coerce_type_block=match_step.coerce_type_block,
-                    where_block=where_block,
-                    as_block=match_step.as_block
-                )
-                new_match_traversal.append(new_match_step)
+            new_match_traversal = _collect_filters_to_first_location_in_match_traversal(
+                match_traversal, location_to_predicates)
             new_match_traversals.append(new_match_traversal)
         new_match_queries.append(
             MatchQuery(
