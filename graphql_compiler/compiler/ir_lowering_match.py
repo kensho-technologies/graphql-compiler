@@ -718,8 +718,38 @@ def _construct_update_tags_visitor_fn(current_locations):
     return visitor_fn
 
 
-def lower_filter_expressions_in_compound_match_query(compound_match_query):
-    """Replace Expressons involving non-existent tags with True."""
+def _get_current_locations_from_match_traversals(match_traversals):
+    """Return a set of locations present in the given match traversals."""
+    current_locations = set()
+
+    for traversal in match_traversals:
+        for step in traversal:
+            if step.as_block is not None:
+                location_name, _ = step.as_block.location.get_location_name()
+                current_locations.add(location_name)
+    return current_locations
+
+
+def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
+    """Return new match traversals, replacing filters involving non-existent tags with True."""
+    new_match_traversals = []
+    for traversal in match_traversals:
+        new_match_traversal = []
+        for step in traversal:
+            if step.where_block is not None:
+                new_filter = step.where_block.visit_and_update_expressions(visitor_fn)
+                if new_filter.predicate == TrueLiteral:
+                    new_filter = None
+                new_step = step._replace(where_block=new_filter)
+            else:
+                new_step = step
+            new_match_traversal.append(new_step)
+        new_match_traversals.append(new_match_traversal)
+    return new_match_traversals
+
+
+def lower_filters_in_compound_match_query(compound_match_query):
+    """Lower Expressons involving non-existent tags."""
     if len(compound_match_query.match_queries) == 1:
         return compound_match_query
     elif len(compound_match_query.match_queries) == 0:
@@ -728,29 +758,11 @@ def lower_filter_expressions_in_compound_match_query(compound_match_query):
         new_match_queries = []
         for match_query in compound_match_query.match_queries:
             match_traversals = match_query.match_traversals
-            current_locations = set()
-
-            for traversal in match_traversals:
-                for step in traversal:
-                    if step.as_block is not None:
-                        location_name, _ = step.as_block.location.get_location_name()
-                        current_locations.add(location_name)
-
+            current_locations = _get_current_locations_from_match_traversals(match_traversals)
             current_visitor_fn = _construct_update_tags_visitor_fn(current_locations)
-            new_match_traversals = []
-            for traversal in match_traversals:
-                new_match_traversal = []
-                for step in traversal:
-                    if step.where_block is not None:
-                        new_filter = step.where_block.visit_and_update_expressions(
-                            current_visitor_fn)
-                        if new_filter.predicate == TrueLiteral:
-                            new_filter = None
-                        new_step = step._replace(where_block=new_filter)
-                    else:
-                        new_step = step
-                    new_match_traversal.append(new_step)
-                new_match_traversals.append(new_match_traversal)
+
+            new_match_traversals = _lower_filters_in_match_traversals(
+                match_traversals, current_visitor_fn)
             new_match_queries.append(
                 MatchQuery(
                     match_traversals=new_match_traversals,
@@ -947,6 +959,6 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     compound_match_query = prune_output_blocks_in_compound_match_query(
         compound_match_query)
     compound_match_query = collect_filters_to_first_location_instance(compound_match_query)
-    compound_match_query = lower_filter_expressions_in_compound_match_query(compound_match_query)
+    compound_match_query = lower_filters_in_compound_match_query(compound_match_query)
 
     return compound_match_query
