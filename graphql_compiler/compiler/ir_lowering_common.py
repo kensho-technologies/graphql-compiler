@@ -208,23 +208,25 @@ def extract_folds_from_ir_blocks(ir_blocks):
 
 
 def extract_location_to_optional_from_ir_blocks(ir_blocks):
-    """Extract all @fold data from the IR blocks, and cut the folded IR blocks out of the IR.
+    """Construct a mapping from locations within @optional to their correspoding optional Traverse.
 
     Args:
-        ir_blocks: list of IR blocks to extract fold data from
+        ir_blocks: list of IR blocks to extract optional data from
 
     Returns:
-        tuple (folds, remaining_ir_blocks):
-        - folds: dict of FoldScopeLocation -> list of IR blocks corresponding to that @fold scope.
-                 The list does not contain Fold or Unfold blocks.
-        - remaining_ir_blocks: list of IR blocks that were not part of a Fold-Unfold section.
+        tuple (optional_locations, location_to_optional, new_ir_blocks):
+        - optional_locations: List of @optional locations that expand vertex fields
+        - location_to_optional: mapping from location -> optional_location
+            where location is within @optional scope,
+            and optional_location is the starting location of the corresponding @optional scope
+        - new_ir_blocks: given list of IR blocks with EndOptional blocks removed
     """
     optional_locations = []
     location_to_optional = dict()
     in_optional_location = None
     encountered_traverse_within_optional = False
     previous_block = None
-    remaining_ir_blocks = []
+    new_ir_blocks = []
 
     for block in ir_blocks:
         if isinstance(block, Traverse) and block.optional:
@@ -252,8 +254,14 @@ def extract_location_to_optional_from_ir_blocks(ir_blocks):
             location_to_optional[block.location] = in_optional_location
 
         if not isinstance(block, EndOptional):
-            remaining_ir_blocks.append(block)
+            new_ir_blocks.append(block)
 
         previous_block = block
 
-    return optional_locations, location_to_optional, remaining_ir_blocks
+    # Locations not in @optional scope are currently mapped to None.
+    # Remove these from the mapping.
+    location_to_optional = {location: optional_location
+                            for location, optional_location in location_to_optional.iteritems()
+                            if optional_location is not None}
+
+    return optional_locations, location_to_optional, new_ir_blocks

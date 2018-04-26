@@ -456,27 +456,29 @@ def _filter_local_field_existence(field_name):
     return BinaryComposition(u'||', field_null_check, field_size_check)
 
 
-def _prune_traverse_using_omitted_locations(traverse,
-                                            omitted_locations,
-                                            optional_locations,
+def _prune_traverse_using_omitted_locations(traverse, omitted_locations, optional_locations,
                                             location_to_optional):
     """Return a prefix of the given traverse, excluding any blocks after an omitted optional."""
     new_traverse = []
     for step in traverse:
         if isinstance(step.root_block, Traverse) and step.root_block.optional:
-            in_optional_location = location_to_optional.get(
-                step.as_block.location, None)
+            current_location = step.as_block.location
+            in_optional_location = location_to_optional.get(current_location, None)
+
             if in_optional_location in omitted_locations:
                 # Add filter to indicate that the omitted edge(s) shoud not exist
                 field_name = step.root_block.get_field_name()
                 new_predicate = _filter_local_field_existence(field_name)
                 old_filter = new_traverse[-1].where_block
-                if old_filter:
+                if old_filter is not None:
                     new_predicate = BinaryComposition(u'&&', old_filter.predicate, new_predicate)
-                new_traverse[-1] = new_traverse[-1]._replace(
-                    where_block=Filter(new_predicate))
+                new_traverse[-1] = new_traverse[-1]._replace(where_block=Filter(new_predicate))
+
+                # Discard all steps following the omitted @optional traverse
                 break
             elif in_optional_location in optional_locations:
+                # Any non-omitted @optional traverse (that expands vertex fields)
+                # becomes a normal mandatory traverse (discard the optional flag).
                 new_root_block = Traverse(step.root_block.direction, step.root_block.edge_name)
                 new_traverse.append(step._replace(root_block=new_root_block))
             else:
@@ -491,21 +493,24 @@ def convert_optional_traversals_to_compound_match_query(
         match_query, optional_locations, location_to_optional):
     """Return 2^n distinct MatchQuery objects in a CompoundMatchQuery.
 
+    Given a MatchQuery containing `n` optional traverses that expand vertex fields,
+    construct `2^n` different MatchQueries:
+    one for each possible subset of optional edges that can be followed.
+    For each edge `e` in a subset of optional edges chosen to be omitted,
+    discard all traversals following `e`, and add filters specifying that `e` *does not exist*.
     Args:
-        match_query: MatchQuery object potentially containing n `@optional` scopes
-                     which expand vertex fields
-        optional_locations: List of locations with @optional that expand vertex fields within.
-        location_to_optional: Dict mappingall locations within optional scopes
-                              to the corresponding optional tag.
+        match_query: MatchQuery object containing n `@optional` scopes which expand vertex fields
+        optional_locations: list of @optional locations that expand vertex fields within
+        location_to_optional: dict mapping all locations within optional scopes
+                              to the corresponding optional location
 
     Returns:
         CompoundMatchQuery object containing 2^n MatchQuery objects,
         one for each possible subset of the n optional edges being followed
     """
-    optional_location_subsets = itertools.chain(
-        *[itertools.combinations(optional_locations, x)
-            for x in range(0, len(optional_locations)+1)]
-    )
+    optional_location_combinations_list = [itertools.combinations(optional_locations, x)
+                                           for x in range(0, len(optional_locations)+1)]
+    optional_location_subsets = itertools.chain(*optional_location_combinations_list)
     compound_match_traversals = []
     for omitted_locations in reversed(list(optional_location_subsets)):
         new_match_traversals = []
@@ -513,13 +518,11 @@ def convert_optional_traversals_to_compound_match_query(
             location = traverse[0].as_block.location
             if location_to_optional.get(location, None) not in omitted_locations:
                 new_traverse = _prune_traverse_using_omitted_locations(
-                    traverse,
-                    omitted_locations,
-                    optional_locations,
-                    location_to_optional
-                )
+                    traverse, omitted_locations, optional_locations, location_to_optional)
                 new_match_traversals.append(new_traverse)
             else:
+                # The root_block is within an omitted scope.
+                # Discard the current traverse (do not append to new_match_traversals)
                 continue
         compound_match_traversals.append(new_match_traversals)
 
@@ -689,11 +692,6 @@ def _update_tagged_expression(expression, current_locations):
     elif isinstance(expression, TernaryConditional):
         if expression.predicate == TrueLiteral:
             return expression.if_true
-        else:
-            return expression
-    elif isinstance(expression, Filter):
-        if expression.predicate == TrueLiteral:
-            return None
         else:
             return expression
     else:
@@ -899,8 +897,9 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     sanity_check_ir_blocks_from_frontend(ir_blocks)
 
     # These lowering / optimization passes work on IR blocks.
-    optional_locations, location_to_optional, ir_blocks \
-        = extract_location_to_optional_from_ir_blocks(ir_blocks)
+    location_to_optional_results = extract_location_to_optional_from_ir_blocks(ir_blocks)
+    optional_locations, location_to_optional, ir_blocks = location_to_optional_results
+
     ir_blocks = lower_context_field_existence(ir_blocks)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
     ir_blocks = rewrite_binary_composition_inside_ternary_conditional(ir_blocks)

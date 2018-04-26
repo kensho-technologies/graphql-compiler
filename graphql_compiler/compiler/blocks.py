@@ -426,8 +426,11 @@ class Unfold(MarkerBlock):
 
 
 class EndOptional(MarkerBlock):
-    """A marker for the end of a @fold context."""
+    """Marker for end of an @optional context.
+
+    Optional scope is entered through an optional Traverse Block.
+    """
 
     def validate(self):
-        """Unfold blocks are always valid in isolation."""
+        """Endoptional blocks are always valid in isolation."""
         pass
