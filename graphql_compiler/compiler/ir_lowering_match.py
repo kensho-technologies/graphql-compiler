@@ -707,6 +707,12 @@ def _update_tagged_expression(expression, current_locations):
             return expression.if_true
         else:
             return expression
+    elif isinstance(expression, BetweenClause):
+        lower_bound = expression.lower_bound
+        upper_bound = expression.upper_bound
+        if isinstance(lower_bound, ContextField) or isinstance(upper_bound, ContextField):
+            raise AssertionError(u'Found BetweenClause with ContextFields as lower/upper bounds. '
+                                 u'THis should never happen: {}'.format(expression))
     else:
         return expression
 
@@ -748,7 +754,7 @@ def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
     return new_match_traversals
 
 
-def lower_filters_in_compound_match_query(compound_match_query):
+def lower_tagged_expressions_in_compound_match_query(compound_match_query):
     """Lower Expressons involving non-existent tags."""
     if len(compound_match_query.match_queries) == 1:
         return compound_match_query
@@ -959,6 +965,6 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     compound_match_query = prune_output_blocks_in_compound_match_query(
         compound_match_query)
     compound_match_query = collect_filters_to_first_location_instance(compound_match_query)
-    compound_match_query = lower_filters_in_compound_match_query(compound_match_query)
+    compound_match_query = lower_tagged_expressions_in_compound_match_query(compound_match_query)
 
     return compound_match_query
