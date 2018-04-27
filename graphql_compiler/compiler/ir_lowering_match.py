@@ -755,11 +755,12 @@ def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
 
 
 def lower_tagged_expressions_in_compound_match_query(compound_match_query):
-    """Lower Expressons involving non-existent tags."""
-    if len(compound_match_query.match_queries) == 1:
-        return compound_match_query
-    elif len(compound_match_query.match_queries) == 0:
+    """Lower Expressons involving non-existent ContextFields (tags)."""
+    if len(compound_match_query.match_queries) == 0:
         raise AssertionError(u'Received CompoundMatchQuery with an empty list of MatchQueries.')
+    elif len(compound_match_query.match_queries) == 1:
+        # All ContextFields exist if there is only one MatchQuery
+        return compound_match_query
     else:
         new_match_queries = []
         for match_query in compound_match_query.match_queries:
