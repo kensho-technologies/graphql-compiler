@@ -1,5 +1,6 @@
 # Copyright 2017 Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
+from funcy.py2 import pairwise
 import six
 
 from .blocks import (ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse,
@@ -215,21 +216,18 @@ def extract_location_to_optional_from_ir_blocks(ir_blocks):
         ir_blocks: list of IR blocks to extract optional data from
 
     Returns:
-        tuple (optional_locations, location_to_optional, new_ir_blocks):
-        - optional_locations: List of @optional locations that expand vertex fields
+        tuple (optional_locations, location_to_optional):
+        - optional_locations: list of @optional locations that expand vertex fields
         - location_to_optional: mapping from location -> optional_location
-            where location is within @optional scope,
+            where location is within @optional (not necessarily one that expands vertex fields)
             and optional_location is the starting location of the corresponding @optional scope
-        - new_ir_blocks: given list of IR blocks with EndOptional blocks removed
     """
     optional_locations = []
     location_to_optional = dict()
     in_optional_location = None
     encountered_traverse_within_optional = False
-    previous_block = None
-    new_ir_blocks = []
 
-    for block in ir_blocks:
+    for previous_block, block in pairwise(ir_blocks):
         if isinstance(block, Traverse) and block.optional:
             if in_optional_location is not None:
                 raise AssertionError(u'in_optional_location was not None at an optional traverse: '
@@ -254,15 +252,19 @@ def extract_location_to_optional_from_ir_blocks(ir_blocks):
         elif isinstance(block, MarkLocation):
             location_to_optional[block.location] = in_optional_location
 
-        if not isinstance(block, EndOptional):
-            new_ir_blocks.append(block)
-
-        previous_block = block
-
     # Locations not in @optional scope are currently mapped to None.
     # Remove these from the mapping.
     location_to_optional = {location: optional_location
                             for location, optional_location in six.iteritems(location_to_optional)
                             if optional_location is not None}
 
-    return optional_locations, location_to_optional, new_ir_blocks
+    return optional_locations, location_to_optional
+
+
+def remove_endoptionals_from_ir_blocks(ir_blocks):
+    """Return a list of IR blocks as a copy of the original, with EndOptional blocks removed."""
+    new_ir_blocks = []
+    for block in ir_blocks:
+        if not isinstance(block, EndOptional):
+            new_ir_blocks.append(block)
+    return new_ir_blocks

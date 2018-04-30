@@ -22,7 +22,8 @@ from .expressions import (BinaryComposition, ContextField, ContextFieldExistence
                           TernaryConditional, TrueLiteral, UnaryTransformation, ZeroLiteral)
 from .ir_lowering_common import (extract_location_to_optional_from_ir_blocks,
                                  lower_context_field_existence, merge_consecutive_filter_clauses,
-                                 optimize_boolean_expression_comparisons)
+                                 optimize_boolean_expression_comparisons,
+                                 remove_endoptionals_from_ir_blocks)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .match_query import MatchQuery, MatchStep, convert_to_match_query
 from .workarounds import orientdb_class_with_while, orientdb_eval_scheduling
@@ -725,7 +726,7 @@ def _construct_update_tags_visitor_fn(current_locations):
 
 
 def _get_current_locations_from_match_traversals(match_traversals):
-    """Return a set of locations present in the given match traversals."""
+    """Return the set of locations present in the given match traversals."""
     current_locations = set()
 
     for traversal in match_traversals:
@@ -755,11 +756,11 @@ def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
 
 
 def lower_tagged_expressions_in_compound_match_query(compound_match_query):
-    """Lower Expressons involving non-existent ContextFields (tags)."""
+    """Lower Expressons involving non-existent ContextFields."""
     if len(compound_match_query.match_queries) == 0:
         raise AssertionError(u'Received CompoundMatchQuery with an empty list of MatchQueries.')
     elif len(compound_match_query.match_queries) == 1:
-        # All ContextFields exist if there is only one MatchQuery
+        # All ContextFields exist if there is only one MatchQuery.
         return compound_match_query
     else:
         new_match_queries = []
@@ -930,7 +931,8 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
 
     # These lowering / optimization passes work on IR blocks.
     location_to_optional_results = extract_location_to_optional_from_ir_blocks(ir_blocks)
-    optional_locations, location_to_optional, ir_blocks = location_to_optional_results
+    optional_locations, location_to_optional = location_to_optional_results
+    ir_blocks = remove_endoptionals_from_ir_blocks(ir_blocks)
 
     ir_blocks = lower_context_field_existence(ir_blocks)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
