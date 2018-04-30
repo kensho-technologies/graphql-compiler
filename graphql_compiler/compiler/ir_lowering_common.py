@@ -232,9 +232,6 @@ def extract_location_to_optional_from_ir_blocks(ir_blocks):
             if in_optional_location is not None:
                 raise AssertionError(u'in_optional_location was not None at an optional traverse: '
                                      u'{} {}'.format(block, ir_blocks))
-            if previous_block is None:
-                raise AssertionError(u'First block encountered in ir_blocks was optional: '
-                                     u'{}'.format(ir_blocks))
             if not isinstance(previous_block, MarkLocation):
                 raise AssertionError(u'No MarkLocation found before an optional traverse: '
                                      u'{} {}'.format(block, ir_blocks))
