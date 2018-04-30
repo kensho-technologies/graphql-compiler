@@ -551,31 +551,31 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
             match_traversals = match_query.match_traversals
             output_block = match_query.output_block
             folds = match_query.folds
-            current_locations = set()
-            current_non_optional_locations = set()
+            present_locations = set()
+            present_non_optional_locations = set()
 
             for traversal in match_traversals:
                 for step in traversal:
                     if step.as_block is not None:
                         location_name, _ = step.as_block.location.get_location_name()
-                        current_locations.add(location_name)
+                        present_locations.add(location_name)
                         if isinstance(step.root_block, Traverse) and not step.root_block.optional:
-                            current_non_optional_locations.add(location_name)
+                            present_non_optional_locations.add(location_name)
 
             new_output_fields = {}
             for output_name, expression in six.iteritems(output_block.fields):
                 # If @fold is allowed within @optional, this should include FoldedOutputContextField
                 if isinstance(expression, OutputContextField):
                     location_name, _ = expression.location.get_location_name()
-                    if location_name not in current_locations:
+                    if location_name not in present_locations:
                         raise AssertionError(u'Non-optional output location {} was not found in '
-                                             u'current_locations: {}'
-                                             .format(expression.location, current_locations))
+                                             u'present_locations: {}'
+                                             .format(expression.location, present_locations))
                     new_output_fields[output_name] = expression
                 elif isinstance(expression, TernaryConditional):
                     location_name, _ = expression.if_true.location.get_location_name()
-                    if location_name in current_locations:
-                        if location_name in current_non_optional_locations:
+                    if location_name in present_locations:
+                        if location_name in present_non_optional_locations:
                             new_output_fields[output_name] = expression.if_true
                         else:
                             new_output_fields[output_name] = expression
@@ -675,7 +675,7 @@ def collect_filters_to_first_location_instance(compound_match_query):
     return CompoundMatchQuery(match_queries=new_match_queries)
 
 
-def _update_tagged_expression(expression, current_locations):
+def _update_tagged_expression(expression, present_locations):
     """Replace non-existent tag Expressons with True, and simplify the result."""
     if isinstance(expression, BinaryComposition):
         if isinstance(expression.left, ContextField):
@@ -699,7 +699,7 @@ def _update_tagged_expression(expression, current_locations):
         else:
             return expression
         location_name, _ = context_field.location.get_location_name()
-        if location_name not in current_locations:
+        if location_name not in present_locations:
             return TrueLiteral
         else:
             return expression
@@ -718,23 +718,23 @@ def _update_tagged_expression(expression, current_locations):
         return expression
 
 
-def _construct_update_tags_visitor_fn(current_locations):
-    """Return an Expression updater using the given `current_locations`."""
+def _construct_update_tags_visitor_fn(present_locations):
+    """Return an Expression updater using the given `present_locations`."""
     def visitor_fn(expression):
-        return _update_tagged_expression(expression, current_locations)
+        return _update_tagged_expression(expression, present_locations)
     return visitor_fn
 
 
-def _get_current_locations_from_match_traversals(match_traversals):
+def _get_present_locations_from_match_traversals(match_traversals):
     """Return the set of locations present in the given match traversals."""
-    current_locations = set()
+    present_locations = set()
 
     for traversal in match_traversals:
         for step in traversal:
             if step.as_block is not None:
                 location_name, _ = step.as_block.location.get_location_name()
-                current_locations.add(location_name)
-    return current_locations
+                present_locations.add(location_name)
+    return present_locations
 
 
 def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
@@ -766,8 +766,8 @@ def lower_tagged_expressions_in_compound_match_query(compound_match_query):
         new_match_queries = []
         for match_query in compound_match_query.match_queries:
             match_traversals = match_query.match_traversals
-            current_locations = _get_current_locations_from_match_traversals(match_traversals)
-            current_visitor_fn = _construct_update_tags_visitor_fn(current_locations)
+            present_locations = _get_present_locations_from_match_traversals(match_traversals)
+            current_visitor_fn = _construct_update_tags_visitor_fn(present_locations)
 
             new_match_traversals = _lower_filters_in_match_traversals(
                 match_traversals, current_visitor_fn)
