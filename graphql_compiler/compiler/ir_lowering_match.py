@@ -655,8 +655,6 @@ def _predicate_list_to_where_block(predicate_list):
     """Convert a list of predicates to an Expression that is the conjunction of all of them."""
     if not isinstance(predicate_list, list):
         raise AssertionError(u'Expected `list`, Received {}.'.format(predicate_list))
-    if not predicate_list:
-        return None
 
     if not isinstance(predicate_list[0], Expression):
         raise AssertionError(u'Non-Expression object {} found in predicate_list'
