@@ -1843,7 +1843,7 @@ def simple_optional_recurse():
             name @output(out_name: "name")
             out_Animal_ParentOf @optional {
                 name @output(out_name: "parent_name")
-                in_Animal_ParentOf @recurse(depth:3) {
+                in_Animal_ParentOf @recurse(depth: 3) {
                     name @output(out_name: "ancestor_name")
                 }
             }
