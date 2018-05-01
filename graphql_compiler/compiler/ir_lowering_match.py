@@ -713,7 +713,7 @@ def _update_tagged_expression(expression, present_locations):
         upper_bound = expression.upper_bound
         if isinstance(lower_bound, ContextField) or isinstance(upper_bound, ContextField):
             raise AssertionError(u'Found BetweenClause with ContextFields as lower/upper bounds. '
-                                 u'THis should never happen: {}'.format(expression))
+                                 u'This should never happen: {}'.format(expression))
     else:
         return expression
 
@@ -726,11 +726,23 @@ def _construct_update_tags_visitor_fn(present_locations):
 
 
 def _get_present_locations_from_match_traversals(match_traversals):
-    """Return the set of locations present in the given match traversals."""
+    """Return the set of locations present in the given match traversals.
+
+    When enumerating the possibilities for optional traversals,
+    the resulting match traversals may have sections of the query omitted.
+    These locations will not be included in the returned `present_locations`.
+
+    Args:
+        match_traversals: one possible list of match traversals generated from a query
+            containing @optional traversal(s)
+
+    Returns:
+        present_locations: set of all locations present in the given match traversals
+    """
     present_locations = set()
 
-    for traversal in match_traversals:
-        for step in traversal:
+    for match_traversal in match_traversals:
+        for step in match_traversal:
             if step.as_block is not None:
                 location_name, _ = step.as_block.location.get_location_name()
                 present_locations.add(location_name)
@@ -738,11 +750,27 @@ def _get_present_locations_from_match_traversals(match_traversals):
 
 
 def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
-    """Return new match traversals, replacing filters involving non-existent tags with True."""
+    # TODO(shankha): Write full docstring <30-04-18>#
+    """Return new match traversals, lowering filters involving non-existent tags.
+
+    Expressions involving non-existent tags are evaluated to True.
+    BinaryCompositions, where one of the operands is lowered to a TrueLiteral,
+    are lowered appropriately based on the present operator (u'||' and u'&&' are affected).
+    TernaryConditionals, where the predicate is lowerd to a TrueLiteral,
+    are replaced by their if_true predicate.
+    The `visitor_fn` implements these behaviors (see `_update_tagged_expression`).
+
+    Args:
+        match_traversals: list of match traversal enities to be lowered
+        visitor_fn: visit_and_update function for lowering expressions in given match traversal
+
+    Returns:
+        new_match_traversals: new list of match_traversals, with all filter expressions lowered
+    """
     new_match_traversals = []
-    for traversal in match_traversals:
+    for match_traversal in match_traversals:
         new_match_traversal = []
-        for step in traversal:
+        for step in match_traversal:
             if step.where_block is not None:
                 new_filter = step.where_block.visit_and_update_expressions(visitor_fn)
                 if new_filter.predicate == TrueLiteral:
