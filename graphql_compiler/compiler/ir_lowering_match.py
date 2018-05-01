@@ -750,7 +750,6 @@ def _get_present_locations_from_match_traversals(match_traversals):
 
 
 def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
-    # TODO(shankha): Write full docstring <30-04-18>#
     """Return new match traversals, lowering filters involving non-existent tags.
 
     Expressions involving non-existent tags are evaluated to True.
