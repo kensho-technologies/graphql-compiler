@@ -675,8 +675,8 @@ def collect_filters_to_first_location_instance(compound_match_query):
     return CompoundMatchQuery(match_queries=new_match_queries)
 
 
-def _update_tagged_expression(expression, present_locations):
-    """Replace non-existent tag Expressons with True, and simplify the result."""
+def _update_contextfield_expression(expression, present_locations):
+    """Replace Expressions involving non-existent ContextFields with True, and simplify result."""
     if isinstance(expression, BinaryComposition):
         if isinstance(expression.left, ContextField):
             context_field = expression.left
@@ -718,10 +718,10 @@ def _update_tagged_expression(expression, present_locations):
         return expression
 
 
-def _construct_update_tags_visitor_fn(present_locations):
+def _construct_update_contextfield_visitor_fn(present_locations):
     """Return an Expression updater using the given `present_locations`."""
     def visitor_fn(expression):
-        return _update_tagged_expression(expression, present_locations)
+        return _update_contextfield_expression(expression, present_locations)
     return visitor_fn
 
 
@@ -750,14 +750,14 @@ def _get_present_locations_from_match_traversals(match_traversals):
 
 
 def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
-    """Return new match traversals, lowering filters involving non-existent tags.
+    """Return new match traversals, lowering filters involving non-existent ContextFields.
 
-    Expressions involving non-existent tags are evaluated to True.
+    Expressions involving non-existent ContextFields are evaluated to True.
     BinaryCompositions, where one of the operands is lowered to a TrueLiteral,
     are lowered appropriately based on the present operator (u'||' and u'&&' are affected).
     TernaryConditionals, where the predicate is lowerd to a TrueLiteral,
     are replaced by their if_true predicate.
-    The `visitor_fn` implements these behaviors (see `_update_tagged_expression`).
+    The `visitor_fn` implements these behaviors (see `_update_contextfield_expression`).
 
     Args:
         match_traversals: list of match traversal enities to be lowered
@@ -782,7 +782,7 @@ def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
     return new_match_traversals
 
 
-def lower_tagged_expressions_in_compound_match_query(compound_match_query):
+def lower_contextfield_expressions_in_compound_match_query(compound_match_query):
     """Lower Expressons involving non-existent ContextFields."""
     if len(compound_match_query.match_queries) == 0:
         raise AssertionError(u'Received CompoundMatchQuery with an empty list of MatchQueries.')
@@ -794,7 +794,8 @@ def lower_tagged_expressions_in_compound_match_query(compound_match_query):
         for match_query in compound_match_query.match_queries:
             match_traversals = match_query.match_traversals
             present_locations = _get_present_locations_from_match_traversals(match_traversals)
-            current_visitor_fn = _construct_update_tags_visitor_fn(present_locations)
+            current_visitor_fn = _construct_update_contextfield_visitor_fn(
+                present_locations)
 
             new_match_traversals = _lower_filters_in_match_traversals(
                 match_traversals, current_visitor_fn)
@@ -995,6 +996,7 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     compound_match_query = prune_output_blocks_in_compound_match_query(
         compound_match_query)
     compound_match_query = collect_filters_to_first_location_instance(compound_match_query)
-    compound_match_query = lower_tagged_expressions_in_compound_match_query(compound_match_query)
+    compound_match_query = lower_contextfield_expressions_in_compound_match_query(
+        compound_match_query)
 
     return compound_match_query
