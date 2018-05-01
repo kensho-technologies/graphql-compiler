@@ -2,6 +2,12 @@
 
 ## Current development version
 
+## v1.4.1
+
+- Make MATCH use the `BETWEEN` operator when possible, to avoid [an OrientDB performance issue](https://github.com/orientechnologies/orientdb/issues/8230) [#70](https://github.com/kensho-technologies/graphql-compiler/pull/70)
+
+Thanks to `amartyashankha` for this contribution!
+
 ## v1.4.0
 
 - Enable expanding vertex fields inside `@fold` [#64](https://github.com/kensho-technologies/graphql-compiler/pull/64)

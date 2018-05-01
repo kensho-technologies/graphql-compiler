@@ -92,6 +92,12 @@ class BetweenClause(Expression):
         raise NotImplementedError()
 
 
+###
+# A CompoundMatchQuery is a representation of several MatchQuery objects containing
+#   - match_queries: a list MatchQuery objects
+CompoundMatchQuery = namedtuple('CompoundMatchQuery', ('match_queries'))
+
+
 ##################################
 # Optimization / lowering passes #
 ##################################
