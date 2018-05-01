@@ -217,10 +217,11 @@ def extract_location_to_optional_from_ir_blocks(ir_blocks):
 
     Returns:
         tuple (optional_locations, location_to_optional):
-        - optional_locations: list of @optional locations that expand vertex fields
+        - optional_locations: list of @optional locations (location immmediately preceding
+            an @optional traverse) that expand vertex fields
         - location_to_optional: mapping from location -> optional_location
             where location is within @optional (not necessarily one that expands vertex fields)
-            and optional_location is the starting location of the corresponding @optional scope
+            and optional_location is the location preceding the corresponding @optional scope
     """
     optional_locations = []
     location_to_optional = dict()
