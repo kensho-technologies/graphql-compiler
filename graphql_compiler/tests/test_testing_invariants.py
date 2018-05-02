@@ -7,9 +7,7 @@ import unittest
 
 from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 
-# from test_compiler import CompilerTests
 import test_input_data
-# from test_ir_generation import IrGenerationTests
 
 
 def get_function_names_from_module(module):
@@ -41,21 +39,21 @@ class TestingInvariants(unittest.TestCase):
         ]
 
     def test_ir_generation_test_invariants(self):
-        test_ir_generation_module = __import__('test_ir_generation', globals(), locals(),
-                                               ['IrGenerationTests'], -1)
-        ir_generation_tests = test_ir_generation_module.IrGenerationTests
-        ir_generation_test_names = get_function_names_from_class(ir_generation_tests)
+        # Importing IrGenerationTests globally would expose them to py.test a second time.
+        # We import them here so that these tests are not run again.
+        from test_ir_generation import IrGenerationTests
+        ir_generation_test_names = get_function_names_from_class(IrGenerationTests)
         for expected_test_function_name in self.expected_test_functions_list:
             if expected_test_function_name not in ir_generation_test_names:
                 raise AssertionError(u'Test case "{}" not found in ir_generation_tests.py'
                                      u'.'.format(expected_test_function_name))
 
     def test_compiler_test_invariants(self):
-        test_compiler_module = __import__('test_compiler', globals(), locals(),
-                                          ['CompilerTests'], -1)
-        compiler_tests = test_compiler_module.CompilerTests
-        compiler_test_names = get_function_names_from_class(compiler_tests)
+        # Importing CompilerTests globally would expose them to py.test a second time.
+        # We import them here so that these tests are not run again.
+        from test_compiler import CompilerTests
+        compiler_test_names = get_function_names_from_class(CompilerTests)
         for expected_test_function_name in self.expected_test_functions_list:
             if expected_test_function_name not in compiler_test_names:
-                raise AssertionError(u'Test case "{}" not found in ir_generation_tests.py'
+                raise AssertionError(u'Test case "{}" not found in compiler_tests.py'
                                      u'.'.format(expected_test_function_name))
