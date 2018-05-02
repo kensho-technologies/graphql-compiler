@@ -971,30 +971,6 @@ def has_edge_degree_op_filter_with_fold():
         type_equivalence_hints=None)
 
 
-def optional_traversal_edge_case():
-    # Both Animal and out_Animal_ParentOf have an out_Animal_FedAt field,
-    # ensure the correct such field is picked out.
-    graphql_input = '''{
-        Animal {
-            out_Animal_ParentOf @optional {
-                out_Animal_FedAt {
-                    name @output(out_name: "name")
-                }
-            }
-        }
-    }'''
-    expected_output_metadata = {
-        'name': OutputMetadata(type=GraphQLString, optional=True),
-    }
-    expected_input_metadata = {}
-
-    return CommonTestData(
-        graphql_input=graphql_input,
-        expected_output_metadata=expected_output_metadata,
-        expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None)
-
-
 def fold_on_output_variable():
     graphql_input = '''{
         Animal {
@@ -1209,24 +1185,28 @@ def multiple_folds_and_traverse():
             name @output(out_name: "animal_name")
             out_Animal_ParentOf @fold {
                 in_Animal_ParentOf {
-                    name @output(out_name: "child_names_list")
-                    uuid @output(out_name: "child_uuids_list")
+                    name @output(out_name: "spouse_and_self_names_list")
+                    uuid @output(out_name: "spouse_and_self_uuids_list")
                 }
             }
             in_Animal_ParentOf @fold {
                 out_Animal_ParentOf {
-                    name @output(out_name: "parent_names_list")
-                    uuid @output(out_name: "parent_uuids_list")
+                    name @output(out_name: "sibling_and_self_names_list")
+                    uuid @output(out_name: "sibling_and_self_uuids_list")
                 }
             }
         }
     }'''
     expected_output_metadata = {
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
-        'child_names_list': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
-        'child_uuids_list': OutputMetadata(type=GraphQLList(GraphQLID), optional=False),
-        'parent_names_list': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
-        'parent_uuids_list': OutputMetadata(type=GraphQLList(GraphQLID), optional=False),
+        'spouse_and_self_names_list': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+        'spouse_and_self_uuids_list': OutputMetadata(
+            type=GraphQLList(GraphQLID), optional=False),
+        'sibling_and_self_names_list': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+        'sibling_and_self_uuids_list': OutputMetadata(
+            type=GraphQLList(GraphQLID), optional=False),
     }
     expected_input_metadata = {}
 

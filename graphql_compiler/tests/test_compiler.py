@@ -1151,6 +1151,147 @@ FROM (
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_contains_op_filter_with_variable(self):
+        test_data = test_input_data.contains_op_filter_with_variable()
+
+        expected_match = '''
+            SELECT Animal___1.name AS `animal_name`
+                FROM (
+                    MATCH {{
+                        class: Animal,
+                        where: ((alias CONTAINS {wanted})),
+                        as: Animal___1
+                    }}
+                    RETURN $matches
+                )
+        '''
+        expected_gremlin = '''
+            g.V('@class',
+                'Animal')
+            .filter{it,
+                m -> it.alias.contains($wanted)}
+            .as('Animal___1')
+            .transform{it,
+                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_contains_op_filter_with_tag(self):
+        test_data = test_input_data.contains_op_filter_with_tag()
+
+        expected_match = '''
+            SELECT Animal___1.name AS `animal_name`
+                FROM (
+                    MATCH {{
+                        class: Animal,
+                        as: Animal___1
+                    }}.out('Animal_ParentOf') {{
+                        where: ((alias CONTAINS $matched.Animal___1.name)),
+                        as: Animal__out_Animal_ParentOf___1
+                    }}
+                    RETURN $matches
+                )
+        '''
+        expected_gremlin = '''
+            g.V('@class',
+                'Animal')
+            .as('Animal___1')
+                .out('Animal_ParentOf')
+                .filter{it,
+                m -> it.alias.contains(m.Animal___1.name)}
+                .as('Animal__out_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it,
+                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_contains_op_filter_with_optional_tag(self):
+        test_data = test_input_data.contains_op_filter_with_optional_tag()
+
+        expected_match = '''
+            SELECT Animal___1.name AS `animal_name`
+                FROM (
+                    MATCH {{
+                        class: Animal,
+                        as: Animal___1
+                    }}.in('Animal_ParentOf') {{
+                        optional: true,
+                        as: Animal__in_Animal_ParentOf___1
+                    }} ,
+                    {{
+                        class: Animal,
+                        as: Animal___1
+                    }}.out('Animal_ParentOf') {{
+                        where: ((
+                            ($matched.Animal__in_Animal_ParentOf___1 IS null)
+                            OR
+                            (alias CONTAINS $matched.Animal__in_Animal_ParentOf___1.name))),
+                        as: Animal__out_Animal_ParentOf___1
+                    }}
+                    RETURN $matches
+                )
+        '''
+        expected_gremlin = '''
+            g.V('@class',
+                'Animal')
+            .as('Animal___1')
+                .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+                .as('Animal__in_Animal_ParentOf___1')
+            .optional('Animal___1')
+            .as('Animal___2')
+                .out('Animal_ParentOf')
+                .filter{it,
+                    m -> (
+                        (m.Animal__in_Animal_ParentOf___1 == null)
+                        ||
+                        it.alias.contains(m.Animal__in_Animal_ParentOf___1.name)
+                    )
+                }
+                .as('Animal__out_Animal_ParentOf___1')
+            .back('Animal___2')
+            .transform{it,
+                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_has_substring_op_filter(self):
+        test_data = test_input_data.has_substring_op_filter()
+
+        expected_match = '''
+            SELECT Animal___1.name AS `animal_name`
+                FROM (
+                    MATCH {{
+                        class: Animal,
+                        where: ((name LIKE ('%' + ({wanted} + '%')))),
+                        as: Animal___1
+                    }}
+                    RETURN $matches
+                )
+        '''
+        expected_gremlin = '''
+            g.V('@class',
+                'Animal')
+            .filter{it,
+                m -> it.name.contains($wanted)}
+            .as('Animal___1')
+            .transform{it,
+                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_has_substring_op_filter_with_variable(self):
         graphql_input = '''{
             Animal {
@@ -2071,10 +2212,10 @@ FROM (
         expected_match = '''
             SELECT
                 Animal___1.name AS `animal_name`,
-                $Animal___1___out_Animal_ParentOf.name AS `child_names_list`,
-                $Animal___1___out_Animal_ParentOf.uuid AS `child_uuids_list`,
-                $Animal___1___in_Animal_ParentOf.name AS `parent_names_list`,
-                $Animal___1___in_Animal_ParentOf.uuid AS `parent_uuids_list`
+                $Animal___1___in_Animal_ParentOf.name AS `sibling_and_self_names_list`,
+                $Animal___1___in_Animal_ParentOf.uuid AS `sibling_and_self_uuids_list`,
+                $Animal___1___out_Animal_ParentOf.name AS `spouse_and_self_names_list`,
+                $Animal___1___out_Animal_ParentOf.uuid AS `spouse_and_self_uuids_list`
             FROM (
                 MATCH {{
                     class: Animal,
@@ -2092,46 +2233,46 @@ FROM (
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name,
-                child_names_list: ((m.Animal___1.out_Animal_ParentOf == null) ? [] : (
-                    m.Animal___1.out_Animal_ParentOf
-                        .collect{entry -> entry.inV.next()}
+                sibling_and_self_names_list: ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.in_Animal_ParentOf
+                        .collect{entry -> entry.outV.next()}
                         .collectMany{
-                            entry -> entry.in_Animal_ParentOf
+                            entry -> entry.out_Animal_ParentOf
                                 .collect{
-                                    edge -> edge.outV.next()
+                                    edge -> edge.inV.next()
                                 }
                         }
                         .collect{entry -> entry.name}
                 )),
-                child_uuids_list: ((m.Animal___1.out_Animal_ParentOf == null) ? [] : (
-                    m.Animal___1.out_Animal_ParentOf
-                        .collect{entry -> entry.inV.next()}
+                sibling_and_self_uuids_list: ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.in_Animal_ParentOf
+                        .collect{entry -> entry.outV.next()}
                         .collectMany{
-                            entry -> entry.in_Animal_ParentOf
+                            entry -> entry.out_Animal_ParentOf
                                 .collect{
-                                    edge -> edge.outV.next()
+                                    edge -> edge.inV.next()
                                 }
                         }
                         .collect{entry -> entry.uuid}
                 )),
-                parent_names_list: ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
-                    m.Animal___1.in_Animal_ParentOf
-                        .collect{entry -> entry.outV.next()}
+                spouse_and_self_names_list: ((m.Animal___1.out_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.out_Animal_ParentOf
+                        .collect{entry -> entry.inV.next()}
                         .collectMany{
-                            entry -> entry.out_Animal_ParentOf
+                            entry -> entry.in_Animal_ParentOf
                                 .collect{
-                                    edge -> edge.inV.next()
+                                    edge -> edge.outV.next()
                                 }
                         }
                         .collect{entry -> entry.name}
                 )),
-                parent_uuids_list: ((m.Animal___1.in_Animal_ParentOf == null) ? [] : (
-                    m.Animal___1.in_Animal_ParentOf
-                        .collect{entry -> entry.outV.next()}
+                spouse_and_self_uuids_list: ((m.Animal___1.out_Animal_ParentOf == null) ? [] : (
+                    m.Animal___1.out_Animal_ParentOf
+                        .collect{entry -> entry.inV.next()}
                         .collectMany{
-                            entry -> entry.out_Animal_ParentOf
+                            entry -> entry.in_Animal_ParentOf
                                 .collect{
-                                    edge -> edge.inV.next()
+                                    edge -> edge.outV.next()
                                 }
                         }
                         .collect{entry -> entry.uuid}
