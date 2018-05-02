@@ -1876,7 +1876,7 @@ class IrGenerationTests(unittest.TestCase):
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
     def test_multiple_folds_and_traverse(self):
-        test_data = test_input_data.multiple_folds_and_traverse() 
+        test_data = test_input_data.multiple_folds_and_traverse()
         base_location = helpers.Location(('Animal',))
         base_out_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
         base_out_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
