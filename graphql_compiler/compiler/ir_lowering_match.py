@@ -474,8 +474,8 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations, 
                                             location_to_optional):
     """Return a prefix of the given traverse, excluding any blocks after an omitted optional.
 
-    Given a subset (omitted_locations) of optional_locations,
-    return a new match traversal removing all MatchSteps that are within any omitted location.
+    Given a subset (omitted_locations) of optional_locations, return a new match traversal
+    removing all MatchStep objects that are within any omitted location.
 
     Args:
         match_traversal: given match traversal to be pruned
@@ -487,7 +487,8 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations, 
             and optional_location is the location preceding the associated @optional scope
 
     Returns:
-        A new match traversal, with all steps within any omitted location removed.
+    new_match_traversal: list of MatchStep objects as a copy of the given match traversal
+        with all steps within any omitted location removed.
     """
     new_match_traversal = []
     for step in match_traversal:
@@ -533,7 +534,7 @@ def convert_optional_traversals_to_compound_match_query(
     """Return 2^n distinct MatchQuery objects in a CompoundMatchQuery.
 
     Given a MatchQuery containing `n` optional traverses that expand vertex fields,
-    construct `2^n` different MatchQueries:
+    construct `2^n` different MatchQuery objects:
     one for each possible subset of optional edges that can be followed.
     For each edge `e` in a subset of optional edges chosen to be omitted,
     discard all traversals following `e`, and add filters specifying that `e` *does not exist*.
@@ -543,7 +544,7 @@ def convert_optional_traversals_to_compound_match_query(
         optional_locations: list of @optional locations (location preceding an @optional traverse)
             that expand vertex fields within
         location_to_optional: dict mapping all locations within optional scopes
-                              to the corresponding optional location
+            to the corresponding optional location
 
     Returns:
         CompoundMatchQuery object containing 2^n MatchQuery objects,
@@ -551,16 +552,17 @@ def convert_optional_traversals_to_compound_match_query(
     """
     optional_location_combinations_list = [
         itertools.combinations(optional_locations, x)
-        for x in range(0, len(optional_locations)+1)
+        for x in range(0, len(optional_locations) + 1)
     ]
-    optional_location_subsets = itertools.chain(*optional_location_combinations_list)
+    optional_location_subsets = list(itertools.chain(*optional_location_combinations_list))
 
     compound_match_traversals = []
-    for omitted_locations in reversed(list(optional_location_subsets)):
+    for omitted_locations in reversed(optional_location_subsets):
         new_match_traversals = []
         for match_traversal in match_query.match_traversals:
             location = match_traversal[0].as_block.location
             location_in_dict = location in location_to_optional
+
             if not location_in_dict or location_to_optional[location] not in omitted_locations:
                 new_match_traversal = _prune_traverse_using_omitted_locations(
                     match_traversal, set(omitted_locations),
@@ -569,7 +571,8 @@ def convert_optional_traversals_to_compound_match_query(
             else:
                 # The root_block is within an omitted scope.
                 # Discard the entire match traversal (do not append to new_match_traversals)
-                continue
+                pass
+
         compound_match_traversals.append(new_match_traversals)
 
     match_queries = [
@@ -621,7 +624,8 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
     if len(compound_match_query.match_queries) == 1:
         return compound_match_query
     elif len(compound_match_query.match_queries) == 0:
-        raise AssertionError(u'Received CompoundMatchQuery with an empty list of MatchQueries.')
+        raise AssertionError(u'Received CompoundMatchQuery with
+                             u'an empty list of MatchQuery objects.')
     else:
         match_queries = []
         for match_query in compound_match_query.match_queries:
@@ -921,7 +925,8 @@ def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
 def lower_context_field_expressions_in_compound_match_query(compound_match_query):
     """Lower Expressons involving non-existent ContextFields."""
     if len(compound_match_query.match_queries) == 0:
-        raise AssertionError(u'Received CompoundMatchQuery with an empty list of MatchQueries.')
+        raise AssertionError(u'Received CompoundMatchQuery with
+                             u'an empty list of MatchQuery objects.')
     elif len(compound_match_query.match_queries) == 1:
         # All ContextFields exist if there is only one MatchQuery.
         return compound_match_query
