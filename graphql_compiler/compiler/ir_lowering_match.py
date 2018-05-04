@@ -620,11 +620,11 @@ def _get_present_locations_from_match_traversals(match_traversals):
 
 
 def prune_output_blocks_in_compound_match_query(compound_match_query):
-    """Remove nonexistent outputs from each MatchQuery in the given CompoundMatchQuery."""
+    """Remove non-existent outputs from each MatchQuery in the given CompoundMatchQuery."""
     if len(compound_match_query.match_queries) == 1:
         return compound_match_query
     elif len(compound_match_query.match_queries) == 0:
-        raise AssertionError(u'Received CompoundMatchQuery with
+        raise AssertionError(u'Received CompoundMatchQuery with '
                              u'an empty list of MatchQuery objects.')
     else:
         match_queries = []
@@ -675,7 +675,7 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
         return CompoundMatchQuery(match_queries=match_queries)
 
 
-def _construct_location_to_predicate_list(match_query):
+def _construct_location_to_filter_list(match_query):
     """Return a dict mapping location -> list of filter predicates applied at that location.
 
     Args:
@@ -769,7 +769,7 @@ def collect_filters_to_first_location_instance(compound_match_query):
     # Hence, each of them is processed independently.
     for match_query in compound_match_query.match_queries:
         # Construct mapping from location -> list of filter predicates applied at that location
-        location_to_predicates = _construct_location_to_predicate_list(match_query)
+        location_to_predicates = _construct_location_to_filter_list(match_query)
 
         new_match_traversals = []
         for match_traversal in match_query.match_traversals:
@@ -925,7 +925,7 @@ def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
 def lower_context_field_expressions_in_compound_match_query(compound_match_query):
     """Lower Expressons involving non-existent ContextFields."""
     if len(compound_match_query.match_queries) == 0:
-        raise AssertionError(u'Received CompoundMatchQuery with
+        raise AssertionError(u'Received CompoundMatchQuery with '
                              u'an empty list of MatchQuery objects.')
     elif len(compound_match_query.match_queries) == 1:
         # All ContextFields exist if there is only one MatchQuery.
