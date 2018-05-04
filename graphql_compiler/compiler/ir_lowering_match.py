@@ -23,8 +23,7 @@ from .expressions import (BinaryComposition, ContextField, ContextFieldExistence
                           Variable, ZeroLiteral)
 from .ir_lowering_common import (extract_location_to_optional_from_ir_blocks,
                                  lower_context_field_existence, merge_consecutive_filter_clauses,
-                                 optimize_boolean_expression_comparisons,
-                                 remove_end_optionals)
+                                 optimize_boolean_expression_comparisons, remove_end_optionals)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .match_query import MatchQuery, MatchStep, convert_to_match_query
 from .workarounds import orientdb_class_with_while, orientdb_eval_scheduling
