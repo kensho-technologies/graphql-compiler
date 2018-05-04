@@ -487,7 +487,7 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations, 
             and optional_location is the location preceding the associated @optional scope
 
     Returns:
-    new_match_traversal: list of MatchStep objects as a copy of the given match traversal
+    list of MatchStep objects as a copy of the given match traversal
         with all steps within any omitted location removed.
     """
     new_match_traversal = []
@@ -682,7 +682,8 @@ def _construct_location_to_filter_list(match_query):
         match_query: MatchQuery object from which to extract location -> filters dict
 
     Returns:
-        dict mapping each location in match_query to a list of filters applied at that location
+        dict mapping each location in match_query to a list of
+            Filter objects applied at that location
     """
     # For each location, all filters for that location should be applied at the first instance.
     # This function collects a list of all filters corresponding to each location
@@ -695,6 +696,7 @@ def _construct_location_to_filter_list(match_query):
                 current_location = match_step.as_block.location
                 location_to_filters.setdefault(current_location, []).append(
                     current_filter)
+
     return location_to_filters
 
 
@@ -706,6 +708,7 @@ def _filter_list_to_conjunction_expression(filter_list):
     if not isinstance(filter_list[0], Filter):
         raise AssertionError(u'Non-Filter object {} found in filter_list'
                              .format(filter_list[0]))
+
     if len(filter_list) == 1:
         return filter_list[0].predicate
     else:
@@ -727,7 +730,7 @@ def _collect_filters_to_first_location_in_match_traversal(match_traversal, locat
             the given match traversal to a list of filters applied at that location
 
     Returns:
-        new match traversal with all filters for any given location composed into
+        new list of MatchStep objects with all filters for any given location composed into
         a single filter which is applied to the first instance of that location
     """
     new_match_traversal = []
