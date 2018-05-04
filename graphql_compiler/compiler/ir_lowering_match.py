@@ -551,32 +551,34 @@ def convert_optional_traversals_to_compound_match_query(
         for x in range(0, len(optional_locations)+1)
     ]
     optional_location_subsets = itertools.chain(*optional_location_combinations_list)
+
     compound_match_traversals = []
     for omitted_locations in reversed(list(optional_location_subsets)):
         new_match_traversals = []
-        for traverse in match_query.match_traversals:
-            location = traverse[0].as_block.location
+        for match_traversal in match_query.match_traversals:
+            location = match_traversal[0].as_block.location
             location_in_dict = location in location_to_optional
             if not location_in_dict or location_to_optional[location] not in omitted_locations:
-                new_traverse = _prune_traverse_using_omitted_locations(
-                    traverse, set(omitted_locations), optional_locations, location_to_optional)
-                new_match_traversals.append(new_traverse)
+                new_match_traversal = _prune_traverse_using_omitted_locations(
+                    match_traversal, set(omitted_locations),
+                    optional_locations, location_to_optional)
+                new_match_traversals.append(new_match_traversal)
             else:
                 # The root_block is within an omitted scope.
-                # Discard the current traverse (do not append to new_match_traversals)
+                # Discard the entire match traversal (do not append to new_match_traversals)
                 continue
         compound_match_traversals.append(new_match_traversals)
 
-    return CompoundMatchQuery(
-        match_queries=[
-            MatchQuery(
-                match_traversals=match_traversals,
-                folds=match_query.folds,
-                output_block=match_query.output_block,
-            )
-            for match_traversals in compound_match_traversals
-        ]
-    )
+    match_queries=[
+        MatchQuery(
+            match_traversals=match_traversals,
+            folds=match_query.folds,
+            output_block=match_query.output_block,
+        )
+        for match_traversals in compound_match_traversals
+    ]
+
+    return CompoundMatchQuery(match_queries=match_queries)
 
 
 def prune_output_blocks_in_compound_match_query(compound_match_query):
