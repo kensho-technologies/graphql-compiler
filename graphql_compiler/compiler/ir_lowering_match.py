@@ -457,6 +457,10 @@ def remove_backtrack_blocks_from_fold(folded_ir_blocks):
 
 def _filter_local_edge_field_non_existence(field_name):
     """Return an Expression that is True iff the specified edge (field_name) does not exist."""
+    # When an edge does not exist at a given vertex, OrientDB represents that in one of two ways:
+    #   - the edge's field does not exist (is null) on the vertex document, or
+    #   - the edge's field does exist, but is an empty list.
+    # We check both of these possibilities.
     local_field = LocalField(field_name)
 
     field_null_check = BinaryComposition(u'=', local_field, NullLiteral)
@@ -475,11 +479,11 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations, 
     return a new match traversal removing all MatchSteps that are within any omitted location.
 
     Args:
-        - match_traversal: given match traversal to be pruned
-        - omitted_locations: subset of optional_locations to be omitted
-        - optional_locations: list of all @optional locations (location immmediately preceding
+        match_traversal: given match traversal to be pruned
+        omitted_locations: subset of optional_locations to be omitted
+        optional_locations: list of all @optional locations (location immmediately preceding
             an @optional traverse) that expand vertex fields
-        - location_to_optional: mapping from location -> optional_location
+        location_to_optional: mapping from location -> optional_location
             where location is within @optional (not necessarily one that expands vertex fields),
             and optional_location is the location preceding the associated @optional scope
 
@@ -536,10 +540,10 @@ def convert_optional_traversals_to_compound_match_query(
     discard all traversals following `e`, and add filters specifying that `e` *does not exist*.
 
     Args:
-        - match_query: MatchQuery object containing n `@optional` scopes which expand vertex fields
-        - optional_locations: list of @optional locations (location preceding an @optional traverse)
+        match_query: MatchQuery object containing n `@optional` scopes which expand vertex fields
+        optional_locations: list of @optional locations (location preceding an @optional traverse)
             that expand vertex fields within
-        - location_to_optional: dict mapping all locations within optional scopes
+        location_to_optional: dict mapping all locations within optional scopes
                               to the corresponding optional location
 
     Returns:
@@ -569,7 +573,7 @@ def convert_optional_traversals_to_compound_match_query(
                 continue
         compound_match_traversals.append(new_match_traversals)
 
-    match_queries=[
+    match_queries = [
         MatchQuery(
             match_traversals=match_traversals,
             folds=match_query.folds,
@@ -591,12 +595,12 @@ def _get_present_locations_from_match_traversals(match_traversals):
     will be included in present_non_optional_locations.
 
     Args:
-        - match_traversals: one possible list of match traversals generated from a query
+        match_traversals: one possible list of match traversals generated from a query
             containing @optional traversal(s)
 
     Returns:
-        - present_locations: set of all locations present in the given match traversals
-        - present_non_optiona_locations: set of all locations present in the given match traversals
+        present_locations: set of all locations present in the given match traversals
+        present_non_optiona_locations: set of all locations present in the given match traversals
             that are not reached through optional traverses.
     """
     present_locations = set()
