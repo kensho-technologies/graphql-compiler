@@ -234,8 +234,9 @@ class Traverse(BasicBlock):
     def validate(self):
         """Ensure that the Traverse block is valid."""
         if not isinstance(self.within_optional_scope, bool):
-            raise TypeError(u'Expected bool within_optional_scope, got: {} {}'.format(
-                type(self.within_optional_scope).__name__, self.within_optional_scope))
+            raise TypeError(u'Expected bool within_optional_scope, got: {} '
+                            u'{}'.format(type(self.within_optional_scope).__name__,
+                                         self.within_optional_scope))
 
         if not isinstance(self.direction, six.string_types):
             raise TypeError(u'Expected string direction, got: {} {}'.format(
@@ -318,8 +319,9 @@ class Recurse(BasicBlock):
         validate_safe_string(self.edge_name)
 
         if not isinstance(self.within_optional_scope, bool):
-            raise TypeError(u'Expected bool within_optional_scope, got: {} {}'.format(
-                type(self.within_optional_scope).__name__, self.within_optional_scope))
+            raise TypeError(u'Expected bool within_optional_scope, got: {} '
+                            u'{}'.format(type(self.within_optional_scope).__name__,
+                                         self.within_optional_scope))
 
         if not isinstance(self.depth, int):
             raise TypeError(u'Expected int depth, got: {} {}'.format(
