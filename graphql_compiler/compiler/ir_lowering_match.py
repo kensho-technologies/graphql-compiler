@@ -24,7 +24,7 @@ from .expressions import (BinaryComposition, ContextField, ContextFieldExistence
 from .ir_lowering_common import (extract_location_to_optional_from_ir_blocks,
                                  lower_context_field_existence, merge_consecutive_filter_clauses,
                                  optimize_boolean_expression_comparisons,
-                                 remove_endoptionals_from_ir_blocks)
+                                 remove_end_optionals)
 from .ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .match_query import MatchQuery, MatchStep, convert_to_match_query
 from .workarounds import orientdb_class_with_while, orientdb_eval_scheduling
@@ -1093,7 +1093,7 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     # These lowering / optimization passes work on IR blocks.
     location_to_optional_results = extract_location_to_optional_from_ir_blocks(ir_blocks)
     optional_locations, location_to_optional = location_to_optional_results
-    ir_blocks = remove_endoptionals_from_ir_blocks(ir_blocks)
+    ir_blocks = remove_end_optionals(ir_blocks)
 
     ir_blocks = lower_context_field_existence(ir_blocks)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)

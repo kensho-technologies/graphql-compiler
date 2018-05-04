@@ -261,7 +261,7 @@ def extract_location_to_optional_from_ir_blocks(ir_blocks):
     return optional_locations, location_to_optional
 
 
-def remove_endoptionals_from_ir_blocks(ir_blocks):
+def remove_end_optionals(ir_blocks):
     """Return a list of IR blocks as a copy of the original, with EndOptional blocks removed."""
     new_ir_blocks = []
     for block in ir_blocks:
