@@ -929,7 +929,8 @@ def lower_context_field_expressions_in_compound_match_query(compound_match_query
         raise AssertionError(u'Received CompoundMatchQuery with '
                              u'an empty list of MatchQuery objects.')
     elif len(compound_match_query.match_queries) == 1:
-        # All ContextFields exist if there is only one MatchQuery.
+        # All ContextFields exist if there is only one MatchQuery
+        # becuase none of the traverses were omitted, and all locations exist (are defined).
         return compound_match_query
     else:
         new_match_queries = []
