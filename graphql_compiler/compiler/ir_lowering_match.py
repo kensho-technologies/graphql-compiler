@@ -477,11 +477,11 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations, 
     Args:
         - match_traversal: given match traversal to be pruned
         - omitted_locations: subset of optional_locations to be omitted
-        - optional_locations: list of @optional locations (location immmediately preceding
+        - optional_locations: list of all @optional locations (location immmediately preceding
             an @optional traverse) that expand vertex fields
         - location_to_optional: mapping from location -> optional_location
-            where location is within @optional (not necessarily one that expands vertex fields)
-            and optional_location is the location preceding the corresponding @optional scope
+            where location is within @optional (not necessarily one that expands vertex fields),
+            and optional_location is the location preceding the associated @optional scope
 
     Returns:
         A new match traversal, with all steps within any omitted location removed.
@@ -493,7 +493,9 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations, 
             current_location = step.as_block.location
             in_optional_location = location_to_optional.get(current_location, None)
 
-            if in_optional_location in omitted_locations:
+            if in_optional_location is None:
+                continue
+            elif in_optional_location in omitted_locations:
                 # Add filter to indicate that the omitted edge(s) shoud not exist
                 field_name = step.root_block.get_field_name()
                 new_predicate = _filter_local_edge_field_non_existence(field_name)
@@ -511,6 +513,10 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations, 
                 # becomes a normal mandatory traverse (discard the optional flag).
                 new_root_block = Traverse(step.root_block.direction, step.root_block.edge_name)
                 new_step = step._replace(root_block=new_root_block)
+
+        # If new_step was set to None,
+        # we have encountered a Traverse that is within an omitted location.
+        # We discard the remainder of the match traversal (everything following is also omitted).
         if new_step is None:
             break
         else:
