@@ -10,6 +10,7 @@ to simplify the final code generation step.
 """
 
 from collections import deque, namedtuple
+from functools import partial
 import itertools
 
 import funcy.py2 as funcy
@@ -851,8 +852,8 @@ def _simplify_ternary_conditional(expression):
         expression: TernaryConditional to be simplified.
 
     Returns:
-        simplified TernaryConditional, if the predicate is True,
-        and the original expression otherwise
+        the if_true expression of the given TernaryConditional, if the predicate is True,
+        and the original TernaryConditional otherwise
     """
     if expression.predicate == TrueLiteral:
         return expression.if_true
@@ -860,7 +861,7 @@ def _simplify_ternary_conditional(expression):
         return expression
 
 
-def _update_context_field_expression(expression, present_locations):
+def _update_context_field_expression(present_locations, expression):
     """Lower Expressions involving non-existent ContextFields True, and simplify result."""
     no_op_blocks = (ContextField, Literal, LocalField, UnaryTransformation, Variable)
     if isinstance(expression, BinaryComposition):
@@ -884,13 +885,6 @@ def _update_context_field_expression(expression, present_locations):
     else:
         raise AssertionError(u'Found unexpected expression of type {}. This should never happen: '
                              u'{}'.format(type(expression).__name__, expression))
-
-
-def _construct_update_context_field_visitor_fn(present_locations):
-    """Return an Expression updater using the given `present_locations`."""
-    def visitor_fn(expression):
-        return _update_context_field_expression(expression, present_locations)
-    return visitor_fn
 
 
 def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
@@ -939,8 +933,7 @@ def lower_context_field_expressions_in_compound_match_query(compound_match_query
         for match_query in compound_match_query.match_queries:
             match_traversals = match_query.match_traversals
             present_locations, _ = _get_present_locations_from_match_traversals(match_traversals)
-            current_visitor_fn = _construct_update_context_field_visitor_fn(
-                present_locations)
+            current_visitor_fn = partial(_update_context_field_expression, present_locations)
 
             new_match_traversals = _lower_filters_in_match_traversals(
                 match_traversals, current_visitor_fn)
