@@ -748,6 +748,7 @@ def _collect_filters_to_first_location_in_match_traversal(match_traversal, locat
             del location_to_filters[match_step.as_block.location]
         else:
             where_block = None
+
         new_match_step = MatchStep(
             root_block=match_step.root_block,
             coerce_type_block=match_step.coerce_type_block,
