@@ -962,43 +962,14 @@ the opposite order:
 ## Miscellaneous
 
 ### Traversing within [`@optional`](#optional)
+Including an optional statement in GraphQL has no performance issues on its own,
+but if you continue traversing within an optional there may be significant performance implications.
 
-OrientDB MATCH currently allows the last step in any traversal to be optional.
-This is a nice translation of `@optional` traversals in a GraphQL query,
-as long as the optional vertex does not futher expand vertex fields within it.
-
-For instance, the following is a valid `MATCH` statement:
-```
-MATCH {
-    class: Animal,
-    as: Animal___1
-}.in('Animal_ParentOf') {
-    as: Animal__in_Animal_ParentOf___1
-}.in('Animal_ParentOf') {
-    optional: true,
-    as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
-}
-```
-
-However, this is *not* a valid `MATCH` statement,
-because the optional traversal follows another edge:
-```
-MATCH {
-    class: Animal,
-    as: Animal___1
-}.in('Animal_ParentOf') {
-    optional: true,
-    as: Animal__in_Animal_ParentOf___1
-}.in('Animal_ParentOf') {
-    as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
-}
-```
-
-Therefore we need a different way to represent traversals within an `@optional` scope.
 Going forward, we will refer to two different kinds of `@optional` directives.
+
 - A *"simple"* optional is a vertex with an `@optional` directive that does not expand
-  any vertex fields within it, and therefore can be directly represented in `MATCH`.
-  For example:
+any vertex fields within it.
+For example:
 ```
 {
     Animal {
@@ -1009,9 +980,20 @@ Going forward, we will refer to two different kinds of `@optional` directives.
     }
 }
 ```
+OrientDB `MATCH` currently allows the last step in any traversal to be optional.
+Therefore, the equivalent `MATCH` traversal for the above `GraphQL` is as follows:
+```
+MATCH {
+    class: Animal,
+    as: Animal___1
+}.in('Animal_ParentOf') {
+    as: Animal__in_Animal_ParentOf___1
+}
+```
+
 - A *"compound"* optional is a vertex with an `@optional` directive which does expand
-  vertex fields within it, and thus cannot represented by a simple `MATCH` query.
-  For example:
+vertex fields within it.
+For example:
 ```
 {
     Animal {
@@ -1025,9 +1007,23 @@ Going forward, we will refer to two different kinds of `@optional` directives.
     }
 }
 ```
+Currently, this cannot represented by a simple `MATCH` query.
+Specifically, the following is *NOT* a valid `MATCH` statement,
+because the optional traversal follows another edge:
+```
+MATCH {
+    class: Animal,
+    as: Animal___1
+}.in('Animal_ParentOf') {
+    optional: true,
+    as: Animal__in_Animal_ParentOf___1
+}.in('Animal_ParentOf') {
+    as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
+}
+```
 
-We can represent a *compound* optional by taking an union (`UNIONALL`) of two distinct
-`MATCH` queries.  For instance, the GraphQL query above can be represented as follows:
+Instead, we represent a *compound* optional by taking an union (`UNIONALL`) of two distinct
+`MATCH` queries. For instance, the `GraphQL` query above can be represented as follows:
 ```
 LET
 $match1 = (
@@ -1058,7 +1054,7 @@ we have to explicitly filter out all vertices where the edge *could have been fo
 This is to eliminate duplicates between the two `MATCH` selections.
 
 The previous example is not *exactly* how we implement *compound* optionals
-(we also have `SELECT` statements within `$match{1/2}`), but it illustrates the point.
+(we also have `SELECT` statements within `$match1` and `$match2`), but it illustrates the point.
 
 #### Performance Penalty
 
