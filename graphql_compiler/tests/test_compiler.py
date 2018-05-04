@@ -2573,7 +2573,8 @@ FROM (
             SELECT EXPAND($result)
             LET
                 $optional__0 = (
-                    SELECT Animal___1.name AS `name`
+                    SELECT
+                        Animal___1.name AS `name`
                         FROM (
                             MATCH {{
                                 class: Animal,
@@ -2640,7 +2641,8 @@ FROM (
             SELECT EXPAND($result)
             LET
                 $optional__0 = (
-                    SELECT Animal___1.name AS `name`
+                    SELECT
+                        Animal___1.name AS `name`
                         FROM (
                             MATCH {{
                                     class: Animal,
@@ -2713,7 +2715,8 @@ FROM (
             SELECT EXPAND($result)
             LET
             $optional__0 = (
-                SELECT Animal___1.name AS `animal_name`
+                SELECT
+                    Animal___1.name AS `animal_name`
                     FROM (
                         MATCH {{
                                 class: Animal,
@@ -2728,7 +2731,8 @@ FROM (
                     )
             ),
             $optional__1 = (
-                SELECT Animal___1.name AS `animal_name`,
+                SELECT
+                    Animal___1.name AS `animal_name`,
                     Animal__in_Animal_ParentOf___1.name AS `parent_name`,
                     Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
                         AS `sibling_and_self_species`,
@@ -2794,7 +2798,8 @@ FROM (
             SELECT EXPAND($result)
             LET
             $optional__0 = (
-                SELECT Animal___1.name AS `animal_name`,
+                SELECT
+                    Animal___1.name AS `animal_name`,
                     Animal__in_Animal_ParentOf___1.name AS `parent_name`
                     FROM (
                         MATCH {{
@@ -2812,7 +2817,8 @@ FROM (
                     )
             ),
             $optional__1 = (
-                SELECT Animal___1.name AS `animal_name`,
+                SELECT
+                    Animal___1.name AS `animal_name`,
                     Animal__in_Animal_ParentOf___1.name AS `parent_name`,
                     Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
                         AS `sibling_and_self_species`,
@@ -2876,7 +2882,8 @@ FROM (
             SELECT EXPAND($result)
             LET
             $optional__0 = (
-                SELECT Animal___1.name AS `animal_name`
+                SELECT
+                    Animal___1.name AS `animal_name`
                     FROM (
                         MATCH {{
                             class: Animal,
@@ -2907,9 +2914,10 @@ FROM (
                     )
             ),
             $optional__1 = (
-                SELECT Animal___1.name AS `animal_name`,
-                        Animal__in_Animal_ParentOf___1.name AS `parent_name`,
-                        Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `sibling_name`
+                SELECT
+                    Animal___1.name AS `animal_name`,
+                    Animal__in_Animal_ParentOf___1.name AS `parent_name`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `sibling_name`
                     FROM (
                         MATCH {{
                             class: Animal,
@@ -2936,10 +2944,11 @@ FROM (
                     )
             ),
             $optional__2 = (
-                SELECT Animal___1.name AS `animal_name`,
-                        Animal__out_Animal_ParentOf___1.name AS `child_name`,
-                        Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
-                            AS `child_species`
+                SELECT
+                    Animal___1.name AS `animal_name`,
+                    Animal__out_Animal_ParentOf___1.name AS `child_name`,
+                    Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
+                        AS `child_species`
                     FROM (
                         MATCH {{
                             class: Animal,
@@ -2966,12 +2975,13 @@ FROM (
                     )
             ),
             $optional__3 = (
-                SELECT Animal___1.name AS `animal_name`,
-                        Animal__out_Animal_ParentOf___1.name AS `child_name`,
-                        Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
-                            AS `child_species`,
-                        Animal__in_Animal_ParentOf___1.name AS `parent_name`,
-                        Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `sibling_name`
+                SELECT
+                    Animal___1.name AS `animal_name`,
+                    Animal__out_Animal_ParentOf___1.name AS `child_name`,
+                    Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
+                        AS `child_species`,
+                    Animal__in_Animal_ParentOf___1.name AS `parent_name`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `sibling_name`
                     FROM (
                         MATCH {{
                             class: Animal,
@@ -3046,7 +3056,8 @@ FROM (
             SELECT EXPAND($result)
             LET
             $optional__0 = (
-                SELECT Animal___1.name AS `animal_name`,
+                SELECT
+                    Animal___1.name AS `animal_name`,
                         if(
                             eval("(Animal__in_Animal_ParentOf___1 IS NOT null)"),
                             Animal__in_Animal_ParentOf___1.name,
@@ -3077,15 +3088,16 @@ FROM (
                     )
             ),
             $optional__1 = (
-                SELECT Animal___1.name AS `animal_name`,
-                        Animal__out_Animal_ParentOf___1.name AS `child_name`,
-                        Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
-                            AS `child_species`,
-                        if(
-                            eval("(Animal__in_Animal_ParentOf___1 IS NOT null)"),
-                            Animal__in_Animal_ParentOf___1.name,
-                            null
-                        ) AS `parent_name`
+                SELECT
+                    Animal___1.name AS `animal_name`,
+                    Animal__out_Animal_ParentOf___1.name AS `child_name`,
+                    Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
+                        AS `child_species`,
+                    if(
+                        eval("(Animal__in_Animal_ParentOf___1 IS NOT null)"),
+                        Animal__in_Animal_ParentOf___1.name,
+                        null
+                    ) AS `parent_name`
                     FROM (
                         MATCH {{
                             class: Animal,
