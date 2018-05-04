@@ -676,45 +676,45 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
 
 
 def _construct_location_to_filter_list(match_query):
-    """Return a dict mapping location -> list of filter predicates applied at that location.
+    """Return a dict mapping location -> list of filters applied at that location.
 
     Args:
-        match_query: MatchQuery object to extract location -> predicates dict from
+        match_query: MatchQuery object from which to extract location -> filters dict
 
     Returns:
-        dict mapping each location in match_query to a list of predicates applied at that location
+        dict mapping each location in match_query to a list of filters applied at that location
     """
     # For each location, all filters for that location should be applied at the first instance.
     # This function collects a list of all filters corresponding to each location
     # present in the given MatchQuery.
-    location_to_predicates = {}
+    location_to_filters = {}
     for match_traversal in match_query.match_traversals:
         for match_step in match_traversal:
             current_filter = match_step.where_block
             if current_filter is not None:
                 current_location = match_step.as_block.location
-                location_to_predicates.setdefault(current_location, []).append(
-                    current_filter.predicate)
-    return location_to_predicates
+                location_to_filters.setdefault(current_location, []).append(
+                    current_filter)
+    return location_to_filters
 
 
-def _predicate_list_to_where_block(predicate_list):
-    """Convert a list of predicates to an Expression that is the conjunction of all of them."""
-    if not isinstance(predicate_list, list):
-        raise AssertionError(u'Expected `list`, Received {}.'.format(predicate_list))
+def _filter_list_to_conjunction_expression(filter_list):
+    """Convert a list of filters to an Expression that is the conjunction of all of them."""
+    if not isinstance(filter_list, list):
+        raise AssertionError(u'Expected `list`, Received {}.'.format(filter_list))
 
-    if not isinstance(predicate_list[0], Expression):
-        raise AssertionError(u'Non-Expression object {} found in predicate_list'
-                             .format(predicate_list[0]))
-    if len(predicate_list) == 1:
-        return predicate_list[0]
+    if not isinstance(filter_list[0], Filter):
+        raise AssertionError(u'Non-Filter object {} found in filter_list'
+                             .format(filter_list[0]))
+    if len(filter_list) == 1:
+        return filter_list[0].predicate
     else:
         return BinaryComposition(u'&&',
-                                 _predicate_list_to_where_block(predicate_list[1:]),
-                                 predicate_list[0])
+                                 _filter_list_to_conjunction_expression(filter_list[1:]),
+                                 filter_list[0].predicate)
 
 
-def _collect_filters_to_first_location_in_match_traversal(match_traversal, location_to_predicates):
+def _collect_filters_to_first_location_in_match_traversal(match_traversal, location_to_filters):
     """Compose all filters for a specific location into its first occurence in given traversal.
 
     For each location in the given match traversal,
@@ -723,8 +723,8 @@ def _collect_filters_to_first_location_in_match_traversal(match_traversal, locat
 
     Args:
         match_traversal: match traversal to be lowered
-        location_to_predicates: dict mapping each location in the MatchQuery which contains
-            the given match traversal to a list of predicates applied at that location
+        location_to_filters: dict mapping each location in the MatchQuery which contains
+            the given match traversal to a list of filters applied at that location
 
     Returns:
         new match traversal with all filters for any given location composed into
@@ -733,16 +733,16 @@ def _collect_filters_to_first_location_in_match_traversal(match_traversal, locat
     new_match_traversal = []
     for match_step in match_traversal:
         # Apply all filters for a location to the first occurence of that location
-        if match_step.as_block.location in location_to_predicates:
+        if match_step.as_block.location in location_to_filters:
             where_block = Filter(
-                _predicate_list_to_where_block(
-                    location_to_predicates[match_step.as_block.location]
+                _filter_list_to_conjunction_expression(
+                    location_to_filters[match_step.as_block.location]
                 )
             )
             # Delete the location entry. No further filters needed for this location.
             # If the same location is found in another call to this function,
             # no filters will be added.
-            del location_to_predicates[match_step.as_block.location]
+            del location_to_filters[match_step.as_block.location]
         else:
             where_block = None
         new_match_step = MatchStep(
