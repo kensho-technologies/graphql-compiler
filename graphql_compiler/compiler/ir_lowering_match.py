@@ -581,6 +581,38 @@ def convert_optional_traversals_to_compound_match_query(
     return CompoundMatchQuery(match_queries=match_queries)
 
 
+def _get_present_locations_from_match_traversals(match_traversals):
+    """Return the set of locations and non-optional locations present in the given match traversals.
+
+    When enumerating the possibilities for optional traversals,
+    the resulting match traversals may have sections of the query omitted.
+    These locations will not be included in the returned `present_locations`.
+    All of the above locations that are not optional traverse locations
+    will be included in present_non_optional_locations.
+
+    Args:
+        - match_traversals: one possible list of match traversals generated from a query
+            containing @optional traversal(s)
+
+    Returns:
+        - present_locations: set of all locations present in the given match traversals
+        - present_non_optiona_locations: set of all locations present in the given match traversals
+            that are not reached through optional traverses.
+    """
+    present_locations = set()
+    present_non_optional_locations = set()
+
+    for match_traversal in match_traversals:
+        for step in match_traversal:
+            if step.as_block is not None:
+                location_name, _ = step.as_block.location.get_location_name()
+                present_locations.add(location_name)
+                if isinstance(step.root_block, Traverse) and not step.root_block.optional:
+                    present_non_optional_locations.add(location_name)
+
+    return present_locations, present_non_optional_locations
+
+
 def prune_output_blocks_in_compound_match_query(compound_match_query):
     """Remove nonexistent outputs from each MatchQuery in the given CompoundMatchQuery."""
     if len(compound_match_query.match_queries) == 1:
@@ -593,22 +625,22 @@ def prune_output_blocks_in_compound_match_query(compound_match_query):
             match_traversals = match_query.match_traversals
             output_block = match_query.output_block
             folds = match_query.folds
-            present_locations = set()
-            present_non_optional_locations = set()
 
-            for traversal in match_traversals:
-                for step in traversal:
-                    if step.as_block is not None:
-                        location_name, _ = step.as_block.location.get_location_name()
-                        present_locations.add(location_name)
-                        if isinstance(step.root_block, Traverse) and not step.root_block.optional:
-                            present_non_optional_locations.add(location_name)
+            present_locations_tuple = _get_present_locations_from_match_traversals(match_traversals)
+            present_locations, present_non_optional_locations = present_locations_tuple
 
             new_output_fields = {}
             for output_name, expression in six.iteritems(output_block.fields):
-                # If @fold is allowed within @optional, this should include FoldedOutputContextField
                 if isinstance(expression, OutputContextField):
                     location_name, _ = expression.location.get_location_name()
+                    if location_name not in present_locations:
+                        raise AssertionError(u'Non-optional output location {} was not found in '
+                                             u'present_locations: {}'
+                                             .format(expression.location, present_locations))
+                    new_output_fields[output_name] = expression
+                elif isinstance(expression, FoldedOutputContextField):
+                    base_location = expression.fold_scope_location.base_location
+                    location_name, _ = base_location.get_location_name()
                     if location_name not in present_locations:
                         raise AssertionError(u'Non-optional output location {} was not found in '
                                              u'present_locations: {}'
@@ -850,30 +882,6 @@ def _construct_update_context_field_visitor_fn(present_locations):
     return visitor_fn
 
 
-def _get_present_locations_from_match_traversals(match_traversals):
-    """Return the set of locations present in the given match traversals.
-
-    When enumerating the possibilities for optional traversals,
-    the resulting match traversals may have sections of the query omitted.
-    These locations will not be included in the returned `present_locations`.
-
-    Args:
-        match_traversals: one possible list of match traversals generated from a query
-            containing @optional traversal(s)
-
-    Returns:
-        present_locations: set of all locations present in the given match traversals
-    """
-    present_locations = set()
-
-    for match_traversal in match_traversals:
-        for step in match_traversal:
-            if step.as_block is not None:
-                location_name, _ = step.as_block.location.get_location_name()
-                present_locations.add(location_name)
-    return present_locations
-
-
 def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
     """Return new match traversals, lowering filters involving non-existent ContextFields.
 
@@ -918,7 +926,7 @@ def lower_context_field_expressions_in_compound_match_query(compound_match_query
         new_match_queries = []
         for match_query in compound_match_query.match_queries:
             match_traversals = match_query.match_traversals
-            present_locations = _get_present_locations_from_match_traversals(match_traversals)
+            present_locations, _ = _get_present_locations_from_match_traversals(match_traversals)
             current_visitor_fn = _construct_update_context_field_visitor_fn(
                 present_locations)
 
