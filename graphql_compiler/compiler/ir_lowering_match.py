@@ -902,7 +902,7 @@ def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
         visitor_fn: visit_and_update function for lowering expressions in given match traversal
 
     Returns:
-        new_match_traversals: new list of match_traversals, with all filter expressions lowered
+        new list of match_traversals, with all filter expressions lowered
     """
     new_match_traversals = []
     for match_traversal in match_traversals:
@@ -912,11 +912,14 @@ def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
                 new_filter = step.where_block.visit_and_update_expressions(visitor_fn)
                 if new_filter.predicate == TrueLiteral:
                     new_filter = None
+
                 new_step = step._replace(where_block=new_filter)
             else:
                 new_step = step
+
             new_match_traversal.append(new_step)
         new_match_traversals.append(new_match_traversal)
+
     return new_match_traversals
 
 
