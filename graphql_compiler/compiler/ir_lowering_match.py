@@ -478,11 +478,11 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations, 
     removing all MatchStep objects that are within any omitted location.
 
     Args:
-        match_traversal: given match traversal to be pruned
+        match_traversal: list of MatchStep objects to be pruned
         omitted_locations: subset of optional_locations to be omitted
         optional_locations: list of all @optional locations (location immmediately preceding
             an @optional traverse) that expand vertex fields
-        location_to_optional: mapping from location -> optional_location
+        location_to_optional: dict mapping location -> optional_location
             where location is within @optional (not necessarily one that expands vertex fields),
             and optional_location is the location preceding the associated @optional scope
 
@@ -725,7 +725,7 @@ def _collect_filters_to_first_location_in_match_traversal(match_traversal, locat
     and apply the resulting Filter to the first instance of the location.
 
     Args:
-        match_traversal: match traversal to be lowered
+        match_traversal: list of MatchStep objects to be lowered
         location_to_filters: dict mapping each location in the MatchQuery which contains
             the given match traversal to a list of filters applied at that location
 
