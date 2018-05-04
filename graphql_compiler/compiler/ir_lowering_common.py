@@ -228,18 +228,18 @@ def extract_location_to_optional_from_ir_blocks(ir_blocks):
     in_optional_location = None
     encountered_traverse_within_optional = False
 
-    for previous_block, block in pairwise(ir_blocks):
-        if isinstance(block, Traverse) and block.optional:
+    for previous_block, current_block in pairwise(ir_blocks):
+        if isinstance(current_block, Traverse) and current_block.optional:
             if in_optional_location is not None:
                 raise AssertionError(u'in_optional_location was not None at an optional traverse: '
-                                     u'{} {}'.format(block, ir_blocks))
+                                     u'{} {}'.format(current_block, ir_blocks))
             if not isinstance(previous_block, MarkLocation):
                 raise AssertionError(u'No MarkLocation found before an optional traverse: '
-                                     u'{} {}'.format(block, ir_blocks))
+                                     u'{} {}'.format(current_block, ir_blocks))
             in_optional_location = previous_block.location
-        elif in_optional_location is not None and isinstance(block, (Traverse, Recurse)):
+        elif in_optional_location is not None and isinstance(current_block, (Traverse, Recurse)):
             encountered_traverse_within_optional = True
-        elif isinstance(block, EndOptional):
+        elif isinstance(current_block, EndOptional):
             if in_optional_location is None:
                 raise AssertionError(u'in_optional_location was None at an EndOptional block: '
                                      u'{}'.format(ir_blocks))
@@ -247,14 +247,16 @@ def extract_location_to_optional_from_ir_blocks(ir_blocks):
                 optional_locations.append(in_optional_location)
             in_optional_location = None
             encountered_traverse_within_optional = False
-        elif isinstance(block, MarkLocation):
-            location_to_optional[block.location] = in_optional_location
+        elif isinstance(current_block, MarkLocation):
+            location_to_optional[current_block.location] = in_optional_location
 
     # Locations not in @optional scope are currently mapped to None.
     # Remove these from the mapping.
-    location_to_optional = {location: optional_location
-                            for location, optional_location in six.iteritems(location_to_optional)
-                            if optional_location is not None}
+    location_to_optional = {
+        location: optional_location
+        for location, optional_location in six.iteritems(location_to_optional)
+        if optional_location is not None
+    }
 
     return optional_locations, location_to_optional
 
