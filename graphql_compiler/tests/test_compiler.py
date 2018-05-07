@@ -781,7 +781,8 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 Animal___1.name AS `animal_name`,
                 Animal__out_Entity_Related___1.name AS `related_animal_name`,
-                Animal__out_Entity_Related__out_Animal_OfSpecies___1.name AS `related_animal_species`
+                Animal__out_Entity_Related__out_Animal_OfSpecies___1.name
+                    AS `related_animal_species`
             FROM (
                 MATCH {{
                     class: Animal,
@@ -2613,7 +2614,8 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 Animal___1.name AS `name`,
                 $Animal___1___out_Entity_Related.name AS `related_animals`,
-                $Animal___1___out_Entity_Related.birthday.format("yyyy-MM-dd") AS `related_birthdays`
+                $Animal___1___out_Entity_Related.birthday.format("yyyy-MM-dd")
+                    AS `related_birthdays`
             FROM (
                 MATCH {{
                     class: Animal,
