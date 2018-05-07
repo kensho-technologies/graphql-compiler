@@ -1656,7 +1656,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1685,7 +1685,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
             parent_location: 'Animal',
         }
@@ -1714,7 +1714,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1745,7 +1745,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1777,7 +1777,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
             parent_location: 'Animal',
         }
@@ -1805,7 +1805,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1835,7 +1835,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1869,7 +1869,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1908,7 +1908,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1938,7 +1938,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1966,7 +1966,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -2006,7 +2006,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -2049,7 +2049,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -2076,7 +2076,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -2110,7 +2110,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -2150,7 +2150,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -2176,8 +2176,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
-            base_location: 'Animal',
+            # No MarkLocation blocks are output within folded scopes.  base_location: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2208,8 +2207,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
-            base_location: 'Animal',
+            # No MarkLocation blocks are output within folded scopes.  base_location: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2235,7 +2233,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 

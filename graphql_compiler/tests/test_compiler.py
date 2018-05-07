@@ -1190,13 +1190,10 @@ class CompilerTests(unittest.TestCase):
             )
         '''
         expected_gremlin = '''
-            g.V('@class',
-                'Animal')
-            .filter{it,
-                m -> it.alias.contains($wanted)}
+            g.V('@class', 'Animal')
+            .filter{it, m -> it.alias.contains($wanted)}
             .as('Animal___1')
-            .transform{it,
-                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
         '''
@@ -1221,16 +1218,13 @@ class CompilerTests(unittest.TestCase):
             )
         '''
         expected_gremlin = '''
-            g.V('@class',
-                'Animal')
+            g.V('@class', 'Animal')
             .as('Animal___1')
                 .out('Animal_ParentOf')
-                .filter{it,
-                m -> it.alias.contains(m.Animal___1.name)}
+                .filter{it, m -> it.alias.contains(m.Animal___1.name)}
                 .as('Animal__out_Animal_ParentOf___1')
             .back('Animal___1')
-            .transform{it,
-                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
         '''
@@ -1265,16 +1259,15 @@ class CompilerTests(unittest.TestCase):
             )
         '''
         expected_gremlin = '''
-            g.V('@class',
-                'Animal')
+            g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
                 .as('Animal__in_Animal_ParentOf___1')
             .optional('Animal___1')
             .as('Animal___2')
                 .out('Animal_ParentOf')
-                .filter{it,
-                    m -> (
+                .filter{it, m ->
+                (
                         (m.Animal__in_Animal_ParentOf___1 == null)
                         ||
                         it.alias.contains(m.Animal__in_Animal_ParentOf___1.name)
@@ -1282,8 +1275,7 @@ class CompilerTests(unittest.TestCase):
                 }
                 .as('Animal__out_Animal_ParentOf___1')
             .back('Animal___2')
-            .transform{it,
-                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
         '''
@@ -1306,13 +1298,10 @@ class CompilerTests(unittest.TestCase):
             )
         '''
         expected_gremlin = '''
-            g.V('@class',
-                'Animal')
-            .filter{it,
-                m -> it.name.contains($wanted)}
+            g.V('@class', 'Animal')
+            .filter{it, m -> it.name.contains($wanted)}
             .as('Animal___1')
-            .transform{it,
-                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
         '''
