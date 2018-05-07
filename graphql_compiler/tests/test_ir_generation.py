@@ -2176,7 +2176,8 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.  base_location: 'Animal',
+            # No MarkLocation blocks are output within folded scopes.
+            base_location: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2207,7 +2208,8 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.  base_location: 'Animal',
+            # No MarkLocation blocks are output within folded scopes.
+            base_location: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
