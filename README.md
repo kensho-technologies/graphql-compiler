@@ -1068,7 +1068,7 @@ For each of the 2<sup>n</sup> subsets `S` of the `n` optional edges:
   along with all the vertices and directives within it, and we add a filter
   on the previous traverse to ensure that the edge corresponding to `t` does not exist.
 
-Therefore, we get a performance penalty that growes exponentially
+Therefore, we get a performance penalty that grows exponentially
 with the number of *compound* optional edges.
 This is important to keep in mind when writing queries with many optional directives.
 
