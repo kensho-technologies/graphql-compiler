@@ -64,6 +64,7 @@ import six
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
+from ..schema import DIRECTIVES
 from .context_helpers import (has_encountered_output_source, is_in_fold_scope, is_in_optional_scope,
                               validate_context_for_visiting_vertex_field)
 from .directive_helpers import (get_local_filter_directives, get_unique_directives,
@@ -709,6 +710,38 @@ def _preprocess_graphql_string(graphql_string):
     return graphql_string + '\n'
 
 
+def _validate_schema_and_ast(schema, ast):
+    """Validate the supplied graphql schema and ast.
+
+    This method wraps around graphql-core's validation to enforce a stricter requirement of the
+    schema-- all directives supported by the compiler must be declared by the schema, regardless of
+    whether each directive is used in the query or not.
+
+    Args:
+        schema: GraphQL schema object, created using the GraphQL library
+        ast: abstract syntax tree representation of a graphql query
+
+    Returns:
+        list containing schema and/or query validation errors
+    """
+    core_graphql_errors = validate(schema, ast)
+
+    # Extract name, locations and arg keys in order to compare schema directives and directives
+    # which are supported by the graphql compiler.
+    graphql_compiler_directives = [(s.name, s.locations, s.args.keys()) for s in DIRECTIVES]
+
+    # Directives provided in the schema.
+    schema_directives = [
+        (directive.name, directive.locations, directive.args.keys())
+        for directive in schema._directives
+    ]
+    for directive in graphql_compiler_directives:
+        if directive not in schema_directives:
+            core_graphql_errors.append(directive)
+
+    return core_graphql_errors
+
+
 ##############
 # Public API #
 ##############
@@ -759,7 +792,7 @@ def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
     except GraphQLSyntaxError as e:
         raise GraphQLParsingError(e)
 
-    validation_errors = validate(schema, ast)
+    validation_errors = _validate_schema_and_ast(schema, ast)
 
     if validation_errors:
         raise GraphQLValidationError(u'String does not validate: {}'.format(validation_errors))
