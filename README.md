@@ -1050,11 +1050,12 @@ $match2 = (
 $final_match = UNIONALL($match1, $match2)
 ```
 In the first case where the optional edge is not followed,
-we have to explicitly filter out all vertices where the edge *could have been folowed*.
+we have to explicitly filter out all vertices where the edge *could have been followed*.
 This is to eliminate duplicates between the two `MATCH` selections.
 
 The previous example is not *exactly* how we implement *compound* optionals
-(we also have `SELECT` statements within `$match1` and `$match2`), but it illustrates the point.
+(we also have `SELECT` statements within `$match1` and `$match2`),
+but it illustrates the the general idea.
 
 #### Performance Penalty
 
