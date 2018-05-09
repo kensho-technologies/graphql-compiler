@@ -442,5 +442,5 @@ class EndOptional(MarkerBlock):
     """
 
     def validate(self):
-        """Endoptional blocks are always valid in isolation."""
+        """In isolation, EndOptional blocks are always valid."""
         pass

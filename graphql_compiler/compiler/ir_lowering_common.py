@@ -1,7 +1,6 @@
 # Copyright 2017 Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
 from funcy.py2 import pairwise
-import six
 
 from .blocks import (ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse,
                      Unfold)
@@ -218,11 +217,14 @@ def extract_location_to_optional_from_ir_blocks(ir_blocks):
     Returns:
         tuple (optional_locations, location_to_optional):
         - optional_locations: list of @optional locations (location immmediately preceding
-            an @optional traverse) that expand vertex fields
-        - location_to_optional: mapping from location -> optional_location
-            where location is within @optional (not necessarily one that expands vertex fields)
-            and optional_location is the location preceding the corresponding @optional scope
+                              an @optional traverse) that expand vertex fields
+        - location_to_optional: dict mapping from location -> optional_location
+                                where location is within @optional (not necessarily one that
+                                expands vertex fields) and optional_location is the location
+                                preceding the corresponding @optional scope
     """
+    # TODO(shankha): optional_locations -> complex_optional_roots <09-05-18>
+    # TODO(shankha): making below a set breaks things! <09-05-18>
     optional_locations = []
     location_to_optional = dict()
     in_optional_location = None
@@ -248,15 +250,12 @@ def extract_location_to_optional_from_ir_blocks(ir_blocks):
             in_optional_location = None
             encountered_traverse_within_optional = False
         elif isinstance(current_block, MarkLocation):
-            location_to_optional[current_block.location] = in_optional_location
-
-    # Locations not in @optional scope are currently mapped to None.
-    # Remove these from the mapping.
-    location_to_optional = {
-        location: optional_location
-        for location, optional_location in six.iteritems(location_to_optional)
-        if optional_location is not None
-    }
+            # in_optional_location will be None if and only if we are not within an @optional scope.
+            if in_optional_location is not None:
+                location_to_optional[current_block.location] = in_optional_location
+        else:
+            # No locations need to be marked, and no optional scopes begin or end here.
+            pass
 
     return optional_locations, location_to_optional
 
