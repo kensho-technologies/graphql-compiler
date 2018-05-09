@@ -4,8 +4,6 @@ import itertools
 
 import six
 
-import ir_lowering_match
-
 from ..blocks import ConstructResult, Filter, Traverse
 from ..expressions import (BinaryComposition, ContextField, FoldedOutputContextField, Literal,
                            LocalField, NullLiteral, OutputContextField, TernaryConditional,
