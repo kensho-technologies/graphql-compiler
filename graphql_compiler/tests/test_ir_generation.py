@@ -179,6 +179,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(revisited_base_location),
             blocks.Traverse('out', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(child_location),
+            blocks.EndOptional(),
             blocks.Backtrack(revisited_base_location, optional=True),
             blocks.MarkLocation(twice_revisited_base_location),
             blocks.ConstructResult({
@@ -327,6 +328,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(child_location),
             blocks.Traverse('out', 'Animal_FedAt', optional=True),
             blocks.MarkLocation(child_fed_at_location),
+            blocks.EndOptional(),
             blocks.Backtrack(child_location, optional=True),
             blocks.MarkLocation(child_revisited_location),
             blocks.Backtrack(base_location),
@@ -377,6 +379,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(base_location),
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(parent_location),
+            blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(base_revisited_location),
             blocks.Traverse('out', 'Animal_ParentOf'),
@@ -438,6 +441,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(animal_fed_at_location),
+            blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
             blocks.ConstructResult({
@@ -724,6 +728,7 @@ class IrGenerationTests(unittest.TestCase):
 
             blocks.Traverse('out', 'Animal_FedAt', optional=True),
             blocks.MarkLocation(child_fed_at_location),
+            blocks.EndOptional(),
             blocks.Backtrack(child_location, optional=True),
             blocks.MarkLocation(revisited_child_location),
 
@@ -731,6 +736,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(other_parent_location),
             blocks.Traverse('out', 'Animal_FedAt', optional=True),
             blocks.MarkLocation(other_parent_fed_at_location),
+            blocks.EndOptional(),
             blocks.Backtrack(other_parent_location, optional=True),
             blocks.MarkLocation(other_parent_revisited_location),
             blocks.Backtrack(revisited_child_location),
@@ -933,6 +939,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Traverse('out', 'Species_Eats', optional=True),
             blocks.CoerceType({'Food'}),
             blocks.MarkLocation(food_location),
+            blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
             blocks.ConstructResult({
@@ -1223,6 +1230,7 @@ class IrGenerationTests(unittest.TestCase):
 
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(parent_location),
+            blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
 
@@ -1329,6 +1337,7 @@ class IrGenerationTests(unittest.TestCase):
 
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(parent_location),
+            blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
 
@@ -1404,6 +1413,7 @@ class IrGenerationTests(unittest.TestCase):
 
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(parent_location),
+            blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
 
@@ -1548,6 +1558,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(animal_location),
             blocks.Traverse('out', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(child_location),
+            blocks.EndOptional(),
             blocks.Backtrack(animal_location, optional=True),
             blocks.MarkLocation(revisited_animal_location),
             blocks.Backtrack(base_location),
@@ -1656,7 +1667,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1685,7 +1696,99 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
+            base_location: 'Animal',
+            parent_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_fold_and_traverse(self):
+        test_data = test_input_data.fold_and_traverse()
+
+        base_location = helpers.Location(('Animal',))
+        parent_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(parent_fold),
+            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.Backtrack(parent_location),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'sibling_and_self_names_list': expressions.FoldedOutputContextField(
+                    parent_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            # No MarkLocation blocks are output within folded scopes.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_fold_and_deep_traverse(self):
+        test_data = test_input_data.fold_and_deep_traverse()
+
+        base_location = helpers.Location(('Animal',))
+        parent_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        sibling_location = parent_location.navigate_to_subpath('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(parent_fold),
+            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.Traverse('out', 'Animal_OfSpecies'),
+            blocks.Backtrack(sibling_location),
+            blocks.Backtrack(parent_location),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'sibling_and_self_species_list': expressions.FoldedOutputContextField(
+                    parent_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            # No MarkLocation blocks are output within folded scopes.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_traverse_and_fold_and_traverse(self):
+        test_data = test_input_data.traverse_and_fold_and_traverse()
+
+        base_location = helpers.Location(('Animal',))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        sibling_fold = helpers.FoldScopeLocation(parent_location, ('out', 'Animal_ParentOf'))
+        sibling_location = parent_location.navigate_to_subpath('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('in', 'Animal_ParentOf'),
+            blocks.MarkLocation(parent_location),
+            blocks.Fold(sibling_fold),
+            blocks.Traverse('out', 'Animal_OfSpecies'),
+            blocks.Backtrack(sibling_location),
+            blocks.Unfold(),
+            blocks.Backtrack(base_location),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'sibling_and_self_species_list': expressions.FoldedOutputContextField(
+                    sibling_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
             parent_location: 'Animal',
         }
@@ -1713,7 +1816,37 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_multiple_outputs_in_same_fold_and_traverse(self):
+        test_data = test_input_data.multiple_outputs_in_same_fold_and_traverse()
+
+        base_location = helpers.Location(('Animal',))
+        base_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_fold),
+            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.Backtrack(parent_location),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'sibling_and_self_names_list': expressions.FoldedOutputContextField(
+                    base_fold, 'name', GraphQLList(GraphQLString)),
+                'sibling_and_self_uuids_list': expressions.FoldedOutputContextField(
+                    base_fold, 'uuid', GraphQLList(GraphQLID)),
+            }),
+        ]
+        expected_location_types = {
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1747,7 +1880,46 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_multiple_folds_and_traverse(self):
+        test_data = test_input_data.multiple_folds_and_traverse()
+        base_location = helpers.Location(('Animal',))
+        base_out_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        base_out_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        base_in_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
+        base_in_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_out_fold),
+            blocks.Traverse('in', 'Animal_ParentOf'),
+            blocks.Backtrack(base_out_location),
+            blocks.Unfold(),
+            blocks.Fold(base_in_fold),
+            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.Backtrack(base_in_location),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'spouse_and_self_names_list': expressions.FoldedOutputContextField(
+                    base_out_fold, 'name', GraphQLList(GraphQLString)),
+                'spouse_and_self_uuids_list': expressions.FoldedOutputContextField(
+                    base_out_fold, 'uuid', GraphQLList(GraphQLID)),
+                'sibling_and_self_names_list': expressions.FoldedOutputContextField(
+                    base_in_fold, 'name', GraphQLList(GraphQLString)),
+                'sibling_and_self_uuids_list': expressions.FoldedOutputContextField(
+                    base_in_fold, 'uuid', GraphQLList(GraphQLID)),
+            }),
+        ]
+        expected_location_types = {
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1777,7 +1949,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1805,7 +1977,90 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_coercion_filters_and_multiple_outputs_within_fold_scope(self):
+        test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope()
+
+        base_location = helpers.Location(('Animal',))
+        entity_fold = helpers.FoldScopeLocation(base_location, ('out', 'Entity_Related'))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(entity_fold),
+            blocks.CoerceType({'Animal'}),
+            blocks.Filter(expressions.BinaryComposition(
+                u'has_substring',
+                expressions.LocalField('name'),
+                expressions.Variable('$substring', GraphQLString)
+            )),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'<=',
+                    expressions.LocalField('birthday'),
+                    expressions.Variable('$latest', GraphQLDate)
+                )
+            ),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'related_animals': expressions.FoldedOutputContextField(
+                    entity_fold, 'name', GraphQLList(GraphQLString)),
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'related_birthdays': expressions.FoldedOutputContextField(
+                    entity_fold, 'birthday', GraphQLList(GraphQLDate)),
+            }),
+        ]
+        expected_location_types = {
+            # No MarkLocation blocks are output within folded scopes.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_coercion_filters_and_multiple_outputs_within_fold_traversal(self):
+        test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_traversal()
+
+        base_location = helpers.Location(('Animal',))
+        parent_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(parent_fold),
+            blocks.Traverse('out', 'Entity_Related'),
+            blocks.CoerceType({'Animal'}),
+            blocks.Filter(expressions.BinaryComposition(
+                u'has_substring',
+                expressions.LocalField('name'),
+                expressions.Variable('$substring', GraphQLString)
+            )),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'<=',
+                    expressions.LocalField('birthday'),
+                    expressions.Variable('$latest', GraphQLDate)
+                )
+            ),
+            blocks.Backtrack(parent_location),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'related_animals': expressions.FoldedOutputContextField(
+                    parent_fold, 'name', GraphQLList(GraphQLString)),
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'related_birthdays': expressions.FoldedOutputContextField(
+                    parent_fold, 'birthday', GraphQLList(GraphQLDate)),
+            }),
+        ]
+        expected_location_types = {
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1832,7 +2087,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1866,7 +2121,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1906,7 +2161,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1932,7 +2187,39 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_coercion_on_interface_within_fold_traversal(self):
+        test_data = test_input_data.coercion_on_interface_within_fold_traversal()
+
+        base_location = helpers.Location(('Animal',))
+        base_parent_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        entity_location = parent_location.navigate_to_subpath('out_Entity_Related')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_parent_fold),
+            blocks.Traverse('out', 'Entity_Related'),
+            blocks.CoerceType({'Animal'}),
+            blocks.Traverse('out', 'Animal_OfSpecies'),
+            blocks.Backtrack(entity_location),
+            blocks.Backtrack(parent_location),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'related_animal_species': expressions.FoldedOutputContextField(
+                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 
@@ -1959,49 +2246,7 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
-            base_location: 'Animal',
-        }
-
-        check_test_data(self, test_data, expected_blocks, expected_location_types)
-
-    def test_coercion_filters_and_multiple_outputs_within_fold_scope(self):
-        test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope()
-
-        base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(base_location, ('out', 'Entity_Related'))
-
-        expected_blocks = [
-            blocks.QueryRoot({'Animal'}),
-            blocks.MarkLocation(base_location),
-            blocks.Fold(base_parent_fold),
-            blocks.CoerceType({'Animal'}),
-            blocks.Filter(
-                expressions.BinaryComposition(
-                    u'has_substring',
-                    expressions.LocalField('name'),
-                    expressions.Variable('$substring', GraphQLString)
-                )
-            ),
-            blocks.Filter(
-                expressions.BinaryComposition(
-                    u'<=',
-                    expressions.LocalField('birthday'),
-                    expressions.Variable('$latest', GraphQLDate)
-                )
-            ),
-            blocks.Unfold(),
-            blocks.ConstructResult({
-                'name': expressions.OutputContextField(
-                    base_location.navigate_to_field('name'), GraphQLString),
-                'related_animals': expressions.FoldedOutputContextField(
-                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
-                'related_birthdays': expressions.FoldedOutputContextField(
-                    base_parent_fold, 'birthday', GraphQLList(GraphQLDate)),
-            }),
-        ]
-        expected_location_types = {
-            # The folded location was never traversed to, so it does not appear here.
+            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
         }
 

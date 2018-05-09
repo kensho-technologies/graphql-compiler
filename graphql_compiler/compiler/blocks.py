@@ -233,6 +233,11 @@ class Traverse(BasicBlock):
 
     def validate(self):
         """Ensure that the Traverse block is valid."""
+        if not isinstance(self.within_optional_scope, bool):
+            raise TypeError(u'Expected bool within_optional_scope, got: {} '
+                            u'{}'.format(type(self.within_optional_scope).__name__,
+                                         self.within_optional_scope))
+
         if not isinstance(self.direction, six.string_types):
             raise TypeError(u'Expected string direction, got: {} {}'.format(
                 type(self.direction).__name__, self.direction))
@@ -289,7 +294,7 @@ class Traverse(BasicBlock):
 class Recurse(BasicBlock):
     """A block for recursive traversal of an edge, collecting all endpoints along the way."""
 
-    def __init__(self, direction, edge_name, depth):
+    def __init__(self, direction, edge_name, depth, within_optional_scope=False):
         """Create a new Recurse block which traverses the given edge up to "depth" times.
 
         Args:
@@ -304,12 +309,19 @@ class Recurse(BasicBlock):
         self.direction = direction
         self.edge_name = edge_name
         self.depth = depth
+        # Denotes whether the traversal is occuring after a prior @optional traversal
+        self.within_optional_scope = within_optional_scope
         self.validate()
 
     def validate(self):
         """Ensure that the Traverse block is valid."""
         validate_edge_direction(self.direction)
         validate_safe_string(self.edge_name)
+
+        if not isinstance(self.within_optional_scope, bool):
+            raise TypeError(u'Expected bool within_optional_scope, got: {} '
+                            u'{}'.format(type(self.within_optional_scope).__name__,
+                                         self.within_optional_scope))
 
         if not isinstance(self.depth, int):
             raise TypeError(u'Expected int depth, got: {} {}'.format(
@@ -330,7 +342,16 @@ class Recurse(BasicBlock):
             recurse_base + (recurse_traversal * i)
             for i in six.moves.xrange(self.depth + 1)
         ]
-        return template.format(recurse=','.join(recurse_steps))
+        recursion_string = template.format(recurse=','.join(recurse_steps))
+        if self.within_optional_scope:
+            # During a traversal, the pipeline element may be null.
+            # The following code returns null when the current pipeline entity is null
+            # (an optional edge did not exist at some earlier traverse).
+            # Otherwise it performs a normal recursion (previous optional edge did exist).
+            recurse_template = u'ifThenElse{{it == null}}{{null}}{{it.{recursion_string}}}'
+            return recurse_template.format(recursion_string=recursion_string)
+        else:
+            return recursion_string
 
 
 class Backtrack(BasicBlock):
@@ -411,4 +432,15 @@ class Unfold(MarkerBlock):
 
     def validate(self):
         """Unfold blocks are always valid in isolation."""
+        pass
+
+
+class EndOptional(MarkerBlock):
+    """Marker for end of an @optional context.
+
+    Optional scope is entered through an optional Traverse Block.
+    """
+
+    def validate(self):
+        """In isolation, EndOptional blocks are always valid."""
         pass

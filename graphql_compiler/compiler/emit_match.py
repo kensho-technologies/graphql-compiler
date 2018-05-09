@@ -255,7 +255,7 @@ def emit_code_from_ir(compound_match_query):
     elif len(match_queries) > 1:
         query_string = emit_code_from_multiple_match_queries(match_queries)
     else:
-        raise AssertionError(u'Received CompoundMatchQuery with an empty list of MatchQueries'
-                             u': {}'.format(match_queries))
+        raise AssertionError(u'Received CompoundMatchQuery with an empty list of MatchQueries: '
+                             u'{}'.format(match_queries))
 
     return query_string
