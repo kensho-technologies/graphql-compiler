@@ -11,6 +11,7 @@ from ..expressions import (BinaryComposition, ContextField, FoldedOutputContextF
                            LocalField, NullLiteral, OutputContextField, TernaryConditional,
                            TrueLiteral, UnaryTransformation, Variable, ZeroLiteral)
 from ..match_query import MatchQuery, MatchStep
+from .utils import BetweenClause
 
 
 ###
@@ -478,7 +479,7 @@ def _update_context_field_expression(present_locations, expression):
             return _simplify_non_context_field_binary_composition(expression)
     elif isinstance(expression, TernaryConditional):
         return _simplify_ternary_conditional(expression)
-    elif isinstance(expression, ir_lowering_match.BetweenClause):
+    elif isinstance(expression, BetweenClause):
         lower_bound = expression.lower_bound
         upper_bound = expression.upper_bound
         if isinstance(lower_bound, ContextField) or isinstance(upper_bound, ContextField):
