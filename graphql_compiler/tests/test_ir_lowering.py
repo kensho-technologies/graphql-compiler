@@ -5,13 +5,14 @@ import unittest
 from graphql import GraphQLString
 import pytest
 
-from ..compiler import ir_lowering_common, ir_lowering_gremlin, ir_lowering_match, ir_sanity_checks
+from ..compiler import gremlin_lowering, ir_lowering_common, ir_sanity_checks, match_lowering
 from ..compiler.blocks import Backtrack, ConstructResult, Filter, MarkLocation, QueryRoot, Traverse
 from ..compiler.expressions import (BinaryComposition, ContextField, ContextFieldExistence,
                                     FalseLiteral, Literal, LocalField, NullLiteral,
                                     OutputContextField, TernaryConditional, TrueLiteral, Variable)
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
+from ..compiler.match_lowering.utils import BetweenClause
 from ..compiler.match_query import MatchQuery, convert_to_match_query
 from ..schema import GraphQLDate
 from .test_helpers import compare_ir_blocks, construct_location_types
@@ -117,7 +118,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             })
         )
 
-        final_blocks = ir_lowering_match.lower_context_field_existence(ir_blocks)
+        final_blocks = match_lowering.lower_context_field_existence(ir_blocks)
         check_test_data(self, expected_final_blocks, final_blocks)
 
     def test_context_field_existence_lowering_in_filter(self):
@@ -185,7 +186,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             })
         ]
 
-        final_blocks = ir_lowering_match.lower_context_field_existence(ir_blocks)
+        final_blocks = match_lowering.lower_context_field_existence(ir_blocks)
         check_test_data(self, expected_final_blocks, final_blocks)
 
     def test_backtrack_block_lowering_simple(self):
@@ -228,7 +229,7 @@ class MatchIrLoweringTests(unittest.TestCase):
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
-        final_query = ir_lowering_match.lower_backtrack_blocks(match_query, location_types)
+        final_query = match_lowering.lower_backtrack_blocks(match_query, location_types)
         check_test_data(self, expected_final_query, final_query)
 
     def test_backtrack_block_lowering_revisiting_root(self):
@@ -281,7 +282,7 @@ class MatchIrLoweringTests(unittest.TestCase):
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
-        final_query = ir_lowering_match.lower_backtrack_blocks(match_query, location_types)
+        final_query = match_lowering.lower_backtrack_blocks(match_query, location_types)
         check_test_data(self, expected_final_query, final_query)
 
     def test_optional_backtrack_block_lowering(self):
@@ -328,7 +329,7 @@ class MatchIrLoweringTests(unittest.TestCase):
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
-        final_query = ir_lowering_match.lower_backtrack_blocks(match_query, location_types)
+        final_query = match_lowering.lower_backtrack_blocks(match_query, location_types)
         check_test_data(self, expected_final_query, final_query)
 
     def test_backtrack_lowering_with_optional_traverse_after_mandatory_traverse(self):
@@ -393,7 +394,7 @@ class MatchIrLoweringTests(unittest.TestCase):
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
-        final_query = ir_lowering_match.lower_backtrack_blocks(match_query, location_types)
+        final_query = match_lowering.lower_backtrack_blocks(match_query, location_types)
         check_test_data(self, expected_final_query, final_query)
 
     def test_unnecessary_traversal_elimination(self):
@@ -478,9 +479,9 @@ class MatchIrLoweringTests(unittest.TestCase):
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
-        temp_query = ir_lowering_match.lower_optional_traverse_blocks(match_query, location_types)
-        temp_query = ir_lowering_match.lower_backtrack_blocks(temp_query, location_types)
-        final_query = ir_lowering_match.truncate_repeated_single_step_traversals(temp_query)
+        temp_query = match_lowering.lower_optional_traverse_blocks(match_query, location_types)
+        temp_query = match_lowering.lower_backtrack_blocks(temp_query, location_types)
+        final_query = match_lowering.truncate_repeated_single_step_traversals(temp_query)
 
         check_test_data(self, expected_final_query, final_query)
 
@@ -605,7 +606,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             )
         ]
 
-        final_blocks = ir_lowering_match.rewrite_binary_composition_inside_ternary_conditional(
+        final_blocks = match_lowering.rewrite_binary_composition_inside_ternary_conditional(
             special_ir_block)
         check_test_data(self, expected_final_blocks, final_blocks)
 
@@ -653,7 +654,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             )
         ]
 
-        final_block = ir_lowering_match.lower_has_substring_binary_compositions(special_ir_block)
+        final_block = match_lowering.lower_has_substring_binary_compositions(special_ir_block)
         check_test_data(self, expected_final_blocks, final_block)
 
     def test_between_lowering_inverted_inequalities(self):
@@ -687,7 +688,7 @@ class MatchIrLoweringTests(unittest.TestCase):
         match_query = convert_to_match_query(ir_blocks)
 
         expected_final_filter_block = Filter(
-            ir_lowering_match.BetweenClause(
+            BetweenClause(
                 LocalField('name'),
                 Variable('$lower', GraphQLString),
                 Variable('$upper', GraphQLString)
@@ -704,7 +705,7 @@ class MatchIrLoweringTests(unittest.TestCase):
         ]
         expected_final_query = convert_to_match_query(expected_final_ir_blocks)
 
-        final_query = ir_lowering_match.lower_comparisons_to_between(match_query)
+        final_query = match_lowering.lower_comparisons_to_between(match_query)
         check_test_data(self, expected_final_query, final_query)
 
     # Disabled until OrientDB fixes the limitation against traversing from an optional vertex.
@@ -788,7 +789,7 @@ class MatchIrLoweringTests(unittest.TestCase):
         ]
         expected_match_query = convert_to_match_query(expected_final_blocks)
 
-        final_query = ir_lowering_match.lower_ir(ir_blocks, location_types)
+        final_query = match_lowering.lower_ir(ir_blocks, location_types)
 
         self.assertEqual(
             expected_match_query, final_query,
@@ -837,5 +838,5 @@ class GremlinIrLoweringTests(unittest.TestCase):
             })
         )
 
-        final_blocks = ir_lowering_gremlin.lower_context_field_existence(ir_blocks)
+        final_blocks = gremlin_lowering.lower_context_field_existence(ir_blocks)
         check_test_data(self, expected_final_blocks, final_blocks)
