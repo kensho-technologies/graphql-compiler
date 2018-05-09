@@ -12,8 +12,8 @@ import funcy.py2 as funcy
 import six
 
 from ..blocks import Backtrack, CoerceType, Filter, MarkLocation, QueryRoot
-from ..expressions import (BinaryComposition, ContextField, ContextFieldExistence,
-                           FalseLiteral, Literal, LocalField, TernaryConditional, TrueLiteral)
+from ..expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
+                           Literal, LocalField, TernaryConditional, TrueLiteral)
 from ..match_query import MatchStep
 
 
