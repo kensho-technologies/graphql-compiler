@@ -1,7 +1,7 @@
 # Copyright 2017 Kensho Technologies, LLC.
 from collections import namedtuple
 
-from . import emit_gremlin, emit_match, ir_lowering_gremlin, ir_lowering_match
+from . import emit_gremlin, emit_match, gremlin_lowering, match_lowering
 from .compiler_frontend import graphql_to_ir
 
 
@@ -42,7 +42,7 @@ def compile_graphql_to_match(schema, graphql_string, type_equivalence_hints=None
     Returns:
         a CompilationResult object
     """
-    lowering_func = ir_lowering_match.lower_ir
+    lowering_func = match_lowering.lower_ir
     query_emitter_func = emit_match.emit_code_from_ir
 
     return _compile_graphql_generic(
@@ -75,7 +75,7 @@ def compile_graphql_to_gremlin(schema, graphql_string, type_equivalence_hints=No
     Returns:
         a CompilationResult object
     """
-    lowering_func = ir_lowering_gremlin.lower_ir
+    lowering_func = gremlin_lowering.lower_ir
     query_emitter_func = emit_gremlin.emit_code_from_ir
 
     return _compile_graphql_generic(
