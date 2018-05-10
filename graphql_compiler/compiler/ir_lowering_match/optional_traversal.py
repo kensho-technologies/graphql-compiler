@@ -56,8 +56,9 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
             optional_root_location = location_to_optional_root.get(current_location, None)
 
             if optional_root_location is None:
-                # current_location was not within any optional scope
-                continue
+                raise AssertionError(u'Found optional Traverse location {} that was not present '
+                                     u'in location_to_optional_root dict: {}'
+                                     .format(current_location, location_to_optional_root))
             elif optional_root_location in omitted_locations:
                 # Add filter to indicate that the omitted edge(s) shoud not exist
                 field_name = step.root_block.get_field_name()
