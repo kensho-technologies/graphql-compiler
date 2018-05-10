@@ -27,22 +27,22 @@ def _filter_local_edge_field_non_existence(field_name):
     return BinaryComposition(u'||', field_null_check, field_size_check)
 
 
-def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations, optional_locations,
-                                            location_to_optional):
+def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
+                                            complex_optional_roots, location_to_optional_root):
     """Return a prefix of the given traverse, excluding any blocks after an omitted optional.
 
-    Given a subset (omitted_locations) of optional_locations, return a new match traversal
+    Given a subset (omitted_locations) of complex_optional_roots, return a new match traversal
     removing all MatchStep objects that are within any omitted location.
 
     Args:
         match_traversal: list of MatchStep objects to be pruned
-        omitted_locations: subset of optional_locations to be omitted
-        optional_locations: list of all @optional locations (location immmediately preceding
-                            an @optional traverse) that expand vertex fields
-        location_to_optional: dict mapping location -> optional_location
-                              where location is within @optional (not necessarily one that expands
-                              vertex fields), and optional_location is the location preceding
-                              the associated @optional scope
+        omitted_locations: subset of complex_optional_roots to be omitted
+        complex_optional_roots: list of all @optional locations (location immmediately preceding
+                                an @optional traverse) that expand vertex fields
+        location_to_optional_root: dict mapping location -> complex_optional_root, where location is
+                                   within optional (not necessarily one that expands vertex fields),
+                                   and complex_optional_root is the location preceding the
+                                   associated @optional scope
 
     Returns:
         list of MatchStep objects as a copy of the given match traversal
@@ -53,12 +53,12 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations, 
         new_step = step
         if isinstance(step.root_block, Traverse) and step.root_block.optional:
             current_location = step.as_block.location
-            in_optional_location = location_to_optional.get(current_location, None)
+            optional_root_location = location_to_optional_root.get(current_location, None)
 
-            if in_optional_location is None:
+            if optional_root_location is None:
                 # current_location was not within any optional scope
                 continue
-            elif in_optional_location in omitted_locations:
+            elif optional_root_location in omitted_locations:
                 # Add filter to indicate that the omitted edge(s) shoud not exist
                 field_name = step.root_block.get_field_name()
                 new_predicate = _filter_local_edge_field_non_existence(field_name)
@@ -71,7 +71,7 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations, 
 
                 # Discard all steps following the omitted @optional traverse
                 new_step = None
-            elif in_optional_location in optional_locations:
+            elif optional_root_location in complex_optional_roots:
                 # Any non-omitted @optional traverse (that expands vertex fields)
                 # becomes a normal mandatory traverse (discard the optional flag).
                 new_root_block = Traverse(step.root_block.direction, step.root_block.edge_name)
@@ -93,7 +93,7 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations, 
 
 
 def convert_optional_traversals_to_compound_match_query(
-        match_query, optional_locations, location_to_optional):
+        match_query, complex_optional_roots, location_to_optional_root):
     """Return 2^n distinct MatchQuery objects in a CompoundMatchQuery.
 
     Given a MatchQuery containing `n` optional traverses that expand vertex fields,
@@ -104,32 +104,33 @@ def convert_optional_traversals_to_compound_match_query(
 
     Args:
         match_query: MatchQuery object containing n `@optional` scopes which expand vertex fields
-        optional_locations: list of @optional locations (location preceding an @optional traverse)
-            that expand vertex fields within
-        location_to_optional: dict mapping all locations within optional scopes
-            to the corresponding optional location
+        complex_optional_roots: list of @optional locations (location preceding an @optional
+                                traverse) that expand vertex fields within
+        location_to_optional_root: dict mapping all locations within optional scopes
+                                   to the corresponding optional location
 
     Returns:
         CompoundMatchQuery object containing 2^n MatchQuery objects,
         one for each possible subset of the n optional edges being followed
     """
-    optional_location_combinations_list = [
-        itertools.combinations(optional_locations, x)
-        for x in range(0, len(optional_locations) + 1)
+    optional_root_location_combinations_list = [
+        itertools.combinations(complex_optional_roots, x)
+        for x in range(0, len(complex_optional_roots) + 1)
     ]
-    optional_location_subsets = list(itertools.chain(*optional_location_combinations_list))
+    optional_root_location_subsets = itertools.chain(*optional_root_location_combinations_list)
+    optional_root_location_subsets = [set(subset) for subset in optional_root_location_subsets]
 
     compound_match_traversals = []
-    for omitted_locations in reversed(optional_location_subsets):
+    for omitted_locations in reversed(optional_root_location_subsets):
         new_match_traversals = []
         for match_traversal in match_query.match_traversals:
             location = match_traversal[0].as_block.location
-            optional_location = location_to_optional.get(location, None)
+            optional_root_location = location_to_optional_root.get(location, None)
 
-            if optional_location is None or optional_location not in omitted_locations:
+            if optional_root_location is None or optional_root_location not in omitted_locations:
                 new_match_traversal = _prune_traverse_using_omitted_locations(
                     match_traversal, set(omitted_locations),
-                    optional_locations, location_to_optional)
+                    complex_optional_roots, location_to_optional_root)
                 new_match_traversals.append(new_match_traversal)
             else:
                 # The root_block is within an omitted scope.
@@ -150,7 +151,7 @@ def convert_optional_traversals_to_compound_match_query(
     return CompoundMatchQuery(match_queries=match_queries)
 
 
-def _get_present_locations_from_match_traversals(match_traversals):
+def _get_present_locations(match_traversals):
     """Return the set of locations and non-optional locations present in the given match traversals.
 
     When enumerating the possibilities for optional traversals,
@@ -165,12 +166,11 @@ def _get_present_locations_from_match_traversals(match_traversals):
 
     Returns:
         tuple (present_locations, present_non_optional_locations):
-            present_locations: set of all locations present in the given match traversals
-            present_non_optional_locations: set of all locations present in the match traversals
-                                            that are not reached through optional traverses.
-                                            Guaranteed to be a subset of present_locations.
+        - present_locations: set of all locations present in the given match traversals
+        - present_non_optional_locations: set of all locations present in the match traversals
+                                          that are not reached through optional traverses.
+                                          Guaranteed to be a subset of present_locations.
     """
-    # TODO(shankha): Return formatting <09-05-18>
     present_locations = set()
     present_non_optional_locations = set()
 
@@ -191,9 +191,19 @@ def _get_present_locations_from_match_traversals(match_traversals):
 
 
 def prune_non_existent_outputs(compound_match_query):
-    """Remove non-existent outputs from each MatchQuery in the given CompoundMatchQuery."""
-    # TODO(shankha): Write docstring <09-05-18>
-    # TODO(shankha): Comments in if elif else <09-05-18>
+    """Remove non-existent outputs from each MatchQuery in the given CompoundMatchQuery.
+
+    Each of the 2^n MatchQuery objects (except one) has been pruned to exclude some Traverse blocks,
+    For each of these, remove the outputs (that have been implicitly pruned away) from each
+    corresponding ConstructResult block.
+
+    Args:
+        compound_match_query: CompoundMatchQuery object containing 2^n pruned MatchQuery objects
+                              (see convert_optional_traversals_to_compound_match_query)
+
+    Returns:
+        CompoundMatchQuery with pruned ConstructResult blocks for each of the 2^n MatchQuery objects
+    """
     if len(compound_match_query.match_queries) == 1:
         return compound_match_query
     elif len(compound_match_query.match_queries) == 0:
@@ -206,12 +216,14 @@ def prune_non_existent_outputs(compound_match_query):
             output_block = match_query.output_block
             folds = match_query.folds
 
-            present_locations_tuple = _get_present_locations_from_match_traversals(match_traversals)
+            present_locations_tuple = _get_present_locations(match_traversals)
             present_locations, present_non_optional_locations = present_locations_tuple
 
             new_output_fields = {}
             for output_name, expression in six.iteritems(output_block.fields):
                 if isinstance(expression, OutputContextField):
+                    # An OutputContextField without a TernaryConditional should not be within
+                    # an @optional scope. These are never pruned.
                     location_name, _ = expression.location.get_location_name()
                     if location_name not in present_locations:
                         raise AssertionError(u'Non-optional output location {} was not found in '
@@ -219,6 +231,8 @@ def prune_non_existent_outputs(compound_match_query):
                                              .format(expression.location, present_locations))
                     new_output_fields[output_name] = expression
                 elif isinstance(expression, FoldedOutputContextField):
+                    # A FoldedOutputContextField without a TernaryConditional should not be within
+                    # an @optional scope. These are never pruned.
                     base_location = expression.fold_scope_location.base_location
                     location_name, _ = base_location.get_location_name()
                     if location_name not in present_locations:
@@ -227,6 +241,8 @@ def prune_non_existent_outputs(compound_match_query):
                                              .format(expression.location, present_locations))
                     new_output_fields[output_name] = expression
                 elif isinstance(expression, TernaryConditional):
+                    # A TernaryConditional indicates that this output is within some optional scope.
+                    # This may be pruned away based on the contents of present_locations.
                     location_name, _ = expression.if_true.location.get_location_name()
                     if location_name in present_locations:
                         if location_name in present_non_optional_locations:
@@ -344,15 +360,23 @@ def _apply_filters_to_first_location_occurrence(match_traversal, location_to_fil
 
 
 def collect_filters_to_first_location_occurrence(compound_match_query):
-    """Collect all filters for a particular location to the first instance of the location."""
-    # Adding edge field non-exsistence filters in `_prune_traverse_using_omitted_locations`
-    # may result in filters being applied to locations after their first occurence.
-    # OrientDB does not resolve this behavior correctly.
-    # Therefore, for each MatchQuery, we collect all the filters for each location in a list.
-    # For each location, we make a conjunction of the filter list (`_predicate_list_to_where_block`)
-    # and apply the new filter to only the first instance of that location.
-    # All other instances will have no filters (None).
-    # TODO(shankha): Docstring <09-05-18>
+    """Collect all filters for a particular location to the first instance of the location.
+
+    Adding edge field non-exsistence filters in `_prune_traverse_using_omitted_locations` may
+    result in filters being applied to locations after their first occurence.
+    OrientDB does not resolve this behavior correctly. Therefore, for each MatchQuery,
+    we collect all the filters for each location in a list. For each location,
+    we make a conjunction of the filter list (`_predicate_list_to_where_block`) and apply
+    the new filter to only the first instance of that location.
+    All other instances will have no filters (None).
+
+    Args:
+        compound_match_query: CompoundMatchQuery object containing 2^n MatchQuery objects
+
+    Returns:
+        CompoundMatchQuery with all filters for each location applied to the first instance
+        of that location.
+    """
     new_match_queries = []
     # Each MatchQuery has a different set of locations, and associated Filters.
     # Hence, each of them is processed independently.
@@ -486,7 +510,7 @@ def _update_context_field_expression(present_locations, expression):
                              u'{}'.format(type(expression).__name__, expression))
 
 
-def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
+def _lower_non_existent_context_field_filters(match_traversals, visitor_fn):
     """Return new match traversals, lowering filters involving non-existent ContextFields.
 
     Expressions involving non-existent ContextFields are evaluated to TrueLiteral.
@@ -522,7 +546,7 @@ def _lower_filters_in_match_traversals(match_traversals, visitor_fn):
     return new_match_traversals
 
 
-def lower_context_field_expressions_in_compound_match_query(compound_match_query):
+def lower_context_field_expressions(compound_match_query):
     """Lower Expressons involving non-existent ContextFields."""
     if len(compound_match_query.match_queries) == 0:
         raise AssertionError(u'Received CompoundMatchQuery {} with no MatchQuery objects.'
@@ -535,10 +559,10 @@ def lower_context_field_expressions_in_compound_match_query(compound_match_query
         new_match_queries = []
         for match_query in compound_match_query.match_queries:
             match_traversals = match_query.match_traversals
-            present_locations, _ = _get_present_locations_from_match_traversals(match_traversals)
+            present_locations, _ = _get_present_locations(match_traversals)
             current_visitor_fn = partial(_update_context_field_expression, present_locations)
 
-            new_match_traversals = _lower_filters_in_match_traversals(
+            new_match_traversals = _lower_non_existent_context_field_filters(
                 match_traversals, current_visitor_fn)
             new_match_queries.append(
                 MatchQuery(

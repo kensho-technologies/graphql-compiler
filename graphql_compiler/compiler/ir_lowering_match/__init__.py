@@ -1,7 +1,7 @@
 import six
 
-from ..ir_lowering_common import (extract_location_to_optional_from_ir_blocks,
-                                  lower_context_field_existence, merge_consecutive_filter_clauses,
+from ..ir_lowering_common import (extract_location_to_optional, lower_context_field_existence,
+                                  merge_consecutive_filter_clauses,
                                   optimize_boolean_expression_comparisons, remove_end_optionals)
 from .ir_lowering import (lower_backtrack_blocks,
                           lower_folded_coerce_types_into_filter_blocks,
@@ -13,8 +13,7 @@ from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .between_lowering import lower_comparisons_to_between
 from .optional_traversal import (collect_filters_to_first_location_occurrence,
                                  convert_optional_traversals_to_compound_match_query,
-                                 lower_context_field_expressions_in_compound_match_query,
-                                 prune_non_existent_outputs)
+                                 lower_context_field_expressions, prune_non_existent_outputs)
 from ..match_query import convert_to_match_query
 from ..workarounds import orientdb_class_with_while, orientdb_eval_scheduling
 
@@ -51,8 +50,8 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     sanity_check_ir_blocks_from_frontend(ir_blocks)
 
     # These lowering / optimization passes work on IR blocks.
-    location_to_optional_results = extract_location_to_optional_from_ir_blocks(ir_blocks)
-    optional_locations, location_to_optional = location_to_optional_results
+    location_to_optional_results = extract_location_to_optional(ir_blocks)
+    complex_optional_roots, location_to_optional_root = location_to_optional_results
     ir_blocks = remove_end_optionals(ir_blocks)
 
     ir_blocks = lower_context_field_existence(ir_blocks)
@@ -85,10 +84,10 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     match_query = match_query._replace(folds=new_folds)
 
     compound_match_query = convert_optional_traversals_to_compound_match_query(
-        match_query, optional_locations, location_to_optional)
+        match_query, complex_optional_roots, location_to_optional_root)
     compound_match_query = prune_non_existent_outputs(compound_match_query)
     compound_match_query = collect_filters_to_first_location_occurrence(compound_match_query)
-    compound_match_query = lower_context_field_expressions_in_compound_match_query(
+    compound_match_query = lower_context_field_expressions(
         compound_match_query)
 
     return compound_match_query

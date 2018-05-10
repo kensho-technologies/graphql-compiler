@@ -208,25 +208,23 @@ def extract_folds_from_ir_blocks(ir_blocks):
     return folds, remaining_ir_blocks
 
 
-def extract_location_to_optional_from_ir_blocks(ir_blocks):
+def extract_location_to_optional(ir_blocks):
     """Construct a mapping from locations within @optional to their correspoding optional Traverse.
 
     Args:
         ir_blocks: list of IR blocks to extract optional data from
 
     Returns:
-        tuple (optional_locations, location_to_optional):
-        - optional_locations: list of @optional locations (location immmediately preceding
-                              an @optional traverse) that expand vertex fields
-        - location_to_optional: dict mapping from location -> optional_location
-                                where location is within @optional (not necessarily one that
-                                expands vertex fields) and optional_location is the location
-                                preceding the corresponding @optional scope
+        tuple (complex_optional_roots, location_to_optional_root):
+        - complex_optional_roots: list of @optional locations (location immmediately preceding
+                                  an @optional traverse) that expand vertex fields
+        - location_to_optional_root: dict mapping from location -> optional_location
+                                     where location is within @optional (not necessarily one that
+                                     expands vertex fields) and optional_location is the location
+                                     preceding the corresponding @optional scope
     """
-    # TODO(shankha): optional_locations -> complex_optional_roots <09-05-18>
-    # TODO(shankha): making below a set breaks things! <09-05-18>
-    optional_locations = []
-    location_to_optional = dict()
+    complex_optional_roots = []
+    location_to_optional_root = dict()
     in_optional_location = None
     encountered_traverse_within_optional = False
 
@@ -246,18 +244,18 @@ def extract_location_to_optional_from_ir_blocks(ir_blocks):
                 raise AssertionError(u'in_optional_location was None at an EndOptional block: '
                                      u'{}'.format(ir_blocks))
             if encountered_traverse_within_optional:
-                optional_locations.append(in_optional_location)
+                complex_optional_roots.append(in_optional_location)
             in_optional_location = None
             encountered_traverse_within_optional = False
         elif isinstance(current_block, MarkLocation):
             # in_optional_location will be None if and only if we are not within an @optional scope.
             if in_optional_location is not None:
-                location_to_optional[current_block.location] = in_optional_location
+                location_to_optional_root[current_block.location] = in_optional_location
         else:
             # No locations need to be marked, and no optional scopes begin or end here.
             pass
 
-    return optional_locations, location_to_optional
+    return complex_optional_roots, location_to_optional_root
 
 
 def remove_end_optionals(ir_blocks):
