@@ -734,9 +734,9 @@ def _validate_schema_and_ast(schema, ast):
     # pylint: disable=protected-access
     schema_directives = [
         (directive.name, directive.locations, directive.args.keys())
-        for directive in schema._directives  
+        for directive in schema._directives
     ]
-    # pylint: endable=protected-access
+    # pylint: enable=protected-access
     for directive in graphql_compiler_directives:
         if directive not in schema_directives:
             core_graphql_errors.append(directive)
