@@ -1037,7 +1037,6 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, invalid_graphql)
 
-
     def test_directives_not_in_schema(self):
         # The schema should define all directives which are supported by the graphql compiler,
         # whether they are not used in the query. Hence we raise an error when the following
