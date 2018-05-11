@@ -726,15 +726,17 @@ def _validate_schema_and_ast(schema, ast):
     """
     core_graphql_errors = validate(schema, ast)
 
-    # Extract name, locations and arg keys in order to compare schema directives and directives
+    # Extract name, locations, and args keys in order to compare schema directives and directives
     # which are supported by the graphql compiler.
     graphql_compiler_directives = [(s.name, s.locations, s.args.keys()) for s in DIRECTIVES]
 
     # Directives provided in the schema.
+    # pylint: disable=protected-access
     schema_directives = [
         (directive.name, directive.locations, directive.args.keys())
-        for directive in schema._directives
+        for directive in schema._directives  
     ]
+    # pylint: endable=protected-access
     for directive in graphql_compiler_directives:
         if directive not in schema_directives:
             core_graphql_errors.append(directive)
