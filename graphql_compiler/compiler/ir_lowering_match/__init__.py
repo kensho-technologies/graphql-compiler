@@ -1,7 +1,7 @@
 import six
 
-from ..ir_lowering_common import (extract_location_to_optional, lower_context_field_existence,
-                                  merge_consecutive_filter_clauses,
+from ..ir_lowering_common import (extract_optional_location_root_info,
+                                  lower_context_field_existence, merge_consecutive_filter_clauses,
                                   optimize_boolean_expression_comparisons, remove_end_optionals)
 from .ir_lowering import (lower_backtrack_blocks,
                           lower_folded_coerce_types_into_filter_blocks,
@@ -50,7 +50,7 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     sanity_check_ir_blocks_from_frontend(ir_blocks)
 
     # These lowering / optimization passes work on IR blocks.
-    location_to_optional_results = extract_location_to_optional(ir_blocks)
+    location_to_optional_results = extract_optional_location_root_info(ir_blocks)
     complex_optional_roots, location_to_optional_root = location_to_optional_results
     ir_blocks = remove_end_optionals(ir_blocks)
 

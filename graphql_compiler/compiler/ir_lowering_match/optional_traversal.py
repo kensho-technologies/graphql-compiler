@@ -223,8 +223,9 @@ def prune_non_existent_outputs(compound_match_query):
             new_output_fields = {}
             for output_name, expression in six.iteritems(output_block.fields):
                 if isinstance(expression, OutputContextField):
-                    # An OutputContextField without a TernaryConditional should not be within
-                    # an @optional scope. These are never pruned.
+                    # An OutputContextField as an output Expression indicates that we are not
+                    # within an @optional scope. Therefore, the location this output uses must
+                    # be in present_locations, and the output is never pruned.
                     location_name, _ = expression.location.get_location_name()
                     if location_name not in present_locations:
                         raise AssertionError(u'Non-optional output location {} was not found in '
@@ -232,9 +233,9 @@ def prune_non_existent_outputs(compound_match_query):
                                              .format(expression.location, present_locations))
                     new_output_fields[output_name] = expression
                 elif isinstance(expression, FoldedOutputContextField):
-                    # A FoldedOutputContextField without a TernaryConditional should not be within
-                    # an @optional scope. The location will not be contained in present_locations.
-                    # These are never pruned.
+                    # A FoldedOutputContextField as an output Expression indicates that we are not
+                    # within an @optional scope. Therefore, the location this output uses must
+                    # be in present_locations, and the output is never pruned.
                     base_location = expression.fold_scope_location.base_location
                     location_name, _ = base_location.get_location_name()
                     if location_name in present_locations:

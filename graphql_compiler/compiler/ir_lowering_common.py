@@ -208,7 +208,7 @@ def extract_folds_from_ir_blocks(ir_blocks):
     return folds, remaining_ir_blocks
 
 
-def extract_location_to_optional(ir_blocks):
+def extract_optional_location_root_info(ir_blocks):
     """Construct a mapping from locations within @optional to their correspoding optional Traverse.
 
     Args:
