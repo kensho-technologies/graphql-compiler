@@ -720,58 +720,68 @@ class CompilerTests(unittest.TestCase):
             )
         '''
         expected_gremlin = '''
-g.V('@class', 'Animal')
-.filter{it, m -> (it.name == $animal_name)}
-.as('Animal___1')
-    .out('Animal_ParentOf')
-    .as('Animal__out_Animal_ParentOf___1')
-        .ifThenElse{it.out_Animal_FedAt == null}{null}{it.out('Animal_FedAt')}
-        .as('Animal__out_Animal_ParentOf__out_Animal_FedAt___1')
-    .optional('Animal__out_Animal_ParentOf___1')
-    .as('Animal__out_Animal_ParentOf___2')
-        .in('Animal_ParentOf')
-        .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf___1')
-            .ifThenElse{it.out_Animal_FedAt == null}{null}{it.out('Animal_FedAt')}
-            .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1')
-        .optional('Animal__out_Animal_ParentOf__in_Animal_ParentOf___1')
-        .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf___2')
-    .back('Animal__out_Animal_ParentOf___2')
-.back('Animal___1')
-    .in('Animal_ParentOf')
-    .as('Animal__in_Animal_ParentOf___1')
-        .out('Animal_FedAt')
-        .filter{it, m -> (
-            (
-                (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 == null) ||
-                (it.name == m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.name)
-            ) && ((
-                (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1 == null) ||
-                (it.event_date >=
-                 m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1.event_date)
-            ) && (
-                (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 == null) ||
-                (it.event_date <= m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date)
-            ))
-        )}
-        .as('Animal__in_Animal_ParentOf__out_Animal_FedAt___1')
-    .back('Animal__in_Animal_ParentOf___1')
-.back('Animal___1')
-.transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-    child_fed_at: (
-        (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
-        m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
-            .format("yyyy-MM-dd'T'HH:mm:ssX") :
-        null
-    ),
-    grandparent_fed_at: m.Animal__in_Animal_ParentOf__out_Animal_FedAt___1.event_date
-        .format("yyyy-MM-dd'T'HH:mm:ssX"),
-    other_parent_fed_at: (
-        (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
-        m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1.event_date
-            .format("yyyy-MM-dd'T'HH:mm:ssX") :
-        null
-    )
-])}
+            g.V('@class', 'Animal')
+            .filter{it, m -> (it.name == $animal_name)}
+            .as('Animal___1')
+                .out('Animal_ParentOf')
+                .as('Animal__out_Animal_ParentOf___1')
+                    .ifThenElse{it.out_Animal_FedAt == null}{null}{it.out('Animal_FedAt')}
+                    .as('Animal__out_Animal_ParentOf__out_Animal_FedAt___1')
+                .optional('Animal__out_Animal_ParentOf___1')
+                .as('Animal__out_Animal_ParentOf___2')
+                    .in('Animal_ParentOf')
+                    .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf___1')
+                        .ifThenElse{it.out_Animal_FedAt == null}{null}{it.out('Animal_FedAt')}
+                        .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1')
+                    .optional('Animal__out_Animal_ParentOf__in_Animal_ParentOf___1')
+                    .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf___2')
+                .back('Animal__out_Animal_ParentOf___2')
+            .back('Animal___1')
+                .in('Animal_ParentOf')
+                .as('Animal__in_Animal_ParentOf___1')
+                    .out('Animal_FedAt')
+                    .filter{it, m -> (
+                        (
+                            (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 == null) ||
+                            (it.name == m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.name)
+                        ) && 
+                        (
+                            (
+                                (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
+                                    __out_Animal_FedAt___1 == null)
+                                ||
+                                (it.event_date >= m.Animal__out_Animal_ParentOf
+                                    __in_Animal_ParentOf__out_Animal_FedAt___1.event_date)
+                            )
+                            &&
+                            (
+                                (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 == null)
+                                ||
+                                (it.event_date <= m.Animal__out_Animal_ParentOf
+                                    __out_Animal_FedAt___1.event_date)
+                            )
+                        )
+                    )}
+                    .as('Animal__in_Animal_ParentOf__out_Animal_FedAt___1')
+                .back('Animal__in_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                child_fed_at: (
+                    (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
+                    m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
+                        .format("yyyy-MM-dd'T'HH:mm:ssX") :
+                    null
+                ),
+                grandparent_fed_at: m.Animal__in_Animal_ParentOf__out_Animal_FedAt___1.event_date
+                    .format("yyyy-MM-dd'T'HH:mm:ssX"),
+                other_parent_fed_at: (
+                    (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
+                        __out_Animal_FedAt___1 != null) ?
+                    m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") :
+                    null
+                )
+            ])}
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
@@ -1193,13 +1203,10 @@ g.V('@class', 'Animal')
             )
         '''
         expected_gremlin = '''
-            g.V('@class',
-                'Animal')
-            .filter{it,
-                m -> it.alias.contains($wanted)}
+            g.V('@class', 'Animal')
+            .filter{it, m -> it.alias.contains($wanted)}
             .as('Animal___1')
-            .transform{it,
-                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
         '''
@@ -1231,8 +1238,7 @@ g.V('@class', 'Animal')
                 m -> it.alias.contains(m.Animal___1.name)}
                 .as('Animal__out_Animal_ParentOf___1')
             .back('Animal___1')
-            .transform{it,
-                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
         '''
@@ -1305,13 +1311,10 @@ g.V('@class', 'Animal')
             )
         '''
         expected_gremlin = '''
-            g.V('@class',
-                'Animal')
-            .filter{it,
-                m -> it.name.contains($wanted)}
+            g.V('@class', 'Animal')
+            .filter{it, m -> it.name.contains($wanted)}
             .as('Animal___1')
-            .transform{it,
-                m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
         '''
