@@ -30,7 +30,7 @@ def get_test_function_names_from_class(test_class):
 
 # The namedtuple function is imported from test_input_data,
 # but does not correspond to any test inputs.
-IGNORED_FUNCTIONS = ['namedtuple']
+IGNORED_FUNCTIONS = frozenset({'namedtuple'})
 
 
 class TestingInvariants(unittest.TestCase):
