@@ -1509,7 +1509,7 @@ def optional_and_fold():
         Animal {
             name @output(out_name: "animal_name")
             in_Animal_ParentOf @optional {
-                    name @output(out_name: "parent_name")
+                name @output(out_name: "parent_name")
             }
             out_Animal_ParentOf @fold {
                 name @output(out_name: "child_names_list")
