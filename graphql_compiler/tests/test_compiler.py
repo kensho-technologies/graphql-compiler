@@ -744,7 +744,8 @@ class CompilerTests(unittest.TestCase):
                         (
                             (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 == null) ||
                             (it.name == m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.name)
-                        ) && 
+                        )
+                        &&
                         (
                             (
                                 (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
