@@ -1234,8 +1234,7 @@ class CompilerTests(unittest.TestCase):
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .out('Animal_ParentOf')
-                .filter{it,
-                m -> it.alias.contains(m.Animal___1.name)}
+                .filter{it, m -> it.alias.contains(m.Animal___1.name)}
                 .as('Animal__out_Animal_ParentOf___1')
             .back('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -2623,23 +2622,25 @@ class CompilerTests(unittest.TestCase):
         test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope()
 
         expected_match = '''
-    SELECT
-        Animal___1.name AS `name`,
-        $Animal___1___out_Entity_Related.name AS `related_animals`,
-        $Animal___1___out_Entity_Related.birthday.format("yyyy-MM-dd") AS `related_birthdays`
-    FROM (
-        MATCH {{
-            class: Animal,
-            as: Animal___1
-        }}
-        RETURN $matches
-    ) LET
-        $Animal___1___out_Entity_Related =
-            Animal___1.out("Entity_Related")[(
-                (@this INSTANCEOF 'Animal') AND
-                ((name LIKE ('%' + ({substring} + '%'))) AND
-                (birthday <= date({latest}, "yyyy-MM-dd"))))].asList()
-        '''
+            SELECT
+                Animal___1.name AS `name`,
+                $Animal___1___out_Entity_Related.name AS `related_animals`,
+                $Animal___1___out_Entity_Related.birthday.format("yyyy-MM-dd")
+                    AS `related_birthdays`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Animal___1___out_Entity_Related =
+                    Animal___1.out("Entity_Related")[(
+                        (@this INSTANCEOF 'Animal') AND
+                        ((name LIKE ('%' + ({substring} + '%'))) AND
+                        (birthday <= date({latest}, "yyyy-MM-dd"))))].asList()
+                '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
             .as('Animal___1')
