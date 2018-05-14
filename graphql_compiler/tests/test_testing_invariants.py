@@ -39,7 +39,7 @@ class TestingInvariants(unittest.TestCase):
     def test_ir_generation_test_invariants(self):
         # Importing IrGenerationTests globally would expose them to py.test a second time.
         # We import them here so that these tests are not run again.
-        from test_ir_generation import IrGenerationTests
+        from .test_ir_generation import IrGenerationTests
         ir_generation_test_names = get_function_names_from_class(IrGenerationTests)
         for expected_test_function_name in self.expected_test_functions_list:
             if expected_test_function_name not in ir_generation_test_names:
@@ -49,7 +49,7 @@ class TestingInvariants(unittest.TestCase):
     def test_compiler_test_invariants(self):
         # Importing CompilerTests globally would expose them to py.test a second time.
         # We import them here so that these tests are not run again.
-        from test_compiler import CompilerTests
+        from .test_compiler import CompilerTests
         compiler_test_names = get_function_names_from_class(CompilerTests)
         for expected_test_function_name in self.expected_test_functions_list:
             if expected_test_function_name not in compiler_test_names:
