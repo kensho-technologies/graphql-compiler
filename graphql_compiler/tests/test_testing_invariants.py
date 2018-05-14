@@ -1,6 +1,5 @@
 # Copyright 2017 Kensho Technologies, LLC.
 """Common GraphQL test inputs and expected outputs."""
-
 from collections import namedtuple
 from inspect import getmembers, isfunction
 import unittest
@@ -23,7 +22,7 @@ def get_function_names_from_class(test_class):
     return set(
         member
         for member in member_dict
-        if isfunction(member_dict[member]) and member[:4] == 'test'
+        if isfunction(member_dict[member]) and member[:5] == 'test_'
     )
 
 IGNORED_FUNCTIONS = ['namedtuple']
@@ -45,8 +44,8 @@ class TestingInvariants(unittest.TestCase):
         ir_generation_test_names = get_function_names_from_class(IrGenerationTests)
         for expected_test_function_name in self.expected_test_functions_list:
             if expected_test_function_name not in ir_generation_test_names:
-                raise AssertionError(u'Test case "{}" not found in ir_generation_tests.py'
-                                     u'.'.format(expected_test_function_name))
+                raise AssertionError(u'Test case "{}" not found in ir_generation_tests.py.'
+                                     .format(expected_test_function_name))
 
     def test_compiler_test_invariants(self):
         # Importing CompilerTests globally would expose them to py.test a second time.
@@ -55,5 +54,5 @@ class TestingInvariants(unittest.TestCase):
         compiler_test_names = get_function_names_from_class(CompilerTests)
         for expected_test_function_name in self.expected_test_functions_list:
             if expected_test_function_name not in compiler_test_names:
-                raise AssertionError(u'Test case "{}" not found in compiler_tests.py'
-                                     u'.'.format(expected_test_function_name))
+                raise AssertionError(u'Test case "{}" not found in compiler_tests.py.'
+                                     .format(expected_test_function_name))
