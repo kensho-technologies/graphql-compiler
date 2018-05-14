@@ -1522,8 +1522,7 @@ def optional_and_fold():
         'child_names_list': OutputMetadata(
             type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {
-    }
+    expected_input_metadata = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1540,7 +1539,7 @@ def fold_and_optional():
                 name @output(out_name: "child_names_list")
             }
             in_Animal_ParentOf @optional {
-                    name @output(out_name: "parent_name")
+                name @output(out_name: "parent_name")
             }
         }
     }'''
@@ -1550,8 +1549,7 @@ def fold_and_optional():
         'child_names_list': OutputMetadata(
             type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {
-    }
+    expected_input_metadata = {}
 
     return CommonTestData(
         graphql_input=graphql_input,

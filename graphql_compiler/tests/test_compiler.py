@@ -2776,8 +2776,45 @@ class CompilerTests(unittest.TestCase):
         test_data = test_input_data.fold_and_optional()
 
         expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal___1___out_Animal_ParentOf.name AS `child_names_list`,
+                if(eval("(Animal__in_Animal_ParentOf___1 IS NOT null)"),
+                    Animal__in_Animal_ParentOf___1.name,
+                    null
+                ) AS `parent_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    optional: true,
+                    as: Animal__in_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
         '''
         expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+                .as('Animal__in_Animal_ParentOf___1')
+            .optional('Animal___1')
+            .as('Animal___2')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                child_names_list: (
+                    (m.Animal___2.out_Animal_ParentOf == null) ?
+                        [] :
+                        (m.Animal___2.out_Animal_ParentOf.collect{entry -> entry.inV.next().name})
+                ),
+                parent_name: (
+                    (m.Animal__in_Animal_ParentOf___1 != null) ?
+                        m.Animal__in_Animal_ParentOf___1.name : null
+                )
+            ])}
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
