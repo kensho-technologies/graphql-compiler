@@ -1,10 +1,7 @@
 # Copyright 2017 Kensho Technologies, LLC.
 """Common GraphQL test inputs and expected outputs."""
-from collections import namedtuple
 from inspect import getmembers, isfunction
 import unittest
-
-from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 
 import test_input_data
 
@@ -25,7 +22,9 @@ def get_function_names_from_class(test_class):
         if isfunction(member_dict[member]) and member[:5] == 'test_'
     )
 
+
 IGNORED_FUNCTIONS = ['namedtuple']
+
 
 class TestingInvariants(unittest.TestCase):
     def setUp(self):
