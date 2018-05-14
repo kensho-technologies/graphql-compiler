@@ -3,7 +3,7 @@
 from inspect import getmembers, isfunction
 import unittest
 
-import test_input_data
+import .test_input_data
 
 
 def get_function_names_from_module(module):
