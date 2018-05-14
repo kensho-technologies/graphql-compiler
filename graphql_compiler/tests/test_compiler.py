@@ -2640,7 +2640,7 @@ class CompilerTests(unittest.TestCase):
                         (@this INSTANCEOF 'Animal') AND
                         ((name LIKE ('%' + ({substring} + '%'))) AND
                         (birthday <= date({latest}, "yyyy-MM-dd"))))].asList()
-                '''
+        '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
             .as('Animal___1')
@@ -3910,8 +3910,7 @@ class CompilerTests(unittest.TestCase):
         '''
 
         expected_gremlin = '''
-            g.V('@class',
-                'Animal')
+            g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
                 .as('Animal__in_Animal_ParentOf___1')
