@@ -241,7 +241,7 @@ def prune_non_existent_outputs(compound_match_query):
                     if location_name in present_locations:
                         raise AssertionError(u'Folded output location {} was found in '
                                              u'present_locations: {}'
-                                             .format(expression.location, present_locations))
+                                             .format(base_location, present_locations))
                     new_output_fields[output_name] = expression
                 elif isinstance(expression, TernaryConditional):
                     # A TernaryConditional indicates that this output is within some optional scope.
