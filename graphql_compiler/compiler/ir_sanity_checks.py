@@ -5,6 +5,7 @@ from funcy.py2 import pairwise
 
 from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, Fold, MarkLocation,
                      OutputSource, QueryRoot, Recurse, Traverse, Unfold)
+from .ir_lowering_common import extract_folds_from_ir_blocks
 
 
 def sanity_check_ir_blocks_from_frontend(ir_blocks):
@@ -26,6 +27,7 @@ def sanity_check_ir_blocks_from_frontend(ir_blocks):
     _sanity_check_query_root_block(ir_blocks)
     _sanity_check_output_source_follower_blocks(ir_blocks)
     _sanity_check_block_pairwise_constraints(ir_blocks)
+    _sanity_check_mark_location_preceding_optional_traverse(ir_blocks)
     _sanity_check_every_location_is_marked(ir_blocks)
     _sanity_check_coerce_type_outside_of_fold(ir_blocks)
 
@@ -102,12 +104,6 @@ def _sanity_check_block_pairwise_constraints(ir_blocks):
         if isinstance(first_block, MarkLocation) and isinstance(second_block, MarkLocation):
             raise AssertionError(u'Found consecutive MarkLocation blocks: {}'.format(ir_blocks))
 
-        # Traverse blocks with optional=True are immediately preceded by a MarkLocation block.
-        if isinstance(second_block, Traverse) and second_block.optional:
-            if not isinstance(first_block, MarkLocation):
-                raise AssertionError(u'Expected MarkLocation before Traverse with optional=True, '
-                                     u'but none was found: {}'.format(ir_blocks))
-
         # Traverse blocks with optional=True are immediately followed
         # by a MarkLocation, CoerceType or Filter block.
         if isinstance(first_block, Traverse) and first_block.optional:
@@ -126,6 +122,19 @@ def _sanity_check_block_pairwise_constraints(ir_blocks):
             if not isinstance(first_block, MarkLocation):
                 raise AssertionError(u'Expected MarkLocation before Recurse, but none was found: '
                                      u'{}'.format(ir_blocks))
+
+
+def _sanity_check_mark_location_preceding_optional_traverse(ir_blocks):
+    """Assert that optional traverse blocks are preceded by a MarkLocation."""
+    # Once all fold blocks are removed, each optional Traverse must have
+    # a MarkLocation block immediately before it.
+    _, new_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
+    for first_block, second_block in pairwise(new_ir_blocks):
+        # Traverse blocks with optional=True are immediately preceded by a MarkLocation block.
+        if isinstance(second_block, Traverse) and second_block.optional:
+            if not isinstance(first_block, MarkLocation):
+                raise AssertionError(u'Expected MarkLocation before Traverse with optional=True, '
+                                     u'but none was found: {}'.format(ir_blocks))
 
 
 def _sanity_check_every_location_is_marked(ir_blocks):
