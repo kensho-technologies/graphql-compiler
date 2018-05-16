@@ -3051,3 +3051,59 @@ class IrGenerationTests(unittest.TestCase):
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_optional_and_fold(self):
+        test_data = test_input_data.optional_and_fold()
+
+        base_location = helpers.Location(('Animal',))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('in', 'Animal_ParentOf', optional=True),
+            blocks.MarkLocation(parent_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, optional=True),
+            blocks.Fold(base_fold),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'parent_name': expressions.OutputContextField(
+                    parent_location.navigate_to_field('name'), GraphQLString),
+                'child_names_list': expressions.FoldedOutputContextField(
+                    base_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_location: 'Animal',
+        }
+
+    def test_fold_and_optional(self):
+        test_data = test_input_data.fold_and_optional()
+
+        base_location = helpers.Location(('Animal',))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_fold),
+            blocks.Unfold(),
+            blocks.Traverse('in', 'Animal_ParentOf', optional=True),
+            blocks.MarkLocation(parent_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, optional=True),
+            blocks.ConstructResult({
+                'parent_name': expressions.OutputContextField(
+                    parent_location.navigate_to_field('name'), GraphQLString),
+                'child_names_list': expressions.FoldedOutputContextField(
+                    base_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_location: 'Animal',
+        }

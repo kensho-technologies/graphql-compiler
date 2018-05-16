@@ -240,8 +240,8 @@ def extract_optional_location_root_info(ir_blocks):
                                      .format(current_block, ir_blocks))
 
             in_optional_root_location = preceding_location
-        elif all(in_optional_root_location is not None,
-                 isinstance(current_block, (Traverse, Recurse))):
+        elif all((in_optional_root_location is not None,
+                  isinstance(current_block, (Traverse, Recurse)))):
             encountered_traverse_within_optional = True
         elif isinstance(current_block, EndOptional):
             if in_optional_root_location is None:

@@ -363,11 +363,18 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         # Folded scopes don't actually traverse to the location, so it's never really visited.
         context['location_types'][location] = strip_non_null_from_type(current_schema_type)
         basic_blocks.append(_mark_location(location))
+        preceding_marked_location_ignoring_folds = True
+    else:
+        preceding_marked_location_ignoring_folds = False
+
 
     output_source = _process_output_source_directive(schema, current_schema_type, ast,
                                                      location, context, unique_local_directives)
     if output_source:
         basic_blocks.append(output_source)
+
+    # Fist visited instance of this location.
+    first_visit_location = location
 
     # step V-4: step into vertex fields
     for field_ast in vertex_fields:
@@ -398,7 +405,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             # Make sure there's a tag right before it for the optional Backtrack to jump back to.
             # Otherwise, the traversal could rewind to an old tag and might ignore
             # entire stretches of applied filtering.
-            if not isinstance(basic_blocks[-1], blocks.MarkLocation):
+            # The preceding tag could be present before any number of fold blocks.
+            if not preceding_marked_location_ignoring_folds:
                 location = location.revisit()
                 context['location_types'][location] = strip_non_null_from_type(current_schema_type)
                 basic_blocks.append(_mark_location(location))
@@ -412,7 +420,9 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         edge_direction, edge_name = _get_edge_direction_and_name(field_name)
 
         if fold_directive:
-            fold_scope_location = FoldScopeLocation(location, (edge_direction, edge_name))
+            # Folds are always started from the first marked location, and not any of the revisits.
+            fold_scope_location = FoldScopeLocation(first_visit_location,
+                                                    (edge_direction, edge_name))
             fold_block = blocks.Fold(fold_scope_location)
             basic_blocks.append(fold_block)
             context['fold'] = fold_scope_location
@@ -464,6 +474,15 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 basic_blocks.append(_mark_location(location))
             else:
                 basic_blocks.append(blocks.Backtrack(location))
+
+        if isinstance(basic_blocks[-1], blocks.MarkLocation):
+            preceding_marked_location_ignoring_folds = True
+        else:
+            if not fold_directive:
+                preceding_marked_location_ignoring_folds = False
+            else:
+                # Folded traversal blocks are ignored for the purposes of preceding marked location.
+                pass
 
     return basic_blocks
 
