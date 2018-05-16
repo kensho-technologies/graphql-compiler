@@ -238,7 +238,7 @@ def prune_non_existent_outputs(compound_match_query):
                     # be in present_locations, and the output is never pruned.
                     base_location = expression.fold_scope_location.base_location
                     location_name, _ = base_location.get_location_name()
-                    if location_name in present_locations:
+                    if location_name not in present_locations:
                         raise AssertionError(u'Folded output location {} was found in '
                                              u'present_locations: {}'
                                              .format(base_location, present_locations))
