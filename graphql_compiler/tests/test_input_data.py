@@ -1509,17 +1509,17 @@ def optional_and_traverse():
         Animal {
             name @output(out_name: "name")
             in_Animal_ParentOf @optional {
-                name @output(out_name: "parent_name")
+                name @output(out_name: "child_name")
                 in_Animal_ParentOf {
-                    name @output(out_name: "grandparent_name")
+                    name @output(out_name: "grandchild_name")
                 }
             }
         }
     }'''
     expected_output_metadata = {
         'name': OutputMetadata(type=GraphQLString, optional=False),
-        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
-        'grandparent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'child_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandchild_name': OutputMetadata(type=GraphQLString, optional=True),
     }
     expected_input_metadata = {}
 
@@ -1536,17 +1536,17 @@ def optional_and_traverse_after_filter():
             name @output(out_name: "name")
                  @filter(op_name: "has_substring", value: ["$wanted"])
             in_Animal_ParentOf @optional {
-                name @output(out_name: "parent_name")
+                name @output(out_name: "child_name")
                 in_Animal_ParentOf {
-                    name @output(out_name: "grandparent_name")
+                    name @output(out_name: "grandchild_name")
                 }
             }
         }
     }'''
     expected_output_metadata = {
         'name': OutputMetadata(type=GraphQLString, optional=False),
-        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
-        'grandparent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'child_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandchild_name': OutputMetadata(type=GraphQLString, optional=True),
     }
     expected_input_metadata = {
         'wanted': GraphQLString,
@@ -1564,11 +1564,11 @@ def optional_and_deep_traverse():
         Animal {
             name @output(out_name: "animal_name")
             in_Animal_ParentOf @optional {
-                name @output(out_name: "parent_name")
+                name @output(out_name: "child_name")
                 out_Animal_ParentOf {
-                    name @output(out_name: "sibling_name")
+                    name @output(out_name: "spouse_name")
                     out_Animal_OfSpecies {
-                        name @output(out_name: "sibling_species")
+                        name @output(out_name: "spouse_species")
                     }
                 }
             }
@@ -1576,9 +1576,9 @@ def optional_and_deep_traverse():
     }'''
     expected_output_metadata = {
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
-        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
-        'sibling_name': OutputMetadata(type=GraphQLString, optional=True),
-        'sibling_species': OutputMetadata(type=GraphQLString, optional=True),
+        'child_name': OutputMetadata(type=GraphQLString, optional=True),
+        'spouse_name': OutputMetadata(type=GraphQLString, optional=True),
+        'spouse_species': OutputMetadata(type=GraphQLString, optional=True),
     }
     expected_input_metadata = {}
 
@@ -1594,11 +1594,11 @@ def traverse_and_optional_and_traverse():
         Animal {
             name @output(out_name: "animal_name")
             in_Animal_ParentOf {
-                name @output(out_name: "parent_name")
+                name @output(out_name: "child_name")
                 out_Animal_ParentOf @optional {
-                    name @output(out_name: "sibling_name")
+                    name @output(out_name: "spouse_name")
                     out_Animal_OfSpecies {
-                        name @output(out_name: "sibling_and_self_species")
+                        name @output(out_name: "spouse_and_self_species")
                     }
                 }
             }
@@ -1606,9 +1606,9 @@ def traverse_and_optional_and_traverse():
     }'''
     expected_output_metadata = {
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
-        'parent_name': OutputMetadata(type=GraphQLString, optional=False),
-        'sibling_name': OutputMetadata(type=GraphQLString, optional=True),
-        'sibling_and_self_species': OutputMetadata(type=GraphQLString, optional=True)
+        'child_name': OutputMetadata(type=GraphQLString, optional=False),
+        'spouse_name': OutputMetadata(type=GraphQLString, optional=True),
+        'spouse_and_self_species': OutputMetadata(type=GraphQLString, optional=True)
     }
     expected_input_metadata = {}
 
