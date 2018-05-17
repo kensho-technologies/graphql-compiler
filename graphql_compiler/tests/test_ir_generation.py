@@ -2453,7 +2453,7 @@ class IrGenerationTests(unittest.TestCase):
             parent_location: 'Animal',
             sibling_location: 'Animal',
             sibling_species: 'Species',
-            revisited_parent_location: 'Animal'
+            revisited_parent_location: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
