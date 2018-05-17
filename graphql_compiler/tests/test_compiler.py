@@ -2816,17 +2816,17 @@ class CompilerTests(unittest.TestCase):
                         Animal___1.name AS `name`
                     FROM (
                         MATCH {{
-                                class: Animal,
-                                where: ((
-                                    (name LIKE ('%' + ({wanted} + '%')))
-                                    AND
-                                    (
-                                        (in_Animal_ParentOf IS null)
-                                        OR
-                                        (in_Animal_ParentOf.size() = 0)
-                                    )
-                                )),
-                                as: Animal___1
+                            class: Animal,
+                            where: ((
+                                (name LIKE ('%' + ({wanted} + '%')))
+                                AND
+                                (
+                                    (in_Animal_ParentOf IS null)
+                                    OR
+                                    (in_Animal_ParentOf.size() = 0)
+                                )
+                            )),
+                            as: Animal___1
                         }}
                         RETURN $matches
                     )
@@ -2839,13 +2839,13 @@ class CompilerTests(unittest.TestCase):
                         Animal__in_Animal_ParentOf___1.name AS `parent_name`
                     FROM (
                         MATCH {{
-                                class: Animal,
-                                where: ((name LIKE ('%' + ({wanted} + '%')))),
-                                as: Animal___1
+                            class: Animal,
+                            where: ((name LIKE ('%' + ({wanted} + '%')))),
+                            as: Animal___1
                         }}.in('Animal_ParentOf') {{
-                                as: Animal__in_Animal_ParentOf___1
+                            as: Animal__in_Animal_ParentOf___1
                         }}.in('Animal_ParentOf') {{
-                                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
+                            as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
                         }}
                         RETURN $matches
                     )
@@ -2889,13 +2889,13 @@ class CompilerTests(unittest.TestCase):
                     Animal___1.name AS `animal_name`
                 FROM (
                     MATCH {{
-                            class: Animal,
-                            where: ((
-                                (in_Animal_ParentOf IS null)
-                                OR
-                                (in_Animal_ParentOf.size() = 0)
-                            )),
-                            as: Animal___1
+                        class: Animal,
+                        where: ((
+                            (in_Animal_ParentOf IS null)
+                            OR
+                            (in_Animal_ParentOf.size() = 0)
+                        )),
+                        as: Animal___1
                     }}
                     RETURN $matches
                 )
@@ -3238,7 +3238,7 @@ class CompilerTests(unittest.TestCase):
                             )
                             AND
                             (name LIKE ('%' + ({wanted} + '%')))
-                            )),
+                        )),
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
                         optional: true,
@@ -3334,7 +3334,8 @@ class CompilerTests(unittest.TestCase):
                         where: ((
                             (in_Animal_ParentOf IS null)
                             OR
-                            (in_Animal_ParentOf.size() = 0))),
+                            (in_Animal_ParentOf.size() = 0)
+                        )),
                         as: Animal___1
                     }}
                     RETURN $matches
@@ -3409,7 +3410,8 @@ class CompilerTests(unittest.TestCase):
                         where: ((
                             (out_Animal_ParentOf IS null)
                             OR
-                            (out_Animal_ParentOf.size() = 0))),
+                            (out_Animal_ParentOf.size() = 0)
+                        )),
                         as: Animal__out_Animal_ParentOf___1
                     }} ,
                     {{
@@ -3445,7 +3447,8 @@ class CompilerTests(unittest.TestCase):
                                 __out_Animal_ParentOf__out_Animal_FedAt___1 IS null)
                             OR
                             (name = $matched.Animal__out_Animal_ParentOf
-                                __out_Animal_ParentOf__out_Animal_FedAt___1.name))),
+                                __out_Animal_ParentOf__out_Animal_FedAt___1.name)
+                        )),
                         as: Animal__out_Animal_FedAt___1
                     }}
                     RETURN $matches
@@ -3501,7 +3504,8 @@ class CompilerTests(unittest.TestCase):
                         where: ((
                             (in_Animal_ParentOf IS null)
                             OR
-                            (in_Animal_ParentOf.size() = 0))),
+                            (in_Animal_ParentOf.size() = 0)
+                        )),
                         as: Animal___1
                     }} ,
                     {{
@@ -3800,7 +3804,8 @@ class CompilerTests(unittest.TestCase):
                         where: ((
                             (out_Animal_ParentOf IS null)
                             OR
-                            (out_Animal_ParentOf.size() = 0))),
+                            (out_Animal_ParentOf.size() = 0)
+                        )),
                         as: Animal___1
                     }}
                     RETURN $matches
@@ -3877,7 +3882,8 @@ class CompilerTests(unittest.TestCase):
                         where: ((
                             (in_Animal_ParentOf IS null)
                             OR
-                            (in_Animal_ParentOf.size() = 0))),
+                            (in_Animal_ParentOf.size() = 0)
+                        )),
                         as: Animal___1
                     }}
                     RETURN $matches
