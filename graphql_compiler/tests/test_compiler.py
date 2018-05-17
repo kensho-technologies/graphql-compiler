@@ -3802,9 +3802,9 @@ class CompilerTests(unittest.TestCase):
                     MATCH {{
                         class: Animal,
                         where: ((
-                            (out_Animal_ParentOf IS null)
+                            (in_Animal_ParentOf IS null)
                             OR
-                            (out_Animal_ParentOf.size() = 0)
+                            (in_Animal_ParentOf.size() = 0)
                         )),
                         as: Animal___1
                     }}
@@ -3813,21 +3813,21 @@ class CompilerTests(unittest.TestCase):
             ),
             $optional__1 = (
                 SELECT
-                    Animal__out_Animal_ParentOf___1.name AS `child_name`,
+                    Animal__in_Animal_ParentOf___1.name AS `child_name`,
                     Animal___1.name AS `name`,
-                    if(eval("(Animal__out_Animal_ParentOf__in_Animal_ParentOf___1 IS NOT null)"),
-                        Animal__out_Animal_ParentOf__in_Animal_ParentOf___1.name,
+                    if(eval("(Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 IS NOT null)"),
+                        Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name,
                         null
-                    ) AS `spouse_name`
+                    ) AS `self_and_ancestor_name`
                 FROM (
                     MATCH {{
                         class: Animal,
                         as: Animal___1
-                    }}.out('Animal_ParentOf') {{
-                        as: Animal__out_Animal_ParentOf___1
                     }}.in('Animal_ParentOf') {{
+                        as: Animal__in_Animal_ParentOf___1
+                    }}.out('Animal_ParentOf') {{
                         while: ($depth < 3),
-                        as: Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
+                        as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
                     }}
                     RETURN $matches
                 )
@@ -3838,29 +3838,29 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = '''
             g.V('@class', 'Animal')
             .as('Animal___1')
-                .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
-                .as('Animal__out_Animal_ParentOf___1')
+                .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+                .as('Animal__in_Animal_ParentOf___1')
                     .ifThenElse{it == null}{null}{
                         it.copySplit(
                             _(),
-                            _().in('Animal_ParentOf'),
-                            _().in('Animal_ParentOf').in('Animal_ParentOf'),
-                            _().in('Animal_ParentOf').in('Animal_ParentOf').in('Animal_ParentOf')
+                            _().out('Animal_ParentOf'),
+                            _().out('Animal_ParentOf').out('Animal_ParentOf'),
+                            _().out('Animal_ParentOf').out('Animal_ParentOf').out('Animal_ParentOf')
                         ).exhaustMerge
                     }
-                    .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf___1')
-                .back('Animal__out_Animal_ParentOf___1')
+                    .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf___1')
+                .back('Animal__in_Animal_ParentOf___1')
                     .optional('Animal___1')
                     .as('Animal___2')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                     child_name: (
-                        (m.Animal__out_Animal_ParentOf___1 != null) ?
-                            m.Animal__out_Animal_ParentOf___1.name : null
+                        (m.Animal__in_Animal_ParentOf___1 != null) ?
+                            m.Animal__in_Animal_ParentOf___1.name : null
                     ),
                     name: m.Animal___1.name,
-                    spouse_name: (
-                        (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf___1 != null) ?
-                            m.Animal__out_Animal_ParentOf__in_Animal_ParentOf___1.name : null
+                    self_and_ancestor_name: (
+                        (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 != null) ?
+                            m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
                     )
             ])}
         '''

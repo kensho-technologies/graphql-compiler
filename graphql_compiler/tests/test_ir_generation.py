@@ -2909,17 +2909,17 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.simple_optional_recurse()
 
         base_location = helpers.Location(('Animal',))
-        child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
-        spouse_location = child_location.navigate_to_subpath('in_Animal_ParentOf')
+        child_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        self_and_ancestor_location = child_location.navigate_to_subpath('out_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
-            blocks.Traverse('out', 'Animal_ParentOf', optional=True),
+            blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(child_location),
-            blocks.Recurse('in', 'Animal_ParentOf', 3),
-            blocks.MarkLocation(spouse_location),
+            blocks.Recurse('out', 'Animal_ParentOf', 3),
+            blocks.MarkLocation(self_and_ancestor_location),
             blocks.Backtrack(child_location),
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
@@ -2933,10 +2933,10 @@ class IrGenerationTests(unittest.TestCase):
                 ),
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'spouse_name': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(spouse_location),
+                'self_and_ancestor_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(self_and_ancestor_location),
                     expressions.OutputContextField(
-                        spouse_location.navigate_to_field('name'), GraphQLString),
+                        self_and_ancestor_location.navigate_to_field('name'), GraphQLString),
                     expressions.NullLiteral
                 ),
             }),
@@ -2944,7 +2944,7 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Animal',
             child_location: 'Animal',
-            spouse_location: 'Animal',
+            self_and_ancestor_location: 'Animal',
             revisited_base_location: 'Animal',
         }
 

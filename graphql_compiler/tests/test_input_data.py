@@ -1821,10 +1821,10 @@ def simple_optional_recurse():
     graphql_input = '''{
         Animal {
             name @output(out_name: "name")
-            out_Animal_ParentOf @optional {
+            in_Animal_ParentOf @optional {
                 name @output(out_name: "child_name")
-                in_Animal_ParentOf @recurse(depth: 3) {
-                    name @output(out_name: "spouse_name")
+                out_Animal_ParentOf @recurse(depth: 3) {
+                    name @output(out_name: "self_and_ancestor_name")
                 }
             }
         }
@@ -1832,7 +1832,7 @@ def simple_optional_recurse():
     expected_output_metadata = {
         'name': OutputMetadata(type=GraphQLString, optional=False),
         'child_name': OutputMetadata(type=GraphQLString, optional=True),
-        'spouse_name': OutputMetadata(type=GraphQLString, optional=True),
+        'self_and_ancestor_name': OutputMetadata(type=GraphQLString, optional=True),
     }
     expected_input_metadata = {}
 
