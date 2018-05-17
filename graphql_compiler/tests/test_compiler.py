@@ -3084,8 +3084,8 @@ class CompilerTests(unittest.TestCase):
             $optional__1 = (
                 SELECT
                     Animal___1.name AS `animal_name`,
-                    Animal__in_Animal_ParentOf___1.name AS `parent_name`,
-                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `sibling_name`
+                    Animal__in_Animal_ParentOf___1.name AS `child_name`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_name`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3114,8 +3114,8 @@ class CompilerTests(unittest.TestCase):
             $optional__2 = (
                 SELECT
                     Animal___1.name AS `animal_name`,
-                    Animal__out_Animal_ParentOf___1.name AS `child_name`,
-                    Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name AS `child_species`
+                    Animal__out_Animal_ParentOf___1.name AS `parent_name`,
+                    Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name AS `parent_species`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3144,10 +3144,10 @@ class CompilerTests(unittest.TestCase):
             $optional__3 = (
                 SELECT
                     Animal___1.name AS `animal_name`,
-                    Animal__out_Animal_ParentOf___1.name AS `child_name`,
-                    Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name AS `child_species`,
-                    Animal__in_Animal_ParentOf___1.name AS `parent_name`,
-                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `sibling_name`
+                    Animal__in_Animal_ParentOf___1.name AS `child_name`,
+                    Animal__out_Animal_ParentOf___1.name AS `parent_name`,
+                    Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name AS `parent_species`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_name`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3193,18 +3193,18 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name,
                 child_name: (
-                    (m.Animal__out_Animal_ParentOf___1 != null) ?
-                        m.Animal__out_Animal_ParentOf___1.name : null
-                ),
-                child_species: (
-                    (m.Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1 != null) ?
-                        m.Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name : null
-                ),
-                parent_name: (
                     (m.Animal__in_Animal_ParentOf___1 != null) ?
                         m.Animal__in_Animal_ParentOf___1.name : null
                 ),
-                sibling_name: (
+                parent_name: (
+                    (m.Animal__out_Animal_ParentOf___1 != null) ?
+                        m.Animal__out_Animal_ParentOf___1.name : null
+                ),
+                parent_species: (
+                    (m.Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1 != null) ?
+                        m.Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name : null
+                ),
+                spouse_name: (
                     (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 != null) ?
                         m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
                 )
@@ -3226,7 +3226,7 @@ class CompilerTests(unittest.TestCase):
                         eval("(Animal__in_Animal_ParentOf___1 IS NOT null)"),
                         Animal__in_Animal_ParentOf___1.name,
                         null
-                    ) AS `parent_name`
+                    ) AS `child_name`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3254,14 +3254,14 @@ class CompilerTests(unittest.TestCase):
             $optional__1 = (
                 SELECT
                     Animal___1.name AS `animal_name`,
-                    Animal__out_Animal_ParentOf___1.name AS `child_name`,
-                    Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
-                        AS `child_species`,
                     if(
                         eval("(Animal__in_Animal_ParentOf___1 IS NOT null)"),
                         Animal__in_Animal_ParentOf___1.name,
                         null
-                    ) AS `parent_name`
+                    ) AS `child_name`,
+                    Animal__out_Animal_ParentOf___1.name AS `parent_name`,
+                    Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
+                        AS `parent_species`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3303,16 +3303,16 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name,
                 child_name: (
+                    (m.Animal__in_Animal_ParentOf___1 != null) ?
+                        m.Animal__in_Animal_ParentOf___1.name : null
+                ),
+                parent_name: (
                     (m.Animal__out_Animal_ParentOf___1 != null) ?
                         m.Animal__out_Animal_ParentOf___1.name : null
                 ),
-                child_species: (
+                parent_species: (
                     (m.Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1 != null) ?
                         m.Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name : null
-                ),
-                parent_name: (
-                    (m.Animal__in_Animal_ParentOf___1 != null) ?
-                        m.Animal__in_Animal_ParentOf___1.name : null
                 )
             ])}
         '''
@@ -3497,7 +3497,7 @@ class CompilerTests(unittest.TestCase):
             LET
             $optional__0 = (
                 SELECT
-                    Animal__out_Animal_ParentOf___1.name AS `child_name`
+                    Animal__out_Animal_ParentOf___1.name AS `parent_name`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3519,7 +3519,7 @@ class CompilerTests(unittest.TestCase):
             ),
             $optional__1 = (
                 SELECT
-                    Animal__out_Animal_ParentOf___1.name AS `child_name`
+                    Animal__out_Animal_ParentOf___1.name AS `parent_name`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3576,7 +3576,7 @@ class CompilerTests(unittest.TestCase):
                     )}
                     .as('Animal__out_Animal_ParentOf___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                    child_name: m.Animal__out_Animal_ParentOf___1.name
+                    parent_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
         '''
 
@@ -3590,13 +3590,13 @@ class CompilerTests(unittest.TestCase):
             LET
             $optional__0 = (
                 SELECT
+                    Animal__in_Animal_ParentOf__out_Animal_FedAt___1
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandchild_fed_at`,
                     if(eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
                         Animal__out_Animal_ParentOf__out_Animal_FedAt___1
                             .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
                             null
-                    ) AS `child_fed_at`,
-                    Animal__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandparent_fed_at`
+                    ) AS `parent_fed_at`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3647,15 +3647,15 @@ class CompilerTests(unittest.TestCase):
             ),
             $optional__1 = (
                 SELECT
+                    Animal__in_Animal_ParentOf__out_Animal_FedAt___1
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandchild_fed_at`,
+                    Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `other_child_fed_at`,
                     if(eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
                         Animal__out_Animal_ParentOf__out_Animal_FedAt___1
                             .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
                         null
-                    ) AS `child_fed_at`,
-                    Animal__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandparent_fed_at`,
-                    Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `other_parent_fed_at`
+                    ) AS `parent_fed_at`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3767,19 +3767,19 @@ class CompilerTests(unittest.TestCase):
                .back('Animal__in_Animal_ParentOf___1')
            .back('Animal___1')
            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                   child_fed_at: (
-                       (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
-                           m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1
-                               .event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
-                           : null
-                   ),
-                   grandparent_fed_at:
+                   grandchild_fed_at:
                        m.Animal__in_Animal_ParentOf__out_Animal_FedAt___1
                            .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
-                   other_parent_fed_at: (
+                   other_child_fed_at: (
                        (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
                            __out_Animal_FedAt___1 != null) ?
                            m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                               .event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                           : null
+                   ),
+                   parent_fed_at: (
+                       (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
+                           m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1
                                .event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
                            : null
                    )
@@ -3891,10 +3891,10 @@ class CompilerTests(unittest.TestCase):
             ),
             $optional__1 = (
                 SELECT
-                    Animal__in_Animal_ParentOf__in_Animal_ParentOf___1.name AS `grandparent_name`,
-                    Animal___1.name AS `name`,
-                    Animal__in_Animal_ParentOf__out_Animal_FedAt___1.name AS `parent_feeding_time`,
-                    Animal__in_Animal_ParentOf___1.name AS `parent_name`
+                    Animal__in_Animal_ParentOf__out_Animal_FedAt___1.name AS `child_feeding_time`,
+                    Animal__in_Animal_ParentOf___1.name AS `child_name`,
+                    Animal__in_Animal_ParentOf__in_Animal_ParentOf___1.name AS `grandchild_name`,
+                    Animal___1.name AS `name`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3930,19 +3930,19 @@ class CompilerTests(unittest.TestCase):
             .optional('Animal___1')
             .as('Animal___2')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                grandparent_name: (
-                    (m.Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 != null) ?
-                        m.Animal__in_Animal_ParentOf__in_Animal_ParentOf___1.name : null
-                ),
-                name: m.Animal___1.name,
-                parent_feeding_time: (
+                child_feeding_time: (
                     (m.Animal__in_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
                         m.Animal__in_Animal_ParentOf__out_Animal_FedAt___1.name : null
                 ),
-                parent_name: (
+                child_name: (
                     (m.Animal__in_Animal_ParentOf___1 != null) ?
                         m.Animal__in_Animal_ParentOf___1.name : null
-                )
+                ),
+                grandchild_name: (
+                    (m.Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 != null) ?
+                        m.Animal__in_Animal_ParentOf__in_Animal_ParentOf___1.name : null
+                ),
+                name: m.Animal___1.name
             ])}
         '''
 

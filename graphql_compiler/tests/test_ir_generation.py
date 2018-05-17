@@ -2462,11 +2462,11 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.multiple_optional_traversals_with_starting_filter()
 
         base_location = helpers.Location(('Animal',))
-        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        sibling_location = parent_location.navigate_to_subpath('out_Animal_ParentOf')
+        child_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        spouse_location = child_location.navigate_to_subpath('out_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
-        child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
-        child_species_location = child_location.navigate_to_subpath('out_Animal_OfSpecies')
+        parent_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        parent_species_location = parent_location.navigate_to_subpath('out_Animal_OfSpecies')
         re_revisited_base_location = revisited_base_location.revisit()
 
         expected_blocks = [
@@ -2478,42 +2478,30 @@ class IrGenerationTests(unittest.TestCase):
             )),
             blocks.MarkLocation(base_location),
             blocks.Traverse('in', 'Animal_ParentOf', True),
-            blocks.MarkLocation(parent_location),
+            blocks.MarkLocation(child_location),
             blocks.Traverse('out', 'Animal_ParentOf'),
-            blocks.MarkLocation(sibling_location),
-            blocks.Backtrack(parent_location),
+            blocks.MarkLocation(spouse_location),
+            blocks.Backtrack(child_location),
             blocks.EndOptional(),
             blocks.Backtrack(base_location, True),
             blocks.MarkLocation(revisited_base_location),
             blocks.Traverse('out', 'Animal_ParentOf', True),
-            blocks.MarkLocation(child_location),
+            blocks.MarkLocation(parent_location),
             blocks.Traverse('out', 'Animal_OfSpecies'),
-            blocks.MarkLocation(child_species_location),
-            blocks.Backtrack(child_location),
+            blocks.MarkLocation(parent_species_location),
+            blocks.Backtrack(parent_location),
             blocks.EndOptional(),
             blocks.Backtrack(revisited_base_location, True),
             blocks.MarkLocation(re_revisited_base_location),
             blocks.ConstructResult({
-                'sibling_name': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(sibling_location),
+                'spouse_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(spouse_location),
                     expressions.OutputContextField(
-                        sibling_location.navigate_to_field('name'), GraphQLString),
+                        spouse_location.navigate_to_field('name'), GraphQLString),
                     expressions.NullLiteral
                 ),
                 'animal_name': expressions.OutputContextField(
                         base_location.navigate_to_field('name'), GraphQLString
-                ),
-                'child_name': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(child_location),
-                    expressions.OutputContextField(
-                        child_location.navigate_to_field('name'), GraphQLString),
-                    expressions.NullLiteral
-                ),
-                'child_species': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(child_species_location),
-                    expressions.OutputContextField(
-                        child_species_location.navigate_to_field('name'), GraphQLString),
-                    expressions.NullLiteral
                 ),
                 'parent_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(parent_location),
@@ -2521,15 +2509,27 @@ class IrGenerationTests(unittest.TestCase):
                         parent_location.navigate_to_field('name'), GraphQLString),
                     expressions.NullLiteral
                 ),
+                'parent_species': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(parent_species_location),
+                    expressions.OutputContextField(
+                        parent_species_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'child_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(child_location),
+                    expressions.OutputContextField(
+                        child_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
             }),
         ]
         expected_location_types = {
             base_location: 'Animal',
-            parent_location: 'Animal',
-            sibling_location: 'Animal',
-            revisited_base_location: 'Animal',
             child_location: 'Animal',
-            child_species_location: 'Species',
+            spouse_location: 'Animal',
+            revisited_base_location: 'Animal',
+            parent_location: 'Animal',
+            parent_species_location: 'Species',
             re_revisited_base_location: 'Animal',
         }
 
@@ -2539,10 +2539,10 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.optional_traversal_and_optional_without_traversal()
 
         base_location = helpers.Location(('Animal',))
-        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        child_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
-        child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
-        child_species_location = child_location.navigate_to_subpath('out_Animal_OfSpecies')
+        parent_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        parent_species_location = parent_location.navigate_to_subpath('out_Animal_OfSpecies')
         re_revisited_base_location = revisited_base_location.revisit()
 
         expected_blocks = [
@@ -2554,15 +2554,15 @@ class IrGenerationTests(unittest.TestCase):
             )),
             blocks.MarkLocation(base_location),
             blocks.Traverse('in', 'Animal_ParentOf', True),
-            blocks.MarkLocation(parent_location),
+            blocks.MarkLocation(child_location),
             blocks.EndOptional(),
             blocks.Backtrack(base_location, True),
             blocks.MarkLocation(revisited_base_location),
             blocks.Traverse('out', 'Animal_ParentOf', True),
-            blocks.MarkLocation(child_location),
+            blocks.MarkLocation(parent_location),
             blocks.Traverse('out', 'Animal_OfSpecies'),
-            blocks.MarkLocation(child_species_location),
-            blocks.Backtrack(child_location),
+            blocks.MarkLocation(parent_species_location),
+            blocks.Backtrack(parent_location),
             blocks.EndOptional(),
             blocks.Backtrack(revisited_base_location, True),
             blocks.MarkLocation(re_revisited_base_location),
@@ -2570,32 +2570,32 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                         base_location.navigate_to_field('name'), GraphQLString
                 ),
-                'child_name': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(child_location),
-                    expressions.OutputContextField(
-                        child_location.navigate_to_field('name'), GraphQLString),
-                    expressions.NullLiteral
-                ),
-                'child_species': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(child_species_location),
-                    expressions.OutputContextField(
-                        child_species_location.navigate_to_field('name'), GraphQLString),
-                    expressions.NullLiteral
-                ),
                 'parent_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(parent_location),
                     expressions.OutputContextField(
                         parent_location.navigate_to_field('name'), GraphQLString),
                     expressions.NullLiteral
                 ),
+                'parent_species': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(parent_species_location),
+                    expressions.OutputContextField(
+                        parent_species_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'child_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(child_location),
+                    expressions.OutputContextField(
+                        child_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
             }),
         ]
         expected_location_types = {
             base_location: 'Animal',
-            parent_location: 'Animal',
-            revisited_base_location: 'Animal',
             child_location: 'Animal',
-            child_species_location: 'Species',
+            revisited_base_location: 'Animal',
+            parent_location: 'Animal',
+            parent_species_location: 'Species',
             re_revisited_base_location: 'Animal',
         }
 
@@ -2652,25 +2652,25 @@ class IrGenerationTests(unittest.TestCase):
 
         # The operand in the @filter directive originates from an optional block.
         base_location = helpers.Location(('Animal',))
-        child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
-        grandchild_location = child_location.navigate_to_subpath('out_Animal_ParentOf')
-        fed_at_location = grandchild_location.navigate_to_subpath('out_Animal_FedAt')
-        child_revisited_location = child_location.revisit()
+        parent_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        grandparent_location = parent_location.navigate_to_subpath('out_Animal_ParentOf')
+        fed_at_location = grandparent_location.navigate_to_subpath('out_Animal_FedAt')
+        parent_revisited_location = parent_location.revisit()
         animal_fed_at_location = base_location.navigate_to_subpath('out_Animal_FedAt')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Traverse('out', 'Animal_ParentOf'),
-            blocks.MarkLocation(child_location),
+            blocks.MarkLocation(parent_location),
             blocks.Traverse('out', 'Animal_ParentOf', optional=True),
-            blocks.MarkLocation(grandchild_location),
+            blocks.MarkLocation(grandparent_location),
             blocks.Traverse('out', 'Animal_FedAt'),
             blocks.MarkLocation(fed_at_location),
-            blocks.Backtrack(grandchild_location),
+            blocks.Backtrack(grandparent_location),
             blocks.EndOptional(),
-            blocks.Backtrack(child_location, optional=True),
-            blocks.MarkLocation(child_revisited_location),
+            blocks.Backtrack(parent_location, optional=True),
+            blocks.MarkLocation(parent_revisited_location),
             blocks.Backtrack(base_location),
             blocks.Traverse('out', 'Animal_FedAt'),
             blocks.Filter(
@@ -2697,10 +2697,10 @@ class IrGenerationTests(unittest.TestCase):
         ]
         expected_location_types = {
             base_location: 'Animal',
-            child_location: 'Animal',
-            grandchild_location: 'Animal',
+            parent_location: 'Animal',
+            grandparent_location: 'Animal',
             fed_at_location: 'Event',
-            child_revisited_location: 'Animal',
+            parent_revisited_location: 'Animal',
             animal_fed_at_location: 'Event',
         }
 
@@ -2711,19 +2711,19 @@ class IrGenerationTests(unittest.TestCase):
 
         # The operand in the @filter directive originates from an optional block.
         base_location = helpers.Location(('Animal',))
-        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        grandparent_location = parent_location.navigate_to_subpath('in_Animal_ParentOf')
+        child_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        grandchild_location = child_location.navigate_to_subpath('in_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
-        child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        parent_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
-            blocks.MarkLocation(parent_location),
+            blocks.MarkLocation(child_location),
             blocks.Traverse('in', 'Animal_ParentOf'),
-            blocks.MarkLocation(grandparent_location),
-            blocks.Backtrack(parent_location),
+            blocks.MarkLocation(grandchild_location),
+            blocks.Backtrack(child_location),
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
@@ -2733,7 +2733,7 @@ class IrGenerationTests(unittest.TestCase):
                     u'||',
                     expressions.BinaryComposition(
                         u'=',
-                        expressions.ContextFieldExistence(grandparent_location),
+                        expressions.ContextFieldExistence(grandchild_location),
                         expressions.FalseLiteral
                     ),
                     expressions.BinaryComposition(
@@ -2741,27 +2741,27 @@ class IrGenerationTests(unittest.TestCase):
                         expressions.BinaryComposition(
                             u'=',
                             expressions.LocalField('name'),
-                            expressions.ContextField(grandparent_location.navigate_to_field('name'))
+                            expressions.ContextField(grandchild_location.navigate_to_field('name'))
                         ),
                         expressions.BinaryComposition(
                             u'contains',
                             expressions.LocalField('alias'),
-                            expressions.ContextField(grandparent_location.navigate_to_field('name'))
+                            expressions.ContextField(grandchild_location.navigate_to_field('name'))
                         )
                     )
                 )
             ),
-            blocks.MarkLocation(child_location),
+            blocks.MarkLocation(parent_location),
             blocks.OutputSource(),
             blocks.ConstructResult({
-                'child_name': expressions.OutputContextField(
-                    child_location.navigate_to_field('name'), GraphQLString),
+                'parent_name': expressions.OutputContextField(
+                    parent_location.navigate_to_field('name'), GraphQLString),
             }),
         ]
         expected_location_types = {
             base_location: 'Animal',
             parent_location: 'Animal',
-            grandparent_location: 'Animal',
+            grandchild_location: 'Animal',
             revisited_base_location: 'Animal',
             child_location: 'Animal',
         }
@@ -2773,22 +2773,22 @@ class IrGenerationTests(unittest.TestCase):
 
         # The operands in the @filter directives originate from an optional block.
         base_location = helpers.Location(('Animal',))
-        child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
-        child_fed_at_location = child_location.navigate_to_subpath('out_Animal_FedAt')
+        parent_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        parent_fed_at_location = parent_location.navigate_to_subpath('out_Animal_FedAt')
 
-        child_fed_at_event_tag = child_fed_at_location.navigate_to_field('name')
-        child_fed_at_tag = child_fed_at_location.navigate_to_field('event_date')
+        parent_fed_at_event_tag = parent_fed_at_location.navigate_to_field('name')
+        parent_fed_at_tag = parent_fed_at_location.navigate_to_field('event_date')
 
-        revisited_child_location = child_location.revisit()
+        revisited_child_location = parent_location.revisit()
         re_revisited_child_location = revisited_child_location.revisit()
 
-        other_parent_location = child_location.navigate_to_subpath('in_Animal_ParentOf')
-        other_parent_fed_at_location = other_parent_location.navigate_to_subpath('out_Animal_FedAt')
-        other_parent_fed_at_tag = other_parent_fed_at_location.navigate_to_field('event_date')
+        other_child_location = parent_location.navigate_to_subpath('in_Animal_ParentOf')
+        other_child_fed_at_location = other_child_location.navigate_to_subpath('out_Animal_FedAt')
+        other_child_fed_at_tag = other_child_fed_at_location.navigate_to_field('event_date')
 
-        grandparent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        grandparent_fed_at_location = grandparent_location.navigate_to_subpath('out_Animal_FedAt')
-        grandparent_fed_at_output = grandparent_fed_at_location.navigate_to_field('event_date')
+        grandchild_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        grandchild_fed_at_location = grandchild_location.navigate_to_subpath('out_Animal_FedAt')
+        grandchild_fed_at_output = grandchild_fed_at_location.navigate_to_field('event_date')
 
         expected_blocks = [
             # Apply the filter to the root vertex and mark it.
@@ -2803,19 +2803,19 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(base_location),
 
             blocks.Traverse('out', 'Animal_ParentOf'),
-            blocks.MarkLocation(child_location),
+            blocks.MarkLocation(parent_location),
 
             blocks.Traverse('out', 'Animal_FedAt', optional=True),
-            blocks.MarkLocation(child_fed_at_location),
+            blocks.MarkLocation(parent_fed_at_location),
             blocks.EndOptional(),
-            blocks.Backtrack(child_location, optional=True),
+            blocks.Backtrack(parent_location, optional=True),
             blocks.MarkLocation(revisited_child_location),
 
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
-            blocks.MarkLocation(other_parent_location),
+            blocks.MarkLocation(other_child_location),
             blocks.Traverse('out', 'Animal_FedAt'),
-            blocks.MarkLocation(other_parent_fed_at_location),
-            blocks.Backtrack(other_parent_location),
+            blocks.MarkLocation(other_child_fed_at_location),
+            blocks.Backtrack(other_child_location),
             blocks.EndOptional(),
             blocks.Backtrack(revisited_child_location, optional=True),
             blocks.MarkLocation(re_revisited_child_location),
@@ -2824,20 +2824,20 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Backtrack(base_location),
 
             blocks.Traverse('in', 'Animal_ParentOf'),
-            blocks.MarkLocation(grandparent_location),
+            blocks.MarkLocation(grandchild_location),
             blocks.Traverse('out', 'Animal_FedAt'),
             blocks.Filter(  # Filter "=" on the name field.
                 expressions.BinaryComposition(
                     u'||',
                     expressions.BinaryComposition(
                         u'=',
-                        expressions.ContextFieldExistence(child_fed_at_location),
+                        expressions.ContextFieldExistence(parent_fed_at_location),
                         expressions.FalseLiteral
                     ),
                     expressions.BinaryComposition(
                         u'=',
                         expressions.LocalField('name'),
-                        expressions.ContextField(child_fed_at_event_tag),
+                        expressions.ContextField(parent_fed_at_event_tag),
                     )
                 )
             ),
@@ -2848,59 +2848,59 @@ class IrGenerationTests(unittest.TestCase):
                         u'||',
                         expressions.BinaryComposition(
                             u'=',
-                            expressions.ContextFieldExistence(other_parent_fed_at_location),
+                            expressions.ContextFieldExistence(other_child_fed_at_location),
                             expressions.FalseLiteral
                         ),
                         expressions.BinaryComposition(
                             u'>=',
                             expressions.LocalField('event_date'),
-                            expressions.ContextField(other_parent_fed_at_tag)
+                            expressions.ContextField(other_child_fed_at_tag)
                         )
                     ),
                     expressions.BinaryComposition(
                         u'||',
                         expressions.BinaryComposition(
                             u'=',
-                            expressions.ContextFieldExistence(child_fed_at_location),
+                            expressions.ContextFieldExistence(parent_fed_at_location),
                             expressions.FalseLiteral
                         ),
                         expressions.BinaryComposition(
                             u'<=',
                             expressions.LocalField('event_date'),
-                            expressions.ContextField(child_fed_at_tag)
+                            expressions.ContextField(parent_fed_at_tag)
                         )
                     )
                 )
             ),
-            blocks.MarkLocation(grandparent_fed_at_location),
-            blocks.Backtrack(grandparent_location),
+            blocks.MarkLocation(grandchild_fed_at_location),
+            blocks.Backtrack(grandchild_location),
             blocks.Backtrack(base_location),
 
             blocks.ConstructResult({
-                'child_fed_at': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(child_fed_at_location),
-                    expressions.OutputContextField(child_fed_at_tag, GraphQLDateTime),
+                'parent_fed_at': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(parent_fed_at_location),
+                    expressions.OutputContextField(parent_fed_at_tag, GraphQLDateTime),
                     expressions.NullLiteral
                 ),
-                'other_parent_fed_at': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(other_parent_fed_at_location),
-                    expressions.OutputContextField(other_parent_fed_at_tag, GraphQLDateTime),
+                'other_child_fed_at': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(other_child_fed_at_location),
+                    expressions.OutputContextField(other_child_fed_at_tag, GraphQLDateTime),
                     expressions.NullLiteral
                 ),
-                'grandparent_fed_at': expressions.OutputContextField(
-                    grandparent_fed_at_output, GraphQLDateTime),
+                'grandchild_fed_at': expressions.OutputContextField(
+                    grandchild_fed_at_output, GraphQLDateTime),
             }),
         ]
         expected_location_types = {
             base_location: 'Animal',
-            child_location: 'Animal',
-            child_fed_at_location: 'Event',
+            parent_location: 'Animal',
+            parent_fed_at_location: 'Event',
             revisited_child_location: 'Animal',
-            other_parent_location: 'Animal',
-            other_parent_fed_at_location: 'Event',
+            other_child_location: 'Animal',
+            other_child_fed_at_location: 'Event',
             re_revisited_child_location: 'Animal',
-            grandparent_location: 'Animal',
-            grandparent_fed_at_location: 'Event',
+            grandchild_location: 'Animal',
+            grandchild_fed_at_location: 'Event',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2954,42 +2954,42 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.multiple_traverse_within_optional()
 
         base_location = helpers.Location(('Animal',))
-        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        grandparent_location = parent_location.navigate_to_subpath('in_Animal_ParentOf')
+        child_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        grandchild_location = child_location.navigate_to_subpath('in_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
-        parent_fed_at_location = parent_location.navigate_to_subpath('out_Animal_FedAt')
+        child_fed_at_location = child_location.navigate_to_subpath('out_Animal_FedAt')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Traverse('in', 'Animal_ParentOf', True),
-            blocks.MarkLocation(parent_location),
+            blocks.MarkLocation(child_location),
             blocks.Traverse('in', 'Animal_ParentOf'),
-            blocks.MarkLocation(grandparent_location),
-            blocks.Backtrack(parent_location),
+            blocks.MarkLocation(grandchild_location),
+            blocks.Backtrack(child_location),
             blocks.Traverse('out', 'Animal_FedAt'),
-            blocks.MarkLocation(parent_fed_at_location),
-            blocks.Backtrack(parent_location),
+            blocks.MarkLocation(child_fed_at_location),
+            blocks.Backtrack(child_location),
             blocks.EndOptional(),
             blocks.Backtrack(base_location, True),
             blocks.MarkLocation(revisited_base_location),
             blocks.ConstructResult({
-                'grandparent_name': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(grandparent_location),
+                'grandchild_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(grandchild_location),
                     expressions.OutputContextField(
-                        grandparent_location.navigate_to_field('name'), GraphQLString),
+                        grandchild_location.navigate_to_field('name'), GraphQLString),
                     expressions.NullLiteral
                 ),
-                'parent_name': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(parent_location),
+                'child_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(child_location),
                     expressions.OutputContextField(
-                        parent_location.navigate_to_field('name'), GraphQLString),
+                        child_location.navigate_to_field('name'), GraphQLString),
                     expressions.NullLiteral
                 ),
-                'parent_feeding_time': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(parent_fed_at_location),
+                'child_feeding_time': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(child_fed_at_location),
                     expressions.OutputContextField(
-                        parent_fed_at_location.navigate_to_field('name'), GraphQLString),
+                        child_fed_at_location.navigate_to_field('name'), GraphQLString),
                     expressions.NullLiteral
                 ),
                 'name': expressions.OutputContextField(
@@ -2998,10 +2998,10 @@ class IrGenerationTests(unittest.TestCase):
         ]
         expected_location_types = {
             base_location: 'Animal',
-            parent_location: 'Animal',
-            grandparent_location: 'Animal',
+            child_location: 'Animal',
+            grandchild_location: 'Animal',
             revisited_base_location: 'Animal',
-            parent_fed_at_location: 'Event',
+            child_fed_at_location: 'Event',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
