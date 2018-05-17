@@ -1568,7 +1568,7 @@ def optional_and_deep_traverse():
                 out_Animal_ParentOf {
                     name @output(out_name: "sibling_name")
                     out_Animal_OfSpecies {
-                        name @output(out_name: "sibling_and_self_species")
+                        name @output(out_name: "sibling_species")
                     }
                 }
             }
@@ -1578,7 +1578,7 @@ def optional_and_deep_traverse():
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
         'parent_name': OutputMetadata(type=GraphQLString, optional=True),
         'sibling_name': OutputMetadata(type=GraphQLString, optional=True),
-        'sibling_and_self_species': OutputMetadata(type=GraphQLString, optional=True),
+        'sibling_species': OutputMetadata(type=GraphQLString, optional=True),
     }
     expected_input_metadata = {}
 
@@ -1757,12 +1757,12 @@ def filter_on_optional_traversal_name_or_alias():
             }
             out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["%grandparent_name"])
                                 @output_source {
-                name @output(out_name: "animal_name")
+                name @output(out_name: "child_name")
             }
         }
     }'''
     expected_output_metadata = {
-        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'child_name': OutputMetadata(type=GraphQLString, optional=False),
     }
     expected_input_metadata = {}
 
@@ -1822,17 +1822,17 @@ def simple_optional_recurse():
         Animal {
             name @output(out_name: "name")
             out_Animal_ParentOf @optional {
-                name @output(out_name: "parent_name")
+                name @output(out_name: "child_name")
                 in_Animal_ParentOf @recurse(depth: 3) {
-                    name @output(out_name: "ancestor_name")
+                    name @output(out_name: "spouse_name")
                 }
             }
         }
     }'''
     expected_output_metadata = {
         'name': OutputMetadata(type=GraphQLString, optional=False),
-        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
-        'ancestor_name': OutputMetadata(type=GraphQLString, optional=True),
+        'child_name': OutputMetadata(type=GraphQLString, optional=True),
+        'spouse_name': OutputMetadata(type=GraphQLString, optional=True),
     }
     expected_input_metadata = {}
 
@@ -1847,7 +1847,7 @@ def multiple_traverse_within_optional():
     graphql_input = '''{
         Animal {
             name @output(out_name: "name")
-            out_Animal_ParentOf @optional {
+            in_Animal_ParentOf @optional {
                 name @output(out_name: "parent_name")
                 in_Animal_ParentOf {
                     name @output(out_name: "grandparent_name")
