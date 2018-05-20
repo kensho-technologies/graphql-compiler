@@ -2371,7 +2371,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Backtrack(base_location, True),
             blocks.MarkLocation(revisited_base_location),
             blocks.ConstructResult({
-                'spouse_name': expressions.TernaryConditional(
+                'spouse_and_self_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(spouse_location),
                     expressions.OutputContextField(
                         spouse_location.navigate_to_field('name'), GraphQLString),

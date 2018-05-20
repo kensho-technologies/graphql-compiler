@@ -2904,7 +2904,7 @@ class CompilerTests(unittest.TestCase):
                 SELECT
                     Animal___1.name AS `animal_name`,
                     Animal__in_Animal_ParentOf___1.name AS `child_name`,
-                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_name`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_and_self_name`,
                     Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
                         AS `spouse_species`
                 FROM (
@@ -2944,7 +2944,7 @@ class CompilerTests(unittest.TestCase):
                     (m.Animal__in_Animal_ParentOf___1 != null) ?
                         m.Animal__in_Animal_ParentOf___1.name : null
                 ),
-                spouse_name: (
+                spouse_and_self_name: (
                     (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 != null) ?
                         m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
                 ),
