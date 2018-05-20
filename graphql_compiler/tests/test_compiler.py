@@ -2904,7 +2904,8 @@ class CompilerTests(unittest.TestCase):
                 SELECT
                     Animal___1.name AS `animal_name`,
                     Animal__in_Animal_ParentOf___1.name AS `child_name`,
-                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_and_self_name`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name
+                        AS `spouse_and_self_name`,
                     Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
                         AS `spouse_species`
                 FROM (
@@ -2989,7 +2990,8 @@ class CompilerTests(unittest.TestCase):
                 SELECT
                     Animal___1.name AS `animal_name`,
                     Animal__in_Animal_ParentOf___1.name AS `child_name`,
-                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_and_self_name`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name
+                        AS `spouse_and_self_name`,
                     Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
                         AS `spouse_and_self_species`
                 FROM (
@@ -3085,7 +3087,8 @@ class CompilerTests(unittest.TestCase):
                 SELECT
                     Animal___1.name AS `animal_name`,
                     Animal__in_Animal_ParentOf___1.name AS `child_name`,
-                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_and_self_name`
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name
+                        AS `spouse_and_self_name`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3147,7 +3150,8 @@ class CompilerTests(unittest.TestCase):
                     Animal__in_Animal_ParentOf___1.name AS `child_name`,
                     Animal__out_Animal_ParentOf___1.name AS `parent_name`,
                     Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name AS `parent_species`,
-                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_and_self_name`
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name
+                        AS `spouse_and_self_name`
                 FROM (
                     MATCH {{
                         class: Animal,
