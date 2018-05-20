@@ -2989,9 +2989,9 @@ class CompilerTests(unittest.TestCase):
                 SELECT
                     Animal___1.name AS `animal_name`,
                     Animal__in_Animal_ParentOf___1.name AS `child_name`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_and_self_name`,
                     Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
-                        AS `spouse_and_self_species`,
-                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_name`
+                        AS `spouse_and_self_species`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3027,16 +3027,16 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name,
                 child_name: m.Animal__in_Animal_ParentOf___1.name,
+                spouse_and_self_name: (
+                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 != null) ?
+                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
+                ),
                 spouse_and_self_species: (
                     (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf
                         __out_Animal_OfSpecies___1 != null) ?
                         m.Animal__in_Animal_ParentOf__out_Animal_ParentOf
                           __out_Animal_OfSpecies___1.name
                         : null
-                ),
-                spouse_name: (
-                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 != null) ?
-                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
                 )
             ])}
         '''
@@ -3085,7 +3085,7 @@ class CompilerTests(unittest.TestCase):
                 SELECT
                     Animal___1.name AS `animal_name`,
                     Animal__in_Animal_ParentOf___1.name AS `child_name`,
-                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_name`
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_and_self_name`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3147,7 +3147,7 @@ class CompilerTests(unittest.TestCase):
                     Animal__in_Animal_ParentOf___1.name AS `child_name`,
                     Animal__out_Animal_ParentOf___1.name AS `parent_name`,
                     Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name AS `parent_species`,
-                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_name`
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name AS `spouse_and_self_name`
                 FROM (
                     MATCH {{
                         class: Animal,
@@ -3204,7 +3204,7 @@ class CompilerTests(unittest.TestCase):
                     (m.Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1 != null) ?
                         m.Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name : null
                 ),
-                spouse_name: (
+                spouse_and_self_name: (
                     (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 != null) ?
                         m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
                 )
