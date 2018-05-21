@@ -1041,37 +1041,37 @@ Instead, we represent a *compound* optional by taking an union (`UNIONALL`) of t
 ```
 SELECT EXPAND($final_match)
 LET
-$match1 = (
-    SELECT
-        Animal___1.name AS `name`
-    FROM (
-        MATCH {
-            class: Animal,
-            as: Animal___1,
-            where: (
-                (in_Animal_ParentOf IS null)
-                OR
-                (in_Animal_ParentOf.size() = 0)
-            ),
-        }
-    )
-),
-$match2 = (
-    SELECT
-        Animal___1.name AS `name`,
-        Animal__in_Animal_ParentOf___1.name AS `parent_name`
-    FROM (
-        MATCH {
-            class: Animal,
-            as: Animal___1
-        }.in('Animal_ParentOf') {
-            as: Animal__in_Animal_ParentOf___1
-        }.in('Animal_ParentOf') {
-            as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
-        }
-    )
-),
-$final_match = UNIONALL($match1, $match2)
+    $match1 = (
+        SELECT
+            Animal___1.name AS `name`
+        FROM (
+            MATCH {
+                class: Animal,
+                as: Animal___1,
+                where: (
+                    (in_Animal_ParentOf IS null)
+                    OR
+                    (in_Animal_ParentOf.size() = 0)
+                ),
+            }
+        )
+    ),
+    $match2 = (
+        SELECT
+            Animal___1.name AS `name`,
+            Animal__in_Animal_ParentOf___1.name AS `parent_name`
+        FROM (
+            MATCH {
+                class: Animal,
+                as: Animal___1
+            }.in('Animal_ParentOf') {
+                as: Animal__in_Animal_ParentOf___1
+            }.in('Animal_ParentOf') {
+                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
+            }
+        )
+    ),
+    $final_match = UNIONALL($match1, $match2)
 ```
 In the first case where the optional edge is not followed,
 we have to explicitly filter out all vertices where the edge *could have been followed*.
