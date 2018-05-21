@@ -963,7 +963,7 @@ the opposite order:
 
 ### Expanding [`@optional`](#optional) vertex fields
 Including an optional statement in GraphQL has no performance issues on its own,
-but if you continue expanding vertex fields within an optional,
+but if you continue expanding vertex fields within an optional scope,
 there may be significant performance implications.
 
 Going forward, we will refer to two different kinds of `@optional` directives.
