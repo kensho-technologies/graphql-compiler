@@ -47,7 +47,7 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
   * [The GraphQL schema](#the-graphql-schema)
   * [Execution model](#execution-model)
   * [Miscellaneous](#miscellaneous)
-     * [Traversing within `@optional`](#traversing-within-optional)
+     * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
   * [License](#license)
 
@@ -169,7 +169,7 @@ For each `Animal`:
 - `@optional` can only be applied to vertex fields, except the root vertex field.
 - It is allowed to expand vertex fields within an `@optional` scope.
   However, doing so is currently associated with a performance penalty in `MATCH`.
-  For more detail, see: [Traversing within `@optional`](#traversing-within-optional-optional-).
+  For more detail, see: [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields).
 - `@recurse`, `@fold`, or `@output_source` may not be used at the same vertex field as `@optional`.
 - `@optional`, `@output_source` and `@fold` may not be used anywhere within a scope
   marked `@optional`.
@@ -961,9 +961,10 @@ the opposite order:
 
 ## Miscellaneous
 
-### Traversing within [`@optional`](#optional)
+### Expanding [`@optional`](#optional) vertex fields
 Including an optional statement in GraphQL has no performance issues on its own,
-but if you continue traversing within an optional there may be significant performance implications.
+but if you continue expanding vertex fields within an optional scope,
+there may be significant performance implications.
 
 Going forward, we will refer to two different kinds of `@optional` directives.
 
@@ -983,12 +984,18 @@ For example:
 OrientDB `MATCH` currently allows the last step in any traversal to be optional.
 Therefore, the equivalent `MATCH` traversal for the above `GraphQL` is as follows:
 ```
-MATCH {
-    class: Animal,
-    as: Animal___1
-}.in('Animal_ParentOf') {
-    as: Animal__in_Animal_ParentOf___1
-}
+SELECT
+    Animal___1.name as `name`,
+    Animal__in_Animal_ParentOf___1.name as `parent_name`
+FROM (
+    MATCH {
+        class: Animal,
+        as: Animal___1
+    }.in('Animal_ParentOf') {
+        as: Animal__in_Animal_ParentOf___1
+    }
+    RETURN $matches
+)
 ```
 
 - A *"compound"* optional is a vertex with an `@optional` directive which does expand
@@ -1011,43 +1018,60 @@ Currently, this cannot represented by a simple `MATCH` query.
 Specifically, the following is *NOT* a valid `MATCH` statement,
 because the optional traversal follows another edge:
 ```
-MATCH {
-    class: Animal,
-    as: Animal___1
-}.in('Animal_ParentOf') {
-    optional: true,
-    as: Animal__in_Animal_ParentOf___1
-}.in('Animal_ParentOf') {
-    as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
-}
+-- NOT A VALID QUERY
+SELECT
+    Animal___1.name as `name`,
+    Animal__in_Animal_ParentOf___1.name as `parent_name`
+FROM (
+    MATCH {
+        class: Animal,
+        as: Animal___1
+    }.in('Animal_ParentOf') {
+        optional: true,
+        as: Animal__in_Animal_ParentOf___1
+    }.in('Animal_ParentOf') {
+        as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
+    }
+    RETURN $matches
+)
 ```
 
 Instead, we represent a *compound* optional by taking an union (`UNIONALL`) of two distinct
 `MATCH` queries. For instance, the `GraphQL` query above can be represented as follows:
 ```
+SELECT EXPAND($final_match)
 LET
-$match1 = (
-    MATCH {
-        class: Animal,
-        as: Animal___1,
-        where: (
-            (in_Animal_ParentOf IS null)
-            OR
-            (in_Animal_ParentOf.size() = 0)
-        ),
-    }
-),
-$match2 = (
-    MATCH {
-        class: Animal,
-        as: Animal___1
-    }.in('Animal_ParentOf') {
-        as: Animal__in_Animal_ParentOf___1
-    }.in('Animal_ParentOf') {
-        as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
-    }
-),
-$final_match = UNIONALL($match1, $match2)
+    $match1 = (
+        SELECT
+            Animal___1.name AS `name`
+        FROM (
+            MATCH {
+                class: Animal,
+                as: Animal___1,
+                where: (
+                    (in_Animal_ParentOf IS null)
+                    OR
+                    (in_Animal_ParentOf.size() = 0)
+                ),
+            }
+        )
+    ),
+    $match2 = (
+        SELECT
+            Animal___1.name AS `name`,
+            Animal__in_Animal_ParentOf___1.name AS `parent_name`
+        FROM (
+            MATCH {
+                class: Animal,
+                as: Animal___1
+            }.in('Animal_ParentOf') {
+                as: Animal__in_Animal_ParentOf___1
+            }.in('Animal_ParentOf') {
+                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
+            }
+        )
+    ),
+    $final_match = UNIONALL($match1, $match2)
 ```
 In the first case where the optional edge is not followed,
 we have to explicitly filter out all vertices where the edge *could have been followed*.
