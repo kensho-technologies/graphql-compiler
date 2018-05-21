@@ -1,7 +1,5 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
-from funcy.py2 import pairwise
-
 from .blocks import (ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse,
                      Unfold)
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,

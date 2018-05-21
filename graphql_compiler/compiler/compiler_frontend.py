@@ -367,7 +367,6 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     else:
         preceding_marked_location_ignoring_folds = False
 
-
     output_source = _process_output_source_directive(schema, current_schema_type, ast,
                                                      location, context, unique_local_directives)
     if output_source:
