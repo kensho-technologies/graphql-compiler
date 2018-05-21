@@ -2,6 +2,20 @@
 
 ## Current development version
 
+## v1.5.0
+
+- Allow expanding vertex fields within `@optional` scopes. [#83](https://github.com/kensho-technologies/graphql-compiler/pull/83)
+
+This is a massive feature, totaling over 4000 lines of changes and hundreds of hours of
+many engineers' time. Special thanks to `amartyashankha` for taking point on the implementation!
+
+This feature implements a workaround for a limitation of OrientDB, where `MATCH` treats
+optional vertices as terminal and does not allow subsequent traversals from them.
+To work around this issue, the compiler rewrites the query into several disjoint queries
+whose union produces the exact same results as a single query that allows optional traversals.
+See [the documentation in the README](https://github.com/kensho-technologies/graphql-compiler/blob/3c79cd97744b7f3f842c2d32ddc2a072c7fa7898/README.md#expanding-optional-vertex-fields)
+for more details.
+
 ## v1.4.1
 
 - Make MATCH use the `BETWEEN` operator when possible, to avoid [an OrientDB performance issue](https://github.com/orientechnologies/orientdb/issues/8230) [#70](https://github.com/kensho-technologies/graphql-compiler/pull/70)
