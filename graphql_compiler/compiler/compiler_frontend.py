@@ -480,7 +480,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             if not fold_directive:
                 preceding_marked_location_ignoring_folds = False
             else:
-                # Folded traversal blocks are ignored for the purposes of preceding marked location.
+                # Folded traversal blocks are ignored for the purposes of
+                # "preceding marked location."
                 pass
 
     return basic_blocks
