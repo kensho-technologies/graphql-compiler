@@ -47,6 +47,7 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
   * [The GraphQL schema](#the-graphql-schema)
   * [Execution model](#execution-model)
   * [Miscellaneous](#miscellaneous)
+     * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
   * [License](#license)
 
@@ -166,7 +167,12 @@ For each `Animal`:
 
 #### Constraints and Rules
 - `@optional` can only be applied to vertex fields, except the root vertex field.
-- May not exist at the same vertex field as `@recurse`, `@fold`, or `@output_source`.
+- It is allowed to expand vertex fields within an `@optional` scope.
+  However, doing so is currently associated with a performance penalty in `MATCH`.
+  For more detail, see: [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields).
+- `@recurse`, `@fold`, or `@output_source` may not be used at the same vertex field as `@optional`.
+- `@optional`, `@output_source` and `@fold` may not be used anywhere within a scope
+  marked `@optional`.
 
 If a given result set is unable to produce a value for a vertex field marked `@optional`,
 any fields marked `@output` within that vertex field return the `null` value.
@@ -233,7 +239,6 @@ If a given `Animal` has no children, its `child_names` list is empty.
 - May not exist at the same vertex field as `@recurse`, `@optional`, or `@output_source`.
 - Any scope that is either marked with `@fold` or is nested within a `@fold` marked scope,
   may expand at most one vertex field.
-- In a scope marked `@fold` and any scope nested within, at most one vertex field may be expanded.
 - There must be at least one `@output` field within a `@fold` scope.
 - All `@output` fields within a `@fold` traversal must be present at the innermost scope.
   It is invalid to expand vertex fields within a `@fold` after encountering an `@output` directive.
@@ -955,6 +960,142 @@ the opposite order:
 ```
 
 ## Miscellaneous
+
+### Expanding [`@optional`](#optional) vertex fields
+Including an optional statement in GraphQL has no performance issues on its own,
+but if you continue expanding vertex fields within an optional scope,
+there may be significant performance implications.
+
+Going forward, we will refer to two different kinds of `@optional` directives.
+
+- A *"simple"* optional is a vertex with an `@optional` directive that does not expand
+any vertex fields within it.
+For example:
+```
+{
+    Animal {
+        name @output(out_name: "name")
+        in_Animal_ParentOf @optional {
+            name @output(out_name: "parent_name")
+        }
+    }
+}
+```
+OrientDB `MATCH` currently allows the last step in any traversal to be optional.
+Therefore, the equivalent `MATCH` traversal for the above `GraphQL` is as follows:
+```
+SELECT
+    Animal___1.name as `name`,
+    Animal__in_Animal_ParentOf___1.name as `parent_name`
+FROM (
+    MATCH {
+        class: Animal,
+        as: Animal___1
+    }.in('Animal_ParentOf') {
+        as: Animal__in_Animal_ParentOf___1
+    }
+    RETURN $matches
+)
+```
+
+- A *"compound"* optional is a vertex with an `@optional` directive which does expand
+vertex fields within it.
+For example:
+```
+{
+    Animal {
+        name @output(out_name: "name")
+        in_Animal_ParentOf @optional {
+            name @output(out_name: "parent_name")
+            in_Animal_ParentOf {
+                name @output(out_name: "grandparent_name")
+            }
+        }
+    }
+}
+```
+Currently, this cannot represented by a simple `MATCH` query.
+Specifically, the following is *NOT* a valid `MATCH` statement,
+because the optional traversal follows another edge:
+```
+-- NOT A VALID QUERY
+SELECT
+    Animal___1.name as `name`,
+    Animal__in_Animal_ParentOf___1.name as `parent_name`
+FROM (
+    MATCH {
+        class: Animal,
+        as: Animal___1
+    }.in('Animal_ParentOf') {
+        optional: true,
+        as: Animal__in_Animal_ParentOf___1
+    }.in('Animal_ParentOf') {
+        as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
+    }
+    RETURN $matches
+)
+```
+
+Instead, we represent a *compound* optional by taking an union (`UNIONALL`) of two distinct
+`MATCH` queries. For instance, the `GraphQL` query above can be represented as follows:
+```
+SELECT EXPAND($final_match)
+LET
+    $match1 = (
+        SELECT
+            Animal___1.name AS `name`
+        FROM (
+            MATCH {
+                class: Animal,
+                as: Animal___1,
+                where: (
+                    (in_Animal_ParentOf IS null)
+                    OR
+                    (in_Animal_ParentOf.size() = 0)
+                ),
+            }
+        )
+    ),
+    $match2 = (
+        SELECT
+            Animal___1.name AS `name`,
+            Animal__in_Animal_ParentOf___1.name AS `parent_name`
+        FROM (
+            MATCH {
+                class: Animal,
+                as: Animal___1
+            }.in('Animal_ParentOf') {
+                as: Animal__in_Animal_ParentOf___1
+            }.in('Animal_ParentOf') {
+                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
+            }
+        )
+    ),
+    $final_match = UNIONALL($match1, $match2)
+```
+In the first case where the optional edge is not followed,
+we have to explicitly filter out all vertices where the edge *could have been followed*.
+This is to eliminate duplicates between the two `MATCH` selections.
+
+The previous example is not *exactly* how we implement *compound* optionals
+(we also have `SELECT` statements within `$match1` and `$match2`),
+but it illustrates the the general idea.
+
+#### Performance Penalty
+
+If we have many *compound* optionals in the given `GraphQL`,
+the above procedure results in the union of a large number of `MATCH` queries.
+Specifically, for `n` compound optionals, we generate 2<sup>n</sup> different `MATCH` queries.
+For each of the 2<sup>n</sup> subsets `S` of the `n` optional edges:
+- We remove the `@optional` restriction for each traversal in `S`.
+- For each traverse `t` in the complement of `S`, we entirely discard `t`
+  along with all the vertices and directives within it, and we add a filter
+  on the previous traverse to ensure that the edge corresponding to `t` does not exist.
+
+Therefore, we get a performance penalty that grows exponentially
+with the number of *compound* optional edges.
+This is important to keep in mind when writing queries with many optional directives.
+
 
 ### Optional `type_equivalence_hints` parameter
 

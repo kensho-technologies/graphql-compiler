@@ -12,6 +12,7 @@ from ..compiler.expressions import (BinaryComposition, ContextField, ContextFiel
                                     OutputContextField, TernaryConditional, TrueLiteral, Variable)
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
+from ..compiler.ir_lowering_match.utils import BetweenClause
 from ..compiler.match_query import MatchQuery, convert_to_match_query
 from ..schema import GraphQLDate
 from .test_helpers import compare_ir_blocks, construct_location_types
@@ -687,7 +688,7 @@ class MatchIrLoweringTests(unittest.TestCase):
         match_query = convert_to_match_query(ir_blocks)
 
         expected_final_filter_block = Filter(
-            ir_lowering_match.BetweenClause(
+            BetweenClause(
                 LocalField('name'),
                 Variable('$lower', GraphQLString),
                 Variable('$upper', GraphQLString)

@@ -1,7 +1,9 @@
 # Copyright 2017 Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
+from funcy.py2 import pairwise
 
-from .blocks import ConstructResult, Filter, Fold, Unfold
+from .blocks import (ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse,
+                     Unfold)
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
                           NullLiteral, TrueLiteral)
 from .helpers import validate_safe_string
@@ -204,3 +206,62 @@ def extract_folds_from_ir_blocks(ir_blocks):
                 remaining_ir_blocks.append(block)
 
     return folds, remaining_ir_blocks
+
+
+def extract_optional_location_root_info(ir_blocks):
+    """Construct a mapping from locations within @optional to their correspoding optional Traverse.
+
+    Args:
+        ir_blocks: list of IR blocks to extract optional data from
+
+    Returns:
+        tuple (complex_optional_roots, location_to_optional_root):
+        - complex_optional_roots: list of @optional locations (location immmediately preceding
+                                  an @optional traverse) that expand vertex fields
+        - location_to_optional_root: dict mapping from location -> optional_location
+                                     where location is within @optional (not necessarily one that
+                                     expands vertex fields) and optional_location is the location
+                                     preceding the corresponding @optional scope
+    """
+    complex_optional_roots = []
+    location_to_optional_root = dict()
+    in_optional_location = None
+    encountered_traverse_within_optional = False
+
+    for previous_block, current_block in pairwise(ir_blocks):
+        if isinstance(current_block, Traverse) and current_block.optional:
+            if in_optional_location is not None:
+                raise AssertionError(u'in_optional_location was not None at an optional traverse: '
+                                     u'{} {}'.format(current_block, ir_blocks))
+            if not isinstance(previous_block, MarkLocation):
+                raise AssertionError(u'No MarkLocation found before an optional traverse: '
+                                     u'{} {}'.format(current_block, ir_blocks))
+            in_optional_location = previous_block.location
+        elif in_optional_location is not None and isinstance(current_block, (Traverse, Recurse)):
+            encountered_traverse_within_optional = True
+        elif isinstance(current_block, EndOptional):
+            if in_optional_location is None:
+                raise AssertionError(u'in_optional_location was None at an EndOptional block: '
+                                     u'{}'.format(ir_blocks))
+            if encountered_traverse_within_optional:
+                complex_optional_roots.append(in_optional_location)
+            in_optional_location = None
+            encountered_traverse_within_optional = False
+        elif isinstance(current_block, MarkLocation):
+            # in_optional_location will be None if and only if we are not within an @optional scope.
+            if in_optional_location is not None:
+                location_to_optional_root[current_block.location] = in_optional_location
+        else:
+            # No locations need to be marked, and no optional scopes begin or end here.
+            pass
+
+    return complex_optional_roots, location_to_optional_root
+
+
+def remove_end_optionals(ir_blocks):
+    """Return a list of IR blocks as a copy of the original, with EndOptional blocks removed."""
+    new_ir_blocks = []
+    for block in ir_blocks:
+        if not isinstance(block, EndOptional):
+            new_ir_blocks.append(block)
+    return new_ir_blocks

@@ -42,10 +42,15 @@ To get from GraphQL AST to IR, we follow the following pattern:
 
     step V-4. Recurse into any vertex field children of the current AST node:
               (see _compile_vertex_ast())
-        - before recursing into each vertex, process any @optional directive
-          present on the child AST node;
-        - after returning from each vertex, return to the marked query location using
-          the appropriate manner, depending on whether @optional was present on the child or not.
+        - before recursing into each vertex:
+          - process any @optional and @fold directives present on the child AST node;
+          - process any @output within a @fold context,
+            and prevent further traversal if one is present;
+        - after returning from each vertex:
+          - return to the marked query location using the appropriate manner,
+            depending on whether @optional was present on the child or not;
+          - if the visited vertex had a @fold or @optional directive,
+            undo the processing performed at previous steps;
     ***************
 
     *** F-steps ***
@@ -382,6 +387,12 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         in_topmost_optional_block = False
 
         edge_traversal_is_optional = optional_directive is not None
+
+        # This is true for any vertex expanded within an @optional scope.
+        # Currently @optional is not allowed within @optional.
+        # This will need to change if nested @optionals have to be supported.
+        within_optional_scope = 'optional' in context and not edge_traversal_is_optional
+
         if edge_traversal_is_optional:
             # Entering an optional block!
             # Make sure there's a tag right before it for the optional Backtrack to jump back to.
@@ -408,10 +419,14 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         elif recurse_directive:
             recurse_depth = _get_recurse_directive_depth(field_name, inner_unique_directives)
             _validate_recurse_directive_types(current_schema_type, field_schema_type)
-            basic_blocks.append(blocks.Recurse(edge_direction, edge_name, recurse_depth))
+            basic_blocks.append(blocks.Recurse(edge_direction,
+                                               edge_name,
+                                               recurse_depth,
+                                               within_optional_scope=within_optional_scope))
         else:
             basic_blocks.append(blocks.Traverse(edge_direction, edge_name,
-                                                optional=edge_traversal_is_optional))
+                                                optional=edge_traversal_is_optional,
+                                                within_optional_scope=within_optional_scope))
 
         inner_basic_blocks = _compile_ast_node_to_ir(schema, field_schema_type, field_ast,
                                                      inner_location, context)
@@ -429,6 +444,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                      u'Location: {}'.format(fold_scope_location))
 
         if in_topmost_optional_block:
+            basic_blocks.append(blocks.EndOptional())
             del context['optional']
 
         # If we are currently evaluating a @fold vertex,
@@ -681,6 +697,7 @@ def _compile_output_step(outputs):
         fold_scope_location = output_context['fold']
 
         expression = None
+        existence_check = None
         if fold_scope_location:
             if optional:
                 raise AssertionError(u'Unreachable state reached, optional in fold: '
@@ -694,8 +711,12 @@ def _compile_output_step(outputs):
 
             if optional:
                 existence_check = expressions.ContextFieldExistence(location.at_vertex())
-                expression = expressions.TernaryConditional(
-                    existence_check, expression, expressions.NullLiteral)
+
+        # pylint: disable=redefined-variable-type
+        if existence_check:
+            expression = expressions.TernaryConditional(
+                existence_check, expression, expressions.NullLiteral)
+        # pylint: enable=redefined-variable-type
 
         output_fields[output_name] = expression
 

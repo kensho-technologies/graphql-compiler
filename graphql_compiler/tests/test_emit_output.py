@@ -9,6 +9,7 @@ from ..compiler.expressions import (BinaryComposition, ContextField, LocalField,
                                     OutputContextField, TernaryConditional, Variable)
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
+from ..compiler.ir_lowering_match.optional_traversal import CompoundMatchQuery
 from ..compiler.match_query import convert_to_match_query
 from ..schema import GraphQLDateTime
 from .test_helpers import compare_gremlin, compare_match
@@ -31,6 +32,7 @@ class EmitMatchTests(unittest.TestCase):
             })
         ]
         match_query = convert_to_match_query(ir_blocks)
+        compound_match_query = CompoundMatchQuery(match_queries=[match_query])
 
         expected_match = '''
             SELECT Foo___1.name AS `foo_name` FROM (
@@ -42,7 +44,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(match_query)
+        received_match = emit_match.emit_code_from_ir(compound_match_query)
         compare_match(self, expected_match, received_match)
 
     def test_simple_traverse_filter_output(self):
@@ -67,6 +69,7 @@ class EmitMatchTests(unittest.TestCase):
             })
         ]
         match_query = convert_to_match_query(ir_blocks)
+        compound_match_query = CompoundMatchQuery(match_queries=[match_query])
 
         expected_match = '''
             SELECT Foo___1.name AS `foo_name` FROM (
@@ -84,7 +87,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(match_query)
+        received_match = emit_match.emit_code_from_ir(compound_match_query)
         compare_match(self, expected_match, received_match)
 
     def test_output_inside_optional_traversal(self):
@@ -112,6 +115,7 @@ class EmitMatchTests(unittest.TestCase):
             })
         ]
         match_query = convert_to_match_query(ir_blocks)
+        compound_match_query = CompoundMatchQuery(match_queries=[match_query])
 
         expected_match = '''
             SELECT if(
@@ -133,7 +137,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(match_query)
+        received_match = emit_match.emit_code_from_ir(compound_match_query)
         compare_match(self, expected_match, received_match)
 
     def test_datetime_variable_representation(self):
@@ -159,6 +163,7 @@ class EmitMatchTests(unittest.TestCase):
             })
         ]
         match_query = convert_to_match_query(ir_blocks)
+        compound_match_query = CompoundMatchQuery(match_queries=[match_query])
 
         expected_match = '''
             SELECT Event___1.name AS `name` FROM (
@@ -174,7 +179,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(match_query)
+        received_match = emit_match.emit_code_from_ir(compound_match_query)
         compare_match(self, expected_match, received_match)
 
     def test_datetime_output_representation(self):
@@ -189,6 +194,7 @@ class EmitMatchTests(unittest.TestCase):
             })
         ]
         match_query = convert_to_match_query(ir_blocks)
+        compound_match_query = CompoundMatchQuery(match_queries=[match_query])
 
         expected_match = '''
             SELECT Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `event_date` FROM (
@@ -200,7 +206,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(match_query)
+        received_match = emit_match.emit_code_from_ir(compound_match_query)
         compare_match(self, expected_match, received_match)
 
 
