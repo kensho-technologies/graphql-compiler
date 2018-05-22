@@ -20,8 +20,7 @@ def execute_graphql(schema, test_data, client):
     else:
         schema_based_type_equivalence_hints = None
 
-    parameters = {}
-    result = graphql_to_match(schema, test_data.graphql_input, parameters,
+    result = graphql_to_match(schema, test_data.graphql_input, test_data.sample_parameters,
                               type_equivalence_hints=schema_based_type_equivalence_hints)
 
     rows = [row.oRecordData for row in client.command(result.query)]

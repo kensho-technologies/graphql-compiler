@@ -108,7 +108,8 @@ class IrGenerationTests(unittest.TestCase):
                 graphql_input=graphql_input,
                 expected_output_metadata=expected_output_metadata,
                 expected_input_metadata=expected_input_metadata,
-                type_equivalence_hints=None)
+                type_equivalence_hints=None,
+                sample_parameters={})
 
             check_test_data(self, test_data, expected_blocks, expected_location_types)
 

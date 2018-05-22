@@ -112,7 +112,8 @@ class CompilerTests(unittest.TestCase):
                 graphql_input=graphql_input,
                 expected_output_metadata=expected_output_metadata,
                 expected_input_metadata=expected_input_metadata,
-                type_equivalence_hints=None)
+                type_equivalence_hints=None,
+                sample_parameters={})
 
             check_test_data(self, test_data, expected_match, expected_gremlin)
 
@@ -1360,7 +1361,8 @@ class CompilerTests(unittest.TestCase):
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=None)
+            type_equivalence_hints=None,
+            sample_parameters={})
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
@@ -1408,7 +1410,8 @@ class CompilerTests(unittest.TestCase):
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=None)
+            type_equivalence_hints=None,
+            sample_parameters={})
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
@@ -1475,7 +1478,8 @@ class CompilerTests(unittest.TestCase):
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=None)
+            type_equivalence_hints=None,
+            sample_parameters={})
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
@@ -1778,7 +1782,8 @@ class CompilerTests(unittest.TestCase):
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=type_equivalence_hints)
+            type_equivalence_hints=type_equivalence_hints,
+            sample_parameters={})
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
@@ -1882,7 +1887,8 @@ class CompilerTests(unittest.TestCase):
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=None)
+            type_equivalence_hints=None,
+            sample_parameters={})
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
