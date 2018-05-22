@@ -7,6 +7,195 @@ from snapshottest import Snapshot
 
 snapshots = Snapshot()
 
+snapshots['OrientdbMatchQueryTests::test_filter_in_optional_block 1'] = [
+    {
+        'animal_name': 'Pteranodon__((412)((2(((321)31)2(412))(321))(((321)31)2(412))4)(1((2(((321)31)2(412))(321))(((321)31)2(412))4)(321)))'
+    },
+    {
+        'animal_name': 'Dragon__(304)'
+    },
+    {
+        'animal_name': 'Nazgul__(204)',
+        'parent_name': 'Nazgul__2',
+        'uuid': '85447460-4215-4578-4348-881960794632'
+    },
+    {
+        'animal_name': 'Dragon__2'
+    },
+    {
+        'animal_name': 'Hippogriff__0'
+    },
+    {
+        'animal_name': 'Nazgul__1'
+    },
+    {
+        'animal_name': 'Nazgul__(3(203)(1(30(4(204)2))(4((203)40)0)))'
+    },
+    {
+        'animal_name': 'Dragon__((304)(2(4(03(013))1)(013))(20(03(013))))'
+    },
+    {
+        'animal_name': 'Hippogriff__((312)32)'
+    },
+    {
+        'animal_name': 'Nazgul__(4((203)40)0)'
+    },
+    {
+        'animal_name': 'Pteranodon__(((321)31)2(412))'
+    },
+    {
+        'animal_name': 'Hippogriff__(314)'
+    },
+    {
+        'animal_name': 'Pteranodon__4'
+    },
+    {
+        'animal_name': 'Hippogriff__((312)10)'
+    },
+    {
+        'animal_name': 'Pteranodon__(((2(((321)31)2(412))(321))(((321)31)2(412))4)((321)31)4)'
+    },
+    {
+        'animal_name': 'Pteranodon__(2(((321)31)2(412))(321))'
+    },
+    {
+        'animal_name': 'Dragon__(03(013))'
+    },
+    {
+        'animal_name': 'Nazgul__(203)',
+        'parent_name': 'Nazgul__2',
+        'uuid': '85447460-4215-4578-4348-881960794632'
+    },
+    {
+        'animal_name': 'Dragon__3'
+    },
+    {
+        'animal_name': 'Hippogriff__1'
+    },
+    {
+        'animal_name': 'Nazgul__2'
+    },
+    {
+        'animal_name': 'Pteranodon__0'
+    },
+    {
+        'animal_name': 'Dragon__(2((304)(2(4(03(013))1)(013))(20(03(013))))(20(03(013))))'
+    },
+    {
+        'animal_name': 'Hippogriff__((314)(312)((312)32))'
+    },
+    {
+        'animal_name': 'Nazgul__(03(4((203)40)0))'
+    },
+    {
+        'animal_name': 'Hippogriff__(2(314)3)'
+    },
+    {
+        'animal_name': 'Pteranodon__(321)'
+    },
+    {
+        'animal_name': 'Pteranodon__1'
+    },
+    {
+        'animal_name': 'Pteranodon__(1(412)((321)31))'
+    },
+    {
+        'animal_name': 'Hippogriff__(3((312)32)(314))'
+    },
+    {
+        'animal_name': 'Pteranodon__((2(((321)31)2(412))(321))(((321)31)2(412))4)'
+    },
+    {
+        'animal_name': 'Dragon__(4(03(013))1)'
+    },
+    {
+        'animal_name': 'Nazgul__((203)40)'
+    },
+    {
+        'animal_name': 'Dragon__4'
+    },
+    {
+        'animal_name': 'Hippogriff__2'
+    },
+    {
+        'animal_name': 'Nazgul__3'
+    },
+    {
+        'animal_name': 'Dragon__(4(2((304)(2(4(03(013))1)(013))(20(03(013))))(20(03(013))))((304)(2(4(03(013))1)(013))(20(03(013)))))'
+    },
+    {
+        'animal_name': 'Nazgul__(1(30(4(204)2))(4((203)40)0))'
+    },
+    {
+        'animal_name': 'Hippogriff__(312)'
+    },
+    {
+        'animal_name': 'Nazgul__(4(204)2)',
+        'parent_name': 'Nazgul__2',
+        'uuid': '85447460-4215-4578-4348-881960794632'
+    },
+    {
+        'animal_name': 'Pteranodon__(412)'
+    },
+    {
+        'animal_name': 'Hippogriff__3'
+    },
+    {
+        'animal_name': 'Pteranodon__2'
+    },
+    {
+        'animal_name': 'Dragon__0'
+    },
+    {
+        'animal_name': 'Hippogriff__(((312)32)1((314)(312)((312)32)))'
+    },
+    {
+        'animal_name': 'Pteranodon__(1((2(((321)31)2(412))(321))(((321)31)2(412))4)(321))'
+    },
+    {
+        'animal_name': 'Dragon__(20(03(013)))'
+    },
+    {
+        'animal_name': 'Dragon__(013)'
+    },
+    {
+        'animal_name': 'Nazgul__4'
+    },
+    {
+        'animal_name': 'Dragon__((2(4(03(013))1)(013))(304)(4(03(013))1))'
+    },
+    {
+        'animal_name': 'Nazgul__0'
+    },
+    {
+        'animal_name': 'Nazgul__(((203)40)(4(204)2)(03(4((203)40)0)))'
+    },
+    {
+        'animal_name': 'Dragon__(2(4(03(013))1)(013))'
+    },
+    {
+        'animal_name': 'Hippogriff__((314)2(312))'
+    },
+    {
+        'animal_name': 'Nazgul__(30(4(204)2))'
+    },
+    {
+        'animal_name': 'Pteranodon__((321)31)'
+    },
+    {
+        'animal_name': 'Hippogriff__4'
+    },
+    {
+        'animal_name': 'Pteranodon__3'
+    },
+    {
+        'animal_name': 'Dragon__1'
+    },
+    {
+        'animal_name': 'Hippogriff__(340)'
+    }
+]
+
 snapshots['OrientdbMatchQueryTests::test_immediate_output 1'] = [
     {
         'animal_name': 'Pteranodon__((412)((2(((321)31)2(412))(321))(((321)31)2(412))4)(1((2(((321)31)2(412))(321))(((321)31)2(412))4)(321)))'

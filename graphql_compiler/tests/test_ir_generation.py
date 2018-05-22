@@ -427,13 +427,13 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.filter_in_optional_block()
 
         base_location = helpers.Location(('Animal',))
-        animal_fed_at_location = base_location.navigate_to_subpath('out_Animal_FedAt')
+        animal_parent_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
-            blocks.Traverse('out', 'Animal_FedAt', optional=True),
+            blocks.Traverse('out', 'Animal_ParentOf', optional=True),
             blocks.Filter(
                 expressions.BinaryComposition(
                     u'=',
@@ -441,22 +441,22 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.Variable('$name', GraphQLString)
                 )
             ),
-            blocks.MarkLocation(animal_fed_at_location),
+            blocks.MarkLocation(animal_parent_location),
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
             blocks.ConstructResult({
                 'uuid': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(animal_fed_at_location),
+                    expressions.ContextFieldExistence(animal_parent_location),
                     expressions.OutputContextField(
-                        animal_fed_at_location.navigate_to_field('uuid'), GraphQLID),
+                        animal_parent_location.navigate_to_field('uuid'), GraphQLID),
                     expressions.NullLiteral
                 )
             }),
         ]
         expected_location_types = {
             base_location: 'Animal',
-            animal_fed_at_location: 'Event',
+            animal_parent_location: 'Animal',
             revisited_base_location: 'Animal',
         }
 

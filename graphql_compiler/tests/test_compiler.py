@@ -421,16 +421,16 @@ class CompilerTests(unittest.TestCase):
 
         expected_match = '''
             SELECT
-                if(eval("(Animal__out_Animal_FedAt___1 IS NOT null)"),
-                   Animal__out_Animal_FedAt___1.uuid, null) AS `uuid`
+                if(eval("(Animal__out_Animal_ParentOf___1 IS NOT null)"),
+                   Animal__out_Animal_ParentOf___1.uuid, null) AS `uuid`
             FROM (
                 MATCH {{
                     class: Animal,
                     as: Animal___1
-                }}.out('Animal_FedAt') {{
+                }}.out('Animal_ParentOf') {{
                     where: ((name = {name})),
                     optional: true,
-                    as: Animal__out_Animal_FedAt___1
+                    as: Animal__out_Animal_ParentOf___1
                 }}
                 RETURN $matches
             )
@@ -438,14 +438,14 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = '''
             g.V('@class', 'Animal')
             .as('Animal___1')
-            .ifThenElse{it.out_Animal_FedAt == null}{null}{it.out('Animal_FedAt')}
+            .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
             .filter{it, m -> ((it == null) || (it.name == $name))}
-            .as('Animal__out_Animal_FedAt___1')
+            .as('Animal__out_Animal_ParentOf___1')
             .optional('Animal___1')
             .as('Animal___2')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                uuid: ((m.Animal__out_Animal_FedAt___1 != null) ?
-                       m.Animal__out_Animal_FedAt___1.uuid : null)
+                uuid: ((m.Animal__out_Animal_ParentOf___1 != null) ?
+                       m.Animal__out_Animal_ParentOf___1.uuid : null)
             ])}
         '''
 
