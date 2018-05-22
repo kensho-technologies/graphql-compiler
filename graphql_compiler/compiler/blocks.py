@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 """Definitions of the basic blocks of the compiler."""
 
 import six

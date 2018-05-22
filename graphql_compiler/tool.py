@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 """Utility modeled after json.tool, pretty-prints GraphQL read from stdin and outputs to stdout.
 
 Used as: python -m graphql_compiler.tool

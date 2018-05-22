@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 """Safely represent arguments for MATCH-language GraphQL queries."""
 import datetime
 import json

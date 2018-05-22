@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 from graphql import parse
 from graphql.language.printer import PrintingVisitor, join, wrap
 from graphql.language.visitor import visit

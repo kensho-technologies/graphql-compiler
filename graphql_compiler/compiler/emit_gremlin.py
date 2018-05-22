@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 """Convert lowered IR basic blocks to Gremlin query strings."""
 
 

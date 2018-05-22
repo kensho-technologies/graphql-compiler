@@ -1,3 +1,4 @@
+# Copyright 2018-present Kensho Technologies, LLC.
 from .ir_lowering import (lower_coerce_type_block_type_data, lower_coerce_type_blocks,
                           lower_folded_outputs, rewrite_filters_in_optional_blocks)
 from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend

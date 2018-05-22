@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 """Common GraphQL test inputs and expected outputs."""
 from inspect import getmembers, isfunction
 import unittest

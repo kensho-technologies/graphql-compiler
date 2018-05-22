@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
 from funcy.py2 import pairwise
 
