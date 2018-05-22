@@ -42,6 +42,7 @@ def get_animal_generators():
     """Return a list of SQL statements to create animal vertices and their corresponding edges."""
     generator_list = []
     species_to_names = {}
+    previous_parent_sets = set()
 
     for species_name in SPECIES_LIST:
         current_animal_names = []
@@ -49,7 +50,14 @@ def get_animal_generators():
         generator_list.extend(_get_initial_animal_generators(species_name, current_animal_names))
 
         for _ in range(NUM_GENERATIONS):
-            parent_names = random.sample(current_animal_names, NUM_PARENTS)
+            while True:
+                parent_names = frozenset(random.sample(current_animal_names, NUM_PARENTS))
+                # Duplicating a set of parents could result in Animals with the same names.
+                # This would invalidate unique selection of Animals by name.
+                if parent_names not in previous_parent_sets:
+                    break
+            previous_parent_sets.add(parent_names)
+
             parent_indices = [index for _, index in
                               [strip_index_from_name(parent_name)
                                for parent_name in parent_names]]
