@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 import unittest
 
 from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString

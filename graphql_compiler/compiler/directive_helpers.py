@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 """Helper functions for dealing with GraphQL directives."""
 
 from graphql.language.ast import InlineFragment

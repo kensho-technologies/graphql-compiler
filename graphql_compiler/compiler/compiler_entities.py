@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 """Base classes for compiler entity objects like basic blocks and expressions."""
 
 from abc import ABCMeta, abstractmethod

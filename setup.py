@@ -1,3 +1,4 @@
+# Copyright 2017-present Kensho Technologies, LLC.
 import codecs
 import os
 import re

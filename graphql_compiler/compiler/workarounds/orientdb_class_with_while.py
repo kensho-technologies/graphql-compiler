@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 """Workarounds for OrientDB bug disallowing "class:" clauses together with "while:" clauses.
 
 For details, see:

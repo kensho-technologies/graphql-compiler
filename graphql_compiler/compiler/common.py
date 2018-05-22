@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 from collections import namedtuple
 
 from . import emit_gremlin, emit_match, ir_lowering_gremlin, ir_lowering_match

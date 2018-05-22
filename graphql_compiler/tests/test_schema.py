@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 """Tests that vet the test schema against the schema data in the package."""
 from datetime import date, datetime
 import unittest

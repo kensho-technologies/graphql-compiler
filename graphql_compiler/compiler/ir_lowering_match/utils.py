@@ -1,3 +1,4 @@
+# Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
 
 from ..expressions import Expression, LocalField

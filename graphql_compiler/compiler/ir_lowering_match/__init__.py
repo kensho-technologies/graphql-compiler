@@ -1,3 +1,4 @@
+# Copyright 2018-present Kensho Technologies, LLC.
 import six
 
 from ..ir_lowering_common import (extract_optional_location_root_info,

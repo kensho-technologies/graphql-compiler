@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2017-present Kensho Technologies, LLC.
 """Front-end for GraphQL to database queries compiler.
 
 High-level overview of the GraphQL ingestion process that outputs the compiler's
