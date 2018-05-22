@@ -129,7 +129,7 @@ def traverse_filter_and_output():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None,
-        sample_parameters={})
+        sample_parameters={'wanted': 'Nazgul__2'})
 
 
 def name_or_alias_filter_on_interface_type():
