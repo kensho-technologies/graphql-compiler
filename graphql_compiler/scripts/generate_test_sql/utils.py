@@ -10,7 +10,7 @@ SEPARATOR = '__'
 
 def get_uuid():
     """Return a pseudorandom uuid."""
-    random_digits = ''.join([str(random.randint(0, 9)) for _ in range(32)]) # nosec
+    random_digits = ''.join([str(random.randint(0, 9)) for _ in range(32)])  # nosec
     uuid_substrings = [
         random_digits[:8],
         random_digits[8:12],
