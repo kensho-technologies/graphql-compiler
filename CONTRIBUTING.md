@@ -33,13 +33,19 @@ This project follows the
 
 Additionally, any contributions must pass the following set of lint and style checks with no issues:
 ```
+isort --check-only --verbose --recursive graphql_compiler/
+
 flake8 graphql_compiler/
 
 pydocstyle graphql_compiler/
 
-isort --check-only --verbose --recursive graphql_compiler/
-
 pylint graphql_compiler/
 
 bandit -r graphql_compiler/
+```
+
+Finally, all python files in the repository must display the copyright of the project,
+to protect the terms of the license. Please make sure that your files start with a line like:
+```
+# Copyright 20xx-present Kensho Technologies, LLC.
 ```
