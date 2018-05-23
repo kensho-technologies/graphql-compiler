@@ -33,7 +33,12 @@ ensure_file_has_copyright_line() {
     fi
 }
 
+# There may be many Python files in the root directory that are not checked into the repo:
+# virtualenv files, package build files etc.
+# Only check the setup.py file in the root directory.
 ensure_file_has_copyright_line './setup.py'
+
+# Check every python file in the package's source directory.
 for filename in ./graphql_compiler/**/*.py; do
     ensure_file_has_copyright_line "$filename"
 done
