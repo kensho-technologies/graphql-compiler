@@ -215,7 +215,7 @@ def extract_optional_location_root_info(ir_blocks):
     Returns:
         tuple (complex_optional_roots, location_to_optional_root):
         - complex_optional_roots: list of @optional locations (location immmediately preceding
-                                  an @optional traverse) that expand vertex fields
+                                  an @optional Traverse) that expand vertex fields
         - location_to_optional_root: dict mapping from location -> optional_location
                                      where location is within @optional (not necessarily one that
                                      expands vertex fields) and optional_location is the location
@@ -231,10 +231,10 @@ def extract_optional_location_root_info(ir_blocks):
         if isinstance(current_block, Traverse) and current_block.optional:
             if in_optional_root_location is not None:
                 raise AssertionError(u'in_optional_root_location was not None at an optional '
-                                     u'traverse: {} {}'.format(current_block, ir_blocks))
+                                     u'Traverse: {} {}'.format(current_block, ir_blocks))
 
             if preceding_location is None:
-                raise AssertionError(u'No MarkLocation found before an optional traverse: {} {}'
+                raise AssertionError(u'No MarkLocation found before an optional Traverse: {} {}'
                                      .format(current_block, ir_blocks))
 
             in_optional_root_location = preceding_location

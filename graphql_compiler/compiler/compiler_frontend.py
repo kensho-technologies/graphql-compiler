@@ -401,10 +401,10 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         if edge_traversal_is_optional:
             # Entering an optional block!
-            # Make sure there's a tag right before it for the optional Backtrack to jump back to.
-            # Otherwise, the traversal could rewind to an old tag and might ignore
-            # entire stretches of applied filtering.
-            # The preceding tag could be present before any number of fold blocks.
+            # Make sure there's a marked location right before it for the optional Backtrack
+            # to jump back to. Otherwise, the traversal could rewind to an old marked location
+            # and might ignore entire stretches of applied filtering.
+            # The preceding marked location can be present before any number of fold blocks.
             if not preceding_marked_location_ignoring_folds:
                 location = location.revisit()
                 context['location_types'][location] = strip_non_null_from_type(current_schema_type)
@@ -466,7 +466,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 basic_blocks.append(blocks.Backtrack(location, optional=True))
 
                 # Exiting optional block!
-                # Add a tag right after the optional, to ensure future Backtrack blocks
+                # Add a MarkLocation right after the optional, to ensure future Backtrack blocks
                 # return to a position after the optional set of blocks.
                 location = location.revisit()
                 context['location_types'][location] = strip_non_null_from_type(current_schema_type)

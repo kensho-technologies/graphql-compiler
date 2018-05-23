@@ -125,7 +125,7 @@ def _sanity_check_block_pairwise_constraints(ir_blocks):
 
 
 def _sanity_check_mark_location_preceding_optional_traverse(ir_blocks):
-    """Assert that optional traverse blocks are preceded by a MarkLocation."""
+    """Assert that optional Traverse blocks are preceded by a MarkLocation."""
     # Once all fold blocks are removed, each optional Traverse must have
     # a MarkLocation block immediately before it.
     _, new_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
