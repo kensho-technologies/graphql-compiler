@@ -8,9 +8,10 @@ install:
   - pip install -r dev-requirements.txt
   - pip install -e .
 script:
+  - ./scripts/copyright_line_check.sh
+  - isort --check-only --verbose --recursive graphql_compiler/
   - flake8 graphql_compiler/
   - pydocstyle graphql_compiler/
-  - isort --check-only --verbose --recursive graphql_compiler/
   - pylint graphql_compiler/
   - bandit -r graphql_compiler/
   - py.test --cov=graphql_compiler graphql_compiler/tests
