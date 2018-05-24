@@ -1,6 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from collections import OrderedDict
 from datetime import date, datetime
+from decimal import Decimal
 
 import arrow
 from graphql import (DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLInt, GraphQLList,
@@ -246,6 +247,20 @@ GraphQLDateTime = GraphQLScalarType(
     serialize=_serialize_datetime,
     parse_value=_parse_datetime_value,
     parse_literal=_unused_function,  # We don't yet support parsing DateTime objects in literals.
+)
+
+
+GraphQLDecimal = GraphQLScalarType(
+    name='Decimal',
+    description='The `Decimal` scalar type is an arbitrary-precision decimal number object '
+                'useful for representing values that should never be rounded, such as '
+                'currency amounts. Values are allowed to be transported as either a native Decimal '
+                'type, if the underlying transport allows that, or serialized as strings in '
+                'decimal format, without thousands separators and using a "." as the '
+                'decimal separator: for example, "12345678.012345".',
+    serialize=str,
+    parse_value=Decimal,
+    parse_literal=_unused_function,  # We don't yet support parsing Decimal objects in literals.
 )
 
 

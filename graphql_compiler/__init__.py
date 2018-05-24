@@ -10,7 +10,7 @@ from .exceptions import GraphQLParsingError, GraphQLCompilationError  # noqa
 from .exceptions import GraphQLValidationError, GraphQLInvalidArgumentError  # noqa
 
 from .schema import DIRECTIVES  # noqa
-from .schema import GraphQLDate, GraphQLDateTime  # noqa
+from .schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal  # noqa
 
 
 __package_name__ = 'graphql-compiler'

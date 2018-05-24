@@ -1,6 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Safely represent arguments for MATCH-language GraphQL queries."""
 import datetime
+from decimal import Decimal, InvalidOperation
 import json
 
 import arrow
@@ -10,7 +11,7 @@ import six
 from ..compiler import MATCH_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
-from ..schema import GraphQLDate, GraphQLDateTime
+from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .representations import represent_float_as_str, type_check_and_str
 
 
@@ -48,6 +49,20 @@ def _safe_match_date_and_datetime(graphql_type, expected_python_types, value):
         raise GraphQLInvalidArgumentError(e)
 
     return _safe_match_string(serialized_value)
+
+
+def _safe_match_decimal(value):
+    """Represent decimal objects as MATCH strings."""
+    if isinstance(value, Decimal):
+        # We got a decimal object, serialize it directly.
+        return 'decimal(' + _safe_match_string(str(value)) + ')'
+    else:
+        # We didn't get a decimal object, try to make it into one and then serialize it.
+        try:
+            coerced_decimal = Decimal(value)
+        except InvalidOperation as e:
+            raise GraphQLInvalidArgumentError(e)
+        return _safe_match_decimal(coerced_decimal)
 
 
 def _safe_match_list(inner_type, argument_value):
@@ -93,6 +108,8 @@ def _safe_match_argument(expected_type, argument_value):
         return type_check_and_str(int, argument_value)
     elif GraphQLBoolean.is_same_type(expected_type):
         return type_check_and_str(bool, argument_value)
+    elif GraphQLDecimal.is_same_type(expected_type):
+        return _safe_match_decimal(argument_value)
     elif GraphQLDate.is_same_type(expected_type):
         return _safe_match_date_and_datetime(expected_type, (datetime.date,), argument_value)
     elif GraphQLDateTime.is_same_type(expected_type):

@@ -1,4 +1,5 @@
 # Copyright 2017-present Kensho Technologies, LLC.
+from decimal import Decimal
 import unittest
 
 from .. import graphql_to_gremlin, graphql_to_match
@@ -11,6 +12,7 @@ from .test_helpers import compare_gremlin, compare_match, get_schema
 EXAMPLE_GRAPHQL_QUERY = '''{
     Animal @filter(op_name: "name_or_alias", value: ["$wanted_name"]) {
         name @output(out_name: "name")
+        net_worth @filter(op_name: ">=", value: ["$min_worth"])
     }
 }'''
 
@@ -18,25 +20,33 @@ EXAMPLE_GRAPHQL_QUERY = '''{
 class QueryFormattingTests(unittest.TestCase):
     def test_correct_arguments(self):
         wanted_name = 'Top Cat'
+        min_worth = Decimal('123456789.0123456')
         expected_match = '''
             SELECT Animal___1.name AS `name` FROM (
                 MATCH {
                     class: Animal,
-                    where: (((name = "Top Cat") OR (alias CONTAINS "Top Cat"))),
+                    where: ((
+                        ((name = "Top Cat") OR (alias CONTAINS "Top Cat")) AND
+                        (net_worth >= decimal("123456789.0123456"))
+                    )),
                     as: Animal___1
                 } RETURN $matches
             )
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
-            .filter{it, m -> ((it.name == 'Top Cat') || it.alias.contains('Top Cat'))}
+            .filter{it, m -> (
+                ((it.name == 'Top Cat') || it.alias.contains('Top Cat')) &&
+                (it.net_worth >= 123456789.0123456G)
+            )}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 name: m.Animal___1.name
             ])}
         '''
         arguments = {
-            'wanted_name': wanted_name
+            'wanted_name': wanted_name,
+            'min_worth': min_worth,
         }
         schema = get_schema()
 

@@ -102,6 +102,8 @@ def get_schema():
 
         directive @fold on FIELD
 
+        scalar Decimal
+
         scalar DateTime
 
         scalar Date
@@ -121,6 +123,7 @@ def get_schema():
             description: String
             alias: [String]
             birthday: Date
+            net_worth: Decimal
             uuid: ID
             out_Animal_ParentOf: [Animal]
             in_Animal_ParentOf: [Animal]

@@ -1,6 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Tests that vet the test schema against the schema data in the package."""
 from datetime import date, datetime
+from decimal import Decimal
 import unittest
 
 from graphql.type import GraphQLField, GraphQLObjectType, GraphQLSchema, GraphQLString
@@ -37,6 +38,21 @@ class SchemaTests(unittest.TestCase):
         test_directives = _get_directives_in_string_form(get_schema().get_directives())
         actual_directives = _get_directives_in_string_form(schema.DIRECTIVES)
         self.assertEqual(test_directives, actual_directives)
+
+    def test_decimal_serialization_and_parsing(self):
+        test_data = {
+            '0': Decimal(0),
+            '123': Decimal(123),
+            '-234': Decimal(-234),
+            '-12345678.01234567': Decimal('-12345678.01234567'),
+            '12345678.01234567': Decimal('12345678.01234567'),
+            'Infinity': Decimal('Infinity'),
+            '-Infinity': Decimal('-Infinity'),
+        }
+
+        for serialized_decimal, decimal_obj in six.iteritems(test_data):
+            self.assertEqual(serialized_decimal, schema.GraphQLDecimal.serialize(decimal_obj))
+            self.assertEqual(decimal_obj, schema.GraphQLDecimal.parse_value(serialized_decimal))
 
     def test_date_serialization_and_parsing(self):
         test_data = {
