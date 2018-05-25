@@ -1,7 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Safely represent arguments for MATCH-language GraphQL queries."""
 import datetime
-from decimal import Decimal, InvalidOperation
 import json
 
 import arrow
