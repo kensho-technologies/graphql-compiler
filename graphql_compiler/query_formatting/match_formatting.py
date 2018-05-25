@@ -12,7 +12,7 @@ from ..compiler import MATCH_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
-from .representations import represent_float_as_str, type_check_and_str
+from .representations import coerce_to_decimal, represent_float_as_str, type_check_and_str
 
 
 def _safe_match_string(value):
@@ -53,16 +53,8 @@ def _safe_match_date_and_datetime(graphql_type, expected_python_types, value):
 
 def _safe_match_decimal(value):
     """Represent decimal objects as MATCH strings."""
-    if isinstance(value, Decimal):
-        # We got a decimal object, serialize it directly.
-        return 'decimal(' + _safe_match_string(str(value)) + ')'
-    else:
-        # We didn't get a decimal object, try to make it into one and then serialize it.
-        try:
-            coerced_decimal = Decimal(value)
-        except InvalidOperation as e:
-            raise GraphQLInvalidArgumentError(e)
-        return _safe_match_decimal(coerced_decimal)
+    decimal_value = coerce_to_decimal(value)
+    return 'decimal(' + _safe_match_string(str(decimal_value)) + ')'
 
 
 def _safe_match_list(inner_type, argument_value):

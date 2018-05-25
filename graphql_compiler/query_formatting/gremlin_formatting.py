@@ -13,7 +13,7 @@ from ..compiler import GREMLIN_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
-from .representations import represent_float_as_str, type_check_and_str
+from .representations import coerce_to_decimal, represent_float_as_str, type_check_and_str
 
 
 def _safe_gremlin_string(value):
@@ -51,18 +51,11 @@ def _safe_gremlin_string(value):
 
 def _safe_gremlin_decimal(value):
     """Represent decimal objects as Gremlin strings."""
-    if isinstance(value, Decimal):
-        # We got a decimal object, serialize it directly.
-        # The "G" suffix on a decimal number forces it to be a BigInteger/BigDecimal literal:
-        # http://docs.groovy-lang.org/next/html/documentation/core-syntax.html#_number_type_suffixes
-        return str(value) + 'G'
-    else:
-        # We didn't get a decimal object, try to make it into one and then serialize it.
-        try:
-            coerced_decimal = Decimal(value)
-        except InvalidOperation as e:
-            raise GraphQLInvalidArgumentError(e)
-        return _safe_gremlin_decimal(coerced_decimal)
+    decimal_value = coerce_to_decimal(value)
+
+    # The "G" suffix on a decimal number forces it to be a BigInteger/BigDecimal literal:
+    # http://docs.groovy-lang.org/next/html/documentation/core-syntax.html#_number_type_suffixes
+    return str(decimal_value) + 'G'
 
 
 def _safe_gremlin_date_and_datetime(graphql_type, expected_python_types, value):

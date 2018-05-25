@@ -36,3 +36,14 @@ def type_check_and_str(python_type, value):
                                           u'{value}'.format(type=python_type, value=value))
 
     return str(value)
+
+
+def coerce_to_decimal(value):
+    """Attempt to coerce the value to a Decimal, or raise an error if unable to do so."""
+    if isinstance(value, decimal.Decimal):
+        return value
+    else:
+        try:
+            return decimal.Decimal(value)
+        except decimal.InvalidOperation as e:
+            raise GraphQLInvalidArgumentError(e)
