@@ -402,6 +402,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         # This will need to change if nested @optionals have to be supported.
         within_optional_scope = 'optional' in context and not edge_traversal_is_optional
 
+        # Extracting the last inserted MarkLocation
         current_marked_location = context['marked_location_stack'][-1]
 
         if edge_traversal_is_optional:
@@ -409,7 +410,6 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             # Make sure there's a marked location right before it for the optional Backtrack
             # to jump back to. Otherwise, the traversal could rewind to an old marked location
             # and might ignore entire stretches of applied filtering.
-            # The preceding marked location can be present before any number of fold blocks.
             if current_marked_location['num_traverses'] != 0:
                 location = location.revisit()
                 context['location_types'][location] = strip_non_null_from_type(current_schema_type)
@@ -426,7 +426,6 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         edge_direction, edge_name = _get_edge_direction_and_name(field_name)
 
         if fold_directive:
-            # Folds are always started from the first marked location, and not any of the revisits.
             current_location = current_marked_location['location']
             fold_scope_location = FoldScopeLocation(current_location, (edge_direction, edge_name))
             fold_block = blocks.Fold(fold_scope_location)
