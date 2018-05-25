@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright 2017-present Kensho Technologies, LLC.
 """Utility modeled after json.tool, pretty-prints GraphQL read from stdin and outputs to stdout.
 
