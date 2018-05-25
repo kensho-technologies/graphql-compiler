@@ -6,7 +6,7 @@ from collections import namedtuple
 from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 
 from ..compiler.compiler_frontend import OutputMetadata
-from ..schema import GraphQLDate, GraphQLDateTime
+from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 
 
 CommonTestData = namedtuple(
@@ -29,6 +29,47 @@ def immediate_output():
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
     }
     expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def immediate_output_custom_scalars():
+    graphql_input = '''{
+        Animal {
+            birthday @output(out_name: "birthday")
+            net_worth @output(out_name: "net_worth")
+        }
+    }'''
+    expected_output_metadata = {
+        'birthday': OutputMetadata(type=GraphQLDate, optional=False),
+        'net_worth': OutputMetadata(type=GraphQLDecimal, optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def immediate_output_with_custom_scalar_filter():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            net_worth @filter(op_name: ">=", value: ["$min_worth"])
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'min_worth': GraphQLDecimal,
+    }
 
     return CommonTestData(
         graphql_input=graphql_input,

@@ -11,8 +11,8 @@ import six
 from ..compiler import GREMLIN_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
-from ..schema import GraphQLDate, GraphQLDateTime
-from .representations import represent_float_as_str, type_check_and_str
+from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from .representations import coerce_to_decimal, represent_float_as_str, type_check_and_str
 
 
 def _safe_gremlin_string(value):
@@ -46,6 +46,15 @@ def _safe_gremlin_string(value):
 
     final_escaped_value = '\'' + re_escaped + '\''
     return final_escaped_value
+
+
+def _safe_gremlin_decimal(value):
+    """Represent decimal objects as Gremlin strings."""
+    decimal_value = coerce_to_decimal(value)
+
+    # The "G" suffix on a decimal number forces it to be a BigInteger/BigDecimal literal:
+    # http://docs.groovy-lang.org/next/html/documentation/core-syntax.html#_number_type_suffixes
+    return str(decimal_value) + 'G'
 
 
 def _safe_gremlin_date_and_datetime(graphql_type, expected_python_types, value):
@@ -108,6 +117,8 @@ def _safe_gremlin_argument(expected_type, argument_value):
         return type_check_and_str(int, argument_value)
     elif GraphQLBoolean.is_same_type(expected_type):
         return type_check_and_str(bool, argument_value)
+    elif GraphQLDecimal.is_same_type(expected_type):
+        return _safe_gremlin_decimal(argument_value)
     elif GraphQLDate.is_same_type(expected_type):
         return _safe_gremlin_date_and_datetime(expected_type, (datetime.date,), argument_value)
     elif GraphQLDateTime.is_same_type(expected_type):

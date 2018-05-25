@@ -65,6 +65,58 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_immediate_output_custom_scalars(self):
+        test_data = test_input_data.immediate_output_custom_scalars()
+
+        expected_match = '''
+            SELECT
+                Animal___1.birthday.format("yyyy-MM-dd") AS `birthday`,
+                Animal___1.net_worth AS `net_worth`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                birthday: m.Animal___1.birthday.format("yyyy-MM-dd"),
+                net_worth: m.Animal___1.net_worth
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_immediate_output_with_custom_scalar_filter(self):
+        test_data = test_input_data.immediate_output_with_custom_scalar_filter()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((net_worth >= {min_worth})),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (it.net_worth >= $min_worth)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_immediate_filter_and_output(self):
         # Ensure that all basic comparison operators output correct code in this simple case.
         comparison_operators = {u'=', u'!=', u'>', u'<', u'>=', u'<='}

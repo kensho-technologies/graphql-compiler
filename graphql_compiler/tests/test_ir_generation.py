@@ -7,7 +7,7 @@ import six
 from . import test_input_data
 from ..compiler import blocks, expressions, helpers
 from ..compiler.compiler_frontend import OutputMetadata, graphql_to_ir
-from ..schema import GraphQLDate, GraphQLDateTime
+from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .test_helpers import compare_input_metadata, compare_ir_blocks, get_schema
 
 
@@ -70,6 +70,27 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_immediate_output_custom_scalars(self):
+        test_data = test_input_data.immediate_output_custom_scalars()
+
+        base_location = helpers.Location(('Animal',))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.ConstructResult({
+                'birthday': expressions.OutputContextField(
+                    base_location.navigate_to_field('birthday'), GraphQLDate),
+                'net_worth': expressions.OutputContextField(
+                    base_location.navigate_to_field('net_worth'), GraphQLDecimal),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_immediate_filter_and_output(self):
         # Ensure that all basic comparison operators output correct code in this simple case.
         comparison_operators = {u'=', u'!=', u'>', u'<', u'>=', u'<='}
@@ -111,6 +132,31 @@ class IrGenerationTests(unittest.TestCase):
                 type_equivalence_hints=None)
 
             check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_immediate_output_with_custom_scalar_filter(self):
+        test_data = test_input_data.immediate_output_with_custom_scalar_filter()
+
+        base_location = helpers.Location(('Animal',))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'>=', expressions.LocalField('net_worth'),
+                    expressions.Variable('$min_worth', GraphQLDecimal)
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString)
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
 
     def test_multiple_filters(self):
         test_data = test_input_data.multiple_filters()
