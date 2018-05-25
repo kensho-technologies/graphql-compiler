@@ -2,7 +2,9 @@
 
 ## Current development version
 
-- Add full support for `Decimal` data, including both filtering and outputting. [#91](https://github.com/kensho-technologies/graphql-compiler/pull/91)
+## v1.6.0
+
+- Add full support for `Decimal` data, including both filtering and output. [#91](https://github.com/kensho-technologies/graphql-compiler/pull/91)
 
 ## v1.5.0
 
