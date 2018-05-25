@@ -1,5 +1,8 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
+from funcy.py2 import pairwise
+import six
+
 from .blocks import (ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse,
                      Unfold)
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
@@ -263,6 +266,33 @@ def extract_optional_location_root_info(ir_blocks):
             pass
 
     return complex_optional_roots, location_to_optional_root
+
+
+def extract_simple_optional_location_to_root(complex_optional_roots, location_to_optional_root):
+    """Construct a mapping from simple optional root locations to their inner location.
+
+    Args:
+        complex_optional_roots: list of @optional locations (location immmediately preceding
+                                an @optional traverse) that expand vertex fields
+        location_to_optional_root: dict mapping from location -> optional_location
+                                   where location is within @optional (not necessarily one that
+                                   expands vertex fields) and optional_location is the location
+                                   preceding the corresponding @optional scope
+
+    Returns:
+        dict mapping from simple_optional_root_location -> inner_location,
+        where inner_location is within a simple @optional (one that does not expands vertex fields)
+        and simple_optional_root_to_inner_location is the location preceding the @optional scope
+    """
+    # Simple optional roots are a subset of location_to_optional_root.values() (all optional roots).
+    # We filter out the ones that are also present in complex_optional_roots.
+    simple_optional_root_to_inner_location = {
+        optional_root_location: inner_location
+        for inner_location, optional_root_location in six.iteritems(location_to_optional_root)
+        if optional_root_location not in complex_optional_roots
+    }
+
+    return simple_optional_root_to_inner_location
 
 
 def remove_end_optionals(ir_blocks):
