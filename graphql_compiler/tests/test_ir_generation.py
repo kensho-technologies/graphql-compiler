@@ -3057,8 +3057,8 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
         revisited_base_location = base_location.revisit()
+        fold_scope = helpers.FoldScopeLocation(revisited_base_location, ('out', 'Animal_ParentOf'))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -3068,7 +3068,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
-            blocks.Fold(base_fold),
+            blocks.Fold(fold_scope),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -3080,7 +3080,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.NullLiteral
                 ),
                 'child_names_list': expressions.FoldedOutputContextField(
-                    base_fold, 'name', GraphQLList(GraphQLString)),
+                    fold_scope, 'name', GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -3136,9 +3136,9 @@ class IrGenerationTests(unittest.TestCase):
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         grandparent_location = parent_location.navigate_to_subpath('in_Animal_ParentOf')
-        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
-        fold_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
+        fold_scope = helpers.FoldScopeLocation(revisited_base_location, ('out', 'Animal_ParentOf'))
+        fold_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -3151,7 +3151,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
-            blocks.Fold(base_fold),
+            blocks.Fold(fold_scope),
             blocks.Traverse('out', 'Animal_ParentOf'),
             blocks.Backtrack(fold_location),
             blocks.Unfold(),
@@ -3165,7 +3165,7 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'grandchild_names_list': expressions.FoldedOutputContextField(
-                    base_fold, 'name', GraphQLList(GraphQLString)),
+                    fold_scope, 'name', GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {

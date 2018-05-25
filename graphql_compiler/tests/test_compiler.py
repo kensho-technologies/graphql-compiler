@@ -4038,9 +4038,9 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name,
                 child_names_list: (
-                    (m.Animal___1.out_Animal_ParentOf == null) ?
+                    (m.Animal___2.out_Animal_ParentOf == null) ?
                         [] :
-                        (m.Animal___1.out_Animal_ParentOf.collect{entry -> entry.inV.next().name})
+                        (m.Animal___2.out_Animal_ParentOf.collect{entry -> entry.inV.next().name})
                 ),
                 parent_name: (
                     (m.Animal__in_Animal_ParentOf___1 != null) ?
@@ -4157,11 +4157,17 @@ class CompilerTests(unittest.TestCase):
             .optional('Animal___1')
             .as('Animal___2')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                animal_name: m.Animal___1.name, grandchild_names_list: (
-                    (m.Animal___1.out_Animal_ParentOf == null) ?
-                        [] : (m.Animal___1.out_Animal_ParentOf.collect{entry -> entry.inV.next()}
-            .collectMany{entry -> entry.out_Animal_ParentOf.collect{edge -> edge.inV.next()}}
-            .collect{entry -> entry.name})), grandparent_name: (
+                animal_name: m.Animal___1.name,
+                grandchild_names_list: (
+                    (m.Animal___2.out_Animal_ParentOf == null) ?
+                        [] :
+                        (m.Animal___2.out_Animal_ParentOf
+                            .collect{entry -> entry.inV.next()}
+                            .collectMany{entry ->
+                                entry.out_Animal_ParentOf.collect{edge -> edge.inV.next()}
+                            }
+                            .collect{entry -> entry.name})),
+                grandparent_name: (
                     (m.Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 != null) ?
                         m.Animal__in_Animal_ParentOf__in_Animal_ParentOf___1.name : null
                 )
