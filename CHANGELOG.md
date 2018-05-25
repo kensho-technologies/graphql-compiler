@@ -2,6 +2,8 @@
 
 ## Current development version
 
+- Add full support for `Decimal` data, including both filtering and outputting. [#91](https://github.com/kensho-technologies/graphql-compiler/pull/91)
+
 ## v1.5.0
 
 - Allow expanding vertex fields within `@optional` scopes. [#83](https://github.com/kensho-technologies/graphql-compiler/pull/83)
