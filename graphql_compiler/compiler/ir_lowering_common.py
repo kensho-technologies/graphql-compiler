@@ -1,6 +1,5 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
-from funcy.py2 import pairwise
 import six
 
 from .blocks import (ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse,
@@ -227,6 +226,7 @@ def extract_optional_location_root_info(ir_blocks):
     complex_optional_roots = []
     location_to_optional_root = dict()
     in_optional_root_location = None
+    in_optional_traverse_edge_field = None
     encountered_traverse_within_optional = False
 
     preceding_location = None
@@ -235,24 +235,33 @@ def extract_optional_location_root_info(ir_blocks):
             if in_optional_root_location is not None:
                 raise AssertionError(u'in_optional_root_location was not None at an optional '
                                      u'Traverse: {} {}'.format(current_block, ir_blocks))
+            if in_optional_traverse_edge_field is not None:
+                raise AssertionError(u'in_optional_traverse_edge_field was not None at an optional '
+                                     u'Traverse: {} {}'.format(current_block, ir_blocks))
 
             if preceding_location is None:
                 raise AssertionError(u'No MarkLocation found before an optional Traverse: {} {}'
                                      .format(current_block, ir_blocks))
 
             in_optional_root_location = preceding_location
+            in_optional_traverse_edge_field = current_block.get_field_name()
         elif all((in_optional_root_location is not None,
+                  in_optional_traverse_edge_field is not None,
                   isinstance(current_block, (Traverse, Recurse)))):
             encountered_traverse_within_optional = True
         elif isinstance(current_block, EndOptional):
             if in_optional_root_location is None:
                 raise AssertionError(u'in_optional_root_location was None at an EndOptional block: '
                                      u'{}'.format(ir_blocks))
+            if in_optional_traverse_edge_field is None:
+                raise AssertionError(u'in_optional_traverse_edge_field was None at an EndOptional '
+                                     u'block: {}'.format(ir_blocks))
 
             if encountered_traverse_within_optional:
                 complex_optional_roots.append(in_optional_root_location)
 
             in_optional_root_location = None
+            in_optional_traverse_edge_field = None
             encountered_traverse_within_optional = False
         elif isinstance(current_block, MarkLocation):
             if in_optional_root_location is None:
@@ -268,7 +277,8 @@ def extract_optional_location_root_info(ir_blocks):
     return complex_optional_roots, location_to_optional_root
 
 
-def extract_simple_optional_location_to_root(complex_optional_roots, location_to_optional_root):
+def extract_simple_optional_location_to_root(
+        ir_blocks, complex_optional_roots, location_to_optional_root):
     """Construct a mapping from simple optional root locations to their inner location.
 
     Args:
@@ -291,6 +301,20 @@ def extract_simple_optional_location_to_root(complex_optional_roots, location_to
         for inner_location, optional_root_location in six.iteritems(location_to_optional_root)
         if optional_root_location not in complex_optional_roots
     }
+
+    simple_optional_root_info = {}
+    preceding_location = None
+    for current_block in ir_blocks:
+        if isinstance(current_block, MarkLocation):
+            preceding_location = current_block.location
+        elif isinstance(current_block, Traverse) and current_block.optional:
+            if preceding_location in simple_optional_root_to_inner_location.keys():
+                optional_info_dict = {
+                    'inner_location': simple_optional_root_to_inner_location[preceding_location],
+                    'optional_edge_field': current_block.get_field_name(),
+                }
+                simple_optional_root_info[preceding_location] = optional_info_dict
+
 
     return simple_optional_root_to_inner_location
 

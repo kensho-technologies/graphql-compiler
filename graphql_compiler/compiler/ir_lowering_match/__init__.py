@@ -55,7 +55,7 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     location_to_optional_results = extract_optional_location_root_info(ir_blocks)
     complex_optional_roots, location_to_optional_root = location_to_optional_results
     simple_optional_root_to_inner_location = extract_simple_optional_location_to_root(
-        complex_optional_roots, location_to_optional_root)
+        ir_blocks, complex_optional_roots, location_to_optional_root)
     ir_blocks = remove_end_optionals(ir_blocks)
 
     ir_blocks = lower_context_field_existence(ir_blocks)

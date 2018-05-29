@@ -1,6 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
 
+from ..compiler_entities import BasicBlock
 from ..expressions import Expression, LocalField
 
 
@@ -22,6 +23,7 @@ class BetweenClause(Expression):
         self.field = field
         self.lower_bound = lower_bound
         self.upper_bound = upper_bound
+        self.validate()
 
     def validate(self):
         """Validate that the Between Expression is correctly representable."""
@@ -58,6 +60,34 @@ class BetweenClause(Expression):
     def to_gremlin(self):
         """Must never be called."""
         raise NotImplementedError()
+
+
+class WhereClause(BasicBlock):
+    """A `WHERE` Expression, to filter the results of a SELECT-MATCH statement."""
+
+    def __init__(self, expressions):
+        """Construct a WHERE clause that filters on the conjunction of the given expressions."""
+        super(BetweenClause, self).__init__(expressions)
+        self.expressions = expressions
+        self.validate()
+
+    def validate(self):
+        """Validate that the Between Expression is correctly representable."""
+        if not isinstance(self.expressions, list):
+            raise TypeError(u'Expected list expressions, got: {} {}'.format(
+                type(self.expressions).__name__, self.expressions))
+
+        for expression in expressions:
+            if not isinstance(self.expression, LocalField):
+                raise TypeError(u'Expected Expression expression, got: {} {}'.format(
+                    type(self.expression).__name__, self.expression))
+
+    def to_match(self):
+        """Return a unicode object with the MATCH representation of this BetweenClause."""
+        match_expressions_list = [expression.to_match() for expression in self.expressions]
+        expressions_conjunction_string = ' AND '.join(match_expressions_list)
+        template = u'(BETWEEN {expressions_conjunction_string})'
+        return template.format(expressions_conjunction_string=expressions_conjunction_string)
 
 
 ###
