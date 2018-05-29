@@ -1,8 +1,28 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
 
+from ..blocks import Filter
 from ..compiler_entities import BasicBlock
-from ..expressions import Expression, LocalField
+from ..expressions import Expression, LocalField, BinaryComposition, TrueLiteral
+
+
+def _expression_list_to_conjunction(expression_list):
+    """Convert a list of expressions to an Expression that is the conjunction of all of them."""
+    if not isinstance(expression_list, list):
+        raise AssertionError(u'Expected `list`, Received {}.'.format(expression_list))
+
+    if len(expression_list) == 0:
+        return TrueLiteral
+
+    if not isinstance(expression_list[0], Expression):
+        raise AssertionError(u'Non-Expression object {} found in expression_list'
+                             .format(expression_list[0]))
+    if len(expression_list) == 1:
+        return expression_list[0]
+    else:
+        return BinaryComposition(u'&&',
+                                 _expression_list_to_conjunction(expression_list[1:]),
+                                 expression_list[0])
 
 
 class BetweenClause(Expression):
@@ -60,34 +80,6 @@ class BetweenClause(Expression):
     def to_gremlin(self):
         """Must never be called."""
         raise NotImplementedError()
-
-
-class WhereClause(BasicBlock):
-    """A `WHERE` Expression, to filter the results of a SELECT-MATCH statement."""
-
-    def __init__(self, expressions):
-        """Construct a WHERE clause that filters on the conjunction of the given expressions."""
-        super(BetweenClause, self).__init__(expressions)
-        self.expressions = expressions
-        self.validate()
-
-    def validate(self):
-        """Validate that the Between Expression is correctly representable."""
-        if not isinstance(self.expressions, list):
-            raise TypeError(u'Expected list expressions, got: {} {}'.format(
-                type(self.expressions).__name__, self.expressions))
-
-        for expression in expressions:
-            if not isinstance(self.expression, LocalField):
-                raise TypeError(u'Expected Expression expression, got: {} {}'.format(
-                    type(self.expression).__name__, self.expression))
-
-    def to_match(self):
-        """Return a unicode object with the MATCH representation of this BetweenClause."""
-        match_expressions_list = [expression.to_match() for expression in self.expressions]
-        expressions_conjunction_string = ' AND '.join(match_expressions_list)
-        template = u'(BETWEEN {expressions_conjunction_string})'
-        return template.format(expressions_conjunction_string=expressions_conjunction_string)
 
 
 ###

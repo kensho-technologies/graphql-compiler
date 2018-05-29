@@ -311,12 +311,12 @@ def extract_simple_optional_location_to_root(
             if preceding_location in simple_optional_root_to_inner_location.keys():
                 optional_info_dict = {
                     'inner_location': simple_optional_root_to_inner_location[preceding_location],
-                    'optional_edge_field': current_block.get_field_name(),
+                    'edge_field': current_block.get_field_name(),
                 }
                 simple_optional_root_info[preceding_location] = optional_info_dict
 
 
-    return simple_optional_root_to_inner_location
+    return simple_optional_root_info
 
 
 def remove_end_optionals(ir_blocks):

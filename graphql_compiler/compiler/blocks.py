@@ -163,12 +163,14 @@ class Filter(BasicBlock):
 
     def validate(self):
         """Ensure that the Filter block is valid."""
-        if not isinstance(self.predicate, Expression):
-            raise TypeError(u'Expected Expression predicate, got: {} {}'.format(
+        if self.predicate is not None and not isinstance(self.predicate, Expression):
+            raise TypeError(u'Expected None/Expression predicate, got: {} {}'.format(
                 type(self.predicate).__name__, self.predicate))
 
     def visit_and_update_expressions(self, visitor_fn):
         """Create an updated version (if needed) of the Filter via the visitor pattern."""
+        if self.predicate is None:
+            return self
         new_predicate = self.predicate.visit_and_update(visitor_fn)
         if new_predicate is not self.predicate:
             return Filter(new_predicate)

@@ -19,6 +19,11 @@ from .optional_traversal import (collect_filters_to_first_location_occurrence,
 from ..match_query import convert_to_match_query
 from ..workarounds import orientdb_class_with_while, orientdb_eval_scheduling
 
+from ..blocks import Filter
+from ..helpers import Location
+from ..expressions import LocalField, BinaryComposition, NullLiteral, TrueLiteral
+from .utils import _expression_list_to_conjunction
+
 
 ##############
 # Public API #
@@ -54,9 +59,25 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     # These lowering / optimization passes work on IR blocks.
     location_to_optional_results = extract_optional_location_root_info(ir_blocks)
     complex_optional_roots, location_to_optional_root = location_to_optional_results
-    simple_optional_root_to_inner_location = extract_simple_optional_location_to_root(
+    simple_optional_root_info = extract_simple_optional_location_to_root(
         ir_blocks, complex_optional_roots, location_to_optional_root)
     ir_blocks = remove_end_optionals(ir_blocks)
+
+
+    where_filter_expressions = []
+    for root_location, root_info_dict in six.iteritems(simple_optional_root_info):
+        edge_field = root_info_dict['edge_field']
+        edge_field_location = Location(root_location.query_path, field=edge_field)
+        edge_local_field = LocalField(edge_field)
+        edge_field_non_existence = BinaryComposition(u'=', edge_local_field, NullLiteral)
+        inner_location = root_info_dict['inner_location']
+        inner_location_existence = BinaryComposition(u'!=', edge_local_field, NullLiteral)
+        where_filter_expressions.append(BinaryComposition(u'||',
+                                                          edge_field_non_existence,
+                                                          inner_location_existence))
+    where_block = Filter(_expression_list_to_conjunction(where_filter_expressions))
+    ir_blocks.append(where_block)
+
 
     ir_blocks = lower_context_field_existence(ir_blocks)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)

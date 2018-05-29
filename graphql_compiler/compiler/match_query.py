@@ -2,9 +2,11 @@
 """Tools to create MATCH query objects from partially-lowered IR blocks, for easier manipulation."""
 
 from collections import namedtuple
+import six
 
 from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, OutputSource,
                      QueryRoot, Recurse, Traverse)
+from .helpers import Location
 from .ir_lowering_common import extract_folds_from_ir_blocks
 
 
@@ -16,7 +18,8 @@ from .ir_lowering_common import extract_folds_from_ir_blocks
 #   - folds: a dict of FoldScopeLocation -> list of IR blocks defining that @fold scope,
 #            not including the Fold and Unfold blocks that signal the start and end of the @fold.
 #   - output_block: a ConstructResult IR block, which defines how the query's results are returned.
-MatchQuery = namedtuple('MatchQuery', ('match_traversals', 'folds', 'output_block'))
+#   - where_block: a Filter block, which determines the WHERE statement for the query.
+MatchQuery = namedtuple('MatchQuery', ('match_traversals', 'folds', 'output_block', 'where_block'))
 
 
 ###
@@ -141,16 +144,27 @@ def _split_match_steps_into_match_traversals(match_steps):
 
 def convert_to_match_query(ir_blocks):
     """Convert the list of IR blocks into a MatchQuery object, for easier manipulation."""
-    output_block = ir_blocks[-1]
+    where_block = ir_blocks[-1]
+    if not isinstance(where_block, Filter):
+        raise AssertionError(u'Expected last IR block to be Filter, found: '
+                             u'{} {}'.format(where_block, ir_blocks))
+    ir_except_where = ir_blocks[:-1]
+
+    output_block = ir_except_where[-1]
     if not isinstance(output_block, ConstructResult):
         raise AssertionError(u'Expected last IR block to be ConstructResult, found: '
                              u'{} {}'.format(output_block, ir_blocks))
+    ir_except_where_and_output = ir_except_where[:-1]
 
-    ir_except_output = ir_blocks[:-1]
-    folds, ir_except_output_and_folds = extract_folds_from_ir_blocks(ir_except_output)
+    folds, ir_except_where_output_and_folds = extract_folds_from_ir_blocks(ir_except_where_and_output)
 
-    match_steps = _split_ir_into_match_steps(ir_except_output_and_folds)
+    match_steps = _split_ir_into_match_steps(ir_except_where_output_and_folds)
 
     match_traversals = _split_match_steps_into_match_traversals(match_steps)
 
-    return MatchQuery(match_traversals=match_traversals, folds=folds, output_block=output_block)
+    return MatchQuery(
+        match_traversals=match_traversals,
+        folds=folds,
+        output_block=output_block,
+        where_block=where_block,
+    )

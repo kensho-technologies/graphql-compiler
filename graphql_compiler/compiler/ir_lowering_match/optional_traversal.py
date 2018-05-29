@@ -9,7 +9,7 @@ from ..expressions import (BinaryComposition, ContextField, FoldedOutputContextF
                            LocalField, NullLiteral, OutputContextField, TernaryConditional,
                            TrueLiteral, UnaryTransformation, Variable, ZeroLiteral)
 from ..match_query import MatchQuery, MatchStep
-from .utils import BetweenClause, CompoundMatchQuery
+from .utils import BetweenClause, CompoundMatchQuery, _expression_list_to_conjunction
 
 
 def _filter_local_edge_field_non_existence(field_name):
@@ -146,6 +146,7 @@ def convert_optional_traversals_to_compound_match_query(
             match_traversals=match_traversals,
             folds=match_query.folds,
             output_block=match_query.output_block,
+            where_block=match_query.where_block,
         )
         for match_traversals in compound_match_traversals
     ]
@@ -216,7 +217,6 @@ def prune_non_existent_outputs(compound_match_query):
         for match_query in compound_match_query.match_queries:
             match_traversals = match_query.match_traversals
             output_block = match_query.output_block
-            folds = match_query.folds
 
             present_locations_tuple = _get_present_locations(match_traversals)
             present_locations, present_non_optional_locations = present_locations_tuple
@@ -260,8 +260,9 @@ def prune_non_existent_outputs(compound_match_query):
             match_queries.append(
                 MatchQuery(
                     match_traversals=match_traversals,
-                    folds=folds,
-                    output_block=ConstructResult(new_output_fields)
+                    folds=match_query.folds,
+                    output_block=ConstructResult(new_output_fields),
+                    where_block=match_query.where_block,
                 )
             )
 
@@ -295,19 +296,8 @@ def _construct_location_to_filter_list(match_query):
 
 def _filter_list_to_conjunction_expression(filter_list):
     """Convert a list of filters to an Expression that is the conjunction of all of them."""
-    if not isinstance(filter_list, list):
-        raise AssertionError(u'Expected `list`, Received {}.'.format(filter_list))
-
-    if not isinstance(filter_list[0], Filter):
-        raise AssertionError(u'Non-Filter object {} found in filter_list'
-                             .format(filter_list[0]))
-
-    if len(filter_list) == 1:
-        return filter_list[0].predicate
-    else:
-        return BinaryComposition(u'&&',
-                                 _filter_list_to_conjunction_expression(filter_list[1:]),
-                                 filter_list[0].predicate)
+    expression_list = [filter_block.predicate for filter_block in filter_list]
+    return _expression_list_to_conjunction(expression_list)
 
 
 def _apply_filters_to_first_location_occurrence(match_traversal, location_to_filters,
@@ -402,7 +392,8 @@ def collect_filters_to_first_location_occurrence(compound_match_query):
             MatchQuery(
                 match_traversals=new_match_traversals,
                 folds=match_query.folds,
-                output_block=match_query.output_block
+                output_block=match_query.output_block,
+                where_block=match_query.where_block,
             )
         )
 
@@ -572,7 +563,8 @@ def lower_context_field_expressions(compound_match_query):
                 MatchQuery(
                     match_traversals=new_match_traversals,
                     folds=match_query.folds,
-                    output_block=match_query.output_block
+                    output_block=match_query.output_block,
+                    where_block=match_query.where_block,
                 )
             )
 

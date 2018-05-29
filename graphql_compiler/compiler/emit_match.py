@@ -7,6 +7,8 @@ import six
 from .blocks import Filter, QueryRoot, Recurse, Traverse
 from .helpers import validate_safe_string
 
+from .expressions import TrueLiteral
+
 
 def _get_vertex_location_name(location):
     """Get the location name from a location that is expected to point to a vertex."""
@@ -156,6 +158,13 @@ def _construct_output_to_match(output_block):
     return u'SELECT %s FROM' % (u', '.join(selections),)
 
 
+def _construct_where_to_match(where_block):
+    """Transform a Filter block into a MATCH query string."""
+    if where_block.predicate == TrueLiteral:
+        return u''
+    return u'WHERE ' + where_block.predicate.to_match()
+
+
 ##############
 # Public API #
 ##############
@@ -196,6 +205,9 @@ def emit_code_from_single_match_query(match_query):
 
     # Represent and add the SELECT clauses with the proper output data.
     query_data.appendleft(_construct_output_to_match(match_query.output_block))
+
+    # Represent and add the WHERE clause with the proper filters.
+    query_data.append(_construct_where_to_match(match_query.where_block))
 
     return u' '.join(query_data)
 
