@@ -444,7 +444,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                                 within_optional_scope=within_optional_scope))
 
         if not fold_directive and not is_in_fold_scope(context):
-            # The current block is either a Traverse or a Recurse
+            # Current block is either a Traverse or a Recurse that is not within any fold context.
             current_marked_location['num_traverses'] += 1
 
         inner_basic_blocks = _compile_ast_node_to_ir(schema, field_schema_type, field_ast,
