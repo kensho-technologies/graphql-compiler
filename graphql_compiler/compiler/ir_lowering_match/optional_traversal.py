@@ -6,26 +6,11 @@ import six
 
 from ..blocks import ConstructResult, Filter, Traverse
 from ..expressions import (BinaryComposition, ContextField, FoldedOutputContextField, Literal,
-                           LocalField, NullLiteral, OutputContextField, TernaryConditional,
-                           TrueLiteral, UnaryTransformation, Variable, ZeroLiteral)
+                           LocalField, OutputContextField, TernaryConditional, TrueLiteral,
+                           UnaryTransformation, Variable)
 from ..match_query import MatchQuery, MatchStep
-from .utils import BetweenClause, CompoundMatchQuery, _expression_list_to_conjunction
-
-
-def _filter_local_edge_field_non_existence(field_name):
-    """Return an Expression that is True iff the specified edge (field_name) does not exist."""
-    # When an edge does not exist at a given vertex, OrientDB represents that in one of two ways:
-    #   - the edge's field does not exist (is null) on the vertex document, or
-    #   - the edge's field does exist, but is an empty list.
-    # We check both of these possibilities.
-    local_field = LocalField(field_name)
-
-    field_null_check = BinaryComposition(u'=', local_field, NullLiteral)
-
-    local_field_size = UnaryTransformation(u'size', local_field)
-    field_size_check = BinaryComposition(u'=', local_field_size, ZeroLiteral)
-
-    return BinaryComposition(u'||', field_null_check, field_size_check)
+from .utils import (BetweenClause, CompoundMatchQuery, expression_list_to_conjunction,
+                    filter_edge_field_non_existence)
 
 
 def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
@@ -63,7 +48,7 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
             elif optional_root_location in omitted_locations:
                 # Add filter to indicate that the omitted edge(s) shoud not exist
                 field_name = step.root_block.get_field_name()
-                new_predicate = _filter_local_edge_field_non_existence(field_name)
+                new_predicate = filter_edge_field_non_existence(LocalField(field_name))
                 old_filter = new_match_traversal[-1].where_block
                 if old_filter is not None:
                     new_predicate = BinaryComposition(u'&&', old_filter.predicate, new_predicate)
@@ -297,7 +282,7 @@ def _construct_location_to_filter_list(match_query):
 def _filter_list_to_conjunction_expression(filter_list):
     """Convert a list of filters to an Expression that is the conjunction of all of them."""
     expression_list = [filter_block.predicate for filter_block in filter_list]
-    return _expression_list_to_conjunction(expression_list)
+    return expression_list_to_conjunction(expression_list)
 
 
 def _apply_filters_to_first_location_occurrence(match_traversal, location_to_filters,

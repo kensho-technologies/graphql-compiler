@@ -5,9 +5,8 @@ from collections import deque
 import six
 
 from .blocks import Filter, QueryRoot, Recurse, Traverse
-from .helpers import validate_safe_string
-
 from .expressions import TrueLiteral
+from .helpers import validate_safe_string
 
 
 def _get_vertex_location_name(location):

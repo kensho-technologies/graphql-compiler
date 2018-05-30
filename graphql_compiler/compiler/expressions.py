@@ -235,6 +235,53 @@ class LocalField(Expression):
             return u'{}.{}'.format(local_object_name, self.field_name)
 
 
+class SelectEdgeContextField(Expression):
+    """An edge field drawn from the global context, for use in a SELECT WHERE statement."""
+
+    def __init__(self, location):
+        """Construct a new SelectEdgeContextField object that references an edge field.
+
+        Args:
+            location: Location, specifying where the field was declared.
+                      The Location object must contain an edge field.
+
+        Returns:
+            new SelectEdgeContextField object
+        """
+        super(SelectEdgeContextField, self).__init__(location)
+        self.location = location
+        self.validate()
+
+    def validate(self):
+        """Validate that the SelectEdgeContextField is correctly representable."""
+        if not isinstance(self.location, Location):
+            raise TypeError(u'Expected Location location, got: {} {}'
+                            .format(type(self.location).__name__, self.location))
+
+        if self.location.field is None:
+            raise AssertionError(u'Received Location without a field: {}'
+                                 .format(self.location))
+
+        if self.location.field[:3] != u'in_' and self.location.field[:4] != u'out_':
+            raise AssertionError(u'Received Location with a non-edge field: {}'
+                                 .format(self.location))
+
+    def to_match(self):
+        """Return a unicode object with the MATCH representation of this ContextField."""
+        self.validate()
+
+        mark_name, field_name = self.location.get_location_name()
+        validate_safe_string(mark_name)
+        validate_safe_string(field_name)
+
+        return u'%s.%s' % (mark_name, field_name)
+
+    def to_gremlin(self):
+        """Not implemented, should not be used."""
+        raise AssertionError(u'SelectEdgeContextField is only used for the WHERE statement in MATCH'
+                             u'This function should not be called.')
+
+
 class ContextField(Expression):
     """A field drawn from the global context, e.g. if selected earlier in the query."""
 

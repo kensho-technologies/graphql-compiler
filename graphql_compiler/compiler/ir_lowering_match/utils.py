@@ -1,12 +1,36 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
 
+import six
+
 from ..blocks import Filter
-from ..compiler_entities import BasicBlock
-from ..expressions import Expression, LocalField, BinaryComposition, TrueLiteral
+from ..expressions import (BinaryComposition, Expression, LocalField, NullLiteral,
+                           SelectEdgeContextField, TrueLiteral, UnaryTransformation, ZeroLiteral)
+from ..helpers import Location
 
 
-def _expression_list_to_conjunction(expression_list):
+def filter_edge_field_non_existence(edge_expression):
+    # TODO(shankha): Update docstring <30-05-18>
+    """Return an Expression that is True iff the specified edge (expression) does not exist."""
+    # When an edge does not exist at a given vertex, OrientDB represents that in one of two ways:
+    #   - the edge's field does not exist (is null) on the vertex document, or
+    #   - the edge's field does exist, but is an empty list.
+    # We check both of these possibilities.
+    # TODO(shankha): Assert expression type <30-05-18>
+    if not isinstance(edge_expression, (LocalField, SelectEdgeContextField)):
+        raise AssertionError(u'Received invalid edge_expression {} of type {}.'
+                             u'Expected LocalField or SelectEdgeContextField.'
+                             .format(edge_expression, type(edge_expression.__name__))
+
+    field_null_check = BinaryComposition(u'=', edge_expression, NullLiteral)
+
+    local_field_size = UnaryTransformation(u'size', edge_expression)
+    field_size_check = BinaryComposition(u'=', local_field_size, ZeroLiteral)
+
+    return BinaryComposition(u'||', field_null_check, field_size_check)
+
+
+def expression_list_to_conjunction(expression_list):
     """Convert a list of expressions to an Expression that is the conjunction of all of them."""
     if not isinstance(expression_list, list):
         raise AssertionError(u'Expected `list`, Received {}.'.format(expression_list))
@@ -21,7 +45,7 @@ def _expression_list_to_conjunction(expression_list):
         return expression_list[0]
     else:
         return BinaryComposition(u'&&',
-                                 _expression_list_to_conjunction(expression_list[1:]),
+                                 expression_list_to_conjunction(expression_list[1:]),
                                  expression_list[0])
 
 
@@ -80,6 +104,31 @@ class BetweenClause(Expression):
     def to_gremlin(self):
         """Must never be called."""
         raise NotImplementedError()
+
+
+class SelectWhereFilter(Filter):
+    # TODO(shankha): Fix docstring <30-05-18>#
+    """A filter that ensures data matches a predicate expression, and discards all other data."""
+
+    def __init__(self, simple_optional_root_info):
+        # TODO(shankha): Docstring <30-05-18>
+        where_filter_expressions = []
+        for root_location, root_info_dict in six.iteritems(simple_optional_root_info):
+            edge_field = root_info_dict['edge_field']
+            edge_field_location = Location(root_location.query_path, field=edge_field)
+            select_edge_context_field = SelectEdgeContextField(edge_field_location)
+            edge_field_non_existence = filter_edge_field_non_existence(select_edge_context_field)
+
+            inner_location, _ = root_info_dict['inner_location'].get_location_name()
+            inner_local_field = LocalField(inner_location)
+            inner_location_existence = BinaryComposition(u'!=', inner_local_field, NullLiteral)
+
+            where_filter_expressions.append(BinaryComposition(u'||',
+                                                              edge_field_non_existence,
+                                                              inner_location_existence))
+
+        predicate = expression_list_to_conjunction(where_filter_expressions)
+        super(SelectWhereFilter, self).__init__(predicate)
 
 
 ###
