@@ -108,14 +108,12 @@ def filter_edge_field_non_existence(edge_expression):
     return BinaryComposition(u'||', field_null_check, field_size_check)
 
 
-def filter_orientdb_simple_optional_edge(inner_location_name, edge_field):
+def filter_orientdb_simple_optional_edge(root_location_path, inner_location_name, edge_field):
     """Return an Expression that is False for rows that don't follow the @optional specification."""
-    inner_location = root_info_dict['inner_location_name']
-    inner_local_field = LocalField(inner_location)
+    inner_local_field = LocalField(inner_location_name)
     inner_location_existence = BinaryComposition(u'!=', inner_local_field, NullLiteral)
 
-    edge_field = root_info_dict['edge_field']
-    edge_field_location = Location(root_location.query_path, field=edge_field)
+    edge_field_location = Location(root_location_path, field=edge_field)
     select_edge_context_field = SelectEdgeContextField(edge_field_location)
     edge_field_non_existence = filter_edge_field_non_existence(select_edge_context_field)
 
@@ -149,8 +147,11 @@ class SelectWhereFilter(Filter):
         """
         where_filter_expressions = []
         for root_location, root_info_dict in six.iteritems(simple_optional_root_info):
+            inner_location_name = root_info_dict['inner_location_name']
+            edge_field = root_info_dict['edge_field']
+
             optional_edge_filter = filter_orientdb_simple_optional_edge(
-                inner_location_name, edge_field)
+                root_location.query_path, inner_location_name, edge_field)
             where_filter_expressions.append(optional_edge_filter)
 
         predicate = expression_list_to_conjunction(where_filter_expressions)
