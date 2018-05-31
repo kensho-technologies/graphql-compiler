@@ -324,14 +324,16 @@ def _translate_equivalent_locations(match_query, location_translations):
             # If the root_block is a Backtrack, translate its Location if necessary.
             if isinstance(new_step.root_block, Backtrack):
                 old_location = new_step.root_block.location
-                new_location = location_translations.get(old_location, old_location)
-                new_step = new_step._replace(root_block=Backtrack(new_location))
+                if old_location in location_translations:
+                    new_location = location_translations[old_location]
+                    new_step = new_step._replace(root_block=Backtrack(new_location))
 
             # If the as_block exists, translate its Location if necessary.
             if new_step.as_block is not None:
                 old_location = new_step.as_block.location
-                new_location = location_translations.get(old_location, old_location)
-                new_step = new_step._replace(as_block=MarkLocation(new_location))
+                if old_location in location_translations:
+                    new_location = location_translations[old_location]
+                    new_step = new_step._replace(as_block=MarkLocation(new_location))
 
             # If the where_block exists, update any Location objects in its predicate.
             if new_step.where_block is not None:
