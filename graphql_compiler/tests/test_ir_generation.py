@@ -3051,3 +3051,175 @@ class IrGenerationTests(unittest.TestCase):
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_optional_and_fold(self):
+        test_data = test_input_data.optional_and_fold()
+
+        base_location = helpers.Location(('Animal',))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        revisited_base_location = base_location.revisit()
+        fold_scope = helpers.FoldScopeLocation(revisited_base_location, ('out', 'Animal_ParentOf'))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('in', 'Animal_ParentOf', optional=True),
+            blocks.MarkLocation(parent_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, optional=True),
+            blocks.MarkLocation(revisited_base_location),
+            blocks.Fold(fold_scope),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'parent_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(parent_location),
+                    expressions.OutputContextField(
+                        parent_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'child_names_list': expressions.FoldedOutputContextField(
+                    fold_scope, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_location: 'Animal',
+            revisited_base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_fold_and_optional(self):
+        test_data = test_input_data.fold_and_optional()
+
+        base_location = helpers.Location(('Animal',))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        revisited_base_location = base_location.revisit()
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_fold),
+            blocks.Unfold(),
+            blocks.Traverse('in', 'Animal_ParentOf', optional=True),
+            blocks.MarkLocation(parent_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, optional=True),
+            blocks.MarkLocation(revisited_base_location),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'parent_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(parent_location),
+                    expressions.OutputContextField(
+                        parent_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'child_names_list': expressions.FoldedOutputContextField(
+                    base_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_location: 'Animal',
+            revisited_base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_optional_traversal_and_fold_traversal(self):
+        test_data = test_input_data.optional_traversal_and_fold_traversal()
+
+        base_location = helpers.Location(('Animal',))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        grandparent_location = parent_location.navigate_to_subpath('in_Animal_ParentOf')
+        revisited_base_location = base_location.revisit()
+        fold_scope = helpers.FoldScopeLocation(revisited_base_location, ('out', 'Animal_ParentOf'))
+        fold_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('in', 'Animal_ParentOf', optional=True),
+            blocks.MarkLocation(parent_location),
+            blocks.Traverse('in', 'Animal_ParentOf'),
+            blocks.MarkLocation(grandparent_location),
+            blocks.Backtrack(parent_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, optional=True),
+            blocks.MarkLocation(revisited_base_location),
+            blocks.Fold(fold_scope),
+            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.Backtrack(fold_location),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'grandparent_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(grandparent_location),
+                    expressions.OutputContextField(
+                        grandparent_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'grandchild_names_list': expressions.FoldedOutputContextField(
+                    fold_scope, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_location: 'Animal',
+            grandparent_location: 'Animal',
+            revisited_base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_fold_traversal_and_optional_traversal(self):
+        test_data = test_input_data.fold_traversal_and_optional_traversal()
+
+        base_location = helpers.Location(('Animal',))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        grandparent_location = parent_location.navigate_to_subpath('in_Animal_ParentOf')
+        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        fold_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        revisited_base_location = base_location.revisit()
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_fold),
+            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.Backtrack(fold_location),
+            blocks.Unfold(),
+            blocks.Traverse('in', 'Animal_ParentOf', optional=True),
+            blocks.MarkLocation(parent_location),
+            blocks.Traverse('in', 'Animal_ParentOf'),
+            blocks.MarkLocation(grandparent_location),
+            blocks.Backtrack(parent_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, optional=True),
+            blocks.MarkLocation(revisited_base_location),
+            blocks.ConstructResult({
+                'grandparent_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(grandparent_location),
+                    expressions.OutputContextField(
+                        grandparent_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'grandchild_names_list': expressions.FoldedOutputContextField(
+                    base_fold, 'name', GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_location: 'Animal',
+            grandparent_location: 'Animal',
+            revisited_base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)

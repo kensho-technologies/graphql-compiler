@@ -1,7 +1,5 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
-from funcy.py2 import pairwise
-
 from .blocks import (ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse,
                      Unfold)
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
@@ -217,7 +215,7 @@ def extract_optional_location_root_info(ir_blocks):
     Returns:
         tuple (complex_optional_roots, location_to_optional_root):
         - complex_optional_roots: list of @optional locations (location immmediately preceding
-                                  an @optional traverse) that expand vertex fields
+                                  an @optional Traverse) that expand vertex fields
         - location_to_optional_root: dict mapping from location -> optional_location
                                      where location is within @optional (not necessarily one that
                                      expands vertex fields) and optional_location is the location
@@ -225,32 +223,41 @@ def extract_optional_location_root_info(ir_blocks):
     """
     complex_optional_roots = []
     location_to_optional_root = dict()
-    in_optional_location = None
+    in_optional_root_location = None
     encountered_traverse_within_optional = False
 
-    for previous_block, current_block in pairwise(ir_blocks):
+    preceding_location = None
+    for current_block in ir_blocks:
         if isinstance(current_block, Traverse) and current_block.optional:
-            if in_optional_location is not None:
-                raise AssertionError(u'in_optional_location was not None at an optional traverse: '
-                                     u'{} {}'.format(current_block, ir_blocks))
-            if not isinstance(previous_block, MarkLocation):
-                raise AssertionError(u'No MarkLocation found before an optional traverse: '
-                                     u'{} {}'.format(current_block, ir_blocks))
-            in_optional_location = previous_block.location
-        elif in_optional_location is not None and isinstance(current_block, (Traverse, Recurse)):
+            if in_optional_root_location is not None:
+                raise AssertionError(u'in_optional_root_location was not None at an optional '
+                                     u'Traverse: {} {}'.format(current_block, ir_blocks))
+
+            if preceding_location is None:
+                raise AssertionError(u'No MarkLocation found before an optional Traverse: {} {}'
+                                     .format(current_block, ir_blocks))
+
+            in_optional_root_location = preceding_location
+        elif all((in_optional_root_location is not None,
+                  isinstance(current_block, (Traverse, Recurse)))):
             encountered_traverse_within_optional = True
         elif isinstance(current_block, EndOptional):
-            if in_optional_location is None:
-                raise AssertionError(u'in_optional_location was None at an EndOptional block: '
+            if in_optional_root_location is None:
+                raise AssertionError(u'in_optional_root_location was None at an EndOptional block: '
                                      u'{}'.format(ir_blocks))
+
             if encountered_traverse_within_optional:
-                complex_optional_roots.append(in_optional_location)
-            in_optional_location = None
+                complex_optional_roots.append(in_optional_root_location)
+
+            in_optional_root_location = None
             encountered_traverse_within_optional = False
         elif isinstance(current_block, MarkLocation):
-            # in_optional_location will be None if and only if we are not within an @optional scope.
-            if in_optional_location is not None:
-                location_to_optional_root[current_block.location] = in_optional_location
+            if in_optional_root_location is None:
+                preceding_location = current_block.location
+            else:
+                # in_optional_root_location will not be None if and only if we are within an
+                # @optional scope. In this case, add the current location to the dictionary.
+                location_to_optional_root[current_block.location] = in_optional_root_location
         else:
             # No locations need to be marked, and no optional scopes begin or end here.
             pass

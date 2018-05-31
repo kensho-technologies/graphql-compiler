@@ -13,7 +13,9 @@ import six
 
 from ..blocks import Backtrack, CoerceType, Filter, MarkLocation, QueryRoot
 from ..expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
-                           Literal, LocalField, TernaryConditional, TrueLiteral)
+                           FoldedOutputContextField, Literal, LocalField, TernaryConditional,
+                           TrueLiteral)
+from ..helpers import FoldScopeLocation
 from ..match_query import MatchStep
 
 
@@ -249,8 +251,10 @@ def lower_backtrack_blocks(match_query, location_types):
 
         new_match_traversals.append(new_traversal)
 
-    return _translate_equivalent_locations(
-        match_query._replace(match_traversals=new_match_traversals), location_translations)
+    _flatten_location_translations(location_translations)
+    new_match_query = match_query._replace(match_traversals=new_match_traversals)
+
+    return _translate_equivalent_locations(new_match_query, location_translations)
 
 
 def _flatten_location_translations(location_translations):
@@ -284,25 +288,32 @@ def _translate_equivalent_locations(match_query, location_translations):
     """Translate Location objects into their equivalent locations, based on the given dict."""
     new_match_traversals = []
 
-    _flatten_location_translations(location_translations)
-
     def visitor_fn(expression):
         """Expression visitor function used to rewrite expressions with updated Location data."""
-        if not isinstance(expression, (ContextField, ContextFieldExistence)):
-            return expression
+        if isinstance(expression, (ContextField, ContextFieldExistence)):
+            old_location = expression.location
+            new_location = location_translations.get(old_location, old_location)
 
-        old_location = expression.location
-        if old_location not in location_translations:
-            return expression
+            # The Expression could be one of many types, including:
+            #   - ContextField
+            #   - ContextFieldExistence
+            # We determine its exact class to make sure we return an object of the same class
+            # as the replacement expression.
+            expression_cls = type(expression)
+            return expression_cls(new_location)
+        elif isinstance(expression, FoldedOutputContextField):
+            # Update the Location within FoldedOutputContextField
+            old_location = expression.fold_scope_location.base_location
+            new_location = location_translations.get(old_location, old_location)
 
-        # The Expression could be one of many types, including:
-        #   - ContextField
-        #   - ContextFieldExistence
-        #   - OutputContextField (subclass of ContextField)
-        # We determine its exact class to make sure we return an object of the same class
-        # as the replacement expression.
-        expression_cls = type(expression)
-        return expression_cls(location_translations[old_location])
+            relative_position = expression.fold_scope_location.relative_position
+            new_fold_scope_location = FoldScopeLocation(new_location, relative_position)
+            field_name = expression.field_name
+            field_type = expression.field_type
+
+            return FoldedOutputContextField(new_fold_scope_location, field_name, field_type)
+        else:
+            return expression
 
     # Rewrite the Locations in the steps of each MATCH traversal.
     for current_match_traversal in match_query.match_traversals:
@@ -333,10 +344,20 @@ def _translate_equivalent_locations(match_query, location_translations):
 
         new_match_traversals.append(new_traversal)
 
+    new_folds = {}
+    # Update the Location within each FoldScopeLocation
+    for fold_scope_location, fold_ir_blocks in six.iteritems(match_query.folds):
+        relative_position = fold_scope_location.relative_position
+        old_location = fold_scope_location.base_location
+        new_location = location_translations.get(old_location, old_location)
+        new_fold_scope_location = FoldScopeLocation(new_location, relative_position)
+
+        new_folds[new_fold_scope_location] = fold_ir_blocks
+
     # Rewrite the Locations in the ConstructResult output block.
     new_output_block = match_query.output_block.visit_and_update_expressions(visitor_fn)
 
-    return match_query._replace(match_traversals=new_match_traversals,
+    return match_query._replace(match_traversals=new_match_traversals, folds=new_folds,
                                 output_block=new_output_block)
 
 

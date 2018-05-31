@@ -1912,3 +1912,119 @@ def multiple_traverse_within_optional():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
+
+
+def optional_and_fold():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf @optional {
+                name @output(out_name: "parent_name")
+            }
+            out_Animal_ParentOf @fold {
+                name @output(out_name: "child_names_list")
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'child_names_list': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def fold_and_optional():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_ParentOf @fold {
+                name @output(out_name: "child_names_list")
+            }
+            in_Animal_ParentOf @optional {
+                name @output(out_name: "parent_name")
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'child_names_list': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def optional_traversal_and_fold_traversal():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf @optional {
+                in_Animal_ParentOf {
+                    name @output(out_name: "grandparent_name")
+                }
+            }
+            out_Animal_ParentOf @fold {
+                out_Animal_ParentOf {
+                    name @output(out_name: "grandchild_names_list")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'grandparent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandchild_names_list': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def fold_traversal_and_optional_traversal():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_ParentOf @fold {
+                out_Animal_ParentOf {
+                    name @output(out_name: "grandchild_names_list")
+                }
+            }
+            in_Animal_ParentOf @optional {
+                in_Animal_ParentOf {
+                    name @output(out_name: "grandparent_name")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'grandparent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandchild_names_list': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)

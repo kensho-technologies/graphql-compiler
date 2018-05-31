@@ -82,6 +82,26 @@ from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_field
                       is_vertex_field_name, strip_non_null_from_type, validate_safe_string)
 
 
+# LocationStackEntry contains the following:
+# - location: Location object correspoding to an inserted MarkLocation block
+# - num_traverses: Int counter for the number of traverses intserted after the last MarkLocation
+#                  (corresponding Location stored in `location`)
+LocationStackEntry = namedtuple('LocationStackEntry', ('location', 'num_traverses'))
+
+
+def _construct_location_stack_entry(location, num_traverses):
+    """Return a LocationStackEntry namedtuple with the specified parameters."""
+    if not isinstance(num_traverses, int) or num_traverses < 0:
+        raise AssertionError(u'Attempted to create a LocationStackEntry namedtuple with an invalid '
+                             u'value for "num_traverses" {}. This is not allowed.'
+                             .format(num_traverses))
+    if not isinstance(location, Location):
+        raise AssertionError(u'Attempted to create a LocationStackEntry namedtuple with an invalid '
+                             u'value for "location" {}. This is not allowed.'
+                             .format(location))
+    return LocationStackEntry(location=location, num_traverses=num_traverses)
+
+
 # The OutputMetadata will have the following types for its members:
 # - type: a GraphQL type object, like String or Integer, describing the type of that output value
 # - optional: boolean, whether the output is part of an optional traversal and
@@ -357,12 +377,18 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                                      inner_location, context)
         basic_blocks.extend(inner_basic_blocks)
 
+    # The length of the stack should be the same before exiting this function
+    initial_marked_location_stack_size = len(context['marked_location_stack'])
+
     # step V-3: mark the graph position, and process output_source directive
     if not is_in_fold_scope(context):
         # We only mark the position if we aren't in a folded scope.
         # Folded scopes don't actually traverse to the location, so it's never really visited.
         context['location_types'][location] = strip_non_null_from_type(current_schema_type)
         basic_blocks.append(_mark_location(location))
+        # The following append is the Location corresponding to the initial MarkLocation
+        # for the current vertex and the `num_traverses` counter set to 0.
+        context['marked_location_stack'].append(_construct_location_stack_entry(location, 0))
 
     output_source = _process_output_source_directive(schema, current_schema_type, ast,
                                                      location, context, unique_local_directives)
@@ -395,13 +421,16 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         if edge_traversal_is_optional:
             # Entering an optional block!
-            # Make sure there's a tag right before it for the optional Backtrack to jump back to.
-            # Otherwise, the traversal could rewind to an old tag and might ignore
-            # entire stretches of applied filtering.
-            if not isinstance(basic_blocks[-1], blocks.MarkLocation):
+            # Make sure there's a marked location right before it for the optional Backtrack
+            # to jump back to. Otherwise, the traversal could rewind to an old marked location
+            # and might ignore entire stretches of applied filtering.
+            if context['marked_location_stack'][-1].num_traverses > 0:
                 location = location.revisit()
                 context['location_types'][location] = strip_non_null_from_type(current_schema_type)
                 basic_blocks.append(_mark_location(location))
+                context['marked_location_stack'].pop()
+                new_stack_entry = _construct_location_stack_entry(location, 0)
+                context['marked_location_stack'].append(new_stack_entry)
 
             # Remember where the topmost optional context started.
             topmost_optional = context.get('optional', None)
@@ -412,7 +441,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         edge_direction, edge_name = _get_edge_direction_and_name(field_name)
 
         if fold_directive:
-            fold_scope_location = FoldScopeLocation(location, (edge_direction, edge_name))
+            current_location = context['marked_location_stack'][-1].location
+            fold_scope_location = FoldScopeLocation(current_location, (edge_direction, edge_name))
             fold_block = blocks.Fold(fold_scope_location)
             basic_blocks.append(fold_block)
             context['fold'] = fold_scope_location
@@ -427,6 +457,14 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             basic_blocks.append(blocks.Traverse(edge_direction, edge_name,
                                                 optional=edge_traversal_is_optional,
                                                 within_optional_scope=within_optional_scope))
+
+        if not fold_directive and not is_in_fold_scope(context):
+            # Current block is either a Traverse or a Recurse that is not within any fold context.
+            # Increment the `num_traverses` counter.
+            old_location_stack_entry = context['marked_location_stack'][-1]
+            new_location_stack_entry = _construct_location_stack_entry(
+                old_location_stack_entry.location, old_location_stack_entry.num_traverses + 1)
+            context['marked_location_stack'][-1] = new_location_stack_entry
 
         inner_basic_blocks = _compile_ast_node_to_ir(schema, field_schema_type, field_ast,
                                                      inner_location, context)
@@ -457,13 +495,29 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 basic_blocks.append(blocks.Backtrack(location, optional=True))
 
                 # Exiting optional block!
-                # Add a tag right after the optional, to ensure future Backtrack blocks
+                # Add a MarkLocation right after the optional, to ensure future Backtrack blocks
                 # return to a position after the optional set of blocks.
                 location = location.revisit()
                 context['location_types'][location] = strip_non_null_from_type(current_schema_type)
                 basic_blocks.append(_mark_location(location))
+                context['marked_location_stack'].pop()
+                new_stack_entry = _construct_location_stack_entry(location, 0)
+                context['marked_location_stack'].append(new_stack_entry)
             else:
                 basic_blocks.append(blocks.Backtrack(location))
+
+    # Pop off the initial Location for the current vertex.
+    if not is_in_fold_scope(context):
+        context['marked_location_stack'].pop()
+
+    # Check that the length of the stack remains the same as when control entered this function.
+    final_marked_location_stack_size = len(context['marked_location_stack'])
+    if initial_marked_location_stack_size != final_marked_location_stack_size:
+        raise AssertionError(u'Size of stack changed from {} to {} after executing this function.'
+                             u'This should never happen : {}'
+                             .format(initial_marked_location_stack_size,
+                                     final_marked_location_stack_size,
+                                     context['marked_location_stack']))
 
     return basic_blocks
 
@@ -624,11 +678,32 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     # Construct the start location of the query, and the starting context object.
     location = Location((base_start_type,))
     context = {
+        # 'tags' is a dict containing
+        #  - location: Location where the tag was defined
+        #  - optional: boolean representing whether the tag was defined within an @optional scope
+        #  - type: GraphQLType of the tagged value
         'tags': dict(),
+        # 'outputs' is a dict mapping each output name to another dict which contains
+        #  - location: Location where to output from
+        #  - optional: boolean representing whether the output was defined within an @optional scope
+        #  - type: GraphQLType of the output
+        #  - fold: FoldScopeLocation object if the current output was defined within a fold scope,
+        #          and None otherwise
         'outputs': dict(),
+        # 'inputs' is a dict mapping input parameter names to their respective expected GraphQL
+        # types, as automatically inferred by inspecting the query structure
         'inputs': dict(),
+        # 'location_types' is a dict mapping each Location to its GraphQLType
+        # (schema type of the location)
         'location_types': dict(),
+        # 'type_equivalence_hints' is a dict mapping GraphQL types to equivalent GraphQL unions
         'type_equivalence_hints': type_equivalence_hints or dict(),
+        # The marked_location_stack explicitly maintains a stack (implemented as list)
+        # of namedtuples (each corresponding to a MarkLocation) containing:
+        #  - location: the location within the corresponding MarkLocation object
+        #  - num_traverses: the number of Recurse and Traverse blocks created
+        #                   after the corresponding MarkLocation
+        'marked_location_stack': []
     }
 
     # Add the query root basic block to the output.
