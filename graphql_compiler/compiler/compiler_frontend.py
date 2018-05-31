@@ -362,7 +362,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         basic_blocks.extend(inner_basic_blocks)
 
     # The length of the stack should be the same before exiting this function
-    initial_mark_location_stack_size = len(context['marked_location_stack'])
+    initial_marked_location_stack_size = len(context['marked_location_stack'])
 
     # step V-3: mark the graph position, and process output_source directive
     if not is_in_fold_scope(context):
@@ -495,12 +495,13 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         context['marked_location_stack'].pop()
 
     # Check that the length of the stack remains the same as when control entered this function.
-    final_mark_location_stack_size = len(context['marked_location_stack'])
-    if initial_mark_location_stack_size != final_mark_location_stack_size:
+    final_marked_location_stack_size = len(context['marked_location_stack'])
+    if initial_marked_location_stack_size != final_marked_location_stack_size:
         raise AssertionError(u'Size of stack changed from {} to {} after executing this function.'
                              u'This should never happen : {}'
-                             .format(initial_mark_location_stack_size,
-                                 final_mark_location_stack_size, context['marked_location_stack']))
+                             .format(initial_marked_location_stack_size,
+                                     final_marked_location_stack_size,
+                                     context['marked_location_stack']))
 
     return basic_blocks
 
