@@ -269,9 +269,10 @@ def extract_optional_location_root_info(ir_blocks):
 
 def extract_simple_optional_location_to_root(
         ir_blocks, complex_optional_roots, location_to_optional_root):
-    """Construct a mapping from simple optional root locations to their inner location.
+    """Construct a map from simple optional locations to their inner location and traversed edge.
 
     Args:
+        ir_blocks: list of IR blocks to extract optional data from
         complex_optional_roots: list of @optional locations (location immmediately preceding
                                 an @optional traverse) that expand vertex fields
         location_to_optional_root: dict mapping from location -> optional_location
@@ -280,10 +281,11 @@ def extract_simple_optional_location_to_root(
                                    preceding the corresponding @optional scope
 
     Returns:
-        # TODO(shankha): Fix Return value <30-05-18>#
-        dict mapping from simple_optional_root_location -> inner_location,
-        where inner_location is within a simple @optional (one that does not expands vertex fields)
-        and simple_optional_root_to_inner_location is the location preceding the @optional scope
+        dict mapping from simple_optional_root_location -> dict containing keys
+         - 'inner_location': Location object correspoding to the unique MarkLocation present within
+                             a simple @optional (one that does not expands vertex fields) scope
+         - 'edge_field': string representing the optional edge being traversed
+        where simple_optional_root_to_inner_location is the location preceding the @optional scope
     """
     # Simple optional roots are a subset of location_to_optional_root.values() (all optional roots).
     # We filter out the ones that are also present in complex_optional_roots.
@@ -300,8 +302,10 @@ def extract_simple_optional_location_to_root(
             preceding_location = current_block.location
         elif isinstance(current_block, Traverse) and current_block.optional:
             if preceding_location in simple_optional_root_to_inner_location.keys():
+                inner_location = simple_optional_root_to_inner_location[preceding_location]
+                inner_location_name, _ = inner_location.get_location_name()
                 optional_info_dict = {
-                    'inner_location': simple_optional_root_to_inner_location[preceding_location],
+                    'inner_location_name': inner_location_name,
                     'edge_field': current_block.get_field_name(),
                 }
                 simple_optional_root_info[preceding_location] = optional_info_dict

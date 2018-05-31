@@ -9,27 +9,6 @@ from ..expressions import (BinaryComposition, Expression, LocalField, NullLitera
 from ..helpers import Location
 
 
-def filter_edge_field_non_existence(edge_expression):
-    # TODO(shankha): Update docstring <30-05-18>
-    """Return an Expression that is True iff the specified edge (expression) does not exist."""
-    # When an edge does not exist at a given vertex, OrientDB represents that in one of two ways:
-    #   - the edge's field does not exist (is null) on the vertex document, or
-    #   - the edge's field does exist, but is an empty list.
-    # We check both of these possibilities.
-    # TODO(shankha): Assert expression type <30-05-18>
-    if not isinstance(edge_expression, (LocalField, SelectEdgeContextField)):
-        raise AssertionError(u'Received invalid edge_expression {} of type {}.'
-                             u'Expected LocalField or SelectEdgeContextField.'
-                             .format(edge_expression, type(edge_expression.__name__))
-
-    field_null_check = BinaryComposition(u'=', edge_expression, NullLiteral)
-
-    local_field_size = UnaryTransformation(u'size', edge_expression)
-    field_size_check = BinaryComposition(u'=', local_field_size, ZeroLiteral)
-
-    return BinaryComposition(u'||', field_null_check, field_size_check)
-
-
 def expression_list_to_conjunction(expression_list):
     """Convert a list of expressions to an Expression that is the conjunction of all of them."""
     if not isinstance(expression_list, list):
@@ -106,26 +85,73 @@ class BetweenClause(Expression):
         raise NotImplementedError()
 
 
+def filter_edge_field_non_existence(edge_expression):
+    """Return an Expression that is True iff the specified edge (edge_expression) does not exist."""
+    # When an edge does not exist at a given vertex, OrientDB represents that in one of two ways:
+    #   - the edge's field does not exist (is null) on the vertex document, or
+    #   - the edge's field does exist, but is an empty list.
+    # We check both of these possibilities.
+    if not isinstance(edge_expression, (LocalField, SelectEdgeContextField)):
+        raise AssertionError(u'Received invalid edge_expression {} of type {}.'
+                             u'Expected LocalField or SelectEdgeContextField.'
+                             .format(edge_expression, type(edge_expression).__name__))
+    if isinstance(edge_expression, LocalField):
+        if edge_expression.field_name[:3] != u'in_' and edge_expression.field_name[:4] != u'out_':
+            raise AssertionError(u'Received LocalField edge_expression {} with non-edge field_name '
+                                 u'{}.'.format(edge_expression, edge_expression.field_name))
+
+    field_null_check = BinaryComposition(u'=', edge_expression, NullLiteral)
+
+    local_field_size = UnaryTransformation(u'size', edge_expression)
+    field_size_check = BinaryComposition(u'=', local_field_size, ZeroLiteral)
+
+    return BinaryComposition(u'||', field_null_check, field_size_check)
+
+
+def filter_orientdb_simple_optional_edge(inner_location_name, edge_field):
+    """Return an Expression that is False for rows that don't follow the @optional specification."""
+    inner_location = root_info_dict['inner_location_name']
+    inner_local_field = LocalField(inner_location)
+    inner_location_existence = BinaryComposition(u'!=', inner_local_field, NullLiteral)
+
+    edge_field = root_info_dict['edge_field']
+    edge_field_location = Location(root_location.query_path, field=edge_field)
+    select_edge_context_field = SelectEdgeContextField(edge_field_location)
+    edge_field_non_existence = filter_edge_field_non_existence(select_edge_context_field)
+
+    return BinaryComposition(u'||', edge_field_non_existence, inner_location_existence)
+
+
 class SelectWhereFilter(Filter):
-    # TODO(shankha): Fix docstring <30-05-18>#
-    """A filter that ensures data matches a predicate expression, and discards all other data."""
+    """A Filter object that is used for the WHERE clause in a SELECT statement."""
 
     def __init__(self, simple_optional_root_info):
-        # TODO(shankha): Docstring <30-05-18>
+        """Construct a Filter block that is True if and only if each simple optional filter is True.
+
+        Construct filters for each simple optional, that are True if and only if `edge_field` does
+        not exist in the `simple_optional_root_location` OR the `inner` location is not defined.
+        Return a SelectWhereFilter that evaluates to True if and only if *all* of the
+        aforementioned filters evaluate to True (conjunction).
+
+        Args:
+            simple_optional_root_info: dict mapping from simple_optional_root_location -> dict
+                                       containing keys
+                                       - 'inner_location': Location object correspoding to the unique
+                                                           MarkLocation present within a simple
+                                                           @optional (one that does not expands
+                                                           vertex fields) scope
+                                       - 'edge_field': string representing the optional edge being
+                                                       traversed
+                                       where simple_optional_root_to_inner_location is the location
+                                       preceding the @optional scope
+        Returns:
+            a new SelectWhereFilter object
+        """
         where_filter_expressions = []
         for root_location, root_info_dict in six.iteritems(simple_optional_root_info):
-            edge_field = root_info_dict['edge_field']
-            edge_field_location = Location(root_location.query_path, field=edge_field)
-            select_edge_context_field = SelectEdgeContextField(edge_field_location)
-            edge_field_non_existence = filter_edge_field_non_existence(select_edge_context_field)
-
-            inner_location, _ = root_info_dict['inner_location'].get_location_name()
-            inner_local_field = LocalField(inner_location)
-            inner_location_existence = BinaryComposition(u'!=', inner_local_field, NullLiteral)
-
-            where_filter_expressions.append(BinaryComposition(u'||',
-                                                              edge_field_non_existence,
-                                                              inner_location_existence))
+            optional_edge_filter = filter_orientdb_simple_optional_edge(
+                inner_location_name, edge_field)
+            where_filter_expressions.append(optional_edge_filter)
 
         predicate = expression_list_to_conjunction(where_filter_expressions)
         super(SelectWhereFilter, self).__init__(predicate)
