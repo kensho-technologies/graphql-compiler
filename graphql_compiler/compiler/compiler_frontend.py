@@ -462,11 +462,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             # Current block is either a Traverse or a Recurse that is not within any fold context.
             # Increment the `num_traverses` counter.
             old_location_stack_entry = context['marked_location_stack'][-1]
-            old_location = old_location_stack_entry.location
-            old_num_traverses = old_location_stack_entry.num_traverses
-
             new_location_stack_entry = _construct_location_stack_entry(
-                old_location, old_num_traverses+1)
+                old_location_stack_entry.location, old_location_stack_entry.num_traverses + 1)
             context['marked_location_stack'][-1] = new_location_stack_entry
 
         inner_basic_blocks = _compile_ast_node_to_ir(schema, field_schema_type, field_ast,
