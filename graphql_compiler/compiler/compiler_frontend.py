@@ -681,6 +681,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         # 'location_types' maps to a dict mapping each Location to its GraphQLType
         # (schema type of the location)
         'location_types': dict(),
+        # 'type_equivalence_hints' maps to a dict mapping GraphQL types to equivalent GraphQL unions
         'type_equivalence_hints': type_equivalence_hints or dict(),
         # The marked_location_stack explicitly maintains a stack (implemented as list)
         # of dicts (each corresponding to a MarkLocation) containing:
