@@ -82,7 +82,10 @@ from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_field
                       is_vertex_field_name, strip_non_null_from_type, validate_safe_string)
 
 
-#  TODO: Description <31-05-18, shankha> #
+# LocationStackEntry contains the following:
+# - location: Location object correspoding to an inserted MarkLocation block
+# - num_traverses: Int counter for the number of traverses intserted after the last MarkLocation
+#                  (corresponding Location stored in `location`)
 LocationStackEntry = namedtuple('LocationStackEntry', ('location', 'num_traverses'))
 
 
