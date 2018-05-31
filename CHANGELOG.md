@@ -2,6 +2,12 @@
 
 ## Current development version
 
+## v1.6.1
+
+- Fix a bad compilation bug on `@fold` and `@optional` in the same scope. [#86](https://github.com/kensho-technologies/graphql-compiler/pull/86)
+
+Thanks to `amartyashankha` for the fix!
+
 ## v1.6.0
 
 - Add full support for `Decimal` data, including both filtering and output. [#91](https://github.com/kensho-technologies/graphql-compiler/pull/91)
