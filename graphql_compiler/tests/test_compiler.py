@@ -247,6 +247,16 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
+            WHERE
+                (
+                    (
+                        (Animal___1.out_Animal_ParentOf IS null)
+                        OR
+                        (Animal___1.out_Animal_ParentOf.size() = 0)
+                    )
+                    OR
+                    (Animal__out_Animal_ParentOf___1 IS NOT null)
+                )
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -390,6 +400,16 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
+            WHERE
+                (
+                    (
+                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt IS null)
+                        OR
+                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt.size() = 0)
+                    )
+                    OR
+                    (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
+                )
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -443,6 +463,16 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
+            WHERE
+                (
+                    (
+                        (Animal___1.in_Animal_ParentOf IS null)
+                        OR
+                        (Animal___1.in_Animal_ParentOf.size() = 0)
+                    )
+                    OR
+                    (Animal__in_Animal_ParentOf___1 IS NOT null)
+                )
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -485,6 +515,16 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
+            WHERE
+                (
+                    (
+                        (Animal___1.out_Animal_FedAt IS null)
+                        OR
+                        (Animal___1.out_Animal_FedAt.size() = 0)
+                    )
+                    OR
+                    (Animal__out_Animal_FedAt___1 IS NOT null)
+                )
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -770,6 +810,31 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
+            WHERE
+                (
+                    (
+                        (
+                            (Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
+                                .out_Animal_FedAt IS null)
+                            OR
+                            (Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
+                                .out_Animal_FedAt.size() = 0)
+                        )
+                        OR
+                        (Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                            IS NOT null)
+                    )
+                    AND
+                    (
+                        (
+                            (Animal__out_Animal_ParentOf___1.out_Animal_FedAt IS null)
+                            OR
+                            (Animal__out_Animal_ParentOf___1.out_Animal_FedAt.size() = 0)
+                        )
+                        OR
+                        (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
+                    )
+                )
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -1218,6 +1283,16 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
+            WHERE
+                (
+                    (
+                        (Animal___1.in_Animal_ParentOf IS null)
+                        OR
+                        (Animal___1.in_Animal_ParentOf.size() = 0)
+                    )
+                    OR
+                    (Animal__in_Animal_ParentOf___1 IS NOT null)
+                )
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -1323,6 +1398,16 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
+            WHERE
+                (
+                    (
+                        (Animal___1.in_Animal_ParentOf IS null)
+                        OR
+                        (Animal___1.in_Animal_ParentOf.size() = 0)
+                    )
+                    OR
+                    (Animal__in_Animal_ParentOf___1 IS NOT null)
+                )
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -1499,6 +1584,16 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
+            WHERE
+                (
+                    (
+                        (Animal___1.in_Animal_ParentOf IS null)
+                        OR
+                        (Animal___1.in_Animal_ParentOf.size() = 0)
+                    )
+                    OR
+                    (Animal__in_Animal_ParentOf___1 IS NOT null)
+                )
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -1599,6 +1694,16 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
+            WHERE
+                (
+                    (
+                        (Species__in_Animal_OfSpecies___1.out_Animal_ParentOf IS null)
+                        OR
+                        (Species__in_Animal_OfSpecies___1.out_Animal_ParentOf.size() = 0)
+                    )
+                    OR
+                    (Species__in_Animal_OfSpecies__out_Animal_ParentOf___1 IS NOT null)
+                )
         '''
         expected_gremlin = '''
             g.V('@class', 'Species')
@@ -1764,6 +1869,16 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
+            WHERE
+                (
+                    (
+                        (Species___1.out_Species_Eats IS null)
+                        OR
+                        (Species___1.out_Species_Eats.size() = 0)
+                    )
+                    OR
+                    (Species__out_Species_Eats___1 IS NOT null)
+                )
         '''
         expected_gremlin = '''
             g.V('@class', 'Species')
@@ -1895,6 +2010,40 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
+            WHERE
+                (
+                    (
+                        (
+                            (
+                                (Animal___1.out_Animal_ParentOf IS null)
+                                OR
+                                (Animal___1.out_Animal_ParentOf.size() = 0)
+                            )
+                            OR
+                            (Animal__out_Animal_ParentOf___1 IS NOT null)
+                        )
+                        AND
+                        (
+                            (
+                                (Animal___1.out_Animal_OfSpecies IS null)
+                                OR
+                                (Animal___1.out_Animal_OfSpecies.size() = 0)
+                            )
+                            OR
+                            (Animal__out_Animal_OfSpecies___1 IS NOT null)
+                        )
+                    )
+                    AND
+                    (
+                        (
+                            (Animal___1.out_Animal_FedAt IS null)
+                            OR
+                            (Animal___1.out_Animal_FedAt.size() = 0)
+                        )
+                        OR
+                        (Animal__out_Animal_FedAt___1 IS NOT null)
+                    )
+                )
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -3306,6 +3455,16 @@ class CompilerTests(unittest.TestCase):
                     }}
                     RETURN $matches
                 )
+                WHERE
+                    (
+                        (
+                            (Animal___1.in_Animal_ParentOf IS null)
+                            OR
+                            (Animal___1.in_Animal_ParentOf.size() = 0)
+                        )
+                        OR
+                        (Animal__in_Animal_ParentOf___1 IS NOT null)
+                    )
             ),
             $optional__1 = (
                 SELECT
@@ -3337,6 +3496,16 @@ class CompilerTests(unittest.TestCase):
                     }}
                     RETURN $matches
                 )
+                WHERE
+                    (
+                        (
+                            (Animal___1.in_Animal_ParentOf IS null)
+                            OR
+                            (Animal___1.in_Animal_ParentOf.size() = 0)
+                        )
+                        OR
+                        (Animal__in_Animal_ParentOf___1 IS NOT null)
+                    )
             ),
             $result = UNIONALL($optional__0, $optional__1)
         '''
@@ -3700,6 +3869,16 @@ class CompilerTests(unittest.TestCase):
                     }}
                     RETURN $matches
                 )
+                WHERE
+                    (
+                        (
+                            (Animal__out_Animal_ParentOf___1.out_Animal_FedAt IS null)
+                            OR
+                            (Animal__out_Animal_ParentOf___1.out_Animal_FedAt.size() = 0)
+                        )
+                        OR
+                        (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
+                    )
             ),
             $optional__1 = (
                 SELECT
@@ -3769,6 +3948,16 @@ class CompilerTests(unittest.TestCase):
                     }}
                     RETURN $matches
                 )
+                WHERE
+                    (
+                        (
+                            (Animal__out_Animal_ParentOf___1.out_Animal_FedAt IS null)
+                            OR
+                            (Animal__out_Animal_ParentOf___1.out_Animal_FedAt.size() = 0)
+                        )
+                        OR
+                        (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
+                    )
             ),
             $result = UNIONALL($optional__0, $optional__1)
         '''
@@ -4027,6 +4216,16 @@ class CompilerTests(unittest.TestCase):
             )
             LET
                 $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
+            WHERE
+                (
+                    (
+                        (Animal___1.in_Animal_ParentOf IS null)
+                        OR
+                        (Animal___1.in_Animal_ParentOf.size() = 0)
+                    )
+                    OR
+                    (Animal__in_Animal_ParentOf___1 IS NOT null)
+                )
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -4074,6 +4273,16 @@ class CompilerTests(unittest.TestCase):
             )
             LET
                 $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
+            WHERE
+                (
+                    (
+                        (Animal___1.in_Animal_ParentOf IS null)
+                        OR
+                        (Animal___1.in_Animal_ParentOf.size() = 0)
+                    )
+                    OR
+                    (Animal__in_Animal_ParentOf___1 IS NOT null)
+                )
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
