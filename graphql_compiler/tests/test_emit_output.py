@@ -9,7 +9,7 @@ from ..compiler.expressions import (BinaryComposition, ContextField, LocalField,
                                     OutputContextField, TernaryConditional, Variable)
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
-from ..compiler.ir_lowering_match.optional_traversal import CompoundMatchQuery
+from ..compiler.ir_lowering_match.utils import CompoundMatchQuery, SelectWhereFilter
 from ..compiler.match_query import convert_to_match_query
 from ..schema import GraphQLDateTime
 from .test_helpers import compare_gremlin, compare_match
@@ -29,7 +29,8 @@ class EmitMatchTests(unittest.TestCase):
             MarkLocation(base_location),
             ConstructResult({
                 'foo_name': OutputContextField(base_name_location, GraphQLString),
-            })
+            }),
+            SelectWhereFilter(),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -66,7 +67,8 @@ class EmitMatchTests(unittest.TestCase):
             MarkLocation(base_location),
             ConstructResult({
                 'foo_name': OutputContextField(base_name_location, GraphQLString),
-            })
+            }),
+            SelectWhereFilter(),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -92,8 +94,15 @@ class EmitMatchTests(unittest.TestCase):
 
     def test_output_inside_optional_traversal(self):
         base_location = Location(('Foo',))
+
         child_location = base_location.navigate_to_subpath('out_Foo_Bar')
+        child_location_name, _ = child_location.get_location_name()
+
         child_name_location = child_location.navigate_to_field('name')
+
+        simple_optional_root_info = {
+            base_location: {'inner_location_name': child_location_name, 'edge_field': 'out_Foo_Bar'}
+        }
 
         ir_blocks = [
             QueryRoot({'Foo'}),
@@ -112,7 +121,8 @@ class EmitMatchTests(unittest.TestCase):
                     ),
                     OutputContextField(child_name_location, GraphQLString),
                     NullLiteral)
-            })
+            }),
+            SelectWhereFilter(simple_optional_root_info),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -135,6 +145,16 @@ class EmitMatchTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
+            WHERE
+                (
+                    (
+                        (Foo___1.out_Foo_Bar IS null)
+                        OR
+                        (Foo___1.out_Foo_Bar.size() = 0)
+                    )
+                    OR
+                    (Foo__out_Foo_Bar___1 IS NOT null)
+                )
         '''
 
         received_match = emit_match.emit_code_from_ir(compound_match_query)
@@ -160,7 +180,8 @@ class EmitMatchTests(unittest.TestCase):
             MarkLocation(base_location),
             ConstructResult({
                 'name': OutputContextField(base_name_location, GraphQLString)
-            })
+            }),
+            SelectWhereFilter(),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -191,7 +212,8 @@ class EmitMatchTests(unittest.TestCase):
             MarkLocation(base_location),
             ConstructResult({
                 'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)
-            })
+            }),
+            SelectWhereFilter(),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])

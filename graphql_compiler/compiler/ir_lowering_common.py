@@ -282,8 +282,9 @@ def extract_simple_optional_location_to_root(
 
     Returns:
         dict mapping from simple_optional_root_location -> dict containing keys
-         - 'inner_location': Location object correspoding to the unique MarkLocation present within
-                             a simple @optional (one that does not expands vertex fields) scope
+         - 'inner_location_name': Location object correspoding to the unique MarkLocation present
+                                  within a simple @optional (one that does not expands vertex fields)
+                                  scope
          - 'edge_field': string representing the optional edge being traversed
         where simple_optional_root_to_inner_location is the location preceding the @optional scope
     """

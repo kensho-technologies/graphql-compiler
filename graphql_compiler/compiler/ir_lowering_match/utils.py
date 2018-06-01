@@ -123,7 +123,7 @@ def filter_orientdb_simple_optional_edge(root_location_path, inner_location_name
 class SelectWhereFilter(Filter):
     """A Filter object that is used for the WHERE clause in a SELECT statement."""
 
-    def __init__(self, simple_optional_root_info):
+    def __init__(self, simple_optional_root_info={}):
         """Construct a Filter block that is True if and only if each simple optional filter is True.
 
         Construct filters for each simple optional, that are True if and only if `edge_field` does
@@ -134,10 +134,10 @@ class SelectWhereFilter(Filter):
         Args:
             simple_optional_root_info: dict mapping from simple_optional_root_location -> dict
                                        containing keys
-                                       - 'inner_location': Location object correspoding to the unique
-                                                           MarkLocation present within a simple
-                                                           @optional (one that does not expands
-                                                           vertex fields) scope
+                                       - 'inner_location_name': Location object correspoding to the
+                                                                unique MarkLocation present within a
+                                                                simple @optional (one that does not
+                                                                expands vertex fields) scope
                                        - 'edge_field': string representing the optional edge being
                                                        traversed
                                        where simple_optional_root_to_inner_location is the location
