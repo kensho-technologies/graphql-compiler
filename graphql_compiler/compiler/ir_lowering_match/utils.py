@@ -108,8 +108,9 @@ def filter_edge_field_non_existence(edge_expression):
     return BinaryComposition(u'||', field_null_check, field_size_check)
 
 
-def filter_orientdb_simple_optional_edge(root_location_path, inner_location_name, edge_field):
+def _filter_orientdb_simple_optional_edge(root_location_path, inner_location_name, edge_field):
     """Return an Expression that is False for rows that don't follow the @optional specification."""
+    # TODO(shankha): Better docstring <01-06-18>
     inner_local_field = LocalField(inner_location_name)
     inner_location_existence = BinaryComposition(u'!=', inner_local_field, NullLiteral)
 
@@ -127,7 +128,7 @@ class SelectWhereFilter(Filter):
         """Construct a Filter block that is True if and only if each simple optional filter is True.
 
         Construct filters for each simple optional, that are True if and only if `edge_field` does
-        not exist in the `simple_optional_root_location` OR the `inner` location is not defined.
+        not exist in the `simple_optional_root_location` OR the `inner_location` is not defined.
         Return a SelectWhereFilter that evaluates to True if and only if *all* of the
         aforementioned filters evaluate to True (conjunction).
 
@@ -150,7 +151,7 @@ class SelectWhereFilter(Filter):
             inner_location_name = root_info_dict['inner_location_name']
             edge_field = root_info_dict['edge_field']
 
-            optional_edge_filter = filter_orientdb_simple_optional_edge(
+            optional_edge_filter = _filter_orientdb_simple_optional_edge(
                 root_location.query_path, inner_location_name, edge_field)
             where_filter_expressions.append(optional_edge_filter)
 

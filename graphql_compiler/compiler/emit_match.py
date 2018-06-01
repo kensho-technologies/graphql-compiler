@@ -160,6 +160,7 @@ def _construct_output_to_match(output_block):
 def _construct_where_to_match(where_block):
     """Transform a Filter block into a MATCH query string."""
     if where_block.predicate == TrueLiteral:
+        # No WHERE statement is necessary
         return u''
     return u'WHERE ' + where_block.predicate.to_match()
 

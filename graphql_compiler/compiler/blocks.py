@@ -164,7 +164,7 @@ class Filter(BasicBlock):
     def validate(self):
         """Ensure that the Filter block is valid."""
         if not isinstance(self.predicate, Expression):
-            raise TypeError(u'Expected None/Expression predicate, got: {} {}'.format(
+            raise TypeError(u'Expected Expression predicate, got: {} {}'.format(
                 type(self.predicate).__name__, self.predicate))
 
     def visit_and_update_expressions(self, visitor_fn):
