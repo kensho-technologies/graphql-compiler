@@ -2035,7 +2035,7 @@ def between_lowering():
         Animal {
             uuid @filter(op_name: "between", value: ["$uuid_lower", "$uuid_upper"])
             name @output(out_name: "animal_name")
-            birthday @filter(op_name: ">", value: ["$earliest_modified_date"])
+            birthday @filter(op_name: ">=", value: ["$earliest_modified_date"])
         }
     }'''
     expected_output_metadata = {

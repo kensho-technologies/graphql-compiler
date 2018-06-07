@@ -3223,3 +3223,44 @@ class IrGenerationTests(unittest.TestCase):
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_between_lowering(self):
+        test_data = test_input_data.between_lowering()
+
+        base_location = helpers.Location(('Animal',))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'&&',
+                    expressions.BinaryComposition(
+                        u'>=',
+                        expressions.LocalField('uuid'),
+                        expressions.Variable('$uuid_lower', GraphQLID)
+                    ),
+                    expressions.BinaryComposition(
+                        u'<=',
+                        expressions.LocalField('uuid'),
+                        expressions.Variable('$uuid_upper', GraphQLID)
+                    )
+                )
+            ),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'>=',
+                    expressions.LocalField('birthday'),
+                    expressions.Variable('$earliest_modified_date', GraphQLDate)
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString)
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)

@@ -4257,7 +4257,11 @@ class CompilerTests(unittest.TestCase):
             FROM (
                 MATCH {{
                     class: Animal,
-                    where: (((uuid BETWEEN {uuid_lower} AND {uuid_upper}) AND (birthday > date({earliest_modified_date}, "yyyy-MM-dd")))),
+                    where: ((
+                        (uuid BETWEEN {uuid_lower} AND {uuid_upper})
+                        AND
+                        (birthday >= date({earliest_modified_date}, "yyyy-MM-dd"))
+                    )),
                     as: Animal___1
                 }}
                 RETURN $matches
@@ -4269,7 +4273,7 @@ class CompilerTests(unittest.TestCase):
                 (
                     ((it.uuid >= $uuid_lower) && (it.uuid <= $uuid_upper))
                     &&
-                    (it.birthday > Date.parse("yyyy-MM-dd", $earliest_modified_date))
+                    (it.birthday >= Date.parse("yyyy-MM-dd", $earliest_modified_date))
                 )}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
