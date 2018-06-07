@@ -41,7 +41,7 @@ def _construct_field_operator_expression_dict(expression_list):
 
     Returns:
         local_field_to_expressions:
-            dict mapping local field names to "operator -> BinaryComposition" dictionaries,
+            dict mapping local field names to "operator -> list of BinaryComposition" dictionaries,
             for each BinaryComposition operator involving the LocalField
         remaining_expression_list:
             list of remaining expressions that were *not*
@@ -95,7 +95,7 @@ def _lower_expressions_to_between(base_expression):
                 lowering_occurred = True
             else:
                 for expression in expressions_dict.values():
-                    new_expression_list.append(expression)
+                    new_expression_list.extend(expression)
 
         if lowering_occurred:
             return _expression_list_to_conjunction(list(new_expression_list))
