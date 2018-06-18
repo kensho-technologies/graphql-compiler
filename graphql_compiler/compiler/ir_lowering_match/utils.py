@@ -142,7 +142,6 @@ def _filter_orientdb_simple_optional_edge(root_location_path, inner_location_nam
     Returns:
         Expression that evaluates to False for rows that do not follow the @optional specification
     """
-    # TODO(shankha): Better docstring <01-06-18>
     inner_local_field = LocalField(inner_location_name)
     inner_location_existence = BinaryComposition(u'!=', inner_local_field, NullLiteral)
 
