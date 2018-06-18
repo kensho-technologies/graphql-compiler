@@ -4247,3 +4247,38 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_between_lowering(self):
+        test_data = test_input_data.between_lowering()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((
+                        (uuid BETWEEN {uuid_lower} AND {uuid_upper})
+                        AND
+                        (birthday >= date({earliest_modified_date}, "yyyy-MM-dd"))
+                    )),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m ->
+                (
+                    ((it.uuid >= $uuid_lower) && (it.uuid <= $uuid_upper))
+                    &&
+                    (it.birthday >= Date.parse("yyyy-MM-dd", $earliest_modified_date))
+                )}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)

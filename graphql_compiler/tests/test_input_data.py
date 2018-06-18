@@ -2028,3 +2028,27 @@ def fold_traversal_and_optional_traversal():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
+
+
+def between_lowering():
+    graphql_input = '''{
+        Animal {
+            uuid @filter(op_name: "between", value: ["$uuid_lower", "$uuid_upper"])
+            name @output(out_name: "animal_name")
+            birthday @filter(op_name: ">=", value: ["$earliest_modified_date"])
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'uuid_lower': GraphQLID,
+        'uuid_upper': GraphQLID,
+        'earliest_modified_date': GraphQLDate,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
