@@ -101,7 +101,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                     NullLiteral
                 )
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
@@ -202,7 +202,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
@@ -226,7 +226,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
@@ -251,7 +251,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
@@ -281,7 +281,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
@@ -304,7 +304,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
@@ -330,7 +330,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
@@ -362,7 +362,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'species_name': OutputContextField(
                     species_location.navigate_to_field('name'), GraphQLString),
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
@@ -397,7 +397,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'species_name': OutputContextField(
                     species_location.navigate_to_field('name'), GraphQLString),
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
@@ -446,7 +446,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'child_uuid': ContextField(child_location.navigate_to_field('uuid')),
                 'species_uuid': ContextField(species_location.navigate_to_field('uuid')),
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
@@ -484,7 +484,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'child_uuid': ContextField(child_location.navigate_to_field('uuid')),
                 'species_uuid': ContextField(species_location.navigate_to_field('uuid')),
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
@@ -693,7 +693,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'name': OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString)
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         match_query = convert_to_match_query(ir_blocks)
 
@@ -712,7 +712,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'name': OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString)
             }),
-            SelectWhereFilter()
+            SelectWhereFilter({})
         ]
         expected_final_query = convert_to_match_query(expected_final_ir_blocks)
 

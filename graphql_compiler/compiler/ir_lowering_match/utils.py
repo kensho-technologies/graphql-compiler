@@ -109,7 +109,39 @@ def filter_edge_field_non_existence(edge_expression):
 
 
 def _filter_orientdb_simple_optional_edge(root_location_path, inner_location_name, edge_field):
-    """Return an Expression that is False for rows that don't follow the @optional specification."""
+    """Return an Expression that is False for rows that don't follow the @optional specification.
+
+    OrientDB does not filter correctly within optionals. Namely, a result where the optional edge
+    DOES EXIST will be returned regardless of whether the inner filter is satisfed.
+    To mitigate this, we add a final filter to reject such results.
+    A valid result must satisfy either of the following:
+    - The location within the optional exists (the filter will have been applied in this case)
+    - The optional edge field does not exist at the root location of the optional traverse
+    So, if the inner location within the optional was never visited, it muct be the case that
+    the corresponding edge field does not exist at all.
+
+    Example:
+        A MATCH traversal which starts at location `Animal___1`, and follows the optional edge
+        `out_Animal_ParentOf` to the location `Animal__out_Animal_ParentOf___1`
+        results in the following filtering Expression:
+        (
+            (
+                (Animal___1.out_Animal_ParentOf IS null)
+                OR
+                (Animal___1.out_Animal_ParentOf.size() = 0)
+            )
+            OR
+            (Animal__out_Animal_ParentOf___1 IS NOT null)
+        )
+
+    Args:
+        root_location_path: tuple of strings representing the path to the root (preceding location)
+                            of the optional traversal
+        inner_location_name: string representing location within the corresponding optional traverse
+        edge_field: string representing optional traverse edge field
+    Returns:
+        Expression that evaluates to False for rows that do not follow the @optional specification
+    """
     # TODO(shankha): Better docstring <01-06-18>
     inner_local_field = LocalField(inner_location_name)
     inner_location_existence = BinaryComposition(u'!=', inner_local_field, NullLiteral)
@@ -124,7 +156,7 @@ def _filter_orientdb_simple_optional_edge(root_location_path, inner_location_nam
 class SelectWhereFilter(Filter):
     """A Filter object that is used for the WHERE clause in a SELECT statement."""
 
-    def __init__(self, simple_optional_root_info={}):
+    def __init__(self, simple_optional_root_info):
         """Construct a Filter block that is True if and only if each simple optional filter is True.
 
         Construct filters for each simple optional, that are True if and only if `edge_field` does

@@ -30,7 +30,7 @@ class EmitMatchTests(unittest.TestCase):
             ConstructResult({
                 'foo_name': OutputContextField(base_name_location, GraphQLString),
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -68,7 +68,7 @@ class EmitMatchTests(unittest.TestCase):
             ConstructResult({
                 'foo_name': OutputContextField(base_name_location, GraphQLString),
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -181,7 +181,7 @@ class EmitMatchTests(unittest.TestCase):
             ConstructResult({
                 'name': OutputContextField(base_name_location, GraphQLString)
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -213,7 +213,7 @@ class EmitMatchTests(unittest.TestCase):
             ConstructResult({
                 'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)
             }),
-            SelectWhereFilter(),
+            SelectWhereFilter({}),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
