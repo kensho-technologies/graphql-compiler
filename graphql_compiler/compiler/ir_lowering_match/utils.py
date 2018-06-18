@@ -177,14 +177,18 @@ class SelectWhereFilter(Filter):
         Returns:
             a new SelectWhereFilter object
         """
-        where_filter_expressions = []
+        inner_location_name_to_where_filter = {}
         for root_location, root_info_dict in six.iteritems(simple_optional_root_info):
             inner_location_name = root_info_dict['inner_location_name']
             edge_field = root_info_dict['edge_field']
 
-            optional_edge_filter = _filter_orientdb_simple_optional_edge(
+            optional_edge_where_filter = _filter_orientdb_simple_optional_edge(
                 root_location.query_path, inner_location_name, edge_field)
-            where_filter_expressions.append(optional_edge_filter)
+            inner_location_name_to_where_filter[inner_location_name] = optional_edge_where_filter
+
+        # Sort expressions by inner_location_name to obtain deterministic order
+        where_filter_expressions = [inner_location_name_to_where_filter[key]
+                                    for key in sorted(inner_location_name_to_where_filter.keys())]
 
         predicate = expression_list_to_conjunction(where_filter_expressions)
         super(SelectWhereFilter, self).__init__(predicate)

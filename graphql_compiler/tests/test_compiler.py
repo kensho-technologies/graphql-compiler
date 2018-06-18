@@ -814,6 +814,16 @@ class CompilerTests(unittest.TestCase):
                 (
                     (
                         (
+                            (Animal__out_Animal_ParentOf___1.out_Animal_FedAt IS null)
+                            OR
+                            (Animal__out_Animal_ParentOf___1.out_Animal_FedAt.size() = 0)
+                        )
+                        OR
+                        (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
+                    )
+                    AND
+                    (
+                        (
                             (Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
                                 .out_Animal_FedAt IS null)
                             OR
@@ -823,16 +833,6 @@ class CompilerTests(unittest.TestCase):
                         OR
                         (Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
                             IS NOT null)
-                    )
-                    AND
-                    (
-                        (
-                            (Animal__out_Animal_ParentOf___1.out_Animal_FedAt IS null)
-                            OR
-                            (Animal__out_Animal_ParentOf___1.out_Animal_FedAt.size() = 0)
-                        )
-                        OR
-                        (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
                     )
                 )
         '''
