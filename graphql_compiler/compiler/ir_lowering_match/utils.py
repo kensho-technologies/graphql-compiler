@@ -187,8 +187,10 @@ class SelectWhereFilter(Filter):
             inner_location_name_to_where_filter[inner_location_name] = optional_edge_where_filter
 
         # Sort expressions by inner_location_name to obtain deterministic order
-        where_filter_expressions = [inner_location_name_to_where_filter[key]
-                                    for key in sorted(inner_location_name_to_where_filter.keys())]
+        where_filter_expressions = [
+            inner_location_name_to_where_filter[key]
+            for key in sorted(inner_location_name_to_where_filter.keys())
+        ]
 
         predicate = expression_list_to_conjunction(where_filter_expressions)
         super(SelectWhereFilter, self).__init__(predicate)
