@@ -11,7 +11,7 @@ CREATE INDEX UniquelyIdentifiable.uuid UNIQUE_HASH_INDEX
 ### Entity ###
 CREATE CLASS Entity EXTENDS V, UniquelyIdentifiable ABSTRACT
 CREATE PROPERTY Entity.name String
-CREATE INDEX Entity.name NOTUNIQUE
+CREATE INDEX Entity.name UNIQUE
 
 CREATE PROPERTY Entity.alias EmbeddedSet String
 ALTER PROPERTY Entity.alias DEFAULT {}
@@ -64,7 +64,7 @@ CREATE INDEX Animal_BornAt ON Animal_BornAt (in, out) UNIQUE_HASH_INDEX
 ### Species ###
 CREATE CLASS Species EXTENDS Entity
 
-CREATE PROPERTY Species.limbs Date
+CREATE PROPERTY Species.limbs Int
 CREATE INDEX Species.limbs NOTUNIQUE
 
 CREATE CLASS Species_Eats EXTENDS E

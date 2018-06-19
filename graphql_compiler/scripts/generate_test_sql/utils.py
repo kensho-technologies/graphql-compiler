@@ -1,4 +1,7 @@
 import random
+from uuid import UUID
+
+import six
 
 
 random.seed(0)
@@ -10,15 +13,7 @@ SEPARATOR = '__'
 
 def get_uuid():
     """Return a pseudorandom uuid."""
-    random_digits = ''.join([str(random.randint(0, 9)) for _ in range(32)])  # nosec
-    uuid_substrings = [
-        random_digits[:8],
-        random_digits[8:12],
-        random_digits[12:16],
-        random_digits[16:20],
-        random_digits[20:]
-    ]
-    return '-'.join(uuid_substrings)
+    return str(UUID(int=random.randint(0, 2**128 - 1)))
 
 
 def select_vertex_statement(vertex_type, name):
@@ -30,9 +25,9 @@ def select_vertex_statement(vertex_type, name):
 
 def set_statement(field_name, field_value):
     """Return a SQL clause (used in creating a vertex) to set a field to a value."""
-    if not isinstance(field_name, basestring):
+    if not isinstance(field_name, six.string_types):
         raise AssertionError(u'Expected string field_name. Received {}'.format(field_name))
-    if not isinstance(field_value, basestring):
+    if not isinstance(field_value, six.string_types):
         raise AssertionError(u'Expected string field_value. Received {}'.format(field_value))
     template = '{} = \'{}\''
     return template.format(field_name, field_value)
@@ -62,7 +57,7 @@ def create_name(base_name, label):
 
 def strip_index_from_name(name):
     """Extract and return a pair of (base_name, label) from a given name field."""
-    if not isinstance(name, basestring):
+    if not isinstance(name, six.string_types):
         raise AssertionError(u'Expected string name. Received {}'.format(name))
     split_name = name.split(SEPARATOR)
     if len(split_name) != 2:

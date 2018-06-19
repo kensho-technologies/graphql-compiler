@@ -1,5 +1,11 @@
+import itertools
+import random
+
 from .animals import get_animal_generators
 from .species import get_species_generators
+
+
+random.seed(0)
 
 
 if __name__ == '__main__':

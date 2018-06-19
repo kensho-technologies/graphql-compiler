@@ -1,7 +1,9 @@
 import codecs
 import os
 import re
+
 from setuptools import find_packages, setup
+
 
 #  https://packaging.python.org/guides/single-sourcing-package-version/
 #  #single-sourcing-the-version
