@@ -5,8 +5,6 @@ from .utils import (create_edge_statement, create_name, create_vertex_statement,
                     strip_index_from_name)
 
 
-random.seed(0)
-
 NUM_INITIAL_ANIMALS = 5
 NUM_GENERATIONS = 10
 NUM_PARENTS = 3
@@ -58,9 +56,11 @@ def get_animal_generators():
                     break
             previous_parent_sets.add(parent_names)
 
-            parent_indices = [index for _, index in
-                              [strip_index_from_name(parent_name)
-                               for parent_name in parent_names]]
+            parent_indices = [
+                index for _, index in [
+                    strip_index_from_name(parent_name) for parent_name in parent_names
+                ]
+            ]
             new_label = '(' + ''.join(parent_indices) + ')'
             new_animal_name = create_name(species_name, new_label)
             current_animal_names.append(new_animal_name)

@@ -1,244 +1,244 @@
-create vertex Species set name = 'Nazgul', uuid = '87425473-4595-2762-9989-378641469948'
-create vertex Species set name = 'Pteranodon', uuid = '28507386-0482-3815-2984-035915758596'
-create vertex Species set name = 'Dragon', uuid = '54535211-6640-7898-8953-728885954699'
-create vertex Species set name = 'Hippogriff', uuid = '70646827-1273-8116-0595-606653390091'
-create vertex Animal set name = 'Nazgul__0', uuid = '12890412-2631-5019-1378-916906832541'
-create vertex Animal set name = 'Nazgul__1', uuid = '44553382-5073-0229-3239-667346013263'
-create vertex Animal set name = 'Nazgul__2', uuid = '85447460-4215-4578-4348-881960794632'
-create vertex Animal set name = 'Nazgul__3', uuid = '70850168-2918-3024-7815-638200659990'
-create vertex Animal set name = 'Nazgul__4', uuid = '77679635-2501-3773-6019-235242015043'
-create vertex Animal set name = 'Nazgul__(024)', uuid = '48934643-7896-3960-0700-354456439274'
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(024)') to (select from Animal where name = 'Nazgul__0')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(024)') to (select from Animal where name = 'Nazgul__2')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(024)') to (select from Animal where name = 'Nazgul__4')
-create vertex Animal set name = 'Nazgul__(023)', uuid = '79461320-9211-3519-9146-849344626239'
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(023)') to (select from Animal where name = 'Nazgul__0')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(023)') to (select from Animal where name = 'Nazgul__2')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(023)') to (select from Animal where name = 'Nazgul__3')
-create vertex Animal set name = 'Nazgul__(0(023)4)', uuid = '12785780-0802-0083-1169-595568797925'
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(023)4)') to (select from Animal where name = 'Nazgul__0')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(023)4)') to (select from Animal where name = 'Nazgul__(023)')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(023)4)') to (select from Animal where name = 'Nazgul__4')
-create vertex Animal set name = 'Nazgul__(2(024)4)', uuid = '73587601-5208-9348-0612-800448761946'
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(2(024)4)') to (select from Animal where name = 'Nazgul__2')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(2(024)4)') to (select from Animal where name = 'Nazgul__(024)')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(2(024)4)') to (select from Animal where name = 'Nazgul__4')
-create vertex Animal set name = 'Nazgul__(0(2(024)4)3)', uuid = '10661533-7486-4631-6671-979868571747'
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(2(024)4)3)') to (select from Animal where name = 'Nazgul__0')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(2(024)4)3)') to (select from Animal where name = 'Nazgul__(2(024)4)')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(2(024)4)3)') to (select from Animal where name = 'Nazgul__3')
-create vertex Animal set name = 'Nazgul__(0(0(023)4)4)', uuid = '09499652-0887-6431-4599-407704609970'
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(0(023)4)4)') to (select from Animal where name = 'Nazgul__0')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(0(023)4)4)') to (select from Animal where name = 'Nazgul__(0(023)4)')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(0(023)4)4)') to (select from Animal where name = 'Nazgul__4')
-create vertex Animal set name = 'Nazgul__(0(0(0(023)4)4)3)', uuid = '30980822-6910-3068-1139-193429961915'
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(0(0(023)4)4)3)') to (select from Animal where name = 'Nazgul__0')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(0(0(023)4)4)3)') to (select from Animal where name = 'Nazgul__(0(0(023)4)4)')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(0(0(023)4)4)3)') to (select from Animal where name = 'Nazgul__3')
-create vertex Animal set name = 'Nazgul__(1(0(0(023)4)4)(0(2(024)4)3))', uuid = '83272401-0004-5714-6043-904473224972'
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(1(0(0(023)4)4)(0(2(024)4)3))') to (select from Animal where name = 'Nazgul__1')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(1(0(0(023)4)4)(0(2(024)4)3))') to (select from Animal where name = 'Nazgul__(0(0(023)4)4)')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(1(0(0(023)4)4)(0(2(024)4)3))') to (select from Animal where name = 'Nazgul__(0(2(024)4)3)')
-create vertex Animal set name = 'Nazgul__((2(024)4)(0(0(0(023)4)4)3)(0(023)4))', uuid = '43742491-4642-0660-2765-174672729180'
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((2(024)4)(0(0(0(023)4)4)3)(0(023)4))') to (select from Animal where name = 'Nazgul__(2(024)4)')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((2(024)4)(0(0(0(023)4)4)3)(0(023)4))') to (select from Animal where name = 'Nazgul__(0(0(0(023)4)4)3)')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((2(024)4)(0(0(0(023)4)4)3)(0(023)4))') to (select from Animal where name = 'Nazgul__(0(023)4)')
-create vertex Animal set name = 'Nazgul__((023)3(1(0(0(023)4)4)(0(2(024)4)3)))', uuid = '31227950-7335-2914-2556-546477236163'
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((023)3(1(0(0(023)4)4)(0(2(024)4)3)))') to (select from Animal where name = 'Nazgul__(023)')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((023)3(1(0(0(023)4)4)(0(2(024)4)3)))') to (select from Animal where name = 'Nazgul__3')
-create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((023)3(1(0(0(023)4)4)(0(2(024)4)3)))') to (select from Animal where name = 'Nazgul__(1(0(0(023)4)4)(0(2(024)4)3))')
+create vertex Species set name = 'Nazgul', uuid = 'e3e70682-c209-4cac-629f-6fbed82c07cd'
+create vertex Species set name = 'Pteranodon', uuid = '82e2e662-f728-b4fa-4248-5e3a0a5d2f34'
+create vertex Species set name = 'Dragon', uuid = 'd4713d60-c8a7-0639-eb11-67b367a9c378'
+create vertex Species set name = 'Hippogriff', uuid = '23a7711a-8133-2876-37eb-dcd9e87a1613'
+create vertex Animal set name = 'Nazgul__0', uuid = 'e6f4590b-9a16-4106-cf6a-659eb4862b21'
+create vertex Animal set name = 'Nazgul__1', uuid = '85776e9a-dd84-f39e-7154-5a137a1d5006'
+create vertex Animal set name = 'Nazgul__2', uuid = 'd71037d1-b83e-90ec-17e0-aa3c03983ca8'
+create vertex Animal set name = 'Nazgul__3', uuid = 'f7b0b7d2-cda8-056c-3d15-eef738c1962e'
+create vertex Animal set name = 'Nazgul__4', uuid = '1759edc3-72ae-2244-8b01-63c1cd9d2b7d'
+create vertex Animal set name = 'Nazgul__(234)', uuid = '8d1fd9b7-4d2b-9deb-1beb-37117d41e602'
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(234)') to (select from Animal where name = 'Nazgul__2')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(234)') to (select from Animal where name = 'Nazgul__3')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(234)') to (select from Animal where name = 'Nazgul__4')
+create vertex Animal set name = 'Nazgul__((234)12)', uuid = '79fdef7c-4293-0b33-a81a-d477fb3675b8'
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((234)12)') to (select from Animal where name = 'Nazgul__(234)')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((234)12)') to (select from Animal where name = 'Nazgul__1')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((234)12)') to (select from Animal where name = 'Nazgul__2')
+create vertex Animal set name = 'Nazgul__(0(234)4)', uuid = '864a7a50-b48d-73f1-d67e-55fd642bfa42'
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(234)4)') to (select from Animal where name = 'Nazgul__0')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(234)4)') to (select from Animal where name = 'Nazgul__(234)')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(0(234)4)') to (select from Animal where name = 'Nazgul__4')
+create vertex Animal set name = 'Nazgul__(1((234)12)4)', uuid = 'f323ca74-d344-7490-96fd-35d0adf20806'
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(1((234)12)4)') to (select from Animal where name = 'Nazgul__1')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(1((234)12)4)') to (select from Animal where name = 'Nazgul__((234)12)')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(1((234)12)4)') to (select from Animal where name = 'Nazgul__4')
+create vertex Animal set name = 'Nazgul__((234)34)', uuid = '9cdf5a86-5306-f3f5-1516-65705b7c709a'
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((234)34)') to (select from Animal where name = 'Nazgul__(234)')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((234)34)') to (select from Animal where name = 'Nazgul__3')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((234)34)') to (select from Animal where name = 'Nazgul__4')
+create vertex Animal set name = 'Nazgul__((234)((234)12)4)', uuid = '4562be7f-bb42-e0b2-0426-465e3e37952d'
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((234)((234)12)4)') to (select from Animal where name = 'Nazgul__(234)')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((234)((234)12)4)') to (select from Animal where name = 'Nazgul__((234)12)')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((234)((234)12)4)') to (select from Animal where name = 'Nazgul__4')
+create vertex Animal set name = 'Nazgul__((0(234)4)31)', uuid = '38018b47-b29a-8b06-daf6-6c5f2577bffa'
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((0(234)4)31)') to (select from Animal where name = 'Nazgul__(0(234)4)')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((0(234)4)31)') to (select from Animal where name = 'Nazgul__3')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((0(234)4)31)') to (select from Animal where name = 'Nazgul__1')
+create vertex Animal set name = 'Nazgul__(((234)34)((234)12)((0(234)4)31))', uuid = '06d599e8-12f1-75ff-ae3b-16ec9a27d858'
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(((234)34)((234)12)((0(234)4)31))') to (select from Animal where name = 'Nazgul__((234)34)')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(((234)34)((234)12)((0(234)4)31))') to (select from Animal where name = 'Nazgul__((234)12)')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(((234)34)((234)12)((0(234)4)31))') to (select from Animal where name = 'Nazgul__((0(234)4)31)')
+create vertex Animal set name = 'Nazgul__((0(234)4)((234)12)(1((234)12)4))', uuid = '0589f877-9b02-5244-0950-fd131db53334'
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((0(234)4)((234)12)(1((234)12)4))') to (select from Animal where name = 'Nazgul__(0(234)4)')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((0(234)4)((234)12)(1((234)12)4))') to (select from Animal where name = 'Nazgul__((234)12)')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__((0(234)4)((234)12)(1((234)12)4))') to (select from Animal where name = 'Nazgul__(1((234)12)4)')
+create vertex Animal set name = 'Nazgul__(((0(234)4)((234)12)(1((234)12)4))12)', uuid = '11ebcd49-428a-1c22-d5fd-b76a19fbeb1d'
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(((0(234)4)((234)12)(1((234)12)4))12)') to (select from Animal where name = 'Nazgul__((0(234)4)((234)12)(1((234)12)4))')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(((0(234)4)((234)12)(1((234)12)4))12)') to (select from Animal where name = 'Nazgul__1')
+create edge Animal_ParentOf from (select from Animal where name = 'Nazgul__(((0(234)4)((234)12)(1((234)12)4))12)') to (select from Animal where name = 'Nazgul__2')
 create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__0') to (select from Species where name = 'Nazgul')
 create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__1') to (select from Species where name = 'Nazgul')
 create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__2') to (select from Species where name = 'Nazgul')
 create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__3') to (select from Species where name = 'Nazgul')
 create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__4') to (select from Species where name = 'Nazgul')
-create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__(024)') to (select from Species where name = 'Nazgul')
-create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__(023)') to (select from Species where name = 'Nazgul')
-create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__(0(023)4)') to (select from Species where name = 'Nazgul')
-create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__(2(024)4)') to (select from Species where name = 'Nazgul')
-create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__(0(2(024)4)3)') to (select from Species where name = 'Nazgul')
-create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__(0(0(023)4)4)') to (select from Species where name = 'Nazgul')
-create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__(0(0(0(023)4)4)3)') to (select from Species where name = 'Nazgul')
-create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__(1(0(0(023)4)4)(0(2(024)4)3))') to (select from Species where name = 'Nazgul')
-create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__((2(024)4)(0(0(0(023)4)4)3)(0(023)4))') to (select from Species where name = 'Nazgul')
-create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__((023)3(1(0(0(023)4)4)(0(2(024)4)3)))') to (select from Species where name = 'Nazgul')
-create vertex Animal set name = 'Pteranodon__0', uuid = '51634446-3603-7060-4805-086760069867'
-create vertex Animal set name = 'Pteranodon__1', uuid = '27214314-8447-5194-7383-219503201061'
-create vertex Animal set name = 'Pteranodon__2', uuid = '66752834-6599-9954-7220-106176939431'
-create vertex Animal set name = 'Pteranodon__3', uuid = '87343003-2512-6738-2370-904708941007'
-create vertex Animal set name = 'Pteranodon__4', uuid = '49404780-1418-9345-2522-465221707227'
-create vertex Animal set name = 'Pteranodon__(132)', uuid = '81617367-6282-5626-2185-350139507775'
+create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__(234)') to (select from Species where name = 'Nazgul')
+create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__((234)12)') to (select from Species where name = 'Nazgul')
+create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__(0(234)4)') to (select from Species where name = 'Nazgul')
+create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__(1((234)12)4)') to (select from Species where name = 'Nazgul')
+create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__((234)34)') to (select from Species where name = 'Nazgul')
+create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__((234)((234)12)4)') to (select from Species where name = 'Nazgul')
+create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__((0(234)4)31)') to (select from Species where name = 'Nazgul')
+create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__(((234)34)((234)12)((0(234)4)31))') to (select from Species where name = 'Nazgul')
+create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__((0(234)4)((234)12)(1((234)12)4))') to (select from Species where name = 'Nazgul')
+create edge Animal_OfSpecies from (select from Animal where name = 'Nazgul__(((0(234)4)((234)12)(1((234)12)4))12)') to (select from Species where name = 'Nazgul')
+create vertex Animal set name = 'Pteranodon__0', uuid = '59acdd98-4d12-5e7f-a59c-ec98126cbc8f'
+create vertex Animal set name = 'Pteranodon__1', uuid = '7795e986-80ee-526e-0fa0-7a3f2e295065'
+create vertex Animal set name = 'Pteranodon__2', uuid = 'fcfcfa81-b306-d700-19d5-f97098b33c6e'
+create vertex Animal set name = 'Pteranodon__3', uuid = 'ad1b8f60-c9e4-dab2-0edc-6d2bc470f0e7'
+create vertex Animal set name = 'Pteranodon__4', uuid = '878b9f6b-57a1-cb71-2975-d279d86dbf11'
+create vertex Animal set name = 'Pteranodon__(103)', uuid = 'eae2025e-8233-9e23-dff3-334b91b15f5d'
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(103)') to (select from Animal where name = 'Pteranodon__1')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(103)') to (select from Animal where name = 'Pteranodon__0')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(103)') to (select from Animal where name = 'Pteranodon__3')
+create vertex Animal set name = 'Pteranodon__(132)', uuid = '032f06ca-b0d9-c2aa-8f83-7ef727460f22'
 create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(132)') to (select from Animal where name = 'Pteranodon__1')
 create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(132)') to (select from Animal where name = 'Pteranodon__3')
 create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(132)') to (select from Animal where name = 'Pteranodon__2')
-create vertex Animal set name = 'Pteranodon__(124)', uuid = '87356918-5340-2664-9438-267873007934'
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(124)') to (select from Animal where name = 'Pteranodon__1')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(124)') to (select from Animal where name = 'Pteranodon__2')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(124)') to (select from Animal where name = 'Pteranodon__4')
-create vertex Animal set name = 'Pteranodon__(1(132)3)', uuid = '63357106-0026-0094-8243-139734257640'
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(1(132)3)') to (select from Animal where name = 'Pteranodon__1')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(1(132)3)') to (select from Animal where name = 'Pteranodon__(132)')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(1(132)3)') to (select from Animal where name = 'Pteranodon__3')
-create vertex Animal set name = 'Pteranodon__((1(132)3)2(124))', uuid = '01857138-8208-1761-0956-416287090021'
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((1(132)3)2(124))') to (select from Animal where name = 'Pteranodon__(1(132)3)')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((1(132)3)2(124))') to (select from Animal where name = 'Pteranodon__2')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((1(132)3)2(124))') to (select from Animal where name = 'Pteranodon__(124)')
-create vertex Animal set name = 'Pteranodon__(((1(132)3)2(124))2(132))', uuid = '42433959-7526-4744-0706-572625399253'
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(((1(132)3)2(124))2(132))') to (select from Animal where name = 'Pteranodon__((1(132)3)2(124))')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(((1(132)3)2(124))2(132))') to (select from Animal where name = 'Pteranodon__2')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(((1(132)3)2(124))2(132))') to (select from Animal where name = 'Pteranodon__(132)')
-create vertex Animal set name = 'Pteranodon__((((1(132)3)2(124))2(132))((1(132)3)2(124))4)', uuid = '76398370-8593-6376-9010-199498771549'
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((((1(132)3)2(124))2(132))((1(132)3)2(124))4)') to (select from Animal where name = 'Pteranodon__(((1(132)3)2(124))2(132))')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((((1(132)3)2(124))2(132))((1(132)3)2(124))4)') to (select from Animal where name = 'Pteranodon__((1(132)3)2(124))')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((((1(132)3)2(124))2(132))((1(132)3)2(124))4)') to (select from Animal where name = 'Pteranodon__4')
-create vertex Animal set name = 'Pteranodon__(1((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(132))', uuid = '11576722-4979-5591-7787-169539546820'
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(1((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(132))') to (select from Animal where name = 'Pteranodon__1')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(1((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(132))') to (select from Animal where name = 'Pteranodon__((((1(132)3)2(124))2(132))((1(132)3)2(124))4)')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(1((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(132))') to (select from Animal where name = 'Pteranodon__(132)')
-create vertex Animal set name = 'Pteranodon__((124)((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(1((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(132)))', uuid = '66472829-9047-4587-9199-692876000273'
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((124)((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(1((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(132)))') to (select from Animal where name = 'Pteranodon__(124)')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((124)((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(1((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(132)))') to (select from Animal where name = 'Pteranodon__((((1(132)3)2(124))2(132))((1(132)3)2(124))4)')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((124)((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(1((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(132)))') to (select from Animal where name = 'Pteranodon__(1((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(132))')
-create vertex Animal set name = 'Pteranodon__((1(132)3)((((1(132)3)2(124))2(132))((1(132)3)2(124))4)4)', uuid = '80481730-4505-3011-5098-939972654301'
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((1(132)3)((((1(132)3)2(124))2(132))((1(132)3)2(124))4)4)') to (select from Animal where name = 'Pteranodon__(1(132)3)')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((1(132)3)((((1(132)3)2(124))2(132))((1(132)3)2(124))4)4)') to (select from Animal where name = 'Pteranodon__((((1(132)3)2(124))2(132))((1(132)3)2(124))4)')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((1(132)3)((((1(132)3)2(124))2(132))((1(132)3)2(124))4)4)') to (select from Animal where name = 'Pteranodon__4')
-create vertex Animal set name = 'Pteranodon__(1(124)(1(132)3))', uuid = '70805769-3505-8227-2299-195056078064'
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(1(124)(1(132)3))') to (select from Animal where name = 'Pteranodon__1')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(1(124)(1(132)3))') to (select from Animal where name = 'Pteranodon__(124)')
-create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(1(124)(1(132)3))') to (select from Animal where name = 'Pteranodon__(1(132)3)')
+create vertex Animal set name = 'Pteranodon__(0(103)2)', uuid = 'b732d46f-21e1-5094-9efe-e464da90f534'
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(0(103)2)') to (select from Animal where name = 'Pteranodon__0')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(0(103)2)') to (select from Animal where name = 'Pteranodon__(103)')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(0(103)2)') to (select from Animal where name = 'Pteranodon__2')
+create vertex Animal set name = 'Pteranodon__(32(0(103)2))', uuid = 'b2d650af-313b-32b7-9836-31890063e42f'
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(32(0(103)2))') to (select from Animal where name = 'Pteranodon__3')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(32(0(103)2))') to (select from Animal where name = 'Pteranodon__2')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(32(0(103)2))') to (select from Animal where name = 'Pteranodon__(0(103)2)')
+create vertex Animal set name = 'Pteranodon__(13(32(0(103)2)))', uuid = '105ada6b-7202-99e3-2a69-acc70bf9c0ef'
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(13(32(0(103)2)))') to (select from Animal where name = 'Pteranodon__1')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(13(32(0(103)2)))') to (select from Animal where name = 'Pteranodon__3')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(13(32(0(103)2)))') to (select from Animal where name = 'Pteranodon__(32(0(103)2))')
+create vertex Animal set name = 'Pteranodon__((13(32(0(103)2)))(0(103)2)4)', uuid = 'c167733f-9a9e-4310-8fb8-3babe8754cd3'
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((13(32(0(103)2)))(0(103)2)4)') to (select from Animal where name = 'Pteranodon__(13(32(0(103)2)))')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((13(32(0(103)2)))(0(103)2)4)') to (select from Animal where name = 'Pteranodon__(0(103)2)')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((13(32(0(103)2)))(0(103)2)4)') to (select from Animal where name = 'Pteranodon__4')
+create vertex Animal set name = 'Pteranodon__((13(32(0(103)2)))24)', uuid = 'fa83ada4-a212-1ac5-f689-a4a5ffda0336'
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((13(32(0(103)2)))24)') to (select from Animal where name = 'Pteranodon__(13(32(0(103)2)))')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((13(32(0(103)2)))24)') to (select from Animal where name = 'Pteranodon__2')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__((13(32(0(103)2)))24)') to (select from Animal where name = 'Pteranodon__4')
+create vertex Animal set name = 'Pteranodon__(10((13(32(0(103)2)))(0(103)2)4))', uuid = '50f0fc2b-6ae0-4d52-adb3-28cbf3158c0c'
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(10((13(32(0(103)2)))(0(103)2)4))') to (select from Animal where name = 'Pteranodon__1')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(10((13(32(0(103)2)))(0(103)2)4))') to (select from Animal where name = 'Pteranodon__0')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(10((13(32(0(103)2)))(0(103)2)4))') to (select from Animal where name = 'Pteranodon__((13(32(0(103)2)))(0(103)2)4)')
+create vertex Animal set name = 'Pteranodon__(02(32(0(103)2)))', uuid = '9cb017c1-8741-ae91-acfe-bb4bd29e8693'
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(02(32(0(103)2)))') to (select from Animal where name = 'Pteranodon__0')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(02(32(0(103)2)))') to (select from Animal where name = 'Pteranodon__2')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(02(32(0(103)2)))') to (select from Animal where name = 'Pteranodon__(32(0(103)2))')
+create vertex Animal set name = 'Pteranodon__(2(02(32(0(103)2)))(0(103)2))', uuid = 'fa7ff8bf-b044-284a-47ac-f2f64d6b234f'
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(2(02(32(0(103)2)))(0(103)2))') to (select from Animal where name = 'Pteranodon__2')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(2(02(32(0(103)2)))(0(103)2))') to (select from Animal where name = 'Pteranodon__(02(32(0(103)2)))')
+create edge Animal_ParentOf from (select from Animal where name = 'Pteranodon__(2(02(32(0(103)2)))(0(103)2))') to (select from Animal where name = 'Pteranodon__(0(103)2)')
 create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__0') to (select from Species where name = 'Pteranodon')
 create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__1') to (select from Species where name = 'Pteranodon')
 create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__2') to (select from Species where name = 'Pteranodon')
 create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__3') to (select from Species where name = 'Pteranodon')
 create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__4') to (select from Species where name = 'Pteranodon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__(103)') to (select from Species where name = 'Pteranodon')
 create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__(132)') to (select from Species where name = 'Pteranodon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__(124)') to (select from Species where name = 'Pteranodon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__(1(132)3)') to (select from Species where name = 'Pteranodon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__((1(132)3)2(124))') to (select from Species where name = 'Pteranodon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__(((1(132)3)2(124))2(132))') to (select from Species where name = 'Pteranodon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__((((1(132)3)2(124))2(132))((1(132)3)2(124))4)') to (select from Species where name = 'Pteranodon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__(1((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(132))') to (select from Species where name = 'Pteranodon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__((124)((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(1((((1(132)3)2(124))2(132))((1(132)3)2(124))4)(132)))') to (select from Species where name = 'Pteranodon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__((1(132)3)((((1(132)3)2(124))2(132))((1(132)3)2(124))4)4)') to (select from Species where name = 'Pteranodon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__(1(124)(1(132)3))') to (select from Species where name = 'Pteranodon')
-create vertex Animal set name = 'Dragon__0', uuid = '24136455-8380-4348-5981-307081403307'
-create vertex Animal set name = 'Dragon__1', uuid = '73800397-6584-0813-3131-660458400878'
-create vertex Animal set name = 'Dragon__2', uuid = '26083940-9620-3151-1962-869486022122'
-create vertex Animal set name = 'Dragon__3', uuid = '84815090-3890-8507-1676-304932155046'
-create vertex Animal set name = 'Dragon__4', uuid = '94442363-5898-3064-2037-918070483976'
-create vertex Animal set name = 'Dragon__(013)', uuid = '59259367-6719-1526-2462-731614307675'
+create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__(0(103)2)') to (select from Species where name = 'Pteranodon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__(32(0(103)2))') to (select from Species where name = 'Pteranodon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__(13(32(0(103)2)))') to (select from Species where name = 'Pteranodon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__((13(32(0(103)2)))(0(103)2)4)') to (select from Species where name = 'Pteranodon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__((13(32(0(103)2)))24)') to (select from Species where name = 'Pteranodon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__(10((13(32(0(103)2)))(0(103)2)4))') to (select from Species where name = 'Pteranodon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__(02(32(0(103)2)))') to (select from Species where name = 'Pteranodon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Pteranodon__(2(02(32(0(103)2)))(0(103)2))') to (select from Species where name = 'Pteranodon')
+create vertex Animal set name = 'Dragon__0', uuid = 'ec3aa314-da9b-b017-79c1-47c719a5711b'
+create vertex Animal set name = 'Dragon__1', uuid = '04c14982-d9ea-d926-4745-dd9e27896389'
+create vertex Animal set name = 'Dragon__2', uuid = 'a7c5cb87-9b8b-71a1-b38a-05fbf61164ce'
+create vertex Animal set name = 'Dragon__3', uuid = '89b5b368-df14-c612-5f58-d5b56f790959'
+create vertex Animal set name = 'Dragon__4', uuid = '4a814d53-964d-db77-6025-f0ae35354579'
+create vertex Animal set name = 'Dragon__(013)', uuid = '4505f4f6-0a8c-46c7-0921-5f4f9edb95f2'
 create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(013)') to (select from Animal where name = 'Dragon__0')
 create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(013)') to (select from Animal where name = 'Dragon__1')
 create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(013)') to (select from Animal where name = 'Dragon__3')
-create vertex Animal set name = 'Dragon__(034)', uuid = '25838773-1984-8835-3699-738939599861'
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(034)') to (select from Animal where name = 'Dragon__0')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(034)') to (select from Animal where name = 'Dragon__3')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(034)') to (select from Animal where name = 'Dragon__4')
-create vertex Animal set name = 'Dragon__(03(013))', uuid = '95662691-6637-0884-1452-479580891888'
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(03(013))') to (select from Animal where name = 'Dragon__0')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(03(013))') to (select from Animal where name = 'Dragon__3')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(03(013))') to (select from Animal where name = 'Dragon__(013)')
-create vertex Animal set name = 'Dragon__((03(013))41)', uuid = '74013859-9053-5441-8464-151881003952'
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__((03(013))41)') to (select from Animal where name = 'Dragon__(03(013))')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__((03(013))41)') to (select from Animal where name = 'Dragon__4')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__((03(013))41)') to (select from Animal where name = 'Dragon__1')
-create vertex Animal set name = 'Dragon__(0(03(013))2)', uuid = '81881508-5746-9583-0028-324953052337'
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(0(03(013))2)') to (select from Animal where name = 'Dragon__0')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(0(03(013))2)') to (select from Animal where name = 'Dragon__(03(013))')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(0(03(013))2)') to (select from Animal where name = 'Dragon__2')
-create vertex Animal set name = 'Dragon__(((03(013))41)2(013))', uuid = '48331745-4639-4347-9842-432194133599'
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(((03(013))41)2(013))') to (select from Animal where name = 'Dragon__((03(013))41)')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(((03(013))41)2(013))') to (select from Animal where name = 'Dragon__2')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(((03(013))41)2(013))') to (select from Animal where name = 'Dragon__(013)')
-create vertex Animal set name = 'Dragon__((034)(0(03(013))2)(((03(013))41)2(013)))', uuid = '54360382-9950-0231-7320-301691710880'
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__((034)(0(03(013))2)(((03(013))41)2(013)))') to (select from Animal where name = 'Dragon__(034)')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__((034)(0(03(013))2)(((03(013))41)2(013)))') to (select from Animal where name = 'Dragon__(0(03(013))2)')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__((034)(0(03(013))2)(((03(013))41)2(013)))') to (select from Animal where name = 'Dragon__(((03(013))41)2(013))')
-create vertex Animal set name = 'Dragon__(2((034)(0(03(013))2)(((03(013))41)2(013)))(0(03(013))2))', uuid = '38437625-7866-5097-2666-356251191844'
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(2((034)(0(03(013))2)(((03(013))41)2(013)))(0(03(013))2))') to (select from Animal where name = 'Dragon__2')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(2((034)(0(03(013))2)(((03(013))41)2(013)))(0(03(013))2))') to (select from Animal where name = 'Dragon__((034)(0(03(013))2)(((03(013))41)2(013)))')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(2((034)(0(03(013))2)(((03(013))41)2(013)))(0(03(013))2))') to (select from Animal where name = 'Dragon__(0(03(013))2)')
-create vertex Animal set name = 'Dragon__(((034)(0(03(013))2)(((03(013))41)2(013)))(2((034)(0(03(013))2)(((03(013))41)2(013)))(0(03(013))2))4)', uuid = '53822490-7047-4424-2265-995025691088'
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(((034)(0(03(013))2)(((03(013))41)2(013)))(2((034)(0(03(013))2)(((03(013))41)2(013)))(0(03(013))2))4)') to (select from Animal where name = 'Dragon__((034)(0(03(013))2)(((03(013))41)2(013)))')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(((034)(0(03(013))2)(((03(013))41)2(013)))(2((034)(0(03(013))2)(((03(013))41)2(013)))(0(03(013))2))4)') to (select from Animal where name = 'Dragon__(2((034)(0(03(013))2)(((03(013))41)2(013)))(0(03(013))2))')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(((034)(0(03(013))2)(((03(013))41)2(013)))(2((034)(0(03(013))2)(((03(013))41)2(013)))(0(03(013))2))4)') to (select from Animal where name = 'Dragon__4')
-create vertex Animal set name = 'Dragon__(((03(013))41)(034)(((03(013))41)2(013)))', uuid = '41378986-5719-7546-6852-429851014626'
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(((03(013))41)(034)(((03(013))41)2(013)))') to (select from Animal where name = 'Dragon__((03(013))41)')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(((03(013))41)(034)(((03(013))41)2(013)))') to (select from Animal where name = 'Dragon__(034)')
-create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(((03(013))41)(034)(((03(013))41)2(013)))') to (select from Animal where name = 'Dragon__(((03(013))41)2(013))')
+create vertex Animal set name = 'Dragon__(012)', uuid = '4b1cb8bd-2130-260c-8c69-778ffd42f697'
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(012)') to (select from Animal where name = 'Dragon__0')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(012)') to (select from Animal where name = 'Dragon__1')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(012)') to (select from Animal where name = 'Dragon__2')
+create vertex Animal set name = 'Dragon__(12(012))', uuid = '7b2e1b82-e89d-c815-8f92-8dc519724ce3'
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(12(012))') to (select from Animal where name = 'Dragon__1')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(12(012))') to (select from Animal where name = 'Dragon__2')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(12(012))') to (select from Animal where name = 'Dragon__(012)')
+create vertex Animal set name = 'Dragon__(24(013))', uuid = 'b318ad4c-1db2-b452-7aa5-6a181fd3c017'
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(24(013))') to (select from Animal where name = 'Dragon__2')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(24(013))') to (select from Animal where name = 'Dragon__4')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(24(013))') to (select from Animal where name = 'Dragon__(013)')
+create vertex Animal set name = 'Dragon__(23(013))', uuid = 'ceca2ee3-10da-8a95-1640-8169a38d8afc'
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(23(013))') to (select from Animal where name = 'Dragon__2')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(23(013))') to (select from Animal where name = 'Dragon__3')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(23(013))') to (select from Animal where name = 'Dragon__(013)')
+create vertex Animal set name = 'Dragon__(13(23(013)))', uuid = '84dd6da6-8e75-1eb7-64d0-9913191b8adf'
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(13(23(013)))') to (select from Animal where name = 'Dragon__1')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(13(23(013)))') to (select from Animal where name = 'Dragon__3')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(13(23(013)))') to (select from Animal where name = 'Dragon__(23(013))')
+create vertex Animal set name = 'Dragon__((13(23(013)))4(013))', uuid = '156af458-6c4c-3935-379d-eda1ade6c5e9'
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__((13(23(013)))4(013))') to (select from Animal where name = 'Dragon__(13(23(013)))')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__((13(23(013)))4(013))') to (select from Animal where name = 'Dragon__4')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__((13(23(013)))4(013))') to (select from Animal where name = 'Dragon__(013)')
+create vertex Animal set name = 'Dragon__((13(23(013)))2(013))', uuid = '5bc7fdeb-3123-4efe-6e64-80432aa50f4e'
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__((13(23(013)))2(013))') to (select from Animal where name = 'Dragon__(13(23(013)))')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__((13(23(013)))2(013))') to (select from Animal where name = 'Dragon__2')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__((13(23(013)))2(013))') to (select from Animal where name = 'Dragon__(013)')
+create vertex Animal set name = 'Dragon__(0(13(23(013)))(12(012)))', uuid = '65e04993-7f41-1fed-1e70-e79933a1d1c2'
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(0(13(23(013)))(12(012)))') to (select from Animal where name = 'Dragon__0')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(0(13(23(013)))(12(012)))') to (select from Animal where name = 'Dragon__(13(23(013)))')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(0(13(23(013)))(12(012)))') to (select from Animal where name = 'Dragon__(12(012))')
+create vertex Animal set name = 'Dragon__(02((13(23(013)))4(013)))', uuid = '1ac902ee-2577-7cf0-9f98-21883744da64'
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(02((13(23(013)))4(013)))') to (select from Animal where name = 'Dragon__0')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(02((13(23(013)))4(013)))') to (select from Animal where name = 'Dragon__2')
+create edge Animal_ParentOf from (select from Animal where name = 'Dragon__(02((13(23(013)))4(013)))') to (select from Animal where name = 'Dragon__((13(23(013)))4(013))')
 create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__0') to (select from Species where name = 'Dragon')
 create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__1') to (select from Species where name = 'Dragon')
 create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__2') to (select from Species where name = 'Dragon')
 create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__3') to (select from Species where name = 'Dragon')
 create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__4') to (select from Species where name = 'Dragon')
 create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(013)') to (select from Species where name = 'Dragon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(034)') to (select from Species where name = 'Dragon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(03(013))') to (select from Species where name = 'Dragon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__((03(013))41)') to (select from Species where name = 'Dragon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(0(03(013))2)') to (select from Species where name = 'Dragon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(((03(013))41)2(013))') to (select from Species where name = 'Dragon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__((034)(0(03(013))2)(((03(013))41)2(013)))') to (select from Species where name = 'Dragon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(2((034)(0(03(013))2)(((03(013))41)2(013)))(0(03(013))2))') to (select from Species where name = 'Dragon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(((034)(0(03(013))2)(((03(013))41)2(013)))(2((034)(0(03(013))2)(((03(013))41)2(013)))(0(03(013))2))4)') to (select from Species where name = 'Dragon')
-create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(((03(013))41)(034)(((03(013))41)2(013)))') to (select from Species where name = 'Dragon')
-create vertex Animal set name = 'Hippogriff__0', uuid = '87469836-1534-4684-1779-345870285842'
-create vertex Animal set name = 'Hippogriff__1', uuid = '09164350-9404-7377-2908-512528235382'
-create vertex Animal set name = 'Hippogriff__2', uuid = '01650943-7046-9781-4023-338185351408'
-create vertex Animal set name = 'Hippogriff__3', uuid = '33964705-5854-5735-7969-367329398289'
-create vertex Animal set name = 'Hippogriff__4', uuid = '26708379-0621-7953-4454-099124608628'
-create vertex Animal set name = 'Hippogriff__(431)', uuid = '90786157-4523-8441-3528-323899075122'
+create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(012)') to (select from Species where name = 'Dragon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(12(012))') to (select from Species where name = 'Dragon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(24(013))') to (select from Species where name = 'Dragon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(23(013))') to (select from Species where name = 'Dragon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(13(23(013)))') to (select from Species where name = 'Dragon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__((13(23(013)))4(013))') to (select from Species where name = 'Dragon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__((13(23(013)))2(013))') to (select from Species where name = 'Dragon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(0(13(23(013)))(12(012)))') to (select from Species where name = 'Dragon')
+create edge Animal_OfSpecies from (select from Animal where name = 'Dragon__(02((13(23(013)))4(013)))') to (select from Species where name = 'Dragon')
+create vertex Animal set name = 'Hippogriff__0', uuid = '856f3d95-e0ae-1a1b-6c59-6216ae0fdbc8'
+create vertex Animal set name = 'Hippogriff__1', uuid = 'd17034ce-5179-7350-e625-6403bf3df0bb'
+create vertex Animal set name = 'Hippogriff__2', uuid = 'dfde2281-25fb-5f3d-866d-7002091472ad'
+create vertex Animal set name = 'Hippogriff__3', uuid = 'd7a3283c-27e9-69e2-c8bf-23fb9a431f7a'
+create vertex Animal set name = 'Hippogriff__4', uuid = '10fc9eee-0a17-27f7-ea5f-24b6de6fec4b'
+create vertex Animal set name = 'Hippogriff__(210)', uuid = 'f8f8f071-d360-da69-6af7-9ad2993ec8c6'
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(210)') to (select from Animal where name = 'Hippogriff__2')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(210)') to (select from Animal where name = 'Hippogriff__1')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(210)') to (select from Animal where name = 'Hippogriff__0')
+create vertex Animal set name = 'Hippogriff__(4(210)2)', uuid = 'cc4da021-dd62-0222-d9ef-e28b3bcb50b3'
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(4(210)2)') to (select from Animal where name = 'Hippogriff__4')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(4(210)2)') to (select from Animal where name = 'Hippogriff__(210)')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(4(210)2)') to (select from Animal where name = 'Hippogriff__2')
+create vertex Animal set name = 'Hippogriff__(4(210)0)', uuid = '552ae5ca-4124-405b-91fc-fe8881c16e98'
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(4(210)0)') to (select from Animal where name = 'Hippogriff__4')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(4(210)0)') to (select from Animal where name = 'Hippogriff__(210)')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(4(210)0)') to (select from Animal where name = 'Hippogriff__0')
+create vertex Animal set name = 'Hippogriff__(431)', uuid = 'cf5e9ea3-6258-4ab3-6877-7babc5c14262'
 create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(431)') to (select from Animal where name = 'Hippogriff__4')
 create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(431)') to (select from Animal where name = 'Hippogriff__3')
 create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(431)') to (select from Animal where name = 'Hippogriff__1')
-create vertex Animal set name = 'Hippogriff__((431)32)', uuid = '07832231-5202-8489-2585-129287777801'
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)32)') to (select from Animal where name = 'Hippogriff__(431)')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)32)') to (select from Animal where name = 'Hippogriff__3')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)32)') to (select from Animal where name = 'Hippogriff__2')
-create vertex Animal set name = 'Hippogriff__(321)', uuid = '41008099-7424-3378-1220-850447716501'
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(321)') to (select from Animal where name = 'Hippogriff__3')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(321)') to (select from Animal where name = 'Hippogriff__2')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(321)') to (select from Animal where name = 'Hippogriff__1')
-create vertex Animal set name = 'Hippogriff__((431)2(321))', uuid = '56147813-4442-8936-3565-678125585975'
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)2(321))') to (select from Animal where name = 'Hippogriff__(431)')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)2(321))') to (select from Animal where name = 'Hippogriff__2')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)2(321))') to (select from Animal where name = 'Hippogriff__(321)')
-create vertex Animal set name = 'Hippogriff__((321)32)', uuid = '44607940-2127-0891-1938-090698383433'
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((321)32)') to (select from Animal where name = 'Hippogriff__(321)')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((321)32)') to (select from Animal where name = 'Hippogriff__3')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((321)32)') to (select from Animal where name = 'Hippogriff__2')
-create vertex Animal set name = 'Hippogriff__((431)((321)32)(321))', uuid = '70532911-1665-5989-0806-954399673196'
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)((321)32)(321))') to (select from Animal where name = 'Hippogriff__(431)')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)((321)32)(321))') to (select from Animal where name = 'Hippogriff__((321)32)')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)((321)32)(321))') to (select from Animal where name = 'Hippogriff__(321)')
-create vertex Animal set name = 'Hippogriff__(((321)32)(431)3)', uuid = '38081127-6419-7687-1787-461727655000'
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(((321)32)(431)3)') to (select from Animal where name = 'Hippogriff__((321)32)')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(((321)32)(431)3)') to (select from Animal where name = 'Hippogriff__(431)')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(((321)32)(431)3)') to (select from Animal where name = 'Hippogriff__3')
-create vertex Animal set name = 'Hippogriff__(((431)((321)32)(321))((321)32)1)', uuid = '39838035-9049-0535-7489-908819129852'
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(((431)((321)32)(321))((321)32)1)') to (select from Animal where name = 'Hippogriff__((431)((321)32)(321))')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(((431)((321)32)(321))((321)32)1)') to (select from Animal where name = 'Hippogriff__((321)32)')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(((431)((321)32)(321))((321)32)1)') to (select from Animal where name = 'Hippogriff__1')
-create vertex Animal set name = 'Hippogriff__(430)', uuid = '60700278-5913-7315-0323-450334440268'
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(430)') to (select from Animal where name = 'Hippogriff__4')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(430)') to (select from Animal where name = 'Hippogriff__3')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(430)') to (select from Animal where name = 'Hippogriff__0')
-create vertex Animal set name = 'Hippogriff__((321)10)', uuid = '13565536-7487-9437-0393-520146551039'
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((321)10)') to (select from Animal where name = 'Hippogriff__(321)')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((321)10)') to (select from Animal where name = 'Hippogriff__1')
-create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((321)10)') to (select from Animal where name = 'Hippogriff__0')
+create vertex Animal set name = 'Hippogriff__((431)(210)0)', uuid = '5582a3bd-d476-fe38-babd-4745497e9f1a'
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)(210)0)') to (select from Animal where name = 'Hippogriff__(431)')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)(210)0)') to (select from Animal where name = 'Hippogriff__(210)')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)(210)0)') to (select from Animal where name = 'Hippogriff__0')
+create vertex Animal set name = 'Hippogriff__(41((431)(210)0))', uuid = 'b799ae8e-9a1a-7d6f-dd02-e100e3d48408'
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(41((431)(210)0))') to (select from Animal where name = 'Hippogriff__4')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(41((431)(210)0))') to (select from Animal where name = 'Hippogriff__1')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__(41((431)(210)0))') to (select from Animal where name = 'Hippogriff__((431)(210)0)')
+create vertex Animal set name = 'Hippogriff__((431)(4(210)0)1)', uuid = '775e0ec3-9c9d-03f3-0901-8aee69407be7'
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)(4(210)0)1)') to (select from Animal where name = 'Hippogriff__(431)')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)(4(210)0)1)') to (select from Animal where name = 'Hippogriff__(4(210)0)')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)(4(210)0)1)') to (select from Animal where name = 'Hippogriff__1')
+create vertex Animal set name = 'Hippogriff__((4(210)0)(210)1)', uuid = '9e0df45b-992a-34a1-084f-a819052daad3'
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((4(210)0)(210)1)') to (select from Animal where name = 'Hippogriff__(4(210)0)')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((4(210)0)(210)1)') to (select from Animal where name = 'Hippogriff__(210)')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((4(210)0)(210)1)') to (select from Animal where name = 'Hippogriff__1')
+create vertex Animal set name = 'Hippogriff__((431)(4(210)2)1)', uuid = 'e19b5837-1c6a-4b5e-7d85-9725c707aef9'
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)(4(210)2)1)') to (select from Animal where name = 'Hippogriff__(431)')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)(4(210)2)1)') to (select from Animal where name = 'Hippogriff__(4(210)2)')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)(4(210)2)1)') to (select from Animal where name = 'Hippogriff__1')
+create vertex Animal set name = 'Hippogriff__((431)(4(210)0)(4(210)2))', uuid = '306aa871-feef-71cb-c915-d113dc45488d'
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)(4(210)0)(4(210)2))') to (select from Animal where name = 'Hippogriff__(431)')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)(4(210)0)(4(210)2))') to (select from Animal where name = 'Hippogriff__(4(210)0)')
+create edge Animal_ParentOf from (select from Animal where name = 'Hippogriff__((431)(4(210)0)(4(210)2))') to (select from Animal where name = 'Hippogriff__(4(210)2)')
 create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__0') to (select from Species where name = 'Hippogriff')
 create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__1') to (select from Species where name = 'Hippogriff')
 create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__2') to (select from Species where name = 'Hippogriff')
 create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__3') to (select from Species where name = 'Hippogriff')
 create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__4') to (select from Species where name = 'Hippogriff')
+create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__(210)') to (select from Species where name = 'Hippogriff')
+create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__(4(210)2)') to (select from Species where name = 'Hippogriff')
+create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__(4(210)0)') to (select from Species where name = 'Hippogriff')
 create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__(431)') to (select from Species where name = 'Hippogriff')
-create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__((431)32)') to (select from Species where name = 'Hippogriff')
-create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__(321)') to (select from Species where name = 'Hippogriff')
-create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__((431)2(321))') to (select from Species where name = 'Hippogriff')
-create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__((321)32)') to (select from Species where name = 'Hippogriff')
-create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__((431)((321)32)(321))') to (select from Species where name = 'Hippogriff')
-create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__(((321)32)(431)3)') to (select from Species where name = 'Hippogriff')
-create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__(((431)((321)32)(321))((321)32)1)') to (select from Species where name = 'Hippogriff')
-create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__(430)') to (select from Species where name = 'Hippogriff')
-create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__((321)10)') to (select from Species where name = 'Hippogriff')
+create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__((431)(210)0)') to (select from Species where name = 'Hippogriff')
+create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__(41((431)(210)0))') to (select from Species where name = 'Hippogriff')
+create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__((431)(4(210)0)1)') to (select from Species where name = 'Hippogriff')
+create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__((4(210)0)(210)1)') to (select from Species where name = 'Hippogriff')
+create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__((431)(4(210)2)1)') to (select from Species where name = 'Hippogriff')
+create edge Animal_OfSpecies from (select from Animal where name = 'Hippogriff__((431)(4(210)0)(4(210)2))') to (select from Species where name = 'Hippogriff')
