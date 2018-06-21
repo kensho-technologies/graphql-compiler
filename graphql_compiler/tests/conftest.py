@@ -1,5 +1,3 @@
-from .test_data_tools.graph import get_test_graph
-
 import pytest
 
 from test_data_tools.graph import get_test_graph

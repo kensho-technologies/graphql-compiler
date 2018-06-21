@@ -2,8 +2,9 @@ from pyorient import OrientDB
 from pyorient.constants import DB_TYPE_GRAPH
 from pyorient.ogm import Config, Graph
 
-from .schema import load_schema
 from .animal_tool import generate_animals
+from .schema import load_schema
+
 
 ORIENTDB_SERVER = "localhost"
 ORIENTDB_PORT = 2424
