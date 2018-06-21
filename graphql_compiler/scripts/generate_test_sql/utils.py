@@ -13,7 +13,7 @@ SEPARATOR = '__'
 
 def get_uuid():
     """Return a pseudorandom uuid."""
-    return str(random.randint(0, 2**128 - 1))
+    return str(UUID(int=random.randint(0, 2**128 - 1)))
 
 
 def select_vertex_statement(vertex_type, name):
