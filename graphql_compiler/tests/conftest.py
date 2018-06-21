@@ -1,6 +1,6 @@
 import pytest
 
-from test_data_tools.graph import get_test_graph
+from .test_data_tools.graph import get_test_graph
 
 
 @pytest.fixture(scope='session')
