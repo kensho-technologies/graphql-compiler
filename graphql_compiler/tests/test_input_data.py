@@ -287,6 +287,8 @@ def filter_in_optional_block():
         }
     }'''
     expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
         'uuid': OutputMetadata(type=GraphQLID, optional=True),
     }
     expected_input_metadata = {
