@@ -64,7 +64,7 @@ CREATE INDEX Animal_BornAt ON Animal_BornAt (in, out) UNIQUE_HASH_INDEX
 ### Species ###
 CREATE CLASS Species EXTENDS Entity
 
-CREATE PROPERTY Species.limbs Date
+CREATE PROPERTY Species.limbs Integer
 CREATE INDEX Species.limbs NOTUNIQUE
 
 CREATE CLASS Species_Eats EXTENDS E

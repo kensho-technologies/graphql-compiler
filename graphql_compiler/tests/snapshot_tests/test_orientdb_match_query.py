@@ -9,7 +9,7 @@ from ..test_helpers import get_schema
 
 
 def execute_graphql(schema, test_data, client):
-    """Assert that the GraphQL input generates all expected MATCH and Gremlin data."""
+    """Compile the GraphQL query to MATCH, execute it agains the test_db, and return the results."""
     if test_data.type_equivalence_hints:
         # For test convenience, we accept the type equivalence hints in string form.
         # Here, we convert them to the required GraphQL types.

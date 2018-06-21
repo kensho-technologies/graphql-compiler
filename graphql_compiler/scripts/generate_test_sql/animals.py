@@ -1,3 +1,5 @@
+import collections
+
 import random
 
 from .species import SPECIES_LIST
@@ -12,8 +14,8 @@ NUM_PARENTS = 3
 
 def _create_animal_statement(animal_name):
     """Return a SQL statement to create an animal vertex."""
-    fields_dict = {'name': animal_name, 'uuid': get_uuid()}
-    return create_vertex_statement('Animal', fields_dict)
+    field_name_to_value = {'name': animal_name, 'uuid': get_uuid()}
+    return create_vertex_statement('Animal', field_name_to_value)
 
 
 def _create_animal_parent_of_statement(from_name, to_name):
@@ -62,18 +64,18 @@ def get_animal_generation_commands():
                 current_animal_names, previous_parent_sets, NUM_PARENTS)
             previous_parent_sets.add(new_parent_names)
 
-            parent_indices = [
+            parent_indices = sorted([
                 index
                 for _, index in [
                     strip_index_from_name(parent_name)
                     for parent_name in new_parent_names
                 ]
-            ]
+            ])
             new_label = '(' + ''.join(parent_indices) + ')'
             new_animal_name = create_name(species_name, new_label)
             current_animal_names.append(new_animal_name)
             command_list.append(_create_animal_statement(new_animal_name))
-            for parent_name in new_parent_names:
+            for parent_name in sorted(new_parent_names):
                 new_edge = _create_animal_parent_of_statement(new_animal_name, parent_name)
                 command_list.append(new_edge)
 

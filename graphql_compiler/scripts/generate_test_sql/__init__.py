@@ -9,6 +9,7 @@ from .species import get_species_generation_commands
 
 
 def main():
+    """Print a list of SQL commands to generate the testing database."""
     random.seed(0)
 
     module_path = os.path.relpath(__file__)
