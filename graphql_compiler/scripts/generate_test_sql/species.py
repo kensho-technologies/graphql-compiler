@@ -1,5 +1,3 @@
-import collections
-
 from .utils import create_vertex_statement, get_uuid
 
 

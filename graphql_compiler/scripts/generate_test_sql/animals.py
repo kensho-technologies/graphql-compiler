@@ -1,5 +1,3 @@
-import collections
-
 import random
 
 from .species import SPECIES_LIST
