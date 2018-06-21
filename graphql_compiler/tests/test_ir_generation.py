@@ -446,6 +446,15 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
             blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString
+                ),
+                'parent_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(animal_parent_location),
+                    expressions.OutputContextField(
+                        animal_parent_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
                 'uuid': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(animal_parent_location),
                     expressions.OutputContextField(
