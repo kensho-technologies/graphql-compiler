@@ -36,8 +36,10 @@ def set_statement(field_name, field_value):
 def create_vertex_statement(vertex_type, fields_dict):
     """Return a SQL statement to create a vertex."""
     statement = CREATE_VERTEX + vertex_type
-    set_field_clauses = [set_statement(field_name, field_value)
-                         for field_name, field_value in fields_dict.iteritems()]
+    set_field_clauses = [
+        set_statement(field_name, field_value)
+        for field_name, field_value in fields_dict.iteritems()
+    ]
     statement += ' set ' + ', '.join(set_field_clauses)
     return statement
 

@@ -1,18 +1,35 @@
-import itertools
+import datetime
+import git
+import os
 import random
+import sys
 
-from .animals import get_animal_generators
-from .species import get_species_generators
+from .animals import get_animal_generation_commands
+from .species import get_species_generation_commands
 
 
-random.seed(0)
+def main():
+    random.seed(0)
+
+    module_path = os.path.relpath(__file__)
+    current_datetime = datetime.datetime.now().isoformat()
+    repo = git.Repo(search_parent_directories=True)
+    git_sha = repo.head.object.hexsha
+
+    log_message = ('# Auto-generated output from `{path}`.\n'
+                   '# Do not edit directly!\n'
+                   '# Generated on {datetime} from git revision {sha}.\n\n')
+
+    sys.stdout.write(log_message.format(path=module_path, datetime=current_datetime, sha=git_sha))
+
+    sql_command_generators = [
+        get_species_generation_commands,
+        get_animal_generation_commands,
+    ]
+    for sql_command_generator in sql_command_generators:
+        sql_command_list = sql_command_generator()
+        sys.stdout.write('\n'.join(sql_command_list))
 
 
 if __name__ == '__main__':
-    sql_generators = [
-        get_species_generators,
-        get_animal_generators,
-    ]
-    sql_generator_strings = []
-    for generator in sql_generators:
-        print('\n'.join(generator()))
+    main()
