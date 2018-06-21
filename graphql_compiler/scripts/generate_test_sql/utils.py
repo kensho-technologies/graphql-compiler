@@ -38,7 +38,7 @@ def create_vertex_statement(vertex_type, fields_dict):
     statement = CREATE_VERTEX + vertex_type
     set_field_clauses = [
         set_statement(field_name, field_value)
-        for field_name, field_value in fields_dict.iteritems()
+        for field_name, field_value in six.iteritems(fields_dict)
     ]
     statement += ' set ' + ', '.join(set_field_clauses)
     return statement
