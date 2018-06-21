@@ -15,9 +15,6 @@ def load_schema(client):
         for line in update_file:
             sanitized = line.strip()
             if len(sanitized) == 0 or sanitized[0] == '#':
-                sanitized = None
-
-            if sanitized is None:
                 # comment or empty line, ignore
                 continue
 
