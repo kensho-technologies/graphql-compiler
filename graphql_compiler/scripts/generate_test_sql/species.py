@@ -5,12 +5,12 @@ from .utils import create_vertex_statement, get_uuid
 
 random.seed(0)
 
-SPECIES_LIST = [
+SPECIES_LIST = (
     'Nazgul',
     'Pteranodon',
     'Dragon',
     'Hippogriff',
-]
+)
 
 
 def _create_species_statement(species_name):
