@@ -9,4 +9,9 @@ def generate_animals(client):
     for filepath in sql_files:
         with open(filepath) as f:
             for command in f.readlines():
-                client.command(command)
+                sanitized_command = command.strip()
+                if len(sanitized_command) == 0 or sanitized_command[0] == '#':
+                    # comment or empty line, ignore
+                    continue
+
+                client.command(sanitized_command)

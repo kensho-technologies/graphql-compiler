@@ -29,6 +29,7 @@ def main():
     for sql_command_generator in sql_command_generators:
         sql_command_list = sql_command_generator()
         sys.stdout.write('\n'.join(sql_command_list))
+        sys.stdout.write('\n')
 
 
 if __name__ == '__main__':
