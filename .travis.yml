@@ -7,6 +7,9 @@ python:
 install:
   - pip install -r dev-requirements.txt
   - pip install -e .
+before_script:
+  - export ORIENTDB_ROOT_PASSSWORD="root"
+  - sh -c ./bin/initialize_orientdb.sh 2.2.20
 script:
   - ./scripts/copyright_line_check.sh
   - isort --check-only --verbose --recursive graphql_compiler/
