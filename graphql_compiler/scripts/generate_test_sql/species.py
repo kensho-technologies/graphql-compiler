@@ -1,3 +1,5 @@
+import collections
+
 from .utils import create_vertex_statement, get_uuid
 
 
@@ -11,8 +13,8 @@ SPECIES_LIST = (
 
 def _create_species_statement(species_name):
     """Return a SQL statement to create a species vertex."""
-    fields_dict = {'name': species_name, 'uuid': get_uuid()}
-    return create_vertex_statement('Species', fields_dict)
+    field_name_to_value = {'name': species_name, 'uuid': get_uuid()}
+    return create_vertex_statement('Species', field_name_to_value)
 
 
 def get_species_generation_commands():

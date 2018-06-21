@@ -18,6 +18,7 @@ def get_orientdb_url(database_name):
 
 
 def get_test_graph(graph_name):
+    """Generate the test database and return the pyorient client."""
     url = get_orientdb_url(graph_name)
     config = Config.from_url(url, ORIENTDB_USER, ORIENTDB_PASSWORD, initial_drop=True)
     Graph(config, strict=True)

@@ -13,7 +13,7 @@ SEPARATOR = '__'
 
 def get_uuid():
     """Return a pseudorandom uuid."""
-    return str(UUID(int=random.randint(0, 2**128 - 1)))
+    return str(random.randint(0, 2**128 - 1))
 
 
 def select_vertex_statement(vertex_type, name):
@@ -33,12 +33,12 @@ def set_statement(field_name, field_value):
     return template.format(field_name, field_value)
 
 
-def create_vertex_statement(vertex_type, fields_dict):
+def create_vertex_statement(vertex_type, field_name_to_value):
     """Return a SQL statement to create a vertex."""
     statement = CREATE_VERTEX + vertex_type
     set_field_clauses = [
-        set_statement(field_name, field_value)
-        for field_name, field_value in six.iteritems(fields_dict)
+        set_statement(field_name, field_name_to_value[field_name])
+        for field_name in sorted(six.iterkeys(field_name_to_value))
     ]
     statement += ' set ' + ', '.join(set_field_clauses)
     return statement
