@@ -15,4 +15,4 @@ if __name__ == '__main__':
     ]
     sql_generator_strings = []
     for generator in sql_generators:
-        print(generator())
+        print('\n'.join(generator()))

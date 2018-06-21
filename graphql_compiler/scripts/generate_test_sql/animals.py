@@ -36,10 +36,10 @@ def _get_initial_animal_generators(species_name, current_animal_names):
     return generator_list
 
 
-def _get_new_parents(current_animal_names, previous_parent_sets):
-    """Return a list of `NUM_PARENTS` parent names that is not present in `previous_parent_sets`."""
+def _get_new_parents(current_animal_names, previous_parent_sets, num_parents):
+    """Return a list of `num_parents` parent names that is not present in `previous_parent_sets`."""
     while True:
-        new_parent_names = frozenset(random.sample(current_animal_names, NUM_PARENTS))
+        new_parent_names = frozenset(random.sample(current_animal_names, num_parents))
         # Duplicating a set of parents could result in Animals with the same names.
         # This would invalidate unique selection of Animals by name.
         if new_parent_names not in previous_parent_sets:
@@ -58,11 +58,13 @@ def get_animal_generators():
         generator_list.extend(_get_initial_animal_generators(species_name, current_animal_names))
 
         for _ in range(NUM_GENERATIONS):
-            new_parent_names = _get_new_parents(current_animal_names, previous_parent_sets)
+            new_parent_names = _get_new_parents(
+                current_animal_names, previous_parent_sets, NUM_PARENTS)
             previous_parent_sets.add(new_parent_names)
 
             parent_indices = [
-                index for _, index in [
+                index
+                for _, index in [
                     strip_index_from_name(parent_name) for parent_name in new_parent_names
                 ]
             ]
