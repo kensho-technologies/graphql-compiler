@@ -28,16 +28,16 @@ def _create_animal_of_species_statement(from_name, to_name):
 
 def _get_initial_animal_generators(species_name, current_animal_names):
     """Return a list of SQL statements to create initial animals for a given species."""
-    generator_list = []
+    command_list = []
     for index in range(NUM_INITIAL_ANIMALS):
         animal_name = create_name(species_name, str(index))
         current_animal_names.append(animal_name)
-        generator_list.append(_create_animal_statement(animal_name))
-    return generator_list
+        command_list.append(_create_animal_statement(animal_name))
+    return command_list
 
 
 def _get_new_parents(current_animal_names, previous_parent_sets, num_parents):
-    """Return a list of `num_parents` parent names that is not present in `previous_parent_sets`."""
+    """Return a set of `num_parents` parent names that is not present in `previous_parent_sets`."""
     while True:
         new_parent_names = frozenset(random.sample(current_animal_names, num_parents))
         # Duplicating a set of parents could result in Animals with the same names.
@@ -46,16 +46,16 @@ def _get_new_parents(current_animal_names, previous_parent_sets, num_parents):
             return new_parent_names
 
 
-def get_animal_generators():
+def get_animal_generation_commands():
     """Return a list of SQL statements to create animal vertices and their corresponding edges."""
-    generator_list = []
+    command_list = []
     species_to_names = {}
     previous_parent_sets = set()
 
     for species_name in SPECIES_LIST:
         current_animal_names = []
         species_to_names[species_name] = current_animal_names
-        generator_list.extend(_get_initial_animal_generators(species_name, current_animal_names))
+        command_list.extend(_get_initial_animal_generators(species_name, current_animal_names))
 
         for _ in range(NUM_GENERATIONS):
             new_parent_names = _get_new_parents(
@@ -65,18 +65,19 @@ def get_animal_generators():
             parent_indices = [
                 index
                 for _, index in [
-                    strip_index_from_name(parent_name) for parent_name in new_parent_names
+                    strip_index_from_name(parent_name)
+                    for parent_name in new_parent_names
                 ]
             ]
             new_label = '(' + ''.join(parent_indices) + ')'
             new_animal_name = create_name(species_name, new_label)
             current_animal_names.append(new_animal_name)
-            generator_list.append(_create_animal_statement(new_animal_name))
+            command_list.append(_create_animal_statement(new_animal_name))
             for parent_name in new_parent_names:
                 new_edge = _create_animal_parent_of_statement(new_animal_name, parent_name)
-                generator_list.append(new_edge)
+                command_list.append(new_edge)
 
         for animal_name in current_animal_names:
-            generator_list.append(_create_animal_of_species_statement(animal_name, species_name))
+            command_list.append(_create_animal_of_species_statement(animal_name, species_name))
 
-    return generator_list
+    return command_list

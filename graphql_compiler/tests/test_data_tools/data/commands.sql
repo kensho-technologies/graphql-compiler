@@ -1,8 +1,11 @@
+# Auto-generated output from `graphql_compiler/scripts/generate_test_sql/__init__.py`.
+# Do not edit directly!
+# Generated on 2018-06-21T17:03:59.164223 from git revision 9b1f4eb3afc132535fbed9aa4d47c010bd397809.
+
 create vertex Species set name = 'Nazgul', uuid = 'e3e70682-c209-4cac-629f-6fbed82c07cd'
 create vertex Species set name = 'Pteranodon', uuid = '82e2e662-f728-b4fa-4248-5e3a0a5d2f34'
 create vertex Species set name = 'Dragon', uuid = 'd4713d60-c8a7-0639-eb11-67b367a9c378'
-create vertex Species set name = 'Hippogriff', uuid = '23a7711a-8133-2876-37eb-dcd9e87a1613'
-create vertex Animal set name = 'Nazgul__0', uuid = 'e6f4590b-9a16-4106-cf6a-659eb4862b21'
+create vertex Species set name = 'Hippogriff', uuid = '23a7711a-8133-2876-37eb-dcd9e87a1613'create vertex Animal set name = 'Nazgul__0', uuid = 'e6f4590b-9a16-4106-cf6a-659eb4862b21'
 create vertex Animal set name = 'Nazgul__1', uuid = '85776e9a-dd84-f39e-7154-5a137a1d5006'
 create vertex Animal set name = 'Nazgul__2', uuid = 'd71037d1-b83e-90ec-17e0-aa3c03983ca8'
 create vertex Animal set name = 'Nazgul__3', uuid = 'f7b0b7d2-cda8-056c-3d15-eef738c1962e'

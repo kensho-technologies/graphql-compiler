@@ -1,9 +1,5 @@
-import random
-
 from .utils import create_vertex_statement, get_uuid
 
-
-random.seed(0)
 
 SPECIES_LIST = (
     'Nazgul',
@@ -19,10 +15,10 @@ def _create_species_statement(species_name):
     return create_vertex_statement('Species', fields_dict)
 
 
-def get_species_generators():
+def get_species_generation_commands():
     """Return a list of SQL statements to create all species vertices."""
-    generator_list = []
+    command_list = []
     for species_name in SPECIES_LIST:
-        generator_list.append(_create_species_statement(species_name))
+        command_list.append(_create_species_statement(species_name))
 
-    return generator_list
+    return command_list
