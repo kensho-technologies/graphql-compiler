@@ -4,12 +4,13 @@ import unittest
 from graphql import GraphQLString
 
 from ..compiler import emit_gremlin, emit_match
-from ..compiler.blocks import Backtrack, ConstructResult, Filter, MarkLocation, QueryRoot, Traverse
+from ..compiler.blocks import (Backtrack, ConstructResult, Filter, GlobalOperationsStart,
+                               MarkLocation, QueryRoot, Traverse)
 from ..compiler.expressions import (BinaryComposition, ContextField, LocalField, NullLiteral,
                                     OutputContextField, TernaryConditional, Variable)
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
-from ..compiler.ir_lowering_match.utils import CompoundMatchQuery, SelectWhereFilter
+from ..compiler.ir_lowering_match.utils import CompoundMatchQuery, _construct_where_filter_predicate
 from ..compiler.match_query import convert_to_match_query
 from ..schema import GraphQLDateTime
 from .test_helpers import compare_gremlin, compare_match
@@ -30,7 +31,6 @@ class EmitMatchTests(unittest.TestCase):
             ConstructResult({
                 'foo_name': OutputContextField(base_name_location, GraphQLString),
             }),
-            SelectWhereFilter({}),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -68,7 +68,6 @@ class EmitMatchTests(unittest.TestCase):
             ConstructResult({
                 'foo_name': OutputContextField(base_name_location, GraphQLString),
             }),
-            SelectWhereFilter({}),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -112,6 +111,8 @@ class EmitMatchTests(unittest.TestCase):
 
             QueryRoot({'Foo'}),
             MarkLocation(base_location),
+            GlobalOperationsStart(),
+            Filter(_construct_where_filter_predicate(simple_optional_root_info)),
             ConstructResult({
                 'bar_name': TernaryConditional(
                     BinaryComposition(
@@ -122,7 +123,6 @@ class EmitMatchTests(unittest.TestCase):
                     OutputContextField(child_name_location, GraphQLString),
                     NullLiteral)
             }),
-            SelectWhereFilter(simple_optional_root_info),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -181,7 +181,6 @@ class EmitMatchTests(unittest.TestCase):
             ConstructResult({
                 'name': OutputContextField(base_name_location, GraphQLString)
             }),
-            SelectWhereFilter({}),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -213,7 +212,6 @@ class EmitMatchTests(unittest.TestCase):
             ConstructResult({
                 'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)
             }),
-            SelectWhereFilter({}),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])

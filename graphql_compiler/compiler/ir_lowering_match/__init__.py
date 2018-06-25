@@ -1,6 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import six
 
+from ..blocks import Filter, GlobalOperationsStart
 from ..ir_lowering_common import (extract_optional_location_root_info,
                                   extract_simple_optional_location_info,
                                   lower_context_field_existence, merge_consecutive_filter_clauses,
@@ -18,8 +19,7 @@ from .optional_traversal import (collect_filters_to_first_location_occurrence,
                                  lower_context_field_expressions, prune_non_existent_outputs)
 from ..match_query import convert_to_match_query
 from ..workarounds import orientdb_class_with_while, orientdb_eval_scheduling
-from .utils import SelectWhereFilter
-
+from .utils import _construct_where_filter_predicate
 
 ##############
 # Public API #
@@ -60,8 +60,12 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
         ir_blocks, complex_optional_roots, location_to_optional_root)
     ir_blocks = remove_end_optionals(ir_blocks)
 
-    # Append block for WHERE statement to filter out incorrect results from optional match traverses
-    ir_blocks.append(SelectWhereFilter(simple_optional_root_info))
+    # Append global operation block(s) for WHERE statement to filter out incorrect results
+    # from optional match traverses
+    if len(simple_optional_root_info) > 0:
+        where_filter_predicate = _construct_where_filter_predicate(simple_optional_root_info)
+        ir_blocks.insert(-1, GlobalOperationsStart())
+        ir_blocks.insert(-1, Filter(where_filter_predicate))
 
     ir_blocks = lower_context_field_existence(ir_blocks)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)

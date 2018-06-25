@@ -3,7 +3,6 @@ from collections import namedtuple
 
 import six
 
-from ..blocks import Filter
 from ..expressions import (BinaryComposition, Expression, LocalField, NullLiteral,
                            SelectEdgeContextField, TrueLiteral, UnaryTransformation, ZeroLiteral)
 from ..helpers import Location
@@ -108,7 +107,7 @@ def filter_edge_field_non_existence(edge_expression):
     return BinaryComposition(u'||', field_null_check, field_size_check)
 
 
-def _filter_orientdb_simple_optional_edge(root_location_path, inner_location_name, edge_field):
+def _filter_orientdb_simple_optional_edge(optional_edge_location, inner_location_name):
     """Return an Expression that is False for rows that don't follow the @optional specification.
 
     OrientDB does not filter correctly within optionals. Namely, a result where the optional edge
@@ -117,7 +116,7 @@ def _filter_orientdb_simple_optional_edge(root_location_path, inner_location_nam
     A valid result must satisfy either of the following:
     - The location within the optional exists (the filter will have been applied in this case)
     - The optional edge field does not exist at the root location of the optional traverse
-    So, if the inner location within the optional was never visited, it muct be the case that
+    So, if the inner location within the optional was never visited, it must be the case that
     the corresponding edge field does not exist at all.
 
     Example:
@@ -133,67 +132,63 @@ def _filter_orientdb_simple_optional_edge(root_location_path, inner_location_nam
             OR
             (Animal__out_Animal_ParentOf___1 IS NOT null)
         )
+        Here, the `optional_edge_location` is `Animal___1.out_Animal_ParentOf`.
 
     Args:
-        root_location_path: tuple of strings representing the path to the root (preceding location)
-                            of the optional traversal
+        optional_edge_location: Location object representing the optional edge field
         inner_location_name: string representing location within the corresponding optional traverse
-        edge_field: string representing optional traverse edge field
+
     Returns:
         Expression that evaluates to False for rows that do not follow the @optional specification
     """
     inner_local_field = LocalField(inner_location_name)
     inner_location_existence = BinaryComposition(u'!=', inner_local_field, NullLiteral)
 
-    edge_field_location = Location(root_location_path, field=edge_field)
-    select_edge_context_field = SelectEdgeContextField(edge_field_location)
+    select_edge_context_field = SelectEdgeContextField(optional_edge_location)
     edge_field_non_existence = filter_edge_field_non_existence(select_edge_context_field)
 
     return BinaryComposition(u'||', edge_field_non_existence, inner_location_existence)
 
 
-class SelectWhereFilter(Filter):
-    """A Filter object that is used for the WHERE clause in a SELECT statement."""
+def _construct_where_filter_predicate(simple_optional_root_info):
+    """Return an Expression that is True if and only if each simple optional filter is True.
 
-    def __init__(self, simple_optional_root_info):
-        """Construct a Filter block that is True if and only if each simple optional filter is True.
+    Construct filters for each simple optional, that are True if and only if `edge_field` does
+    not exist in the `simple_optional_root_location` OR the `inner_location` is not defined.
+    Return a predicate that evaluates to True if and only if *all* of the aforementioned filters
+    evaluate to True (conjunction).
 
-        Construct filters for each simple optional, that are True if and only if `edge_field` does
-        not exist in the `simple_optional_root_location` OR the `inner_location` is not defined.
-        Return a SelectWhereFilter that evaluates to True if and only if *all* of the
-        aforementioned filters evaluate to True (conjunction).
+    Args:
+        simple_optional_root_info: dict mapping from simple_optional_root_location -> dict
+                                   containing keys
+                                   - 'inner_location_name': Location object correspoding to the
+                                                            unique MarkLocation present within a
+                                                            simple @optional (one that does not
+                                                            expands vertex fields) scope
+                                   - 'edge_field': string representing the optional edge being
+                                                   traversed
+                                   where simple_optional_root_to_inner_location is the location
+                                   preceding the @optional scope
+    Returns:
+        a new Expression object
+    """
+    inner_location_name_to_where_filter = {}
+    for root_location, root_info_dict in six.iteritems(simple_optional_root_info):
+        inner_location_name = root_info_dict['inner_location_name']
+        edge_field = root_info_dict['edge_field']
 
-        Args:
-            simple_optional_root_info: dict mapping from simple_optional_root_location -> dict
-                                       containing keys
-                                       - 'inner_location_name': Location object correspoding to the
-                                                                unique MarkLocation present within a
-                                                                simple @optional (one that does not
-                                                                expands vertex fields) scope
-                                       - 'edge_field': string representing the optional edge being
-                                                       traversed
-                                       where simple_optional_root_to_inner_location is the location
-                                       preceding the @optional scope
-        Returns:
-            a new SelectWhereFilter object
-        """
-        inner_location_name_to_where_filter = {}
-        for root_location, root_info_dict in six.iteritems(simple_optional_root_info):
-            inner_location_name = root_info_dict['inner_location_name']
-            edge_field = root_info_dict['edge_field']
+        optional_edge_location = Location(root_location.query_path, field=edge_field)
+        optional_edge_where_filter = _filter_orientdb_simple_optional_edge(
+            optional_edge_location, inner_location_name)
+        inner_location_name_to_where_filter[inner_location_name] = optional_edge_where_filter
 
-            optional_edge_where_filter = _filter_orientdb_simple_optional_edge(
-                root_location.query_path, inner_location_name, edge_field)
-            inner_location_name_to_where_filter[inner_location_name] = optional_edge_where_filter
+    # Sort expressions by inner_location_name to obtain deterministic order
+    where_filter_expressions = [
+        inner_location_name_to_where_filter[key]
+        for key in sorted(inner_location_name_to_where_filter.keys())
+    ]
 
-        # Sort expressions by inner_location_name to obtain deterministic order
-        where_filter_expressions = [
-            inner_location_name_to_where_filter[key]
-            for key in sorted(inner_location_name_to_where_filter.keys())
-        ]
-
-        predicate = expression_list_to_conjunction(where_filter_expressions)
-        super(SelectWhereFilter, self).__init__(predicate)
+    return expression_list_to_conjunction(where_filter_expressions)
 
 
 ###

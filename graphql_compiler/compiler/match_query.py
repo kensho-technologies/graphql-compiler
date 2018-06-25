@@ -3,10 +3,9 @@
 
 from collections import namedtuple
 
-from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, OutputSource,
-                     QueryRoot, Recurse, Traverse)
+from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, GlobalOperationsStart,
+                     MarkLocation, OutputSource, QueryRoot, Recurse, Traverse)
 from .ir_lowering_common import extract_folds_from_ir_blocks
-from .ir_lowering_match.utils import SelectWhereFilter
 
 
 ###
@@ -17,7 +16,7 @@ from .ir_lowering_match.utils import SelectWhereFilter
 #   - folds: a dict of FoldScopeLocation -> list of IR blocks defining that @fold scope,
 #            not including the Fold and Unfold blocks that signal the start and end of the @fold.
 #   - output_block: a ConstructResult IR block, which defines how the query's results are returned.
-#   - where_block: a SelectWhereFilter block, which determines the WHERE statement for the query.
+#   - where_block: an optional Filter block, which determines the WHERE statement for the query.
 MatchQuery = namedtuple('MatchQuery', ('match_traversals', 'folds', 'output_block', 'where_block'))
 
 
@@ -97,6 +96,9 @@ def _split_ir_into_match_steps(ir_blocks):
     output = []
     current_tuple = None
     for block in ir_blocks:
+        if isinstance(block, (GlobalOperationsStart, ConstructResult)):
+            # End of MATCH traversal blocks
+            break
         if isinstance(block, OutputSource):
             # OutputSource blocks do not require any MATCH code, and only serve to help
             # optimizations and debugging. Simply omit them at this stage.
@@ -137,25 +139,60 @@ def _split_match_steps_into_match_traversals(match_steps):
     return output
 
 
+def _extract_global_operations(ir_blocks):
+    """Extract all global operation blocks (all blocks following GlobalOperationsStart).
+
+    Args:
+        ir_blocks: list of IR blocks to extract global operations from
+
+    Returns:
+        tuple (global_operation_blocks, remaining_ir_blocks):
+        - global_operation_blocks: list of IR blocks following a GlobalOperationsStart block if it
+                                   exists, and an empty list otherwise
+        - remaining_ir_blocks: list of IR blocks excluding GlobalOperationsStart and all global
+                               operation blocks
+    """
+    global_operation_blocks = []
+    remaining_ir_blocks = []
+    in_global_operations_scope = False
+
+    for block in ir_blocks:
+        if isinstance(block, GlobalOperationsStart):
+            in_global_operations_scope = True
+        elif in_global_operations_scope:
+            global_operation_blocks.append(block)
+        else:
+            remaining_ir_blocks.append(block)
+
+    return global_operation_blocks, remaining_ir_blocks
+
+
 ##############
 # Public API #
 ##############
 
 def convert_to_match_query(ir_blocks):
     """Convert the list of IR blocks into a MatchQuery object, for easier manipulation."""
-    where_block = ir_blocks[-1]
-    if not isinstance(where_block, SelectWhereFilter):
-        raise AssertionError(u'Expected last IR block to be SelectWhereFilter, found: '
-                             u'{} {}'.format(where_block, ir_blocks))
-    ir_except_where = ir_blocks[:-1]
-
-    output_block = ir_except_where[-1]
+    output_block = ir_blocks[-1]
     if not isinstance(output_block, ConstructResult):
         raise AssertionError(u'Expected last IR block to be ConstructResult, found: '
                              u'{} {}'.format(output_block, ir_blocks))
-    ir_except_where_and_output = ir_except_where[:-1]
+    ir_except_output = ir_blocks[:-1]
 
-    folds, pruned_ir_blocks = extract_folds_from_ir_blocks(ir_except_where_and_output)
+    folds, pruned_ir_blocks = extract_folds_from_ir_blocks(ir_except_output)
+
+    # Extract WHERE Filter
+    global_operation_blocks, pruned_ir_blocks = _extract_global_operations(pruned_ir_blocks)
+    if len(global_operation_blocks) > 1:
+        raise AssertionError(u'Received IR blocks with multiple global operation blocks. Only one '
+                             u'is allowed: {} {}'.format(global_operation_blocks, ir_blocks))
+    if len(global_operation_blocks) == 1:
+        if not isinstance(global_operation_blocks[0], Filter):
+            raise AssertionError(u'Received non-Filter global operation block. {}'
+                                 .format(global_operation_blocks[0]))
+        where_block = global_operation_blocks[0]
+    else:
+        where_block = None
 
     match_steps = _split_ir_into_match_steps(pruned_ir_blocks)
 

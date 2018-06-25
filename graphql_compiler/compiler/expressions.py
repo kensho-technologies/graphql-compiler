@@ -267,7 +267,7 @@ class SelectEdgeContextField(Expression):
                                  .format(self.location))
 
     def to_match(self):
-        """Return a unicode object with the MATCH representation of this ContextField."""
+        """Return a unicode object with the MATCH representation of this SelectEdgeContextField."""
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()

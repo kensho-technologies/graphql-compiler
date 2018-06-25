@@ -444,3 +444,11 @@ class EndOptional(MarkerBlock):
     def validate(self):
         """In isolation, EndOptional blocks are always valid."""
         pass
+
+
+class GlobalOperationsStart(MarkerBlock):
+    """Marker for the end of MATCH traversals, and the beginning of global operations."""
+
+    def validate(self):
+        """In isolation, GlobalOperationsStart blocks are always valid."""
+        pass

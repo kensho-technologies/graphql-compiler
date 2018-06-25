@@ -207,7 +207,8 @@ def emit_code_from_single_match_query(match_query):
     query_data.appendleft(_construct_output_to_match(match_query.output_block))
 
     # Represent and add the WHERE clause with the proper filters.
-    query_data.append(_construct_where_to_match(match_query.where_block))
+    if match_query.where_block is not None:
+        query_data.append(_construct_where_to_match(match_query.where_block))
 
     return u' '.join(query_data)
 

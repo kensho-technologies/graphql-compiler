@@ -275,15 +275,15 @@ def extract_simple_optional_location_info(
         ir_blocks: list of IR blocks to extract optional data from
         complex_optional_roots: list of @optional locations (location immmediately preceding
                                 an @optional traverse) that expand vertex fields
-        location_to_optional_root: dict mapping from location -> optional_location
-                                   where location is within @optional (not necessarily one that
-                                   expands vertex fields) and optional_location is the location
-                                   preceding the corresponding @optional scope
+        location_to_optional_root: dict mapping from location -> optional_root where location is
+                                   within @optional (not necessarily one that expands vertex fields)
+                                   and optional_root is the location preceding the corresponding
+                                   @optional scope
 
     Returns:
         dict mapping from simple_optional_root_location -> dict containing keys
          - 'inner_location_name': Location object correspoding to the unique MarkLocation present
-                                  within a simple optional (one that does not expands vertex fields)
+                                  within a simple optional (one that does not expand vertex fields)
                                   scope
          - 'edge_field': string representing the optional edge being traversed
         where simple_optional_root_to_inner_location is the location preceding the @optional scope
