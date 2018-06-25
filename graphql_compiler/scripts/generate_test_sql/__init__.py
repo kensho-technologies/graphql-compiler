@@ -1,9 +1,9 @@
 import datetime
-import git
 import os
 import random
 import sys
 
+from ... import __version__
 from .animals import get_animal_generation_commands
 from .species import get_species_generation_commands
 
@@ -14,14 +14,13 @@ def main():
 
     module_path = os.path.relpath(__file__)
     current_datetime = datetime.datetime.now().isoformat()
-    repo = git.Repo(search_parent_directories=True)
-    git_sha = repo.head.object.hexsha
 
     log_message = ('# Auto-generated output from `{path}`.\n'
                    '# Do not edit directly!\n'
-                   '# Generated on {datetime} from git revision {sha}.\n\n')
+                   '# Generated on {datetime} from compiler version {version}.\n\n')
 
-    sys.stdout.write(log_message.format(path=module_path, datetime=current_datetime, sha=git_sha))
+    sys.stdout.write(
+        log_message.format(path=module_path, datetime=current_datetime, version=__version__))
 
     sql_command_generators = [
         get_species_generation_commands,
