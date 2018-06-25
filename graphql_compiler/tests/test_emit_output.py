@@ -145,16 +145,15 @@ class EmitMatchTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-            WHERE
+            WHERE (
                 (
-                    (
-                        (Foo___1.out_Foo_Bar IS null)
-                        OR
-                        (Foo___1.out_Foo_Bar.size() = 0)
-                    )
+                    (Foo___1.out_Foo_Bar IS null)
                     OR
-                    (Foo__out_Foo_Bar___1 IS NOT null)
+                    (Foo___1.out_Foo_Bar.size() = 0)
                 )
+                OR
+                (Foo__out_Foo_Bar___1 IS NOT null)
+            )
         '''
 
         received_match = emit_match.emit_code_from_ir(compound_match_query)
