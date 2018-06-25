@@ -5,7 +5,7 @@ import six
 
 from ..expressions import (BinaryComposition, Expression, LocalField, NullLiteral,
                            SelectEdgeContextField, TrueLiteral, UnaryTransformation, ZeroLiteral)
-from ..helpers import is_vertex_field_name, Location
+from ..helpers import Location, is_vertex_field_name
 
 
 def expression_list_to_conjunction(expression_list):
