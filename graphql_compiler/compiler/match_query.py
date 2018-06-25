@@ -83,11 +83,11 @@ def _per_location_tuple_to_step(ir_tuple):
     return step
 
 
-def _split_ir_into_match_steps(ir_blocks):
+def _split_ir_into_match_steps(pruned_ir_blocks):
     """Split a list of IR blocks into per-location MATCH steps.
 
     Args:
-        ir_blocks: list of IR basic block objects that have gone through a lowering step.
+        pruned_ir_blocks: list of IR basic block objects that have gone through a lowering step.
 
     Returns:
         list of MatchStep namedtuples, each of which contains all basic blocks that correspond
@@ -95,10 +95,7 @@ def _split_ir_into_match_steps(ir_blocks):
     """
     output = []
     current_tuple = None
-    for block in ir_blocks:
-        if isinstance(block, (GlobalOperationsStart, ConstructResult)):
-            # End of MATCH traversal blocks
-            break
+    for block in pruned_ir_blocks:
         if isinstance(block, OutputSource):
             # OutputSource blocks do not require any MATCH code, and only serve to help
             # optimizations and debugging. Simply omit them at this stage.
@@ -111,10 +108,10 @@ def _split_ir_into_match_steps(ir_blocks):
             current_tuple += (block,)
         else:
             raise AssertionError(u'Unexpected block type when converting to MATCH query: '
-                                 u'{} {}'.format(block, ir_blocks))
+                                 u'{} {}'.format(block, pruned_ir_blocks))
 
     if current_tuple is None:
-        raise AssertionError(u'current_tuple was unexpectedly None: {}'.format(ir_blocks))
+        raise AssertionError(u'current_tuple was unexpectedly None: {}'.format(pruned_ir_blocks))
     output.append(current_tuple)
 
     return [_per_location_tuple_to_step(x) for x in output]
@@ -179,10 +176,11 @@ def convert_to_match_query(ir_blocks):
                              u'{} {}'.format(output_block, ir_blocks))
     ir_except_output = ir_blocks[:-1]
 
-    folds, pruned_ir_blocks = extract_folds_from_ir_blocks(ir_except_output)
+    folds, ir_except_output_and_folds = extract_folds_from_ir_blocks(ir_except_output)
 
     # Extract WHERE Filter
-    global_operation_blocks, pruned_ir_blocks = _extract_global_operations(pruned_ir_blocks)
+    global_operation_ir_blocks_tuple = _extract_global_operations(ir_except_output_and_folds)
+    global_operation_blocks, pruned_ir_blocks = global_operation_ir_blocks_tuple
     if len(global_operation_blocks) > 1:
         raise AssertionError(u'Received IR blocks with multiple global operation blocks. Only one '
                              u'is allowed: {} {}'.format(global_operation_blocks, ir_blocks))
