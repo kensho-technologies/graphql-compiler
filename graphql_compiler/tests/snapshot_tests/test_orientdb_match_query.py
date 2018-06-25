@@ -1,4 +1,5 @@
 # Copyright 2017 Kensho Technologies, LLC.
+from collections import Counter
 import pytest
 import six
 from snapshottest import TestCase
@@ -23,8 +24,12 @@ def execute_graphql(schema, test_data, client):
     result = graphql_to_match(schema, test_data.graphql_input, test_data.sample_parameters,
                               type_equivalence_hints=schema_based_type_equivalence_hints)
 
-    rows = [frozenset(row.oRecordData.items()) for row in client.command(result.query)]
-    return set(rows)
+    row_dicts = [row.oRecordData for row in client.command(result.query)]
+    row_frozensets = [frozenset(row_dict.items()) for row_dict in row_dicts]
+    rows_multiset = Counter(row_frozensets)
+    row_counters_frozenset = frozenset(rows_multiset.items())
+
+    return row_counters_frozenset
 
 
 class OrientdbMatchQueryTests(TestCase):
