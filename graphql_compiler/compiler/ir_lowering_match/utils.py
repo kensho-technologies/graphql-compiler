@@ -5,7 +5,7 @@ import six
 
 from ..expressions import (BinaryComposition, Expression, LocalField, NullLiteral,
                            SelectEdgeContextField, TrueLiteral, UnaryTransformation, ZeroLiteral)
-from ..helpers import Location
+from ..helpers import is_vertex_field_name, Location
 
 
 def expression_list_to_conjunction(expression_list):
@@ -95,7 +95,7 @@ def filter_edge_field_non_existence(edge_expression):
                              u'Expected LocalField or SelectEdgeContextField.'
                              .format(edge_expression, type(edge_expression).__name__))
     if isinstance(edge_expression, LocalField):
-        if edge_expression.field_name[:3] != u'in_' and edge_expression.field_name[:4] != u'out_':
+        if not is_vertex_field_name(edge_expression.field_name):
             raise AssertionError(u'Received LocalField edge_expression {} with non-edge field_name '
                                  u'{}.'.format(edge_expression, edge_expression.field_name))
 
@@ -155,7 +155,7 @@ def _construct_where_filter_predicate(simple_optional_root_info):
 
     Construct filters for each simple optional, that are True if and only if `edge_field` does
     not exist in the `simple_optional_root_location` OR the `inner_location` is not defined.
-    Return a predicate that evaluates to True if and only if *all* of the aforementioned filters
+    Return an Expression that evaluates to True if and only if *all* of the aforementioned filters
     evaluate to True (conjunction).
 
     Args:

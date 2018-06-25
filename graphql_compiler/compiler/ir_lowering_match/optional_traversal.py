@@ -281,6 +281,11 @@ def _construct_location_to_filter_list(match_query):
 
 def _filter_list_to_conjunction_expression(filter_list):
     """Convert a list of filters to an Expression that is the conjunction of all of them."""
+    if not isinstance(filter_list, list):
+        raise AssertionError(u'Expected `list`, Received: {}.'.format(filter_list))
+    if any((not isinstance(filter_block, Filter) for filter_block in filter_list)):
+        raise AssertionError(u'Expected list of Filter objects. Received: {}'.format(filter_list))
+
     expression_list = [filter_block.predicate for filter_block in filter_list]
     return expression_list_to_conjunction(expression_list)
 

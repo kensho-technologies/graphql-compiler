@@ -53,20 +53,21 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     """
     sanity_check_ir_blocks_from_frontend(ir_blocks)
 
-    # These lowering / optimization passes work on IR blocks.
+    # Extract information for both simple and complex @optional traverses
     location_to_optional_results = extract_optional_location_root_info(ir_blocks)
     complex_optional_roots, location_to_optional_root = location_to_optional_results
     simple_optional_root_info = extract_simple_optional_location_info(
         ir_blocks, complex_optional_roots, location_to_optional_root)
     ir_blocks = remove_end_optionals(ir_blocks)
 
-    # Append global operation block(s) for WHERE statement to filter out incorrect results
-    # from optional match traverses
+    # Append global operation block(s) to filter out incorrect results
+    # from simple optional match traverses (using a WHERE statement)
     if len(simple_optional_root_info) > 0:
         where_filter_predicate = _construct_where_filter_predicate(simple_optional_root_info)
         ir_blocks.insert(-1, GlobalOperationsStart())
         ir_blocks.insert(-1, Filter(where_filter_predicate))
 
+    # These lowering / optimization passes work on IR blocks.
     ir_blocks = lower_context_field_existence(ir_blocks)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
     ir_blocks = rewrite_binary_composition_inside_ternary_conditional(ir_blocks)

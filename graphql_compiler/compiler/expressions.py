@@ -6,8 +6,8 @@ from ..exceptions import GraphQLCompilationError
 from ..schema import GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression
 from .helpers import (STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
-                      ensure_unicode_string, is_graphql_type, safe_quoted_string,
-                      strip_non_null_from_type, validate_safe_string)
+                      ensure_unicode_string, is_graphql_type, is_vertex_field_name,
+                      safe_quoted_string, strip_non_null_from_type, validate_safe_string)
 
 
 # Since MATCH uses $-prefixed keywords to indicate special values,
@@ -262,7 +262,7 @@ class SelectEdgeContextField(Expression):
             raise AssertionError(u'Received Location without a field: {}'
                                  .format(self.location))
 
-        if self.location.field[:3] != u'in_' and self.location.field[:4] != u'out_':
+        if not is_vertex_field_name(self.location.field):
             raise AssertionError(u'Received Location with a non-edge field: {}'
                                  .format(self.location))
 
