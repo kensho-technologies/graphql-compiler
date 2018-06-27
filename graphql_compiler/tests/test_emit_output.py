@@ -112,7 +112,7 @@ class EmitMatchTests(unittest.TestCase):
             QueryRoot({'Foo'}),
             MarkLocation(base_location),
             GlobalOperationsStart(),
-            Filter(_construct_where_filter_predicate(simple_optional_root_info)),
+            Filter(construct_where_filter_predicate(simple_optional_root_info)),
             ConstructResult({
                 'bar_name': TernaryConditional(
                     BinaryComposition(
