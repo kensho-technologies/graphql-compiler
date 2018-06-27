@@ -278,7 +278,7 @@ class SelectEdgeContextField(Expression):
 
     def to_gremlin(self):
         """Not implemented, should not be used."""
-        raise AssertionError(u'SelectEdgeContextField is only used for the WHERE statement in MATCH'
+        raise AssertionError(u'SelectEdgeContextField is only used for the WHERE statement in MATCH. '
                              u'This function should not be called.')
 
 

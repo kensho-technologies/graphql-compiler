@@ -150,7 +150,7 @@ def _filter_orientdb_simple_optional_edge(optional_edge_location, inner_location
     return BinaryComposition(u'||', edge_field_non_existence, inner_location_existence)
 
 
-def _construct_where_filter_predicate(simple_optional_root_info):
+def construct_where_filter_predicate(simple_optional_root_info):
     """Return an Expression that is True if and only if each simple optional filter is True.
 
     Construct filters for each simple optional, that are True if and only if `edge_field` does

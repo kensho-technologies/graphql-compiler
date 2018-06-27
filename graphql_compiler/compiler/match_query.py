@@ -3,8 +3,8 @@
 
 from collections import namedtuple
 
-from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, GlobalOperationsStart,
-                     MarkLocation, OutputSource, QueryRoot, Recurse, Traverse)
+from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, Fold, GlobalOperationsStart,
+                     MarkLocation, OutputSource, QueryRoot, Recurse, Traverse, Unfold)
 from .ir_lowering_common import extract_folds_from_ir_blocks
 
 
@@ -136,11 +136,12 @@ def _split_match_steps_into_match_traversals(match_steps):
     return output
 
 
-def _extract_global_operations(ir_blocks):
+def _extract_global_operations(ir_blocks_except_output_and_folds):
     """Extract all global operation blocks (all blocks following GlobalOperationsStart).
 
     Args:
-        ir_blocks: list of IR blocks to extract global operations from
+        ir_blocks_except_output_and_folds: list of IR blocks (excluding ConstructResult and all
+                                           fold blocks), to extract global operations from
 
     Returns:
         tuple (global_operation_blocks, remaining_ir_blocks):
@@ -153,8 +154,12 @@ def _extract_global_operations(ir_blocks):
     remaining_ir_blocks = []
     in_global_operations_scope = False
 
-    for block in ir_blocks:
-        if isinstance(block, GlobalOperationsStart):
+    for block in ir_blocks_except_output_and_folds:
+        if isinstance(block, (ConstructResult, Fold, Unfold)):
+            raise AssertionError(u'Received unexpected block of type {}. No ConstructResult or '
+                                 u'Fold/Unfold blocks should be present: {}'
+                                 .format(type(block).__name__, ir_blocks_except_output_and_folds))
+        elif isinstance(block, GlobalOperationsStart):
             in_global_operations_scope = True
         elif in_global_operations_scope:
             global_operation_blocks.append(block)

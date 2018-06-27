@@ -19,7 +19,7 @@ from .optional_traversal import (collect_filters_to_first_location_occurrence,
                                  lower_context_field_expressions, prune_non_existent_outputs)
 from ..match_query import convert_to_match_query
 from ..workarounds import orientdb_class_with_while, orientdb_eval_scheduling
-from .utils import _construct_where_filter_predicate
+from .utils import construct_where_filter_predicate
 
 ##############
 # Public API #
@@ -63,7 +63,7 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     # Append global operation block(s) to filter out incorrect results
     # from simple optional match traverses (using a WHERE statement)
     if len(simple_optional_root_info) > 0:
-        where_filter_predicate = _construct_where_filter_predicate(simple_optional_root_info)
+        where_filter_predicate = construct_where_filter_predicate(simple_optional_root_info)
         ir_blocks.insert(-1, GlobalOperationsStart())
         ir_blocks.insert(-1, Filter(where_filter_predicate))
 

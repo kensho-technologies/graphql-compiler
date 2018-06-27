@@ -10,7 +10,7 @@ from ..compiler.expressions import (BinaryComposition, ContextField, LocalField,
                                     OutputContextField, TernaryConditional, Variable)
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
-from ..compiler.ir_lowering_match.utils import CompoundMatchQuery, _construct_where_filter_predicate
+from ..compiler.ir_lowering_match.utils import CompoundMatchQuery, construct_where_filter_predicate
 from ..compiler.match_query import convert_to_match_query
 from ..schema import GraphQLDateTime
 from .test_helpers import compare_gremlin, compare_match
