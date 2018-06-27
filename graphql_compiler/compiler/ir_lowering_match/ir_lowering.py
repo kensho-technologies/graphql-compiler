@@ -23,6 +23,7 @@ from ..match_query import MatchStep
 # Optimization / lowering passes #
 ##################################
 
+
 def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
     """Rewrite BinaryConditional expressions in the true/false values of TernaryConditionals."""
     def visitor_fn(expression):

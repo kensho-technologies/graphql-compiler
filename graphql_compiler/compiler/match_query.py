@@ -3,8 +3,8 @@
 
 from collections import namedtuple
 
-from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, OutputSource,
-                     QueryRoot, Recurse, Traverse)
+from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, Fold, GlobalOperationsStart,
+                     MarkLocation, OutputSource, QueryRoot, Recurse, Traverse, Unfold)
 from .ir_lowering_common import extract_folds_from_ir_blocks
 
 
@@ -16,7 +16,8 @@ from .ir_lowering_common import extract_folds_from_ir_blocks
 #   - folds: a dict of FoldScopeLocation -> list of IR blocks defining that @fold scope,
 #            not including the Fold and Unfold blocks that signal the start and end of the @fold.
 #   - output_block: a ConstructResult IR block, which defines how the query's results are returned.
-MatchQuery = namedtuple('MatchQuery', ('match_traversals', 'folds', 'output_block'))
+#   - where_block: an optional Filter block, which determines the WHERE statement for the query.
+MatchQuery = namedtuple('MatchQuery', ('match_traversals', 'folds', 'output_block', 'where_block'))
 
 
 ###
@@ -82,11 +83,11 @@ def _per_location_tuple_to_step(ir_tuple):
     return step
 
 
-def _split_ir_into_match_steps(ir_blocks):
+def _split_ir_into_match_steps(pruned_ir_blocks):
     """Split a list of IR blocks into per-location MATCH steps.
 
     Args:
-        ir_blocks: list of IR basic block objects that have gone through a lowering step.
+        pruned_ir_blocks: list of IR basic block objects that have gone through a lowering step.
 
     Returns:
         list of MatchStep namedtuples, each of which contains all basic blocks that correspond
@@ -94,7 +95,7 @@ def _split_ir_into_match_steps(ir_blocks):
     """
     output = []
     current_tuple = None
-    for block in ir_blocks:
+    for block in pruned_ir_blocks:
         if isinstance(block, OutputSource):
             # OutputSource blocks do not require any MATCH code, and only serve to help
             # optimizations and debugging. Simply omit them at this stage.
@@ -107,10 +108,10 @@ def _split_ir_into_match_steps(ir_blocks):
             current_tuple += (block,)
         else:
             raise AssertionError(u'Unexpected block type when converting to MATCH query: '
-                                 u'{} {}'.format(block, ir_blocks))
+                                 u'{} {}'.format(block, pruned_ir_blocks))
 
     if current_tuple is None:
-        raise AssertionError(u'current_tuple was unexpectedly None: {}'.format(ir_blocks))
+        raise AssertionError(u'current_tuple was unexpectedly None: {}'.format(pruned_ir_blocks))
     output.append(current_tuple)
 
     return [_per_location_tuple_to_step(x) for x in output]
@@ -135,6 +136,39 @@ def _split_match_steps_into_match_traversals(match_steps):
     return output
 
 
+def _extract_global_operations(ir_blocks_except_output_and_folds):
+    """Extract all global operation blocks (all blocks following GlobalOperationsStart).
+
+    Args:
+        ir_blocks_except_output_and_folds: list of IR blocks (excluding ConstructResult and all
+                                           fold blocks), to extract global operations from
+
+    Returns:
+        tuple (global_operation_blocks, remaining_ir_blocks):
+        - global_operation_blocks: list of IR blocks following a GlobalOperationsStart block if it
+                                   exists, and an empty list otherwise
+        - remaining_ir_blocks: list of IR blocks excluding GlobalOperationsStart and all global
+                               operation blocks
+    """
+    global_operation_blocks = []
+    remaining_ir_blocks = []
+    in_global_operations_scope = False
+
+    for block in ir_blocks_except_output_and_folds:
+        if isinstance(block, (ConstructResult, Fold, Unfold)):
+            raise AssertionError(u'Received unexpected block of type {}. No ConstructResult or '
+                                 u'Fold/Unfold blocks should be present: {}'
+                                 .format(type(block).__name__, ir_blocks_except_output_and_folds))
+        elif isinstance(block, GlobalOperationsStart):
+            in_global_operations_scope = True
+        elif in_global_operations_scope:
+            global_operation_blocks.append(block)
+        else:
+            remaining_ir_blocks.append(block)
+
+    return global_operation_blocks, remaining_ir_blocks
+
+
 ##############
 # Public API #
 ##############
@@ -145,12 +179,31 @@ def convert_to_match_query(ir_blocks):
     if not isinstance(output_block, ConstructResult):
         raise AssertionError(u'Expected last IR block to be ConstructResult, found: '
                              u'{} {}'.format(output_block, ir_blocks))
-
     ir_except_output = ir_blocks[:-1]
+
     folds, ir_except_output_and_folds = extract_folds_from_ir_blocks(ir_except_output)
 
-    match_steps = _split_ir_into_match_steps(ir_except_output_and_folds)
+    # Extract WHERE Filter
+    global_operation_ir_blocks_tuple = _extract_global_operations(ir_except_output_and_folds)
+    global_operation_blocks, pruned_ir_blocks = global_operation_ir_blocks_tuple
+    if len(global_operation_blocks) > 1:
+        raise AssertionError(u'Received IR blocks with multiple global operation blocks. Only one '
+                             u'is allowed: {} {}'.format(global_operation_blocks, ir_blocks))
+    if len(global_operation_blocks) == 1:
+        if not isinstance(global_operation_blocks[0], Filter):
+            raise AssertionError(u'Received non-Filter global operation block. {}'
+                                 .format(global_operation_blocks[0]))
+        where_block = global_operation_blocks[0]
+    else:
+        where_block = None
+
+    match_steps = _split_ir_into_match_steps(pruned_ir_blocks)
 
     match_traversals = _split_match_steps_into_match_traversals(match_steps)
 
-    return MatchQuery(match_traversals=match_traversals, folds=folds, output_block=output_block)
+    return MatchQuery(
+        match_traversals=match_traversals,
+        folds=folds,
+        output_block=output_block,
+        where_block=where_block,
+    )

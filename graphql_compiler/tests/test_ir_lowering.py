@@ -100,23 +100,21 @@ class MatchIrLoweringTests(unittest.TestCase):
                     OutputContextField(child_name_location, GraphQLString),
                     NullLiteral
                 )
-            })
+            }),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
         # The expected final blocks just have a rewritten ConstructResult block,
         # where the ContextFieldExistence expression is replaced with a null check.
-        expected_final_blocks = ir_blocks[:-1]
-        expected_final_blocks.append(
-            ConstructResult({
-                'child_name': TernaryConditional(
-                    BinaryComposition(u'!=',
-                                      OutputContextVertex(child_location),
-                                      NullLiteral),
-                    OutputContextField(child_name_location, GraphQLString),
-                    NullLiteral)
-            })
-        )
+        expected_final_blocks = ir_blocks[:]
+        expected_final_blocks[-1] = ConstructResult({
+            'child_name': TernaryConditional(
+                BinaryComposition(u'!=',
+                                  OutputContextVertex(child_location),
+                                  NullLiteral),
+                OutputContextField(child_name_location, GraphQLString),
+                NullLiteral)
+        })
 
         final_blocks = ir_lowering_match.lower_context_field_existence(ir_blocks)
         check_test_data(self, expected_final_blocks, final_blocks)
@@ -202,7 +200,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             Backtrack(base_location),
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
-            })
+            }),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
@@ -225,7 +223,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             MarkLocation(base_location),
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
-            })
+            }),
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
@@ -249,7 +247,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             Backtrack(base_location),
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
-            })
+            }),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
@@ -278,7 +276,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             MarkLocation(base_location),
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
-            })
+            }),
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
@@ -300,7 +298,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             MarkLocation(base_location_revisited),
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
-            })
+            }),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
@@ -325,7 +323,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             MarkLocation(base_location),
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
-            })
+            }),
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 

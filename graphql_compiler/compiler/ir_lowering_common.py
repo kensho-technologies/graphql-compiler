@@ -1,5 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
+import six
+
 from .blocks import (ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse,
                      Unfold)
 from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
@@ -263,6 +265,56 @@ def extract_optional_location_root_info(ir_blocks):
             pass
 
     return complex_optional_roots, location_to_optional_root
+
+
+def extract_simple_optional_location_info(
+        ir_blocks, complex_optional_roots, location_to_optional_root):
+    """Construct a map from simple optional locations to their inner location and traversed edge.
+
+    Args:
+        ir_blocks: list of IR blocks to extract optional data from
+        complex_optional_roots: list of @optional locations (location immmediately preceding
+                                an @optional traverse) that expand vertex fields
+        location_to_optional_root: dict mapping from location -> optional_root where location is
+                                   within @optional (not necessarily one that expands vertex fields)
+                                   and optional_root is the location preceding the corresponding
+                                   @optional scope
+
+    Returns:
+        dict mapping from simple_optional_root_location -> dict containing keys
+         - 'inner_location_name': Location object correspoding to the unique MarkLocation present
+                                  within a simple optional (one that does not expand vertex fields)
+                                  scope
+         - 'edge_field': string representing the optional edge being traversed
+        where simple_optional_root_to_inner_location is the location preceding the @optional scope
+    """
+    # Simple optional roots are a subset of location_to_optional_root.values() (all optional roots).
+    # We filter out the ones that are also present in complex_optional_roots.
+    simple_optional_root_to_inner_location = {
+        optional_root_location: inner_location
+        for inner_location, optional_root_location in six.iteritems(location_to_optional_root)
+        if optional_root_location not in complex_optional_roots
+    }
+    simple_optional_root_locations = set(simple_optional_root_to_inner_location.keys())
+
+    simple_optional_root_info = {}
+    preceding_location = None
+    for current_block in ir_blocks:
+        if isinstance(current_block, MarkLocation):
+            preceding_location = current_block.location
+        elif isinstance(current_block, Traverse) and current_block.optional:
+            if preceding_location in simple_optional_root_locations:
+                # The current optional Traverse is "simple"
+                # i.e. it does not contain any Traverses within.
+                inner_location = simple_optional_root_to_inner_location[preceding_location]
+                inner_location_name, _ = inner_location.get_location_name()
+                simple_optional_info_dict = {
+                    'inner_location_name': inner_location_name,
+                    'edge_field': current_block.get_field_name(),
+                }
+                simple_optional_root_info[preceding_location] = simple_optional_info_dict
+
+    return simple_optional_root_info
 
 
 def remove_end_optionals(ir_blocks):

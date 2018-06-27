@@ -5,6 +5,7 @@ from collections import deque
 import six
 
 from .blocks import Filter, QueryRoot, Recurse, Traverse
+from .expressions import TrueLiteral
 from .helpers import validate_safe_string
 
 
@@ -156,6 +157,14 @@ def _construct_output_to_match(output_block):
     return u'SELECT %s FROM' % (u', '.join(selections),)
 
 
+def _construct_where_to_match(where_block):
+    """Transform a Filter block into a MATCH query string."""
+    if where_block.predicate == TrueLiteral:
+        raise AssertionError(u'Received WHERE block with TrueLiteral predicate: {}'
+                             .format(where_block))
+    return u'WHERE ' + where_block.predicate.to_match()
+
+
 ##############
 # Public API #
 ##############
@@ -196,6 +205,10 @@ def emit_code_from_single_match_query(match_query):
 
     # Represent and add the SELECT clauses with the proper output data.
     query_data.appendleft(_construct_output_to_match(match_query.output_block))
+
+    # Represent and add the WHERE clause with the proper filters.
+    if match_query.where_block is not None:
+        query_data.append(_construct_where_to_match(match_query.where_block))
 
     return u' '.join(query_data)
 
