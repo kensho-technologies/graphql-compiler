@@ -34,11 +34,14 @@ CREATE CLASS BirthEvent EXTENDS Event
 ### Animal ###
 CREATE CLASS Animal EXTENDS Entity
 
+CREATE PROPERTY Animal.color String
+CREATE INDEX Animal.color NOTUNIQUE
+
 CREATE PROPERTY Animal.birthday Date
 CREATE INDEX Animal.birthday NOTUNIQUE
 
-CREATE PROPERTY Animal.color String
-CREATE INDEX Animal.color NOTUNIQUE
+CREATE PROPERTY Animal.net_worth Date
+CREATE INDEX Animal.net_worth NOTUNIQUE
 
 CREATE CLASS Animal_ParentOf EXTENDS E
 CREATE PROPERTY Animal_ParentOf.out LINK Animal
@@ -77,4 +80,3 @@ CREATE PROPERTY Animal_OfSpecies.in LINK Species
 CREATE PROPERTY Animal_OfSpecies.out LINK Animal
 CREATE INDEX Animal_OfSpecies ON Animal_OfSpecies (in, out) UNIQUE_HASH_INDEX
 ###############
-

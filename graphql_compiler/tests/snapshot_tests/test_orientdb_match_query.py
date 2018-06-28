@@ -24,6 +24,7 @@ def execute_graphql(schema, test_data, client):
     result = graphql_to_match(schema, test_data.graphql_input, test_data.sample_parameters,
                               type_equivalence_hints=schema_based_type_equivalence_hints)
 
+    # TODO(shankha): Make lists hashable <26-06-18>
     row_dicts = [row.oRecordData for row in client.command(result.query)]
     row_frozensets = [frozenset(row_dict.items()) for row_dict in row_dicts]
     rows_multiset = Counter(row_frozensets)

@@ -8,8 +8,7 @@ install:
   - pip install -r dev-requirements.txt
   - pip install -e .
 before_script:
-  - export ORIENTDB_ROOT_PASSSWORD="root"
-  - sh -c ./bin/initialize_orientdb.sh 2.2.20
+  - docker-compose up
 script:
   - flake8 graphql_compiler/
   - pydocstyle graphql_compiler/
