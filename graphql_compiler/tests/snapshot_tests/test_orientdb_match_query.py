@@ -1,5 +1,6 @@
 # Copyright 2017 Kensho Technologies, LLC.
 from collections import Counter
+
 import pytest
 import six
 from snapshottest import TestCase
@@ -40,7 +41,7 @@ class OrientdbMatchQueryTests(TestCase):
         self.maxDiff = None
         self.schema = get_schema()
 
-    @pytest.mark.usefixtures('test_db')
+    @pytest.mark.usefixtures('graph_client')
     def test_immediate_output(self):
         test_data = test_input_data.immediate_output()
 
@@ -48,7 +49,7 @@ class OrientdbMatchQueryTests(TestCase):
 
         self.assertMatchSnapshot(rows)
 
-    @pytest.mark.usefixtures('test_db')
+    @pytest.mark.usefixtures('graph_client')
     def test_traverse_and_output(self):
         test_data = test_input_data.traverse_and_output()
 
@@ -56,7 +57,7 @@ class OrientdbMatchQueryTests(TestCase):
 
         self.assertMatchSnapshot(rows)
 
-    @pytest.mark.usefixtures('test_db')
+    @pytest.mark.usefixtures('graph_client')
     def test_traverse_filter_and_output(self):
         test_data = test_input_data.traverse_filter_and_output()
 
@@ -64,7 +65,7 @@ class OrientdbMatchQueryTests(TestCase):
 
         self.assertMatchSnapshot(rows)
 
-    @pytest.mark.usefixtures('test_db')
+    @pytest.mark.usefixtures('graph_client')
     def test_filter_in_optional_block(self):
         test_data = test_input_data.filter_in_optional_block()
 
@@ -72,7 +73,7 @@ class OrientdbMatchQueryTests(TestCase):
 
         self.assertMatchSnapshot(rows)
 
-    @pytest.mark.usefixtures('test_db')
+    @pytest.mark.usefixtures('graph_client')
     def test_optional_traverse_after_mandatory_traverse(self):
         test_data = test_input_data.optional_traverse_after_mandatory_traverse()
 
@@ -80,7 +81,7 @@ class OrientdbMatchQueryTests(TestCase):
 
         self.assertMatchSnapshot(rows)
 
-    @pytest.mark.usefixtures('test_db')
+    @pytest.mark.usefixtures('graph_client')
     def test_optional_and_deep_traverse(self):
         test_data = test_input_data.optional_and_deep_traverse()
 
