@@ -8,7 +8,7 @@ install:
   - pip install -r dev-requirements.txt
   - pip install -e .
 before_script:
-  - docker-compose up
+  - docker-compose up &
 script:
   - flake8 graphql_compiler/
   - pydocstyle graphql_compiler/

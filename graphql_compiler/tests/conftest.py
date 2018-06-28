@@ -9,9 +9,9 @@ def init_graph():
     """Return a client for an initialized db, with all test data imported."""
     graph_name = 'animals'
 
-    # Try to set up the database for the test up to 5 times before giving up.
+    # Try to set up the database for the test up to 20 times before giving up.
     set_up_successfully = False
-    for _ in range(5):
+    for _ in range(20):
         try:
             graph_client = get_test_graph(graph_name)
             set_up_successfully = True
