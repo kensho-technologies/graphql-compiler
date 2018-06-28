@@ -10,7 +10,7 @@ install:
 before_script:
   - docker-compose up &
 script:
-  - flake8 graphql_compiler/
+  - flake8 --exclude **/snap_*.py graphql_compiler/
   - pydocstyle graphql_compiler/
   - isort --check-only --verbose --recursive graphql_compiler/
   - pylint graphql_compiler/
