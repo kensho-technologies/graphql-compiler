@@ -1,0 +1,14 @@
+version: '3'
+services:
+  orientdb:
+    image: orientdb:2.2.30
+    command: server.sh
+    ports:
+      - "127.0.0.1:2480:2480"
+      - "127.0.0.1:2424:2424"
+    deploy:
+      resources:
+        reservations:
+          memory: 300M
+    environment:
+      ORIENTDB_ROOT_PASSWORD: root
