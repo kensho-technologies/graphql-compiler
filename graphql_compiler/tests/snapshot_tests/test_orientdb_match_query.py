@@ -25,9 +25,21 @@ def execute_graphql(schema, test_data, client):
     result = graphql_to_match(schema, test_data.graphql_input, test_data.sample_parameters,
                               type_equivalence_hints=schema_based_type_equivalence_hints)
 
-    # TODO(shankha): Make lists hashable <26-06-18>
+    # We need to preprocess the results to be agnostic of the returned order.
+    # For this we perform the following steps
+    # - convert lists (returned from @fold scopes) to tuples to make them hashable
+    # - convert each row dict to a frozenset of its items
+    # - create a Counter (multi-set) of the row frozensets
+    # - convert the multi-set to a frozenset of its items
     row_dicts = [row.oRecordData for row in client.command(result.query)]
-    row_frozensets = [frozenset(row_dict.items()) for row_dict in row_dicts]
+    row_dicts_using_tuples = [
+        {
+            column_name: tuple(value) if isinstance(value, list) else value
+            for (column_name, value) in row.items()
+        }
+        for row in row_dicts
+    ]
+    row_frozensets = [frozenset(row_dict.items()) for row_dict in row_dicts_using_tuples]
     rows_multiset = Counter(row_frozensets)
     row_counters_frozenset = frozenset(rows_multiset.items())
 
@@ -84,6 +96,14 @@ class OrientdbMatchQueryTests(TestCase):
     @pytest.mark.usefixtures('graph_client')
     def test_optional_and_deep_traverse(self):
         test_data = test_input_data.optional_and_deep_traverse()
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_fold_on_output_variable(self):
+        test_data = test_input_data.fold_on_output_variable()
 
         rows = execute_graphql(self.schema, test_data, self.graph_client)
 
