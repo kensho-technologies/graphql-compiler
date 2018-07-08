@@ -477,8 +477,7 @@ class MatchIrLoweringTests(unittest.TestCase):
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
-        temp_query = ir_lowering_match.lower_optional_traverse_blocks(match_query, location_types)
-        temp_query = ir_lowering_match.lower_backtrack_blocks(temp_query, location_types)
+        temp_query = ir_lowering_match.lower_backtrack_blocks(match_query, location_types)
         final_query = ir_lowering_match.truncate_repeated_single_step_traversals(temp_query)
 
         check_test_data(self, expected_final_query, final_query)
