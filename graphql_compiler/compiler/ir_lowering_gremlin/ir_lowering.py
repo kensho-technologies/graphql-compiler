@@ -19,7 +19,8 @@ from ..compiler_entities import Expression
 from ..expressions import (BinaryComposition, FoldedOutputContextField, Literal, LocalField,
                            NullLiteral)
 from ..helpers import (STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation,
-                       strip_non_null_from_type, validate_safe_string)
+                       get_one_element_collection_value, strip_non_null_from_type,
+                       validate_safe_string)
 from ..ir_lowering_common import extract_folds_from_ir_blocks
 
 
@@ -55,12 +56,7 @@ def lower_coerce_type_block_type_data(ir_blocks, type_equivalence_hints):
     for block in ir_blocks:
         new_block = block
         if isinstance(block, CoerceType):
-            if len(block.target_class) != 1:
-                raise AssertionError(u'Expected only a single target class for the type coercion, '
-                                     u'but received {}'.format(block.target_class))
-
-            # Sets are not indexable, so we have to grab the first element of its iterator.
-            target_class = next(x for x in block.target_class)
+            target_class = get_one_element_collection_value(block.target_class)
             if target_class in equivalent_type_names:
                 new_block = CoerceType(equivalent_type_names[target_class])
 

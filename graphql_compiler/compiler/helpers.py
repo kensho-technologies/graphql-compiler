@@ -3,6 +3,7 @@
 from collections import namedtuple
 import string
 
+import funcy
 from graphql import GraphQLList, GraphQLNonNull, GraphQLString, is_type
 from graphql.language.ast import InlineFragment
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
@@ -21,6 +22,14 @@ VARIABLE_ALLOWED_CHARS = frozenset(six.text_type(string.ascii_letters + string.d
 FilterOperationInfo = namedtuple(
     'FilterOperationInfo',
     ('directive', 'field_ast', 'field_name', 'field_type'))
+
+
+def get_one_element_collection_value(one_element_collection):
+    """Assert that the collection has exactly one element, then return that element."""
+    if len(one_element_collection) != 1:
+        raise AssertionError(u'Expected a collection with exactly one element, but got: {}'
+                             .format(one_element_collection))
+    return funcy.first(one_element_collection)
 
 
 def get_ast_field_name(ast):

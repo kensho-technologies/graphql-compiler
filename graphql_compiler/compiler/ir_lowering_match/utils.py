@@ -3,9 +3,33 @@ from collections import namedtuple
 
 import six
 
-from ..expressions import (BinaryComposition, Expression, LocalField, NullLiteral,
+from ..blocks import Filter
+from ..expressions import (BinaryComposition, Expression, Literal, LocalField, NullLiteral,
                            SelectEdgeContextField, TrueLiteral, UnaryTransformation, ZeroLiteral)
-from ..helpers import Location, is_vertex_field_name
+from ..helpers import Location, get_one_element_collection_value, is_vertex_field_name
+
+
+def convert_coerce_type_to_instanceof_filter(coerce_type_block):
+    """Create an "INSTANCEOF" Filter block from a CoerceType block."""
+    coerce_type_target = get_one_element_collection_value(coerce_type_block.target_class)
+
+    # INSTANCEOF requires the target class to be passed in as a string,
+    # so we make the target class a string literal.
+    new_predicate = BinaryComposition(
+        u'INSTANCEOF', LocalField('@this'), Literal(coerce_type_target))
+
+    return Filter(new_predicate)
+
+
+def convert_coerce_type_and_add_to_where_block(coerce_type_block, where_block):
+    """Create an "INSTANCEOF" Filter from a CoerceType, adding to an existing Filter if any."""
+    instanceof_filter = convert_coerce_type_to_instanceof_filter(coerce_type_block)
+
+    if where_block:
+        # There was already a Filter block -- we'll merge the two predicates together.
+        return Filter(BinaryComposition(u'&&', instanceof_filter.predicate, where_block.predicate))
+    else:
+        return instanceof_filter
 
 
 def expression_list_to_conjunction(expression_list):
