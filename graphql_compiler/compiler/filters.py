@@ -457,7 +457,7 @@ def _process_has_substring_filter_directive(filter_operation_info, context, para
 
 @takes_parameters(1)
 def _process_contains_filter_directive(filter_operation_info, context, parameters):
-    """Return a Filter basic block that checks if the directive arg is and the field intersect.
+    """Return a Filter basic block that checks if the directive arg is contained in the field.
 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
@@ -495,7 +495,7 @@ def _process_contains_filter_directive(filter_operation_info, context, parameter
 
 @takes_parameters(1)
 def _process_intersects_filter_directive(filter_operation_info, context, parameters):
-    """Return a Filter basic block that checks if the directive arg is contained in the field.
+    """Return a Filter basic block that checks if the directive arg and the field intersect.
 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
