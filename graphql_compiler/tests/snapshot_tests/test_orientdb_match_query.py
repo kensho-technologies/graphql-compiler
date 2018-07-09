@@ -10,6 +10,9 @@ from ... import graphql_to_match
 from ..test_helpers import get_schema
 
 
+# pylint: disable=no-member
+
+
 def execute_graphql(schema, test_data, client):
     """Compile the GraphQL query to MATCH, execute it agains the test_db, and return the results."""
     if test_data.type_equivalence_hints:

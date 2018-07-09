@@ -9,6 +9,6 @@ services:
     deploy:
       resources:
         reservations:
-          memory: 300M
+          memory: 500M
     environment:
       ORIENTDB_ROOT_PASSWORD: root

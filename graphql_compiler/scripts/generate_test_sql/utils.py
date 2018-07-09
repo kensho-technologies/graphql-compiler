@@ -1,10 +1,9 @@
 import random
 from uuid import UUID
+import datetime
 
 import six
 
-
-random.seed(0)
 
 CREATE_VERTEX = 'create vertex '
 CREATE_EDGE = 'create edge '
@@ -14,6 +13,11 @@ SEPARATOR = '__'
 def get_uuid():
     """Return a pseudorandom uuid."""
     return str(UUID(int=random.randint(0, 2**128 - 1)))  # nosec
+
+
+def get_random_date():
+    """Return a pseudorandom date."""
+    return datetime.date(random.randint(2000, 2018), random.randint(1, 12), random.randint(1, 28))
 
 
 def select_vertex_statement(vertex_type, name):
@@ -27,10 +31,11 @@ def set_statement(field_name, field_value):
     """Return a SQL clause (used in creating a vertex) to set a field to a value."""
     if not isinstance(field_name, six.string_types):
         raise AssertionError(u'Expected string field_name. Received {}'.format(field_name))
-    if not isinstance(field_value, six.string_types):
-        raise AssertionError(u'Expected string field_value. Received {}'.format(field_value))
-    template = '{} = \'{}\''
-    return template.format(field_name, field_value)
+    field_value_representation = repr(field_value)
+    if isinstance(field_value, datetime.date):
+        field_value_representation = 'DATE("' + field_value.isoformat() + ' 00:00:00")'
+    template = '{} = {}'
+    return template.format(field_name, field_value_representation)
 
 
 def create_vertex_statement(vertex_type, field_name_to_value):

@@ -40,7 +40,7 @@ CREATE INDEX Animal.color NOTUNIQUE
 CREATE PROPERTY Animal.birthday Date
 CREATE INDEX Animal.birthday NOTUNIQUE
 
-CREATE PROPERTY Animal.net_worth Date
+CREATE PROPERTY Animal.net_worth Decimal
 CREATE INDEX Animal.net_worth NOTUNIQUE
 
 CREATE CLASS Animal_ParentOf EXTENDS E

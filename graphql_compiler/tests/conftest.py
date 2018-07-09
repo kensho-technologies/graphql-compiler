@@ -21,6 +21,7 @@ def init_graph():
         try:
             graph_client = get_test_graph(graph_name)
             set_up_successfully = True
+            break
         except Exception:
             time.sleep(1)
 
