@@ -8,7 +8,7 @@ install:
   - pip install -r dev-requirements.txt
   - pip install -e .
 before_script:
-  - docker-compose up &
+  - docker-compose -d up
 script:
   - ./scripts/copyright_line_check.sh
   - isort --check-only --verbose --recursive graphql_compiler/

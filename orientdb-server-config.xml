@@ -59,8 +59,8 @@
             <protocol implementation="com.orientechnologies.orient.server.network.protocol.http.ONetworkProtocolHttpDb" name="http"/>
         </protocols>
         <listeners>
-            <listener protocol="binary" socket="default" port-range="2424-2430" ip-address="0.0.0.0"/>
-            <listener protocol="http" socket="default" port-range="2480-2490" ip-address="0.0.0.0">
+            <listener protocol="binary" socket="default" port-range="2424-2430" ip-address="127.0.0.1"/>
+            <listener protocol="http" socket="default" port-range="2480-2490" ip-address="127.0.0.1">
                 <commands>
                     <command implementation="com.orientechnologies.orient.server.network.protocol.http.command.get.OServerCommandGetStaticContent" pattern="GET|www GET|studio/ GET| GET|*.htm GET|*.html GET|*.xml GET|*.jpeg GET|*.jpg GET|*.png GET|*.gif GET|*.js GET|*.css GET|*.swf GET|*.ico GET|*.txt GET|*.otf GET|*.pjs GET|*.svg GET|*.json GET|*.woff GET|*.woff2 GET|*.ttf GET|*.svgz" stateful="false">
                         <parameters>

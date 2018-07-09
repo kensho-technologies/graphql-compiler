@@ -7,9 +7,12 @@ def load_schema(client):
     project_root = path.dirname(path.dirname(path.abspath(__file__)))
     file_path = path.join(project_root, 'test_data_tools/schema.sql')
     sql_files = glob(file_path)
-    if len(sql_files) == 0:
-        raise AssertionError(u'No schema file found. Expected /home/shankhabiswas/graphql-compiler/'
-                             u'graphql_compiler/tests/test_data_tools/schema.sql')
+    if len(sql_files) > 1:
+        raise AssertionError(u'Multiple schema files found. Expected single `schema.sql` '
+                             u'in graphql-compiler/graphql_compiler/tests/test_data_tools/')
+    if len(sql_files) == 0 or sql_files[0] != file_path:
+        raise AssertionError(u'Schema file not found. Expected graphql-compiler/graphql_compiler/'
+                             u'tests/test_data_tools/schema.sql')
 
     with open(file_path, 'r') as update_file:
         for line in update_file:

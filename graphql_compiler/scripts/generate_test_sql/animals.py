@@ -1,18 +1,34 @@
 import random
 
 from .species import SPECIES_LIST
-from .utils import (create_edge_statement, create_name, create_vertex_statement, get_uuid,
-                    strip_index_from_name)
+from .utils import (create_edge_statement, create_name, create_vertex_statement, get_random_date,
+                    get_uuid, strip_index_from_name)
 
 
 NUM_INITIAL_ANIMALS = 5
 NUM_GENERATIONS = 10
 NUM_PARENTS = 3
+ANIMAL_COLOR_LIST = (
+    'red',
+    'blue',
+    'green',
+    'yellow',
+    'magenta',
+    'black',
+    'orange',
+    'indigo',
+)
 
 
 def _create_animal_statement(animal_name):
     """Return a SQL statement to create an animal vertex."""
-    field_name_to_value = {'name': animal_name, 'uuid': get_uuid()}
+    field_name_to_value = {
+        'name': animal_name,
+        'uuid': get_uuid(),
+        'color': random.choice(ANIMAL_COLOR_LIST),
+        'birthday': get_random_date(),
+        'net_worth': round(1e3*random.random(), 2),
+    }
     return create_vertex_statement('Animal', field_name_to_value)
 
 
