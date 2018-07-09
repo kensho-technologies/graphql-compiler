@@ -25,7 +25,7 @@ def _create_animal_statement(animal_name):
     field_name_to_value = {
         'name': animal_name,
         'uuid': get_uuid(),
-        'color': get_random_choice(ANIMAL_COLOR_LIST),
+        'color': random.choice(ANIMAL_COLOR_LIST),  # nosec
         'birthday': get_random_date(),
         'net_worth': get_random_net_worth(),
     }
