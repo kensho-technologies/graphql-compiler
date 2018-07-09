@@ -1,8 +1,8 @@
 import random
 
 from .species import SPECIES_LIST
-from .utils import (create_edge_statement, create_name, create_vertex_statement, get_random_choice,
-                    get_random_date, get_random_net_worth, get_uuid, strip_index_from_name)
+from .utils import (create_edge_statement, create_name, create_vertex_statement, get_random_date,
+                    get_random_net_worth, get_uuid, strip_index_from_name)
 
 
 NUM_INITIAL_ANIMALS = 5
