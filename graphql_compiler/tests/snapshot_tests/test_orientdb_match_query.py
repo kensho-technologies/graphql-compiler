@@ -13,8 +13,9 @@ from ..test_helpers import get_schema
 # pylint: disable=no-member
 
 
-def execute_graphql(schema, test_data, client):
+def execute_graphql(schema, test_data, client, sample_parameters=None):
     """Compile the GraphQL query to MATCH, execute it agains the test_db, and return the results."""
+    sample_parameters = {} if sample_parameters is None else sample_parameters
     if test_data.type_equivalence_hints:
         # For test convenience, we accept the type equivalence hints in string form.
         # Here, we convert them to the required GraphQL types.
@@ -25,7 +26,7 @@ def execute_graphql(schema, test_data, client):
     else:
         schema_based_type_equivalence_hints = None
 
-    result = graphql_to_match(schema, test_data.graphql_input, test_data.sample_parameters,
+    result = graphql_to_match(schema, test_data.graphql_input, sample_parameters,
                               type_equivalence_hints=schema_based_type_equivalence_hints)
 
     # We need to preprocess the results to be agnostic of the returned order.
@@ -75,16 +76,18 @@ class OrientDBMatchQueryTests(TestCase):
     @pytest.mark.usefixtures('graph_client')
     def test_traverse_filter_and_output(self):
         test_data = test_input_data.traverse_filter_and_output()
+        sample_parameters = {'wanted': 'Nazgul__2'}
 
-        rows = execute_graphql(self.schema, test_data, self.graph_client)
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 
         self.assertMatchSnapshot(rows)
 
     @pytest.mark.usefixtures('graph_client')
     def test_filter_in_optional_block(self):
         test_data = test_input_data.filter_in_optional_block()
+        sample_parameters = {'name': 'Nazgul__2'}
 
-        rows = execute_graphql(self.schema, test_data, self.graph_client)
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 
         self.assertMatchSnapshot(rows)
 

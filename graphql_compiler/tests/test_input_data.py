@@ -16,7 +16,6 @@ CommonTestData = namedtuple(
         'expected_output_metadata',
         'expected_input_metadata',
         'type_equivalence_hints',
-        'sample_parameters',
     ))
 
 
@@ -35,8 +34,7 @@ def immediate_output():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def multiple_filters():
@@ -59,8 +57,7 @@ def multiple_filters():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def traverse_and_output():
@@ -80,8 +77,7 @@ def traverse_and_output():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def optional_traverse_after_mandatory_traverse():
@@ -105,8 +101,7 @@ def optional_traverse_after_mandatory_traverse():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def traverse_filter_and_output():
@@ -128,8 +123,7 @@ def traverse_filter_and_output():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={'wanted': 'Nazgul__2'})
+        type_equivalence_hints=None)
 
 
 def name_or_alias_filter_on_interface_type():
@@ -151,8 +145,7 @@ def name_or_alias_filter_on_interface_type():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def output_source_and_complex_output():
@@ -176,8 +169,7 @@ def output_source_and_complex_output():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def filter_on_optional_variable_equality():
@@ -204,8 +196,7 @@ def filter_on_optional_variable_equality():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def filter_on_optional_variable_name_or_alias():
@@ -230,8 +221,7 @@ def filter_on_optional_variable_name_or_alias():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def filter_in_optional_block():
@@ -258,8 +248,7 @@ def filter_in_optional_block():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={'name': 'Nazgul__2'})
+        type_equivalence_hints=None)
 
 
 def between_filter_on_simple_scalar():
@@ -283,8 +272,7 @@ def between_filter_on_simple_scalar():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def between_filter_on_date():
@@ -308,8 +296,7 @@ def between_filter_on_date():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def between_filter_on_datetime():
@@ -333,8 +320,7 @@ def between_filter_on_datetime():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def between_lowering_on_simple_scalar():
@@ -359,8 +345,7 @@ def between_lowering_on_simple_scalar():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def between_lowering_with_extra_filters():
@@ -387,8 +372,7 @@ def between_lowering_with_extra_filters():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def no_between_lowering_on_simple_scalar():
@@ -416,8 +400,7 @@ def no_between_lowering_on_simple_scalar():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def complex_optional_variables():
@@ -461,8 +444,7 @@ def complex_optional_variables():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def simple_fragment():
@@ -490,8 +472,7 @@ def simple_fragment():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def simple_union():
@@ -515,8 +496,7 @@ def simple_union():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def filter_on_fragment_in_union():
@@ -542,8 +522,7 @@ def filter_on_fragment_in_union():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def optional_on_union():
@@ -567,8 +546,7 @@ def optional_on_union():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def typename_output():
@@ -590,8 +568,7 @@ def typename_output():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def typename_filter():
@@ -612,8 +589,7 @@ def typename_filter():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def simple_recurse():
@@ -633,8 +609,7 @@ def simple_recurse():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def recurse_within_fragment():
@@ -662,8 +637,7 @@ def recurse_within_fragment():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def filter_within_recurse():
@@ -686,8 +660,7 @@ def filter_within_recurse():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def recurse_with_immediate_type_coercion():
@@ -709,8 +682,7 @@ def recurse_with_immediate_type_coercion():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def recurse_with_immediate_type_coercion_and_filter():
@@ -735,8 +707,7 @@ def recurse_with_immediate_type_coercion_and_filter():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def in_collection_op_filter_with_variable():
@@ -757,8 +728,7 @@ def in_collection_op_filter_with_variable():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def in_collection_op_filter_with_tag():
@@ -780,8 +750,7 @@ def in_collection_op_filter_with_tag():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def in_collection_op_filter_with_optional_tag():
@@ -805,8 +774,7 @@ def in_collection_op_filter_with_optional_tag():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def contains_op_filter_with_variable():
@@ -827,8 +795,7 @@ def contains_op_filter_with_variable():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def contains_op_filter_with_tag():
@@ -849,8 +816,7 @@ def contains_op_filter_with_tag():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def contains_op_filter_with_optional_tag():
@@ -874,8 +840,7 @@ def contains_op_filter_with_optional_tag():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def has_substring_op_filter():
@@ -896,8 +861,7 @@ def has_substring_op_filter():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def has_substring_op_filter_with_optional_tag():
@@ -921,8 +885,7 @@ def has_substring_op_filter_with_optional_tag():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def has_edge_degree_op_filter():
@@ -947,8 +910,7 @@ def has_edge_degree_op_filter():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def has_edge_degree_op_filter_with_optional():
@@ -979,8 +941,7 @@ def has_edge_degree_op_filter_with_optional():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def has_edge_degree_op_filter_with_fold():
@@ -1011,8 +972,7 @@ def has_edge_degree_op_filter_with_fold():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def fold_on_output_variable():
@@ -1034,8 +994,7 @@ def fold_on_output_variable():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def fold_after_traverse():
@@ -1060,8 +1019,7 @@ def fold_after_traverse():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def fold_and_traverse():
@@ -1086,8 +1044,7 @@ def fold_and_traverse():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def fold_and_deep_traverse():
@@ -1114,8 +1071,7 @@ def fold_and_deep_traverse():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def traverse_and_fold_and_traverse():
@@ -1142,8 +1098,7 @@ def traverse_and_fold_and_traverse():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def multiple_outputs_in_same_fold():
@@ -1167,8 +1122,7 @@ def multiple_outputs_in_same_fold():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def multiple_outputs_in_same_fold_and_traverse():
@@ -1196,8 +1150,7 @@ def multiple_outputs_in_same_fold_and_traverse():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def multiple_folds():
@@ -1227,8 +1180,7 @@ def multiple_folds():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def multiple_folds_and_traverse():
@@ -1266,8 +1218,7 @@ def multiple_folds_and_traverse():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def fold_date_and_datetime_fields():
@@ -1294,8 +1245,7 @@ def fold_date_and_datetime_fields():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def coercion_to_union_base_type_inside_fold():
@@ -1325,8 +1275,7 @@ def coercion_to_union_base_type_inside_fold():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=type_equivalence_hints,
-        sample_parameters={})
+        type_equivalence_hints=type_equivalence_hints)
 
 
 def no_op_coercion_inside_fold():
@@ -1355,8 +1304,7 @@ def no_op_coercion_inside_fold():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=type_equivalence_hints,
-        sample_parameters={})
+        type_equivalence_hints=type_equivalence_hints)
 
 
 def filter_within_fold_scope():
@@ -1384,8 +1332,7 @@ def filter_within_fold_scope():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def filter_on_fold_scope():
@@ -1411,8 +1358,7 @@ def filter_on_fold_scope():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def coercion_on_interface_within_fold_scope():
@@ -1437,8 +1383,7 @@ def coercion_on_interface_within_fold_scope():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def coercion_on_interface_within_fold_traversal():
@@ -1467,8 +1412,7 @@ def coercion_on_interface_within_fold_traversal():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def coercion_on_union_within_fold_scope():
@@ -1493,8 +1437,7 @@ def coercion_on_union_within_fold_scope():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def coercion_filters_and_multiple_outputs_within_fold_scope():
@@ -1527,8 +1470,7 @@ def coercion_filters_and_multiple_outputs_within_fold_scope():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def coercion_filters_and_multiple_outputs_within_fold_traversal():
@@ -1563,8 +1505,7 @@ def coercion_filters_and_multiple_outputs_within_fold_traversal():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def optional_and_traverse():
@@ -1590,8 +1531,7 @@ def optional_and_traverse():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def optional_and_traverse_after_filter():
@@ -1620,8 +1560,7 @@ def optional_and_traverse_after_filter():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def optional_and_deep_traverse():
@@ -1651,8 +1590,7 @@ def optional_and_deep_traverse():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def traverse_and_optional_and_traverse():
@@ -1682,8 +1620,7 @@ def traverse_and_optional_and_traverse():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def multiple_optional_traversals_with_starting_filter():
@@ -1720,8 +1657,7 @@ def multiple_optional_traversals_with_starting_filter():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def optional_traversal_and_optional_without_traversal():
@@ -1754,8 +1690,7 @@ def optional_traversal_and_optional_without_traversal():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def coercion_on_interface_within_optional_traversal():
@@ -1783,8 +1718,7 @@ def coercion_on_interface_within_optional_traversal():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def filter_on_optional_traversal_equality():
@@ -1813,8 +1747,7 @@ def filter_on_optional_traversal_equality():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def filter_on_optional_traversal_name_or_alias():
@@ -1841,8 +1774,7 @@ def filter_on_optional_traversal_name_or_alias():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def complex_optional_traversal_variables():
@@ -1886,8 +1818,7 @@ def complex_optional_traversal_variables():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def simple_optional_recurse():
@@ -1913,8 +1844,7 @@ def simple_optional_recurse():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
 
 
 def multiple_traverse_within_optional():
@@ -1944,5 +1874,4 @@ def multiple_traverse_within_optional():
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None,
-        sample_parameters={})
+        type_equivalence_hints=None)
