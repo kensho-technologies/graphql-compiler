@@ -18,18 +18,21 @@ ensure_file_has_copyright_line() {
     filename="$1"
 
     lines_to_examine=2
-    copyright_regex='# Copyright 2\d\d\d\-present Kensho Technologies, LLC\.'
+    copyright_regex='# Copyright 2[0-9][0-9][0-9]\-present Kensho Technologies, LLC\.'
 
+    file_head=$(head -"$lines_to_examine" "$filename")
     set +e
-    head -"$lines_to_examine" "$filename" | grep -e "$copyright_regex" >/dev/null
+    echo "$file_head" | grep --regexp="$copyright_regex" >/dev/null
     result="$?"
     set -e
 
     if [[ "$result" != "0" ]]; then
         # The check will have to be more sophisticated if we
-        echo "The file $filename appears to be missing a copyright line."
+        echo "The file $filename appears to be missing a copyright line, file starts:"
+        echo "$file_head"
         echo 'Please add the following at the top of the file (right after the #! line in scripts):'
         echo -e "\n    # Copyright $(date +%Y)-present Kensho Technologies, LLC.\n"
+        exit 1
     fi
 }
 
@@ -42,4 +45,3 @@ ensure_file_has_copyright_line './setup.py'
 for filename in ./graphql_compiler/**/*.py; do
     ensure_file_has_copyright_line "$filename"
 done
-
