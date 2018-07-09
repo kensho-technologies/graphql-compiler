@@ -761,7 +761,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             revisited_base_location: 'Animal',
         })
 
-        expected_final_blocks_without_optional = [
+        expected_final_blocks_without_optional_traverse = [
             QueryRoot({'Animal'}),
             Filter(
                 BinaryComposition(
@@ -782,7 +782,7 @@ class MatchIrLoweringTests(unittest.TestCase):
 
             ConstructResult({})
         ]
-        expected_final_blocks_with_optional = [
+        expected_final_blocks_with_optional_traverse = [
             QueryRoot({'Animal'}),
             MarkLocation(base_location),
             Traverse('out', 'Animal_ParentOf'),
@@ -798,15 +798,15 @@ class MatchIrLoweringTests(unittest.TestCase):
                 )
             })
         ]
-        expected_match_query_without_optional = convert_to_match_query(
-            expected_final_blocks_without_optional)
-        expected_match_query_with_optional = convert_to_match_query(
-            expected_final_blocks_with_optional)
+        expected_match_query_without_optional_traverse = convert_to_match_query(
+            expected_final_blocks_without_optional_traverse)
+        expected_match_query_with_optional_traverse = convert_to_match_query(
+            expected_final_blocks_with_optional_traverse)
 
         expected_compound_match_query = CompoundMatchQuery(
             match_queries=[
-                expected_match_query_without_optional,
-                expected_match_query_with_optional,
+                expected_match_query_without_optional_traverse,
+                expected_match_query_with_optional_traverse,
             ]
         )
 
