@@ -511,12 +511,11 @@ def _process_intersects_filter_directive(filter_operation_info, context, paramet
     filtered_field_type = filter_operation_info.field_type
     filtered_field_name = filter_operation_info.field_name
 
-    base_field_type = strip_non_null_from_type(filtered_field_type)
-    if not isinstance(base_field_type, GraphQLList):
+    argument_inferred_type = strip_non_null_from_type(filtered_field_type)
+    if not isinstance(argument_inferred_type, GraphQLList):
         raise GraphQLCompilationError(u'Cannot apply "intersects" to non-list '
                                       u'type {}'.format(filtered_field_type))
 
-    argument_inferred_type = strip_non_null_from_type(filtered_field_type)
     argument_expression, non_existence_expression = _represent_argument(
         context, parameters[0], argument_inferred_type)
 

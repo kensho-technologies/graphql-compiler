@@ -1382,8 +1382,8 @@ class CompilerTests(unittest.TestCase):
                     class: Animal,
                     as: Animal___1
                 }}.out('Animal_ParentOf') {{
-                    where: (
-                        (($matched.Animal__in_Animal_ParentOf___1 IS null)
+                    where: ((
+                         ($matched.Animal__in_Animal_ParentOf___1 IS null)
                          OR (intersect(alias, $matched.Animal__in_Animal_ParentOf___1.alias)
                          .asList().size() > 0))
                     ),
