@@ -10,12 +10,8 @@ from ... import graphql_to_match
 from ..test_helpers import get_schema
 
 
-# pylint: disable=no-member
-
-
-def execute_graphql(schema, test_data, client, sample_parameters=None):
+def execute_graphql(schema, test_data, client, sample_parameters):
     """Compile the GraphQL query to MATCH, execute it agains the test_db, and return the results."""
-    sample_parameters = {} if sample_parameters is None else sample_parameters
     if test_data.type_equivalence_hints:
         # For test convenience, we accept the type equivalence hints in string form.
         # Here, we convert them to the required GraphQL types.
@@ -39,7 +35,7 @@ def execute_graphql(schema, test_data, client, sample_parameters=None):
     row_dicts_using_tuples = [
         {
             column_name: tuple(value) if isinstance(value, list) else value
-            for (column_name, value) in row.items()
+            for column_name, value in row.items()
         }
         for row in row_dicts
     ]
@@ -60,16 +56,18 @@ class OrientDBMatchQueryTests(TestCase):
     @pytest.mark.usefixtures('graph_client')
     def test_immediate_output(self):
         test_data = test_input_data.immediate_output()
+        sample_parameters = {}
 
-        rows = execute_graphql(self.schema, test_data, self.graph_client)
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 
         self.assertMatchSnapshot(rows)
 
     @pytest.mark.usefixtures('graph_client')
     def test_traverse_and_output(self):
         test_data = test_input_data.traverse_and_output()
+        sample_parameters = {}
 
-        rows = execute_graphql(self.schema, test_data, self.graph_client)
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 
         self.assertMatchSnapshot(rows)
 
@@ -94,23 +92,26 @@ class OrientDBMatchQueryTests(TestCase):
     @pytest.mark.usefixtures('graph_client')
     def test_optional_traverse_after_mandatory_traverse(self):
         test_data = test_input_data.optional_traverse_after_mandatory_traverse()
+        sample_parameters = {}
 
-        rows = execute_graphql(self.schema, test_data, self.graph_client)
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 
         self.assertMatchSnapshot(rows)
 
     @pytest.mark.usefixtures('graph_client')
     def test_optional_and_deep_traverse(self):
         test_data = test_input_data.optional_and_deep_traverse()
+        sample_parameters = {}
 
-        rows = execute_graphql(self.schema, test_data, self.graph_client)
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 
         self.assertMatchSnapshot(rows)
 
     @pytest.mark.usefixtures('graph_client')
     def test_fold_on_output_variable(self):
         test_data = test_input_data.fold_on_output_variable()
+        sample_parameters = {}
 
-        rows = execute_graphql(self.schema, test_data, self.graph_client)
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 
         self.assertMatchSnapshot(rows)

@@ -16,18 +16,13 @@ def get_uuid():
 
 
 def get_random_net_worth():
-    """Return a pseudorandom uuid."""
-    return int(1e3*random.random() * 100) / 100.0  # nosec
+    """Return a pseudorandom net worth."""
+    return int(1e5 * random.random()) / 100.0  # nosec
 
 
 def get_random_limbs():
-    """Return a pseudorandom uuid."""
+    """Return a pseudorandom numper of limbs."""
     return random.randint(2, 10)  # nosec
-
-
-def get_random_choice(choices):
-    """Return a pseudorandom uuid."""
-    return random.choice(choices)  # nosec
 
 
 def get_random_date():
