@@ -1308,6 +1308,120 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_intersects_op_filter_with_variable(self):
+        test_data = test_input_data.intersects_op_filter_with_variable()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((intersect(alias, {wanted}).asList().size() > 0)),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> it.alias.intersects($wanted)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_intersects_op_filter_with_tag(self):
+        test_data = test_input_data.intersects_op_filter_with_tag()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    where: ((intersect(alias, $matched.Animal___1.alias).asList().size() > 0)),
+                    as: Animal__out_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .out('Animal_ParentOf')
+            .filter{it, m -> it.alias.intersects(m.Animal___1.alias)}
+            .as('Animal__out_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_intersects_op_filter_with_optional_tag(self):
+        test_data = test_input_data.intersects_op_filter_with_optional_tag()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    optional: true,
+                    as: Animal__in_Animal_ParentOf___1
+                }} , {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    where: (
+                        (($matched.Animal__in_Animal_ParentOf___1 IS null)
+                         OR (intersect(alias, $matched.Animal__in_Animal_ParentOf___1.alias)
+                         .asList().size() > 0))
+                    ),
+                    as: Animal__out_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+            WHERE (
+                (
+                    (Animal___1.in_Animal_ParentOf IS null)
+                    OR
+                    (Animal___1.in_Animal_ParentOf.size() = 0)
+                )
+                OR
+                (Animal__in_Animal_ParentOf___1 IS NOT null)
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+            .as('Animal__in_Animal_ParentOf___1')
+            .optional('Animal___1')
+            .as('Animal___2')
+            .out('Animal_ParentOf')
+            .filter{it, m -> (
+                (m.Animal__in_Animal_ParentOf___1 == null) ||
+                it.alias.intersects(m.Animal__in_Animal_ParentOf___1.alias)
+            )}
+            .as('Animal__out_Animal_ParentOf___1')
+            .back('Animal___2')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_contains_op_filter_with_variable(self):
         test_data = test_input_data.contains_op_filter_with_variable()
 

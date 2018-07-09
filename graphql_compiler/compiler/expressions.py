@@ -642,7 +642,7 @@ class BinaryComposition(Expression):
     """An expression created by composing two expressions together."""
 
     SUPPORTED_OPERATORS = frozenset(
-        {u'=', u'!=', u'>=', u'<=', u'>', u'<', u'+', u'||', u'&&', u'contains',
+        {u'=', u'!=', u'>=', u'<=', u'>', u'<', u'+', u'||', u'&&', u'contains', u'intersects',
          u'has_substring', u'LIKE', u'INSTANCEOF'})
 
     def __init__(self, operator, left, right):
@@ -691,6 +691,7 @@ class BinaryComposition(Expression):
         # The MATCH versions of some operators require an inverted order of arguments.
         # pylint: disable=unused-variable
         regular_operator_format = '(%(left)s %(operator)s %(right)s)'
+        intersects_operator_format = '(%(operator)s(%(left)s, %(right)s).asList().size() > 0)'
         inverted_operator_format = '(%(right)s %(operator)s %(left)s)'  # noqa
         # pylint: enable=unused-variable
 
@@ -713,6 +714,7 @@ class BinaryComposition(Expression):
                 u'||': (u'OR', regular_operator_format),
                 u'&&': (u'AND', regular_operator_format),
                 u'contains': (u'CONTAINS', regular_operator_format),
+                u'intersects': (u'intersect', intersects_operator_format),
                 u'has_substring': (None, None),  # must be lowered into compatible form using LIKE
 
                 # MATCH-specific operators
@@ -747,6 +749,7 @@ class BinaryComposition(Expression):
             u'||': (u'||', immediate_operator_format),
             u'&&': (u'&&', immediate_operator_format),
             u'contains': (u'contains', dotted_operator_format),
+            u'intersects': (u'intersects', dotted_operator_format),
             u'has_substring': (u'contains', dotted_operator_format),
         }
 
