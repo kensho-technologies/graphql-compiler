@@ -46,6 +46,11 @@ def execute_graphql(schema, test_data, client, sample_parameters):
     return row_counters_frozenset
 
 
+# The following TestCase class uses the 'graph_client' fixture
+# which pylint does not recognize as a class member.
+# pylint: disable=no-member
+
+
 class OrientDBMatchQueryTests(TestCase):
 
     def setUp(self):
@@ -58,8 +63,7 @@ class OrientDBMatchQueryTests(TestCase):
         test_data = test_input_data.immediate_output()
         sample_parameters = {}
 
-        with self.graph_client as client:
-            rows = execute_graphql(self.schema, test_data, client, sample_parameters)
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 
         self.assertMatchSnapshot(rows)
 
@@ -116,3 +120,6 @@ class OrientDBMatchQueryTests(TestCase):
         rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 
         self.assertMatchSnapshot(rows)
+
+
+# pylint: enable=no-member
