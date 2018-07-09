@@ -16,7 +16,6 @@ from ..expressions import (BinaryComposition, ContextField, ContextFieldExistenc
                            FoldedOutputContextField, Literal, LocalField, TernaryConditional,
                            TrueLiteral)
 from ..helpers import FoldScopeLocation
-from ..match_query import MatchStep
 
 
 ##################################
@@ -143,7 +142,7 @@ def lower_has_substring_binary_compositions(ir_blocks):
 def truncate_repeated_single_step_traversals(match_query):
     """Truncate one-step traversals that overlap a previous traversal location."""
     # Such traversals frequently happen as side-effects of the lowering process
-    # of Backtrack or optional Traverse blocks, and needlessly complicate the executed queries.
+    # of Backtrack blocks, and needlessly complicate the executed queries.
     new_match_traversals = []
     visited_locations = set()
 
@@ -167,48 +166,6 @@ def truncate_repeated_single_step_traversals(match_query):
 
         if not ignore_traversal:
             new_match_traversals.append(current_match_traversal)
-
-    return match_query._replace(match_traversals=new_match_traversals)
-
-
-def lower_optional_traverse_blocks(match_query, location_types):
-    """Lower optional Traverse blocks by starting a new QueryRoot after the Traverse."""
-    # Specifically, we apply the following process, noting that filtering inside an optional
-    # block is not allowed:
-    #   1. Upon seeing a step with an optional Traverse root block,
-    #      make that step the last step in its MATCH traversal.
-    #   2. Start a new MATCH traversal at the location the optional Traverse was going.
-    # The rest of the query resumes from there. The corresponding optional Backtrack block
-    # is handled in lower_backtrack_blocks().
-    new_match_traversals = []
-
-    for current_match_traversal in match_query.match_traversals:
-        new_traversal = []
-        for step in current_match_traversal:
-            new_traversal.append(step)
-            if isinstance(step.root_block, Backtrack) and step.root_block.optional:
-                # 1. Upon seeing a step with an optional Backtrack root block,
-                #    make that step the last step in its MATCH traversal.
-                new_match_traversals.append(new_traversal)
-                new_traversal = []
-
-                if step.as_block is None:
-                    raise AssertionError(u'Unexpectedly found a Traverse step with no as_block: '
-                                         u'{} {}'.format(step, match_query))
-
-                traverse_location = step.as_block.location
-                traverse_location_type = location_types[traverse_location]
-
-                # 2. Start a new MATCH traversal at the location the optional Traverse was going.
-                new_root_block = QueryRoot({traverse_location_type.name})
-                new_as_block = MarkLocation(traverse_location)
-                new_step = MatchStep(root_block=new_root_block,
-                                     as_block=new_as_block,
-                                     coerce_type_block=None,
-                                     where_block=None)
-                new_traversal.append(new_step)
-
-        new_match_traversals.append(new_traversal)
 
     return match_query._replace(match_traversals=new_match_traversals)
 
