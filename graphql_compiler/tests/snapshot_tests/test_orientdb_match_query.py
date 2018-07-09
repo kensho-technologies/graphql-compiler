@@ -58,7 +58,8 @@ class OrientDBMatchQueryTests(TestCase):
         test_data = test_input_data.immediate_output()
         sample_parameters = {}
 
-        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+        with self.graph_client as client:
+            rows = execute_graphql(self.schema, test_data, client, sample_parameters)
 
         self.assertMatchSnapshot(rows)
 
