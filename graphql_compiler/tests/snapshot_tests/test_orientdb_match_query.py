@@ -49,7 +49,7 @@ def execute_graphql(schema, test_data, client):
     return row_counters_frozenset
 
 
-class OrientdbMatchQueryTests(TestCase):
+class OrientDBMatchQueryTests(TestCase):
 
     def setUp(self):
         """Initialize the test schema once for all tests, and disable max diff limits."""
