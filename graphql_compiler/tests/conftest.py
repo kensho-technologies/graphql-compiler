@@ -22,7 +22,7 @@ def init_graph():
             graph_client = get_test_graph(graph_name)
             set_up_successfully = True
             break
-        except Exception:
+        except Exception: # pylint: disable=broad-except
             time.sleep(1)
 
     if not set_up_successfully:

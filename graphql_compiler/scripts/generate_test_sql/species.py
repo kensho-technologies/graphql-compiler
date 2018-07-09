@@ -1,6 +1,6 @@
 import random
 
-from .utils import create_vertex_statement, get_uuid
+from .utils import create_vertex_statement, get_uuid, get_random_limbs
 
 
 SPECIES_LIST = (
@@ -13,7 +13,7 @@ SPECIES_LIST = (
 
 def _create_species_statement(species_name):
     """Return a SQL statement to create a species vertex."""
-    field_name_to_value = {'name': species_name, 'limbs': random.randint(2, 10), 'uuid': get_uuid()}
+    field_name_to_value = {'name': species_name, 'limbs': get_random_limbs(), 'uuid': get_uuid()}
     return create_vertex_statement('Species', field_name_to_value)
 
 
