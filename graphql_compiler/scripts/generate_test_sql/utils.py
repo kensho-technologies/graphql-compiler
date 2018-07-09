@@ -15,9 +15,27 @@ def get_uuid():
     return str(UUID(int=random.randint(0, 2**128 - 1)))  # nosec
 
 
+def get_random_net_worth():
+    """Return a pseudorandom uuid."""
+    return int(1e3*random.random() * 100) / 100.0 # nosec
+
+
+def get_random_limbs():
+    """Return a pseudorandom uuid."""
+    return random.randint(2, 10) # nosec
+
+
+def get_random_choice(choices):
+    """Return a pseudorandom uuid."""
+    return random.choice(choices) # nosec
+
+
 def get_random_date():
     """Return a pseudorandom date."""
-    return datetime.date(random.randint(2000, 2018), random.randint(1, 12), random.randint(1, 28))
+    random_year = random.randint(2000, 2018) # nosec
+    random_month = random.randint(1, 12) # nosec
+    random_day = random.randint(1, 28) # nosec
+    return datetime.date(random_year, random_month, random_day)
 
 
 def select_vertex_statement(vertex_type, name):

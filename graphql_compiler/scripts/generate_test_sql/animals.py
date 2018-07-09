@@ -1,8 +1,8 @@
 import random
 
 from .species import SPECIES_LIST
-from .utils import (create_edge_statement, create_name, create_vertex_statement, get_random_date,
-                    get_uuid, strip_index_from_name)
+from .utils import (create_edge_statement, create_name, create_vertex_statement, get_random_choice,
+                    get_random_date, get_random_net_worth, get_uuid, strip_index_from_name)
 
 
 NUM_INITIAL_ANIMALS = 5
@@ -25,9 +25,9 @@ def _create_animal_statement(animal_name):
     field_name_to_value = {
         'name': animal_name,
         'uuid': get_uuid(),
-        'color': random.choice(ANIMAL_COLOR_LIST),
+        'color': get_random_choice(ANIMAL_COLOR_LIST),
         'birthday': get_random_date(),
-        'net_worth': round(1e3*random.random(), 2),
+        'net_worth': get_random_net_worth(),
     }
     return create_vertex_statement('Animal', field_name_to_value)
 
