@@ -7,10 +7,12 @@ python:
 install:
   - pip install -r dev-requirements.txt
   - pip install -e .
+before_script:
+  - docker-compose up -d
 script:
   - ./scripts/copyright_line_check.sh
   - isort --check-only --verbose --recursive graphql_compiler/
-  - flake8 graphql_compiler/
+  - flake8 --exclude **/snap_*.py graphql_compiler/
   - pydocstyle graphql_compiler/
   - pylint graphql_compiler/
   - bandit -r graphql_compiler/

@@ -1,6 +1,14 @@
 [run]
 # We don't want to include the tests themselves in the coverage report
-omit = graphql_compiler/tests/*
+omit =
+    # No coverage for tests
+    graphql_compiler/tests/*
+
+    # No coverage for SQL command generation script
+    graphql_compiler/scripts/generate_test_sql/*
+
+    # No coverage for snapshots.
+    **/snap_*.py
 
 [report]
 # Regexes for lines to exclude from consideration
