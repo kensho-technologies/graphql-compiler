@@ -9,7 +9,6 @@ from ..expressions import (BinaryComposition, ContextField, FoldedOutputContextF
                            LocalField, OutputContextField, TernaryConditional, TrueLiteral,
                            UnaryTransformation, Variable)
 from ..match_query import MatchQuery, MatchStep
-from .ir_lowering import truncate_repeated_single_step_traversals
 from .utils import (BetweenClause, CompoundMatchQuery, expression_list_to_conjunction,
                     filter_edge_field_non_existence)
 
@@ -560,13 +559,3 @@ def lower_context_field_expressions(compound_match_query):
             )
 
     return CompoundMatchQuery(match_queries=new_match_queries)
-
-
-def lower_sub_queries(compound_match_query):
-    """Apply lowering steps to each sub-query within the given CompoundMatchQuery."""
-    lowered_match_queries = []
-    for match_query in compound_match_query.match_queries:
-        new_match_query = truncate_repeated_single_step_traversals(match_query)
-        lowered_match_queries.append(new_match_query)
-
-    return CompoundMatchQuery(match_queries=lowered_match_queries)
