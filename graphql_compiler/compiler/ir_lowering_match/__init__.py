@@ -19,7 +19,7 @@ from .optional_traversal import (collect_filters_to_first_location_occurrence,
                                  lower_context_field_expressions, prune_non_existent_outputs)
 from ..match_query import convert_to_match_query
 from ..workarounds import orientdb_class_with_while, orientdb_eval_scheduling
-from .utils import construct_where_filter_predicate
+from .utils import construct_where_filter_predicate, CompoundMatchQuery
 
 ##############
 # Public API #
@@ -103,4 +103,9 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     compound_match_query = lower_context_field_expressions(
         compound_match_query)
 
-    return compound_match_query
+    lowered_match_queries = []
+    for match_query in compound_match_query.match_queries:
+        new_match_query = truncate_repeated_single_step_traversals(match_query)
+        lowered_match_queries.append(new_match_query)
+
+    return CompoundMatchQuery(match_queries=lowered_match_queries)

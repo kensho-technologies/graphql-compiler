@@ -3264,10 +3264,6 @@ class CompilerTests(unittest.TestCase):
                             )
                         )),
                         as: Animal___1
-                    }} ,
-                    {{
-                        class: Animal,
-                        as: Animal___1
                     }}
                     RETURN $matches
                 )
@@ -3295,10 +3291,6 @@ class CompilerTests(unittest.TestCase):
                         as: Animal__in_Animal_ParentOf___1
                     }}.out('Animal_ParentOf') {{
                         as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
-                    }} ,
-                    {{
-                        class: Animal,
-                        as: Animal___1
                     }}
                     RETURN $matches
                 )
@@ -3436,10 +3428,6 @@ class CompilerTests(unittest.TestCase):
                     }}.in('Animal_ParentOf') {{
                         optional: true,
                         as: Animal__in_Animal_ParentOf___1
-                    }} ,
-                    {{
-                        class: Animal,
-                        as: Animal___1
                     }}
                     RETURN $matches
                 )
@@ -3823,11 +3811,7 @@ class CompilerTests(unittest.TestCase):
                     }}.out('Animal_FedAt') {{
                         optional: true,
                         as: Animal__out_Animal_ParentOf__out_Animal_FedAt___1
-                    }} ,
-                    {{
-                        class: Animal,
-                        as: Animal__out_Animal_ParentOf___1
-                    }} ,
+                    }},
                     {{
                         class: Animal,
                         as: Animal___1

@@ -158,13 +158,13 @@ def truncate_repeated_single_step_traversals(match_query):
             if single_step.as_block.location in visited_locations:
                 # This location was visited before, omit the traversal.
                 ignore_traversal = True
-        else:
+
+        if not ignore_traversal:
             # For each step in this traversal, mark its location as visited.
             for step in current_match_traversal:
                 if step.as_block is not None:
                     visited_locations.add(step.as_block.location)
 
-        if not ignore_traversal:
             new_match_traversals.append(current_match_traversal)
 
     return match_query._replace(match_traversals=new_match_traversals)
