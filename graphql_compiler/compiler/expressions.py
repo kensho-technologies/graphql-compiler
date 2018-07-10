@@ -691,8 +691,8 @@ class BinaryComposition(Expression):
         # The MATCH versions of some operators require an inverted order of arguments.
         # pylint: disable=unused-variable
         regular_operator_format = '(%(left)s %(operator)s %(right)s)'
-        intersects_operator_format = '(%(operator)s(%(left)s, %(right)s).asList().size() > 0)'
         inverted_operator_format = '(%(right)s %(operator)s %(left)s)'  # noqa
+        intersects_operator_format = '(%(operator)s(%(left)s, %(right)s).asList().size() > 0)'
         # pylint: enable=unused-variable
 
         # Null literals use 'is/is not' as (in)equality operators, while other values use '=/<>'.
@@ -737,6 +737,7 @@ class BinaryComposition(Expression):
 
         immediate_operator_format = u'({left} {operator} {right})'
         dotted_operator_format = u'{left}.{operator}({right})'
+        intersects_operator_format = u'(!{left}.{operator}({right}).empty)'
 
         translation_table = {
             u'=': (u'==', immediate_operator_format),
@@ -749,7 +750,7 @@ class BinaryComposition(Expression):
             u'||': (u'||', immediate_operator_format),
             u'&&': (u'&&', immediate_operator_format),
             u'contains': (u'contains', dotted_operator_format),
-            u'intersects': (u'intersects', dotted_operator_format),
+            u'intersects': (u'intersect', intersects_operator_format),
             u'has_substring': (u'contains', dotted_operator_format),
         }
 

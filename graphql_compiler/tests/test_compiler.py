@@ -1269,10 +1269,11 @@ class CompilerTests(unittest.TestCase):
                     class: Animal,
                     as: Animal___1
                 }}.out('Animal_ParentOf') {{
-                    where: (
-                        (($matched.Animal__in_Animal_ParentOf___1 IS null)
-                         OR ($matched.Animal__in_Animal_ParentOf___1.alias CONTAINS name))
-                    ),
+                    where: ((
+                         ($matched.Animal__in_Animal_ParentOf___1 IS null)
+                         OR 
+                         ($matched.Animal__in_Animal_ParentOf___1.alias CONTAINS name)
+                    )),
                     as: Animal__out_Animal_ParentOf___1
                 }}
                 RETURN $matches
@@ -1325,7 +1326,7 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
-            .filter{it, m -> it.alias.intersects($wanted)}
+            .filter{it, m -> (!it.alias.intersect($wanted).empty)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
@@ -1355,7 +1356,7 @@ class CompilerTests(unittest.TestCase):
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Animal_ParentOf')
-            .filter{it, m -> it.alias.intersects(m.Animal___1.alias)}
+            .filter{it, m -> (!it.alias.intersect(m.Animal___1.alias).empty)}
             .as('Animal__out_Animal_ParentOf___1')
             .back('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -1384,7 +1385,8 @@ class CompilerTests(unittest.TestCase):
                 }}.out('Animal_ParentOf') {{
                     where: ((
                          ($matched.Animal__in_Animal_ParentOf___1 IS null)
-                         OR (intersect(alias, $matched.Animal__in_Animal_ParentOf___1.alias)
+                         OR 
+                         (intersect(alias, $matched.Animal__in_Animal_ParentOf___1.alias)
                          .asList().size() > 0))
                     ),
                     as: Animal__out_Animal_ParentOf___1
@@ -1411,7 +1413,7 @@ class CompilerTests(unittest.TestCase):
             .out('Animal_ParentOf')
             .filter{it, m -> (
                 (m.Animal__in_Animal_ParentOf___1 == null) ||
-                it.alias.intersects(m.Animal__in_Animal_ParentOf___1.alias)
+                (!it.alias.intersect(m.Animal__in_Animal_ParentOf___1.alias).empty)
             )}
             .as('Animal__out_Animal_ParentOf___1')
             .back('Animal___2')
