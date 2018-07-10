@@ -9,7 +9,7 @@ from ..ir_lowering_common import (extract_optional_location_root_info,
 from .ir_lowering import (lower_backtrack_blocks,
                           lower_folded_coerce_types_into_filter_blocks,
                           lower_has_substring_binary_compositions,
-                          lower_optional_traverse_blocks, remove_backtrack_blocks_from_fold,
+                          remove_backtrack_blocks_from_fold,
                           rewrite_binary_composition_inside_ternary_conditional,
                           truncate_repeated_single_step_traversals)
 from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
@@ -81,7 +81,6 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
 
     match_query = lower_comparisons_to_between(match_query)
 
-    match_query = lower_optional_traverse_blocks(match_query, location_types)
     match_query = lower_backtrack_blocks(match_query, location_types)
     match_query = truncate_repeated_single_step_traversals(match_query)
     match_query = orientdb_class_with_while.workaround_type_coercions_in_recursions(match_query)

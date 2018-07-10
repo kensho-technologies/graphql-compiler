@@ -2,6 +2,12 @@
 
 ## Current development version
 
+## v1.6.2
+
+- Fix incorrect filtering in `@optional` locations. [#95](https://github.com/kensho-technologies/graphql-compiler/pull/95)
+
+Thanks to `amartyashankha` for the fix!
+
 ## v1.6.1
 
 - Fix a bad compilation bug on `@fold` and `@optional` in the same scope. [#86](https://github.com/kensho-technologies/graphql-compiler/pull/86)
