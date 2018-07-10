@@ -21,7 +21,7 @@ def get_random_net_worth():
 
 
 def get_random_limbs():
-    """Return a pseudorandom numper of limbs."""
+    """Return a pseudorandom number of limbs."""
     return random.randint(2, 10)  # nosec
 
 
