@@ -3,16 +3,17 @@ from pprint import pformat
 import unittest
 
 from graphql import GraphQLString
-import pytest
 
 from ..compiler import ir_lowering_common, ir_lowering_gremlin, ir_lowering_match, ir_sanity_checks
-from ..compiler.blocks import Backtrack, ConstructResult, Filter, MarkLocation, QueryRoot, Traverse
+from ..compiler.blocks import (Backtrack, ConstructResult, EndOptional, Filter, MarkLocation,
+                               QueryRoot, Traverse)
 from ..compiler.expressions import (BinaryComposition, ContextField, ContextFieldExistence,
                                     FalseLiteral, Literal, LocalField, NullLiteral,
-                                    OutputContextField, TernaryConditional, TrueLiteral, Variable)
+                                    OutputContextField, TernaryConditional, TrueLiteral,
+                                    UnaryTransformation, Variable, ZeroLiteral)
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
-from ..compiler.ir_lowering_match.utils import BetweenClause
+from ..compiler.ir_lowering_match.utils import BetweenClause, CompoundMatchQuery
 from ..compiler.match_query import MatchQuery, convert_to_match_query
 from ..schema import GraphQLDate
 from .test_helpers import compare_ir_blocks, construct_location_types
@@ -477,8 +478,7 @@ class MatchIrLoweringTests(unittest.TestCase):
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
 
-        temp_query = ir_lowering_match.lower_optional_traverse_blocks(match_query, location_types)
-        temp_query = ir_lowering_match.lower_backtrack_blocks(temp_query, location_types)
+        temp_query = ir_lowering_match.lower_backtrack_blocks(match_query, location_types)
         final_query = ir_lowering_match.truncate_repeated_single_step_traversals(temp_query)
 
         check_test_data(self, expected_final_query, final_query)
@@ -708,7 +708,6 @@ class MatchIrLoweringTests(unittest.TestCase):
 
     # Disabled until OrientDB fixes the limitation against traversing from an optional vertex.
     # For details, see https://github.com/orientechnologies/orientdb/issues/6788
-    @pytest.mark.skip(reason='traversing from an optional node is not currently supported in MATCH')
     def test_optional_traversal_edge_case(self):
         # Both Animal and out_Animal_ParentOf have an out_Animal_FedAt field,
         # ensure the correct such field is picked out after full lowering.
@@ -740,6 +739,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             MarkLocation(child_fed_at_location),
             Backtrack(child_location),
 
+            EndOptional(),
             Backtrack(base_location, optional=True),
             MarkLocation(revisited_base_location),
 
@@ -761,37 +761,61 @@ class MatchIrLoweringTests(unittest.TestCase):
             revisited_base_location: 'Animal',
         })
 
-        expected_final_blocks = [
+        expected_final_blocks_without_optional_traverse = [
+            QueryRoot({'Animal'}),
+            Filter(
+                BinaryComposition(
+                    u'||',
+                    BinaryComposition(
+                        u'=',
+                        LocalField(u'out_Animal_ParentOf'),
+                        NullLiteral
+                    ),
+                    BinaryComposition(
+                        u'=',
+                        UnaryTransformation(u'size', LocalField(u'out_Animal_ParentOf')),
+                        ZeroLiteral
+                    )
+                )
+            ),
+            MarkLocation(base_location),
+
+            ConstructResult({})
+        ]
+        expected_final_blocks_with_optional_traverse = [
             QueryRoot({'Animal'}),
             MarkLocation(base_location),
-            Traverse('out', 'Animal_ParentOf', optional=True),
+            Traverse('out', 'Animal_ParentOf'),
             MarkLocation(child_location),
 
-            QueryRoot({'Animal'}),
-            MarkLocation(child_location),
             Traverse('out', 'Animal_FedAt'),
             MarkLocation(child_fed_at_location),
 
             ConstructResult({
-                'name': TernaryConditional(
-                    BinaryComposition(
-                        u'!=',
-                        OutputContextVertex(child_location),
-                        NullLiteral
-                    ),
-                    OutputContextField(
-                        child_fed_at_location.navigate_to_field(u'name'), GraphQLString),
-                    NullLiteral
-                ),
+                'name': OutputContextField(
+                    child_fed_at_location.navigate_to_field(u'name'),
+                    GraphQLString
+                )
             })
         ]
-        expected_match_query = convert_to_match_query(expected_final_blocks)
+        expected_match_query_without_optional_traverse = convert_to_match_query(
+            expected_final_blocks_without_optional_traverse)
+        expected_match_query_with_optional_traverse = convert_to_match_query(
+            expected_final_blocks_with_optional_traverse)
+
+        expected_compound_match_query = CompoundMatchQuery(
+            match_queries=[
+                expected_match_query_without_optional_traverse,
+                expected_match_query_with_optional_traverse,
+            ]
+        )
 
         final_query = ir_lowering_match.lower_ir(ir_blocks, location_types)
 
         self.assertEqual(
-            expected_match_query, final_query,
-            msg=u'\n{}\n\n!=\n\n{}'.format(pformat(expected_match_query), pformat(final_query)))
+            expected_compound_match_query, final_query,
+            msg=u'\n{}\n\n!=\n\n{}'.format(pformat(expected_compound_match_query),
+                                           pformat(final_query)))
 
 
 class GremlinIrLoweringTests(unittest.TestCase):
