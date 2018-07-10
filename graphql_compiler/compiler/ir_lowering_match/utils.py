@@ -6,12 +6,12 @@ import six
 from ..blocks import Filter
 from ..expressions import (BinaryComposition, Expression, Literal, LocalField, NullLiteral,
                            SelectEdgeContextField, TrueLiteral, UnaryTransformation, ZeroLiteral)
-from ..helpers import Location, get_one_element_collection_value, is_vertex_field_name
+from ..helpers import Location, get_only_element_from_collection, is_vertex_field_name
 
 
 def convert_coerce_type_to_instanceof_filter(coerce_type_block):
     """Create an "INSTANCEOF" Filter block from a CoerceType block."""
-    coerce_type_target = get_one_element_collection_value(coerce_type_block.target_class)
+    coerce_type_target = get_only_element_from_collection(coerce_type_block.target_class)
 
     # INSTANCEOF requires the target class to be passed in as a string,
     # so we make the target class a string literal.

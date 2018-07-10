@@ -6,7 +6,7 @@ import six
 
 from .blocks import Filter, QueryRoot, Recurse, Traverse
 from .expressions import TrueLiteral
-from .helpers import get_one_element_collection_value, validate_safe_string
+from .helpers import get_only_element_from_collection, validate_safe_string
 
 
 def _get_vertex_location_name(location):
@@ -29,7 +29,7 @@ def _first_step_to_match(match_step):
 
         match_step.root_block.validate()
 
-        start_class = get_one_element_collection_value(match_step.root_block.start_class)
+        start_class = get_only_element_from_collection(match_step.root_block.start_class)
         parts.append(u'class: %s' % (start_class,))
 
     # MATCH steps with a QueryRoot root block shouldn't have a 'coerce_type_block'.

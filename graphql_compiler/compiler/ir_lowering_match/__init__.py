@@ -86,8 +86,6 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     match_query = lower_backtrack_blocks(match_query, location_types)
     match_query = truncate_repeated_single_step_traversals(match_query)
     match_query = orientdb_class_with_while.workaround_type_coercions_in_recursions(match_query)
-    match_query = orientdb_query_execution.expose_ideal_query_execution_start_points(
-        match_query, location_types)
 
     # Optimize and lower the IR blocks inside @fold scopes.
     new_folds = {
@@ -109,5 +107,7 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
 
     compound_match_query = truncate_repeated_single_step_traversals_in_sub_queries(
         compound_match_query)
+    compound_match_query = orientdb_query_execution.expose_ideal_query_execution_start_points(
+        compound_match_query, location_types)
 
     return compound_match_query

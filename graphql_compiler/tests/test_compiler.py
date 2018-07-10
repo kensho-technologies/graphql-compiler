@@ -3080,8 +3080,10 @@ class CompilerTests(unittest.TestCase):
                             class: Animal,
                             as: Animal___1
                         }}.in('Animal_ParentOf') {{
+                            class: Animal,
                             as: Animal__in_Animal_ParentOf___1
                         }}.in('Animal_ParentOf') {{
+                            class: Animal,
                             as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
                         }}
                         RETURN $matches
@@ -3222,10 +3224,13 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.out('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
                     }}.out('Animal_OfSpecies') {{
+                        class: Species,
                         as: Animal__in_Animal_ParentOf__out_Animal_ParentOf
                             __out_Animal_OfSpecies___1
                     }}
@@ -3282,9 +3287,9 @@ class CompilerTests(unittest.TestCase):
                     Animal__in_Animal_ParentOf___1.name AS `child_name`
                 FROM (
                     MATCH {{
-                        class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         where: ((
                             (out_Animal_ParentOf IS null)
                             OR
@@ -3308,10 +3313,13 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.out('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
                     }}.out('Animal_OfSpecies') {{
+                        class: Species,
                         as: Animal__in_Animal_ParentOf__out_Animal_ParentOf
                             __out_Animal_OfSpecies___1
                     }}
@@ -3670,11 +3678,13 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.out('Entity_Related') {{
                         class: Animal,
                         as: Animal__in_Animal_ParentOf__out_Entity_Related___1
                     }}.out('Animal_OfSpecies') {{
+                        class: Species,
                         as: Animal__in_Animal_ParentOf__out_Entity_Related
                             __out_Animal_OfSpecies___1
                     }}
@@ -4157,6 +4167,7 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.out('Animal_ParentOf') {{
                         while: ($depth < 3),
@@ -4233,14 +4244,17 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
                     }} ,
                     {{
                         class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.out('Animal_FedAt') {{
+                        class: Event,
                         as: Animal__in_Animal_ParentOf__out_Animal_FedAt___1
                     }}
                     RETURN $matches
@@ -4412,7 +4426,7 @@ class CompilerTests(unittest.TestCase):
                                     (in_Animal_ParentOf.size() = 0))),
                             as: Animal___1
                         }}
-                            RETURN $matches
+                        RETURN $matches
                     )
                     LET
                         $Animal___1___out_Animal_ParentOf =
@@ -4429,11 +4443,13 @@ class CompilerTests(unittest.TestCase):
                             class: Animal,
                             as: Animal___1
                         }}.in('Animal_ParentOf') {{
+                            class: Animal,
                             as: Animal__in_Animal_ParentOf___1
                         }}.in('Animal_ParentOf') {{
+                            class: Animal,
                             as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
                         }}
-                            RETURN $matches
+                        RETURN $matches
                     )
                 LET
                     $Animal___1___out_Animal_ParentOf
@@ -4490,7 +4506,7 @@ class CompilerTests(unittest.TestCase):
                                     (in_Animal_ParentOf.size() = 0))),
                             as: Animal___1
                         }}
-                            RETURN $matches
+                        RETURN $matches
                     )
                     LET
                         $Animal___1___out_Animal_ParentOf =
@@ -4507,11 +4523,13 @@ class CompilerTests(unittest.TestCase):
                             class: Animal,
                             as: Animal___1
                         }}.in('Animal_ParentOf') {{
+                            class: Animal,
                             as: Animal__in_Animal_ParentOf___1
                         }}.in('Animal_ParentOf') {{
+                            class: Animal,
                             as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
                         }}
-                            RETURN $matches
+                        RETURN $matches
                     )
                 LET
                     $Animal___1___out_Animal_ParentOf

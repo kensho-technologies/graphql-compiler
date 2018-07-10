@@ -8,6 +8,11 @@ by an index, but OrientDB will ignore this. When no equality ("=") checks on ind
 are present, OrientDB will generate a query plan that starts execution at the class with
 lowest cardinality, which can lead to excessive numbers of scanned and discarded records.
 
+Assuming the query planner creates a query plan where a location with CONTAINS is
+the first in the execution order, the execution system will apply indexes
+to speed up this operation. Therefore, it's sufficient to trick the query planner into
+always creating such a query plan, even though it thinks indexes cannot be used in the query.
+
 Valid query execution start points for the OrientDB query planner must satisfy the following:
     - Must not be "optional: true".
     - Must not have a "while:" clause nor follow a location that has one.
@@ -42,7 +47,7 @@ The process of applying the optimizations is as follows:
 from ..blocks import CoerceType, QueryRoot, Recurse, Traverse
 from ..expressions import ContextField, ContextFieldExistence
 from ..ir_lowering_match.utils import convert_coerce_type_and_add_to_where_block
-from ..helpers import get_one_element_collection_value
+from ..helpers import get_only_element_from_collection
 
 
 def _is_local_filter(filter_block):
@@ -174,7 +179,7 @@ def _calculate_type_bound_at_step(match_step):
 
     if current_type_bounds:
         # A type bound exists. Assert that there is exactly one bound, defined in precisely one way.
-        return get_one_element_collection_value(current_type_bounds)
+        return get_only_element_from_collection(current_type_bounds)
     else:
         # No type bound exists at this MATCH step.
         return None
@@ -318,24 +323,33 @@ def _expose_all_eligible_locations(match_query, location_types, eligible_locatio
     return match_query._replace(match_traversals=new_match_traversals)
 
 
-def expose_ideal_query_execution_start_points(match_query, location_types):
+def expose_ideal_query_execution_start_points(compound_match_query, location_types):
     """Ensure that OrientDB only considers desirable query start points in query planning."""
-    location_classification = _classify_query_locations(match_query)
-    preferred_locations, eligible_locations, ineligible_locations = location_classification
+    new_queries = []
 
-    if preferred_locations:
-        # Convert all eligible locations into non-eligible ones, by removing their "class:" clause.
-        # The "class:" clause is provided either by having a QueryRoot block or a CoerceType block
-        # in the MatchStep corresponding to the location. We remove it by converting the class check
-        # into an "INSTANCEOF" Filter block, which OrientDB is unable to optimize away.
-        return _expose_only_preferred_locations(
-            match_query, location_types, preferred_locations, eligible_locations)
-    elif eligible_locations:
-        # Make sure that all eligible locations have a "class:" clause by adding a CoerceType block
-        # that is a no-op as guaranteed by the schema. This merely ensures that OrientDB is able
-        # to use each of these locations as a query start point, and will choose the one whose
-        # class is of lowest cardinality.
-        return _expose_all_eligible_locations(match_query, location_types, eligible_locations)
-    else:
-        raise AssertionError(u'This query has no preferred or eligible query start locations. '
-                             u'This is almost certainly a bug: {}'.format(match_query))
+    for match_query in compound_match_query.match_queries:
+        location_classification = _classify_query_locations(match_query)
+        preferred_locations, eligible_locations, ineligible_locations = location_classification
+
+        if preferred_locations:
+            # Convert all eligible locations into non-eligible ones, by removing
+            # their "class:" clause. The "class:" clause is provided either by having
+            # a QueryRoot block or a CoerceType block in the MatchStep corresponding
+            # to the location. We remove it by converting the class check into
+            # an "INSTANCEOF" Filter block, which OrientDB is unable to optimize away.
+            new_query = _expose_only_preferred_locations(
+                match_query, location_types, preferred_locations, eligible_locations)
+        elif eligible_locations:
+            # Make sure that all eligible locations have a "class:" clause by adding
+            # a CoerceType block that is a no-op as guaranteed by the schema. This merely
+            # ensures that OrientDB is able to use each of these locations as a query start point,
+            # and will choose the one whose class is of lowest cardinality.
+            new_query = _expose_all_eligible_locations(
+                match_query, location_types, eligible_locations)
+        else:
+            raise AssertionError(u'This query has no preferred or eligible query start locations. '
+                                 u'This is almost certainly a bug: {}'.format(match_query))
+
+        new_queries.append(new_query)
+
+    return compound_match_query._replace(match_queries=new_queries)
