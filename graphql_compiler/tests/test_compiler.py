@@ -1271,7 +1271,7 @@ class CompilerTests(unittest.TestCase):
                 }}.out('Animal_ParentOf') {{
                     where: ((
                          ($matched.Animal__in_Animal_ParentOf___1 IS null)
-                         OR 
+                         OR
                          ($matched.Animal__in_Animal_ParentOf___1.alias CONTAINS name)
                     )),
                     as: Animal__out_Animal_ParentOf___1
@@ -1385,7 +1385,7 @@ class CompilerTests(unittest.TestCase):
                 }}.out('Animal_ParentOf') {{
                     where: ((
                          ($matched.Animal__in_Animal_ParentOf___1 IS null)
-                         OR 
+                         OR
                          (intersect(alias, $matched.Animal__in_Animal_ParentOf___1.alias)
                          .asList().size() > 0))
                     ),
