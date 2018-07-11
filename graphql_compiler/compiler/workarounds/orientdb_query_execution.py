@@ -133,50 +133,53 @@ def _classify_query_locations(match_query):
         for match_step in current_traversal:
             current_step_location = match_step.as_block.location
 
-            already_encountered_location = any((
-                current_step_location in preferred_locations,
-                current_step_location in eligible_locations,
-                current_step_location in ineligible_locations,
-            ))
-
             if isinstance(match_step.root_block, QueryRoot):
+                already_encountered_location = any((
+                    current_step_location in preferred_locations,
+                    current_step_location in eligible_locations,
+                    current_step_location in ineligible_locations,
+                ))
+
                 if not already_encountered_location:
                     raise AssertionError(u'Unexpectedly encountered a location in QueryRoot whose '
                                          u'status has not been determined: {} {} {}'
                                          .format(current_step_location, match_step, match_query))
 
-                at_eligible_location = (
+                at_eligible_or_preferred_location = (
                     current_step_location in preferred_locations or
                     current_step_location in eligible_locations)
 
                 # This location has already been encountered and processed.
-                # Other than setting the "at_eligible_location" state for the sake of
+                # Other than setting the "at_eligible_or_preferred_location" state for the sake of
                 # the following MATCH steps, there is nothing further to be done.
                 continue
             elif isinstance(match_step.root_block, Recurse):
                 # All Recurse blocks cause locations within to be ineligible.
-                at_eligible_location = False
+                at_eligible_or_preferred_location = False
             elif isinstance(match_step.root_block, Traverse):
                 # Optional Traverse blocks cause locations within to be ineligible.
                 # Non-optional Traverse blocks do not change the eligibility of locations within:
                 # if the pre-Traverse location was eligible, so will the location within,
                 # and if it was not eligible, neither will the location within.
                 if match_step.root_block.optional:
-                    at_eligible_location = False
+                    at_eligible_or_preferred_location = False
             else:
                 raise AssertionError(u'Unreachable condition reached: {} {} {}'
                                      .format(match_step.root_block, match_step, match_query))
 
-            if not at_eligible_location:
+            if not at_eligible_or_preferred_location:
                 ineligible_locations.add(current_step_location)
             elif match_step.where_block is not None:
                 if _is_local_filter(match_step.where_block):
+                    # This location has a local filter, and is not otherwise ineligible (it's not
+                    # in a recursion etc.). Therefore, it's a preferred query start location.
                     preferred_locations.add(current_step_location)
                 else:
                     # Locations with non-local filters are never eligible locations, since they
                     # depend on another location being executed before them.
                     ineligible_locations.add(current_step_location)
             else:
+                # No local filtering (i.e. not preferred), but also not ineligible. Eligible it is.
                 eligible_locations.add(current_step_location)
 
     return preferred_locations, eligible_locations, ineligible_locations
@@ -334,6 +337,11 @@ def _expose_all_eligible_locations(match_query, location_types, eligible_locatio
                 # Record the deduced type bound, so that if we encounter this location again,
                 # we ensure that we again infer the same type bound.
                 eligible_location_types[current_step_location] = current_type_bound
+            else:
+                # This function may only be called if there are no preferred locations. Since this
+                # location cannot be preferred, and is not eligible, it must be ineligible.
+                # No action is necessary in this case.
+                pass
 
             new_traversal.append(new_step)
         new_match_traversals.append(new_traversal)
@@ -346,7 +354,7 @@ def expose_ideal_query_execution_start_points(compound_match_query, location_typ
 
     for match_query in compound_match_query.match_queries:
         location_classification = _classify_query_locations(match_query)
-        preferred_locations, eligible_locations, ineligible_locations = location_classification
+        preferred_locations, eligible_locations, _ = location_classification
 
         if preferred_locations:
             # Convert all eligible locations into non-eligible ones, by removing

@@ -4600,3 +4600,43 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_coercion_and_filter_with_tag(self):
+        test_data = test_input_data.coercion_and_filter_with_tag()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `origin`,
+                Animal__out_Entity_Related___1.name AS `related_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Entity_Related') {{
+                    class: Animal,
+                    where: ((name LIKE ('%' + ($matched.Animal___1.name + '%')))),
+                    as: Animal__out_Entity_Related___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .out('Entity_Related')
+                .filter{it, m ->
+                    (
+                        ['Animal'].contains(it['@class'])
+                        &&
+                        it.name.contains(m.Animal___1.name)
+                    )
+                }
+                .as('Animal__out_Entity_Related___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                origin: m.Animal___1.name,
+                related_name: m.Animal__out_Entity_Related___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
