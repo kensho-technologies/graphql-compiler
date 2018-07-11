@@ -45,7 +45,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(compound_match_query)
+        received_match = emit_match.emit_code_from_ir(compound_match_query, None)
         compare_match(self, expected_match, received_match)
 
     def test_simple_traverse_filter_output(self):
@@ -88,7 +88,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(compound_match_query)
+        received_match = emit_match.emit_code_from_ir(compound_match_query, None)
         compare_match(self, expected_match, received_match)
 
     def test_output_inside_optional_traversal(self):
@@ -156,7 +156,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(compound_match_query)
+        received_match = emit_match.emit_code_from_ir(compound_match_query, None)
         compare_match(self, expected_match, received_match)
 
     def test_datetime_variable_representation(self):
@@ -198,7 +198,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(compound_match_query)
+        received_match = emit_match.emit_code_from_ir(compound_match_query, None)
         compare_match(self, expected_match, received_match)
 
     def test_datetime_output_representation(self):
@@ -225,7 +225,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        received_match = emit_match.emit_code_from_ir(compound_match_query)
+        received_match = emit_match.emit_code_from_ir(compound_match_query, None)
         compare_match(self, expected_match, received_match)
 
 
@@ -254,7 +254,7 @@ class EmitGremlinTests(unittest.TestCase):
             ])}
         '''
 
-        received_match = emit_gremlin.emit_code_from_ir(ir_blocks)
+        received_match = emit_gremlin.emit_code_from_ir(ir_blocks, None)
         compare_gremlin(self, expected_gremlin, received_match)
 
     def test_simple_traverse_filter_output(self):
@@ -289,7 +289,7 @@ class EmitGremlinTests(unittest.TestCase):
             ])}
         '''
 
-        received_match = emit_gremlin.emit_code_from_ir(ir_blocks)
+        received_match = emit_gremlin.emit_code_from_ir(ir_blocks, None)
         compare_gremlin(self, expected_gremlin, received_match)
 
     def test_output_inside_optional_traversal(self):
@@ -328,7 +328,7 @@ class EmitGremlinTests(unittest.TestCase):
             ])}
         '''
 
-        received_match = emit_gremlin.emit_code_from_ir(ir_blocks)
+        received_match = emit_gremlin.emit_code_from_ir(ir_blocks, None)
         compare_gremlin(self, expected_gremlin, received_match)
 
     def test_datetime_output_representation(self):
@@ -351,5 +351,5 @@ class EmitGremlinTests(unittest.TestCase):
             ])}
         '''
 
-        received_match = emit_gremlin.emit_code_from_ir(ir_blocks)
+        received_match = emit_gremlin.emit_code_from_ir(ir_blocks, None)
         compare_gremlin(self, expected_gremlin, received_match)

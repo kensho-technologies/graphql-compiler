@@ -239,7 +239,7 @@ def emit_code_from_multiple_match_queries(match_queries):
     return u' '.join(query_data)
 
 
-def emit_code_from_ir(compound_match_query):
+def emit_code_from_ir(compound_match_query, compiler_metadata):
     """Return a MATCH query string from a CompoundMatchQuery."""
     # If the compound match query contains only one match query,
     # just call `emit_code_from_single_match_query`

@@ -6,7 +6,9 @@ import re
 from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey
 
+from ..compiler.ir_lowering_sql.metadata import OnClause
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 
 
@@ -220,3 +222,66 @@ def construct_location_types(location_types_as_strings):
         location: schema.get_type(type_name)
         for location, type_name in six.iteritems(location_types_as_strings)
     }
+
+
+def get_test_sql_config():
+    return {
+        'Animal': {
+            'table_name': 'animal',
+            'column_names': {
+                'name': 'animal_name',
+                'description': 'animal_description',
+            },
+            'on_clauses': {
+                'Animal': OnClause(outer_col='animal_id', inner_col='parent_id'),
+                'Location': OnClause(outer_col='animal_id', inner_col='animal_id')
+
+            },
+            'edges': {
+                'out_Animal_ParentOf': OnClause(outer_col='animal_id', inner_col='parent_id'),
+                'in_Animal_ParentOf': OnClause(outer_col='parent_id', inner_col='animal_id'),
+            }
+        },
+        'Location': {
+            'table_name': 'location',
+        },
+    }
+
+
+def create_sqlite_db():
+    engine = create_engine('sqlite:///:memory:')
+    metadata = MetaData()
+    animal = Table(
+        'animal',
+        metadata,
+        Column('animal_id', Integer, primary_key=True),
+        Column('animal_name', String(10), nullable=False),
+        Column('animal_description', String(50), nullable=False),
+        Column('parent_id', Integer, ForeignKey("animal.animal_id"), nullable=True)
+    )
+
+    location = Table(
+        'location',
+        metadata,
+        Column('location_id', Integer, primary_key=True),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('name', String(10))
+    )
+    metadata.create_all(engine)
+    animals = [
+        (1, 'Big Bear', 'The second biggest bear.', 4),
+        (2, 'Little Bear', 'The smallest bear', 3),
+        (3, 'Medium Bear', 'The midsize bear.', 1),
+        (4, 'Biggest Bear', 'The biggest bear.', None),
+    ]
+    locations = [
+        (4, 1, 'Wisconsin'),
+        (5, 2, 'Michigan'),
+        (6, 3, 'Florida'),
+    ]
+
+    for table, vals in [(animal, animals), (location, locations)]:
+        for val in vals:
+            engine.execute(table.insert(val))
+    return engine, metadata
+
