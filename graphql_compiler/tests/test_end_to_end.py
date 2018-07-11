@@ -197,13 +197,13 @@ class SqlQueryTests(unittest.TestCase):
             select([animal.c.animal_id, animal.c.animal_name.label('name')])
             .select_from(animal).where(animal.c.animal_name == 'Little Bear')
         ).cte()
-        base_query = (
+        anchor_query = (
             select([
                 ancestor.c.animal_id,
                 ancestor.c.parent_id])
             .select_from(ancestor.join(root_query, root_query.c.animal_id == ancestor.c.animal_id))
         )
-        ancestor_cte = base_query.cte(recursive=True)
+        ancestor_cte = anchor_query.cte(recursive=True)
         recursive_query = (
             select([
                 ancestor_cte.c.animal_id,
@@ -286,6 +286,87 @@ class SqlQueryTests(unittest.TestCase):
         results = self.run_query(query, ['name'], **params)
         self.assertListEqual(expected_results, results)
 
+    def test_basic_optional_out_edge(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "in_collection", value: ["$names"])
+                out_Animal_LivesIn @optional {
+                    name @output(out_name: "location_name")
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'name': 'Big Bear', 'location_name': 'Wisconsin'},
+            {'name': 'Biggest Bear', 'location_name': None},
+        ]
+        params = {
+            '$names': ['Biggest Bear', 'Big Bear']
+        }
+        results = self.run_query(query, ['name'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_optional_with_expansion(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "in_collection", value: ["$names"])
+                in_Animal_ParentOf @optional {
+                    out_Animal_LivesIn {
+                        name @output(out_name: "parent_location_name")
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'name': 'Big Bear', 'parent_location_name': None},
+            {'name': 'Biggest Bear', 'parent_location_name': None},
+            {'name': 'Medium Bear', 'parent_location_name': 'Wisconsin'}
+        ]
+        params = {
+            '$names': ['Biggest Bear', 'Big Bear', 'Medium Bear']
+        }
+        results = self.run_query(query, ['name'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_optional_with_expansion_filter(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "in_collection", value: ["$names"])
+                in_Animal_ParentOf @optional {
+                    out_Animal_LivesIn {
+                        name @output(out_name: "parent_location_name")
+                             @filter(op_name: "=", value: ["$location"])
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        query = compilation_result.query
+        # Medium Bear is discarded, because while it's parent Big Bear has a location, it's location
+        # is not Michigan, thus the result is discarded.
+        expected_results = [
+            {'name': 'Big Bear', 'parent_location_name': None},
+            {'name': 'Biggest Bear', 'parent_location_name': None},
+        ]
+        params = {
+            '$names': ['Biggest Bear', 'Big Bear', 'Medium Bear'],
+            '$location': 'Michigan'
+        }
+        results = self.run_query(query, ['name'], **params)
+        self.assertListEqual(expected_results, results)
+
     def test_basic_self_edge_out(self):
         graphql_string = '''
         {
@@ -329,24 +410,30 @@ class SqlQueryTests(unittest.TestCase):
         results = self.run_query(query, ['name', 'child_name'])
         self.assertListEqual(expected_results, results)
 
-    @pytest.mark.skip(reason="Recursion is being developed.")
     def test_basic_recurse_out(self):
         graphql_string = '''
         {
             Animal {
                 name @output(out_name: "name")
-                out_Animal_ParentOf @recurse(depth: 1){
-                    name @output(out_name: "child_name")
+                     @filter(op_name: "=", value: ["$bear_name"])
+                out_Animal_ParentOf @recurse(depth: 2){
+                    name @output(out_name: "descendant")
                 }
             }
         }
         '''
         compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
         query = compilation_result.query
+        params = {
+            '$bear_name': 'Biggest Bear'
+        }
         expected_results = [
-            {'name': 'Big Bear', 'child_name': 'Little Bear'},
+            {'name': 'Biggest Bear', 'descendant': 'Big Bear'},
+            {'name': 'Biggest Bear', 'descendant': 'Little Bear'},
+            {'name': 'Biggest Bear', 'descendant': 'Medium Bear'},
+
         ]
-        results = self.run_query(query, ['name', 'child_name'])
+        results = self.run_query(query, ['name', 'descendant'], **params)
         self.assertListEqual(expected_results, results)
 
     def test_basic_in_edge(self):

@@ -74,19 +74,28 @@ class SqlEmitter(object):
             .group_by(*group_selections)
         )
 
+
     @staticmethod
     def create_relations(relations, compiler_metadata):
         """Create a FROM clause, with the appropriate JOIN statements."""
         # todo: This should probably be a lowering pass
         if len(relations) == 0:
             raise AssertionError('Cannot join 0 tables.')
+        # pass 1: Ignore recursive and optional
         first_relation = relations[0]
         table = first_relation.get_table(compiler_metadata).alias()
         from_clause = table  # start with selecting from the first supplied table
         # store output locations separately from the actual locations
         output_location_to_table = {first_relation.location: table}
         raw_location_to_table = {first_relation.location: (table, first_relation)}
+        recursions = []
+        optionals = []
         for relation in relations[1:]:
+            if relation.in_recursive:
+                recursions.append(relation)
+                continue
+            if relation.in_optional:
+                optionals.append(relation)
             # get the next table to join
             raw_location = relation.location
             outer_table, outer_relation = raw_location_to_table[Location(relation.location.query_path[:-1])]
