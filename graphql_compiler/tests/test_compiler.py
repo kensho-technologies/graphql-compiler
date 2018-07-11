@@ -384,6 +384,7 @@ class CompilerTests(unittest.TestCase):
                     class: Animal,
                     as: Animal___1
                 }}.out('Animal_ParentOf') {{
+                    class: Animal,
                     as: Animal__out_Animal_ParentOf___1
                 }}.out('Animal_FedAt') {{
                     optional: true,
@@ -3733,9 +3734,9 @@ class CompilerTests(unittest.TestCase):
                     Animal___1.name AS `animal_name`
                 FROM (
                     MATCH {{
-                        class: Animal,
                         as: Animal___1
                     }}.out('Animal_ParentOf') {{
+                        class: Animal,
                         where: ((
                             (out_Animal_ParentOf IS null)
                             OR
@@ -3744,7 +3745,6 @@ class CompilerTests(unittest.TestCase):
                         as: Animal__out_Animal_ParentOf___1
                     }} ,
                     {{
-                        class: Animal,
                         as: Animal___1
                     }}.out('Animal_FedAt') {{
                         as: Animal__out_Animal_FedAt___1
@@ -3760,10 +3760,13 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.out('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__out_Animal_ParentOf___1
                     }}.out('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
                     }}.out('Animal_FedAt') {{
+                        class: Event,
                         as: Animal__out_Animal_ParentOf__out_Animal_ParentOf
                             __out_Animal_FedAt___1
                     }} ,
@@ -3854,8 +3857,10 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
                     }} ,
                     {{
@@ -3932,6 +3937,7 @@ class CompilerTests(unittest.TestCase):
                         where: ((name = {animal_name})),
                         as: Animal___1
                     }}.out('Animal_ParentOf') {{
+                        class: Animal,
                         where: ((
                             (in_Animal_ParentOf IS null)
                             OR
@@ -4002,7 +4008,6 @@ class CompilerTests(unittest.TestCase):
                         as: Animal__out_Animal_ParentOf__out_Animal_FedAt___1
                     }} ,
                     {{
-                        class: Animal,
                         as: Animal__out_Animal_ParentOf___1
                     }}.in('Animal_ParentOf') {{
                         as: Animal__out_Animal_ParentOf__in_Animal_ParentOf___1

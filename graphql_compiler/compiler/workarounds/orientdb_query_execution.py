@@ -82,6 +82,8 @@ def _classify_query_locations(match_query):
     """Classify query locations into three groups: preferred, eligible, ineligible.
 
     - Ineligible locations are ones that cannot be the starting point of query execution.
+      These include locations within recursions, locations that are the target of
+      an optional traversal, and locations with an associated "where:" clause with non-local filter.
     - Preferred locations are ones that are eligible to be the starting point, and also have
       an associated "where:" clause that references no non-local fields -- only local fields,
       literals, and variables.
@@ -108,8 +110,18 @@ def _classify_query_locations(match_query):
     # The first step in the first traversal cannot possibly be inside an optional, recursion,
     # or fold. Its location is always an eligible start location for a query.
     # We need to determine whether it is merely eligible, or actually a preferred location.
-    if first_match_step.where_block is not None and _is_local_filter(first_match_step.where_block):
-        preferred_locations.add(first_match_step.as_block.location)
+    if first_match_step.where_block is not None:
+        if _is_local_filter(first_match_step.where_block):
+            preferred_locations.add(first_match_step.as_block.location)
+        else:
+            # TODO(predrag): Fix once we have a proper fix for tag-and-filter in the same scope.
+            #                Either the locally-scoped tag will have to generate a LocalField
+            #                instead of a ContextField, or we'll have to rework the local filter
+            #                detection code in this module.
+            raise AssertionError(u'The first step of the first traversal somehow had a non-local '
+                                 u'filter. This should not be possible, since there is nowhere '
+                                 u'for the tagged value to have come from. Values: {} {}'
+                                 .format(first_match_step, match_query))
     else:
         eligible_locations.add(first_match_step.as_block.location)
 
@@ -157,8 +169,13 @@ def _classify_query_locations(match_query):
 
             if not at_eligible_location:
                 ineligible_locations.add(current_step_location)
-            elif match_step.where_block is not None and _is_local_filter(match_step.where_block):
-                preferred_locations.add(current_step_location)
+            elif match_step.where_block is not None:
+                if _is_local_filter(match_step.where_block):
+                    preferred_locations.add(current_step_location)
+                else:
+                    # Locations with non-local filters are never eligible locations, since they
+                    # depend on another location being executed before them.
+                    ineligible_locations.add(current_step_location)
             else:
                 eligible_locations.add(current_step_location)
 
