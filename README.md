@@ -41,6 +41,7 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
      * [in_collection](#in_collection)
      * [has_substring](#has_substring)
      * [contains](#contains)
+     * [intersects](#intersects)
      * [has_edge_degree](#has_edge_degree)
   * [Type coercions](#type-coercions)
   * [Meta fields](#meta-fields)
