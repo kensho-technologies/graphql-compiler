@@ -1899,6 +1899,7 @@ class CompilerTests(unittest.TestCase):
                 Species___1.name AS `species_name`
             FROM (
                 MATCH {{
+                    class: Species,
                     as: Species___1
                 }}.out('Species_Eats') {{
                     class: Food,
@@ -1931,7 +1932,6 @@ class CompilerTests(unittest.TestCase):
                 Species___1.name AS `species_name`
             FROM (
                 MATCH {{
-                    class: Species,
                     as: Species___1
                 }}.out('Species_Eats') {{
                     class: Food,
