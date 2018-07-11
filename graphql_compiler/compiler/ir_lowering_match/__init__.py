@@ -11,7 +11,8 @@ from .ir_lowering import (lower_backtrack_blocks,
                           lower_has_substring_binary_compositions,
                           remove_backtrack_blocks_from_fold,
                           rewrite_binary_composition_inside_ternary_conditional,
-                          truncate_repeated_single_step_traversals)
+                          truncate_repeated_single_step_traversals,
+                          truncate_repeated_single_step_traversals_in_sub_queries)
 from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .between_lowering import lower_comparisons_to_between
 from .optional_traversal import (collect_filters_to_first_location_occurrence,
@@ -101,6 +102,9 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     compound_match_query = prune_non_existent_outputs(compound_match_query)
     compound_match_query = collect_filters_to_first_location_occurrence(compound_match_query)
     compound_match_query = lower_context_field_expressions(
+        compound_match_query)
+
+    compound_match_query = truncate_repeated_single_step_traversals_in_sub_queries(
         compound_match_query)
 
     return compound_match_query

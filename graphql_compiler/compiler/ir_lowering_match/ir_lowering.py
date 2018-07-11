@@ -16,6 +16,7 @@ from ..expressions import (BinaryComposition, ContextField, ContextFieldExistenc
                            FoldedOutputContextField, Literal, LocalField, TernaryConditional,
                            TrueLiteral)
 from ..helpers import FoldScopeLocation
+from .utils import CompoundMatchQuery
 
 
 ##################################
@@ -158,13 +159,13 @@ def truncate_repeated_single_step_traversals(match_query):
             if single_step.as_block.location in visited_locations:
                 # This location was visited before, omit the traversal.
                 ignore_traversal = True
-        else:
+
+        if not ignore_traversal:
             # For each step in this traversal, mark its location as visited.
             for step in current_match_traversal:
                 if step.as_block is not None:
                     visited_locations.add(step.as_block.location)
 
-        if not ignore_traversal:
             new_match_traversals.append(current_match_traversal)
 
     return match_query._replace(match_traversals=new_match_traversals)
@@ -351,3 +352,13 @@ def remove_backtrack_blocks_from_fold(folded_ir_blocks):
         if not isinstance(block, Backtrack):
             new_folded_ir_blocks.append(block)
     return new_folded_ir_blocks
+
+
+def truncate_repeated_single_step_traversals_in_sub_queries(compound_match_query):
+    """For each sub-query, remove one-step traversals that overlap a previous traversal location."""
+    lowered_match_queries = []
+    for match_query in compound_match_query.match_queries:
+        new_match_query = truncate_repeated_single_step_traversals(match_query)
+        lowered_match_queries.append(new_match_query)
+
+    return CompoundMatchQuery(match_queries=lowered_match_queries)
