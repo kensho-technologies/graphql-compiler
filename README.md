@@ -666,6 +666,23 @@ in a column named `animal_name`.
 #### Constraints and Rules
 - Must be on a property field of list type.
 
+### intersects
+#### Example Use
+```
+{
+    Animal {
+        alias @filter(op_name: "intersects", value: ["$wanted"])
+        name @output(out_name: "animal_name")
+    }
+}
+```
+This returns one row for every `Animal` whose list of aliases has a non-empty intersection 
+with the list of values supplied for the `$wanted` parameter. 
+Each row contains the matching `Animal`'s name in a column named `animal_name`. 
+
+#### Constraints and Rules
+- Must be on a property field of list type.
+
 ### has_edge_degree
 #### Example Use
 ```
