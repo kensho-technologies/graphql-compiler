@@ -2,12 +2,13 @@ from ...compiler.helpers import Location
 
 
 class QueryState:
-    def __init__(self, location, in_optional, in_fold, in_recursive, location_types):
+    def __init__(self, location, in_optional, in_fold, in_recursive, location_types, optional_id):
         self.location = location
         self.in_optional = in_optional
         self.in_fold = in_fold
         self.in_recursive = in_recursive
         self.location_types = location_types
+        self.optional_id = optional_id if in_optional else None
 
     def current_type(self):
         return self.location_types[self.location].name
@@ -43,6 +44,7 @@ class QueryStateManager:
         self.location_to_state = {}
         self.latest_snapshot = None
         self.location_types = location_types
+        self.optional_id = 0
 
     def snapshot_state(self):
         current_location = Location(tuple(self.query_path))
@@ -55,7 +57,8 @@ class QueryStateManager:
             in_optional=self.in_optional,
             in_fold=self.in_fold,
             in_recursive=self.in_recursive,
-            location_types=self.location_types
+            location_types=self.location_types,
+            optional_id=self.optional_id,
         )
         self.latest_snapshot = self.location_to_state[current_location]
 
@@ -102,6 +105,7 @@ class QueryStateManager:
 
     def exit_optional(self):
         self.disable_state('in_optional')
+        self.optional_id += 1
 
     def enter_recursive(self):
         self.enable_state('in_recursive')

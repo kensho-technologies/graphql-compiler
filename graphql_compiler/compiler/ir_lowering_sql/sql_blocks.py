@@ -47,6 +47,10 @@ class SqlBlocks:
         def in_fold(self):
             return self.query_state.in_fold
 
+        @property
+        def optional_id(self):
+            return self.query_state.optional_id
+
     class Selection(BaseBlock):
         def __init__(self, field_name, alias, query_state):
             self.field_name = field_name
@@ -144,9 +148,23 @@ class SqlBlocks:
         def get_table(self, compiler_metadata):
             return compiler_metadata.get_table(self.relative_type)
 
+        def get_dependency_fields(self, compiler_metadata):
+            on_clause = compiler_metadata.get_on_clause(self.outer_type, self.edge_name, self.relative_type)
+            from_location = Location(self.location.query_path[:-1])
+            to_location = self.location
+            from_column = on_clause.outer_col
+            to_column = on_clause.inner_col
+            return from_location, to_location, from_column, to_column
+
+        def get_inner_column_dependency(self, compiler_metadata):
+            on_clause = compiler_metadata.get_on_clause(self.outer_type, self.edge_name, self.relative_type)
+            location = Location(self.location.query_path[:-1])
+            column = on_clause.inner_col
+            return location, column
+
         def to_sql(self, outer_table, inner_table, compiler_metadata):
             """Converts the Relation to an OnClause"""
-            on_clause = compiler_metadata.get_on_clause(self.outer_type, self.edge_name)
+            on_clause = compiler_metadata.get_on_clause(self.outer_type, self.edge_name, self.relative_type)
             if on_clause is None:
                 return None
             if not hasattr(outer_table.c, on_clause.outer_col):

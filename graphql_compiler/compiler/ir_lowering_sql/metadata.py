@@ -77,7 +77,7 @@ class CompilerMetadata:
             )
         return getattr(table.c, column_name)
 
-    def get_on_clause(self, outer_type_name, edge_name):
+    def get_on_clause(self, outer_type_name, edge_name, relative_type):
         """
         Returns the on-clause columns for the tables mapped from the outer and inner type names.
         :param outer_type_name: The name to be mapped to the outer table.
@@ -90,4 +90,21 @@ class CompilerMetadata:
         if 'edges' not in parent_config:
             return None
         edges = parent_config['edges']
-        return edges.get(edge_name)
+        if edge_name in edges:
+            return edges[edge_name]
+        outer_table = self.get_table(outer_type_name)
+        inner_table = self.get_table(relative_type)
+        inner_table_fks = [fk for fk in inner_table.foreign_keys if fk.column.table == outer_table]
+        outer_table_fks = [fk for fk in outer_table.foreign_keys if fk.column.table == inner_table]
+        outer_matches = [foreign_key for foreign_key in inner_table_fks if foreign_key.column.name in outer_table.columns]
+        inner_matches = [foreign_key for foreign_key in outer_table_fks if foreign_key.column.name in inner_table.columns]
+        if len(outer_matches) == 1 and len(inner_matches) == 0:
+            fk = outer_matches[0]
+            return OnClause(outer_col=fk.column.name, inner_col=fk.parent.name)
+        elif len(inner_matches) == 1 and len(outer_matches) == 0:
+            fk = inner_matches[0]
+            return OnClause(outer_col=fk.parent.name, inner_col=fk.column.name)
+        else:
+            raise AssertionError('Ambiguous foreign key specified.')
+
+
