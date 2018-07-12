@@ -201,7 +201,9 @@ class SqlQueryTests(unittest.TestCase):
             select([
                 ancestor.c.animal_id,
                 ancestor.c.parent_id])
-            .select_from(ancestor.join(root_query, root_query.c.animal_id == ancestor.c.animal_id))
+            .select_from(
+                ancestor.join(root_query, root_query.c.animal_id == ancestor.c.animal_id)
+            )
         )
         ancestor_cte = anchor_query.cte(recursive=True)
         recursive_query = (
@@ -429,9 +431,8 @@ class SqlQueryTests(unittest.TestCase):
         }
         expected_results = [
             {'name': 'Biggest Bear', 'descendant': 'Big Bear'},
-            {'name': 'Biggest Bear', 'descendant': 'Little Bear'},
+            {'name': 'Biggest Bear', 'descendant': 'Biggest Bear'},
             {'name': 'Biggest Bear', 'descendant': 'Medium Bear'},
-
         ]
         results = self.run_query(query, ['name', 'descendant'], **params)
         self.assertListEqual(expected_results, results)

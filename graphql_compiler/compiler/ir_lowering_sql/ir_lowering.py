@@ -73,6 +73,11 @@ class SqlBlockLowering(object):
         if block.optional:
             state_manager.enter_optional()
         state_manager.enter_type(type_name)
+        if block.optional:
+            yield sql_blocks.LinkSelection(
+                to_edge=type_name,
+                query_state=state_manager.get_state()
+            )
         yield sql_blocks.Relation(
             query_state=state_manager.get_state()
         )

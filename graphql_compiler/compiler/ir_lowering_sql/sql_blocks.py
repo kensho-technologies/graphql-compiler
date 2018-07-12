@@ -60,9 +60,11 @@ class SqlBlocks:
         def get_column(self, table, compiler_metadata):
             return compiler_metadata.get_column(self.relative_type, self.field_name, table)
 
-        def to_sql(self, location_to_table, compiler_metadata, aggregate):
+        def to_sql(self, location_to_table, compiler_metadata, aggregate, use_alias=False):
             """Get the SQLAlchemy column for this selection."""
             # todo modify aggregate based on the SQL backend
+            if use_alias:
+                return location_to_table[self.location].c[self.alias]
             column = self.get_column(location_to_table[self.location], compiler_metadata)
             if aggregate:
                 aggregate, args = compiler_metadata.db_backend.fold_aggregate
@@ -143,6 +145,28 @@ class SqlBlocks:
             # the == None below is valid SQLAlchemy, the == operator is heavily overloaded.
             return or_(column == None, clause)  # noqa: E711
 
+    class LinkSelection(BaseBlock):
+        """Marker Selection construct to make sure necessary fields are exposed for relations."""
+        def __init__(self, to_edge, query_state):
+            self.to_edge = to_edge
+            super(SqlBlocks.LinkSelection, self).__init__(query_state)
+
+        def to_sql(self, location_to_table, compiler_metadata):
+            """Get the SQLAlchemy column for this selection."""
+            # todo modify aggregate based on the SQL backend
+            table = location_to_table[Location(self.location.query_path[:-1])]
+            column_name = self.get_field(compiler_metadata)
+            column = table.c[column_name]
+            return column.label(None)
+
+        def get_field(self, compiler_metadata):
+            on_clause = compiler_metadata.get_on_clause(
+                self.outer_type, self.to_edge, self.relative_type
+            )
+            return on_clause.outer_col
+
+
+
     class Relation(BaseBlock):
 
         def get_table(self, compiler_metadata):
@@ -162,23 +186,32 @@ class SqlBlocks:
             column = on_clause.inner_col
             return location, column
 
-        def to_sql(self, outer_table, inner_table, compiler_metadata):
+        def to_sql(self, outer_table, inner_table, compiler_metadata, outer_column_name = None):
             """Converts the Relation to an OnClause"""
             on_clause = compiler_metadata.get_on_clause(self.outer_type, self.edge_name, self.relative_type)
             if on_clause is None:
                 return None
-            if not hasattr(outer_table.c, on_clause.outer_col):
+            outer_column_name = on_clause.outer_col if outer_column_name is None else outer_column_name
+            if not hasattr(outer_table.c, outer_column_name):
                 raise AssertionError(
                     'Table for schema "{}" does not have column "{}"'.format(
                         self.outer_type, on_clause.outer_col
                     )
                 )
-            outer_column = getattr(outer_table.c, on_clause.outer_col)
+            outer_column = getattr(outer_table.c, outer_column_name)
             if not hasattr(inner_table.c, on_clause.inner_col):
                 raise AssertionError(
                     'Table for schema "{}" does not have column "{}"'.format(
                         self.relative_type, on_clause.inner_col
                     )
                 )
+            inner_column = getattr(inner_table.c, on_clause.inner_col)
+            return outer_column == inner_column
+
+
+        def to_optional_sql(self, outer_column, inner_table, compiler_metadata):
+            on_clause = compiler_metadata.get_on_clause(self.outer_type, self.edge_name, self.relative_type)
+            if on_clause is None:
+                return None
             inner_column = getattr(inner_table.c, on_clause.inner_col)
             return outer_column == inner_column
