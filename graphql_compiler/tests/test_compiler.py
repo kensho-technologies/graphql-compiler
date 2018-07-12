@@ -516,12 +516,12 @@ class CompilerTests(unittest.TestCase):
             )
             WHERE (
                 (
-                    (Animal___1.out_Animal_FedAt IS null)
+                    (Animal___1.out_Animal_ParentOf IS null)
                     OR
-                    (Animal___1.out_Animal_FedAt.size() = 0)
+                    (Animal___1.out_Animal_ParentOf.size() = 0)
                 )
                 OR
-                (Animal__out_Animal_FedAt___1 IS NOT null)
+                (Animal__out_Animal_ParentOf___1 IS NOT null)
             )
         '''
         expected_gremlin = '''
