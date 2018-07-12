@@ -1,4 +1,4 @@
-# Copyright 2017 Kensho Technologies, LLC.
+# Copyright 2018-present Kensho Technologies, LLC.
 from collections import Counter
 
 import pytest

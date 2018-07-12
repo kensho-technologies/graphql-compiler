@@ -1,3 +1,4 @@
+# Copyright 2018-present Kensho Technologies, LLC.
 from pyorient import OrientDB
 from pyorient.constants import DB_TYPE_GRAPH
 from pyorient.ogm import Config, Graph

@@ -1,3 +1,4 @@
+# Copyright 2018-present Kensho Technologies, LLC.
 from glob import glob
 from os import path
 

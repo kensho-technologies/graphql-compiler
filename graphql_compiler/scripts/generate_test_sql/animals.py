@@ -1,3 +1,4 @@
+# Copyright 2017-present Kensho Technologies, LLC.
 import random
 
 from .species import SPECIES_LIST

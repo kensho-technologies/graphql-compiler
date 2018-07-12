@@ -1,3 +1,4 @@
+# Copyright 2017-present Kensho Technologies, LLC.
 import datetime
 import random
 from uuid import UUID

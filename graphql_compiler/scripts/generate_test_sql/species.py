@@ -1,3 +1,4 @@
+# Copyright 2017-present Kensho Technologies, LLC.
 from .utils import create_vertex_statement, get_random_limbs, get_uuid
 
 

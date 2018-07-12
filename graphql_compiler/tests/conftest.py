@@ -1,3 +1,5 @@
+# Copyright 2018-present Kensho Technologies, LLC.
+
 import time
 
 import pytest
