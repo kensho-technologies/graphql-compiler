@@ -18,4 +18,5 @@ script:
   - bandit -r graphql_compiler/
   - py.test --cov=graphql_compiler graphql_compiler/tests
 after_success:
+  - docker-compose down
   - coveralls
