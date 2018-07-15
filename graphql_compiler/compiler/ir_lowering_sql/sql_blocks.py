@@ -86,7 +86,6 @@ class SqlNode(object):
                 self.relation.relative_type, self.relation.edge_name, None
             )
             recursive_table = self.relation.get_table(compiler_metadata)
-            outer_table = recursive_table.alias()
             table = recursive_table.alias()
             primary_key = [column for column in table.c if column.primary_key][0]
             parent_cte_column = parent_cte.c[link_column.name]
@@ -113,14 +112,13 @@ class SqlNode(object):
                 ).where(recursive_cte.c['__depth_internal_name'] < self.relation.recursion_depth)
             )
             recursive_query = recursive_cte.union_all(recursive_query)
-            pk = [column for column in outer_table.c if column.primary_key][0]
-            self.from_clause = outer_table.join(recursive_query, pk == recursive_query.c[on_clause.outer_col])
-            self.table = outer_table
+            pk = [column for column in self.table.c if column.primary_key][0]
+            self.from_clause = self.from_clause.join(recursive_query, pk == recursive_query.c[on_clause.outer_col])
             link_column = recursive_query.c[on_clause.inner_col].label(None)
             self.add_link_column(link_column)
             outer_link_column = link_column
-            for selection in self.selections:
-                selection.table = outer_table
+            # for selection in self.selections:
+            #     selection.table = self.table
 
         columns = [selection.get_selection_column(compiler_metadata) for selection in collapsed_node.selections]
         columns += collapsed_node.link_columns
