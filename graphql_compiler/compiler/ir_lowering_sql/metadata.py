@@ -42,6 +42,7 @@ class CompilerMetadata:
             )
         return self.sqlalchemy_metadata.tables[table_name]
 
+
     @property
     def db_backend(self):
         return self._db_backend
@@ -69,6 +70,21 @@ class CompilerMetadata:
         column_name = column_map[schema_column]
         return self.get_table_column(table, column_name)
 
+    def get_column_name(self, schema_type_name, schema_column):
+        if schema_type_name not in self.config:
+            raise AssertionError(
+                'No config found for schema "{}"'.format(schema_type_name)
+            )
+        column_name = schema_column
+        schema_config = self.config[schema_type_name]
+        if 'column_names' not in schema_config:
+            return column_name
+        column_map = schema_config['column_names']
+        if schema_column not in column_map:
+            return column_name
+        column_name = column_map[schema_column]
+        return column_name
+
     @staticmethod
     def get_table_column(table, column_name):
         if not hasattr(table.c, column_name):
@@ -85,7 +101,7 @@ class CompilerMetadata:
         :return: on clause columns: parent, child
         """
         if outer_type_name not in self.config:
-            raise AssertionError
+            return None
         parent_config = self.config[outer_type_name]
         if 'edges' not in parent_config:
             return None

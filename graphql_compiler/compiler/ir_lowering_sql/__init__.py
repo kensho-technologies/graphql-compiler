@@ -58,4 +58,4 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
                 node = location_to_node[block.location]
                 node.add_predicate(block)
         sql_query_blocks.extend(blocks)
-    return sql_query_blocks
+    return sql_query_blocks, tree_root

@@ -1,4 +1,4 @@
-from sqlalchemy import bindparam, or_
+from sqlalchemy import bindparam, or_, and_, select, literal_column
 
 from graphql_compiler.compiler.helpers import Location
 from .constants import Cardinality
@@ -8,24 +8,167 @@ class SqlNode(object):
     def __init__(self, parent_node, relation):
         self.parent_node = parent_node
         self.children_nodes = []
+        self.recursions = []
         self.selections = []
         self.predicates = []
+        self.link_columns = []
+        self.recursion_to_column = {}
+        self.link_column = None
         self.relation = relation
         self.from_clause = None
         self.table = None
 
     def add_child_node(self, child_node):
-        self.children_nodes.append(child_node)
+        if child_node.relation.is_recursive:
+            self.recursions.append(child_node)
+        else:
+            self.children_nodes.append(child_node)
 
     def add_selection(self, selection):
         if not isinstance(selection, SqlBlocks.Selection):
             raise AssertionError('Trying to add non-selection')
         self.selections.append(selection)
+    def add_link_column(self, column):
+        self.link_columns.append(column)
+
 
     def add_predicate(self, predicate):
         if not isinstance(predicate, SqlBlocks.Predicate):
             raise AssertionError('Trying to add non-predicate')
-        self.selections.append(predicate)
+        self.predicates.append(predicate)
+
+    def visit_self_and_children(self, compiler_metadata, parent_query=None):
+        child_results = []
+        for child_node in self.children_nodes:
+            child_results.append(child_node.visit_self_and_children(compiler_metadata))
+        table = self.relation.get_table(compiler_metadata)
+        self.table = table.alias()
+        self.from_clause = self.table
+        for selection in self.selections:
+            selection.table = self.table
+        for predicate in self.predicates:
+            predicate.table = self.table
+        if len(self.recursions) > 0:
+            pk = [column for column in self.table.c if column.primary_key][0]
+            for recursion in self.recursions:
+                link_column = pk.label(None)
+                self.recursion_to_column[recursion] = link_column
+                self.add_link_column(link_column)
+        for child_result in child_results:
+            self.selections.extend(child_result.selections)
+            self.predicates.extend(child_result.predicates)
+            self.recursions.extend(child_result.recursions)
+            self.link_columns.extend(child_result.link_columns)
+            for recursion, link_column in child_result.recursion_to_column.items():
+                self.recursion_to_column[recursion] = link_column
+            # outer table is the current table, inner table is the child's
+            onclause = child_result.relation.to_sql(self.table, child_result.table, compiler_metadata)
+            if onclause is None:
+                # should only happen at root
+                continue
+            if child_result.relation.in_optional:
+                self.from_clause = self.from_clause.outerjoin(
+                    child_result.from_clause, onclause=onclause
+                )
+            else:
+                self.from_clause = self.from_clause.join(
+                    child_result.from_clause, onclause=onclause
+                )
+        return self
+
+    def to_query_recursive(self, compiler_metadata, parent_cte=None, link_column=None):
+        collapsed_node = self.visit_self_and_children(compiler_metadata)
+        outer_link_column = None
+        if self.relation.is_recursive:
+            assert parent_cte is not None
+            assert link_column is not None
+            on_clause = compiler_metadata.get_on_clause(
+                self.relation.relative_type, self.relation.edge_name, None
+            )
+            recursive_table = self.relation.get_table(compiler_metadata)
+            outer_table = recursive_table.alias()
+            table = recursive_table.alias()
+            primary_key = [column for column in table.c if column.primary_key][0]
+            parent_cte_column = parent_cte.c[link_column.name]
+            anchor_query = (
+                select([
+                    primary_key.label(on_clause.inner_col),
+                    primary_key.label(on_clause.outer_col),
+                    literal_column('0').label('__depth_internal_name')
+                ])
+                    .select_from(
+                    table.join(parent_cte, parent_cte_column == primary_key)
+                )
+            )
+            recursive_cte = anchor_query.cte(recursive=True)
+            recursive_query = (
+                select([
+                    recursive_cte.c[on_clause.inner_col],
+                    table.c[on_clause.outer_col],
+                    (recursive_cte.c['__depth_internal_name'] + 1).label('__depth_internal_name'),
+                ])
+                .select_from(
+                    table.join(recursive_cte,
+                               table.c[on_clause.inner_col] == recursive_cte.c[on_clause.outer_col])
+                ).where(recursive_cte.c['__depth_internal_name'] < self.relation.recursion_depth)
+            )
+            recursive_query = recursive_cte.union_all(recursive_query)
+            pk = [column for column in outer_table.c if column.primary_key][0]
+            self.from_clause = outer_table.join(recursive_query, pk == recursive_query.c[on_clause.outer_col])
+            self.table = outer_table
+            link_column = recursive_query.c[on_clause.inner_col].label(None)
+            self.add_link_column(link_column)
+            outer_link_column = link_column
+            for selection in self.selections:
+                selection.table = outer_table
+
+        columns = [selection.get_selection_column(compiler_metadata) for selection in collapsed_node.selections]
+        columns += collapsed_node.link_columns
+        predicates = [predicate.to_predicate_statement(compiler_metadata) for predicate in collapsed_node.predicates]
+        query = (
+            select(columns)
+            .select_from(collapsed_node.from_clause)
+            .where(and_(*predicates))
+        )
+        cte = query.cte()
+        collapsed_node.from_clause = cte
+        recursive_selections = []
+        for recursion in collapsed_node.recursions:
+            link_column = collapsed_node.recursion_to_column[recursion]
+            recursive_query, recursive_node, recursive_link_column = recursion.to_query_recursive(compiler_metadata, parent_cte=cte, link_column=link_column)
+            recursive_selections.extend(recursive_node.selections)
+            current_cte_column = cte.c[link_column.name]
+            recursive_cte_column = recursive_node.from_clause.c[recursive_link_column.name]
+            collapsed_node.from_clause = collapsed_node.from_clause.join(
+                recursive_node.from_clause, onclause=current_cte_column == recursive_cte_column
+            )
+
+        for selection in collapsed_node.selections:
+            selection.table = cte
+            selection.rename()
+        all_selections = collapsed_node.selections + recursive_selections
+        # no need to adjust predicates, they are already applied
+        columns = [selection.get_selection_column(compiler_metadata) for selection in all_selections]
+        query = (
+            select(columns)
+            .select_from(collapsed_node.from_clause)
+        )
+        return query, self, outer_link_column
+
+    def to_query(self, compiler_metadata):
+        query, _, _ = self.to_query_recursive(compiler_metadata)
+        return query
+
+
+
+
+
+
+
+
+
+
+
 
     def __repr__(self):
         return self.relation.__repr__()
@@ -37,6 +180,7 @@ class SqlBlocks:
     class BaseBlock:
         def __init__(self, query_state):
             self.query_state = query_state
+            self.table = None
 
         @property
         def location(self):
@@ -84,10 +228,29 @@ class SqlBlocks:
         def __init__(self, field_name, alias, query_state):
             self.field_name = field_name
             self.alias = alias
+            self.renamed = False
             super(SqlBlocks.Selection, self).__init__(query_state)
+
+        def rename(self):
+            if self.alias is None:
+                self.alias = self.field_name
+            self.renamed = True
 
         def get_column(self, table, compiler_metadata):
             return compiler_metadata.get_column(self.relative_type, self.field_name, table)
+
+        def get_selection_column(self, compiler_metadata):
+            if not self.renamed:
+                column_name = compiler_metadata.get_column_name(self.relative_type, self.field_name)
+                if column_name not in self.table.c:
+                    raise AssertionError('Column {} not found in columns {}', column_name, self.table.c)
+                column = self.table.c[column_name]
+                if self.alias is not None:
+                    return column.label(self.alias)
+                return column
+            else:
+                return self.table.c[self.alias]
+
 
         def to_sql(self, location_to_table, compiler_metadata, aggregate, use_alias=False):
             """Get the SQLAlchemy column for this selection."""
@@ -134,10 +297,20 @@ class SqlBlocks:
         def get_column(self, table, compiler_metadata):
             return compiler_metadata.get_column(self.relative_type, self.field_name, table)
 
+        def get_predicate_column(self, compiler_metadata):
+            return compiler_metadata.get_column(self.relative_type, self.field_name, self.table)
+
         def to_sql(self, location_to_table, compiler_metadata):
             """Gets the SQLAlchemy where clause for a Predicate block."""
             table = location_to_table[self.location]
             column = self.get_column(table, compiler_metadata)
+            return self.get_predicate(column)
+
+        def to_predicate_statement(self, compiler_metadata):
+            column = self.get_predicate_column(compiler_metadata)
+            return self.get_predicate(column)
+
+        def get_predicate(self, column):
             if self.operator.cardinality == Cardinality.SINGLE:
                 if len(self.param_names) != 1:
                     raise AssertionError(

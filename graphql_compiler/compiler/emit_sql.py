@@ -184,4 +184,7 @@ class SqlEmitter(object):
         return root_query
 
 def emit_code_from_ir(sql_blocks, compiler_metadata):
-    return SqlEmitter(sql_blocks).compile(compiler_metadata)
+    sql_blocks, tree_root = sql_blocks
+    result = tree_root.to_query(compiler_metadata)
+    return result
+    # return SqlEmitter(sql_blocks).compile(compiler_metadata)
