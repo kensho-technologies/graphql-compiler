@@ -194,14 +194,14 @@ class SqlQueryTests(unittest.TestCase):
         ancestor = animal_table.alias()
         root_query = (
             select([animal.c.animal_id, animal.c.animal_name.label('name')])
-            .select_from(animal).where(animal.c.animal_name == 'Little Bear')
+                .select_from(animal).where(animal.c.animal_name == 'Little Bear')
         ).cte()
         primary_key = [column for column in ancestor.c if column.primary_key][0]
         anchor_query = (
             select([
                 primary_key,
                 primary_key.label('parent_id')])
-            .select_from(
+                .select_from(
                 ancestor.join(root_query, root_query.c.animal_id == ancestor.c.animal_id)
             )
         )
@@ -210,10 +210,12 @@ class SqlQueryTests(unittest.TestCase):
             select([
                 ancestor_cte.c.animal_id,
                 animal.c.parent_id])
-                .select_from(animal.join(ancestor_cte, animal.c.animal_id == ancestor_cte.c.parent_id)))
+                .select_from(
+                animal.join(ancestor_cte, animal.c.animal_id == ancestor_cte.c.parent_id)))
         query = ancestor_cte.union_all(recursive_query)
         query = select([root_query.c.name, ancestor.c.animal_name.label('ancestor')]).select_from(
-            root_query.join(query, query.c.animal_id == root_query.c.animal_id).join(ancestor, ancestor.c.animal_id == query.c.parent_id)
+            root_query.join(query, query.c.animal_id == root_query.c.animal_id).join(ancestor,
+                                                                                     ancestor.c.animal_id == query.c.parent_id)
         )
 
         expected_results = [
@@ -235,7 +237,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         expected_results = [
             {'name': 'Big Bear'},
@@ -255,7 +258,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         expected_results = [
             {'name': 'Big Bear'},
@@ -278,7 +282,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         expected_results = [
             {'name': 'Big Bear', 'location_name': 'Wisconsin'},
@@ -301,7 +306,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         expected_results = [
             {'name': 'Big Bear', 'location_name': 'Wisconsin'},
@@ -327,7 +333,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         expected_results = [
             {'name': 'Big Bear', 'parent_location_name': None},
@@ -355,7 +362,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         # Medium Bear is discarded, because while it's parent Big Bear has a location, it's location
         # is not Michigan, thus the result is discarded.
@@ -381,7 +389,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         expected_results = [
             {'name': 'Big Bear', 'child_name': 'Medium Bear'},
@@ -404,7 +413,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         expected_results = [
             {'name': 'Big Bear', 'grandchild_name': 'Little Bear'},
@@ -430,10 +440,12 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         expected_results = [
-            {'name': 'Biggest Bear', 'child_name': 'Big Bear', 'grandchild_name': 'Medium Bear', 'great_grandchild_name': 'Little Bear'},
+            {'name': 'Biggest Bear', 'child_name': 'Big Bear', 'grandchild_name': 'Medium Bear',
+             'great_grandchild_name': 'Little Bear'},
         ]
         results = self.run_query(query, ['name', 'child_name'])
         self.assertListEqual(expected_results, results)
@@ -450,7 +462,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         params = {
             '$bear_name': 'Little Bear'
@@ -476,7 +489,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         params = {
             '$bear_name': 'Little Bear'
@@ -500,7 +514,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         params = {
             '$bear_name': 'Biggest Bear'
@@ -529,7 +544,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         params = {
             '$bear_name': 'Big Bear'
@@ -557,7 +573,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         params = {
             '$bear_names': ['Biggest Bear', 'Big Bear']
@@ -589,7 +606,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         params = {
             '$bear_name': 'Biggest Bear'
@@ -649,7 +667,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         expected_results = [
             {'name': 'Big Bear', 'parent_name': 'Biggest Bear'},
@@ -674,7 +693,8 @@ class SqlQueryTests(unittest.TestCase):
             }
         }
         '''
-        compilation_result = compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
         query = compilation_result.query
         params = {
             '$bear_name': 'Biggest Bear'
@@ -682,8 +702,46 @@ class SqlQueryTests(unittest.TestCase):
         expected_results = [
             {'name': 'Biggest Bear', 'descendant': 'Big Bear', 'descendant_parent': 'Biggest Bear'},
             {'name': 'Biggest Bear', 'descendant': 'Biggest Bear', 'descendant_parent': None},
-            {'name': 'Biggest Bear', 'descendant': 'Little Bear', 'descendant_parent': 'Medium Bear'},
+            {'name': 'Biggest Bear', 'descendant': 'Little Bear',
+             'descendant_parent': 'Medium Bear'},
             {'name': 'Biggest Bear', 'descendant': 'Medium Bear', 'descendant_parent': 'Big Bear'},
         ]
         results = self.run_query(query, ['name', 'descendant'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_basic_recurse_with_nested_expansion(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["$bear_name"])
+                out_Animal_ParentOf @recurse(depth: 3){
+                    name @output(out_name: "descendant")
+                    in_Animal_ParentOf @optional {
+                        name @output(out_name: "descendant_parent")
+                        out_Animal_ParentOf {
+                            name @output(out_name: "same_as_descendant")
+                        }
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        params = {
+            '$bear_name': 'Biggest Bear'
+        }
+        expected_results = [
+            {'name': 'Biggest Bear', 'descendant': 'Big Bear', 'same_as_descendant': 'Big Bear',
+             'descendant_parent': 'Biggest Bear', },
+            {'name': 'Biggest Bear', 'descendant': 'Biggest Bear', 'same_as_descendant': None,
+             'descendant_parent': None},
+            {'name': 'Biggest Bear', 'descendant': 'Little Bear',
+             'same_as_descendant': 'Little Bear', 'descendant_parent': 'Medium Bear'},
+            {'name': 'Biggest Bear', 'descendant': 'Medium Bear',
+             'same_as_descendant': 'Medium Bear', 'descendant_parent': 'Big Bear'},
+        ]
+        results = self.run_query(query, ['name', 'descendant', 'same_as_descendant'], **params)
         self.assertListEqual(expected_results, results)
