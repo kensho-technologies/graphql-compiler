@@ -4,6 +4,33 @@ from graphql_compiler.compiler.helpers import Location
 from .constants import Cardinality
 
 
+class SqlNode(object):
+    def __init__(self, parent_node, relation):
+        self.parent_node = parent_node
+        self.children_nodes = []
+        self.selections = []
+        self.predicates = []
+        self.relation = relation
+        self.from_clause = None
+        self.table = None
+
+    def add_child_node(self, child_node):
+        self.children_nodes.append(child_node)
+
+    def add_selection(self, selection):
+        if not isinstance(selection, SqlBlocks.Selection):
+            raise AssertionError('Trying to add non-selection')
+        self.selections.append(selection)
+
+    def add_predicate(self, predicate):
+        if not isinstance(predicate, SqlBlocks.Predicate):
+            raise AssertionError('Trying to add non-predicate')
+        self.selections.append(predicate)
+
+    def __repr__(self):
+        return self.relation.__repr__()
+
+
 
 class SqlBlocks:
 
@@ -50,6 +77,8 @@ class SqlBlocks:
         @property
         def optional_id(self):
             return self.query_state.optional_id
+
+
 
     class Selection(BaseBlock):
         def __init__(self, field_name, alias, query_state):
@@ -225,3 +254,6 @@ class SqlBlocks:
                 return None
             inner_column = getattr(inner_table.c, on_clause.inner_col)
             return outer_column == inner_column
+
+        def __repr__(self):
+            return self.location.query_path.__repr__()

@@ -1,6 +1,8 @@
 ##############
 # Public API #
 ##############
+from graphql_compiler.compiler.helpers import Location
+from graphql_compiler.compiler.ir_lowering_sql.sql_blocks import SqlNode, SqlBlocks
 from .ir_lowering import SqlBlockLowering
 from .query_state_manager import QueryStateManager
 
@@ -32,9 +34,28 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     """
     sql_query_blocks = []
     state_manager = QueryStateManager(location_types)
+    location_to_node = {}
+    tree_root = None
     for block in ir_blocks:
-
-        sql_query_blocks.extend(
-            SqlBlockLowering.lower_block(block, state_manager)
-        )
+        blocks = list(SqlBlockLowering.lower_block(block, state_manager))
+        for block in blocks:
+            if isinstance(block, SqlBlocks.Relation):
+                if tree_root is None:
+                    tree_root = SqlNode(parent_node=None, relation=block)
+                    location_to_node[block.location] = tree_root
+                elif block.location not in location_to_node:
+                    prev_location = Location(block.location.query_path[:-1])
+                    parent_node = location_to_node[prev_location]
+                    child_node = SqlNode(parent_node=parent_node, relation=block)
+                    parent_node.add_child_node(child_node)
+                    location_to_node[block.location] = child_node
+                else:
+                    raise AssertionError('Relations should never share a location')
+            elif isinstance(block, SqlBlocks.Selection):
+                node = location_to_node[block.location]
+                node.add_selection(block)
+            elif isinstance(block, SqlBlocks.Predicate):
+                node = location_to_node[block.location]
+                node.add_predicate(block)
+        sql_query_blocks.extend(blocks)
     return sql_query_blocks
