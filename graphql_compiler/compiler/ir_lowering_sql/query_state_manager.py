@@ -2,11 +2,11 @@ from ...compiler.helpers import Location
 
 
 class QueryState:
-    def __init__(self, location, in_optional, in_fold, in_recursive, location_types, optional_id):
+    def __init__(self, location, in_optional, in_fold, is_recursive, location_types, optional_id):
         self.location = location
         self.in_optional = in_optional
         self.in_fold = in_fold
-        self.in_recursive = in_recursive
+        self.is_recursive = is_recursive
         self.location_types = location_types
         self.optional_id = optional_id if in_optional else None
 
@@ -40,11 +40,13 @@ class QueryStateManager:
         self.query_path = []
         self.in_optional = False
         self.in_fold = False
-        self.in_recursive = False
+        self.is_recursive = False
         self.location_to_state = {}
+        self.recursive_locations = set()
         self.latest_snapshot = None
         self.location_types = location_types
         self.optional_id = 0
+        self.recursive_count = 0
 
     def snapshot_state(self):
         current_location = Location(tuple(self.query_path))
@@ -56,7 +58,7 @@ class QueryStateManager:
             location=current_location,
             in_optional=self.in_optional,
             in_fold=self.in_fold,
-            in_recursive=self.in_recursive,
+            is_recursive=self.is_recursive,
             location_types=self.location_types,
             optional_id=self.optional_id,
         )
@@ -107,11 +109,18 @@ class QueryStateManager:
         self.disable_state('in_optional')
         self.optional_id += 1
 
+    def mark_recursion_location(self):
+        recursion_start = tuple(self.query_path)
+        self.recursive_locations.add(recursion_start)
+
+    def at_recursive_location(self):
+        return tuple(self.query_path) in self.recursive_locations
+
     def enter_recursive(self):
-        self.enable_state('in_recursive')
+        self.enable_state('is_recursive')
 
     def exit_recursive(self):
-        self.disable_state('in_recursive')
+        self.disable_state('is_recursive')
 
     def enter_type(self, location):
         self.query_path.append(location)

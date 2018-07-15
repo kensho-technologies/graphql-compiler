@@ -40,8 +40,8 @@ class SqlBlocks:
             return self.query_state.in_optional
 
         @property
-        def in_recursive(self):
-            return self.query_state.in_recursive
+        def is_recursive(self):
+            return self.query_state.is_recursive
 
         @property
         def in_fold(self):
@@ -151,10 +151,12 @@ class SqlBlocks:
             self.to_edge = to_edge
             super(SqlBlocks.LinkSelection, self).__init__(query_state)
 
-        def to_sql(self, location_to_table, compiler_metadata):
+        def to_sql(self, location_to_table, compiler_metadata, primary_key=False):
             """Get the SQLAlchemy column for this selection."""
             # todo modify aggregate based on the SQL backend
             table = location_to_table[Location(self.location.query_path[:-1])]
+            if primary_key:
+                return [column.label(None) for column in table.c if column.primary_key][0]
             column_name = self.get_field(compiler_metadata)
             column = table.c[column_name]
             return column.label(None)
@@ -165,9 +167,17 @@ class SqlBlocks:
             )
             return on_clause.outer_col
 
+    class StartRecursion(BaseBlock):
+        pass
 
+    class EndRecursion(BaseBlock):
+        pass
 
     class Relation(BaseBlock):
+
+        def __init__(self, query_state, recursion_depth=None):
+            self.recursion_depth = recursion_depth
+            super(SqlBlocks.Relation, self).__init__(query_state)
 
         def get_table(self, compiler_metadata):
             return compiler_metadata.get_table(self.relative_type)

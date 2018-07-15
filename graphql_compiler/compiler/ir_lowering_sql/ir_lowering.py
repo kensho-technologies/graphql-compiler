@@ -87,15 +87,21 @@ class SqlBlockLowering(object):
         if block.direction not in ('out', 'in'):
             raise AssertionError('Unknown direction "{}"'.format(block.direction))
         type_name = (block.direction + '_' + block.edge_name)
+        state_manager.mark_recursion_location()
         state_manager.enter_recursive()
-        blocks = []
-        for depth in range(block.depth + 1):
-            state_manager.enter_type(type_name)
-            yield sql_blocks.Relation(
-                query_state=state_manager.get_state()
-            )
-            blocks.append(block)
-        return blocks
+        yield sql_blocks.StartRecursion(
+            query_state=state_manager.get_state()
+        )
+        state_manager.enter_type(type_name)
+        yield sql_blocks.LinkSelection(
+            to_edge=type_name,
+            query_state=state_manager.get_state()
+        )
+        yield sql_blocks.Relation(
+            query_state=state_manager.get_state(),
+            recursion_depth=block.depth,
+        )
+        state_manager.exit_recursive()
 
     @staticmethod
     def _lower_construct_result(block, state_manager):
@@ -149,7 +155,12 @@ class SqlBlockLowering(object):
     @staticmethod
     def _lower_backtrack(block, state_manager):
         state_manager.exit_type()
-        return SqlBlockLowering._lower_noop(block, state_manager)
+        if state_manager.at_recursive_location():
+            yield sql_blocks.EndRecursion(
+                query_state=state_manager.get_state()
+            )
+        else:
+            return SqlBlockLowering._lower_noop(block, state_manager)
 
     @staticmethod
     def _lower_unfold(block, state_manager):
