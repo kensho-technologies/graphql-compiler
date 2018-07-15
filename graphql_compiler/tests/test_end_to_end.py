@@ -772,5 +772,40 @@ class SqlQueryTests(unittest.TestCase):
             {'name': 'Little Bear', 'ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Little Bear'},
             {'name': 'Little Bear', 'ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Medium Bear'},
         ]
-        results = self.run_query(query, ['name', 'ancestor'], **params)
+        results = self.run_query(query, ['name', 'ancestor', 'ancestor_or_ancestor_child'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_double_recursion_in_recursion(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["$bear_name"])
+                in_Animal_ParentOf @recurse(depth: 1){
+                    name @output(out_name: "self_or_ancestor")
+                    out_Animal_ParentOf @recurse(depth: 1) {
+                        name @output(out_name: "ancestor_or_ancestor_child")
+                    }
+                    in_Animal_ParentOf @recurse(depth: 1) {
+                        name @output(out_name: "ancestor_or_ancestor_parent")
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        params = {
+            '$bear_name': 'Little Bear'
+        }
+        expected_results = [
+            {'name': 'Little Bear', 'self_or_ancestor': 'Little Bear', 'ancestor_or_ancestor_child': 'Little Bear', 'ancestor_or_ancestor_parent': 'Little Bear'},
+            {'name': 'Little Bear', 'self_or_ancestor': 'Little Bear', 'ancestor_or_ancestor_child': 'Little Bear', 'ancestor_or_ancestor_parent': 'Medium Bear'},
+            {'name': 'Little Bear', 'self_or_ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Little Bear', 'ancestor_or_ancestor_parent': 'Big Bear'},
+            {'name': 'Little Bear', 'self_or_ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Little Bear', 'ancestor_or_ancestor_parent': 'Medium Bear'},
+            {'name': 'Little Bear', 'self_or_ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Medium Bear','ancestor_or_ancestor_parent': 'Big Bear'},
+            {'name': 'Little Bear', 'self_or_ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Medium Bear','ancestor_or_ancestor_parent': 'Medium Bear'},
+        ]
+        results = self.run_query(query, ['name', 'self_or_ancestor', 'ancestor_or_ancestor_child', 'ancestor_or_ancestor_parent'], **params)
         self.assertListEqual(expected_results, results)
