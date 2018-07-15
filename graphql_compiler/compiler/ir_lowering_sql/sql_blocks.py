@@ -117,8 +117,6 @@ class SqlNode(object):
             link_column = recursive_query.c[on_clause.inner_col].label(None)
             self.add_link_column(link_column)
             outer_link_column = link_column
-            # for selection in self.selections:
-            #     selection.table = self.table
 
         columns = [selection.get_selection_column(compiler_metadata) for selection in collapsed_node.selections]
         columns += collapsed_node.link_columns
@@ -130,13 +128,14 @@ class SqlNode(object):
         )
         cte = query.cte()
         collapsed_node.from_clause = cte
+        collapsed_node.table = cte
         recursive_selections = []
         for recursion in collapsed_node.recursions:
             link_column = collapsed_node.recursion_to_column[recursion]
             recursive_query, recursive_node, recursive_link_column = recursion.to_query_recursive(compiler_metadata, parent_cte=cte, link_column=link_column)
             recursive_selections.extend(recursive_node.selections)
             current_cte_column = cte.c[link_column.name]
-            recursive_cte_column = recursive_node.from_clause.c[recursive_link_column.name]
+            recursive_cte_column = recursive_node.table.c[recursive_link_column.name]
             collapsed_node.from_clause = collapsed_node.from_clause.join(
                 recursive_node.from_clause, onclause=current_cte_column == recursive_cte_column
             )
@@ -144,9 +143,10 @@ class SqlNode(object):
         for selection in collapsed_node.selections:
             selection.table = cte
             selection.rename()
-        all_selections = collapsed_node.selections + recursive_selections
+
+        collapsed_node.selections = collapsed_node.selections + recursive_selections
         # no need to adjust predicates, they are already applied
-        columns = [selection.get_selection_column(compiler_metadata) for selection in all_selections]
+        columns = [selection.get_selection_column(compiler_metadata) for selection in collapsed_node.selections]
         query = (
             select(columns)
             .select_from(collapsed_node.from_clause)

@@ -745,3 +745,32 @@ class SqlQueryTests(unittest.TestCase):
         ]
         results = self.run_query(query, ['name', 'descendant', 'same_as_descendant'], **params)
         self.assertListEqual(expected_results, results)
+
+    def test_recursion_in_recursion(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["$bear_name"])
+                in_Animal_ParentOf @recurse(depth: 1){
+                    name @output(out_name: "ancestor")
+                    out_Animal_ParentOf @recurse(depth: 1) {
+                        name @output(out_name: "ancestor_or_ancestor_child")
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        params = {
+            '$bear_name': 'Little Bear'
+        }
+        expected_results = [
+            {'name': 'Little Bear', 'ancestor': 'Little Bear', 'ancestor_or_ancestor_child': 'Little Bear'},
+            {'name': 'Little Bear', 'ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Little Bear'},
+            {'name': 'Little Bear', 'ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Medium Bear'},
+        ]
+        results = self.run_query(query, ['name', 'ancestor'], **params)
+        self.assertListEqual(expected_results, results)
