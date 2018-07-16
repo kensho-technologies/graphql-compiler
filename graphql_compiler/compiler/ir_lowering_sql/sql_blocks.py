@@ -1,4 +1,4 @@
-from sqlalchemy import bindparam, or_, and_, select, literal_column
+from sqlalchemy import bindparam, or_, and_, select, literal_column, case, cast, String
 
 from graphql_compiler.compiler.helpers import Location
 from .constants import Cardinality
@@ -89,14 +89,16 @@ class SqlNode(object):
             table = recursive_table.alias()
             primary_key = [column for column in table.c if column.primary_key][0]
             parent_cte_column = parent_cte.c[link_column.name]
+            distinct_parent_column_query = select([parent_cte_column.label('link')], distinct=True).alias()
             anchor_query = (
                 select([
                     primary_key.label(on_clause.inner_col),
                     primary_key.label(on_clause.outer_col),
-                    literal_column('0').label('__depth_internal_name')
-                ])
+                    literal_column('0').label('__depth_internal_name'),
+                    #cast(primary_key, String()).concat(',').label('path'),
+                ], distinct=True)
                     .select_from(
-                    table.join(parent_cte, parent_cte_column == primary_key)
+                    table.join(distinct_parent_column_query, primary_key == distinct_parent_column_query.c['link'])
                 )
             )
             recursive_cte = anchor_query.cte(recursive=True)
@@ -105,11 +107,19 @@ class SqlNode(object):
                     recursive_cte.c[on_clause.inner_col],
                     table.c[on_clause.outer_col],
                     (recursive_cte.c['__depth_internal_name'] + 1).label('__depth_internal_name'),
+                    #recursive_cte.c.path.concat(cast(table.c[on_clause.outer_col], String())).concat(',').label('path'),
                 ])
                 .select_from(
-                    table.join(recursive_cte,
-                               table.c[on_clause.inner_col] == recursive_cte.c[on_clause.outer_col])
-                ).where(recursive_cte.c['__depth_internal_name'] < self.relation.recursion_depth)
+                    table.join(recursive_cte, table.c[on_clause.inner_col] == recursive_cte.c[on_clause.outer_col])
+                ).where(and_(
+                    recursive_cte.c['__depth_internal_name'] < self.relation.recursion_depth,
+                    # case(
+                    #     [
+                    #         (recursive_cte.c.path.contains(cast(table.c[on_clause.outer_col], String())), 1)
+                    #     ],
+                    #     else_=0
+                    # ) == 0
+                ))
             )
             recursive_query = recursive_cte.union_all(recursive_query)
             pk = [column for column in self.table.c if column.primary_key][0]
@@ -122,7 +132,7 @@ class SqlNode(object):
         columns += collapsed_node.link_columns
         predicates = [predicate.to_predicate_statement(compiler_metadata) for predicate in collapsed_node.predicates]
         query = (
-            select(columns)
+            select(columns, distinct=True)
             .select_from(collapsed_node.from_clause)
             .where(and_(*predicates))
         )
@@ -148,7 +158,7 @@ class SqlNode(object):
         # no need to adjust predicates, they are already applied
         columns = [selection.get_selection_column(compiler_metadata) for selection in collapsed_node.selections]
         query = (
-            select(columns)
+            select(columns, distinct=True)
             .select_from(collapsed_node.from_clause)
         )
         return query, self, outer_link_column

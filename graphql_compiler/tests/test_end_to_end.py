@@ -3,7 +3,7 @@ from decimal import Decimal
 import unittest
 
 import pytest
-from sqlalchemy import text, select, literal_column
+from sqlalchemy import text, select, literal_column, func, case, Integer, cast, String
 
 from .. import graphql_to_gremlin, graphql_to_match
 from ..compiler import compile_graphql_to_gremlin, compile_graphql_to_match, compile_graphql_to_sql
@@ -188,6 +188,7 @@ class SqlQueryTests(unittest.TestCase):
         results = self.run_query(query, ['animal_name'])
         self.assertListEqual(expected_results, results)
 
+
     def test_db_recurse(self):
         animal_table = self.metadata.tables['animal']
         animal = animal_table.alias()
@@ -197,21 +198,34 @@ class SqlQueryTests(unittest.TestCase):
                 .select_from(animal).where(animal.c.animal_name == 'Little Bear')
         ).cte()
         primary_key = [column for column in ancestor.c if column.primary_key][0]
+        distinct_column_query = select([root_query.c.animal_id]).alias()
         anchor_query = (
             select([
                 primary_key,
-                primary_key.label('parent_id')])
+                primary_key.label('parent_id'),
+                primary_key.concat(',').label('path'),
+                # literal_column(0, type_=Integer()).label('has_cycle')
+            ])
                 .select_from(
-                ancestor.join(root_query, root_query.c.animal_id == ancestor.c.animal_id)
+                ancestor.join(distinct_column_query, distinct_column_query.c.animal_id == ancestor.c.animal_id)
             )
         )
         ancestor_cte = anchor_query.cte(recursive=True)
         recursive_query = (
             select([
                 ancestor_cte.c.animal_id,
-                animal.c.parent_id])
+                animal.c.parent_id,
+                ancestor_cte.c.path.concat(animal.c.parent_id).concat(',').label('path'),
+            ])
                 .select_from(
-                animal.join(ancestor_cte, animal.c.animal_id == ancestor_cte.c.parent_id)))
+                animal.join(ancestor_cte, animal.c.animal_id == ancestor_cte.c.parent_id))
+                .where(case(
+                    [
+                        (ancestor_cte.c.path.contains(cast(animal.c.parent_id, String())), 1)
+                    ],
+                    else_=0
+                ) == 0)
+        )
         query = ancestor_cte.union_all(recursive_query)
         query = select([root_query.c.name, ancestor.c.animal_name.label('ancestor')]).select_from(
             root_query.join(query, query.c.animal_id == root_query.c.animal_id).join(ancestor,
@@ -768,11 +782,15 @@ class SqlQueryTests(unittest.TestCase):
             '$bear_name': 'Little Bear'
         }
         expected_results = [
-            {'name': 'Little Bear', 'ancestor': 'Little Bear', 'ancestor_or_ancestor_child': 'Little Bear'},
-            {'name': 'Little Bear', 'ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Little Bear'},
-            {'name': 'Little Bear', 'ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Medium Bear'},
+            {'name': 'Little Bear', 'ancestor': 'Little Bear',
+             'ancestor_or_ancestor_child': 'Little Bear'},
+            {'name': 'Little Bear', 'ancestor': 'Medium Bear',
+             'ancestor_or_ancestor_child': 'Little Bear'},
+            {'name': 'Little Bear', 'ancestor': 'Medium Bear',
+             'ancestor_or_ancestor_child': 'Medium Bear'},
         ]
-        results = self.run_query(query, ['name', 'ancestor', 'ancestor_or_ancestor_child'], **params)
+        results = self.run_query(query, ['name', 'ancestor', 'ancestor_or_ancestor_child'],
+                                 **params)
         self.assertListEqual(expected_results, results)
 
     def test_double_recursion_in_recursion(self):
@@ -800,12 +818,31 @@ class SqlQueryTests(unittest.TestCase):
             '$bear_name': 'Little Bear'
         }
         expected_results = [
-            {'name': 'Little Bear', 'self_or_ancestor': 'Little Bear', 'ancestor_or_ancestor_child': 'Little Bear', 'ancestor_or_ancestor_parent': 'Little Bear'},
-            {'name': 'Little Bear', 'self_or_ancestor': 'Little Bear', 'ancestor_or_ancestor_child': 'Little Bear', 'ancestor_or_ancestor_parent': 'Medium Bear'},
-            {'name': 'Little Bear', 'self_or_ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Little Bear', 'ancestor_or_ancestor_parent': 'Big Bear'},
-            {'name': 'Little Bear', 'self_or_ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Little Bear', 'ancestor_or_ancestor_parent': 'Medium Bear'},
-            {'name': 'Little Bear', 'self_or_ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Medium Bear','ancestor_or_ancestor_parent': 'Big Bear'},
-            {'name': 'Little Bear', 'self_or_ancestor': 'Medium Bear', 'ancestor_or_ancestor_child': 'Medium Bear','ancestor_or_ancestor_parent': 'Medium Bear'},
+            {'name': 'Little Bear',
+             'self_or_ancestor': 'Little Bear',
+             'ancestor_or_ancestor_child': 'Little Bear',
+             'ancestor_or_ancestor_parent': 'Little Bear'},
+            {'name': 'Little Bear',
+             'self_or_ancestor': 'Little Bear',
+             'ancestor_or_ancestor_child': 'Little Bear',
+             'ancestor_or_ancestor_parent': 'Medium Bear'},
+            {'name': 'Little Bear',
+             'self_or_ancestor': 'Medium Bear',
+             'ancestor_or_ancestor_child': 'Little Bear',
+             'ancestor_or_ancestor_parent': 'Big Bear'},
+            {'name': 'Little Bear',
+             'self_or_ancestor': 'Medium Bear',
+             'ancestor_or_ancestor_child': 'Little Bear',
+             'ancestor_or_ancestor_parent': 'Medium Bear'},
+            {'name': 'Little Bear',
+             'self_or_ancestor': 'Medium Bear',
+             'ancestor_or_ancestor_child': 'Medium Bear',
+             'ancestor_or_ancestor_parent': 'Big Bear'},
+            {'name': 'Little Bear',
+             'self_or_ancestor': 'Medium Bear',
+             'ancestor_or_ancestor_child': 'Medium Bear',
+             'ancestor_or_ancestor_parent': 'Medium Bear'},
         ]
-        results = self.run_query(query, ['name', 'self_or_ancestor', 'ancestor_or_ancestor_child', 'ancestor_or_ancestor_parent'], **params)
+        results = self.run_query(query, ['name', 'self_or_ancestor', 'ancestor_or_ancestor_child',
+                                         'ancestor_or_ancestor_parent'], **params)
         self.assertListEqual(expected_results, results)

@@ -125,7 +125,8 @@ class SqlEmitter(object):
                 select([
                     primary_key.label(on_clause.inner_col),
                     primary_key.label(on_clause.outer_col),
-                    literal_column('0').label('__depth_internal_name')
+                    literal_column('0').label('__depth_internal_name'),
+                    primary_key.concat(',').label('path'),
                     ])
                     .select_from(
                     table.join(root_cte, root_cte.c[cte_column_name] == primary_key)
