@@ -6,9 +6,5 @@ services:
     ports:
       - "127.0.0.1:2480:2480"
       - "127.0.0.1:2424:2424"
-    deploy:
-      resources:
-        reservations:
-          memory: 500M
     environment:
       ORIENTDB_ROOT_PASSWORD: root
