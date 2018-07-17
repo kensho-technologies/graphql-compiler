@@ -1,5 +1,4 @@
 [run]
-# We don't want to include the tests themselves in the coverage report
 omit =
     # No coverage for tests
     graphql_compiler/tests/*
