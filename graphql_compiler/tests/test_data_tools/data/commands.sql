@@ -1,6 +1,6 @@
-# Auto-generated output from `graphql_compiler/scripts/generate_test_sql/__init__.py`.
+# Auto-generated output from `generate_test_sql/__init__.py`.
 # Do not edit directly!
-# Generated on 2018-07-17T11:55:13.678814 from compiler version 1.6.2.
+# Generated on 2018-07-17T12:25:43.679501 from compiler version 1.6.2.
 
 create vertex Species set limbs = 9, name = 'Nazgul', uuid = '0a5d2f34-6baa-9455-e3e7-0682c2094cac'
 create vertex Species set limbs = 10, name = 'Pteranodon', uuid = '81332876-37eb-dcd9-e87a-1613e443df78'
