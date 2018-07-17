@@ -4,5 +4,7 @@ flake8==3.5.0
 isort==4.3.4
 pydocstyle==2.1.1
 pylint==1.8.2
+pyorient==1.5.5
 pytest==3.4.1
 pytest-cov==2.5.1
+snapshottest==0.5.0

@@ -501,40 +501,46 @@ class CompilerTests(unittest.TestCase):
 
         expected_match = '''
             SELECT
-                if(eval("(Animal__out_Animal_FedAt___1 IS NOT null)"),
-                   Animal__out_Animal_FedAt___1.uuid, null) AS `uuid`
+                Animal___1.name AS `animal_name`,
+                if(eval("(Animal__out_Animal_ParentOf___1 IS NOT null)"),
+                   Animal__out_Animal_ParentOf___1.name, null) AS `parent_name`,
+                if(eval("(Animal__out_Animal_ParentOf___1 IS NOT null)"),
+                   Animal__out_Animal_ParentOf___1.uuid, null) AS `uuid`
             FROM (
                 MATCH {{
                     class: Animal,
                     as: Animal___1
-                }}.out('Animal_FedAt') {{
+                }}.out('Animal_ParentOf') {{
                     where: ((name = {name})),
                     optional: true,
-                    as: Animal__out_Animal_FedAt___1
+                    as: Animal__out_Animal_ParentOf___1
                 }}
                 RETURN $matches
             )
             WHERE (
                 (
-                    (Animal___1.out_Animal_FedAt IS null)
+                    (Animal___1.out_Animal_ParentOf IS null)
                     OR
-                    (Animal___1.out_Animal_FedAt.size() = 0)
+                    (Animal___1.out_Animal_ParentOf.size() = 0)
                 )
                 OR
-                (Animal__out_Animal_FedAt___1 IS NOT null)
+                (Animal__out_Animal_ParentOf___1 IS NOT null)
             )
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
             .as('Animal___1')
-            .ifThenElse{it.out_Animal_FedAt == null}{null}{it.out('Animal_FedAt')}
+            .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
             .filter{it, m -> ((it == null) || (it.name == $name))}
-            .as('Animal__out_Animal_FedAt___1')
+            .as('Animal__out_Animal_ParentOf___1')
             .optional('Animal___1')
             .as('Animal___2')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                uuid: ((m.Animal__out_Animal_FedAt___1 != null) ?
-                       m.Animal__out_Animal_FedAt___1.uuid : null)
+                animal_name: m.Animal___1.name,
+                parent_name: ((m.Animal__out_Animal_ParentOf___1 != null) ?
+                                 m.Animal__out_Animal_ParentOf___1.name : null),
+                uuid: ((m.Animal__out_Animal_ParentOf___1 != null) ?
+                          m.Animal__out_Animal_ParentOf___1.uuid : null)
             ])}
         '''
 

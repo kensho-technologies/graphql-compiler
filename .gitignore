@@ -43,3 +43,8 @@ tools/sphinx_docgen/docs_html
 # Python package publishing directories
 build/
 dist/
+
+# vim and swap files
+*.vim
+*.swp
+*.swo
