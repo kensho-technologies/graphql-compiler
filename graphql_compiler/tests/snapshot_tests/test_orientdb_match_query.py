@@ -11,11 +11,18 @@ from ... import graphql_to_match
 from ..test_helpers import get_schema
 
 
-def convert_to_strings(tuple_or_value):
-    if isinstance(tuple_or_value, tuple):
-        return tuple(str(element) for element in tuple_or_value)
+def convert_to_strings(value):
+    """Return string replresentation of given tuple or scalar."""
+    if isinstance(value, tuple):
+        return tuple(str(element) for element in value)
+    elif isinstance(value, Decimal):
+        return str(value)
+    elif isinstance(value, six.string_types):
+        return value
     else:
-        return str(tuple_or_value)
+        raise AssertionError(u'Received unexpected type {}. Expected one of tuple, Decimal or '
+                             u'string: {}'.format(type(value).__name__, value))
+
 
 def execute_graphql(schema, test_data, client, sample_parameters):
     """Compile the GraphQL query to MATCH, execute it agains the test_db, and return the results."""
@@ -64,52 +71,6 @@ class OrientDBMatchQueryTests(TestCase):
         """Initialize the test schema once for all tests, and disable max diff limits."""
         self.maxDiff = None
         self.schema = get_schema()
-
-    @pytest.mark.usefixtures('graph_client')
-    def test_immediate_output(self):
-        test_data = test_input_data.immediate_output()
-        sample_parameters = {}
-
-        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
-
-        self.assertMatchSnapshot(rows)
-
-    @pytest.mark.usefixtures('graph_client')
-    def test_traverse_and_output(self):
-        test_data = test_input_data.traverse_and_output()
-        sample_parameters = {}
-
-        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
-
-        self.assertMatchSnapshot(rows)
-
-    @pytest.mark.usefixtures('graph_client')
-    def test_optional_traverse_after_mandatory_traverse(self):
-        test_data = test_input_data.optional_traverse_after_mandatory_traverse()
-        sample_parameters = {}
-
-        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
-
-        self.assertMatchSnapshot(rows)
-
-    @pytest.mark.usefixtures('graph_client')
-    def test_optional_and_deep_traverse(self):
-        test_data = test_input_data.optional_and_deep_traverse()
-        sample_parameters = {}
-
-        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
-
-        self.assertMatchSnapshot(rows)
-
-    @pytest.mark.usefixtures('graph_client')
-    def test_fold_on_output_variable(self):
-        test_data = test_input_data.fold_on_output_variable()
-        sample_parameters = {}
-
-        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
-
-        self.assertMatchSnapshot(rows)
-
 
     @pytest.mark.usefixtures('graph_client')
     def test_immediate_output(self):
@@ -542,7 +503,6 @@ class OrientDBMatchQueryTests(TestCase):
         rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 
         self.assertMatchSnapshot(rows)
-
 
     @pytest.mark.usefixtures('graph_client')
     def test_traverse_filter_and_output(self):
