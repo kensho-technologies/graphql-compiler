@@ -206,6 +206,7 @@ class CompilerTests(unittest.TestCase):
                     class: Animal,
                     as: Animal___1
                 }}.out('Animal_ParentOf') {{
+                    class: Animal,
                     as: Animal__out_Animal_ParentOf___1
                 }}
                 RETURN $matches
@@ -237,6 +238,7 @@ class CompilerTests(unittest.TestCase):
                     class: Animal,
                     as: Animal___1
                 }}.out('Animal_OfSpecies') {{
+                    class: Species,
                     as: Animal__out_Animal_OfSpecies___1
                 }} , {{
                     class: Animal,
@@ -284,9 +286,9 @@ class CompilerTests(unittest.TestCase):
                 Animal__out_Animal_ParentOf___1.name AS `parent_name`
             FROM (
                 MATCH {{
-                    class: Animal,
                     as: Animal___1
                 }}.out('Animal_ParentOf') {{
+                    class: Animal,
                     where: (((name = {wanted}) OR (alias CONTAINS {wanted}))),
                     as: Animal__out_Animal_ParentOf___1
                 }}
@@ -315,9 +317,9 @@ class CompilerTests(unittest.TestCase):
                 Animal__out_Entity_Related___1.name AS `related_entity`
             FROM (
                 MATCH {{
-                    class: Animal,
                     as: Animal___1
                 }}.out('Entity_Related') {{
+                    class: Entity,
                     where: (((name = {wanted}) OR (alias CONTAINS {wanted}))),
                     as: Animal__out_Entity_Related___1
                 }}
@@ -382,6 +384,7 @@ class CompilerTests(unittest.TestCase):
                     class: Animal,
                     as: Animal___1
                 }}.out('Animal_ParentOf') {{
+                    class: Animal,
                     as: Animal__out_Animal_ParentOf___1
                 }}.out('Animal_FedAt') {{
                     optional: true,
@@ -763,7 +766,6 @@ class CompilerTests(unittest.TestCase):
                     optional: true,
                     as: Animal__out_Animal_ParentOf__out_Animal_FedAt___1
                 }} , {{
-                    class: Animal,
                     as: Animal__out_Animal_ParentOf___1
                 }}.in('Animal_ParentOf') {{
                     as: Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
@@ -915,6 +917,7 @@ class CompilerTests(unittest.TestCase):
                     class: Animal,
                     as: Animal__out_Entity_Related___1
                 }}.out('Animal_OfSpecies') {{
+                    class: Species,
                     as: Animal__out_Entity_Related__out_Animal_OfSpecies___1
                 }}
                 RETURN $matches
@@ -951,6 +954,7 @@ class CompilerTests(unittest.TestCase):
                     class: Animal,
                     as: Animal___1
                 }}.out('Animal_OfSpecies') {{
+                    class: Species,
                     as: Animal__out_Animal_OfSpecies___1
                 }}
                 RETURN $matches
@@ -1786,9 +1790,9 @@ class CompilerTests(unittest.TestCase):
                 Species___1.name AS `species_name`
             FROM (
                 MATCH {{
-                    class: Species,
                     as: Species___1
                 }}.in('Animal_OfSpecies') {{
+                    class: Animal,
                     where: ((
                         (({child_count} = 0) AND (out_Animal_ParentOf IS null)) OR
                         ((out_Animal_ParentOf IS NOT null) AND
@@ -1847,9 +1851,9 @@ class CompilerTests(unittest.TestCase):
                 Species___1.name AS `species_name`
             FROM (
                 MATCH {{
-                    class: Species,
                     as: Species___1
                 }}.in('Animal_OfSpecies') {{
+                    class: Animal,
                     where: ((
                         (({child_count} = 0) AND (out_Animal_ParentOf IS null)) OR
                         ((out_Animal_ParentOf IS NOT null) AND
@@ -1928,7 +1932,6 @@ class CompilerTests(unittest.TestCase):
                 Species___1.name AS `species_name`
             FROM (
                 MATCH {{
-                    class: Species,
                     as: Species___1
                 }}.out('Species_Eats') {{
                     class: Food,
@@ -2236,6 +2239,7 @@ class CompilerTests(unittest.TestCase):
                     class: Animal,
                     as: Animal___1
                 }}.in('Animal_ParentOf') {{
+                    class: Animal,
                     as: Animal__in_Animal_ParentOf___1
                 }}
                 RETURN $matches
@@ -2363,6 +2367,7 @@ class CompilerTests(unittest.TestCase):
                     class: Animal,
                     as: Animal___1
                 }}.in('Animal_ParentOf') {{
+                    class: Animal,
                     as: Animal__in_Animal_ParentOf___1
                 }}
                 RETURN $matches
@@ -3076,8 +3081,10 @@ class CompilerTests(unittest.TestCase):
                             class: Animal,
                             as: Animal___1
                         }}.in('Animal_ParentOf') {{
+                            class: Animal,
                             as: Animal__in_Animal_ParentOf___1
                         }}.in('Animal_ParentOf') {{
+                            class: Animal,
                             as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
                         }}
                         RETURN $matches
@@ -3218,10 +3225,13 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.out('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
                     }}.out('Animal_OfSpecies') {{
+                        class: Species,
                         as: Animal__in_Animal_ParentOf__out_Animal_ParentOf
                             __out_Animal_OfSpecies___1
                     }}
@@ -3278,9 +3288,9 @@ class CompilerTests(unittest.TestCase):
                     Animal__in_Animal_ParentOf___1.name AS `child_name`
                 FROM (
                     MATCH {{
-                        class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         where: ((
                             (out_Animal_ParentOf IS null)
                             OR
@@ -3304,10 +3314,13 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.out('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
                     }}.out('Animal_OfSpecies') {{
+                        class: Species,
                         as: Animal__in_Animal_ParentOf__out_Animal_ParentOf
                             __out_Animal_OfSpecies___1
                     }}
@@ -3666,11 +3679,13 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.out('Entity_Related') {{
                         class: Animal,
                         as: Animal__in_Animal_ParentOf__out_Entity_Related___1
                     }}.out('Animal_OfSpecies') {{
+                        class: Species,
                         as: Animal__in_Animal_ParentOf__out_Entity_Related
                             __out_Animal_OfSpecies___1
                     }}
@@ -3719,9 +3734,9 @@ class CompilerTests(unittest.TestCase):
                     Animal___1.name AS `animal_name`
                 FROM (
                     MATCH {{
-                        class: Animal,
                         as: Animal___1
                     }}.out('Animal_ParentOf') {{
+                        class: Animal,
                         where: ((
                             (out_Animal_ParentOf IS null)
                             OR
@@ -3730,7 +3745,6 @@ class CompilerTests(unittest.TestCase):
                         as: Animal__out_Animal_ParentOf___1
                     }} ,
                     {{
-                        class: Animal,
                         as: Animal___1
                     }}.out('Animal_FedAt') {{
                         as: Animal__out_Animal_FedAt___1
@@ -3746,10 +3760,13 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.out('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__out_Animal_ParentOf___1
                     }}.out('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
                     }}.out('Animal_FedAt') {{
+                        class: Event,
                         as: Animal__out_Animal_ParentOf__out_Animal_ParentOf
                             __out_Animal_FedAt___1
                     }} ,
@@ -3840,8 +3857,10 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
                     }} ,
                     {{
@@ -3918,6 +3937,7 @@ class CompilerTests(unittest.TestCase):
                         where: ((name = {animal_name})),
                         as: Animal___1
                     }}.out('Animal_ParentOf') {{
+                        class: Animal,
                         where: ((
                             (in_Animal_ParentOf IS null)
                             OR
@@ -3988,7 +4008,6 @@ class CompilerTests(unittest.TestCase):
                         as: Animal__out_Animal_ParentOf__out_Animal_FedAt___1
                     }} ,
                     {{
-                        class: Animal,
                         as: Animal__out_Animal_ParentOf___1
                     }}.in('Animal_ParentOf') {{
                         as: Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
@@ -4153,6 +4172,7 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.out('Animal_ParentOf') {{
                         while: ($depth < 3),
@@ -4229,14 +4249,17 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.in('Animal_ParentOf') {{
+                        class: Animal,
                         as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
                     }} ,
                     {{
                         class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.out('Animal_FedAt') {{
+                        class: Event,
                         as: Animal__in_Animal_ParentOf__out_Animal_FedAt___1
                     }}
                     RETURN $matches
@@ -4408,7 +4431,7 @@ class CompilerTests(unittest.TestCase):
                                     (in_Animal_ParentOf.size() = 0))),
                             as: Animal___1
                         }}
-                            RETURN $matches
+                        RETURN $matches
                     )
                     LET
                         $Animal___1___out_Animal_ParentOf =
@@ -4425,11 +4448,13 @@ class CompilerTests(unittest.TestCase):
                             class: Animal,
                             as: Animal___1
                         }}.in('Animal_ParentOf') {{
+                            class: Animal,
                             as: Animal__in_Animal_ParentOf___1
                         }}.in('Animal_ParentOf') {{
+                            class: Animal,
                             as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
                         }}
-                            RETURN $matches
+                        RETURN $matches
                     )
                 LET
                     $Animal___1___out_Animal_ParentOf
@@ -4486,7 +4511,7 @@ class CompilerTests(unittest.TestCase):
                                     (in_Animal_ParentOf.size() = 0))),
                             as: Animal___1
                         }}
-                            RETURN $matches
+                        RETURN $matches
                     )
                     LET
                         $Animal___1___out_Animal_ParentOf =
@@ -4503,11 +4528,13 @@ class CompilerTests(unittest.TestCase):
                             class: Animal,
                             as: Animal___1
                         }}.in('Animal_ParentOf') {{
+                            class: Animal,
                             as: Animal__in_Animal_ParentOf___1
                         }}.in('Animal_ParentOf') {{
+                            class: Animal,
                             as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
                         }}
-                            RETURN $matches
+                        RETURN $matches
                     )
                 LET
                     $Animal___1___out_Animal_ParentOf
@@ -4569,6 +4596,46 @@ class CompilerTests(unittest.TestCase):
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_coercion_and_filter_with_tag(self):
+        test_data = test_input_data.coercion_and_filter_with_tag()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `origin`,
+                Animal__out_Entity_Related___1.name AS `related_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Entity_Related') {{
+                    class: Animal,
+                    where: ((name LIKE ('%' + ($matched.Animal___1.name + '%')))),
+                    as: Animal__out_Entity_Related___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .out('Entity_Related')
+                .filter{it, m ->
+                    (
+                        ['Animal'].contains(it['@class'])
+                        &&
+                        it.name.contains(m.Animal___1.name)
+                    )
+                }
+                .as('Animal__out_Entity_Related___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                origin: m.Animal___1.name,
+                related_name: m.Animal__out_Entity_Related___1.name
             ])}
         '''
 

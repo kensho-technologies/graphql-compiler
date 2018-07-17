@@ -5,8 +5,8 @@ import unittest
 from graphql import GraphQLString
 
 from ..compiler import ir_lowering_common, ir_lowering_gremlin, ir_lowering_match, ir_sanity_checks
-from ..compiler.blocks import (Backtrack, ConstructResult, EndOptional, Filter, MarkLocation,
-                               QueryRoot, Traverse)
+from ..compiler.blocks import (Backtrack, CoerceType, ConstructResult, EndOptional, Filter,
+                               MarkLocation, QueryRoot, Traverse)
 from ..compiler.expressions import (BinaryComposition, ContextField, ContextFieldExistence,
                                     FalseLiteral, Literal, LocalField, NullLiteral,
                                     OutputContextField, TernaryConditional, TrueLiteral,
@@ -706,8 +706,6 @@ class MatchIrLoweringTests(unittest.TestCase):
         final_query = ir_lowering_match.lower_comparisons_to_between(match_query)
         check_test_data(self, expected_final_query, final_query)
 
-    # Disabled until OrientDB fixes the limitation against traversing from an optional vertex.
-    # For details, see https://github.com/orientechnologies/orientdb/issues/6788
     def test_optional_traversal_edge_case(self):
         # Both Animal and out_Animal_ParentOf have an out_Animal_FedAt field,
         # ensure the correct such field is picked out after full lowering.
@@ -786,9 +784,11 @@ class MatchIrLoweringTests(unittest.TestCase):
             QueryRoot({'Animal'}),
             MarkLocation(base_location),
             Traverse('out', 'Animal_ParentOf'),
+            CoerceType({'Animal'}),
             MarkLocation(child_location),
 
             Traverse('out', 'Animal_FedAt'),
+            CoerceType({'Event'}),
             MarkLocation(child_fed_at_location),
 
             ConstructResult({

@@ -2119,3 +2119,28 @@ def between_lowering():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
+
+
+def coercion_and_filter_with_tag():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "origin") @tag(tag_name: "related")
+            out_Entity_Related {
+                ... on Animal {
+                    name @filter(op_name: "has_substring", value: ["%related"])
+                         @output(out_name: "related_name")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'origin': OutputMetadata(type=GraphQLString, optional=False),
+        'related_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
