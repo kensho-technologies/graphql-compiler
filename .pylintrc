@@ -81,6 +81,7 @@ enable=abstract-class-instantiated,
     bad-str-strip-call,
     bad-super-call,
     bare-except,
+    basestring-builtin,
     binary-op-exception,
     boolean-datetime
     boolean-datetime,
@@ -99,6 +100,7 @@ enable=abstract-class-instantiated,
     deprecated-lambda,
     deprecated-method,
     deprecated-module,
+    dict-iter-method,
     dict-view-method,
     duplicate-argument-name,
     duplicate-bases,
@@ -110,7 +112,6 @@ enable=abstract-class-instantiated,
     expression-not-assigned,
     file-builtin,
     filter-builtin-not-iterating,
-    fixme,
     format-combined-specification,
     format-needs-mapping,
     function-redefined,
@@ -149,6 +150,7 @@ enable=abstract-class-instantiated,
     lost-exception,
     lowercase-l-suffix,
     map-builtin-not-iterating,
+    metaclass-assignment,
     method-hidden,
     misplaced-bare-raise,
     misplaced-future,
@@ -229,6 +231,7 @@ enable=abstract-class-instantiated,
     unexpected-keyword-arg,
     unexpected-special-method-signature,
     unichr-builtin,
+    unicode-builtin,
     unnecessary-lambda,
     unnecessary-pass,
     unnecessary-semicolon,
@@ -250,6 +253,7 @@ enable=abstract-class-instantiated,
     using-cmp-argument,
     using-constant-test,
     wildcard-import,
+    xrange-builtin,
     yield-inside-async-function,
     yield-outside-function,
     zip-builtin-not-iterating,
@@ -259,15 +263,11 @@ enable=abstract-class-instantiated,
     docstyle,
     # Disabled for now, maybe enable in the future:
     # abstract-method,         # needs some cleanup first
-    # basestring-builtin,      # will come with Python 3 support
-    # dict-iter-method,        # will come with Python 3 support
-    # metaclass-assignment,    # will come with Python 3 support
     # no-absolute-import,      # maybe with Python 3 support
     # parameter_documentation, # needs some cleanup and maybe configuration
-    # unicode-builtin,         # will come with Python 3 support
     # unused-argument,         # needs some cleanup and per-line suppression,
                                # buggy / unclear how to suppress only a single function
-    # xrange-builtin,          # will come with Python 3 support
+    # fixme,                   # sometimes there is a legitimate need for a TODO
 
 
 # Consider the following sample rc files for errors to enable/disable:

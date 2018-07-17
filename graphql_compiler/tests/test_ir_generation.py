@@ -3380,3 +3380,40 @@ class IrGenerationTests(unittest.TestCase):
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_coercion_and_filter_with_tag(self):
+        test_data = test_input_data.coercion_and_filter_with_tag()
+
+        base_location = helpers.Location(('Animal',))
+        related_location = base_location.navigate_to_subpath('out_Entity_Related')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+
+            blocks.Traverse('out', 'Entity_Related'),
+            blocks.CoerceType({'Animal'}),
+
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'has_substring',
+                    expressions.LocalField('name'),
+                    expressions.ContextField(base_location.navigate_to_field('name')),
+                ),
+            ),
+            blocks.MarkLocation(related_location),
+
+            blocks.Backtrack(base_location),
+            blocks.ConstructResult({
+                'origin': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'related_name': expressions.OutputContextField(
+                    related_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            related_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
