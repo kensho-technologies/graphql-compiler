@@ -2,6 +2,19 @@
 
 ## Current development version
 
+## v1.7.0
+
+- Add a new `@filter` operator: `intersects`. [#100](https://github.com/kensho-technologies/graphql-compiler/pull/100)
+- Add an optimization that helps OrientDB choose a good starting point for query evaluation. [#102](https://github.com/kensho-technologies/graphql-compiler/pull/102)
+
+The new optimization pass manages what type information is visible at different points in
+the generated query. By exposing additional type information, or hiding existing type information,
+the compiler maximizes the likelihood that OrientDB will start evaluating the query at the
+location of lowest cardinality. This produces a massive performance benefit -- up to 1000x
+on some queries!
+
+Thanks to `yangsong97` for making his first contribution with the `intersects` operator!
+
 ## v1.6.2
 
 - Fix incorrect filtering in `@optional` locations. [#95](https://github.com/kensho-technologies/graphql-compiler/pull/95)
