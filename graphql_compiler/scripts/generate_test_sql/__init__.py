@@ -1,4 +1,4 @@
-# Copyright 2017-present Kensho Technologies, LLC.
+# Copyright 2018-present Kensho Technologies, LLC.
 import datetime
 import os
 import random
