@@ -20,7 +20,7 @@ def read_file(filename):
     # see here:
     # https://github.com/pypa/virtualenv/issues/201#issuecomment-3145690
     top_level_directory = os.path.dirname(os.getcwd())
-    with codecs.open(os.path.join(top_level_directory, filename), 'r') as f:
+    with codecs.open(os.path.join(top_level_directory, 'graphql_compiler', filename), 'r') as f:
         return f.read()
 
 
