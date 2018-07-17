@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import codecs
 import datetime
-import os
+from os import path
 import random
 import re
 import sys
@@ -19,8 +19,8 @@ def read_file(filename):
     # intentionally *not* adding an encoding option to open
     # see here:
     # https://github.com/pypa/virtualenv/issues/201#issuecomment-3145690
-    top_level_directory = os.path.dirname(os.getcwd())
-    with codecs.open(os.path.join(top_level_directory, 'graphql_compiler', filename), 'r') as f:
+    top_level_directory = path.dirname(path.dirname(path.dirname(path.abspath(__file__))))
+    with codecs.open(path.join(top_level_directory, 'graphql_compiler', filename), 'r') as f:
         return f.read()
 
 
@@ -37,7 +37,7 @@ def main():
     """Print a list of SQL commands to generate the testing database."""
     random.seed(0)
 
-    module_path = os.path.relpath(__file__)
+    module_path = path.relpath(__file__)
     current_datetime = datetime.datetime.now().isoformat()
 
     log_message = ('# Auto-generated output from `{path}`.\n'
