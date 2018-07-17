@@ -76,7 +76,7 @@ def create_name(base_name, label):
     return base_name + SEPARATOR + label
 
 
-def strip_index_from_name(name):
+def extract_base_name_and_label(name):
     """Extract and return a pair of (base_name, label) from a given name field."""
     if not isinstance(name, six.string_types):
         raise AssertionError(u'Expected string name. Received {}'.format(name))

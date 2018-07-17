@@ -3,7 +3,7 @@ import random
 
 from .species import SPECIES_LIST
 from .utils import (create_edge_statement, create_name, create_vertex_statement, get_random_date,
-                    get_random_net_worth, get_uuid, strip_index_from_name)
+                    get_random_net_worth, get_uuid, extract_base_name_and_label)
 
 
 NUM_INITIAL_ANIMALS = 5
@@ -82,7 +82,7 @@ def get_animal_generation_commands():
             parent_indices = sorted([
                 index
                 for _, index in [
-                    strip_index_from_name(parent_name)
+                    extract_base_name_and_label(parent_name)
                     for parent_name in new_parent_names
                 ]
             ])
