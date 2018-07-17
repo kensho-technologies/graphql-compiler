@@ -4,7 +4,7 @@ omit =
     graphql_compiler/tests/*
 
     # No coverage for SQL command generation script
-    graphql_compiler/scripts/generate_test_sql/*
+    scripts/generate_test_sql/*
 
     # No coverage for snapshots.
     **/snap_*.py
