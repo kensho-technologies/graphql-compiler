@@ -8,6 +8,7 @@ INSERT INTO UniquelyIdentifiable SET uuid = ''
 CREATE INDEX UniquelyIdentifiable.uuid UNIQUE_HASH_INDEX
 ###############
 
+
 ### Entity ###
 CREATE CLASS Entity EXTENDS V, UniquelyIdentifiable ABSTRACT
 CREATE PROPERTY Entity.name String
@@ -20,6 +21,7 @@ CREATE INDEX Entity.alias NOTUNIQUE
 CREATE PROPERTY Entity.description String
 ###############
 
+
 ### Event ###
 CREATE CLASS Event EXTENDS Entity
 
@@ -27,9 +29,11 @@ CREATE PROPERTY Event.event_date Date
 CREATE INDEX Event.event_date NOTUNIQUE
 ###############
 
+
 ### BirthEvent ###
 CREATE CLASS BirthEvent EXTENDS Event
 ###############
+
 
 ### Animal ###
 CREATE CLASS Animal EXTENDS Entity
@@ -44,8 +48,8 @@ CREATE PROPERTY Animal.net_worth Decimal
 CREATE INDEX Animal.net_worth NOTUNIQUE
 
 CREATE CLASS Animal_ParentOf EXTENDS E
-CREATE PROPERTY Animal_ParentOf.out LINK Animal
 CREATE PROPERTY Animal_ParentOf.in LINK Animal
+CREATE PROPERTY Animal_ParentOf.out LINK Animal
 CREATE INDEX Animal_ParentOf ON Animal_ParentOf (in, out) UNIQUE_HASH_INDEX
 
 CREATE CLASS Animal_FedAt EXTENDS E
@@ -64,19 +68,30 @@ CREATE PROPERTY Animal_BornAt.out LINK Animal
 CREATE INDEX Animal_BornAt ON Animal_BornAt (in, out) UNIQUE_HASH_INDEX
 ###############
 
+
 ### Species ###
 CREATE CLASS Species EXTENDS Entity
 
 CREATE PROPERTY Species.limbs Integer
 CREATE INDEX Species.limbs NOTUNIQUE
 
-CREATE CLASS Species_Eats EXTENDS E
-CREATE PROPERTY Species_Eats.out LINK Species
-CREATE PROPERTY Species_Eats.in LINK Species
-CREATE INDEX Species_Eats ON Species_Eats (in, out) UNIQUE_HASH_INDEX
-
 CREATE CLASS Animal_OfSpecies EXTENDS E
 CREATE PROPERTY Animal_OfSpecies.in LINK Species
 CREATE PROPERTY Animal_OfSpecies.out LINK Animal
 CREATE INDEX Animal_OfSpecies ON Animal_OfSpecies (in, out) UNIQUE_HASH_INDEX
+###############
+
+
+### Food ###
+CREATE CLASS Food EXTENDS Entity
+###############
+
+
+### FoodOrSpecies ###
+CREATE CLASS FoodOrSpecies EXTENDS Food, Species
+
+CREATE CLASS Species_Eats EXTENDS E
+CREATE PROPERTY Species_Eats.in LINK FoodOrSpecies
+CREATE PROPERTY Species_Eats.out LINK Species
+CREATE INDEX Species_Eats ON Species_Eats (in, out) UNIQUE_HASH_INDEX
 ###############

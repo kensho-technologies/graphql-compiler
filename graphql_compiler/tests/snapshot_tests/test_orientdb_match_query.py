@@ -135,23 +135,23 @@ class OrientDBMatchQueryTests(TestCase):
 
         self.assertMatchSnapshot(rows)
 
-    # @pytest.mark.usefixtures('graph_client')
-    # def test_simple_union(self):
-    #     test_data = test_input_data.simple_union()
-    #     sample_parameters = {}
+    @pytest.mark.usefixtures('graph_client')
+    def test_simple_union(self):
+        test_data = test_input_data.simple_union()
+        sample_parameters = {}
 
-    #     rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 
-    #     self.assertMatchSnapshot(rows)
+        self.assertMatchSnapshot(rows)
 
-    # @pytest.mark.usefixtures('graph_client')
-    # def test_optional_on_union(self):
-    #     test_data = test_input_data.optional_on_union()
-    #     sample_parameters = {}
+    @pytest.mark.usefixtures('graph_client')
+    def test_optional_on_union(self):
+        test_data = test_input_data.optional_on_union()
+        sample_parameters = {}
 
-    #     rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 
-    #     self.assertMatchSnapshot(rows)
+        self.assertMatchSnapshot(rows)
 
     @pytest.mark.usefixtures('graph_client')
     def test_typename_output(self):
@@ -171,14 +171,14 @@ class OrientDBMatchQueryTests(TestCase):
 
         self.assertMatchSnapshot(rows)
 
-    # @pytest.mark.usefixtures('graph_client')
-    # def test_recurse_within_fragment(self):
-    #     test_data = test_input_data.recurse_within_fragment()
-    #     sample_parameters = {}
+    @pytest.mark.usefixtures('graph_client')
+    def test_recurse_within_fragment(self):
+        test_data = test_input_data.recurse_within_fragment()
+        sample_parameters = {}
 
-    #     rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 
-    #     self.assertMatchSnapshot(rows)
+        self.assertMatchSnapshot(rows)
 
     @pytest.mark.usefixtures('graph_client')
     def test_recurse_with_immediate_type_coercion(self):
