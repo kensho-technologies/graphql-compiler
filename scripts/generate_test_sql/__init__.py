@@ -15,7 +15,7 @@ from .species import get_species_generation_commands
 
 
 def read_file(filename):
-    """Read package file as text to get its version."""
+    """Read and return text from the file specified by `filename`, in the project root directory."""
     # intentionally *not* adding an encoding option to open
     # see here:
     # https://github.com/pypa/virtualenv/issues/201#issuecomment-3145690
