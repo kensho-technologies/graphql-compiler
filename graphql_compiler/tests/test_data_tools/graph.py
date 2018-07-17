@@ -3,7 +3,7 @@ from pyorient import OrientDB
 from pyorient.constants import DB_TYPE_GRAPH
 from pyorient.ogm import Config, Graph
 
-from .animal_tool import generate_animals
+from .data_tool import generate_data
 from .schema import load_schema
 
 
@@ -30,6 +30,6 @@ def get_test_graph(graph_name):
     client.db_open(graph_name, ORIENTDB_USER, ORIENTDB_PASSWORD, db_type=DB_TYPE_GRAPH)
 
     load_schema(client)
-    generate_animals(client)
+    generate_data(client)
 
     return client

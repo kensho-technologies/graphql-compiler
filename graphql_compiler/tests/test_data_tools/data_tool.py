@@ -1,12 +1,12 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from glob import glob
-from os import path
+from os import path, getcwd
 
 
-def generate_animals(client):
-    """Create animal vertices from the file."""
-    project_root = path.dirname(path.dirname(path.abspath(__file__)))
-    sql_files = glob(path.join(project_root, 'test_data_tools/data/*.sql'))
+def generate_data(client):
+    """Create test DB from the SQL commands file."""
+    project_root = path.dirname(path.abspath(__file__))
+    sql_files = glob(path.join(project_root, 'data/*.sql'))
     for filepath in sql_files:
         with open(filepath) as f:
             for command in f.readlines():
