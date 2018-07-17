@@ -28,159 +28,205 @@ class SqlNode(object):
         if not isinstance(selection, SqlBlocks.Selection):
             raise AssertionError('Trying to add non-selection')
         self.selections.append(selection)
+
     def add_link_column(self, column):
         self.link_columns.append(column)
-
 
     def add_predicate(self, predicate):
         if not isinstance(predicate, SqlBlocks.Predicate):
             raise AssertionError('Trying to add non-predicate')
         self.predicates.append(predicate)
 
-    def visit_self_and_children(self, compiler_metadata, parent_query=None):
-        child_results = []
+    def collapse_query_tree(self, compiler_metadata):
         for child_node in self.children_nodes:
-            child_results.append(child_node.visit_self_and_children(compiler_metadata))
-        table = self.relation.get_table(compiler_metadata)
-        self.table = table.alias()
-        self.from_clause = self.table
-        for selection in self.selections:
-            selection.table = self.table
-        for predicate in self.predicates:
-            predicate.table = self.table
-        if len(self.recursions) > 0:
-            pk = [column for column in self.table.c if column.primary_key][0]
-            for recursion in self.recursions:
-                link_column = pk.label(None)
-                self.recursion_to_column[recursion] = link_column
-                self.add_link_column(link_column)
-        for child_result in child_results:
-            self.selections.extend(child_result.selections)
-            self.predicates.extend(child_result.predicates)
-            self.recursions.extend(child_result.recursions)
-            self.link_columns.extend(child_result.link_columns)
-            for recursion, link_column in child_result.recursion_to_column.items():
-                self.recursion_to_column[recursion] = link_column
-            # outer table is the current table, inner table is the child's
-            onclause = child_result.relation.to_sql(self.table, child_result.table, compiler_metadata)
-            if onclause is None:
-                # should only happen at root
-                continue
-            if child_result.relation.in_optional:
-                self.from_clause = self.from_clause.outerjoin(
-                    child_result.from_clause, onclause=onclause
-                )
-            else:
-                self.from_clause = self.from_clause.join(
-                    child_result.from_clause, onclause=onclause
-                )
-        return self
+            child_node.collapse_query_tree(compiler_metadata)
+        self.create_table(compiler_metadata)
+        self.create_links_for_recursions()
+        for child_node in self.children_nodes:
+            # pull up the childs SQL blocks
+            self.pull_up_node_blocks(child_node)
+            # join to the child
+            self.join_to_node(child_node, compiler_metadata)
 
-    def to_query_recursive(self, compiler_metadata, parent_cte=None, link_column=None):
-        collapsed_node = self.visit_self_and_children(compiler_metadata)
+    def create_links_for_recursions(self):
+        if len(self.recursions) == 0:
+            return
+        pk = [column for column in self.table.c if column.primary_key][0]
+        for recursion in self.recursions:
+            self.create_link_for_recursion(pk, recursion)
+
+    def create_table(self, compiler_metadata):
+        table = self.relation.get_table(compiler_metadata).alias()
+        self.reference_table(table)
+
+    def pull_up_node_blocks(self, child_node):
+        self.selections.extend(child_node.selections)
+        self.predicates.extend(child_node.predicates)
+        self.recursions.extend(child_node.recursions)
+        for recursion, link_column in child_node.recursion_to_column.items():
+            self.recursion_to_column[recursion] = link_column
+        self.link_columns.extend(child_node.link_columns)
+
+    def join_to_node(self, child_node, compiler_metadata):
+        # outer table is the current table, inner table is the child's
+        onclause = child_node.relation.get_on_clause(self.table, child_node.table,
+                                                     compiler_metadata)
+        if onclause is None:
+            # should only happen at root
+            return
+        if child_node.relation.in_optional:
+            self.from_clause = self.from_clause.outerjoin(
+                child_node.from_clause, onclause=onclause
+            )
+            return
+        self.from_clause = self.from_clause.join(
+            child_node.from_clause, onclause=onclause
+        )
+
+    def create_link_for_recursion(self, pk, recursion):
+        link_column = pk.label(None)
+        self.recursion_to_column[recursion] = link_column
+        self.add_link_column(link_column)
+
+    def reference_table(self, table):
+        self.table = table
+        self.from_clause = table
+        self.update_table_for_nodes(table, self.selections)
+        self.update_table_for_nodes(table, self.predicates)
+
+    @staticmethod
+    def update_table_for_nodes(table, nodes):
+        for node in nodes:
+            node.table = table
+
+    def to_query_recursive(self, compiler_metadata, return_final_query, parent_cte=None, link_column=None):
+        self.collapse_query_tree(compiler_metadata)
         outer_link_column = None
         if self.relation.is_recursive:
-            assert parent_cte is not None
-            assert link_column is not None
-            on_clause = compiler_metadata.get_on_clause(
-                self.relation.relative_type, self.relation.edge_name, None
-            )
-            recursive_table = self.relation.get_table(compiler_metadata)
-            table = recursive_table.alias()
-            primary_key = [column for column in table.c if column.primary_key][0]
-            parent_cte_column = parent_cte.c[link_column.name]
-            distinct_parent_column_query = select([parent_cte_column.label('link')], distinct=True).alias()
-            anchor_query = (
-                select([
-                    primary_key.label(on_clause.inner_col),
-                    primary_key.label(on_clause.outer_col),
-                    literal_column('0').label('__depth_internal_name'),
-                    #cast(primary_key, String()).concat(',').label('path'),
-                ], distinct=True)
-                    .select_from(
-                    table.join(distinct_parent_column_query, primary_key == distinct_parent_column_query.c['link'])
-                )
-            )
-            recursive_cte = anchor_query.cte(recursive=True)
-            recursive_query = (
-                select([
-                    recursive_cte.c[on_clause.inner_col],
-                    table.c[on_clause.outer_col],
-                    (recursive_cte.c['__depth_internal_name'] + 1).label('__depth_internal_name'),
-                    #recursive_cte.c.path.concat(cast(table.c[on_clause.outer_col], String())).concat(',').label('path'),
-                ])
-                .select_from(
-                    table.join(recursive_cte, table.c[on_clause.inner_col] == recursive_cte.c[on_clause.outer_col])
-                ).where(and_(
-                    recursive_cte.c['__depth_internal_name'] < self.relation.recursion_depth,
-                    # case(
-                    #     [
-                    #         (recursive_cte.c.path.contains(cast(table.c[on_clause.outer_col], String())), 1)
-                    #     ],
-                    #     else_=0
-                    # ) == 0
-                ))
-            )
-            recursive_query = recursive_cte.union_all(recursive_query)
-            pk = [column for column in self.table.c if column.primary_key][0]
-            self.from_clause = self.from_clause.join(recursive_query, pk == recursive_query.c[on_clause.outer_col])
-            link_column = recursive_query.c[on_clause.inner_col].label(None)
-            self.add_link_column(link_column)
-            outer_link_column = link_column
-
-        columns = [selection.get_selection_column(compiler_metadata) for selection in collapsed_node.selections]
-        columns += collapsed_node.link_columns
-        predicates = [predicate.to_predicate_statement(compiler_metadata) for predicate in collapsed_node.predicates]
-        query = (
-            select(columns, distinct=True)
-            .select_from(collapsed_node.from_clause)
-            .where(and_(*predicates))
-        )
-        cte = query.cte()
-        collapsed_node.from_clause = cte
-        collapsed_node.table = cte
+            outer_link_column = self.create_recursive_element(compiler_metadata, link_column, parent_cte)
+        query = self.create_base_query(compiler_metadata)
+        self.wrap_query_as_cte(query)
         recursive_selections = []
-        for recursion in collapsed_node.recursions:
-            link_column = collapsed_node.recursion_to_column[recursion]
-            recursive_query, recursive_node, recursive_link_column = recursion.to_query_recursive(compiler_metadata, parent_cte=cte, link_column=link_column)
-            recursive_selections.extend(recursive_node.selections)
-            current_cte_column = cte.c[link_column.name]
-            recursive_cte_column = recursive_node.table.c[recursive_link_column.name]
-            collapsed_node.from_clause = collapsed_node.from_clause.join(
-                recursive_node.from_clause, onclause=current_cte_column == recursive_cte_column
+        for recursion in self.recursions:
+            link_column = self.recursion_to_column[recursion]
+            recursive_link_column = recursion.to_query_recursive(
+                compiler_metadata, return_final_query=False,
+                parent_cte=self.table, link_column=link_column
             )
+            recursive_selections.extend(recursion.selections)
+            self.join_to_recursive_node(link_column, recursion, recursive_link_column)
+        # make sure selections point to the underlying CTE now
+        self.selections = self.selections + recursive_selections
+        if return_final_query:
+            query = self.create_final_query(compiler_metadata, recursive_selections)
+            return query
+        return outer_link_column
 
-        for selection in collapsed_node.selections:
-            selection.table = cte
+    def join_to_recursive_node(self, link_column, recursion, recursive_link_column):
+        current_cte_column = self.table.c[link_column.name]
+        recursive_cte_column = recursion.table.c[recursive_link_column.name]
+        self.from_clause = self.from_clause.join(
+            recursion.from_clause, onclause=current_cte_column == recursive_cte_column
+        )
+
+    def create_final_query(self, compiler_metadata, recursive_selections):
+        # no need to adjust predicates, they are already applied
+        columns = [selection.get_selection_column(compiler_metadata) for selection in
+                   self.selections]
+        # no predicates required,  since they are captured in the base CTE
+        return self.create_query(columns, None)
+
+    def wrap_query_as_cte(self, query):
+        cte = query.cte()
+        self.from_clause = cte
+        self.table = cte
+        self.update_table_for_nodes(cte, self.selections)
+        for selection in self.selections:
+            # CTE has assumed the alias columns, make sure the selections know that
             selection.rename()
 
-        collapsed_node.selections = collapsed_node.selections + recursive_selections
-        # no need to adjust predicates, they are already applied
-        columns = [selection.get_selection_column(compiler_metadata) for selection in collapsed_node.selections]
-        query = (
-            select(columns, distinct=True)
-            .select_from(collapsed_node.from_clause)
-        )
-        return query, self, outer_link_column
-
-    def to_query(self, compiler_metadata):
-        query, _, _ = self.to_query_recursive(compiler_metadata)
+    def create_base_query(self, compiler_metadata):
+        selection_columns = [selection.get_selection_column(compiler_metadata) for selection in
+                   self.selections]
+        selection_columns += self.link_columns
+        predicates = [predicate.to_predicate_statement(compiler_metadata) for predicate in
+                      self.predicates]
+        query = self.create_query(selection_columns, predicates)
         return query
 
+    def create_query(self, columns, predicates):
+        query = (
+            select(columns, distinct=True)
+            .select_from(self.from_clause)
+        )
+        if predicates is not None:
+            query = query.where(and_(*predicates))
+        return query
 
+    def create_recursive_element(self, compiler_metadata, link_column,
+                                 parent_cte):
+        on_clause = compiler_metadata.get_on_clause(
+            self.relation.relative_type, self.relation.edge_name, None
+        )
+        recursive_table = self.relation.get_table(compiler_metadata)
+        table = recursive_table.alias()
+        primary_key = [column for column in table.c if column.primary_key][0]
+        parent_cte_column = parent_cte.c[link_column.name]
+        distinct_parent_column_query = select([parent_cte_column.label('link')],
+                                              distinct=True).alias()
+        anchor_query = (
+            select([
+                primary_key.label(on_clause.inner_col),
+                primary_key.label(on_clause.outer_col),
+                literal_column('0').label('__depth_internal_name'),
+                cast(primary_key, String()).concat(',').label('path'),
+            ], distinct=True)
+                .select_from(
+                table.join(distinct_parent_column_query,
+                           primary_key == distinct_parent_column_query.c['link'])
+            )
+        )
+        recursive_cte = anchor_query.cte(recursive=True)
+        recursive_query = (
+            select([
+                recursive_cte.c[on_clause.inner_col],
+                table.c[on_clause.outer_col],
+                (recursive_cte.c['__depth_internal_name'] + 1).label('__depth_internal_name'),
+                recursive_cte.c.path.concat(cast(table.c[on_clause.outer_col], String())).concat(
+                    ',').label('path'),
+            ])
+                .select_from(
+                table.join(recursive_cte,
+                           table.c[on_clause.inner_col] == recursive_cte.c[on_clause.outer_col])
+            ).where(and_(
+                recursive_cte.c['__depth_internal_name'] < self.relation.recursion_depth,
+                case(
+                    [
+                        (
+                            recursive_cte.c.path.contains(
+                                cast(table.c[on_clause.outer_col], String())),
+                            1)
+                    ],
+                    else_=0
+                ) == 0
+            ))
+        )
+        recursion_combinator = compiler_metadata.db_backend.recursion_combinator
+        recursive_query = getattr(recursive_cte, recursion_combinator)(recursive_query)
+        pk = [column for column in self.table.c if column.primary_key][0]
+        self.from_clause = self.from_clause.join(recursive_query,
+                                                 pk == recursive_query.c[on_clause.outer_col])
+        link_column = recursive_query.c[on_clause.inner_col].label(None)
+        self.add_link_column(link_column)
+        outer_link_column = link_column
+        return outer_link_column
 
-
-
-
-
-
-
-
-
+    def to_query(self, compiler_metadata):
+        query = self.to_query_recursive(compiler_metadata, return_final_query=True)
+        return query
 
     def __repr__(self):
         return self.relation.__repr__()
-
 
 
 class SqlBlocks:
@@ -229,8 +275,6 @@ class SqlBlocks:
         @property
         def optional_id(self):
             return self.query_state.optional_id
-
-
 
     class Selection(BaseBlock):
         def __init__(self, field_name, alias, query_state):
@@ -428,6 +472,27 @@ class SqlBlocks:
             inner_column = getattr(inner_table.c, on_clause.inner_col)
             return outer_column == inner_column
 
+        def get_on_clause(self, outer_table, inner_table, compiler_metadata, outer_column_name = None):
+            """Converts the Relation to an OnClause"""
+            on_clause = compiler_metadata.get_on_clause(self.outer_type, self.edge_name, self.relative_type)
+            if on_clause is None:
+                return None
+            outer_column_name = on_clause.outer_col if outer_column_name is None else outer_column_name
+            if not hasattr(outer_table.c, outer_column_name):
+                raise AssertionError(
+                    'Table for schema "{}" does not have column "{}"'.format(
+                        self.outer_type, on_clause.outer_col
+                    )
+                )
+            outer_column = getattr(outer_table.c, outer_column_name)
+            if not hasattr(inner_table.c, on_clause.inner_col):
+                raise AssertionError(
+                    'Table for schema "{}" does not have column "{}"'.format(
+                        self.relative_type, on_clause.inner_col
+                    )
+                )
+            inner_column = getattr(inner_table.c, on_clause.inner_col)
+            return outer_column == inner_column
 
         def to_optional_sql(self, outer_column, inner_table, compiler_metadata):
             on_clause = compiler_metadata.get_on_clause(self.outer_type, self.edge_name, self.relative_type)

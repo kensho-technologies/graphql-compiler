@@ -42,7 +42,6 @@ class CompilerMetadata:
             )
         return self.sqlalchemy_metadata.tables[table_name]
 
-
     @property
     def db_backend(self):
         return self._db_backend
@@ -122,5 +121,7 @@ class CompilerMetadata:
             return OnClause(outer_col=fk.parent.name, inner_col=fk.column.name)
         else:
             raise AssertionError('Ambiguous foreign key specified.')
+
+
 
 

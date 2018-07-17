@@ -284,6 +284,27 @@ class SqlQueryTests(unittest.TestCase):
         results = self.run_query(query, ['name'], **params)
         self.assertListEqual(expected_results, results)
 
+    # def test_basic_tag_filter(self):
+    #     graphql_string = '''
+    #     {
+    #         Animal {
+    #             name @tag(tag_name: "parent_name")
+    #             out_Animal_ParentOf {
+    #                 name @filter(op_name: "<" value: ["%parent_name"])
+    #                      @output(out_name: "child_name")
+    #             }
+    #         }
+    #     }
+    #     '''
+    #     compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+    #                                                 self.compiler_metadata)
+    #     query = compilation_result.query
+    #     expected_results = [
+    #         {'parent_name': 'Big Bear', 'child_name': 'Medium Bear'},
+    #     ]
+    #     results = self.run_query(query, ['parent_name', 'child_name'])
+    #     self.assertListEqual(expected_results, results)
+
     def test_basic_out_edge(self):
         graphql_string = '''
         {
