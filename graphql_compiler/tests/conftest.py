@@ -1,4 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
+import sys
 import time
 
 import pytest
@@ -23,7 +24,8 @@ def init_graph():
             graph_client = get_test_graph(graph_name)
             set_up_successfully = True
             break
-        except Exception:  # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
+            sys.stderr.write(u'Failed to set up test DB: {}'.format(e))
             time.sleep(1)
 
     if not set_up_successfully:
