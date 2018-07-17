@@ -6,9 +6,9 @@ from .utils import (create_edge_statement, create_name, create_vertex_statement,
                     extract_base_name_and_label, get_random_date, get_random_net_worth, get_uuid)
 
 
-NUM_INITIAL_ANIMALS = 5
-NUM_GENERATIONS = 10
-NUM_PARENTS = 3
+NUM_INITIAL_ANIMALS = 20
+NUM_GENERATIONS = 30
+NUM_PARENTS = 4
 ANIMAL_COLOR_LIST = (
     'red',
     'blue',
