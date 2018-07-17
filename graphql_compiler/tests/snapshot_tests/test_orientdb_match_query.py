@@ -11,8 +11,8 @@ from ... import graphql_to_match
 from ..test_helpers import get_schema
 
 
-def convert_to_strings(value):
-    """Return string replresentation of given tuple or scalar."""
+def convert_decimals_to_strings(value):
+    """Convert all decimals to strings in the given scalar or tuple, and return the new value."""
     if isinstance(value, tuple):
         return tuple(str(element) for element in value)
     elif isinstance(value, Decimal):
@@ -48,7 +48,8 @@ def execute_graphql(schema, test_data, client, sample_parameters):
     row_dicts = [row.oRecordData for row in client.command(result.query)]
     row_dicts_using_tuples = [
         {
-            column_name: convert_to_strings(tuple(value) if isinstance(value, list) else value)
+            column_name: convert_decimals_to_strings(
+                tuple(value) if isinstance(value, list) else value)
             for column_name, value in row.items()
         }
         for row in row_dicts
