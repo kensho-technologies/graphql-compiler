@@ -232,14 +232,8 @@ def get_test_sql_config():
                 'name': 'animal_name',
                 'description': 'animal_description',
             },
-            'on_clauses': {
-                'Animal': OnClause(outer_col='animal_id', inner_col='parent_id'),
-                'Location': OnClause(outer_col='animal_id', inner_col='animal_id')
-
-            },
             'edges': {
-                'out_Animal_ParentOf': OnClause(outer_col='animal_id', inner_col='parent_id'),
-                'in_Animal_ParentOf': OnClause(outer_col='parent_id', inner_col='animal_id'),
+                'Animal_ParentOf': OnClause(outer_col='animal_id', inner_col='parent_id'),
             }
         },
         'Location': {

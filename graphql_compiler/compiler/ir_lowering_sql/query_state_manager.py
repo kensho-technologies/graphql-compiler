@@ -2,6 +2,12 @@ from ...compiler.helpers import Location
 
 
 class QueryState:
+    """
+    Manages the state of a query as IR blocks are traversed. This includes location most
+    importantly, and whether a location is in an optional, recursive, or fold context. This state
+    can then be passed along and shared with other blocks, that logically have the same state (
+    a Selection and Relation at the same location, as an example).
+    """
     def __init__(self, location, in_optional, in_fold, is_recursive, location_types, optional_id):
         self.location = location
         self.in_optional = in_optional
@@ -108,13 +114,6 @@ class QueryStateManager:
     def exit_optional(self):
         self.disable_state('in_optional')
         self.optional_id += 1
-
-    def mark_recursion_location(self):
-        recursion_start = tuple(self.query_path)
-        self.recursive_locations.add(recursion_start)
-
-    def at_recursive_location(self):
-        return tuple(self.query_path) in self.recursive_locations
 
     def enter_recursive(self):
         self.enable_state('is_recursive')

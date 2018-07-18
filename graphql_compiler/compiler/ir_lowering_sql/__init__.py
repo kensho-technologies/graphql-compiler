@@ -2,7 +2,8 @@
 # Public API #
 ##############
 from graphql_compiler.compiler.helpers import Location
-from graphql_compiler.compiler.ir_lowering_sql.sql_blocks import SqlNode, SqlBlocks
+from graphql_compiler.compiler.ir_lowering_sql.sql_blocks import SqlBlocks
+from graphql_compiler.compiler.ir_lowering_sql.sql_tree import SqlNode
 from .ir_lowering import SqlBlockLowering
 from .query_state_manager import QueryStateManager
 
@@ -32,13 +33,12 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     Returns:
         MatchQuery object containing the IR blocks organized in a MATCH-like structure
     """
-    sql_query_blocks = []
     state_manager = QueryStateManager(location_types)
     location_to_node = {}
     tree_root = None
     for block in ir_blocks:
-        blocks = list(SqlBlockLowering.lower_block(block, state_manager))
-        for block in blocks:
+        sql_blocks = SqlBlockLowering.lower_block(block, state_manager)
+        for block in sql_blocks:
             if isinstance(block, SqlBlocks.Relation):
                 if tree_root is None:
                     tree_root = SqlNode(parent_node=None, relation=block)
@@ -59,5 +59,4 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
                 if block.is_tag:
                     block.tag_node = location_to_node[block.tag_location]
                 node.add_predicate(block)
-        sql_query_blocks.extend(blocks)
-    return sql_query_blocks, tree_root
+    return tree_root

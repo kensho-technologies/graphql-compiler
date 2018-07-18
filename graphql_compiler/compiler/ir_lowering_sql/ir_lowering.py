@@ -5,8 +5,6 @@ from .. import expressions as compiler_expr
 from .sql_blocks import SqlBlocks as sql_blocks
 
 
-
-
 class SqlBlockLowering(object):
     @staticmethod
     def lower_block(block, state_manager):
@@ -92,13 +90,9 @@ class SqlBlockLowering(object):
         if block.optional:
             state_manager.enter_optional()
         state_manager.enter_type(type_name)
-        if block.optional:
-            yield sql_blocks.LinkSelection(
-                to_edge=type_name,
-                query_state=state_manager.get_state()
-            )
         yield sql_blocks.Relation(
-            query_state=state_manager.get_state()
+            query_state=state_manager.get_state(),
+            direction = block.direction
         )
 
     @staticmethod
@@ -106,19 +100,12 @@ class SqlBlockLowering(object):
         if block.direction not in ('out', 'in'):
             raise AssertionError('Unknown direction "{}"'.format(block.direction))
         type_name = (block.direction + '_' + block.edge_name)
-        state_manager.mark_recursion_location()
         state_manager.enter_recursive()
-        yield sql_blocks.StartRecursion(
-            query_state=state_manager.get_state()
-        )
         state_manager.enter_type(type_name)
-        yield sql_blocks.LinkSelection(
-            to_edge=type_name,
-            query_state=state_manager.get_state()
-        )
         yield sql_blocks.Relation(
             query_state=state_manager.get_state(),
             recursion_depth=block.depth,
+            direction=block.direction,
         )
         state_manager.exit_recursive()
 
@@ -155,11 +142,13 @@ class SqlBlockLowering(object):
 
     @staticmethod
     def _lower_fold(block, state_manager):
-        type_name = '_'.join(block.fold_scope_location.relative_position)
+        direction, position = block.fold_scope_location.relative_position
+        type_name = '{direction}_{position}'.format(direction=direction, position=position)
         state_manager.enter_fold()
         state_manager.enter_type(type_name)
         yield sql_blocks.Relation(
-            query_state=state_manager.get_state()
+            query_state=state_manager.get_state(),
+            direction=direction
         )
 
     @staticmethod
@@ -174,12 +163,7 @@ class SqlBlockLowering(object):
     @staticmethod
     def _lower_backtrack(block, state_manager):
         state_manager.exit_type()
-        if state_manager.at_recursive_location():
-            yield sql_blocks.EndRecursion(
-                query_state=state_manager.get_state()
-            )
-        else:
-            return SqlBlockLowering._lower_noop(block, state_manager)
+        return SqlBlockLowering._lower_noop(block, state_manager)
 
     @staticmethod
     def _lower_unfold(block, state_manager):
