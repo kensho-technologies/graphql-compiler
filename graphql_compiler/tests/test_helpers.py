@@ -278,6 +278,8 @@ def create_sqlite_db():
         (4, 1, 'Wisconsin'),
         (5, 2, 'Michigan'),
         (6, 3, 'Florida'),
+        (7, 3, 'Miami'),
+        (8, 3, 'Miami Beach'),
     ]
 
     for table, vals in [(animal, animals), (location, locations)]:

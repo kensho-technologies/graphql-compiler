@@ -284,26 +284,50 @@ class SqlQueryTests(unittest.TestCase):
         results = self.run_query(query, ['name'], **params)
         self.assertListEqual(expected_results, results)
 
-    # def test_basic_tag_filter(self):
-    #     graphql_string = '''
-    #     {
-    #         Animal {
-    #             name @tag(tag_name: "parent_name")
-    #             out_Animal_ParentOf {
-    #                 name @filter(op_name: "<" value: ["%parent_name"])
-    #                      @output(out_name: "child_name")
-    #             }
-    #         }
-    #     }
-    #     '''
-    #     compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
-    #                                                 self.compiler_metadata)
-    #     query = compilation_result.query
-    #     expected_results = [
-    #         {'parent_name': 'Big Bear', 'child_name': 'Medium Bear'},
-    #     ]
-    #     results = self.run_query(query, ['parent_name', 'child_name'])
-    #     self.assertListEqual(expected_results, results)
+    def test_basic_tag_filter(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @tag(tag_name: "parent_name")
+                     @output(out_name: "parent_name")
+                out_Animal_ParentOf {
+                    name @filter(op_name: ">" value: ["%parent_name"])
+                         @output(out_name: "child_name")
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'parent_name': 'Big Bear', 'child_name': 'Medium Bear'},
+        ]
+        results = self.run_query(query, ['child_name'])
+        self.assertListEqual(expected_results, results)
+
+    def test_basic_tag_filter_optional(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @tag(tag_name: "parent_name")
+                     @output(out_name: "parent_name")
+                out_Animal_ParentOf @optional {
+                    name @filter(op_name: ">" value: ["%parent_name"])
+                         @output(out_name: "child_name")
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'parent_name': 'Big Bear', 'child_name': 'Medium Bear'},
+            {'parent_name': 'Little Bear', 'child_name': None},
+        ]
+        results = self.run_query(query, ['parent_name'])
+        self.assertListEqual(expected_results, results)
 
     def test_basic_out_edge(self):
         graphql_string = '''
@@ -508,6 +532,56 @@ class SqlQueryTests(unittest.TestCase):
             {'name': 'Little Bear', 'ancestor': 'Biggest Bear'},
             {'name': 'Little Bear', 'ancestor': 'Little Bear'},
             {'name': 'Little Bear', 'ancestor': 'Medium Bear'},
+        ]
+        results = self.run_query(query, ['name', 'ancestor'], **params)
+        self.assertListEqual(expected_results, results)
+
+    # def test_basic_fold(self):
+    #     graphql_string = '''
+    #     {
+    #         Animal {
+    #             name @filter(op_name: "=", value: ["$bear_name"])
+    #             out_Animal_LivesIn @fold {
+    #                 name @output(out_name: "locations")
+    #             }
+    #         }
+    #     }
+    #     '''
+    #     compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+    #                                                 self.compiler_metadata)
+    #     query = compilation_result.query
+    #     params = {
+    #         '$bear_name': 'Medium Bear'
+    #     }
+    #     expected_results = [
+    #         {'name': 'Medium Bear', 'ancestor': 'Big Bear'},
+    #     ]
+    #     results = self.run_query(query, ['name', 'ancestor'], **params)
+    #     self.assertListEqual(expected_results, results)
+
+
+    def test_basic_recurse_with_post_filter(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["$bear_name"])
+                in_Animal_ParentOf @recurse(depth: 3){
+                    name @output(out_name: "ancestor")
+                         @filter(op_name: "=", value: ["$ancestor_name"])
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        params = {
+            '$bear_name': 'Little Bear',
+            '$ancestor_name': 'Biggest Bear'
+        }
+        expected_results = [
+            {'name': 'Little Bear', 'ancestor': 'Biggest Bear'},
         ]
         results = self.run_query(query, ['name', 'ancestor'], **params)
         self.assertListEqual(expected_results, results)
@@ -740,6 +814,35 @@ class SqlQueryTests(unittest.TestCase):
             {'name': 'Biggest Bear', 'descendant': 'Little Bear',
              'descendant_parent': 'Medium Bear'},
             {'name': 'Biggest Bear', 'descendant': 'Medium Bear', 'descendant_parent': 'Big Bear'},
+        ]
+        results = self.run_query(query, ['name', 'descendant'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_basic_recurse_with_expansion_and_tag(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["$bear_name"])
+                out_Animal_ParentOf @recurse(depth: 3){
+                    name @output(out_name: "descendant")
+                         @tag(tag_name: "descendant_name")
+                    out_Animal_ParentOf {
+                        name @output(out_name: "descendant_child")
+                             @filter(op_name: ">", value: ["%descendant_name"])
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        params = {
+            '$bear_name': 'Biggest Bear'
+        }
+        expected_results = [
+            {'name': 'Biggest Bear', 'descendant': 'Big Bear', 'descendant_child': 'Medium Bear'},
         ]
         results = self.run_query(query, ['name', 'descendant'], **params)
         self.assertListEqual(expected_results, results)

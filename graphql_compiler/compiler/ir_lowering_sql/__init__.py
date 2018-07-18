@@ -56,6 +56,8 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
                 node.add_selection(block)
             elif isinstance(block, SqlBlocks.Predicate):
                 node = location_to_node[block.location]
+                if block.is_tag:
+                    block.tag_node = location_to_node[block.tag_location]
                 node.add_predicate(block)
         sql_query_blocks.extend(blocks)
     return sql_query_blocks, tree_root

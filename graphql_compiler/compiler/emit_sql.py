@@ -4,7 +4,7 @@ from collections import namedtuple
 from sqlalchemy import select, and_, literal_column
 
 from ..compiler.helpers import Location
-from .ir_lowering_sql.sql_blocks import SqlBlocks
+from .ir_lowering_sql.sql_blocks import SqlBlocks, to_query
 
 logger = logging.getLogger(__name__)
 
@@ -186,6 +186,6 @@ class SqlEmitter(object):
 
 def emit_code_from_ir(sql_blocks, compiler_metadata):
     sql_blocks, tree_root = sql_blocks
-    result = tree_root.to_query(compiler_metadata)
+    result = to_query(tree_root, compiler_metadata)
     return result
     # return SqlEmitter(sql_blocks).compile(compiler_metadata)

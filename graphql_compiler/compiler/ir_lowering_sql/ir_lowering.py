@@ -1,3 +1,5 @@
+from graphql_compiler.compiler.expressions import ContextField
+from graphql_compiler.compiler.helpers import Location
 from .. import blocks as compiler_blocks
 from .. import expressions as compiler_expr
 from .sql_blocks import SqlBlocks as sql_blocks
@@ -54,14 +56,31 @@ class SqlBlockLowering(object):
             variable, field = left, right
             if isinstance(variable, compiler_expr.LocalField):
                 variable, field = right, left
-            field_name = field.field_name
-            yield sql_blocks.Predicate(
-                field_name=field_name,
-                # todo remove need for surrounding list
-                param_names=[variable.variable_name],
-                operator_name=operator,
-                query_state=state_manager.get_state()
-            )
+            if isinstance(variable, ContextField):
+                tag_field = variable.location.field
+                tag_location = Location(variable.location.query_path)
+                yield sql_blocks.Predicate(
+                    field_name=field.field_name,
+                    # todo remove need for surrounding list
+                    param_names=None,
+                    operator_name=operator,
+                    is_tag=True,
+                    tag_field=tag_field,
+                    tag_location=tag_location,
+                    query_state=state_manager.get_state()
+                )
+            else:
+                field_name = field.field_name
+                yield sql_blocks.Predicate(
+                    field_name=field_name,
+                    # todo remove need for surrounding list
+                    param_names=[variable.variable_name],
+                    operator_name=operator,
+                    is_tag=False,
+                    tag_field=None,
+                    tag_location=None,
+                    query_state=state_manager.get_state()
+                )
         else:
             raise AssertionError('This should be unreachable.')
 
