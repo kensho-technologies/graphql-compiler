@@ -20,6 +20,9 @@ class CompilerMetadata:
         self.config = config
         self.sqlalchemy_metadata = sqlalchemy_metadata
         self._db_backend = SqlBackend(dialect)
+        self.table_name_to_table = {
+            name.lower(): table for name, table in self.sqlalchemy_metadata.tables.items()
+        }
 
     def get_table(self, block):
         return self._get_table(block.relative_type)
@@ -30,20 +33,16 @@ class CompilerMetadata:
         :param schema_name: Name of the type in the GraphQL schema
         :return: Table
         """
-        if schema_name not in self.config:
-            raise AssertionError(
-                'No schema in config for name "{}"'.format(schema_name)
-            )
-        if 'table_name' not in self.config[schema_name]:
-            raise AssertionError(
-                'No table found for schema name "{}"'.format(schema_name)
-            )
-        table_name = self.config[schema_name]['table_name']
-        if table_name not in self.sqlalchemy_metadata.tables:
+        if schema_name not in self.config or 'table_name' not in self.config[schema_name]:
+            table_name = schema_name
+        else:
+            table_name = self.config[schema_name]['table_name']
+        table_name = table_name.lower()
+        if table_name not in self.table_name_to_table:
             raise AssertionError(
                 'No Table found in SQLAlchemy metadata for table name "{}"'.format(table_name)
             )
-        return self.sqlalchemy_metadata.tables[table_name]
+        return self.table_name_to_table[table_name]
 
     @property
     def db_backend(self):
@@ -70,7 +69,7 @@ class CompilerMetadata:
 
     def _get_column_name_from_schema(self, block):
         if block.relative_type not in self.config:
-            raise AssertionError('No config found for schema "{}"'.format(block.relative_type))
+            return block.field_name
         column_name = block.field_name
         schema_config = self.config[block.relative_type]
         if 'column_names' not in schema_config:
@@ -169,14 +168,12 @@ class CompilerMetadata:
             # this is a recursive edge, from a type back onto itself
             outer_type_name = block.relative_type
             relative_type = block.relative_type
-        if outer_type_name not in self.config:
-            return None
-        parent_config = self.config[outer_type_name]
-        if 'edges' not in parent_config:
-            return None
-        edges = parent_config['edges']
-        if edge_name in edges:
-            return edges[edge_name]
+        if outer_type_name in self.config:
+            parent_config = self.config[outer_type_name]
+            if 'edges' in parent_config:
+                edges = parent_config['edges']
+                if edge_name in edges:
+                    return edges[edge_name]
         outer_table = self._get_table(outer_type_name)
         inner_table = self._get_table(relative_type)
         inner_table_fks = [fk for fk in inner_table.foreign_keys if fk.column.table == outer_table]

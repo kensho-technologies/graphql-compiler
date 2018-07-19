@@ -4,7 +4,7 @@ from sqlalchemy import text, select, case, cast, String
 
 from graphql_compiler.compiler import compile_graphql_to_sql
 from graphql_compiler.compiler.ir_lowering_sql.metadata import CompilerMetadata
-from graphql_compiler.tests.test_helpers import create_sqlite_db, get_test_sql_config, get_schema
+from graphql_compiler.tests.test_helpers import create_sqlite_db, get_test_sql_config, get_sql_test_schema
 
 
 class SqlQueryTests(unittest.TestCase):
@@ -16,7 +16,7 @@ class SqlQueryTests(unittest.TestCase):
         cls.compiler_metadata = compiler_metadata
         cls.engine = engine
         cls.metadata = metadata
-        cls.schema = get_schema()
+        cls.schema = get_sql_test_schema()
 
     def run_query(self, query, sort_order, **params):
         results = (dict(result) for result in self.engine.execute(query.params(**params)))
@@ -789,4 +789,32 @@ class SqlQueryTests(unittest.TestCase):
         ]
         results = self.run_query(query, ['name', 'self_or_ancestor', 'ancestor_or_ancestor_child',
                                          'ancestor_or_ancestor_parent'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_many_to_many_junction_basic(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["$name"])
+                out_Animal_AnimalToFood {
+                    out_AnimalToFood_Food {
+                        name @output(out_name: "food_name")
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'name': 'Big Bear', 'food_name': 'apples'},
+            {'name': 'Big Bear', 'food_name': 'caramel apples'},
+            {'name': 'Big Bear', 'food_name': 'honey'},
+        ]
+        params = {
+            '$name': 'Big Bear'
+        }
+        results = self.run_query(query, ['name', 'food_name'], **params)
         self.assertListEqual(expected_results, results)

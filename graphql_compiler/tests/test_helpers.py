@@ -224,6 +224,70 @@ def construct_location_types(location_types_as_strings):
     }
 
 
+def get_sql_test_schema():
+    """Get a schema object for testing."""
+    # This schema isn't meant to be a paragon of good schema design.
+    # Instead, it aims to capture as many real-world edge cases as possible,
+    # without requiring a massive number of types and interfaces.
+    schema_text = '''
+        schema {
+            query: RootSchemaQuery
+        }
+
+        directive @recurse(depth: Int!) on FIELD
+
+        directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
+
+        directive @tag(tag_name: String!) on FIELD
+
+        directive @output(out_name: String!) on FIELD
+
+        directive @output_source on FIELD
+
+        directive @optional on FIELD
+
+        directive @fold on FIELD
+
+        scalar Decimal
+
+        scalar DateTime
+
+        scalar Date
+
+        type Animal {
+            name: String
+            out_Animal_ParentOf: [Animal]
+            in_Animal_ParentOf: [Animal]
+            out_Animal_LivesIn: [Location]
+            out_Animal_AnimalToFood: [AnimalToFood]
+        }
+
+        type Location {
+            name: String
+            uuid: ID
+            in_Animal_LivesIn: [Animal]
+        }
+        
+        type AnimalToFood {
+            out_AnimalToFood_Animal: [Animal]
+            out_AnimalToFood_Food: [Food]
+        }
+
+        type Food {
+            name: String
+            out_Food_AnimalToFood: [AnimalToFood]
+        }
+
+        type RootSchemaQuery {
+            Animal: Animal
+            Location: Location
+        }
+    '''
+
+    ast = parse(schema_text)
+    return build_ast_schema(ast)
+
+
 def get_test_sql_config():
     return {
         'Animal': {
@@ -235,9 +299,6 @@ def get_test_sql_config():
             'edges': {
                 'Animal_ParentOf': OnClause(outer_col='animal_id', inner_col='parent_id'),
             }
-        },
-        'Location': {
-            'table_name': 'location',
         },
     }
 
@@ -261,6 +322,19 @@ def create_sqlite_db():
         Column('animal_id', Integer, ForeignKey("animal.animal_id")),
         Column('name', String(10))
     )
+    food = Table(
+        'food',
+        metadata,
+        Column('food_id', Integer, primary_key=True),
+        Column('name', String(10))
+    )
+    animal_to_food = Table(
+        'AnimalToFood',
+        metadata,
+        Column('animal_to_food_id', Integer, primary_key=True),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('food_id', Integer, ForeignKey("food.food_id")),
+    )
     metadata.create_all(engine)
     animals = [
         (1, 'Big Bear', 'The second biggest bear.', 4),
@@ -275,8 +349,21 @@ def create_sqlite_db():
         (7, 3, 'Miami'),
         (8, 3, 'Miami Beach'),
     ]
+    foods = [
+        (9, 'honey'),
+        (10, 'apples'),
+        (11, 'caramel apples'),
+    ]
+    animals_to_foods = [
+        # big bear eats everything
+        (12, 1, 9),
+        (13, 1, 10),
+        (14, 1, 11),
+        # medium bear only eats honey
+        (15, 4, 9),
+    ]
 
-    for table, vals in [(animal, animals), (location, locations)]:
+    for table, vals in [(animal, animals), (location, locations), (food, foods), (animal_to_food, animals_to_foods)]:
         for val in vals:
             engine.execute(table.insert(val))
     return engine, metadata
