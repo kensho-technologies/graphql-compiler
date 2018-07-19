@@ -1,5 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import datetime
+from decimal import Decimal
 import random
 from uuid import UUID
 
@@ -18,7 +19,7 @@ def get_uuid():
 
 def get_random_net_worth():
     """Return a pseudorandom net worth."""
-    return int(1e5 * random.random()) / 100.0  # nosec
+    return Decimal(int(1e5 * random.random()) / 100.0)  # nosec
 
 
 def get_random_limbs():

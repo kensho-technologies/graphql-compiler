@@ -44,7 +44,7 @@ ensure_file_has_copyright_line './setup.py'
 # Check every python file in the package's source directory.
 for filename in ./graphql_compiler/**/*.py; do
     # Don't run copyright check for snapshot files
-    if [[ $filename != */snapshots/snap_*.py ]]; then
+    if [[ "$filename" != *"/snapshots/snap_"*".py" ]]; then
         ensure_file_has_copyright_line "$filename"
     fi
 done

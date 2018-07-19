@@ -12,7 +12,7 @@ from ..test_helpers import get_schema
 
 
 def convert_decimals_to_strings(value):
-    """Convert all decimals to strings in the given scalar or tuple, and return the new value."""
+    """Convert all decimals to strings in the given scalar or tuple."""
     if isinstance(value, tuple):
         return tuple(str(element) for element in value)
     elif isinstance(value, Decimal):

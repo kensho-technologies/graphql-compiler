@@ -86,7 +86,7 @@ def get_animal_generation_commands():
                     for parent_name in new_parent_names
                 ]
             ])
-            new_label = '(' + ''.join(parent_indices) + ')'
+            new_label = '(' + '_'.join(parent_indices) + ')'
             new_animal_name = create_name(species_name, new_label)
             current_animal_names.append(new_animal_name)
             command_list.append(_create_animal_statement(new_animal_name))
