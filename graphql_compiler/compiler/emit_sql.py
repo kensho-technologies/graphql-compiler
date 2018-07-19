@@ -1,33 +1,42 @@
 from sqlalchemy import select, and_, literal_column, cast, String, case
 
 
-def emit_code_from_ir(sql_blocks, compiler_metadata):
-    sql_query_tree = sql_blocks
+def emit_code_from_ir(sql_query_tree, compiler_metadata):
     return _query_tree_to_query(sql_query_tree, compiler_metadata)
 
 
-def _query_tree_to_query(node, compiler_metadata, recursive_in_column=None):
+def _query_tree_to_query(node, compiler_metadata, recursion_in_column=None):
+    # step 1: Collapse query tree, ignoring recursive blocks
     _collapse_query_tree(node, compiler_metadata)
-    recursive_out_column = None
+    recursion_out_column = None
+    # step 2: If the tree rooted at the current node is recursive, create the recursive element
     if node.relation.is_recursive:
-        recursive_out_column = _create_recursive_clause(
-            node, compiler_metadata, recursive_in_column
+        # this node is itself recursive, setup recursion linked to supplied link column
+        recursion_out_column = _create_recursive_clause(
+            node, compiler_metadata, recursion_in_column
         )
+    # step 3: query tree is collapsed, recursion at current node is created
+    # materialize and wrap this query in a CTE
     query = _create_base_query(node, compiler_metadata)
     _wrap_query_as_cte(node, query)
-    recursive_selections = []
-    for recursive_node in node.recursions:
-        recursive_in_column = node.recursion_to_column[recursive_node]
-        recursive_link_column = _query_tree_to_query(
-            recursive_node, compiler_metadata, recursive_in_column=recursive_in_column
-        )
-        recursive_selections.extend(recursive_node.selections)
-        _join_to_recursive_node(node, recursive_in_column, recursive_node, recursive_link_column)
-    # make sure selections point to the underlying CTE now
-    node.selections = node.selections + recursive_selections
+    # step 4: collapse and return recursive node trees
+    _traverse_recursions(node, compiler_metadata)
     if node.is_tree_root():
         return _create_final_query(node, compiler_metadata)
-    return recursive_out_column
+    return recursion_out_column
+
+
+def _traverse_recursions(node, compiler_metadata):
+    recursive_selections = []
+    for recursive_node in node.recursions:
+        # retrieve the column that will be attached to the recursive element
+        recursion_in_column = node.recursion_to_column[recursive_node]
+        recursion_out_column = _query_tree_to_query(
+            recursive_node, compiler_metadata, recursion_in_column=recursion_in_column
+        )
+        recursive_selections.extend(recursive_node.selections)
+        _join_to_recursive_node(node, recursion_in_column, recursive_node, recursion_out_column)
+    node.selections = node.selections + recursive_selections
 
 
 def _collapse_query_tree(node, compiler_metadata):
@@ -35,7 +44,7 @@ def _collapse_query_tree(node, compiler_metadata):
     for child_node in node.children_nodes:
         _collapse_query_tree(child_node, compiler_metadata)
     # create the current node's table
-    _create_table(node, compiler_metadata)
+    _create_and_reference_table(node, compiler_metadata)
     # ensure that columns required for recursion are present
     _create_links_for_recursions(node, compiler_metadata)
     for child_node in node.children_nodes:
@@ -45,16 +54,14 @@ def _collapse_query_tree(node, compiler_metadata):
         _join_to_node(node, child_node, compiler_metadata)
 
 
-def _create_recursive_clause(node, compiler_metadata, link_column):
-    on_clause = compiler_metadata.get_edge_columns(node.relation)
-    from_col, to_col = on_clause
+def _create_recursive_clause(node, compiler_metadata, out_link_column):
+    from_col, to_col = compiler_metadata.get_edge_columns(node.relation)
     base_col = from_col
     base_column = node.table.c[base_col]
     if node.relation.direction == 'in':
         from_col, to_col = to_col, from_col
-    recursive_table = compiler_metadata.get_table(node.relation)
-    table = recursive_table.alias()
-    parent_cte_column = node.table.c[link_column.name]
+    recursive_table = compiler_metadata.get_table(node.relation).alias()
+    parent_cte_column = node.table.c[out_link_column.name]
     distinct_parent_column_query = select([parent_cte_column.label('link')],
                                           distinct=True).alias()
     anchor_query = (
@@ -77,24 +84,24 @@ def _create_recursive_clause(node, compiler_metadata, link_column):
     recursive_query = (
         select(
             [
-                table.c[from_col],
+                recursive_table.c[from_col],
                 recursive_cte.c[to_col],
                 (recursive_cte.c['__depth_internal_name'] + 1).label('__depth_internal_name'),
                 (recursive_cte.c.path
-                 .concat(cast(table.c[from_col], String()))
+                 .concat(cast(recursive_table.c[from_col], String()))
                  .concat(',')
                  .label('path')),
             ]
         )
         .select_from(
-            table.join(
+            recursive_table.join(
                 recursive_cte,
-                table.c[to_col] == recursive_cte.c[from_col]
+                recursive_table.c[to_col] == recursive_cte.c[from_col]
             )
         ).where(and_(
             recursive_cte.c['__depth_internal_name'] < node.relation.recursion_depth,
             case(
-                [(recursive_cte.c.path.contains(cast(table.c[from_col], String())), 1)],
+                [(recursive_cte.c.path.contains(cast(recursive_table.c[from_col], String())), 1)],
                 else_=0
             ) == 0
         ))
@@ -111,15 +118,18 @@ def _create_recursive_clause(node, compiler_metadata, link_column):
         recursive_query,
         node.table.c[base_col] == recursive_query.c[from_col]
     )
-    link_column = recursive_query.c[to_col].label(None)
-    node.add_recursive_in_column(recursive_query, link_column)
-    outer_link_column = link_column
-    return outer_link_column
+    out_link_column = recursive_query.c[to_col].label(None)
+    node.add_recursive_link_column(recursive_query, out_link_column)
+    return out_link_column
 
 
-def _create_table(node, compiler_metadata):
+def _create_and_reference_table(node, compiler_metadata):
     table = compiler_metadata.get_table(node.relation).alias()
-    _reference_table(node, table)
+    node.table = table
+    node.from_clause = table
+    # ensure SQL blocks hold reference to Relation's table
+    _update_table_for_blocks(table, node.selections)
+    _update_table_for_blocks(table, node.predicates)
 
 
 def _pull_up_node_blocks(node, child_node):
@@ -144,13 +154,6 @@ def _join_to_node(node, child_node, compiler_metadata):
     )
 
 
-def _reference_table(node, table):
-    node.table = table
-    node.from_clause = table
-    _update_table_for_blocks(table, node.selections)
-    _update_table_for_blocks(table, node.predicates)
-
-
 def _update_table_for_blocks(table, blocks):
     for block in blocks:
         block.table = table
@@ -159,7 +162,7 @@ def _update_table_for_blocks(table, blocks):
 def _create_link_for_recursion(node, recursion, compiler_metadata):
     from_col, _ = compiler_metadata.get_edge_columns(recursion.relation)
     recursion_in_column = node.table.c[from_col]
-    node.add_recursive_in_column(recursion, recursion_in_column)
+    node.add_recursive_link_column(recursion, recursion_in_column)
 
 
 def _create_links_for_recursions(node, compiler_metadata):
@@ -169,11 +172,11 @@ def _create_links_for_recursions(node, compiler_metadata):
         _create_link_for_recursion(node, recursion, compiler_metadata)
 
 
-def _join_to_recursive_node(node, link_column, recursion, recursive_link_column):
-    current_cte_column = node.table.c[link_column.name]
-    recursive_cte_column = recursion.table.c[recursive_link_column.name]
+def _join_to_recursive_node(node, recursion_in_column, recursive_node, recursion_out_column):
+    current_cte_column = node.table.c[recursion_in_column.name]
+    recursive_cte_column = recursive_node.table.c[recursion_out_column.name]
     node.from_clause = node.from_clause.join(
-        recursion.from_clause, onclause=current_cte_column == recursive_cte_column
+        recursive_node.from_clause, onclause=current_cte_column == recursive_cte_column
     )
 
 
@@ -200,8 +203,9 @@ def _create_base_query(node, compiler_metadata):
         compiler_metadata.get_column_for_block(selection) for selection in node.selections
     ]
     selection_columns += node.link_columns
-    predicates = [compiler_metadata.get_predicate_condition(predicate) for predicate in
-                  node.predicates]
+    predicates = [
+        compiler_metadata.get_predicate_condition(predicate) for predicate in node.predicates
+    ]
     return _create_query(node, selection_columns, predicates)
 
 

@@ -37,7 +37,7 @@ class SqlNode(object):
             raise AssertionError('Trying to add non-selection')
         self.selections.append(selection)
 
-    def add_recursive_in_column(self, recursion, recursion_in_column):
+    def add_recursive_link_column(self, recursion, recursion_in_column):
         self.recursion_to_column[recursion] = recursion_in_column
         self.link_columns.append(recursion_in_column)
 

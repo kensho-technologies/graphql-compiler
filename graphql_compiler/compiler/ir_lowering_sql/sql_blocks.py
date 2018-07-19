@@ -45,10 +45,6 @@ class SqlBlocks:
         def in_fold(self):
             return self.query_state.in_fold
 
-        @property
-        def optional_id(self):
-            return self.query_state.optional_id
-
     class Selection(BaseBlock):
         def __init__(self, field_name, alias, query_state):
             self.field_name = field_name

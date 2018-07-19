@@ -35,60 +35,6 @@ class SqlQueryTests(unittest.TestCase):
         results = self.run_query(query, ['animal_name'])
         self.assertListEqual(expected_results, results)
 
-    def test_db_recurse(self):
-        animal_table = self.metadata.tables['animal']
-        animal = animal_table.alias()
-        ancestor = animal_table.alias()
-        root_query = (
-            select([animal.c.animal_id, animal.c.animal_name.label('name')])
-                .select_from(animal).where(animal.c.animal_name == 'Little Bear')
-        ).cte()
-        primary_key = [column for column in ancestor.c if column.primary_key][0]
-        distinct_column_query = select([root_query.c.animal_id]).alias()
-        anchor_query = (
-            select([
-                primary_key,
-                primary_key.label('parent_id'),
-                primary_key.concat(',').label('path'),
-                # literal_column(0, type_=Integer()).label('has_cycle')
-            ])
-                .select_from(
-                ancestor.join(distinct_column_query, distinct_column_query.c.animal_id == ancestor.c.animal_id)
-            )
-        )
-        ancestor_cte = anchor_query.cte(recursive=True)
-        recursive_query = (
-            select([
-                ancestor_cte.c.animal_id,
-                animal.c.parent_id,
-                ancestor_cte.c.path.concat(animal.c.parent_id).concat(',').label('path'),
-            ])
-                .select_from(
-                animal.join(ancestor_cte, animal.c.animal_id == ancestor_cte.c.parent_id))
-                .where(case(
-                    [
-                        (ancestor_cte.c.path.contains(cast(animal.c.parent_id, String())), 1)
-                    ],
-                    else_=0
-                ) == 0)
-        )
-        query = ancestor_cte.union_all(recursive_query)
-        query = select([root_query.c.name, ancestor.c.animal_name.label('ancestor')]).select_from(
-            root_query.join(query, query.c.animal_id == root_query.c.animal_id).join(ancestor,
-                                                                                     ancestor.c.animal_id == query.c.parent_id)
-        )
-
-        expected_results = [
-
-            {'name': 'Little Bear', 'ancestor': 'Big Bear'},
-            {'name': 'Little Bear', 'ancestor': 'Biggest Bear'},
-            {'name': 'Little Bear', 'ancestor': 'Little Bear'},
-            {'name': 'Little Bear', 'ancestor': 'Medium Bear'},
-
-        ]
-        results = self.run_query(query, ['name', 'ancestor'])
-        self.assertListEqual(expected_results, results)
-
     def test_basic_query(self):
         graphql_string = '''
         {
@@ -217,6 +163,34 @@ class SqlQueryTests(unittest.TestCase):
         expected_results = [
             {'name': 'Big Bear', 'location_name': 'Wisconsin'},
             {'name': 'Biggest Bear', 'location_name': None},
+        ]
+        params = {
+            '$names': ['Biggest Bear', 'Big Bear']
+        }
+        results = self.run_query(query, ['name'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_multiple_optional_out_edge(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "in_collection", value: ["$names"])
+                out_Animal_LivesIn @optional {
+                    name @output(out_name: "location_name")
+                }
+                in_Animal_ParentOf @optional {
+                    name @output(out_name: "parent_name")
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'name': 'Big Bear', 'location_name': 'Wisconsin', 'parent_name': 'Biggest Bear'},
+            {'name': 'Biggest Bear', 'location_name': None, 'parent_name': None},
         ]
         params = {
             '$names': ['Biggest Bear', 'Big Bear']

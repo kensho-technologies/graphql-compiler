@@ -54,8 +54,7 @@ class CompilerMetadata:
             return self._get_selection_column(block)
         elif isinstance(block, SqlBlocks.Predicate):
             return self._get_column_for_block(block)
-        else:
-            raise AssertionError
+        raise AssertionError
 
     def _get_selection_column(self, block):
         if not block.renamed:
@@ -125,7 +124,6 @@ class CompilerMetadata:
         return or_(column == None, clause)  # noqa: E711
 
     def get_on_clause_for_node(self, node):
-        """Converts the Relation to an OnClause"""
         on_clause = self.get_edge_columns(node.relation)
         from_col, to_col = on_clause
         if node.relation.direction == 'in':
