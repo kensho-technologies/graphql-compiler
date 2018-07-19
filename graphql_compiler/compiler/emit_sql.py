@@ -6,29 +6,28 @@ def emit_code_from_ir(sql_blocks, compiler_metadata):
     return _query_tree_to_query(sql_query_tree, compiler_metadata)
 
 
-def _to_query_recursive(node, compiler_metadata, return_final_query, parent_cte=None, link_column=None):
+def _query_tree_to_query(node, compiler_metadata, recursive_in_column=None):
     _collapse_query_tree(node, compiler_metadata)
-    outer_link_column = None
+    recursive_out_column = None
     if node.relation.is_recursive:
-        outer_link_column = _create_recursive_element(
-            node, compiler_metadata, link_column, parent_cte
+        recursive_out_column = _create_recursive_clause(
+            node, compiler_metadata, recursive_in_column
         )
     query = _create_base_query(node, compiler_metadata)
     _wrap_query_as_cte(node, query)
     recursive_selections = []
     for recursive_node in node.recursions:
-        link_column = node.recursion_to_column[recursive_node]
-        recursive_link_column = _to_query_recursive(
-            recursive_node,compiler_metadata, return_final_query=False,
-            parent_cte=node.table, link_column=link_column
+        recursive_in_column = node.recursion_to_column[recursive_node]
+        recursive_link_column = _query_tree_to_query(
+            recursive_node, compiler_metadata, recursive_in_column=recursive_in_column
         )
         recursive_selections.extend(recursive_node.selections)
-        _join_to_recursive_node(node, link_column, recursive_node, recursive_link_column)
+        _join_to_recursive_node(node, recursive_in_column, recursive_node, recursive_link_column)
     # make sure selections point to the underlying CTE now
     node.selections = node.selections + recursive_selections
-    if return_final_query:
+    if node.is_tree_root():
         return _create_final_query(node, compiler_metadata)
-    return outer_link_column
+    return recursive_out_column
 
 
 def _collapse_query_tree(node, compiler_metadata):
@@ -46,68 +45,80 @@ def _collapse_query_tree(node, compiler_metadata):
         _join_to_node(node, child_node, compiler_metadata)
 
 
-def _create_recursive_element(node, compiler_metadata, link_column, parent_cte):
-    on_clause = compiler_metadata.get_on_clause(
-        node.relation.relative_type, node.relation.edge_name, None
-    )
+def _create_recursive_clause(node, compiler_metadata, link_column):
+    on_clause = compiler_metadata.get_edge_columns(node.relation)
     from_col, to_col = on_clause
     base_col = from_col
-    primary_key = node.table.c[base_col]
+    base_column = node.table.c[base_col]
     if node.relation.direction == 'in':
         from_col, to_col = to_col, from_col
-
-    recursive_table = node.relation.get_table(compiler_metadata)
+    recursive_table = compiler_metadata.get_table(node.relation)
     table = recursive_table.alias()
-    parent_cte_column = parent_cte.c[link_column.name]
+    parent_cte_column = node.table.c[link_column.name]
     distinct_parent_column_query = select([parent_cte_column.label('link')],
                                           distinct=True).alias()
     anchor_query = (
-        select([
-            primary_key.label(from_col),
-            primary_key.label(to_col),
-            literal_column('0').label('__depth_internal_name'),
-            cast(primary_key, String()).concat(',').label('path'),
-        ], distinct=True)
-            .select_from(
-            node.table.join(distinct_parent_column_query,
-                       primary_key == distinct_parent_column_query.c['link'])
+        select(
+            [
+                node.table.c[base_col].label(from_col),
+                node.table.c[base_col].label(to_col),
+                literal_column('0').label('__depth_internal_name'),
+                cast(base_column, String()).concat(',').label('path'),
+            ],
+            distinct=True)
+        .select_from(
+            node.table.join(
+                distinct_parent_column_query,
+                base_column == distinct_parent_column_query.c['link']
+            )
         )
     )
     recursive_cte = anchor_query.cte(recursive=True)
     recursive_query = (
-        select([
-            table.c[from_col],
-            recursive_cte.c[to_col],
-            (recursive_cte.c['__depth_internal_name'] + 1).label('__depth_internal_name'),
-            recursive_cte.c.path.concat(cast(table.c[from_col], String())).concat(
-                ',').label('path'),
-        ])
-            .select_from(
-            table.join(recursive_cte,
-                       table.c[to_col] == recursive_cte.c[from_col])
+        select(
+            [
+                table.c[from_col],
+                recursive_cte.c[to_col],
+                (recursive_cte.c['__depth_internal_name'] + 1).label('__depth_internal_name'),
+                (recursive_cte.c.path
+                 .concat(cast(table.c[from_col], String()))
+                 .concat(',')
+                 .label('path')),
+            ]
+        )
+        .select_from(
+            table.join(
+                recursive_cte,
+                table.c[to_col] == recursive_cte.c[from_col]
+            )
         ).where(and_(
             recursive_cte.c['__depth_internal_name'] < node.relation.recursion_depth,
             case(
-                [
-                    (recursive_cte.c.path.contains(cast(table.c[from_col], String())), 1)
-                ],
+                [(recursive_cte.c.path.contains(cast(table.c[from_col], String())), 1)],
                 else_=0
             ) == 0
         ))
     )
     recursion_combinator = compiler_metadata.db_backend.recursion_combinator
+    if not hasattr(recursive_cte, recursion_combinator):
+        raise AssertionError(
+            'Cannot combine anchor and recursive clauses with operation "{}"'.format(
+                recursion_combinator
+            )
+        )
     recursive_query = getattr(recursive_cte, recursion_combinator)(recursive_query)
-    pk = node.table.c[base_col]
-    node.from_clause = node.from_clause.join(recursive_query,
-                                             pk == recursive_query.c[from_col])
+    node.from_clause = node.from_clause.join(
+        recursive_query,
+        node.table.c[base_col] == recursive_query.c[from_col]
+    )
     link_column = recursive_query.c[to_col].label(None)
-    node.add_link_column(link_column)
+    node.add_recursive_in_column(recursive_query, link_column)
     outer_link_column = link_column
     return outer_link_column
 
 
 def _create_table(node, compiler_metadata):
-    table = node.relation.get_table(compiler_metadata).alias()
+    table = compiler_metadata.get_table(node.relation).alias()
     _reference_table(node, table)
 
 
@@ -122,19 +133,14 @@ def _pull_up_node_blocks(node, child_node):
 
 def _join_to_node(node, child_node, compiler_metadata):
     # outer table is the current table, inner table is the child's
-    onclause = child_node.relation.get_on_clause(node.table, child_node.table,
-                                                 compiler_metadata)
-
-    if onclause is None:
-        # should only happen at root
-        return
+    on_clause = compiler_metadata.get_on_clause_for_node(child_node)
     if child_node.relation.in_optional:
         node.from_clause = node.from_clause.outerjoin(
-            child_node.from_clause, onclause=onclause
+            child_node.from_clause, onclause=on_clause
         )
         return
     node.from_clause = node.from_clause.join(
-        child_node.from_clause, onclause=onclause
+        child_node.from_clause, onclause=on_clause
     )
 
 
@@ -150,19 +156,10 @@ def _update_table_for_blocks(table, blocks):
         block.table = table
 
 
-def _query_tree_to_query(node, compiler_metadata):
-    query = _to_query_recursive(node, compiler_metadata, return_final_query=True)
-    return query
-
-
 def _create_link_for_recursion(node, recursion, compiler_metadata):
-    on_clause = compiler_metadata.get_on_clause(
-        recursion.relation.relative_type, recursion.relation.edge_name, None
-    )
-    from_col, to_col = on_clause
-    link_column = node.table.c[from_col]
-    node.recursion_to_column[recursion] = link_column
-    node.add_link_column(link_column)
+    from_col, _ = compiler_metadata.get_edge_columns(recursion.relation)
+    recursion_in_column = node.table.c[from_col]
+    node.add_recursive_in_column(recursion, recursion_in_column)
 
 
 def _create_links_for_recursions(node, compiler_metadata):
@@ -182,10 +179,10 @@ def _join_to_recursive_node(node, link_column, recursion, recursive_link_column)
 
 def _create_final_query(node, compiler_metadata):
     # no need to adjust predicates, they are already applied
-    columns = [selection.get_selection_column(compiler_metadata) for selection in
+    columns = [compiler_metadata.get_column_for_block(selection) for selection in
                node.selections]
     # no predicates required,  since they are captured in the base CTE
-    return create_query(node, columns, None)
+    return _create_query(node, columns, None)
 
 
 def _wrap_query_as_cte(node, query):
@@ -199,20 +196,17 @@ def _wrap_query_as_cte(node, query):
 
 
 def _create_base_query(node, compiler_metadata):
-    selection_columns = [selection.get_selection_column(compiler_metadata) for selection in
-                         node.selections]
+    selection_columns = [
+        compiler_metadata.get_column_for_block(selection) for selection in node.selections
+    ]
     selection_columns += node.link_columns
-    predicates = [predicate.to_predicate_statement(compiler_metadata) for predicate in
+    predicates = [compiler_metadata.get_predicate_condition(predicate) for predicate in
                   node.predicates]
-    query = create_query(node, selection_columns, predicates)
-    return query
+    return _create_query(node, selection_columns, predicates)
 
 
-def create_query(node, columns, predicates):
-    query = (
-        select(columns, distinct=True)
-            .select_from(node.from_clause)
-    )
+def _create_query(node, columns, predicates):
+    query = select(columns, distinct=True).select_from(node.from_clause)
     if predicates is None:
         return query
     return query.where(and_(*predicates))

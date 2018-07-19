@@ -32,11 +32,6 @@ class QueryState:
     def get_location(self):
         return self.location
 
-    @staticmethod
-    def format_type_name(type_name):
-        """Format a type name, optionally stripping any "out_" prefix."""
-        return type_name.strip('out_').split('_')[0]
-
 
 class QueryStateManager:
     class StateTransitionError(Exception):

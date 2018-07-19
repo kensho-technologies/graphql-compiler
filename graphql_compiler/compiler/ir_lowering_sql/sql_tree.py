@@ -23,6 +23,9 @@ class SqlNode(object):
         self.from_clause = None
         self.table = None
 
+    def is_tree_root(self):
+        return self.parent_node is None
+
     def add_child_node(self, child_node):
         if child_node.relation.is_recursive:
             self.recursions.append(child_node)
@@ -34,8 +37,9 @@ class SqlNode(object):
             raise AssertionError('Trying to add non-selection')
         self.selections.append(selection)
 
-    def add_link_column(self, column):
-        self.link_columns.append(column)
+    def add_recursive_in_column(self, recursion, recursion_in_column):
+        self.recursion_to_column[recursion] = recursion_in_column
+        self.link_columns.append(recursion_in_column)
 
     def add_predicate(self, predicate):
         if not isinstance(predicate, SqlBlocks.Predicate):
