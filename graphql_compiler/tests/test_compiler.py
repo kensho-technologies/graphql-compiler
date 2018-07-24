@@ -1470,9 +1470,9 @@ class CompilerTests(unittest.TestCase):
                 MATCH {{
                     class: Animal,
                     as: Animal___1
-                }}.out('Animal_ParentOf') {{
+                }}.in('Animal_ParentOf') {{
                     where: ((alias CONTAINS $matched.Animal___1.name)),
-                    as: Animal__out_Animal_ParentOf___1
+                    as: Animal__in_Animal_ParentOf___1
                 }}
                 RETURN $matches
             )
@@ -1480,9 +1480,9 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = '''
             g.V('@class', 'Animal')
             .as('Animal___1')
-                .out('Animal_ParentOf')
+                .in('Animal_ParentOf')
                 .filter{it, m -> it.alias.contains(m.Animal___1.name)}
-                .as('Animal__out_Animal_ParentOf___1')
+                .as('Animal__in_Animal_ParentOf___1')
             .back('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name

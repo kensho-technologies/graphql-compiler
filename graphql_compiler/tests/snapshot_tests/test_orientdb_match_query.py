@@ -46,6 +46,8 @@ def execute_graphql(schema, test_data, client, sample_parameters):
     # - create a Counter (multi-set) of the row frozensets
     # - convert the multi-set to a frozenset of its items
     row_dicts = [row.oRecordData for row in client.command(result.query)]
+    if len(row_dicts) == 0:
+        raise AssertionError(u'Zero records returned. Trivial snapshot not allowed.')
     row_dicts_using_tuples = [
         {
             column_name: convert_decimals_to_strings(

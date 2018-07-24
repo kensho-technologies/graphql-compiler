@@ -19,6 +19,11 @@ ALTER PROPERTY Entity.alias DEFAULT {}
 CREATE INDEX Entity.alias NOTUNIQUE
 
 CREATE PROPERTY Entity.description String
+
+CREATE CLASS Entity_Related EXTENDS E
+CREATE PROPERTY Entity_Related.in LINK Entity
+CREATE PROPERTY Entity_Related.out LINK Entity
+CREATE INDEX Entity_Related ON Entity_Related (in, out) UNIQUE_HASH_INDEX
 ###############
 
 
@@ -69,8 +74,13 @@ CREATE INDEX Animal_BornAt ON Animal_BornAt (in, out) UNIQUE_HASH_INDEX
 ###############
 
 
+### FoodOrSpecies ###
+CREATE CLASS FoodOrSpecies EXTENDS Entity
+###############
+
+
 ### Species ###
-CREATE CLASS Species EXTENDS Entity
+CREATE CLASS Species EXTENDS FoodOrSpecies
 
 CREATE PROPERTY Species.limbs Integer
 CREATE INDEX Species.limbs NOTUNIQUE
@@ -79,19 +89,14 @@ CREATE CLASS Animal_OfSpecies EXTENDS E
 CREATE PROPERTY Animal_OfSpecies.in LINK Species
 CREATE PROPERTY Animal_OfSpecies.out LINK Animal
 CREATE INDEX Animal_OfSpecies ON Animal_OfSpecies (in, out) UNIQUE_HASH_INDEX
-###############
-
-
-### Food ###
-CREATE CLASS Food EXTENDS Entity
-###############
-
-
-### FoodOrSpecies ###
-CREATE CLASS FoodOrSpecies EXTENDS Food, Species
 
 CREATE CLASS Species_Eats EXTENDS E
 CREATE PROPERTY Species_Eats.in LINK FoodOrSpecies
 CREATE PROPERTY Species_Eats.out LINK Species
 CREATE INDEX Species_Eats ON Species_Eats (in, out) UNIQUE_HASH_INDEX
+###############
+
+
+### Food ###
+CREATE CLASS Food EXTENDS FoodOrSpecies
 ###############
