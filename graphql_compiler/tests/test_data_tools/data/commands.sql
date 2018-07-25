@@ -1,6 +1,6 @@
 # Auto-generated output from `generate_test_sql/__init__.py`.
 # Do not edit directly!
-# Generated on 2018-07-24T16:06:14.159906 from compiler version 1.7.0.
+# Generated on 2018-07-25T12:09:31.496582 from compiler version 1.7.0.
 
 create vertex Event set event_date = DATE("2016-10-12 00:00:00"), name = 'Birthday', uuid = '7c65c1e5-82e2-e662-f728-b4fa42485e3a'
 create vertex Event set event_date = DATE("2017-10-28 00:00:00"), name = 'Bar Mitzvah', uuid = 'e87a1613-e443-df78-9558-867f5ba91faf'

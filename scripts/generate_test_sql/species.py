@@ -19,19 +19,19 @@ NUM_FOODS = 2
 
 
 def _create_food_statement(food_name):
-    """Return a SQL statement to create a food vertex."""
+    """Return a SQL statement to create a Food vertex."""
     field_name_to_value = {'name': food_name, 'uuid': get_uuid()}
     return create_vertex_statement('Food', field_name_to_value)
 
 
 def _create_species_statement(species_name):
-    """Return a SQL statement to create a species vertex."""
+    """Return a SQL statement to create a Species vertex."""
     field_name_to_value = {'name': species_name, 'limbs': get_random_limbs(), 'uuid': get_uuid()}
     return create_vertex_statement('Species', field_name_to_value)
 
 
 def _create_species_eats_statement(from_name, to_name):
-    """Return a SQL statement to create an Animal_ParentOf edge."""
+    """Return a SQL statement to create a Species_Eats edge."""
     if to_name in SPECIES_LIST:
         to_class = 'Species'
     elif to_name in FOOD_LIST:
@@ -51,7 +51,7 @@ def get_species_generation_commands():
         command_list.append(_create_species_statement(species_name))
 
     for species_name in SPECIES_LIST:
-        for food_name in random.sample(SPECIES_LIST + FOOD_LIST, NUM_FOODS):
-            command_list.append(_create_species_eats_statement(species_name, food_name))
+        for food_or_species_name in random.sample(SPECIES_LIST + FOOD_LIST, NUM_FOODS):
+            command_list.append(_create_species_eats_statement(species_name, food_or_species_name))
 
     return command_list
