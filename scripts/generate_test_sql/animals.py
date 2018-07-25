@@ -33,7 +33,7 @@ def _create_animal_fed_at_random_event_statement(from_name):
 def _get_animal_aliases(animal_name, parent_names):
     """Return list of animal aliases."""
     base_name, _ = extract_base_name_and_label(animal_name)
-    random_aliases =  [base_name + '_' +  str(random.randint(0,9)) for _ in range(NUM_ALIASES)]
+    random_aliases = [base_name + '_' + str(random.randint(0, 9)) for _ in range(NUM_ALIASES)]
 
     # Some tests check for equality between names and aliases of different animals.
     # If the animal has several parents, we add a parent name to the alias list.

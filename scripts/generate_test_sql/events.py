@@ -1,5 +1,5 @@
 # Copyright 2017-present Kensho Technologies, LLC.
-from .utils import create_edge_statement, create_vertex_statement, get_random_date, get_uuid
+from .utils import create_vertex_statement, get_random_date, get_uuid
 
 
 EVENT_NAMES_LIST = (
