@@ -1458,12 +1458,12 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.contains_op_filter_with_tag()
 
         base_location = helpers.Location(('Animal',))
-        child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
-            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.Traverse('in', 'Animal_ParentOf'),
             blocks.Filter(
                 expressions.BinaryComposition(
                     u'contains',
@@ -1471,7 +1471,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.ContextField(base_location.navigate_to_field('name')),
                 )
             ),
-            blocks.MarkLocation(child_location),
+            blocks.MarkLocation(parent_location),
             blocks.Backtrack(base_location),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -1480,7 +1480,7 @@ class IrGenerationTests(unittest.TestCase):
         ]
         expected_location_types = {
             base_location: 'Animal',
-            child_location: 'Animal',
+            parent_location: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
