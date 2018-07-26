@@ -1,4 +1,4 @@
-# Copyright 2017-present Kensho Technologies, LLC.
+# Copyright 2018-present Kensho Technologies, LLC.
 from .utils import create_vertex_statement, get_random_date, get_uuid
 
 

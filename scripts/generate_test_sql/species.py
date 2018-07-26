@@ -1,4 +1,4 @@
-# Copyright 2017-present Kensho Technologies, LLC.
+# Copyright 2018-present Kensho Technologies, LLC.
 import random
 
 from .utils import create_edge_statement, create_vertex_statement, get_random_limbs, get_uuid
@@ -37,7 +37,7 @@ def _create_species_eats_statement(from_name, to_name):
     elif to_name in FOOD_LIST:
         to_class = 'Food'
     else:
-        raise AssertionError(u'Invalid name for SpeciesEats endpoint: {}'.format(to_name))
+        raise AssertionError(u'Invalid name for Species_Eats endpoint: {}'.format(to_name))
     return create_edge_statement('Species_Eats', 'Species', from_name, to_class, to_name)
 
 
