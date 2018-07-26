@@ -7,6 +7,7 @@ import re
 import sys
 
 from .animals import get_animal_generation_commands
+from .events import get_event_generation_commands
 from .species import get_species_generation_commands
 
 
@@ -48,6 +49,7 @@ def main():
         log_message.format(path=module_path, datetime=current_datetime, version=find_version()))
 
     sql_command_generators = [
+        get_event_generation_commands,
         get_species_generation_commands,
         get_animal_generation_commands,
     ]

@@ -910,7 +910,7 @@ def contains_op_filter_with_tag():
     graphql_input = '''{
         Animal {
             name @output(out_name: "animal_name") @tag(tag_name: "name")
-            out_Animal_ParentOf {
+            in_Animal_ParentOf {
                 alias @filter(op_name: "contains", value: ["%name"])
             }
         }
