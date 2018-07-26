@@ -353,9 +353,6 @@ def expose_ideal_query_execution_start_points(compound_match_query, location_typ
     """Ensure that OrientDB only considers desirable query start points in query planning."""
     new_queries = []
 
-    if coerced_locations:
-        print coerced_locations
-
     for match_query in compound_match_query.match_queries:
         location_classification = _classify_query_locations(match_query)
         preferred_locations, eligible_locations, _ = location_classification

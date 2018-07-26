@@ -1929,6 +1929,41 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_filter_then_apply_fragment(self):
+        test_data = test_input_data.filter_then_apply_fragment()
+
+        expected_match = '''
+            SELECT
+                Species__out_Species_Eats___1.name AS `food_name`,
+                Species___1.name AS `species_name`
+            FROM (
+                MATCH {{
+                    class: Species,
+                    where: (({species} CONTAINS name)),
+                    as: Species___1
+                }}.out('Species_Eats') {{
+                    where: ((@this INSTANCEOF 'Food')),
+                    as: Species__out_Species_Eats___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Species')
+            .filter{it, m -> $species.contains(it.name)}
+            .as('Species___1')
+            .out('Species_Eats')
+            .filter{it, m -> ['Food'].contains(it['@class'])}
+            .as('Species__out_Species_Eats___1')
+            .back('Species___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                food_name: m.Species__out_Species_Eats___1.name,
+                species_name: m.Species___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_filter_on_fragment_in_union(self):
         test_data = test_input_data.filter_on_fragment_in_union()
 

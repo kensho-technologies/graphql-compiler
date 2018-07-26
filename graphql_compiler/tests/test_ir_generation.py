@@ -942,6 +942,40 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_filter_then_apply_fragment(self):
+        test_data = test_input_data.filter_then_apply_fragment()
+
+        base_location = helpers.Location(('Species',))
+        food_location = base_location.navigate_to_subpath('out_Species_Eats')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Species'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'contains',
+                    expressions.Variable('$species', GraphQLList(GraphQLString)),
+                    expressions.LocalField('name')
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('out', 'Species_Eats'),
+            blocks.CoerceType({'Food'}),
+            blocks.MarkLocation(food_location),
+            blocks.Backtrack(base_location),
+            blocks.ConstructResult({
+                'species_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'food_name': expressions.OutputContextField(
+                    food_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Species',
+            food_location: 'Food',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_filter_on_fragment_in_union(self):
         test_data = test_input_data.filter_on_fragment_in_union()
 
