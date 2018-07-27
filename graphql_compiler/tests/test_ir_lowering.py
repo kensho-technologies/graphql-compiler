@@ -758,6 +758,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             child_fed_at_location: 'Event',
             revisited_base_location: 'Animal',
         })
+        coerced_locations = set()
 
         expected_final_blocks_without_optional_traverse = [
             QueryRoot({'Animal'}),
@@ -810,7 +811,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             ]
         )
 
-        final_query = ir_lowering_match.lower_ir(ir_blocks, location_types)
+        final_query = ir_lowering_match.lower_ir(ir_blocks, location_types, coerced_locations)
 
         self.assertEqual(
             expected_compound_match_query, final_query,
