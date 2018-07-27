@@ -68,7 +68,7 @@ def execute_graphql(schema, test_data, client, sample_parameters):
 # pylint: disable=no-member
 
 
-class OrientDBUnparametrizedMatchQueryTests(TestCase):
+class OrientDBUnparameterizedMatchQueryTests(TestCase):
 
     def setUp(self):
         """Initialize the test schema once for all tests, and disable max diff limits."""
@@ -517,7 +517,7 @@ class OrientDBUnparametrizedMatchQueryTests(TestCase):
         self.assertMatchSnapshot(rows)
 
 
-class OrientDBParametrizedMatchQueryTests(TestCase):
+class OrientDBParameterizedMatchQueryTests(TestCase):
 
     def setUp(self):
         """Initialize the test schema once for all tests, and disable max diff limits."""
