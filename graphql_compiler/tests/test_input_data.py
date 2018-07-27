@@ -192,7 +192,8 @@ def name_or_alias_filter_on_interface_type():
 def output_source_and_complex_output():
     graphql_input = '''{
         Animal {
-            name @filter(op_name: "=", value: ["$wanted"]) @output(out_name: "animal_name")
+            name @filter(op_name: "=", value: ["$wanted"])
+                 @output(out_name: "animal_name")
             out_Animal_ParentOf @output_source {
                 name @output(out_name: "parent_name")
             }
@@ -448,7 +449,6 @@ def complex_optional_variables():
     # The operands in the @filter directives originate from an optional block.
     graphql_input = '''{
         Animal {
-            name @filter(op_name: "=", value: ["$animal_name"])
             out_Animal_ParentOf {
                 out_Animal_FedAt @optional {
                     name @tag(tag_name: "child_fed_at_event")
@@ -477,9 +477,7 @@ def complex_optional_variables():
         'other_parent_fed_at': OutputMetadata(type=GraphQLDateTime, optional=True),
         'grandparent_fed_at': OutputMetadata(type=GraphQLDateTime, optional=False),
     }
-    expected_input_metadata = {
-        'animal_name': GraphQLString,
-    }
+    expected_input_metadata = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1000,7 +998,7 @@ def has_edge_degree_op_filter():
     graphql_input = '''{
         Animal {
             name @output(out_name: "animal_name")
-            out_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
+            in_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
                                 @output_source {
                 name @output(out_name: "child_name")
             }
@@ -1029,8 +1027,8 @@ def has_edge_degree_op_filter_with_optional():
             in_Animal_OfSpecies {
                 name @output(out_name: "parent_name")
 
-                out_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
-                                    @optional {
+                in_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
+                                   @optional {
                     name @output(out_name: "child_name")
                 }
             }
@@ -1060,7 +1058,7 @@ def has_edge_degree_op_filter_with_fold():
             in_Animal_OfSpecies {
                 name @output(out_name: "parent_name")
 
-                out_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
+                in_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
                                     @fold {
                     name @output(out_name: "child_names")
                 }

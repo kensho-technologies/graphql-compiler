@@ -13,7 +13,7 @@ SPECIES_LIST = (
 FOOD_LIST = (
     "Bacon",
     "Lembas",
-    "Bloood pie",
+    "Blood pie",
 )
 NUM_FOODS = 2
 

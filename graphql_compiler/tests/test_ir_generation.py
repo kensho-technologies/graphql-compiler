@@ -769,13 +769,6 @@ class IrGenerationTests(unittest.TestCase):
         expected_blocks = [
             # Apply the filter to the root vertex and mark it.
             blocks.QueryRoot({'Animal'}),
-            blocks.Filter(
-                expressions.BinaryComposition(
-                    u'=',
-                    expressions.LocalField('name'),
-                    expressions.Variable('$animal_name', GraphQLString)
-                )
-            ),
             blocks.MarkLocation(base_location),
 
             blocks.Traverse('out', 'Animal_ParentOf'),
@@ -1615,7 +1608,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.has_edge_degree_op_filter()
 
         base_location = helpers.Location(('Animal',))
-        child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        child_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -1631,7 +1624,7 @@ class IrGenerationTests(unittest.TestCase):
                         ),
                         expressions.BinaryComposition(
                             u'=',
-                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.LocalField('in_Animal_ParentOf'),
                             expressions.NullLiteral
                         )
                     ),
@@ -1639,14 +1632,14 @@ class IrGenerationTests(unittest.TestCase):
                         u'&&',
                         expressions.BinaryComposition(
                             u'!=',
-                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.LocalField('in_Animal_ParentOf'),
                             expressions.NullLiteral
                         ),
                         expressions.BinaryComposition(
                             u'=',
                             expressions.UnaryTransformation(
                                 u'size',
-                                expressions.LocalField('out_Animal_ParentOf')
+                                expressions.LocalField('in_Animal_ParentOf')
                             ),
                             expressions.Variable('$child_count', GraphQLInt),
                         )
@@ -1654,7 +1647,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(base_location),
-            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.Traverse('in', 'Animal_ParentOf'),
             blocks.MarkLocation(child_location),
             blocks.OutputSource(),
             blocks.ConstructResult({
@@ -1676,7 +1669,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Species',))
         animal_location = base_location.navigate_to_subpath('in_Animal_OfSpecies')
-        child_location = animal_location.navigate_to_subpath('out_Animal_ParentOf')
+        child_location = animal_location.navigate_to_subpath('in_Animal_ParentOf')
         revisited_animal_location = animal_location.revisit()
 
         expected_blocks = [
@@ -1695,7 +1688,7 @@ class IrGenerationTests(unittest.TestCase):
                         ),
                         expressions.BinaryComposition(
                             u'=',
-                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.LocalField('in_Animal_ParentOf'),
                             expressions.NullLiteral
                         )
                     ),
@@ -1703,14 +1696,14 @@ class IrGenerationTests(unittest.TestCase):
                         u'&&',
                         expressions.BinaryComposition(
                             u'!=',
-                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.LocalField('in_Animal_ParentOf'),
                             expressions.NullLiteral
                         ),
                         expressions.BinaryComposition(
                             u'=',
                             expressions.UnaryTransformation(
                                 u'size',
-                                expressions.LocalField('out_Animal_ParentOf')
+                                expressions.LocalField('in_Animal_ParentOf')
                             ),
                             expressions.Variable('$child_count', GraphQLInt),
                         )
@@ -1718,7 +1711,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(animal_location),
-            blocks.Traverse('out', 'Animal_ParentOf', optional=True),
+            blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(child_location),
             blocks.EndOptional(),
             blocks.Backtrack(animal_location, optional=True),
@@ -1750,7 +1743,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Species',))
         animal_location = base_location.navigate_to_subpath('in_Animal_OfSpecies')
-        animal_fold = helpers.FoldScopeLocation(animal_location, ('out', 'Animal_ParentOf'))
+        animal_fold = helpers.FoldScopeLocation(animal_location, ('in', 'Animal_ParentOf'))
 
         expected_blocks = [
             blocks.QueryRoot({'Species'}),
@@ -1768,7 +1761,7 @@ class IrGenerationTests(unittest.TestCase):
                         ),
                         expressions.BinaryComposition(
                             u'=',
-                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.LocalField('in_Animal_ParentOf'),
                             expressions.NullLiteral
                         )
                     ),
@@ -1776,14 +1769,14 @@ class IrGenerationTests(unittest.TestCase):
                         u'&&',
                         expressions.BinaryComposition(
                             u'!=',
-                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.LocalField('in_Animal_ParentOf'),
                             expressions.NullLiteral
                         ),
                         expressions.BinaryComposition(
                             u'=',
                             expressions.UnaryTransformation(
                                 u'size',
-                                expressions.LocalField('out_Animal_ParentOf')
+                                expressions.LocalField('in_Animal_ParentOf')
                             ),
                             expressions.Variable('$child_count', GraphQLInt),
                         )
