@@ -28,12 +28,14 @@ from .utils import construct_where_filter_predicate
 ##############
 
 
-def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
+def lower_ir(ir_blocks, location_types, coerced_locations, type_equivalence_hints=None):
     """Lower the IR into an IR form that can be represented in MATCH queries.
 
     Args:
         ir_blocks: list of IR blocks to lower into MATCH-compatible form
-        location_types: a dict of location objects -> GraphQL type objects at that location
+        location_types: dict of location objects -> GraphQL type objects at that location
+        coerced_locations: set of locations where type coercions were applied to constrain the type
+                           relative to the type inferred by the GraphQL schema and the given field
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
                                 Used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a
@@ -108,6 +110,6 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     compound_match_query = truncate_repeated_single_step_traversals_in_sub_queries(
         compound_match_query)
     compound_match_query = orientdb_query_execution.expose_ideal_query_execution_start_points(
-        compound_match_query, location_types)
+        compound_match_query, location_types, coerced_locations)
 
     return compound_match_query
