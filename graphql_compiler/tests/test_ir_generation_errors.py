@@ -1052,35 +1052,3 @@ class IrGenerationErrorTests(unittest.TestCase):
         for invalid_graphql in invalid_queries:
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, invalid_graphql)
-
-    def test_directives_not_in_schema(self):
-        # The schema should define all directives which are supported by the graphql compiler,
-        # whether they are not used in the query. Hence we raise an error when the following
-        # directive is not declared in the schema: directive @recurse(depth: Int!) on FIELD
-        incomplete_schema_text = '''
-            schema {
-                query: RootSchemaQuery
-            }
-            directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
-            directive @tag(tag_name: String!) on FIELD
-            directive @output(out_name: String!) on FIELD
-            directive @output_source on FIELD
-            directive @optional on FIELD
-            directive @fold on FIELD
-            type Animal {
-                name: String
-            }
-            type RootSchemaQuery {
-                Animal: Animal
-            }
-        '''
-        incomplete_schema = build_ast_schema(parse(incomplete_schema_text))
-
-        query = '''{
-            Animal {
-                name @output(out_name: "animal_name")
-            }
-        }'''
-
-        with self.assertRaises(GraphQLValidationError):
-            graphql_to_ir(incomplete_schema, query)
