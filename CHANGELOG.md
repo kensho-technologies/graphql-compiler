@@ -2,6 +2,10 @@
 
 ## Current development version
 
+## v1.7.2
+
+- Fix possible incorrect query execution due to dropped type coercions. [#110](https://github.com/kensho-technologies/graphql-compiler/pull/110) [#113](https://github.com/kensho-technologies/graphql-compiler/pull/113)
+
 ## v1.7.0
 
 - Add a new `@filter` operator: `intersects`. [#100](https://github.com/kensho-technologies/graphql-compiler/pull/100)
