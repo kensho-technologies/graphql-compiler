@@ -680,40 +680,6 @@ def simple_recurse():
         type_equivalence_hints=None)
 
 
-def double_recurse():
-    graphql_input = '''{
-        Animal @filter(op_name: "name_or_alias", value: ["$animal_name_or_alias"]) {
-            name @output(out_name: "animal_name")
-            out_Animal_ImportantEvent @optional {
-                ... on Event {
-                    name @output(out_name: "important_event")
-                }
-            }
-            out_Animal_ParentOf @recurse(depth: 2) {
-                name @output(out_name: "ancestor_name")
-            }
-            in_Animal_ParentOf @recurse(depth: 2) {
-                name @output(out_name: "descendent_name")
-            }
-
-    }'''
-    expected_output_metadata = {
-        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
-        'important_event': OutputMetadata(type=GraphQLString, optional=True)
-        'ancestor_name': OutputMetadata(type=GraphQLString, optional=False)
-        'descendent_name': OutputMetadata(type=GraphQLString, optional=False)
-    }
-    expected_input_metadata = {
-        ''animal_name': OutputMetadata(type=GraphQLString, optional=False)'
-    }
-
-    return CommonTestData(
-        graphql_input=graphql_input,
-        expected_output_metadata=expected_output_metadata,
-        expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None)
-
-
 def recurse_within_fragment():
     graphql_input = '''{
         Food {
