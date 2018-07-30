@@ -695,16 +695,17 @@ def double_recurse():
             in_Animal_ParentOf @recurse(depth: 2) {
                 name @output(out_name: "descendent_name")
             }
-
     }'''
+    
     expected_output_metadata = {
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
-        'important_event': OutputMetadata(type=GraphQLString, optional=True)
-        'ancestor_name': OutputMetadata(type=GraphQLString, optional=False)
+        'important_event': OutputMetadata(type=GraphQLString, optional=True),
+        'ancestor_name': OutputMetadata(type=GraphQLString, optional=False),
         'descendent_name': OutputMetadata(type=GraphQLString, optional=False)
     }
+    
     expected_input_metadata = {
-        ''animal_name': OutputMetadata(type=GraphQLString, optional=False)'
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False)
     }
 
     return CommonTestData(
