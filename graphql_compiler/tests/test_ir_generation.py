@@ -26,6 +26,8 @@ def check_test_data(test_case, test_data, expected_blocks, expected_location_typ
     compilation_results = graphql_to_ir(test_case.schema, test_data.graphql_input,
                                         type_equivalence_hints=schema_based_type_equivalence_hints)
 
+    print expected_blocks
+    print compilation_results.ir_blocks
     compare_ir_blocks(test_case, expected_blocks, compilation_results.ir_blocks)
     compare_input_metadata(
         test_case, test_data.expected_input_metadata, compilation_results.input_metadata)
@@ -1122,6 +1124,64 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Animal',
             child_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+
+    def test_double_recurse(self):
+        test_data = test_input_data.double_recurse()
+
+        base_location = helpers.Location(('Animal',))
+        ancestor_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        descendent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        event_location = base_location.navigate_to_subpath('out_Animal_ImportantEvent')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'||',
+                    expressions.BinaryComposition(
+                        u'=',
+                        expressions.LocalField('name'),
+                        expressions.Variable('$animal_name_or_alias', GraphQLString)
+                    ),
+                    expressions.BinaryComposition(
+                        u'contains',
+                        expressions.LocalField('alias'),
+                        expressions.Variable('$animal_name_or_alias', GraphQLString)
+                    )
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('out', 'Animal_ImportantEvent'),
+            blocks.CoerceType({'Event'}),
+            blocks.MarkLocation(event_location),
+            blocks.Backtrack(base_location),
+            blocks.Recurse('out', 'Animal_ParentOf', 2),
+            blocks.MarkLocation(ancestor_location),
+            blocks.Backtrack(base_location),
+            blocks.Recurse('in', 'Animal_ParentOf', 2),
+            blocks.MarkLocation(descendent_location),
+            blocks.Backtrack(base_location),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'important_event': expressions.OutputContextField(
+                    event_location.navigate_to_field('name'), GraphQLString),
+                'ancestor_name': expressions.OutputContextField(
+                    ancestor_location.navigate_to_field('name'), GraphQLString),
+                'descendent_name': expressions.OutputContextField(
+                    descendent_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+
+        expected_location_types = {
+            base_location: 'Animal',
+            event_location: 'Event',
+            descendent_location: 'Animal',
+            ancestor_location: 'Animal'
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
