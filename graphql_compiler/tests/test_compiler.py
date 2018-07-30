@@ -1964,6 +1964,57 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_filter_then_apply_fragment_with_multiple_traverses(self):
+        test_data = test_input_data.filter_then_apply_fragment_with_multiple_traverses()
+
+        expected_match = '''
+            SELECT
+                Species__out_Species_Eats__out_Entity_Related___1.name AS `entity_related_to_food`,
+                Species__out_Species_Eats___1.name AS `food_name`,
+                Species__out_Species_Eats__in_Entity_Related___1.name AS `food_related_to_entity`,
+                Species___1.name AS `species_name`
+            FROM (
+                MATCH {{
+                    class: Species,
+                    where: (({species} CONTAINS name)),
+                    as: Species___1
+                }}.out('Species_Eats') {{
+                    where: ((@this INSTANCEOF 'Food')),
+                    as: Species__out_Species_Eats___1
+                }}.out('Entity_Related') {{
+                    as: Species__out_Species_Eats__out_Entity_Related___1
+                }}, {{
+                    as: Species__out_Species_Eats___1
+                }}.in('Entity_Related') {{
+                    as: Species__out_Species_Eats__in_Entity_Related___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Species')
+            .filter{it, m -> $species.contains(it.name)}
+            .as('Species___1')
+            .out('Species_Eats')
+            .filter{it, m -> ['Food'].contains(it['@class'])}
+            .as('Species__out_Species_Eats___1')
+            .out('Entity_Related')
+            .as('Species__out_Species_Eats__out_Entity_Related___1')
+            .back('Species__out_Species_Eats___1')
+            .in('Entity_Related')
+            .as('Species__out_Species_Eats__in_Entity_Related___1')
+            .back('Species__out_Species_Eats___1')
+            .back('Species___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                entity_related_to_food: m.Species__out_Species_Eats__out_Entity_Related___1.name,
+                food_name: m.Species__out_Species_Eats___1.name,
+                food_related_to_entity: m.Species__out_Species_Eats__in_Entity_Related___1.name,
+                species_name: m.Species___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_filter_on_fragment_in_union(self):
         test_data = test_input_data.filter_on_fragment_in_union()
 
