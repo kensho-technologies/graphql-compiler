@@ -192,8 +192,7 @@ def name_or_alias_filter_on_interface_type():
 def output_source_and_complex_output():
     graphql_input = '''{
         Animal {
-            name @filter(op_name: "=", value: ["$wanted"])
-                 @output(out_name: "animal_name")
+            name @filter(op_name: "=", value: ["$wanted"]) @output(out_name: "animal_name")
             out_Animal_ParentOf @output_source {
                 name @output(out_name: "parent_name")
             }
@@ -999,7 +998,7 @@ def has_edge_degree_op_filter():
         Animal {
             name @output(out_name: "animal_name")
             in_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
-                                @output_source {
+                               @output_source {
                 name @output(out_name: "child_name")
             }
         }
@@ -1059,7 +1058,7 @@ def has_edge_degree_op_filter_with_fold():
                 name @output(out_name: "parent_name")
 
                 in_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"])
-                                    @fold {
+                                   @fold {
                     name @output(out_name: "child_names")
                 }
             }
