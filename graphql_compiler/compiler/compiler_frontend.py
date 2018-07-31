@@ -69,6 +69,7 @@ import six
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
+from ..schema import DIRECTIVES
 from .context_helpers import (has_encountered_output_source, is_in_fold_scope, is_in_optional_scope,
                               validate_context_for_visiting_vertex_field)
 from .directive_helpers import (get_local_filter_directives, get_unique_directives,
@@ -80,7 +81,6 @@ from .filters import process_filter_directive
 from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_field_type_from_schema,
                       get_uniquely_named_objects_by_name, get_vertex_field_type,
                       is_vertex_field_name, strip_non_null_from_type, validate_safe_string)
-from ..schema import DIRECTIVES
 
 
 # LocationStackEntry contains the following:
