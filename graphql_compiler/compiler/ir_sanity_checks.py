@@ -95,9 +95,6 @@ def _sanity_check_output_source_follower_blocks(ir_blocks):
 
 def _sanity_check_block_pairwise_constraints(ir_blocks):
     """Assert that adjacent blocks obey all invariants."""
-    for block in ir_blocks:
-        print block
-        print ''
     for first_block, second_block in pairwise(ir_blocks):
         # Always Filter before MarkLocation, never after.
         if isinstance(first_block, MarkLocation) and isinstance(second_block, Filter):
