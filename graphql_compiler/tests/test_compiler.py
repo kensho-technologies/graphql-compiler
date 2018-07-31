@@ -1040,7 +1040,6 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
-
     def test_traverse_then_recurse(self):
         test_data = test_input_data.traverse_then_recurse()
 
@@ -1091,7 +1090,6 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
-
     def test_traverse_in_filter_then_recurse(self):
         test_data = test_input_data.traverse_in_filter_then_recurse()
 
@@ -1122,7 +1120,9 @@ class CompilerTests(unittest.TestCase):
 
         expected_gremlin = '''
             g.V('@class', 'Animal')
-            .filter{it, m -> ((it.name == $animal_name_or_alias) || it.alias.contains($animal_name_or_alias))}
+            .filter{it, m -> (
+                (it.name == $animal_name_or_alias) || it.alias.contains($animal_name_or_alias)
+            )}
             .as('Animal___1')
             .out('Animal_ImportantEvent')
             .filter{it, m -> ['Event'].contains(it['@class'])}
@@ -1144,7 +1144,6 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
-
 
     def test_double_recurse(self):
         test_data = test_input_data.double_recurse()
@@ -1183,7 +1182,9 @@ class CompilerTests(unittest.TestCase):
 
         expected_gremlin = '''
             g.V('@class', 'Animal')
-            .filter{it, m -> ((it.name == $animal_name_or_alias) || it.alias.contains($animal_name_or_alias))}
+            .filter{it, m -> (
+                (it.name == $animal_name_or_alias) || it.alias.contains($animal_name_or_alias)
+            )}
             .as('Animal___1')
             .out('Animal_ImportantEvent')
             .filter{it, m -> ['Event'].contains(it['@class'])}
@@ -1214,7 +1215,6 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
-
 
     def test_recurse_within_fragment(self):
         test_data = test_input_data.recurse_within_fragment()

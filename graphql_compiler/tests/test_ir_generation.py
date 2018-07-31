@@ -1126,7 +1126,6 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
-
     def test_traverse_then_recurse(self):
         test_data = test_input_data.traverse_then_recurse()
 
@@ -1161,7 +1160,6 @@ class IrGenerationTests(unittest.TestCase):
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
-
 
     def test_traverse_in_filter_then_recurse(self):
         test_data = test_input_data.traverse_in_filter_then_recurse()
@@ -1212,7 +1210,6 @@ class IrGenerationTests(unittest.TestCase):
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
-
 
     def test_double_recurse(self):
         test_data = test_input_data.double_recurse()
