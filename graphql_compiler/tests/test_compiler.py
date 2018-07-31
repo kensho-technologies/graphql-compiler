@@ -1170,7 +1170,7 @@ class CompilerTests(unittest.TestCase):
                 }}.out('Animal_ParentOf') {{
                     while: ($depth < 2),
                     as: Animal__out_Animal_ParentOf___1
-                }}, {{
+                }} , {{
                     class: Animal,
                     as: Animal___1
                 }}.in('Animal_ParentOf') {{

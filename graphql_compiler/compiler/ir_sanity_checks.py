@@ -117,7 +117,7 @@ def _sanity_check_block_pairwise_constraints(ir_blocks):
                 raise AssertionError(u'Expected MarkLocation after Backtrack with optional=True, '
                                      u'but none was found: {}'.format(ir_blocks))
 
-        # Recurse blocks are immediately preceded by a MarkLocation or BackTrack block.
+        # Recurse blocks are immediately preceded by a MarkLocation or Backtrack block.
         if isinstance(second_block, Recurse):
             if not (isinstance(first_block, MarkLocation) or isinstance(first_block, Backtrack)):
                 raise AssertionError(u'Expected MarkLocation or Backtrack before Recurse, but none '
