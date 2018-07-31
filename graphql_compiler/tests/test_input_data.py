@@ -485,6 +485,50 @@ def complex_optional_variables():
         type_equivalence_hints=None)
 
 
+def complex_optional_variables_with_starting_filter():
+    # The operands in the @filter directives originate from an optional block.
+    graphql_input = '''{
+        Animal {
+            name @filter(op_name: "=", value: ["$animal_name"])
+            out_Animal_ParentOf {
+                out_Animal_FedAt @optional {
+                    name @tag(tag_name: "child_fed_at_event")
+                    event_date @tag(tag_name: "child_fed_at")
+                               @output(out_name: "child_fed_at")
+                }
+                in_Animal_ParentOf {
+                    out_Animal_FedAt @optional {
+                        event_date @tag(tag_name: "other_parent_fed_at")
+                                   @output(out_name: "other_parent_fed_at")
+                    }
+                }
+            }
+            in_Animal_ParentOf {
+                out_Animal_FedAt {
+                    name @filter(op_name: "=", value: ["%child_fed_at_event"])
+                    event_date @output(out_name: "grandparent_fed_at")
+                               @filter(op_name: "between",
+                                       value: ["%other_parent_fed_at", "%child_fed_at"])
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'child_fed_at': OutputMetadata(type=GraphQLDateTime, optional=True),
+        'other_parent_fed_at': OutputMetadata(type=GraphQLDateTime, optional=True),
+        'grandparent_fed_at': OutputMetadata(type=GraphQLDateTime, optional=False),
+    }
+    expected_input_metadata = {
+        'animal_name': GraphQLString,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def simple_fragment():
     graphql_input = '''{
         Animal {

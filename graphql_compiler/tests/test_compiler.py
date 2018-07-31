@@ -908,6 +908,173 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_complex_optional_variables_with_starting_filter(self):
+        # The operands in the @filter directives originate from an optional block,
+        # in addition to having very complex filtering logic.
+        test_data = test_input_data.complex_optional_variables_with_starting_filter()
+
+        expected_match = '''
+            SELECT
+                if(
+                    eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
+                    Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
+                        .format("yyyy-MM-dd'T'HH:mm:ssX"),
+                    null
+                ) AS `child_fed_at`,
+                Animal__in_Animal_ParentOf__out_Animal_FedAt___1
+                    .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandparent_fed_at`,
+                if(
+                    eval("(Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                        IS NOT null)"),
+                    Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
+                    null
+                ) AS `other_parent_fed_at`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((name = {animal_name})),
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    as: Animal__out_Animal_ParentOf___1
+                }}.out('Animal_FedAt') {{
+                    optional: true,
+                    as: Animal__out_Animal_ParentOf__out_Animal_FedAt___1
+                }} , {{
+                    as: Animal__out_Animal_ParentOf___1
+                }}.in('Animal_ParentOf') {{
+                    as: Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
+                }}.out('Animal_FedAt') {{
+                    optional: true,
+                    as: Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                }} , {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    as: Animal__in_Animal_ParentOf___1
+                }}.out('Animal_FedAt') {{
+                    where: ((
+                        (
+                            ($matched.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS null)
+                            OR
+                            (name = $matched.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.name)
+                        )
+                        AND
+                        (
+                            (
+                                ($matched.Animal__out_Animal_ParentOf__in_Animal_ParentOf
+                                        __out_Animal_FedAt___1
+                                    IS null)
+                                OR
+                                (event_date >= $matched.Animal__out_Animal_ParentOf
+                                    __in_Animal_ParentOf__out_Animal_FedAt___1 .event_date)
+                            )
+                            AND
+                            (
+                                ($matched.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS null)
+                                OR
+                                (event_date <= $matched.Animal__out_Animal_ParentOf
+                                    __out_Animal_FedAt___1.event_date)
+                            )
+                        )
+                    )),
+                    as: Animal__in_Animal_ParentOf__out_Animal_FedAt___1
+                }}
+                RETURN $matches
+            )
+            WHERE (
+                (
+                    (
+                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt IS null)
+                        OR
+                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt.size() = 0)
+                    )
+                    OR
+                    (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
+                )
+                AND
+                (
+                    (
+                        (Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
+                            .out_Animal_FedAt IS null)
+                        OR
+                        (Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
+                            .out_Animal_FedAt.size() = 0)
+                    )
+                    OR
+                    (Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                        IS NOT null)
+                )
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (it.name == $animal_name)}
+            .as('Animal___1')
+                .out('Animal_ParentOf')
+                .as('Animal__out_Animal_ParentOf___1')
+                    .ifThenElse{it.out_Animal_FedAt == null}{null}{it.out('Animal_FedAt')}
+                    .as('Animal__out_Animal_ParentOf__out_Animal_FedAt___1')
+                .optional('Animal__out_Animal_ParentOf___1')
+                .as('Animal__out_Animal_ParentOf___2')
+                    .in('Animal_ParentOf')
+                    .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf___1')
+                        .ifThenElse{it.out_Animal_FedAt == null}{null}{it.out('Animal_FedAt')}
+                        .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1')
+                    .optional('Animal__out_Animal_ParentOf__in_Animal_ParentOf___1')
+                    .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf___2')
+                .back('Animal__out_Animal_ParentOf___2')
+            .back('Animal___1')
+                .in('Animal_ParentOf')
+                .as('Animal__in_Animal_ParentOf___1')
+                    .out('Animal_FedAt')
+                    .filter{it, m -> (
+                        (
+                            (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 == null) ||
+                            (it.name == m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.name)
+                        )
+                        &&
+                        (
+                            (
+                                (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
+                                    __out_Animal_FedAt___1 == null)
+                                ||
+                                (it.event_date >= m.Animal__out_Animal_ParentOf
+                                    __in_Animal_ParentOf__out_Animal_FedAt___1.event_date)
+                            )
+                            &&
+                            (
+                                (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 == null)
+                                ||
+                                (it.event_date <= m.Animal__out_Animal_ParentOf
+                                    __out_Animal_FedAt___1.event_date)
+                            )
+                        )
+                    )}
+                    .as('Animal__in_Animal_ParentOf__out_Animal_FedAt___1')
+                .back('Animal__in_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                child_fed_at: (
+                    (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
+                    m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
+                        .format("yyyy-MM-dd'T'HH:mm:ssX") :
+                    null
+                ),
+                grandparent_fed_at: m.Animal__in_Animal_ParentOf__out_Animal_FedAt___1.event_date
+                    .format("yyyy-MM-dd'T'HH:mm:ssX"),
+                other_parent_fed_at: (
+                    (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
+                        __out_Animal_FedAt___1 != null) ?
+                    m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") :
+                    null
+                )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_simple_fragment(self):
         test_data = test_input_data.simple_fragment()
 

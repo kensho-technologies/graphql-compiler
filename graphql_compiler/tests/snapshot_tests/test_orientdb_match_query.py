@@ -653,6 +653,15 @@ class OrientDBParameterizedMatchQueryTests(TestCase):
         self.assertMatchSnapshot(rows)
 
     @pytest.mark.usefixtures('graph_client')
+    def test_complex_optional_variables_with_starting_filter(self):
+        test_data = test_input_data.complex_optional_variables_with_starting_filter()
+        sample_parameters = {'animal_name': 'Nazgul__((((18_19_2_6)_1_19_6)_15_16_2)_11_14_6)'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
     def test_filter_on_fragment_in_union(self):
         test_data = test_input_data.filter_on_fragment_in_union()
         sample_parameters = {'wanted': 'Bacon'}
