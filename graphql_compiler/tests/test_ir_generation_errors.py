@@ -1193,7 +1193,6 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLValidationError):
                 graphql_to_ir(parsed_incorrect_schema, query)
 
-
     def test_directives_with_incorrect_arguments(self):
         """Ensure that proper errors are raised if directives are provided with incorrect args."""
         # Change @filter arg from String! to Int!

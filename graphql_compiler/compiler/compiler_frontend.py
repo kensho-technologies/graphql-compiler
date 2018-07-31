@@ -813,6 +813,18 @@ def _preprocess_graphql_string(graphql_string):
     return graphql_string + '\n'
 
 
+def _sorted_tuple(input):
+    """Sort a list and turn it into a tuple.
+
+    Args:
+        input: list of strings
+
+    Returns:
+        tuple of the sorted input list
+    """
+    return tuple(sorted(input))
+
+
 def _validate_schema_and_ast(schema, ast):
     """Validate the supplied graphql schema and ast.
 
@@ -838,14 +850,13 @@ def _validate_schema_and_ast(schema, ast):
 
     # Extract name, locations and args keys in order to compare schema directives and directives
     # which are supported by the graphql compiler.
-    sorted_tuple = lambda x: tuple(sorted(x))
 
     # Directives provided in the GraphQL string.
     expected_directives = set(
         (
             directive.name,
-            sorted_tuple(directive.locations),
-            sorted_tuple(six.viewkeys(directive.args))
+            _sorted_tuple(directive.locations),
+            _sorted_tuple(six.viewkeys(directive.args))
         )
         for directive in DIRECTIVES
     )
@@ -854,9 +865,9 @@ def _validate_schema_and_ast(schema, ast):
     # Directives provided in the core-graphql schema.
     actual_directives = set(
         (
-         directive.name,
-         sorted_tuple(directive.locations),
-         sorted_tuple(six.viewkeys(directive.args))
+            directive.name,
+            _sorted_tuple(directive.locations),
+            _sorted_tuple(six.viewkeys(directive.args))
         )
         for directive in schema.get_directives()
     )
@@ -880,6 +891,7 @@ def _validate_schema_and_ast(schema, ast):
 ##############
 # Public API #
 ##############
+
 
 def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
     """Convert the given GraphQL string into compiler IR, using the given schema object.
