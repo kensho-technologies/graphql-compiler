@@ -813,16 +813,16 @@ def _preprocess_graphql_string(graphql_string):
     return graphql_string + '\n'
 
 
-def _sorted_tuple(input):
+def _sorted_tuple(unordered_list):
     """Sort a list and turn it into a tuple.
 
     Args:
-        input: list of strings
+        unordered_list: list of strings
 
     Returns:
         tuple of the sorted input list
     """
-    return tuple(sorted(input))
+    return tuple(sorted(unordered_list))
 
 
 def _validate_schema_and_ast(schema, ast):
