@@ -764,6 +764,175 @@ class CompilerTests(unittest.TestCase):
             FROM (
                 MATCH {{
                     class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    class: Animal,
+                    as: Animal__out_Animal_ParentOf___1
+                }}.out('Animal_FedAt') {{
+                    optional: true,
+                    as: Animal__out_Animal_ParentOf__out_Animal_FedAt___1
+                }} , {{
+                    class: Animal,
+                    as: Animal__out_Animal_ParentOf___1
+                }}.in('Animal_ParentOf') {{
+                    class: Animal,
+                    as: Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
+                }}.out('Animal_FedAt') {{
+                    optional: true,
+                    as: Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                }} , {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    class: Animal,
+                    as: Animal__in_Animal_ParentOf___1
+                }}.out('Animal_FedAt') {{
+                    where: ((
+                        (
+                            ($matched.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS null)
+                            OR
+                            (name = $matched.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.name)
+                        )
+                        AND
+                        (
+                            (
+                                ($matched.Animal__out_Animal_ParentOf__in_Animal_ParentOf
+                                        __out_Animal_FedAt___1
+                                    IS null)
+                                OR
+                                (event_date >= $matched.Animal__out_Animal_ParentOf
+                                    __in_Animal_ParentOf__out_Animal_FedAt___1 .event_date)
+                            )
+                            AND
+                            (
+                                ($matched.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS null)
+                                OR
+                                (event_date <= $matched.Animal__out_Animal_ParentOf
+                                    __out_Animal_FedAt___1.event_date)
+                            )
+                        )
+                    )),
+                    as: Animal__in_Animal_ParentOf__out_Animal_FedAt___1
+                }}
+                RETURN $matches
+            )
+            WHERE (
+                (
+                    (
+                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt IS null)
+                        OR
+                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt.size() = 0)
+                    )
+                    OR
+                    (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
+                )
+                AND
+                (
+                    (
+                        (Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
+                            .out_Animal_FedAt IS null)
+                        OR
+                        (Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
+                            .out_Animal_FedAt.size() = 0)
+                    )
+                    OR
+                    (Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                        IS NOT null)
+                )
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .out('Animal_ParentOf')
+                .as('Animal__out_Animal_ParentOf___1')
+                    .ifThenElse{it.out_Animal_FedAt == null}{null}{it.out('Animal_FedAt')}
+                    .as('Animal__out_Animal_ParentOf__out_Animal_FedAt___1')
+                .optional('Animal__out_Animal_ParentOf___1')
+                .as('Animal__out_Animal_ParentOf___2')
+                    .in('Animal_ParentOf')
+                    .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf___1')
+                        .ifThenElse{it.out_Animal_FedAt == null}{null}{it.out('Animal_FedAt')}
+                        .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1')
+                    .optional('Animal__out_Animal_ParentOf__in_Animal_ParentOf___1')
+                    .as('Animal__out_Animal_ParentOf__in_Animal_ParentOf___2')
+                .back('Animal__out_Animal_ParentOf___2')
+            .back('Animal___1')
+                .in('Animal_ParentOf')
+                .as('Animal__in_Animal_ParentOf___1')
+                    .out('Animal_FedAt')
+                    .filter{it, m -> (
+                        (
+                            (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 == null) ||
+                            (it.name == m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.name)
+                        )
+                        &&
+                        (
+                            (
+                                (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
+                                    __out_Animal_FedAt___1 == null)
+                                ||
+                                (it.event_date >= m.Animal__out_Animal_ParentOf
+                                    __in_Animal_ParentOf__out_Animal_FedAt___1.event_date)
+                            )
+                            &&
+                            (
+                                (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 == null)
+                                ||
+                                (it.event_date <= m.Animal__out_Animal_ParentOf
+                                    __out_Animal_FedAt___1.event_date)
+                            )
+                        )
+                    )}
+                    .as('Animal__in_Animal_ParentOf__out_Animal_FedAt___1')
+                .back('Animal__in_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                child_fed_at: (
+                    (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
+                    m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
+                        .format("yyyy-MM-dd'T'HH:mm:ssX") :
+                    null
+                ),
+                grandparent_fed_at: m.Animal__in_Animal_ParentOf__out_Animal_FedAt___1.event_date
+                    .format("yyyy-MM-dd'T'HH:mm:ssX"),
+                other_parent_fed_at: (
+                    (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
+                        __out_Animal_FedAt___1 != null) ?
+                    m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") :
+                    null
+                )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_complex_optional_variables_with_starting_filter(self):
+        # The operands in the @filter directives originate from an optional block,
+        # in addition to having very complex filtering logic.
+        test_data = test_input_data.complex_optional_variables_with_starting_filter()
+
+        expected_match = '''
+            SELECT
+                if(
+                    eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
+                    Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
+                        .format("yyyy-MM-dd'T'HH:mm:ssX"),
+                    null
+                ) AS `child_fed_at`,
+                Animal__in_Animal_ParentOf__out_Animal_FedAt___1
+                    .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandparent_fed_at`,
+                if(
+                    eval("(Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                        IS NOT null)"),
+                    Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
+                    null
+                ) AS `other_parent_fed_at`
+            FROM (
+                MATCH {{
+                    class: Animal,
                     where: ((name = {animal_name})),
                     as: Animal___1
                 }}.out('Animal_ParentOf') {{
@@ -1925,18 +2094,18 @@ class CompilerTests(unittest.TestCase):
         expected_match = '''
             SELECT
                 Animal___1.name AS `animal_name`,
-                Animal__out_Animal_ParentOf___1.name AS `child_name`
+                Animal__in_Animal_ParentOf___1.name AS `child_name`
             FROM (
                 MATCH {{
                     class: Animal,
                     where: ((
-                        (({child_count} = 0) AND (out_Animal_ParentOf IS null)) OR
-                        ((out_Animal_ParentOf IS NOT null) AND
-                            (out_Animal_ParentOf.size() = {child_count}))
+                        (({child_count} = 0) AND (in_Animal_ParentOf IS null)) OR
+                        ((in_Animal_ParentOf IS NOT null) AND
+                            (in_Animal_ParentOf.size() = {child_count}))
                     )),
                     as: Animal___1
-                }}.out('Animal_ParentOf') {{
-                    as: Animal__out_Animal_ParentOf___1
+                }}.in('Animal_ParentOf') {{
+                    as: Animal__in_Animal_ParentOf___1
                 }}
                 RETURN $matches
             )
@@ -1944,16 +2113,16 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = '''
             g.V('@class', 'Animal')
             .filter{it, m -> (
-                (($child_count == 0) && (it.out_Animal_ParentOf == null)) ||
-                ((it.out_Animal_ParentOf != null) &&
-                    (it.out_Animal_ParentOf.count() == $child_count))
+                (($child_count == 0) && (it.in_Animal_ParentOf == null)) ||
+                ((it.in_Animal_ParentOf != null) &&
+                    (it.in_Animal_ParentOf.count() == $child_count))
             )}
             .as('Animal___1')
-            .out('Animal_ParentOf')
-            .as('Animal__out_Animal_ParentOf___1')
+            .in('Animal_ParentOf')
+            .as('Animal__in_Animal_ParentOf___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name,
-                child_name: m.Animal__out_Animal_ParentOf___1.name
+                child_name: m.Animal__in_Animal_ParentOf___1.name
             ])}
         '''
 
@@ -1964,8 +2133,8 @@ class CompilerTests(unittest.TestCase):
 
         expected_match = '''
             SELECT
-                if(eval("(Species__in_Animal_OfSpecies__out_Animal_ParentOf___1 IS NOT null)"),
-                   Species__in_Animal_OfSpecies__out_Animal_ParentOf___1.name,
+                if(eval("(Species__in_Animal_OfSpecies__in_Animal_ParentOf___1 IS NOT null)"),
+                   Species__in_Animal_OfSpecies__in_Animal_ParentOf___1.name,
                    null
                 ) AS `child_name`,
                 Species__in_Animal_OfSpecies___1.name AS `parent_name`,
@@ -1976,25 +2145,25 @@ class CompilerTests(unittest.TestCase):
                 }}.in('Animal_OfSpecies') {{
                     class: Animal,
                     where: ((
-                        (({child_count} = 0) AND (out_Animal_ParentOf IS null)) OR
-                        ((out_Animal_ParentOf IS NOT null) AND
-                            (out_Animal_ParentOf.size() = {child_count}))
+                        (({child_count} = 0) AND (in_Animal_ParentOf IS null)) OR
+                        ((in_Animal_ParentOf IS NOT null) AND
+                            (in_Animal_ParentOf.size() = {child_count}))
                     )),
                     as: Species__in_Animal_OfSpecies___1
-                }}.out('Animal_ParentOf') {{
+                }}.in('Animal_ParentOf') {{
                     optional: true,
-                    as: Species__in_Animal_OfSpecies__out_Animal_ParentOf___1
+                    as: Species__in_Animal_OfSpecies__in_Animal_ParentOf___1
                 }}
                 RETURN $matches
             )
             WHERE (
                 (
-                    (Species__in_Animal_OfSpecies___1.out_Animal_ParentOf IS null)
+                    (Species__in_Animal_OfSpecies___1.in_Animal_ParentOf IS null)
                     OR
-                    (Species__in_Animal_OfSpecies___1.out_Animal_ParentOf.size() = 0)
+                    (Species__in_Animal_OfSpecies___1.in_Animal_ParentOf.size() = 0)
                 )
                 OR
-                (Species__in_Animal_OfSpecies__out_Animal_ParentOf___1 IS NOT null)
+                (Species__in_Animal_OfSpecies__in_Animal_ParentOf___1 IS NOT null)
             )
         '''
         expected_gremlin = '''
@@ -2002,20 +2171,20 @@ class CompilerTests(unittest.TestCase):
             .as('Species___1')
             .in('Animal_OfSpecies')
             .filter{it, m -> (
-                (($child_count == 0) && (it.out_Animal_ParentOf == null)) ||
-                ((it.out_Animal_ParentOf != null) &&
-                    (it.out_Animal_ParentOf.count() == $child_count))
+                (($child_count == 0) && (it.in_Animal_ParentOf == null)) ||
+                ((it.in_Animal_ParentOf != null) &&
+                    (it.in_Animal_ParentOf.count() == $child_count))
             )}
             .as('Species__in_Animal_OfSpecies___1')
-            .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
-            .as('Species__in_Animal_OfSpecies__out_Animal_ParentOf___1')
+            .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+            .as('Species__in_Animal_OfSpecies__in_Animal_ParentOf___1')
             .optional('Species__in_Animal_OfSpecies___1')
             .as('Species__in_Animal_OfSpecies___2')
             .back('Species___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 child_name: (
-                    (m.Species__in_Animal_OfSpecies__out_Animal_ParentOf___1 != null) ?
-                    m.Species__in_Animal_OfSpecies__out_Animal_ParentOf___1.name : null),
+                    (m.Species__in_Animal_OfSpecies__in_Animal_ParentOf___1 != null) ?
+                    m.Species__in_Animal_OfSpecies__in_Animal_ParentOf___1.name : null),
                 parent_name: m.Species__in_Animal_OfSpecies___1.name,
                 species_name: m.Species___1.name
             ])}
@@ -2028,7 +2197,7 @@ class CompilerTests(unittest.TestCase):
 
         expected_match = '''
             SELECT
-                $Species__in_Animal_OfSpecies___1___out_Animal_ParentOf.name AS `child_names`,
+                $Species__in_Animal_OfSpecies___1___in_Animal_ParentOf.name AS `child_names`,
                 Species__in_Animal_OfSpecies___1.name AS `parent_name`,
                 Species___1.name AS `species_name`
             FROM (
@@ -2037,33 +2206,34 @@ class CompilerTests(unittest.TestCase):
                 }}.in('Animal_OfSpecies') {{
                     class: Animal,
                     where: ((
-                        (({child_count} = 0) AND (out_Animal_ParentOf IS null)) OR
-                        ((out_Animal_ParentOf IS NOT null) AND
-                            (out_Animal_ParentOf.size() = {child_count}))
+                        (({child_count} = 0) AND (in_Animal_ParentOf IS null)) OR
+                        ((in_Animal_ParentOf IS NOT null) AND
+                            (in_Animal_ParentOf.size() = {child_count}))
                     )),
                     as: Species__in_Animal_OfSpecies___1
                 }}
                 RETURN $matches
             ) LET
-                $Species__in_Animal_OfSpecies___1___out_Animal_ParentOf =
-                    Species__in_Animal_OfSpecies___1.out("Animal_ParentOf").asList()
+                $Species__in_Animal_OfSpecies___1___in_Animal_ParentOf =
+                    Species__in_Animal_OfSpecies___1.in("Animal_ParentOf").asList()
         '''
         expected_gremlin = '''
             g.V('@class', 'Species')
             .as('Species___1')
             .in('Animal_OfSpecies')
             .filter{it, m -> (
-                (($child_count == 0) && (it.out_Animal_ParentOf == null)) ||
-                ((it.out_Animal_ParentOf != null) &&
-                    (it.out_Animal_ParentOf.count() == $child_count))
+                (($child_count == 0) && (it.in_Animal_ParentOf == null)) ||
+                ((it.in_Animal_ParentOf != null) &&
+                    (it.in_Animal_ParentOf.count() == $child_count))
             )}
             .as('Species__in_Animal_OfSpecies___1')
             .back('Species___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 child_names: (
-    (m.Species__in_Animal_OfSpecies___1.out_Animal_ParentOf == null) ?
-    [] :
-    (m.Species__in_Animal_OfSpecies___1.out_Animal_ParentOf.collect{entry -> entry.inV.next().name})
+                    (m.Species__in_Animal_OfSpecies___1.in_Animal_ParentOf == null) ?
+                    [] :
+                    (m.Species__in_Animal_OfSpecies___1.in_Animal_ParentOf
+                        .collect{entry -> entry.outV.next().name})
                 ),
                 parent_name: m.Species__in_Animal_OfSpecies___1.name,
                 species_name: m.Species___1.name
@@ -2134,6 +2304,57 @@ class CompilerTests(unittest.TestCase):
             .back('Species___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 food_name: m.Species__out_Species_Eats___1.name,
+                species_name: m.Species___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_filter_then_apply_fragment_with_multiple_traverses(self):
+        test_data = test_input_data.filter_then_apply_fragment_with_multiple_traverses()
+
+        expected_match = '''
+            SELECT
+                Species__out_Species_Eats__out_Entity_Related___1.name AS `entity_related_to_food`,
+                Species__out_Species_Eats___1.name AS `food_name`,
+                Species__out_Species_Eats__in_Entity_Related___1.name AS `food_related_to_entity`,
+                Species___1.name AS `species_name`
+            FROM (
+                MATCH {{
+                    class: Species,
+                    where: (({species} CONTAINS name)),
+                    as: Species___1
+                }}.out('Species_Eats') {{
+                    where: ((@this INSTANCEOF 'Food')),
+                    as: Species__out_Species_Eats___1
+                }}.out('Entity_Related') {{
+                    as: Species__out_Species_Eats__out_Entity_Related___1
+                }}, {{
+                    as: Species__out_Species_Eats___1
+                }}.in('Entity_Related') {{
+                    as: Species__out_Species_Eats__in_Entity_Related___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Species')
+            .filter{it, m -> $species.contains(it.name)}
+            .as('Species___1')
+            .out('Species_Eats')
+            .filter{it, m -> ['Food'].contains(it['@class'])}
+            .as('Species__out_Species_Eats___1')
+            .out('Entity_Related')
+            .as('Species__out_Species_Eats__out_Entity_Related___1')
+            .back('Species__out_Species_Eats___1')
+            .in('Entity_Related')
+            .as('Species__out_Species_Eats__in_Entity_Related___1')
+            .back('Species__out_Species_Eats___1')
+            .back('Species___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                entity_related_to_food: m.Species__out_Species_Eats__out_Entity_Related___1.name,
+                food_name: m.Species__out_Species_Eats___1.name,
+                food_related_to_entity: m.Species__out_Species_Eats__in_Entity_Related___1.name,
                 species_name: m.Species___1.name
             ])}
         '''

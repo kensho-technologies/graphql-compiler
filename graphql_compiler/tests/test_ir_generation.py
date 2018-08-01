@@ -769,6 +769,136 @@ class IrGenerationTests(unittest.TestCase):
         expected_blocks = [
             # Apply the filter to the root vertex and mark it.
             blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+
+            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.MarkLocation(child_location),
+
+            blocks.Traverse('out', 'Animal_FedAt', optional=True),
+            blocks.MarkLocation(child_fed_at_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(child_location, optional=True),
+            blocks.MarkLocation(revisited_child_location),
+
+            blocks.Traverse('in', 'Animal_ParentOf'),
+            blocks.MarkLocation(other_parent_location),
+            blocks.Traverse('out', 'Animal_FedAt', optional=True),
+            blocks.MarkLocation(other_parent_fed_at_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(other_parent_location, optional=True),
+            blocks.MarkLocation(other_parent_revisited_location),
+            blocks.Backtrack(revisited_child_location),
+
+            # Back to root vertex.
+            blocks.Backtrack(base_location),
+
+            blocks.Traverse('in', 'Animal_ParentOf'),
+            blocks.MarkLocation(grandparent_location),
+            blocks.Traverse('out', 'Animal_FedAt'),
+            blocks.Filter(  # Filter "=" on the name field.
+                expressions.BinaryComposition(
+                    u'||',
+                    expressions.BinaryComposition(
+                        u'=',
+                        expressions.ContextFieldExistence(child_fed_at_location),
+                        expressions.FalseLiteral
+                    ),
+                    expressions.BinaryComposition(
+                        u'=',
+                        expressions.LocalField('name'),
+                        expressions.ContextField(child_fed_at_event_tag),
+                    )
+                )
+            ),
+            blocks.Filter(  # Filter "between" on the event_date field.
+                expressions.BinaryComposition(
+                    u'&&',
+                    expressions.BinaryComposition(
+                        u'||',
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.ContextFieldExistence(other_parent_fed_at_location),
+                            expressions.FalseLiteral
+                        ),
+                        expressions.BinaryComposition(
+                            u'>=',
+                            expressions.LocalField('event_date'),
+                            expressions.ContextField(other_parent_fed_at_tag)
+                        )
+                    ),
+                    expressions.BinaryComposition(
+                        u'||',
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.ContextFieldExistence(child_fed_at_location),
+                            expressions.FalseLiteral
+                        ),
+                        expressions.BinaryComposition(
+                            u'<=',
+                            expressions.LocalField('event_date'),
+                            expressions.ContextField(child_fed_at_tag)
+                        )
+                    )
+                )
+            ),
+            blocks.MarkLocation(grandparent_fed_at_location),
+            blocks.Backtrack(grandparent_location),
+            blocks.Backtrack(base_location),
+
+            blocks.ConstructResult({
+                'child_fed_at': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(child_fed_at_location),
+                    expressions.OutputContextField(child_fed_at_tag, GraphQLDateTime),
+                    expressions.NullLiteral
+                ),
+                'other_parent_fed_at': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(other_parent_fed_at_location),
+                    expressions.OutputContextField(other_parent_fed_at_tag, GraphQLDateTime),
+                    expressions.NullLiteral
+                ),
+                'grandparent_fed_at': expressions.OutputContextField(
+                    grandparent_fed_at_output, GraphQLDateTime),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            child_location: 'Animal',
+            child_fed_at_location: 'Event',
+            revisited_child_location: 'Animal',
+            other_parent_location: 'Animal',
+            other_parent_fed_at_location: 'Event',
+            other_parent_revisited_location: 'Animal',
+            grandparent_location: 'Animal',
+            grandparent_fed_at_location: 'Event',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_complex_optional_variables_with_starting_filter(self):
+        test_data = test_input_data.complex_optional_variables_with_starting_filter()
+
+        # The operands in the @filter directives originate from an optional block.
+        base_location = helpers.Location(('Animal',))
+        child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        child_fed_at_location = child_location.navigate_to_subpath('out_Animal_FedAt')
+
+        child_fed_at_event_tag = child_fed_at_location.navigate_to_field('name')
+        child_fed_at_tag = child_fed_at_location.navigate_to_field('event_date')
+
+        revisited_child_location = child_location.revisit()
+
+        other_parent_location = child_location.navigate_to_subpath('in_Animal_ParentOf')
+        other_parent_fed_at_location = other_parent_location.navigate_to_subpath('out_Animal_FedAt')
+        other_parent_fed_at_tag = other_parent_fed_at_location.navigate_to_field('event_date')
+        other_parent_revisited_location = other_parent_location.revisit()
+
+        grandparent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        grandparent_fed_at_location = grandparent_location.navigate_to_subpath('out_Animal_FedAt')
+        grandparent_fed_at_output = grandparent_fed_at_location.navigate_to_field('event_date')
+
+        expected_blocks = [
+            # Apply the filter to the root vertex and mark it.
+            blocks.QueryRoot({'Animal'}),
             blocks.Filter(
                 expressions.BinaryComposition(
                     u'=',
@@ -972,6 +1102,54 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Species',
             food_location: 'Food',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_filter_then_apply_fragment_with_multiple_traverses(self):
+        test_data = test_input_data.filter_then_apply_fragment_with_multiple_traverses()
+
+        base_location = helpers.Location(('Species',))
+        food_location = base_location.navigate_to_subpath('out_Species_Eats')
+        entity_related_location = food_location.navigate_to_subpath('out_Entity_Related')
+        food_related_location = food_location.navigate_to_subpath('in_Entity_Related')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Species'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'contains',
+                    expressions.Variable('$species', GraphQLList(GraphQLString)),
+                    expressions.LocalField('name')
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('out', 'Species_Eats'),
+            blocks.CoerceType({'Food'}),
+            blocks.MarkLocation(food_location),
+            blocks.Traverse('out', 'Entity_Related'),
+            blocks.MarkLocation(entity_related_location),
+            blocks.Backtrack(food_location),
+            blocks.Traverse('in', 'Entity_Related'),
+            blocks.MarkLocation(food_related_location),
+            blocks.Backtrack(food_location),
+            blocks.Backtrack(base_location),
+            blocks.ConstructResult({
+                'species_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'food_name': expressions.OutputContextField(
+                    food_location.navigate_to_field('name'), GraphQLString),
+                'entity_related_to_food': expressions.OutputContextField(
+                    entity_related_location.navigate_to_field('name'), GraphQLString),
+                'food_related_to_entity': expressions.OutputContextField(
+                    food_related_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Species',
+            food_location: 'Food',
+            entity_related_location: 'Entity',
+            food_related_location: 'Entity',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -1791,7 +1969,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.has_edge_degree_op_filter()
 
         base_location = helpers.Location(('Animal',))
-        child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        child_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -1807,7 +1985,7 @@ class IrGenerationTests(unittest.TestCase):
                         ),
                         expressions.BinaryComposition(
                             u'=',
-                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.LocalField('in_Animal_ParentOf'),
                             expressions.NullLiteral
                         )
                     ),
@@ -1815,14 +1993,14 @@ class IrGenerationTests(unittest.TestCase):
                         u'&&',
                         expressions.BinaryComposition(
                             u'!=',
-                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.LocalField('in_Animal_ParentOf'),
                             expressions.NullLiteral
                         ),
                         expressions.BinaryComposition(
                             u'=',
                             expressions.UnaryTransformation(
                                 u'size',
-                                expressions.LocalField('out_Animal_ParentOf')
+                                expressions.LocalField('in_Animal_ParentOf')
                             ),
                             expressions.Variable('$child_count', GraphQLInt),
                         )
@@ -1830,7 +2008,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(base_location),
-            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.Traverse('in', 'Animal_ParentOf'),
             blocks.MarkLocation(child_location),
             blocks.OutputSource(),
             blocks.ConstructResult({
@@ -1852,7 +2030,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Species',))
         animal_location = base_location.navigate_to_subpath('in_Animal_OfSpecies')
-        child_location = animal_location.navigate_to_subpath('out_Animal_ParentOf')
+        child_location = animal_location.navigate_to_subpath('in_Animal_ParentOf')
         revisited_animal_location = animal_location.revisit()
 
         expected_blocks = [
@@ -1871,7 +2049,7 @@ class IrGenerationTests(unittest.TestCase):
                         ),
                         expressions.BinaryComposition(
                             u'=',
-                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.LocalField('in_Animal_ParentOf'),
                             expressions.NullLiteral
                         )
                     ),
@@ -1879,14 +2057,14 @@ class IrGenerationTests(unittest.TestCase):
                         u'&&',
                         expressions.BinaryComposition(
                             u'!=',
-                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.LocalField('in_Animal_ParentOf'),
                             expressions.NullLiteral
                         ),
                         expressions.BinaryComposition(
                             u'=',
                             expressions.UnaryTransformation(
                                 u'size',
-                                expressions.LocalField('out_Animal_ParentOf')
+                                expressions.LocalField('in_Animal_ParentOf')
                             ),
                             expressions.Variable('$child_count', GraphQLInt),
                         )
@@ -1894,7 +2072,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(animal_location),
-            blocks.Traverse('out', 'Animal_ParentOf', optional=True),
+            blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(child_location),
             blocks.EndOptional(),
             blocks.Backtrack(animal_location, optional=True),
@@ -1926,7 +2104,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Species',))
         animal_location = base_location.navigate_to_subpath('in_Animal_OfSpecies')
-        animal_fold = helpers.FoldScopeLocation(animal_location, ('out', 'Animal_ParentOf'))
+        animal_fold = helpers.FoldScopeLocation(animal_location, ('in', 'Animal_ParentOf'))
 
         expected_blocks = [
             blocks.QueryRoot({'Species'}),
@@ -1944,7 +2122,7 @@ class IrGenerationTests(unittest.TestCase):
                         ),
                         expressions.BinaryComposition(
                             u'=',
-                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.LocalField('in_Animal_ParentOf'),
                             expressions.NullLiteral
                         )
                     ),
@@ -1952,14 +2130,14 @@ class IrGenerationTests(unittest.TestCase):
                         u'&&',
                         expressions.BinaryComposition(
                             u'!=',
-                            expressions.LocalField('out_Animal_ParentOf'),
+                            expressions.LocalField('in_Animal_ParentOf'),
                             expressions.NullLiteral
                         ),
                         expressions.BinaryComposition(
                             u'=',
                             expressions.UnaryTransformation(
                                 u'size',
-                                expressions.LocalField('out_Animal_ParentOf')
+                                expressions.LocalField('in_Animal_ParentOf')
                             ),
                             expressions.Variable('$child_count', GraphQLInt),
                         )
