@@ -10,12 +10,14 @@ from ..ir_lowering_common import (lower_context_field_existence, merge_consecuti
 # Public API #
 ##############
 
-def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
+def lower_ir(ir_blocks, location_types, coerced_locations, type_equivalence_hints=None):
     """Lower the IR into an IR form that can be represented in Gremlin queries.
 
     Args:
         ir_blocks: list of IR blocks to lower into Gremlin-compatible form
-        location_types: a dict of location objects -> GraphQL type objects at that location
+        location_types: dict of location objects -> GraphQL type objects at that location
+        coerced_locations: set of locations where type coercions were applied to constrain the type
+                           relative to the type inferred by the GraphQL schema and the given field
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
                                 Used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a

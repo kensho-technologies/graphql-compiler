@@ -83,8 +83,8 @@ from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_field
 
 
 # LocationStackEntry contains the following:
-# - location: Location object correspoding to an inserted MarkLocation block
-# - num_traverses: Int counter for the number of traverses intserted after the last MarkLocation
+# - location: Location object corresponding to an inserted MarkLocation block
+# - num_traverses: Int counter for the number of traverses inserted after the last MarkLocation
 #                  (corresponding Location stored in `location`)
 LocationStackEntry = namedtuple('LocationStackEntry', ('location', 'num_traverses'))
 
@@ -124,6 +124,7 @@ IrAndMetadata = namedtuple(
         'input_metadata',
         'output_metadata',
         'location_types',
+        'coerced_locations',
     )
 )
 
@@ -569,6 +570,7 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
 
     if not (is_same_type_as_scope or is_base_type_of_union):
         # Coercion is required.
+        context['coerced_locations'].add(location)
         basic_blocks.append(blocks.CoerceType({coerces_to_type_name}))
 
     inner_basic_blocks = _compile_ast_node_to_ir(
@@ -665,6 +667,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
         - output_metadata: a dict of output name (string) -> OutputMetadata object
         - location_types: a dict of location objects -> GraphQL type objects at that location
+        - coerced_locations: a set of location objects indicating where type coercions have happened
     """
     if len(ast.selection_set.selections) != 1:
         raise GraphQLCompilationError(u'Cannot process AST with more than one root selection!')
@@ -696,6 +699,9 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         # 'location_types' is a dict mapping each Location to its GraphQLType
         # (schema type of the location)
         'location_types': dict(),
+        # 'coerced_locations' is the set of all locations whose type was coerced to a subtype
+        # of the type already implied by the GraphQL schema for that vertex field.
+        'coerced_locations': set(),
         # 'type_equivalence_hints' is a dict mapping GraphQL types to equivalent GraphQL unions
         'type_equivalence_hints': type_equivalence_hints or dict(),
         # The marked_location_stack explicitly maintains a stack (implemented as list)
@@ -746,7 +752,8 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         ir_blocks=basic_blocks,
         input_metadata=context['inputs'],
         output_metadata=output_metadata,
-        location_types=context['location_types'])
+        location_types=context['location_types'],
+        coerced_locations=context['coerced_locations'])
 
 
 def _compile_output_step(outputs):

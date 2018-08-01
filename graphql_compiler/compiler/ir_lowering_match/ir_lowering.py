@@ -203,6 +203,11 @@ def lower_backtrack_blocks(match_query, location_types):
                 if step.as_block is not None:
                     location_translations[step.as_block.location] = backtrack_location
 
+                if step.coerce_type_block is not None:
+                    raise AssertionError(u'Encountered type coercion in a MatchStep with '
+                                         u'a Backtrack root block, this is unexpected: {} {}'
+                                         .format(step, match_query))
+
                 new_step = step._replace(root_block=new_root_block, as_block=new_as_block)
                 new_traversal.append(new_step)
 

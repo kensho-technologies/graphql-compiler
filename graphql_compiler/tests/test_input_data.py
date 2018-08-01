@@ -581,6 +581,68 @@ def simple_union():
         type_equivalence_hints=None)
 
 
+def filter_then_apply_fragment():
+    graphql_input = '''{
+        Species {
+            name @filter(op_name: "in_collection", value: ["$species"])
+                 @output(out_name: "species_name")
+            out_Species_Eats {
+                ... on Food {
+                    name @output(out_name: "food_name")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'species_name': OutputMetadata(type=GraphQLString, optional=False),
+        'food_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'species': GraphQLList(GraphQLString),
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def filter_then_apply_fragment_with_multiple_traverses():
+    graphql_input = '''{
+        Species {
+            name @filter(op_name: "in_collection", value: ["$species"])
+                 @output(out_name: "species_name")
+            out_Species_Eats {
+                ... on Food {
+                    name @output(out_name: "food_name")
+                    out_Entity_Related {
+                        name @output(out_name: "entity_related_to_food")
+                    }
+                    in_Entity_Related {
+                        name @output(out_name: "food_related_to_entity")
+                    }
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'species_name': OutputMetadata(type=GraphQLString, optional=False),
+        'food_name': OutputMetadata(type=GraphQLString, optional=False),
+        'entity_related_to_food': OutputMetadata(type=GraphQLString, optional=False),
+        'food_related_to_entity': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'species': GraphQLList(GraphQLString),
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def filter_on_fragment_in_union():
     graphql_input = '''{
         Species {

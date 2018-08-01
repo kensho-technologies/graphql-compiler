@@ -91,6 +91,7 @@ def _compile_graphql_generic(language, lowering_func, query_emitter_func,
 
     lowered_ir_blocks = lowering_func(
         ir_and_metadata.ir_blocks, ir_and_metadata.location_types,
+        ir_and_metadata.coerced_locations,
         type_equivalence_hints=type_equivalence_hints)
 
     query = query_emitter_func(lowered_ir_blocks)

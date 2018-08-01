@@ -216,7 +216,7 @@ def _assert_type_bounds_are_not_conflicting(current_type_bound, previous_type_bo
             u'for query {}'.format(location, previous_type_bound, current_type_bound, match_query))
 
 
-def _expose_only_preferred_locations(match_query, location_types,
+def _expose_only_preferred_locations(match_query, location_types, coerced_locations,
                                      preferred_locations, eligible_locations):
     """Return a MATCH query where only preferred locations are valid as query start locations."""
     preferred_location_types = dict()
@@ -267,8 +267,10 @@ def _expose_only_preferred_locations(match_query, location_types,
                     # we ensure that we again infer the same type bound.
                     eligible_location_types[current_step_location] = current_type_bound
 
-                    if current_type_bound == location_types[current_step_location].name:
-                        # The type bound here is already implied by the GraphQL query structure.
+                    if (current_step_location not in coerced_locations or
+                            previous_type_bound is not None):
+                        # The type bound here is already implied by the GraphQL query structure,
+                        # or has already been applied at a previous occurrence of this location.
                         # We can simply delete the QueryRoot / CoerceType blocks that impart it.
                         if isinstance(match_step.root_block, QueryRoot):
                             new_root_block = None
@@ -348,7 +350,8 @@ def _expose_all_eligible_locations(match_query, location_types, eligible_locatio
     return match_query._replace(match_traversals=new_match_traversals)
 
 
-def expose_ideal_query_execution_start_points(compound_match_query, location_types):
+def expose_ideal_query_execution_start_points(compound_match_query, location_types,
+                                              coerced_locations):
     """Ensure that OrientDB only considers desirable query start points in query planning."""
     new_queries = []
 
@@ -363,7 +366,8 @@ def expose_ideal_query_execution_start_points(compound_match_query, location_typ
             # to the location. We remove it by converting the class check into
             # an "INSTANCEOF" Filter block, which OrientDB is unable to optimize away.
             new_query = _expose_only_preferred_locations(
-                match_query, location_types, preferred_locations, eligible_locations)
+                match_query, location_types, coerced_locations,
+                preferred_locations, eligible_locations)
         elif eligible_locations:
             # Make sure that all eligible locations have a "class:" clause by adding
             # a CoerceType block that is a no-op as guaranteed by the schema. This merely
