@@ -841,7 +841,7 @@ def _validate_schema_and_ast(schema, ast):
     """
     core_graphql_errors = validate(schema, ast)
 
-    # The following directives appear in the core-graphql library, but are supported by the
+    # The following directives appear in the core-graphql library, but are not supported by the
     # graphql compiler.
     unsupported_default_directives = set([
         ('include', ('FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'), ('if',)),
@@ -861,6 +861,11 @@ def _validate_schema_and_ast(schema, ast):
         )
         for directive in DIRECTIVES
     }
+
+    # Graphql-core automatically injects default directives into the schema, regardless of whether
+    # the schema supports said directives. Hence, while the directives contained in
+    # unsupported_default_directives are incompatible with the graphql-compiler, we still expect
+    # them in the parsed schema string.
     expected_directives.update(unsupported_default_directives)
 
     # Directives provided in the parsed graphql schema.
