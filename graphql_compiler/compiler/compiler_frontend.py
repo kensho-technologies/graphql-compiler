@@ -878,7 +878,6 @@ def _validate_schema_and_ast(schema, ast):
         for directive in schema.get_directives()
     }
 
-
     # Directives missing from the actual directives provided.
     missing_directives = expected_directives - actual_directives
     if missing_directives:
