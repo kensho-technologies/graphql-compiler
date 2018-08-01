@@ -813,18 +813,6 @@ def _preprocess_graphql_string(graphql_string):
     return graphql_string + '\n'
 
 
-def _sorted_tuple(unordered_list):
-    """Sort a list and turn it into a tuple.
-
-    Args:
-        unordered_list: list of strings
-
-    Returns:
-        tuple of the sorted input list
-    """
-    return tuple(sorted(unordered_list))
-
-
 def _validate_schema_and_ast(schema, ast):
     """Validate the supplied graphql schema and ast.
 
@@ -843,10 +831,22 @@ def _validate_schema_and_ast(schema, ast):
 
     # The following directives appear in the core-graphql library, but are not supported by the
     # graphql compiler.
-    unsupported_default_directives = set([
-        ('include', ('FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'), ('if',)),
-        ('skip', ('FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'), ('if',)),
-        ('deprecated', ('ENUM_VALUE', 'FIELD_DEFINITION'), ('reason',))
+    unsupported_default_directives = frozenset([
+        frozenset([
+            'include',
+            frozenset(['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']),
+            frozenset(['if'])
+        ]),
+        frozenset([
+            'skip',
+            frozenset(['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']),
+            frozenset(['if'])
+        ]),
+        frozenset([
+            'deprecated',
+            frozenset(['ENUM_VALUE', 'FIELD_DEFINITION']),
+            frozenset(['reason'])
+        ])
     ])
 
     # Extract name, locations and args keys in order to compare schema directives and directives
@@ -854,11 +854,11 @@ def _validate_schema_and_ast(schema, ast):
 
     # Directives expected by the graphql compiler.
     expected_directives = {
-        (
+        frozenset([
             directive.name,
-            _sorted_tuple(directive.locations),
-            _sorted_tuple(six.viewkeys(directive.args))
-        )
+            frozenset(directive.locations),
+            frozenset(six.viewkeys(directive.args))
+        ])
         for directive in DIRECTIVES
     }
 
@@ -870,11 +870,11 @@ def _validate_schema_and_ast(schema, ast):
 
     # Directives provided in the parsed graphql schema.
     actual_directives = {
-        (
+        frozenset([
             directive.name,
-            _sorted_tuple(directive.locations),
-            _sorted_tuple(six.viewkeys(directive.args))
-        )
+            frozenset(directive.locations),
+            frozenset(six.viewkeys(directive.args))
+        ])
         for directive in schema.get_directives()
     }
 
