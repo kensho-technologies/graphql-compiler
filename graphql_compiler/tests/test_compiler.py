@@ -1209,6 +1209,192 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_traverse_then_recurse(self):
+        test_data = test_input_data.traverse_then_recurse()
+
+        expected_match = '''
+            SELECT
+                Animal__out_Animal_ParentOf___1.name AS `ancestor_name`,
+                Animal___1.name AS `animal_name`,
+                Animal__out_Animal_ImportantEvent___1.name AS `important_event`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ImportantEvent') {{
+                    class: Event,
+                    as: Animal__out_Animal_ImportantEvent___1
+                }} , {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    while: ($depth < 2),
+                    as: Animal__out_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .out('Animal_ImportantEvent')
+            .filter{it, m -> ['Event'].contains(it['@class'])}
+            .as('Animal__out_Animal_ImportantEvent___1')
+            .back('Animal___1')
+            .copySplit(
+                _(),
+                _().out('Animal_ParentOf'),
+                _().out('Animal_ParentOf').out('Animal_ParentOf')
+            )
+            .exhaustMerge
+            .as('Animal__out_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                ancestor_name: m.Animal__out_Animal_ParentOf___1.name,
+                animal_name: m.Animal___1.name,
+                important_event: m.Animal__out_Animal_ImportantEvent___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_filter_then_traverse_and_recurse(self):
+        test_data = test_input_data.filter_then_traverse_and_recurse()
+
+        expected_match = '''
+            SELECT
+                Animal__out_Animal_ParentOf___1.name AS `ancestor_name`,
+                Animal___1.name AS `animal_name`,
+                Animal__out_Animal_ImportantEvent___1.name AS `important_event`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: (
+                        (
+                            (name = {animal_name_or_alias})
+                            OR
+                            (alias CONTAINS {animal_name_or_alias})
+                        )
+                    ),
+                    as: Animal___1
+                }}.out('Animal_ImportantEvent') {{
+                    where: ((@this INSTANCEOF 'Event')),
+                    as: Animal__out_Animal_ImportantEvent___1
+                }} , {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    while: ($depth < 2),
+                    as: Animal__out_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (
+                (it.name == $animal_name_or_alias) || it.alias.contains($animal_name_or_alias)
+            )}
+            .as('Animal___1')
+            .out('Animal_ImportantEvent')
+            .filter{it, m -> ['Event'].contains(it['@class'])}
+            .as('Animal__out_Animal_ImportantEvent___1')
+            .back('Animal___1')
+            .copySplit(
+                _(),
+                _().out('Animal_ParentOf'),
+                _().out('Animal_ParentOf').out('Animal_ParentOf')
+            )
+            .exhaustMerge
+            .as('Animal__out_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                ancestor_name: m.Animal__out_Animal_ParentOf___1.name,
+                animal_name: m.Animal___1.name,
+                important_event: m.Animal__out_Animal_ImportantEvent___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_two_consecutive_recurses(self):
+        test_data = test_input_data.two_consecutive_recurses()
+
+        expected_match = '''
+            SELECT
+                Animal__out_Animal_ParentOf___1.name AS `ancestor_name`,
+                Animal___1.name AS `animal_name`,
+                Animal__in_Animal_ParentOf___1.name AS `descendent_name`,
+                Animal__out_Animal_ImportantEvent___1.name AS `important_event`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: (
+                        (
+                            (name = {animal_name_or_alias})
+                            OR
+                            (alias CONTAINS {animal_name_or_alias})
+                        )
+                    ),
+                    as: Animal___1
+                }}.out('Animal_ImportantEvent') {{
+                    where: ((@this INSTANCEOF 'Event')),
+                    as: Animal__out_Animal_ImportantEvent___1
+                }} , {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    while: ($depth < 2),
+                    as: Animal__out_Animal_ParentOf___1
+                }} , {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    while: ($depth < 2),
+                    as: Animal__in_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (
+                (it.name == $animal_name_or_alias) || it.alias.contains($animal_name_or_alias)
+            )}
+            .as('Animal___1')
+            .out('Animal_ImportantEvent')
+            .filter{it, m -> ['Event'].contains(it['@class'])}
+            .as('Animal__out_Animal_ImportantEvent___1')
+            .back('Animal___1')
+            .copySplit(
+                _(),
+                _().out('Animal_ParentOf'),
+                _().out('Animal_ParentOf').out('Animal_ParentOf')
+            )
+            .exhaustMerge
+            .as('Animal__out_Animal_ParentOf___1')
+            .back('Animal___1')
+            .copySplit(
+                _(),
+                _().in('Animal_ParentOf'),
+                _().in('Animal_ParentOf').in('Animal_ParentOf')
+            )
+            .exhaustMerge
+            .as('Animal__in_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                ancestor_name: m.Animal__out_Animal_ParentOf___1.name,
+                animal_name: m.Animal___1.name,
+                descendent_name: m.Animal__in_Animal_ParentOf___1.name,
+                important_event: m.Animal__out_Animal_ImportantEvent___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_recurse_within_fragment(self):
         test_data = test_input_data.recurse_within_fragment()
 
