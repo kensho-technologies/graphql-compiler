@@ -1090,8 +1090,8 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
-    def test_traverse_in_filter_then_recurse(self):
-        test_data = test_input_data.traverse_in_filter_then_recurse()
+    def test_filter_then_traverse_and_recurse(self):
+        test_data = test_input_data.filter_then_traverse_and_recurse()
 
         expected_match = '''
             SELECT
@@ -1101,8 +1101,13 @@ class CompilerTests(unittest.TestCase):
             FROM (
                 MATCH {{
                     class: Animal,
-                    where: (((name = {animal_name_or_alias})
-                          OR (alias CONTAINS {animal_name_or_alias}))),
+                    where: (
+                        (
+                            (name = {animal_name_or_alias})
+                            OR
+                            (alias CONTAINS {animal_name_or_alias})
+                        )
+                    ),
                     as: Animal___1
                 }}.out('Animal_ImportantEvent') {{
                     where: ((@this INSTANCEOF 'Event')),
@@ -1145,8 +1150,8 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
-    def test_double_recurse(self):
-        test_data = test_input_data.double_recurse()
+    def test_two_consecutive_recurses(self):
+        test_data = test_input_data.two_consecutive_recurses()
 
         expected_match = '''
             SELECT
@@ -1157,8 +1162,13 @@ class CompilerTests(unittest.TestCase):
             FROM (
                 MATCH {{
                     class: Animal,
-                    where: (((name = {animal_name_or_alias})
-                          OR (alias CONTAINS {animal_name_or_alias}))),
+                    where: (
+                        (
+                            (name = {animal_name_or_alias})
+                            OR
+                            (alias CONTAINS {animal_name_or_alias})
+                        )
+                    ),
                     as: Animal___1
                 }}.out('Animal_ImportantEvent') {{
                     where: ((@this INSTANCEOF 'Event')),

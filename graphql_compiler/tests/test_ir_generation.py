@@ -1161,8 +1161,8 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
-    def test_traverse_in_filter_then_recurse(self):
-        test_data = test_input_data.traverse_in_filter_then_recurse()
+    def test_filter_then_traverse_and_recurse(self):
+        test_data = test_input_data.filter_then_traverse_and_recurse()
 
         base_location = helpers.Location(('Animal',))
         ancestor_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
@@ -1211,8 +1211,8 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
-    def test_double_recurse(self):
-        test_data = test_input_data.double_recurse()
+    def test_two_consecutive_recurses(self):
+        test_data = test_input_data.two_consecutive_recurses()
 
         base_location = helpers.Location(('Animal',))
         ancestor_location = base_location.navigate_to_subpath('out_Animal_ParentOf')

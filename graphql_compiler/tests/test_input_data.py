@@ -710,7 +710,7 @@ def traverse_then_recurse():
         type_equivalence_hints=None)
 
 
-def traverse_in_filter_then_recurse():
+def filter_then_traverse_and_recurse():
     graphql_input = '''{
         Animal @filter(op_name: "name_or_alias", value: ["$animal_name_or_alias"]) {
             name @output(out_name: "animal_name")
@@ -742,7 +742,7 @@ def traverse_in_filter_then_recurse():
         type_equivalence_hints=None)
 
 
-def double_recurse():
+def two_consecutive_recurses():
     graphql_input = '''{
         Animal @filter(op_name: "name_or_alias", value: ["$animal_name_or_alias"]) {
             name @output(out_name: "animal_name")
