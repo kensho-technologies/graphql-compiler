@@ -1054,7 +1054,9 @@ class IrGenerationErrorTests(unittest.TestCase):
                 graphql_to_ir(self.schema, invalid_graphql)
 
     def test_missing_directives_in_schema(self):
-        """The schema should define all directives which are supported by the graphql compiler,
+        """Ensure that validators properly identifiy missing directives in the schema.
+
+           The schema should all directives which are supported by the graphql compiler,
            whether they are not used in the query. Hence we raise an error when the following
            directive is not declared in the schema: directive @recurse(depth: Int!) on FIELD.
         """

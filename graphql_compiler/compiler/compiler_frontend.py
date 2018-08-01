@@ -829,7 +829,7 @@ def _validate_schema_and_ast(schema, ast):
     """Validate the supplied graphql schema and ast.
 
     This method wraps around graphql-core's validation to enforce a stricter requirement of the
-    schema-- all directives supported by the compiler must be declared by the schema, regardless of
+    schema -- all directives supported by the compiler must be declared by the schema, regardless of
     whether each directive is used in the query or not.
 
     Args:
@@ -841,8 +841,9 @@ def _validate_schema_and_ast(schema, ast):
     """
     core_graphql_errors = validate(schema, ast)
 
-    # The following directives do not appear in the core-graphql library, but are permissable.
-    whitelisted_directives = set([
+    # The following directives appear in the core-graphql library, but are supported by the
+    # graphql compiler.
+    unsupported_default_directives = set([
         ('include', ('FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'), ('if',)),
         ('skip', ('FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'), ('if',)),
         ('deprecated', ('ENUM_VALUE', 'FIELD_DEFINITION'), ('reason',))
@@ -851,26 +852,27 @@ def _validate_schema_and_ast(schema, ast):
     # Extract name, locations and args keys in order to compare schema directives and directives
     # which are supported by the graphql compiler.
 
-    # Directives provided in the GraphQL string.
-    expected_directives = set(
+    # Directives expected by the graphql compiler.
+    expected_directives = {
         (
             directive.name,
             _sorted_tuple(directive.locations),
             _sorted_tuple(six.viewkeys(directive.args))
         )
         for directive in DIRECTIVES
-    )
-    expected_directives.update(whitelisted_directives)
+    }
+    expected_directives.update(unsupported_default_directives)
 
-    # Directives provided in the core-graphql schema.
-    actual_directives = set(
+    # Directives provided in the parsed graphql schema.
+    actual_directives = {
         (
             directive.name,
             _sorted_tuple(directive.locations),
             _sorted_tuple(six.viewkeys(directive.args))
         )
         for directive in schema.get_directives()
-    )
+    }
+
 
     # Directives missing from the actual directives provided.
     missing_directives = expected_directives - actual_directives
