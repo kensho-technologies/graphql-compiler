@@ -22,6 +22,7 @@ ANIMAL_COLOR_LIST = (
 )
 NUM_ENTITY_RELATED_COMMANDS_MULTIPLIER = 0.2
 NUM_ALIASES = 3
+ANIMAL_FED_AT_EXISTENCE_THRESHOLD = 0.5
 
 
 def _create_animal_fed_at_random_event_statement(from_name):
@@ -159,7 +160,8 @@ def get_animal_generation_commands():
 
         for animal_name in current_animal_names:
             command_list.append(_create_animal_of_species_statement(animal_name, species_name))
-            command_list.append(_create_animal_fed_at_random_event_statement(animal_name))
+            if random.random() > ANIMAL_FED_AT_EXISTENCE_THRESHOLD:
+                command_list.append(_create_animal_fed_at_random_event_statement(animal_name))
 
             # Entity_Related edges connecting each animal to their parents, children, and themselves
             command_list.append(_create_entity_related_statement(animal_name, animal_name))

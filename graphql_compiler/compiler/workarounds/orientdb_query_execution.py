@@ -267,8 +267,10 @@ def _expose_only_preferred_locations(match_query, location_types, coerced_locati
                     # we ensure that we again infer the same type bound.
                     eligible_location_types[current_step_location] = current_type_bound
 
-                    if current_step_location not in coerced_locations:
-                        # The type bound here is already implied by the GraphQL query structure.
+                    if (current_step_location not in coerced_locations or
+                            previous_type_bound is not None):
+                        # The type bound here is already implied by the GraphQL query structure,
+                        # or has already been applied at a previous occurrence of this location.
                         # We can simply delete the QueryRoot / CoerceType blocks that impart it.
                         if isinstance(match_step.root_block, QueryRoot):
                             new_root_block = None
