@@ -1,6 +1,6 @@
 import unittest
 
-from sqlalchemy import text, select, case, cast, String
+from sqlalchemy import text
 
 from graphql_compiler.compiler import compile_graphql_to_sql
 from graphql_compiler.compiler.ir_lowering_sql.metadata import CompilerMetadata
@@ -355,30 +355,6 @@ class SqlQueryTests(unittest.TestCase):
         ]
         results = self.run_query(query, ['name', 'ancestor'], **params)
         self.assertListEqual(expected_results, results)
-
-    # def test_basic_fold(self):
-    #     graphql_string = '''
-    #     {
-    #         Animal {
-    #             name @filter(op_name: "=", value: ["$bear_name"])
-    #             out_Animal_LivesIn @fold {
-    #                 name @output(out_name: "locations")
-    #             }
-    #         }
-    #     }
-    #     '''
-    #     compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
-    #                                                 self.compiler_metadata)
-    #     query = compilation_result.query
-    #     params = {
-    #         '$bear_name': 'Medium Bear'
-    #     }
-    #     expected_results = [
-    #         {'name': 'Medium Bear', 'ancestor': 'Big Bear'},
-    #     ]
-    #     results = self.run_query(query, ['name', 'ancestor'], **params)
-    #     self.assertListEqual(expected_results, results)
-
 
     def test_basic_recurse_with_post_filter(self):
         graphql_string = '''
@@ -797,8 +773,8 @@ class SqlQueryTests(unittest.TestCase):
             Animal {
                 name @output(out_name: "name")
                      @filter(op_name: "=", value: ["$name"])
-                out_Animal_AnimalToFood {
-                    out_AnimalToFood_Food {
+                out_Animal_Eats {
+                    ... on Food {
                         name @output(out_name: "food_name")
                     }
                 }
@@ -809,12 +785,156 @@ class SqlQueryTests(unittest.TestCase):
                                                     self.compiler_metadata)
         query = compilation_result.query
         expected_results = [
-            {'name': 'Big Bear', 'food_name': 'apples'},
-            {'name': 'Big Bear', 'food_name': 'caramel apples'},
-            {'name': 'Big Bear', 'food_name': 'honey'},
+            {'name': 'Big Bear', 'food_name': 'Apples'},
+            {'name': 'Big Bear', 'food_name': 'Caramel Apples'},
+            {'name': 'Big Bear', 'food_name': 'Gummy Bears'},
         ]
         params = {
             '$name': 'Big Bear'
         }
         results = self.run_query(query, ['name', 'food_name'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_many_to_many_junction_basic_optional(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "in_collection", value: ["$names"])
+                out_Animal_Eats @optional {
+                    ... on Food {
+                        name @output(out_name: "food_name")
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'name': 'Big Bear', 'food_name': 'Apples'},
+            {'name': 'Big Bear', 'food_name': 'Caramel Apples'},
+            {'name': 'Big Bear', 'food_name': 'Gummy Bears'},
+            {'name': 'Little Bear', 'food_name': None}
+        ]
+        params = {
+            '$names': ['Big Bear', 'Little Bear']
+        }
+        results = self.run_query(query, ['name', 'food_name'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_many_to_many_junction_tag(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["$name"])
+                     @tag(tag_name: "animal_name")
+                out_Animal_Eats {
+                    ... on Food {
+                        name @output(out_name: "food_name")
+                             @filter(op_name: "<", value: ["%animal_name"])
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'name': 'Big Bear', 'food_name': 'Apples'},
+        ]
+        params = {
+            '$name': 'Big Bear'
+        }
+        results = self.run_query(query, ['name', 'food_name'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_many_to_many_junction_self(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["$name"])
+                out_Animal_FriendsWith {
+                    name @output(out_name: "friend_name")
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'name': 'Little Bear', 'friend_name': 'Big Bear'},
+            {'name': 'Little Bear', 'friend_name': 'Biggest Bear'},
+        ]
+        params = {
+            '$name': 'Little Bear',
+        }
+        results = self.run_query(query, ['name', 'friend_name'], **params)
+        self.assertListEqual(expected_results, results)
+
+
+    def test_many_to_many_junction_recursive(self):
+        # recursion is very high below to make sure cycle detection is working
+        # if it is not, the query below will fail because it will continually traverse the
+        # medium bear -> friends with -> medium bear edge and or the
+        # medium bear -> friends with -> biggest bear -> friends with -> medium bear edge
+        # exceeding the maximum recursions allowed by the DB
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["$name"])
+                out_Animal_FriendsWith @recurse(depth: 150) {
+                    name @output(out_name: "self_or_friend_name")
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'name': 'Little Bear', 'self_or_friend_name': 'Big Bear'},
+            {'name': 'Little Bear', 'self_or_friend_name': 'Biggest Bear'},
+            {'name': 'Little Bear', 'self_or_friend_name': 'Little Bear'},
+            {'name': 'Little Bear', 'self_or_friend_name': 'Medium Bear'},
+        ]
+        params = {
+            '$name': 'Little Bear',
+        }
+        results = self.run_query(query, ['name', 'self_or_friend_name'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_many_to_many_junction_recursive_in_expansion(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["$name"])
+                in_Animal_FriendsWith @recurse(depth: 1) {
+                    name @output(out_name: "self_or_friend_name")
+                    out_Animal_Eats {
+                        ... on Food {
+                            name @output(out_name: "self_or_friend_eats")
+                        }
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'name': 'Biggest Bear', 'self_or_friend_name': 'Medium Bear', 'self_or_friend_eats': 'Gummy Bears'},
+        ]
+        params = {
+            '$name': 'Biggest Bear',
+        }
+        results = self.run_query(query, ['name', 'self_or_friend_name'], **params)
         self.assertListEqual(expected_results, results)

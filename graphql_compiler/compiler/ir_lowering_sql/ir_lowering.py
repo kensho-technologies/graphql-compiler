@@ -28,6 +28,9 @@ class SqlBlockLowering(object):
             return SqlBlockLowering._lower_fold(block, state_manager)
         elif isinstance(block, compiler_blocks.Unfold):
             return SqlBlockLowering._lower_unfold(block, state_manager)
+        elif isinstance(block, compiler_blocks.CoerceType):
+            # type coercion is free, the type at location dictionary will have the needed info
+            return SqlBlockLowering._lower_noop(block, state_manager)
         else:
             raise AssertionError('Unable to lower block "{}" to SQL block.'.format(block))
 
@@ -37,7 +40,7 @@ class SqlBlockLowering(object):
         if len(start_class) != 1:
             raise AssertionError('SQL backend should only have one root selection.')
         type_name = next(iter(start_class))
-        state_manager.enter_type(type_name)
+        state_manager.enter_location(type_name)
         yield sql_blocks.Relation(
             query_state=state_manager.get_state()
         )
@@ -89,7 +92,7 @@ class SqlBlockLowering(object):
         type_name = block.direction + '_' + block.edge_name
         if block.optional:
             state_manager.enter_optional()
-        state_manager.enter_type(type_name)
+        state_manager.enter_location(type_name)
         yield sql_blocks.Relation(
             query_state=state_manager.get_state(),
             direction = block.direction
@@ -101,7 +104,7 @@ class SqlBlockLowering(object):
             raise AssertionError('Unknown direction "{}"'.format(block.direction))
         type_name = (block.direction + '_' + block.edge_name)
         state_manager.enter_recursive()
-        state_manager.enter_type(type_name)
+        state_manager.enter_location(type_name)
         yield sql_blocks.Relation(
             query_state=state_manager.get_state(),
             recursion_depth=block.depth,
@@ -145,7 +148,7 @@ class SqlBlockLowering(object):
         direction, position = block.fold_scope_location.relative_position
         type_name = '{direction}_{position}'.format(direction=direction, position=position)
         state_manager.enter_fold()
-        state_manager.enter_type(type_name)
+        state_manager.enter_location(type_name)
         yield sql_blocks.Relation(
             query_state=state_manager.get_state(),
             direction=direction
@@ -162,11 +165,15 @@ class SqlBlockLowering(object):
 
     @staticmethod
     def _lower_backtrack(block, state_manager):
-        state_manager.exit_type()
+        state_manager.exit_location()
         return SqlBlockLowering._lower_noop(block, state_manager)
 
     @staticmethod
     def _lower_unfold(block, state_manager):
         state_manager.exit_fold()
-        state_manager.exit_type()
+        state_manager.exit_location()
+        return SqlBlockLowering._lower_noop(block, state_manager)
+
+    @staticmethod
+    def _lower_coerce_type(block, state_manager):
         return SqlBlockLowering._lower_noop(block, state_manager)

@@ -6,9 +6,9 @@ import re
 from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey, Boolean
 
-from ..compiler.ir_lowering_sql.metadata import OnClause
+from ..compiler.ir_lowering_sql.metadata import BasicEdge, MultiEdge
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 
 
@@ -253,13 +253,19 @@ def get_sql_test_schema():
         scalar DateTime
 
         scalar Date
+        
+        interface Entity {
+            name: String
+        }
 
-        type Animal {
+        type Animal implements Entity {
             name: String
             out_Animal_ParentOf: [Animal]
             in_Animal_ParentOf: [Animal]
             out_Animal_LivesIn: [Location]
-            out_Animal_AnimalToFood: [AnimalToFood]
+            out_Animal_Eats: [Entity]
+            out_Animal_FriendsWith: [Animal]
+            in_Animal_FriendsWith: [Animal]
         }
 
         type Location {
@@ -268,14 +274,10 @@ def get_sql_test_schema():
             in_Animal_LivesIn: [Animal]
         }
         
-        type AnimalToFood {
-            out_AnimalToFood_Animal: [Animal]
-            out_AnimalToFood_Food: [Food]
-        }
-
-        type Food {
+        type Food implements Entity {
             name: String
-            out_Food_AnimalToFood: [AnimalToFood]
+            type: String
+            out_Food_EatenBy: [Animal]
         }
 
         type RootSchemaQuery {
@@ -297,9 +299,35 @@ def get_test_sql_config():
                 'description': 'animal_description',
             },
             'edges': {
-                'Animal_ParentOf': OnClause(outer_col='animal_id', inner_col='parent_id'),
+                'Animal_ParentOf': BasicEdge(
+                    table_name='animal', source_column='animal_id', sink_column='parent_id'
+                ),
+                'Animal_Eats': MultiEdge(
+                    junction_edge=BasicEdge(
+                        table_name='AnimalToFood', source_column='animal_id', sink_column='animal_id'
+                    ),
+                    final_edge=BasicEdge(
+                        table_name='food', source_column='food_id', sink_column='food_id'
+                    )
+                ),
+                'Animal_FriendsWith': MultiEdge(
+                    junction_edge=BasicEdge(
+                        table_name='AnimalToFriend', source_column='animal_id', sink_column='animalId'
+                    ),
+                    final_edge=BasicEdge(
+                        table_name='animal', source_column='friendId', sink_column='animal_id'
+                    )
+                ),
+
             }
         },
+        'Food': {
+            'column_names': {
+                'type': BasicEdge(
+                    table_name='food_type', source_column='food_type_id', sink_column='food_type_id'
+                )
+            }
+        }
     }
 
 
@@ -314,7 +342,6 @@ def create_sqlite_db():
         Column('animal_description', String(50), nullable=False),
         Column('parent_id', Integer, ForeignKey("animal.animal_id"), nullable=True)
     )
-
     location = Table(
         'location',
         metadata,
@@ -322,11 +349,18 @@ def create_sqlite_db():
         Column('animal_id', Integer, ForeignKey("animal.animal_id")),
         Column('name', String(10))
     )
+    food_type = Table(
+        'food_type',
+        metadata,
+        Column('food_type_id', Integer, primary_key=True),
+        Column('name', String(10)),
+    )
     food = Table(
         'food',
         metadata,
         Column('food_id', Integer, primary_key=True),
-        Column('name', String(10))
+        Column('name', String(10)),
+        Column('food_type_id', Integer, ForeignKey("food_type.food_type_id"))
     )
     animal_to_food = Table(
         'AnimalToFood',
@@ -334,6 +368,13 @@ def create_sqlite_db():
         Column('animal_to_food_id', Integer, primary_key=True),
         Column('animal_id', Integer, ForeignKey("animal.animal_id")),
         Column('food_id', Integer, ForeignKey("food.food_id")),
+    )
+    animal_to_friend = Table(
+        'AnimalToFriend',
+        metadata,
+        Column('animal_to_friend_id', Integer, primary_key=True),
+        Column('animalId', Integer, ForeignKey("animal.animal_id")),
+        Column('friendId', Integer, ForeignKey("animal.animal_id")),
     )
     metadata.create_all(engine)
     animals = [
@@ -349,21 +390,45 @@ def create_sqlite_db():
         (7, 3, 'Miami'),
         (8, 3, 'Miami Beach'),
     ]
+    food_types = [
+        (22, 'sweets'),
+        (23, 'fruit'),
+    ]
     foods = [
-        (9, 'honey'),
-        (10, 'apples'),
-        (11, 'caramel apples'),
+        (9, 'Gummy Bears', 22),
+        (10, 'Apples', 23),
+        (11, 'Caramel Apples', 22),
     ]
     animals_to_foods = [
         # big bear eats everything
         (12, 1, 9),
         (13, 1, 10),
         (14, 1, 11),
-        # medium bear only eats honey
-        (15, 4, 9),
+        # medium bear only eats Gummy Bears
+        (15, 3, 9),
+    ]
+    animals_to_friends = [
+        # little bear is friends with big bear
+        (16, 2, 1),
+        # little bear is best friends with biggest bear
+        (17, 2, 4),
+        # biggest bear is friends with medium bear (cycle)
+        (18, 4, 3),
+        # medium bear is best friends with himself (cycle)
+        (19, 3, 3),
+        # medium bear is friends with biggest bear
+        (21, 3, 4),
+    ]
+    tables_values = [
+        (animal, animals),
+        (location, locations),
+        (food_type, food_types),
+        (food, foods),
+        (animal_to_food, animals_to_foods),
+        (animal_to_friend, animals_to_friends),
     ]
 
-    for table, vals in [(animal, animals), (location, locations), (food, foods), (animal_to_food, animals_to_foods)]:
+    for table, vals in tables_values:
         for val in vals:
             engine.execute(table.insert(val))
     return engine, metadata

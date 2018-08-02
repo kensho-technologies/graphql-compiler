@@ -8,9 +8,9 @@ class QueryStateManager:
     class QueryState:
         """
         Manages the state of a query as IR blocks are traversed. This includes location most
-        importantly, and whether a location is in an optional, recursive, or fold context. This state
-        can then be passed along and shared with other blocks, that logically have the same state (
-        a Selection and Relation at the same location, as an example).
+        importantly, and whether a location is in an optional, recursive, or fold context. This
+        state can then be passed along and shared with other blocks, that logically have the same
+        state (a Selection and Relation at the same location, as an example).
         """
 
         def __init__(self, location, in_optional, in_fold, is_recursive, location_types):
@@ -45,7 +45,6 @@ class QueryStateManager:
         self.recursive_locations = set()
         self.latest_snapshot = None
         self.location_types = location_types
-        self.optional_id = 0
         self.recursive_count = 0
 
     def snapshot_state(self):
@@ -106,7 +105,6 @@ class QueryStateManager:
 
     def exit_optional(self):
         self.disable_state('in_optional')
-        self.optional_id += 1
 
     def enter_recursive(self):
         self.enable_state('is_recursive')
@@ -114,11 +112,11 @@ class QueryStateManager:
     def exit_recursive(self):
         self.disable_state('is_recursive')
 
-    def enter_type(self, location):
+    def enter_location(self, location):
         self.query_path.append(location)
         self.snapshot_state()
 
-    def exit_type(self):
+    def exit_location(self):
         if len(self.query_path) == 0:
-            raise QueryStateManager.StateTransitionError('No type to exit from.')
+            raise QueryStateManager.StateTransitionError('No location to exit from.')
         self.query_path.pop()

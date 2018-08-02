@@ -1,10 +1,22 @@
-from collections import namedtuple
 from sqlalchemy import MetaData, bindparam, or_
 
 from graphql_compiler.compiler.ir_lowering_sql import SqlBlocks
 from .constants import SqlBackend, Cardinality
 
-OnClause = namedtuple('OnClause', ['outer_col', 'inner_col'])
+
+class BasicEdge:
+    def __init__(self, source_column, sink_column, table_name=None):
+        self.source_col = source_column
+        self.sink_col = sink_column
+        self.table_name = table_name
+
+
+class MultiEdge:
+    def __init__(self, junction_edge, final_edge):
+        if not isinstance(junction_edge, BasicEdge) or not isinstance(final_edge, BasicEdge):
+            raise AssertionError('A multi-edge must be comprised of basic edges.')
+        self.junction_edge = junction_edge
+        self.final_edge = final_edge
 
 
 class CompilerMetadata:
@@ -25,9 +37,9 @@ class CompilerMetadata:
         }
 
     def get_table(self, block):
-        return self._get_table(block.relative_type)
+        return self._get_table_for_schema_name(block.relative_type)
 
-    def _get_table(self, schema_name):
+    def _get_table_for_schema_name(self, schema_name):
         """
         Retrieve a SQLAlchemy table based on the supplied schema name.
         :param schema_name: Name of the type in the GraphQL schema
@@ -37,6 +49,9 @@ class CompilerMetadata:
             table_name = schema_name
         else:
             table_name = self.config[schema_name]['table_name']
+        return self.get_table_by_name(table_name)
+
+    def get_table_by_name(self, table_name):
         table_name = table_name.lower()
         if table_name not in self.table_name_to_table:
             raise AssertionError(
@@ -123,16 +138,43 @@ class CompilerMetadata:
         return or_(column == None, clause)  # noqa: E711
 
     def get_on_clause_for_node(self, node):
-        on_clause = self.get_edge_columns(node.relation)
-        from_col, to_col = on_clause
-        if node.relation.direction == 'in':
-            from_col, to_col = to_col, from_col
+        edge = self.get_edge(node.relation)
+        if isinstance(edge, BasicEdge):
+            source_col = edge.source_col
+            sink_col = edge.sink_col
+            if node.relation.direction == 'in':
+                source_col, sink_col = sink_col, source_col
+            if edge is None:
+                return None
+            outer_column = self._get_column_from_table(node.parent_node.table, source_col)
+            inner_column = self._get_column_from_table(node.table, sink_col)
+            return [(node.from_clause, outer_column == inner_column)]
+        elif isinstance(edge, MultiEdge):
+            traversal_edge = edge.junction_edge
+            junction_table = self.get_table_by_name(traversal_edge.table_name).alias()
+            source_col = traversal_edge.source_col
+            sink_col = traversal_edge.sink_col
+            if node.relation.direction == 'in':
+                source_col, sink_col = sink_col, source_col
 
-        if on_clause is None:
-            return None
-        outer_column = self._get_column_from_table(node.parent_node.table, from_col)
-        inner_column = self._get_column_from_table(node.table, to_col)
-        return outer_column == inner_column
+            outer_column = self._get_column_from_table(node.parent_node.from_clause, source_col)
+            inner_column = self._get_column_from_table(junction_table, sink_col)
+            traversal_onclause = outer_column == inner_column
+            if node.relation.in_optional:
+                node.parent_node.from_clause = node.parent_node.from_clause.outerjoin(
+                    junction_table, onclause=traversal_onclause
+                )
+            else:
+                node.parent_node.from_clause = node.parent_node.from_clause.join(junction_table, onclause=traversal_onclause)
+            final_edge = edge.final_edge
+            source_col = final_edge.source_col
+            sink_col = final_edge.sink_col
+            if node.relation.direction == 'in':
+                source_col, sink_col = sink_col, source_col
+
+            outer_column = self._get_column_from_table(junction_table, source_col)
+            inner_column = self._get_column_from_table(node.table, sink_col)
+            return [(node.from_clause, outer_column==inner_column)]
 
     def _get_tag_column(self, block):
         if block.tag_node.relation.relative_type not in self.config:
@@ -159,7 +201,7 @@ class CompilerMetadata:
             )
         return getattr(table.c, column_name)
 
-    def get_edge_columns(self, block):
+    def get_edge(self, block):
         edge_name = block.edge_name
         if not block.is_recursive:
             outer_type_name = block.outer_type
@@ -174,8 +216,8 @@ class CompilerMetadata:
                 edges = parent_config['edges']
                 if edge_name in edges:
                     return edges[edge_name]
-        outer_table = self._get_table(outer_type_name)
-        inner_table = self._get_table(relative_type)
+        outer_table = self._get_table_for_schema_name(outer_type_name)
+        inner_table = self._get_table_for_schema_name(relative_type)
         inner_table_fks = [fk for fk in inner_table.foreign_keys if fk.column.table == outer_table]
         outer_table_fks = [fk for fk in outer_table.foreign_keys if fk.column.table == inner_table]
         outer_matches = [foreign_key for foreign_key in inner_table_fks if
@@ -184,10 +226,10 @@ class CompilerMetadata:
                          foreign_key.column.name in inner_table.columns]
         if len(outer_matches) == 1 and len(inner_matches) == 0:
             fk = outer_matches[0]
-            return OnClause(outer_col=fk.column.name, inner_col=fk.parent.name)
+            return BasicEdge(source_column=fk.column.name, sink_column=fk.parent.name)
         elif len(inner_matches) == 1 and len(outer_matches) == 0:
             fk = inner_matches[0]
-            return OnClause(outer_col=fk.parent.name, inner_col=fk.column.name)
+            return BasicEdge(source_column=fk.parent.name, sink_column=fk.column.name)
         elif len(inner_matches) == 0 and len(outer_matches) == 0:
             raise AssertionError(
                 'No foreign key found from type {} to type {}'.format(outer_type_name, relative_type)

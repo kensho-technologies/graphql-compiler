@@ -1,5 +1,7 @@
 from sqlalchemy import select, and_, literal_column, cast, String, case
 
+from graphql_compiler.compiler.ir_lowering_sql.metadata import BasicEdge, MultiEdge
+
 
 def emit_code_from_ir(sql_query_tree, compiler_metadata):
     return _query_tree_to_query(sql_query_tree, compiler_metadata)
@@ -55,20 +57,36 @@ def _collapse_query_tree(node, compiler_metadata):
 
 
 def _create_recursive_clause(node, compiler_metadata, out_link_column):
-    from_col, to_col = compiler_metadata.get_edge_columns(node.relation)
-    base_col = from_col
-    base_column = node.table.c[base_col]
-    if node.relation.direction == 'in':
-        from_col, to_col = to_col, from_col
-    recursive_table = compiler_metadata.get_table(node.relation).alias()
+    edge = compiler_metadata.get_edge(node.relation)
+    if isinstance(edge, BasicEdge):
+        source_col = edge.source_col
+        sink_col = edge.sink_col
+        base_col = source_col
+        base_column = node.table.c[base_col]
+        if node.relation.direction == 'in':
+            source_col, sink_col = sink_col, source_col
+        recursive_table = compiler_metadata.get_table(node.relation).alias()
+    elif isinstance(edge, MultiEdge):
+        traversal_edge = edge.junction_edge
+        final_edge = edge.final_edge
+        sink_col = traversal_edge.sink_col
+        source_col = final_edge.source_col
+        base_col = traversal_edge.source_col
+        base_column = node.table.c[base_col]
+        if node.relation.direction == 'in':
+            source_col, sink_col = sink_col, source_col
+        recursive_table = compiler_metadata.get_table_by_name(traversal_edge.table_name).alias()
+    else:
+        raise AssertionError
+
     parent_cte_column = node.table.c[out_link_column.name]
     distinct_parent_column_query = select([parent_cte_column.label('link')],
                                           distinct=True).alias()
     anchor_query = (
         select(
             [
-                node.table.c[base_col].label(from_col),
-                node.table.c[base_col].label(to_col),
+                node.table.c[base_col].label(source_col),
+                node.table.c[base_col].label(sink_col),
                 literal_column('0').label('__depth_internal_name'),
                 cast(base_column, String()).concat(',').label('path'),
             ],
@@ -84,11 +102,11 @@ def _create_recursive_clause(node, compiler_metadata, out_link_column):
     recursive_query = (
         select(
             [
-                recursive_table.c[from_col],
-                recursive_cte.c[to_col],
+                recursive_table.c[source_col],
+                recursive_cte.c[sink_col],
                 (recursive_cte.c['__depth_internal_name'] + 1).label('__depth_internal_name'),
                 (recursive_cte.c.path
-                 .concat(cast(recursive_table.c[from_col], String()))
+                 .concat(cast(recursive_table.c[source_col], String()))
                  .concat(',')
                  .label('path')),
             ]
@@ -96,12 +114,12 @@ def _create_recursive_clause(node, compiler_metadata, out_link_column):
         .select_from(
             recursive_table.join(
                 recursive_cte,
-                recursive_table.c[to_col] == recursive_cte.c[from_col]
+                recursive_table.c[sink_col] == recursive_cte.c[source_col]
             )
         ).where(and_(
             recursive_cte.c['__depth_internal_name'] < node.relation.recursion_depth,
             case(
-                [(recursive_cte.c.path.contains(cast(recursive_table.c[from_col], String())), 1)],
+                [(recursive_cte.c.path.contains(cast(recursive_table.c[source_col], String())), 1)],
                 else_=0
             ) == 0
         ))
@@ -116,9 +134,9 @@ def _create_recursive_clause(node, compiler_metadata, out_link_column):
     recursive_query = getattr(recursive_cte, recursion_combinator)(recursive_query)
     node.from_clause = node.from_clause.join(
         recursive_query,
-        node.table.c[base_col] == recursive_query.c[from_col]
+        node.table.c[base_col] == recursive_query.c[source_col]
     )
-    out_link_column = recursive_query.c[to_col].label(None)
+    out_link_column = recursive_query.c[sink_col].label(None)
     node.add_recursive_link_column(recursive_query, out_link_column)
     return out_link_column
 
@@ -143,15 +161,17 @@ def _pull_up_node_blocks(node, child_node):
 
 def _join_to_node(node, child_node, compiler_metadata):
     # outer table is the current table, inner table is the child's
-    on_clause = compiler_metadata.get_on_clause_for_node(child_node)
+    onclauses = compiler_metadata.get_on_clause_for_node(child_node)
     if child_node.relation.in_optional:
-        node.from_clause = node.from_clause.outerjoin(
-            child_node.from_clause, onclause=on_clause
-        )
+        for table, onclause in onclauses:
+            node.from_clause = node.from_clause.outerjoin(
+                child_node.from_clause, onclause=onclause
+            )
         return
-    node.from_clause = node.from_clause.join(
-        child_node.from_clause, onclause=on_clause
-    )
+    for table, onclause in onclauses:
+        node.from_clause = node.from_clause.join(
+            child_node.from_clause, onclause=onclause
+        )
 
 
 def _update_table_for_blocks(table, blocks):
@@ -160,9 +180,19 @@ def _update_table_for_blocks(table, blocks):
 
 
 def _create_link_for_recursion(node, recursion, compiler_metadata):
-    from_col, _ = compiler_metadata.get_edge_columns(recursion.relation)
-    recursion_in_column = node.table.c[from_col]
-    node.add_recursive_link_column(recursion, recursion_in_column)
+    edge = compiler_metadata.get_edge(recursion.relation)
+    if isinstance(edge, BasicEdge):
+        from_col = edge.source_col
+        recursion_in_column = node.table.c[from_col]
+        node.add_recursive_link_column(recursion, recursion_in_column)
+        return
+    elif isinstance(edge, MultiEdge):
+        from_col = edge.junction_edge.source_col
+        recursion_in_column = node.table.c[from_col]
+        node.add_recursive_link_column(recursion, recursion_in_column)
+        return
+    raise AssertionError
+
 
 
 def _create_links_for_recursions(node, compiler_metadata):
