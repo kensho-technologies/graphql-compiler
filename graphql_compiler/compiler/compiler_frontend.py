@@ -84,8 +84,8 @@ from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_field
 
 
 # LocationStackEntry contains the following:
-# - location: Location object correspoding to an inserted MarkLocation block
-# - num_traverses: Int counter for the number of traverses intserted after the last MarkLocation
+# - location: Location object corresponding to an inserted MarkLocation block
+# - num_traverses: Int counter for the number of traverses inserted after the last MarkLocation
 #                  (corresponding Location stored in `location`)
 LocationStackEntry = namedtuple('LocationStackEntry', ('location', 'num_traverses'))
 
