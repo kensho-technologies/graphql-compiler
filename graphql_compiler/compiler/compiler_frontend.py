@@ -130,7 +130,7 @@ IrAndMetadata = namedtuple(
 
 
 def _get_fields(ast):
-    """Return a list of property fields, and a list of vertex fields, for the given AST node.
+    """Return a list of vertex fields, and a list of property fields, for the given AST node.
 
     Also verifies that all property fields for the AST node appear before all vertex fields,
     raising GraphQLCompilationError if that is not the case.
@@ -140,8 +140,8 @@ def _get_fields(ast):
 
     Returns:
         tuple of two lists
-            - the first list contains ASTs for property fields
-            - the second list contains ASTs for vertex fields
+            - the first list contains ASTs for vertex fields
+            - the second list contains ASTs for property fields
     """
     if not ast.selection_set:
         # There are no child fields.
