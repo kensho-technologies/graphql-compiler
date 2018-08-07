@@ -80,6 +80,7 @@ from .filters import process_filter_directive
 from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_field_type_from_schema,
                       get_uniquely_named_objects_by_name, get_vertex_field_type,
                       is_vertex_field_name, strip_non_null_from_type, validate_safe_string)
+from .metadata import LocationInfo, QueryMetadataTable
 
 
 # LocationStackEntry contains the following:
@@ -364,6 +365,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         list of basic blocks, the compiled output of the vertex AST node
     """
     basic_blocks = []
+    query_metadata_table = context['metadata']
+    current_location_info = query_metadata_table.get_location_info(location)
     vertex_fields, property_fields = fields
 
     validate_vertex_directives(unique_local_directives)
@@ -415,6 +418,18 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         edge_traversal_is_optional = optional_directive is not None
 
+        inner_location_info = LocationInfo(
+            parent_location=location,
+            type=field_schema_type,
+            coerced_from_type=None,
+            optional_scopes_depth=(
+                current_location_info.optional_scopes_depth + edge_traversal_is_optional),
+            recursive_scopes_depth=(
+                current_location_info.recursive_scopes_depth + (recurse_directive is not None)),
+            is_folded=current_location_info.is_folded or (fold_directive is not None),
+        )
+        query_metadata_table.register_location(inner_location, inner_location_info)
+
         # This is true for any vertex expanded within an @optional scope.
         # Currently @optional is not allowed within @optional.
         # This will need to change if nested @optionals have to be supported.
@@ -426,7 +441,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             # to jump back to. Otherwise, the traversal could rewind to an old marked location
             # and might ignore entire stretches of applied filtering.
             if context['marked_location_stack'][-1].num_traverses > 0:
-                location = location.revisit()
+                location = query_metadata_table.revisit_location(location)
+
                 context['location_types'][location] = strip_non_null_from_type(current_schema_type)
                 basic_blocks.append(_mark_location(location))
                 context['marked_location_stack'].pop()
@@ -496,9 +512,11 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 basic_blocks.append(blocks.Backtrack(location, optional=True))
 
                 # Exiting optional block!
-                # Add a MarkLocation right after the optional, to ensure future Backtrack blocks
-                # return to a position after the optional set of blocks.
-                location = location.revisit()
+                # Revisit the location so that there is a marked location right after the optional,
+                # so that future Backtrack blocks return after the optional set of blocks, and
+                # don't accidentally return to a prior location instead.
+                location = query_metadata_table.revisit_location(location)
+
                 context['location_types'][location] = strip_non_null_from_type(current_schema_type)
                 basic_blocks.append(_mark_location(location))
                 context['marked_location_stack'].pop()
@@ -550,10 +568,13 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     Returns:
         list of basic blocks, the compiled output of the vertex AST node
     """
+    query_metadata_table = context['metadata']
+
     # step F-2. Emit a type coercion block if appropriate,
     #           then recurse into the fragment's selection.
     coerces_to_type_name = ast.type_condition.name.value
     coerces_to_type_obj = schema.get_type(coerces_to_type_name)
+    query_metadata_table.record_coercion_at_location(location, coerces_to_type_name)
 
     basic_blocks = []
 
@@ -678,9 +699,21 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     # Validation passed, so the base_start_type must exist as a field of the root query.
     current_schema_type = get_field_type_from_schema(schema.get_query_type(), base_start_type)
 
-    # Construct the start location of the query, and the starting context object.
+    # Construct the start location of the query and its associated metadata.
     location = Location((base_start_type,))
+    base_location_info = LocationInfo(
+        parent_location=None,
+        type=base_start_type,
+        coerced_from_type=None,
+        optional_scopes_depth=0,
+        recursive_scopes_depth=0,
+        is_folded=False,
+    )
+    query_metadata_table = QueryMetadataTable(location, base_location_info)
+
+    # Construct the starting context object.
     context = {
+        'metadata': query_metadata_table,
         # 'tags' is a dict containing
         #  - location: Location where the tag was defined
         #  - optional: boolean representing whether the tag was defined within an @optional scope
