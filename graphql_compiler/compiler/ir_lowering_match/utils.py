@@ -219,3 +219,31 @@ def construct_where_filter_predicate(simple_optional_root_info):
 # A CompoundMatchQuery is a representation of several MatchQuery objects containing
 #   - match_queries: a list MatchQuery objects
 CompoundMatchQuery = namedtuple('CompoundMatchQuery', ('match_queries'))
+
+def construct_optional_traversal_tree(location_to_optional_roots):
+    """
+    # TODO(shankha): Complete docstring <07-08-18>
+
+    Args:
+        location_to_optional_roots: dict mapping from location -> optional_roots where location is
+                                    within some number of @optionals and optional_roots is a list 
+                                    of optional root locations preceding the successive @optional 
+                                    scopes within which the location resides
+    """
+    # TODO(shankha): Describe this mapping <07-08-18>
+    final_optional_root_to_optional_root_locations = {}
+    tree = {}
+    visited_locations = set()
+
+    for location, optional_root_locations_stack in six.iteritems(location_to_optional_roots):
+        optional_root_locations_tree_path = reversed(optional_root_locations_stack)
+        current_tree_position = tree
+        for optional_root_location in optional_root_locations_tree_path:
+            if optional_root_location in visited_locations:
+                if optional_root_location not in current_tree_position:
+                    raise AssertionError(u'Shitfuck')
+            else:
+                current_tree_position[optional_root_location] = {}
+
+            current_tree_position = current_tree_position[optional_root_location]
+    __import__('pdb').set_trace()
