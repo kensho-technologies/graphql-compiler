@@ -849,9 +849,6 @@ def _validate_schema_and_ast(schema, ast):
         ])
     ])
 
-    # Extract name, locations and args keys in order to compare schema directives and directives
-    # which are supported by the graphql compiler.
-
     # Directives expected by the graphql compiler.
     expected_directives = {
         frozenset([
@@ -861,12 +858,6 @@ def _validate_schema_and_ast(schema, ast):
         ])
         for directive in DIRECTIVES
     }
-
-    # Graphql-core automatically injects default directives into the schema, regardless of whether
-    # the schema supports said directives. Hence, while the directives contained in
-    # unsupported_default_directives are incompatible with the graphql-compiler, we still expect
-    # them in the parsed schema string.
-    expected_directives.update(unsupported_default_directives)
 
     # Directives provided in the parsed graphql schema.
     actual_directives = {
@@ -885,11 +876,15 @@ def _validate_schema_and_ast(schema, ast):
                            u'provided schema: {}'.format(missing_directives))
         core_graphql_errors.append(missing_message)
 
-    # Directives that are not specified by the core graphql library.
-    extra_directives = actual_directives - expected_directives
+    # Directives that are not specified by the core graphql library. Note that Graphql-core
+    # automatically injects default directives into the schema, regardless of whether
+    # the schema supports said directives. Hence, while the directives contained in
+    # unsupported_default_directives are incompatible with the graphql-compiler, we allow them to
+    # be present in the parsed schema string.
+    extra_directives = actual_directives - expected_directives - unsupported_default_directives
     if extra_directives:
         extra_message = (u'The following directives were supplied in the given schema, but are not '
-                         u'defined in the core graphql library: {}'.format(extra_directives))
+                         u'not supported by the GraphQL compiler: {}'.format(extra_directives))
         core_graphql_errors.append(extra_message)
 
     return core_graphql_errors
