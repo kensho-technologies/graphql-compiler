@@ -226,11 +226,19 @@ def extract_optional_location_root_info(ir_blocks):
     complex_optional_roots = []
     location_to_optional_root = dict()
 
+    # These are both stacks that perform depth-first search on the tree of @optional edges.
+    # At any given location they contain
+    # - in_optional_root_location: all the optional root locations
+    # - encountered_traverse_within_optional: whether the optional is complex or not
+    # in order that they appear on the path from the root to that location.
     in_optional_root_location = []
     encountered_traverse_within_optional = []
 
     preceding_location = None
     for current_block in ir_blocks:
+        if len(in_optional_root_location) > 0 and isinstance(current_block, (Traverse, Recurse)):
+            encountered_traverse_within_optional[-1] = True
+
         if isinstance(current_block, Traverse) and current_block.optional:
             # TODO(shankha): Add comments and change assertions. <07-08-18>
             # TODO(shankha): Bad check should be [] instead of None <07-08-18>
@@ -244,8 +252,6 @@ def extract_optional_location_root_info(ir_blocks):
 
             in_optional_root_location.append(preceding_location)
             encountered_traverse_within_optional.append(False)
-        elif len(in_optional_root_location) > 0 and isinstance(current_block, (Traverse, Recurse)):
-            encountered_traverse_within_optional[-1] = True
         elif isinstance(current_block, EndOptional):
             if len(in_optional_root_location) == 0:
                 raise AssertionError(u'in_optional_root_location was empty at an EndOptional block: '
