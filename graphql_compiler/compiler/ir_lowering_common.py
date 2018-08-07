@@ -225,41 +225,45 @@ def extract_optional_location_root_info(ir_blocks):
     """
     complex_optional_roots = []
     location_to_optional_root = dict()
-    in_optional_root_location = None
-    encountered_traverse_within_optional = False
+
+    in_optional_root_location = []
+    encountered_traverse_within_optional = []
 
     preceding_location = None
     for current_block in ir_blocks:
         if isinstance(current_block, Traverse) and current_block.optional:
-            if in_optional_root_location is not None:
-                raise AssertionError(u'in_optional_root_location was not None at an optional '
-                                     u'Traverse: {} {}'.format(current_block, ir_blocks))
+            # TODO(shankha): Add comments and change assertions. <07-08-18>
+            # TODO(shankha): Bad check should be [] instead of None <07-08-18>
+            # if in_optional_root_location is not None:
+                # raise AssertionError(u'in_optional_root_location was not None at an optional '
+                                     # u'Traverse: {} {}'.format(current_block, ir_blocks))
 
             if preceding_location is None:
                 raise AssertionError(u'No MarkLocation found before an optional Traverse: {} {}'
                                      .format(current_block, ir_blocks))
 
-            in_optional_root_location = preceding_location
-        elif all((in_optional_root_location is not None,
-                  isinstance(current_block, (Traverse, Recurse)))):
-            encountered_traverse_within_optional = True
+            in_optional_root_location.append(preceding_location)
+            encountered_traverse_within_optional.append(False)
+        elif len(in_optional_root_location) > 0 and isinstance(current_block, (Traverse, Recurse)):
+            encountered_traverse_within_optional[-1] = True
         elif isinstance(current_block, EndOptional):
-            if in_optional_root_location is None:
-                raise AssertionError(u'in_optional_root_location was None at an EndOptional block: '
+            if len(in_optional_root_location) == 0:
+                raise AssertionError(u'in_optional_root_location was empty at an EndOptional block: '
                                      u'{}'.format(ir_blocks))
 
-            if encountered_traverse_within_optional:
-                complex_optional_roots.append(in_optional_root_location)
+            if encountered_traverse_within_optional[-1]:
+                complex_optional_roots.append(in_optional_root_location[-1])
 
-            in_optional_root_location = None
-            encountered_traverse_within_optional = False
+            in_optional_root_location.pop()
+            encountered_traverse_within_optional.pop()
         elif isinstance(current_block, MarkLocation):
-            if in_optional_root_location is None:
+            if len(in_optional_root_location) == 0:
                 preceding_location = current_block.location
             else:
                 # in_optional_root_location will not be None if and only if we are within an
                 # @optional scope. In this case, add the current location to the dictionary.
-                location_to_optional_root[current_block.location] = in_optional_root_location
+                # TODO(shankha): Sshould this map to a list? <07-08-18>
+                location_to_optional_root[current_block.location] = in_optional_root_location[-1]
         else:
             # No locations need to be marked, and no optional scopes begin or end here.
             pass
