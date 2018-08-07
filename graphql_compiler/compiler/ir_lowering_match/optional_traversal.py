@@ -11,6 +11,7 @@ from ..expressions import (BinaryComposition, ContextField, FoldedOutputContextF
 from ..match_query import MatchQuery, MatchStep
 from .utils import (BetweenClause, CompoundMatchQuery, expression_list_to_conjunction,
                     filter_edge_field_non_existence)
+from .utils import construct_optional_traversal_tree, construct_where_filter_predicate
 
 
 def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
@@ -108,7 +109,12 @@ def convert_optional_traversals_to_compound_match_query(
         for x in range(0, len(complex_optional_roots) + 1)
     ]
     optional_root_location_subsets = itertools.chain(*optional_root_location_combinations_list)
-    optional_root_location_subsets = [set(subset) for subset in optional_root_location_subsets]
+    optional_root_location_subsets = construct_optional_traversal_tree(
+        complex_optional_roots, location_to_optional_roots)
+    optional_root_location_subsets = sorted([
+        set(subset)
+        for subset in optional_root_location_subsets
+    ], key=lambda l: ''.join(sorted(repr(x) for x in l)))
 
     compound_match_traversals = []
     for omitted_locations in reversed(optional_root_location_subsets):

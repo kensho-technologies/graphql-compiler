@@ -1,5 +1,6 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
+import itertools
 
 import six
 
@@ -220,7 +221,7 @@ def construct_where_filter_predicate(simple_optional_root_info):
 #   - match_queries: a list MatchQuery objects
 CompoundMatchQuery = namedtuple('CompoundMatchQuery', ('match_queries'))
 
-def construct_optional_traversal_tree(location_to_optional_roots):
+def construct_optional_traversal_tree(complex_optional_roots, location_to_optional_roots):
     """
     # TODO(shankha): Complete docstring <07-08-18>
 
@@ -242,8 +243,43 @@ def construct_optional_traversal_tree(location_to_optional_roots):
             if optional_root_location in visited_locations:
                 if optional_root_location not in current_tree_position:
                     raise AssertionError(u'Shitfuck')
-            else:
+            elif optional_root_location in complex_optional_roots:
                 current_tree_position[optional_root_location] = {}
+            else:
+                continue
 
             current_tree_position = current_tree_position[optional_root_location]
-    __import__('pdb').set_trace()
+
+    return _get_all_rooted_subtrees(tree)
+
+def _get_all_rooted_subtrees(tree):
+    # TODO(shankha): Docstring <07-08-18>
+    if tree == {}:
+        return [[]]
+
+    location_to_subtree_list = {
+        location: [
+            subtree
+            for subtree in _get_all_rooted_subtrees(tree[location])
+        ]
+        for location in tree
+    }
+    all_location_subsets = [
+        sorted(list(subset))
+        for subset in itertools.chain(*[
+            itertools.combinations(tree, x)
+            for x in range(0, len(tree) + 1)
+        ])
+    ]
+
+    new_subtree_list = []
+    for location_subset in all_location_subsets:
+        all_subtree_combinations = itertools.product(*[
+            location_to_subtree_list[location]
+            for location in location_subset
+        ])
+        for subtree_combination in all_subtree_combinations:
+            new_subtree = location_subset + list(itertools.chain(*subtree_combination))
+            new_subtree_list.append(new_subtree)
+
+    return new_subtree_list
