@@ -2349,3 +2349,33 @@ def coercion_and_filter_with_tag():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
+
+
+def nested_optional_and_traverse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf @optional {
+                name @output(out_name: "child_name")
+                out_Animal_ParentOf @optional {
+                    name @output(out_name: "spouse_and_self_name")
+                    out_Animal_OfSpecies {
+                        name @output(out_name: "spouse_species")
+                    }
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'child_name': OutputMetadata(type=GraphQLString, optional=True),
+        'spouse_and_self_name': OutputMetadata(type=GraphQLString, optional=True),
+        'spouse_species': OutputMetadata(type=GraphQLString, optional=True),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
