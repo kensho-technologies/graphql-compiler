@@ -268,8 +268,9 @@ def _translate_equivalent_locations(match_query, location_translations):
             old_location = expression.fold_scope_location.base_location
             new_location = location_translations.get(old_location, old_location)
 
-            relative_position = expression.fold_scope_location.relative_position
-            new_fold_scope_location = FoldScopeLocation(new_location, relative_position)
+            fold_path = expression.fold_scope_location.fold_path
+            fold_field = expression.fold_scope_location.field
+            new_fold_scope_location = FoldScopeLocation(new_location, fold_path, field=fold_field)
             field_name = expression.field_name
             field_type = expression.field_type
 
@@ -309,10 +310,11 @@ def _translate_equivalent_locations(match_query, location_translations):
     new_folds = {}
     # Update the Location within each FoldScopeLocation
     for fold_scope_location, fold_ir_blocks in six.iteritems(match_query.folds):
-        relative_position = fold_scope_location.relative_position
+        fold_path = fold_scope_location.fold_path
+        fold_field = fold_scope_location.field
         old_location = fold_scope_location.base_location
         new_location = location_translations.get(old_location, old_location)
-        new_fold_scope_location = FoldScopeLocation(new_location, relative_position)
+        new_fold_scope_location = FoldScopeLocation(new_location, fold_path, field=fold_field)
 
         new_folds[new_fold_scope_location] = fold_ir_blocks
 

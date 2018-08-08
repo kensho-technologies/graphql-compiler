@@ -2104,7 +2104,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Species',))
         animal_location = base_location.navigate_to_subpath('in_Animal_OfSpecies')
-        animal_fold = helpers.FoldScopeLocation(animal_location, ('in', 'Animal_ParentOf'))
+        animal_fold = helpers.FoldScopeLocation(animal_location, (('in', 'Animal_ParentOf'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Species'}),
@@ -2168,7 +2168,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.fold_on_output_variable()
 
         base_location = helpers.Location(('Animal',))
-        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        base_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2194,7 +2194,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        parent_fold = helpers.FoldScopeLocation(parent_location, ('out', 'Animal_ParentOf'))
+        parent_fold = helpers.FoldScopeLocation(parent_location, (('out', 'Animal_ParentOf'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2223,7 +2223,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.fold_and_traverse()
 
         base_location = helpers.Location(('Animal',))
-        parent_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
+        parent_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
 
         expected_blocks = [
@@ -2251,7 +2251,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.fold_and_deep_traverse()
 
         base_location = helpers.Location(('Animal',))
-        parent_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
+        parent_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         sibling_location = parent_location.navigate_to_subpath('out_Animal_ParentOf')
 
@@ -2283,7 +2283,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        sibling_fold = helpers.FoldScopeLocation(parent_location, ('out', 'Animal_ParentOf'))
+        sibling_fold = helpers.FoldScopeLocation(parent_location, (('out', 'Animal_ParentOf'),))
         sibling_location = parent_location.navigate_to_subpath('out_Animal_ParentOf')
 
         expected_blocks = [
@@ -2315,7 +2315,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.multiple_outputs_in_same_fold()
 
         base_location = helpers.Location(('Animal',))
-        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        base_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2342,7 +2342,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.multiple_outputs_in_same_fold_and_traverse()
 
         base_location = helpers.Location(('Animal',))
-        base_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
+        base_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
 
         expected_blocks = [
@@ -2372,8 +2372,8 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.multiple_folds()
 
         base_location = helpers.Location(('Animal',))
-        base_out_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
-        base_in_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
+        base_out_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
+        base_in_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2405,9 +2405,9 @@ class IrGenerationTests(unittest.TestCase):
     def test_multiple_folds_and_traverse(self):
         test_data = test_input_data.multiple_folds_and_traverse()
         base_location = helpers.Location(('Animal',))
-        base_out_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        base_out_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
         base_out_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
-        base_in_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
+        base_in_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
         base_in_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
 
         expected_blocks = [
@@ -2445,8 +2445,8 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.fold_date_and_datetime_fields()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
-        base_fed_at_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_FedAt'))
+        base_parent_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
+        base_fed_at_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_FedAt'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2478,7 +2478,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         base_parent_fold = helpers.FoldScopeLocation(
-            base_location, ('out', 'Animal_ImportantEvent'))
+            base_location, (('out', 'Animal_ImportantEvent'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2503,7 +2503,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope()
 
         base_location = helpers.Location(('Animal',))
-        entity_fold = helpers.FoldScopeLocation(base_location, ('out', 'Entity_Related'))
+        entity_fold = helpers.FoldScopeLocation(base_location, (('out', 'Entity_Related'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2543,7 +2543,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_traversal()
 
         base_location = helpers.Location(('Animal',))
-        parent_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
+        parent_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
 
         expected_blocks = [
@@ -2588,7 +2588,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         base_parent_fold = helpers.FoldScopeLocation(
-            base_location, ('out', 'Entity_Related'))
+            base_location, (('out', 'Entity_Related'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2613,7 +2613,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.filter_within_fold_scope()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        base_parent_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2647,7 +2647,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.filter_on_fold_scope()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        base_parent_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2687,7 +2687,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_on_interface_within_fold_scope()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(base_location, ('out', 'Entity_Related'))
+        base_parent_fold = helpers.FoldScopeLocation(base_location, (('out', 'Entity_Related'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2713,7 +2713,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_on_interface_within_fold_traversal()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(base_location, ('in', 'Animal_ParentOf'))
+        base_parent_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         entity_location = parent_location.navigate_to_subpath('out_Entity_Related')
 
@@ -2746,7 +2746,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         base_parent_fold = helpers.FoldScopeLocation(
-            base_location, ('out', 'Animal_ImportantEvent'))
+            base_location, (('out', 'Animal_ImportantEvent'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -3528,7 +3528,8 @@ class IrGenerationTests(unittest.TestCase):
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
-        fold_scope = helpers.FoldScopeLocation(revisited_base_location, ('out', 'Animal_ParentOf'))
+        fold_scope = helpers.FoldScopeLocation(
+            revisited_base_location, (('out', 'Animal_ParentOf'),))
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -3566,7 +3567,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        base_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
         revisited_base_location = base_location.revisit()
 
         expected_blocks = [
@@ -3607,7 +3608,8 @@ class IrGenerationTests(unittest.TestCase):
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         grandparent_location = parent_location.navigate_to_subpath('in_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
-        fold_scope = helpers.FoldScopeLocation(revisited_base_location, ('out', 'Animal_ParentOf'))
+        fold_scope = helpers.FoldScopeLocation(
+            revisited_base_location, (('out', 'Animal_ParentOf'),))
         fold_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
 
         expected_blocks = [
@@ -3653,7 +3655,7 @@ class IrGenerationTests(unittest.TestCase):
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         grandparent_location = parent_location.navigate_to_subpath('in_Animal_ParentOf')
-        base_fold = helpers.FoldScopeLocation(base_location, ('out', 'Animal_ParentOf'))
+        base_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
         fold_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
 

@@ -481,9 +481,9 @@ class FoldedOutputContextField(Expression):
     def to_match(self):
         """Return a unicode object with the MATCH representation of this expression."""
         self.validate()
-        edge_direction, edge_name = self.fold_scope_location.relative_position
+        edge_direction, edge_name = self.fold_scope_location.fold_path[0]
 
-        mark_name = self.fold_scope_location.get_location_name()
+        mark_name, _ = self.fold_scope_location.get_location_name()
         validate_safe_string(mark_name)
 
         template = u'$%(mark_name)s.%(field_name)s'

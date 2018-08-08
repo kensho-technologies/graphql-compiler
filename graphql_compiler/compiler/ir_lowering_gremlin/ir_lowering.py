@@ -168,7 +168,7 @@ class GremlinFoldedOutputContextField(Expression):
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
-        edge_direction, edge_name = self.fold_scope_location.relative_position
+        edge_direction, edge_name = self.fold_scope_location.fold_path[0]
         inverse_direction_table = {
             'out': 'in',
             'in': 'out',

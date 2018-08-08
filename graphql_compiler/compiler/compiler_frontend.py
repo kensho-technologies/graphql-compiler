@@ -77,9 +77,10 @@ from .directive_helpers import (get_local_filter_directives, get_unique_directiv
                                 validate_vertex_field_directive_in_context,
                                 validate_vertex_field_directive_interactions)
 from .filters import process_filter_directive
-from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_field_type_from_schema,
-                      get_uniquely_named_objects_by_name, get_vertex_field_type,
-                      is_vertex_field_name, strip_non_null_from_type, validate_safe_string)
+from .helpers import (Location, get_ast_field_name, get_edge_direction_and_name,
+                      get_field_type_from_schema, get_uniquely_named_objects_by_name,
+                      get_vertex_field_type, is_vertex_field_name, strip_non_null_from_type,
+                      validate_safe_string)
 from .metadata import LocationInfo, QueryMetadataTable
 
 
@@ -330,21 +331,6 @@ def _validate_recurse_directive_types(current_schema_type, field_schema_type):
                                       u'{}'.format(current_schema_type, field_schema_type))
 
 
-def _get_edge_direction_and_name(vertex_field_name):
-    """Get the edge direction and name from a non-root vertex field name."""
-    edge_direction = None
-    edge_name = None
-    if vertex_field_name.startswith('out_'):
-        edge_direction = 'out'
-        edge_name = vertex_field_name[4:]
-    elif vertex_field_name.startswith('in_'):
-        edge_direction = 'in'
-        edge_name = vertex_field_name[3:]
-    else:
-        raise AssertionError(u'Unreachable condition reached:', vertex_field_name)
-    return edge_direction, edge_name
-
-
 def _compile_vertex_ast(schema, current_schema_type, ast,
                         location, context, unique_local_directives, fields):
     """Return a list of basic blocks corresponding to the vertex AST node.
@@ -455,11 +441,11 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 context['optional'] = inner_location
                 in_topmost_optional_block = True
 
-        edge_direction, edge_name = _get_edge_direction_and_name(field_name)
+        edge_direction, edge_name = get_edge_direction_and_name(field_name)
 
         if fold_directive:
             current_location = context['marked_location_stack'][-1].location
-            fold_scope_location = FoldScopeLocation(current_location, (edge_direction, edge_name))
+            fold_scope_location = current_location.navigate_to_fold(field_name)
             fold_block = blocks.Fold(fold_scope_location)
             basic_blocks.append(fold_block)
             context['fold'] = fold_scope_location
