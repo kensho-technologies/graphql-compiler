@@ -430,7 +430,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         inner_location_info = LocationInfo(
             parent_location=location,
-            type=field_schema_type,
+            type=field_schema_type.name,
             coerced_from_type=None,
             optional_scopes_depth=(
                 current_location_info.optional_scopes_depth + edge_traversal_is_optional),
