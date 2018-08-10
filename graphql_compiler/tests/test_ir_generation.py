@@ -2224,14 +2224,12 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         parent_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
-        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(parent_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
-            blocks.Backtrack(parent_location),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2252,8 +2250,6 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         parent_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
-        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        sibling_location = parent_location.navigate_to_subpath('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2261,8 +2257,6 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Fold(parent_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
             blocks.Traverse('out', 'Animal_OfSpecies'),
-            blocks.Backtrack(sibling_location),
-            blocks.Backtrack(parent_location),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2284,7 +2278,6 @@ class IrGenerationTests(unittest.TestCase):
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         sibling_fold = helpers.FoldScopeLocation(parent_location, (('out', 'Animal_ParentOf'),))
-        sibling_location = parent_location.navigate_to_subpath('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2293,7 +2286,6 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(parent_location),
             blocks.Fold(sibling_fold),
             blocks.Traverse('out', 'Animal_OfSpecies'),
-            blocks.Backtrack(sibling_location),
             blocks.Unfold(),
             blocks.Backtrack(base_location),
             blocks.ConstructResult({
@@ -2343,14 +2335,12 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         base_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
-        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(base_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
-            blocks.Backtrack(parent_location),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2406,20 +2396,16 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.multiple_folds_and_traverse()
         base_location = helpers.Location(('Animal',))
         base_out_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
-        base_out_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         base_in_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
-        base_in_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(base_out_fold),
             blocks.Traverse('in', 'Animal_ParentOf'),
-            blocks.Backtrack(base_out_location),
             blocks.Unfold(),
             blocks.Fold(base_in_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
-            blocks.Backtrack(base_in_location),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2544,7 +2530,6 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         parent_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
-        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2564,7 +2549,6 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.Variable('$latest', GraphQLDate)
                 )
             ),
-            blocks.Backtrack(parent_location),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'related_animals': expressions.FoldedOutputContextField(
@@ -2714,8 +2698,6 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         base_parent_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
-        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        entity_location = parent_location.navigate_to_subpath('out_Entity_Related')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2724,8 +2706,6 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Traverse('out', 'Entity_Related'),
             blocks.CoerceType({'Animal'}),
             blocks.Traverse('out', 'Animal_OfSpecies'),
-            blocks.Backtrack(entity_location),
-            blocks.Backtrack(parent_location),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -3610,7 +3590,6 @@ class IrGenerationTests(unittest.TestCase):
         revisited_base_location = base_location.revisit()
         fold_scope = helpers.FoldScopeLocation(
             revisited_base_location, (('out', 'Animal_ParentOf'),))
-        fold_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -3625,7 +3604,6 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(revisited_base_location),
             blocks.Fold(fold_scope),
             blocks.Traverse('out', 'Animal_ParentOf'),
-            blocks.Backtrack(fold_location),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'grandparent_name': expressions.TernaryConditional(
@@ -3656,7 +3634,6 @@ class IrGenerationTests(unittest.TestCase):
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         grandparent_location = parent_location.navigate_to_subpath('in_Animal_ParentOf')
         base_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
-        fold_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
 
         expected_blocks = [
@@ -3664,7 +3641,6 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(base_location),
             blocks.Fold(base_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
-            blocks.Backtrack(fold_location),
             blocks.Unfold(),
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(parent_location),

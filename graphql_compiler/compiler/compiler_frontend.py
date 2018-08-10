@@ -77,7 +77,7 @@ from .directive_helpers import (get_local_filter_directives, get_unique_directiv
                                 validate_vertex_field_directive_in_context,
                                 validate_vertex_field_directive_interactions)
 from .filters import process_filter_directive
-from .helpers import (Location, get_ast_field_name, get_edge_direction_and_name,
+from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_edge_direction_and_name,
                       get_field_type_from_schema, get_uniquely_named_objects_by_name,
                       get_vertex_field_type, is_vertex_field_name, strip_non_null_from_type,
                       validate_safe_string)
@@ -388,14 +388,14 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     # step V-4: step into vertex fields
     for field_ast in vertex_fields:
         field_name = get_ast_field_name(field_ast)
-        inner_location = location.navigate_to_subpath(field_name)
-        validate_context_for_visiting_vertex_field(inner_location, context)
+        validate_context_for_visiting_vertex_field(location, field_name, context)
 
         field_schema_type = get_vertex_field_type(current_schema_type, field_name)
 
         inner_unique_directives = get_unique_directives(field_ast)
-        validate_vertex_field_directive_interactions(inner_location, inner_unique_directives)
-        validate_vertex_field_directive_in_context(inner_location, inner_unique_directives, context)
+        validate_vertex_field_directive_interactions(location, field_name, inner_unique_directives)
+        validate_vertex_field_directive_in_context(
+            location, field_name, inner_unique_directives, context)
 
         recurse_directive = inner_unique_directives.get('recurse', None)
         optional_directive = inner_unique_directives.get('optional', None)
@@ -403,18 +403,6 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         in_topmost_optional_block = False
 
         edge_traversal_is_optional = optional_directive is not None
-
-        inner_location_info = LocationInfo(
-            parent_location=location,
-            type=field_schema_type,
-            coerced_from_type=None,
-            optional_scopes_depth=(
-                current_location_info.optional_scopes_depth + edge_traversal_is_optional),
-            recursive_scopes_depth=(
-                current_location_info.recursive_scopes_depth + (recurse_directive is not None)),
-            is_folded=current_location_info.is_folded or (fold_directive is not None),
-        )
-        query_metadata_table.register_location(inner_location, inner_location_info)
 
         # This is true for any vertex expanded within an @optional scope.
         # Currently @optional is not allowed within @optional.
@@ -435,6 +423,24 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 new_stack_entry = _construct_location_stack_entry(location, 0)
                 context['marked_location_stack'].append(new_stack_entry)
 
+        if fold_directive:
+            inner_location = location.navigate_to_fold(field_name)
+        else:
+            inner_location = location.navigate_to_subpath(field_name)
+
+        inner_location_info = LocationInfo(
+            parent_location=location,
+            type=field_schema_type,
+            coerced_from_type=None,
+            optional_scopes_depth=(
+                current_location_info.optional_scopes_depth + edge_traversal_is_optional),
+            recursive_scopes_depth=(
+                current_location_info.recursive_scopes_depth + (recurse_directive is not None)),
+            is_folded=current_location_info.is_folded or (fold_directive is not None),
+        )
+        query_metadata_table.register_location(inner_location, inner_location_info)
+
+        if edge_traversal_is_optional:
             # Remember where the topmost optional context started.
             topmost_optional = context.get('optional', None)
             if topmost_optional is None:
@@ -444,11 +450,9 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         edge_direction, edge_name = get_edge_direction_and_name(field_name)
 
         if fold_directive:
-            current_location = context['marked_location_stack'][-1].location
-            fold_scope_location = current_location.navigate_to_fold(field_name)
-            fold_block = blocks.Fold(fold_scope_location)
+            fold_block = blocks.Fold(inner_location)
             basic_blocks.append(fold_block)
-            context['fold'] = fold_scope_location
+            context['fold'] = inner_location
         elif recurse_directive:
             recurse_depth = _get_recurse_directive_depth(field_name, inner_unique_directives)
             _validate_recurse_directive_types(current_schema_type, field_schema_type)
@@ -482,7 +486,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             else:
                 raise AssertionError(u'Output inside @fold scope did not add '
                                      u'"fold_innermost_scope" to context! '
-                                     u'Location: {}'.format(fold_scope_location))
+                                     u'Location: {}'.format(location))
 
         if in_topmost_optional_block:
             basic_blocks.append(blocks.EndOptional())
@@ -490,9 +494,13 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         # If we are currently evaluating a @fold vertex,
         # we didn't Traverse into it, so we don't need to backtrack out either.
-        # Alternatively, we don't backtrack if we've reached an @output_source.
+        # We also don't backtrack if we're currently inside a @fold scope, or
+        # if we've reached an @output_source.
         backtracking_required = (
-            (not fold_directive) and (not has_encountered_output_source(context)))
+            (not fold_directive) and
+            (not isinstance(location, FoldScopeLocation)) and
+            (not has_encountered_output_source(context))
+        )
         if backtracking_required:
             if optional_directive is not None:
                 basic_blocks.append(blocks.Backtrack(location, optional=True))

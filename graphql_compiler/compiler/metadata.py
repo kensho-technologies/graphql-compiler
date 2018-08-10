@@ -1,3 +1,5 @@
+# Copyright 2018-present Kensho Technologies, LLC.
+"""Utilities for recording, inspecting, and manipulating metadata collected during compilation."""
 from collections import namedtuple
 
 import six

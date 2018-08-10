@@ -385,12 +385,29 @@ class FoldScopeLocation(BaseLocation):
 
     def get_location_name(self):
         """Return a tuple of a unique name of the location, and the current field name (or None)."""
-        fold_path_representation = u'__'.join(
-            u'_'.join((edge_direction, edge_name))
-            for edge_direction, edge_name in self.fold_path
-        )
-        unique_name = self.base_location.get_location_name()[0] + u'___' + fold_path_representation
+        # We currently require that all outputs from a given fold are from the same location:
+        # any given fold has one set of traversals away from the root, and all outputs are
+        # at the tip of the set of traversals.
+        #
+        # Therefore, for the purposes of creating a unique edge name, it's sufficient to take
+        # only one traversal from the root of the fold. This allows fold names to be shorter.
+        first_folded_edge_direction, first_folded_edge_name = self.get_first_folded_edge()
+
+        unique_name = u''.join((
+            self.base_location.get_location_name()[0],
+            u'___',
+            first_folded_edge_direction,
+            u'_',
+            first_folded_edge_name
+        ))
         return (unique_name, self.field)
+
+    def get_first_folded_edge(self):
+        """Return a tuple representing the first folded edge within the fold scope."""
+        # The constructor of this object guarantees that the fold has at least one traversal,
+        # so the [0]-indexing is guaranteed to not raise an exception.
+        first_folded_edge_direction, first_folded_edge_name = self.fold_path[0]
+        return first_folded_edge_direction, first_folded_edge_name
 
     def navigate_to_field(self, field):
         """Return a new location object at the specified field of the current location."""
@@ -406,7 +423,7 @@ class FoldScopeLocation(BaseLocation):
             raise AssertionError(u'Currently at a field, cannot go to child: {}'.format(self))
 
         edge_direction, edge_name = get_edge_direction_and_name(child)
-        new_fold_path = self.fold_path + (edge_direction, edge_name)
+        new_fold_path = self.fold_path + ((edge_direction, edge_name),)
         return FoldScopeLocation(self.base_location, new_fold_path)
 
     def __str__(self):
