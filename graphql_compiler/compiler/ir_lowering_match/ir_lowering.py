@@ -271,10 +271,9 @@ def _translate_equivalent_locations(match_query, location_translations):
             fold_path = expression.fold_scope_location.fold_path
             fold_field = expression.fold_scope_location.field
             new_fold_scope_location = FoldScopeLocation(new_location, fold_path, field=fold_field)
-            field_name = expression.field_name
             field_type = expression.field_type
 
-            return FoldedOutputContextField(new_fold_scope_location, field_name, field_type)
+            return FoldedOutputContextField(new_fold_scope_location, field_type)
         else:
             return expression
 

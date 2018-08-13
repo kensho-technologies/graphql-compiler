@@ -2104,7 +2104,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Species',))
         animal_location = base_location.navigate_to_subpath('in_Animal_OfSpecies')
-        animal_fold = helpers.FoldScopeLocation(animal_location, (('in', 'Animal_ParentOf'),))
+        animal_fold = animal_location.navigate_to_fold('in_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Species'}),
@@ -2154,7 +2154,7 @@ class IrGenerationTests(unittest.TestCase):
                 'parent_name': expressions.OutputContextField(
                     animal_location.navigate_to_field('name'), GraphQLString),
                 'child_names': expressions.FoldedOutputContextField(
-                    animal_fold, 'name', GraphQLList(GraphQLString)),
+                    animal_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -2168,7 +2168,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.fold_on_output_variable()
 
         base_location = helpers.Location(('Animal',))
-        base_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
+        base_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2179,7 +2179,7 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_names_list': expressions.FoldedOutputContextField(
-                    base_fold, 'name', GraphQLList(GraphQLString)),
+                    base_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -2194,7 +2194,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        parent_fold = helpers.FoldScopeLocation(parent_location, (('out', 'Animal_ParentOf'),))
+        parent_fold = parent_location.navigate_to_fold('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2208,7 +2208,7 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'sibling_and_self_names_list': expressions.FoldedOutputContextField(
-                    parent_fold, 'name', GraphQLList(GraphQLString)),
+                    parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -2223,7 +2223,8 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.fold_and_traverse()
 
         base_location = helpers.Location(('Animal',))
-        parent_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
+        parent_fold = base_location.navigate_to_fold('in_Animal_ParentOf')
+        first_traversed_fold = parent_fold.navigate_to_subpath('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2235,7 +2236,7 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'sibling_and_self_names_list': expressions.FoldedOutputContextField(
-                    parent_fold, 'name', GraphQLList(GraphQLString)),
+                    first_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -2249,7 +2250,9 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.fold_and_deep_traverse()
 
         base_location = helpers.Location(('Animal',))
-        parent_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
+        parent_fold = base_location.navigate_to_fold('in_Animal_ParentOf')
+        first_traversed_fold = parent_fold.navigate_to_subpath('out_Animal_ParentOf')
+        second_traversed_fold = first_traversed_fold.navigate_to_subpath('out_Animal_OfSpecies')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2262,7 +2265,7 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'sibling_and_self_species_list': expressions.FoldedOutputContextField(
-                    parent_fold, 'name', GraphQLList(GraphQLString)),
+                    second_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -2277,7 +2280,8 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        sibling_fold = helpers.FoldScopeLocation(parent_location, (('out', 'Animal_ParentOf'),))
+        sibling_fold = parent_location.navigate_to_fold('out_Animal_ParentOf')
+        sibling_species_fold = sibling_fold.navigate_to_subpath('out_Animal_OfSpecies')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2292,7 +2296,7 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'sibling_and_self_species_list': expressions.FoldedOutputContextField(
-                    sibling_fold, 'name', GraphQLList(GraphQLString)),
+                    sibling_species_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -2307,7 +2311,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.multiple_outputs_in_same_fold()
 
         base_location = helpers.Location(('Animal',))
-        base_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
+        base_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2318,9 +2322,9 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_names_list': expressions.FoldedOutputContextField(
-                    base_fold, 'name', GraphQLList(GraphQLString)),
+                    base_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
                 'child_uuids_list': expressions.FoldedOutputContextField(
-                    base_fold, 'uuid', GraphQLList(GraphQLID)),
+                    base_fold.navigate_to_field('uuid'), GraphQLList(GraphQLID)),
             }),
         ]
         expected_location_types = {
@@ -2334,7 +2338,8 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.multiple_outputs_in_same_fold_and_traverse()
 
         base_location = helpers.Location(('Animal',))
-        base_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
+        base_fold = base_location.navigate_to_fold('in_Animal_ParentOf')
+        first_traversed_fold = base_fold.navigate_to_subpath('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2346,9 +2351,9 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'sibling_and_self_names_list': expressions.FoldedOutputContextField(
-                    base_fold, 'name', GraphQLList(GraphQLString)),
+                    first_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
                 'sibling_and_self_uuids_list': expressions.FoldedOutputContextField(
-                    base_fold, 'uuid', GraphQLList(GraphQLID)),
+                    first_traversed_fold.navigate_to_field('uuid'), GraphQLList(GraphQLID)),
             }),
         ]
         expected_location_types = {
@@ -2362,8 +2367,8 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.multiple_folds()
 
         base_location = helpers.Location(('Animal',))
-        base_out_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
-        base_in_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
+        base_out_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+        base_in_fold = base_location.navigate_to_fold('in_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2376,13 +2381,13 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_names_list': expressions.FoldedOutputContextField(
-                    base_out_fold, 'name', GraphQLList(GraphQLString)),
+                    base_out_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
                 'child_uuids_list': expressions.FoldedOutputContextField(
-                    base_out_fold, 'uuid', GraphQLList(GraphQLID)),
+                    base_out_fold.navigate_to_field('uuid'), GraphQLList(GraphQLID)),
                 'parent_names_list': expressions.FoldedOutputContextField(
-                    base_in_fold, 'name', GraphQLList(GraphQLString)),
+                    base_in_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
                 'parent_uuids_list': expressions.FoldedOutputContextField(
-                    base_in_fold, 'uuid', GraphQLList(GraphQLID)),
+                    base_in_fold.navigate_to_field('uuid'), GraphQLList(GraphQLID)),
             }),
         ]
         expected_location_types = {
@@ -2395,8 +2400,10 @@ class IrGenerationTests(unittest.TestCase):
     def test_multiple_folds_and_traverse(self):
         test_data = test_input_data.multiple_folds_and_traverse()
         base_location = helpers.Location(('Animal',))
-        base_out_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
-        base_in_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
+        base_out_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+        base_out_traversed_fold = base_out_fold.navigate_to_subpath('in_Animal_ParentOf')
+        base_in_fold = base_location.navigate_to_fold('in_Animal_ParentOf')
+        base_in_traversed_fold = base_in_fold.navigate_to_subpath('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2411,13 +2418,13 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'spouse_and_self_names_list': expressions.FoldedOutputContextField(
-                    base_out_fold, 'name', GraphQLList(GraphQLString)),
+                    base_out_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
                 'spouse_and_self_uuids_list': expressions.FoldedOutputContextField(
-                    base_out_fold, 'uuid', GraphQLList(GraphQLID)),
+                    base_out_traversed_fold.navigate_to_field('uuid'), GraphQLList(GraphQLID)),
                 'sibling_and_self_names_list': expressions.FoldedOutputContextField(
-                    base_in_fold, 'name', GraphQLList(GraphQLString)),
+                    base_in_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
                 'sibling_and_self_uuids_list': expressions.FoldedOutputContextField(
-                    base_in_fold, 'uuid', GraphQLList(GraphQLID)),
+                    base_in_traversed_fold.navigate_to_field('uuid'), GraphQLList(GraphQLID)),
             }),
         ]
         expected_location_types = {
@@ -2431,8 +2438,8 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.fold_date_and_datetime_fields()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
-        base_fed_at_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_FedAt'),))
+        base_parent_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+        base_fed_at_fold = base_location.navigate_to_fold('out_Animal_FedAt')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2445,9 +2452,9 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_birthdays_list': expressions.FoldedOutputContextField(
-                    base_parent_fold, 'birthday', GraphQLList(GraphQLDate)),
+                    base_parent_fold.navigate_to_field('birthday'), GraphQLList(GraphQLDate)),
                 'fed_at_datetimes_list': expressions.FoldedOutputContextField(
-                    base_fed_at_fold, 'event_date', GraphQLList(GraphQLDateTime)),
+                    base_fed_at_fold.navigate_to_field('event_date'), GraphQLList(GraphQLDateTime)),
             }),
         ]
         expected_location_types = {
@@ -2463,8 +2470,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_to_union_base_type_inside_fold()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(
-            base_location, (('out', 'Animal_ImportantEvent'),))
+        base_parent_fold = base_location.navigate_to_fold('out_Animal_ImportantEvent')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2475,7 +2481,7 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'important_events': expressions.FoldedOutputContextField(
-                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+                    base_parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -2489,7 +2495,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope()
 
         base_location = helpers.Location(('Animal',))
-        entity_fold = helpers.FoldScopeLocation(base_location, (('out', 'Entity_Related'),))
+        entity_fold = base_location.navigate_to_fold('out_Entity_Related')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2511,11 +2517,11 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Unfold(),
             blocks.ConstructResult({
                 'related_animals': expressions.FoldedOutputContextField(
-                    entity_fold, 'name', GraphQLList(GraphQLString)),
+                    entity_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'related_birthdays': expressions.FoldedOutputContextField(
-                    entity_fold, 'birthday', GraphQLList(GraphQLDate)),
+                    entity_fold.navigate_to_field('birthday'), GraphQLList(GraphQLDate)),
             }),
         ]
         expected_location_types = {
@@ -2529,7 +2535,8 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_traversal()
 
         base_location = helpers.Location(('Animal',))
-        parent_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
+        parent_fold = base_location.navigate_to_fold('in_Animal_ParentOf')
+        inner_fold = parent_fold.navigate_to_subpath('out_Entity_Related')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2551,12 +2558,12 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.Unfold(),
             blocks.ConstructResult({
-                'related_animals': expressions.FoldedOutputContextField(
-                    parent_fold, 'name', GraphQLList(GraphQLString)),
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
+                'related_animals': expressions.FoldedOutputContextField(
+                    inner_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
                 'related_birthdays': expressions.FoldedOutputContextField(
-                    parent_fold, 'birthday', GraphQLList(GraphQLDate)),
+                    inner_fold.navigate_to_field('birthday'), GraphQLList(GraphQLDate)),
             }),
         ]
         expected_location_types = {
@@ -2571,8 +2578,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.no_op_coercion_inside_fold()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(
-            base_location, (('out', 'Entity_Related'),))
+        base_parent_fold = base_location.navigate_to_fold('out_Entity_Related')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2583,7 +2589,7 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'related_entities': expressions.FoldedOutputContextField(
-                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+                    base_parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -2597,7 +2603,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.filter_within_fold_scope()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
+        base_parent_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2615,9 +2621,9 @@ class IrGenerationTests(unittest.TestCase):
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_list': expressions.FoldedOutputContextField(
-                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+                    base_parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
                 'child_descriptions': expressions.FoldedOutputContextField(
-                    base_parent_fold, 'description', GraphQLList(GraphQLString)),
+                    base_parent_fold.navigate_to_field('description'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -2631,7 +2637,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.filter_on_fold_scope()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
+        base_parent_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2657,7 +2663,7 @@ class IrGenerationTests(unittest.TestCase):
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_list': expressions.FoldedOutputContextField(
-                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+                    base_parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -2671,7 +2677,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_on_interface_within_fold_scope()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(base_location, (('out', 'Entity_Related'),))
+        base_parent_fold = base_location.navigate_to_fold('out_Entity_Related')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2683,7 +2689,7 @@ class IrGenerationTests(unittest.TestCase):
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'related_animals': expressions.FoldedOutputContextField(
-                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+                    base_parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -2697,7 +2703,9 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_on_interface_within_fold_traversal()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(base_location, (('in', 'Animal_ParentOf'),))
+        base_parent_fold = base_location.navigate_to_fold('in_Animal_ParentOf')
+        first_traversed_fold = base_parent_fold.navigate_to_subpath('out_Entity_Related')
+        second_traversed_fold = first_traversed_fold.navigate_to_subpath('out_Animal_OfSpecies')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2711,7 +2719,7 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'related_animal_species': expressions.FoldedOutputContextField(
-                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+                    second_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -2725,8 +2733,7 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_on_union_within_fold_scope()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = helpers.FoldScopeLocation(
-            base_location, (('out', 'Animal_ImportantEvent'),))
+        base_parent_fold = base_location.navigate_to_fold('out_Animal_ImportantEvent')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -2738,7 +2745,7 @@ class IrGenerationTests(unittest.TestCase):
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'birth_events': expressions.FoldedOutputContextField(
-                    base_parent_fold, 'name', GraphQLList(GraphQLString)),
+                    base_parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -3508,8 +3515,7 @@ class IrGenerationTests(unittest.TestCase):
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
-        fold_scope = helpers.FoldScopeLocation(
-            revisited_base_location, (('out', 'Animal_ParentOf'),))
+        fold_scope = revisited_base_location.navigate_to_fold('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -3531,7 +3537,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.NullLiteral
                 ),
                 'child_names_list': expressions.FoldedOutputContextField(
-                    fold_scope, 'name', GraphQLList(GraphQLString)),
+                    fold_scope.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -3547,7 +3553,7 @@ class IrGenerationTests(unittest.TestCase):
 
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        base_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
+        base_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
 
         expected_blocks = [
@@ -3570,7 +3576,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.NullLiteral
                 ),
                 'child_names_list': expressions.FoldedOutputContextField(
-                    base_fold, 'name', GraphQLList(GraphQLString)),
+                    base_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -3588,8 +3594,8 @@ class IrGenerationTests(unittest.TestCase):
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         grandparent_location = parent_location.navigate_to_subpath('in_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
-        fold_scope = helpers.FoldScopeLocation(
-            revisited_base_location, (('out', 'Animal_ParentOf'),))
+        fold_scope = revisited_base_location.navigate_to_fold('out_Animal_ParentOf')
+        first_traversed_fold = fold_scope.navigate_to_subpath('out_Animal_ParentOf')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
@@ -3615,7 +3621,7 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'grandchild_names_list': expressions.FoldedOutputContextField(
-                    fold_scope, 'name', GraphQLList(GraphQLString)),
+                    first_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
@@ -3633,7 +3639,8 @@ class IrGenerationTests(unittest.TestCase):
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         grandparent_location = parent_location.navigate_to_subpath('in_Animal_ParentOf')
-        base_fold = helpers.FoldScopeLocation(base_location, (('out', 'Animal_ParentOf'),))
+        base_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+        first_traversed_fold = base_fold.navigate_to_subpath('out_Animal_ParentOf')
         revisited_base_location = base_location.revisit()
 
         expected_blocks = [
@@ -3660,7 +3667,7 @@ class IrGenerationTests(unittest.TestCase):
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'grandchild_names_list': expressions.FoldedOutputContextField(
-                    base_fold, 'name', GraphQLList(GraphQLString)),
+                    first_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {

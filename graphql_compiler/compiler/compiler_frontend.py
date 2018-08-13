@@ -803,18 +803,15 @@ def _compile_output_step(outputs):
         location = output_context['location']
         optional = output_context['optional']
         graphql_type = output_context['type']
-        fold_scope_location = output_context['fold']
 
         expression = None
         existence_check = None
-        if fold_scope_location:
+        if isinstance(location, FoldScopeLocation):
             if optional:
                 raise AssertionError(u'Unreachable state reached, optional in fold: '
                                      u'{}'.format(output_context))
 
-            _, field_name = location.get_location_name()
-            expression = expressions.FoldedOutputContextField(
-                fold_scope_location, field_name, graphql_type)
+            expression = expressions.FoldedOutputContextField(location, graphql_type)
         else:
             expression = expressions.OutputContextField(location, graphql_type)
 
