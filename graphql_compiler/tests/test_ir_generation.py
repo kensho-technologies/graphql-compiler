@@ -2160,6 +2160,7 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Species',
             animal_location: 'Animal',
+            animal_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2183,8 +2184,8 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            base_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2212,9 +2213,9 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
             parent_location: 'Animal',
+            parent_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2240,8 +2241,9 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            parent_fold: 'Animal',
+            first_traversed_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2269,8 +2271,10 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            parent_fold: 'Animal',
+            first_traversed_fold: 'Animal',
+            second_traversed_fold: 'Species',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2300,9 +2304,10 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
             parent_location: 'Animal',
+            sibling_fold: 'Animal',
+            sibling_species_fold: 'Species',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2328,8 +2333,8 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            base_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2357,8 +2362,9 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            base_fold: 'Animal',
+            first_traversed_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2391,8 +2397,9 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            base_out_fold: 'Animal',
+            base_in_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2428,8 +2435,11 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            base_out_fold: 'Animal',
+            base_out_traversed_fold: 'Animal',
+            base_in_fold: 'Animal',
+            base_in_traversed_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2458,8 +2468,9 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            base_parent_fold: 'Animal',
+            base_fed_at_fold: 'Event',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2470,23 +2481,23 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_to_union_base_type_inside_fold()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = base_location.navigate_to_fold('out_Animal_ImportantEvent')
+        important_event_fold = base_location.navigate_to_fold('out_Animal_ImportantEvent')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
-            blocks.Fold(base_parent_fold),
+            blocks.Fold(important_event_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'important_events': expressions.FoldedOutputContextField(
-                    base_parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+                    important_event_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            important_event_fold: 'Event',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2495,12 +2506,12 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope()
 
         base_location = helpers.Location(('Animal',))
-        entity_fold = base_location.navigate_to_fold('out_Entity_Related')
+        related_entity_fold = base_location.navigate_to_fold('out_Entity_Related')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
-            blocks.Fold(entity_fold),
+            blocks.Fold(related_entity_fold),
             blocks.CoerceType({'Animal'}),
             blocks.Filter(expressions.BinaryComposition(
                 u'has_substring',
@@ -2517,16 +2528,16 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Unfold(),
             blocks.ConstructResult({
                 'related_animals': expressions.FoldedOutputContextField(
-                    entity_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+                    related_entity_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'related_birthdays': expressions.FoldedOutputContextField(
-                    entity_fold.navigate_to_field('birthday'), GraphQLList(GraphQLDate)),
+                    related_entity_fold.navigate_to_field('birthday'), GraphQLList(GraphQLDate)),
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            related_entity_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2567,8 +2578,9 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            parent_fold: 'Animal',
+            inner_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2578,23 +2590,23 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.no_op_coercion_inside_fold()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = base_location.navigate_to_fold('out_Entity_Related')
+        related_entity_fold = base_location.navigate_to_fold('out_Entity_Related')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
-            blocks.Fold(base_parent_fold),
+            blocks.Fold(related_entity_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'related_entities': expressions.FoldedOutputContextField(
-                    base_parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+                    related_entity_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            related_entity_fold: 'Entity',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2627,8 +2639,8 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            base_parent_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2667,8 +2679,8 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            base_parent_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2677,24 +2689,24 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_on_interface_within_fold_scope()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = base_location.navigate_to_fold('out_Entity_Related')
+        related_entity_fold = base_location.navigate_to_fold('out_Entity_Related')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
-            blocks.Fold(base_parent_fold),
+            blocks.Fold(related_entity_fold),
             blocks.CoerceType({'Animal'}),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'related_animals': expressions.FoldedOutputContextField(
-                    base_parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+                    related_entity_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            related_entity_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2723,8 +2735,10 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            base_parent_fold: 'Animal',
+            first_traversed_fold: 'Animal',
+            second_traversed_fold: 'Species',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2733,24 +2747,24 @@ class IrGenerationTests(unittest.TestCase):
         test_data = test_input_data.coercion_on_union_within_fold_scope()
 
         base_location = helpers.Location(('Animal',))
-        base_parent_fold = base_location.navigate_to_fold('out_Animal_ImportantEvent')
+        important_event_fold = base_location.navigate_to_fold('out_Animal_ImportantEvent')
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
-            blocks.Fold(base_parent_fold),
+            blocks.Fold(important_event_fold),
             blocks.CoerceType({'BirthEvent'}),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'birth_events': expressions.FoldedOutputContextField(
-                    base_parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+                    important_event_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
+            important_event_fold: 'BirthEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -3140,7 +3154,6 @@ class IrGenerationTests(unittest.TestCase):
             }),
         ]
         expected_location_types = {
-            # No MarkLocation blocks are output within folded scopes.
             base_location: 'Animal',
             parent_location: 'Animal',
             entity_location: 'Animal',
@@ -3544,6 +3557,7 @@ class IrGenerationTests(unittest.TestCase):
             base_location: 'Animal',
             parent_location: 'Animal',
             revisited_base_location: 'Animal',
+            fold_scope: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -3583,6 +3597,7 @@ class IrGenerationTests(unittest.TestCase):
             base_location: 'Animal',
             parent_location: 'Animal',
             revisited_base_location: 'Animal',
+            base_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -3629,6 +3644,8 @@ class IrGenerationTests(unittest.TestCase):
             parent_location: 'Animal',
             grandparent_location: 'Animal',
             revisited_base_location: 'Animal',
+            fold_scope: 'Animal',
+            first_traversed_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -3675,6 +3692,8 @@ class IrGenerationTests(unittest.TestCase):
             parent_location: 'Animal',
             grandparent_location: 'Animal',
             revisited_base_location: 'Animal',
+            base_fold: 'Animal',
+            first_traversed_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)

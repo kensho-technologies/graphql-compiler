@@ -353,6 +353,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     basic_blocks = []
     query_metadata_table = context['metadata']
     current_location_info = query_metadata_table.get_location_info(location)
+    context['location_types'][location] = strip_non_null_from_type(current_schema_type)
+
     vertex_fields, property_fields = fields
 
     validate_vertex_directives(unique_local_directives)
@@ -373,8 +375,6 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     # step V-3: mark the graph position, and process output_source directive
     if not is_in_fold_scope(context):
         # We only mark the position if we aren't in a folded scope.
-        # Folded scopes don't actually traverse to the location, so it's never really visited.
-        context['location_types'][location] = strip_non_null_from_type(current_schema_type)
         basic_blocks.append(_mark_location(location))
         # The following append is the Location corresponding to the initial MarkLocation
         # for the current vertex and the `num_traverses` counter set to 0.
