@@ -245,6 +245,15 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
 
+        list_output_inside_fold_block = '''{
+            Animal {
+                uuid @output(out_name: "uuid")
+                out_Animal_ParentOf @fold {
+                    alias @output(out_name: "disallowed_folded_list_output")
+                }
+            }
+        }'''
+
         fold_within_fold = '''{
             Animal {
                 out_Animal_ParentOf @fold {
@@ -318,6 +327,7 @@ class IrGenerationErrorTests(unittest.TestCase):
                         multi_level_outputs_inside_fold_block,
                         traversal_inside_fold_block_after_output,
                         no_outputs_inside_fold_block,
+                        list_output_inside_fold_block,
                         fold_within_fold,
                         optional_within_fold,
                         recurse_within_fold,
