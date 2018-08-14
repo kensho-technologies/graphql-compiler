@@ -436,7 +436,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 current_location_info.optional_scopes_depth + edge_traversal_is_optional),
             recursive_scopes_depth=(
                 current_location_info.recursive_scopes_depth + (recurse_directive is not None)),
-            is_folded=current_location_info.is_folded or (fold_directive is not None),
+            is_within_fold=current_location_info.is_within_fold or (fold_directive is not None),
         )
         query_metadata_table.register_location(inner_location, inner_location_info)
 
@@ -701,7 +701,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         coerced_from_type=None,
         optional_scopes_depth=0,
         recursive_scopes_depth=0,
-        is_folded=False,
+        is_within_fold=False,
     )
     query_metadata_table = QueryMetadataTable(location, base_location_info)
 
