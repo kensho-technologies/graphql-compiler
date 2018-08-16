@@ -5194,3 +5194,109 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_complex_nested_optionals(self):
+        test_data = test_input_data.complex_nested_optionals()
+
+        expected_match = '''
+            SELECT EXPAND($result)
+            LET
+            $optional__0 = (
+                SELECT
+                    Animal___1.name AS `animal_name`
+                FROM (
+                    MATCH {{
+                        class: Animal,
+                        where: ((
+                            (in_Animal_ParentOf IS null)
+                            OR
+                            (in_Animal_ParentOf.size() = 0)
+                        )),
+                        as: Animal___1
+                    }}
+                    RETURN $matches
+                )
+            ),
+            $optional__1 = (
+                SELECT
+                    Animal___1.name AS `animal_name`,
+                    Animal__in_Animal_ParentOf___1.name AS `child_name`
+                FROM (
+                    MATCH {{
+                        as: Animal___1
+                    }}.in('Animal_ParentOf') {{
+                        class: Animal,
+                        where: ((
+                            (out_Animal_ParentOf IS null)
+                            OR
+                            (out_Animal_ParentOf.size() = 0)
+                        )),
+                        as: Animal__in_Animal_ParentOf___1
+                    }}
+                    RETURN $matches
+                )
+            ),
+            $optional__2 = (
+                SELECT
+                    Animal___1.name AS `animal_name`,
+                    Animal__in_Animal_ParentOf___1.name AS `child_name`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name
+                        AS `spouse_and_self_name`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
+                        AS `spouse_species`
+                FROM (
+                    MATCH {{
+                        class: Animal,
+                        as: Animal___1
+                    }}.in('Animal_ParentOf') {{
+                        class: Animal,
+                        as: Animal__in_Animal_ParentOf___1
+                    }}.out('Animal_ParentOf') {{
+                        class: Animal,
+                        as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
+                    }}.out('Animal_OfSpecies') {{
+                        class: Species,
+                        as: Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                            __out_Animal_OfSpecies___1
+                    }}
+                    RETURN $matches
+                )
+            ),
+            $result = UNIONALL($optional__0, $optional__1, $optional__2)
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+                .as('Animal__in_Animal_ParentOf___1')
+                    .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
+                    .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf___1')
+                        .ifThenElse{it == null}{null}{it.out('Animal_OfSpecies')}
+                        .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                             __out_Animal_OfSpecies___1')
+                    .back('Animal__in_Animal_ParentOf__out_Animal_ParentOf___1')
+                .optional('Animal__in_Animal_ParentOf___1')
+                .as('Animal__in_Animal_ParentOf___2')
+            .optional('Animal___1')
+            .as('Animal___2')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                child_name: (
+                    (m.Animal__in_Animal_ParentOf___1 != null) ?
+                        m.Animal__in_Animal_ParentOf___1.name : null
+                ),
+                spouse_and_self_name: (
+                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 != null) ?
+                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
+                ),
+                spouse_species: (
+                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                       __out_Animal_OfSpecies___1 != null) ?
+                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                          __out_Animal_OfSpecies___1.name
+                        : null
+                )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)

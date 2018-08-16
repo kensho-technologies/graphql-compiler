@@ -2379,3 +2379,50 @@ def nested_optional_and_traverse():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
+
+
+def complex_nested_optionals():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf @optional {
+                name @output(out_name: "child_name")
+                in_Animal_ParentOf @optional {
+                    name @output(out_name: "grandchild_name")
+                    out_Animal_OfSpecies {
+                        name @output(out_name: "grandchild_species")
+                    }
+                }
+                in_Entity_Related @optional {
+                    ... on Animal {
+                        name @output(out_name: "grandchild_relation_name")
+                        out_Animal_OfSpecies {
+                            name @output(out_name: "grandchild_relation_species")
+                        }
+                    }
+                }
+            }
+            out_Animal_ParentOf @optional {
+                name @output(out_name: "parent_name")
+                out_Animal_ParentOf @optional {
+                    name @output(out_name: "grandparent_name")
+                    out_Animal_OfSpecies {
+                        name @output(out_name: "grandparent_species")
+                    }
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'child_name': OutputMetadata(type=GraphQLString, optional=True),
+        'spouse_and_self_name': OutputMetadata(type=GraphQLString, optional=True),
+        'spouse_species': OutputMetadata(type=GraphQLString, optional=True),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
