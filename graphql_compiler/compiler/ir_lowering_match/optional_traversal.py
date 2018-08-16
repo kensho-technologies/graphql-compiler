@@ -111,7 +111,7 @@ def convert_optional_traversals_to_compound_match_query(
     optional_root_location_subsets = construct_optional_traversal_tree(
         complex_optional_roots, location_to_optional_roots)
     optional_root_location_subsets = sorted([
-        set(subset)
+        set(complex_optional_roots) - set(subset)
         for subset in optional_root_location_subsets
     ], key=lambda l: ''.join(sorted(repr(x) for x in l)))
 

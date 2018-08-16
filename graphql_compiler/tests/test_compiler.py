@@ -5114,6 +5114,25 @@ class CompilerTests(unittest.TestCase):
             $optional__1 = (
                 SELECT
                     Animal___1.name AS `animal_name`,
+                    Animal__in_Animal_ParentOf___1.name AS `child_name`
+                FROM (
+                    MATCH {{
+                        as: Animal___1
+                    }}.in('Animal_ParentOf') {{
+                        class: Animal,
+                        where: ((
+                            (out_Animal_ParentOf IS null)
+                            OR
+                            (out_Animal_ParentOf.size() = 0)
+                        )),
+                        as: Animal__in_Animal_ParentOf___1
+                    }}
+                    RETURN $matches
+                )
+            ),
+            $optional__2 = (
+                SELECT
+                    Animal___1.name AS `animal_name`,
                     Animal__in_Animal_ParentOf___1.name AS `child_name`,
                     Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name
                         AS `spouse_and_self_name`,
@@ -5137,7 +5156,7 @@ class CompilerTests(unittest.TestCase):
                     RETURN $matches
                 )
             ),
-            $result = UNIONALL($optional__0, $optional__1)
+            $result = UNIONALL($optional__0, $optional__1, $optional__2)
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')

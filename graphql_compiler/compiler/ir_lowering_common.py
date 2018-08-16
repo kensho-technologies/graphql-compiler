@@ -263,9 +263,8 @@ def extract_optional_location_root_info(ir_blocks):
             in_optional_root_locations.pop()
             encountered_traverse_within_optional.pop()
         elif isinstance(current_block, MarkLocation):
-            if len(in_optional_root_locations) == 0:
-                preceding_location = current_block.location
-            else:
+            preceding_location = current_block.location
+            if len(in_optional_root_locations) != 0:
                 # in_optional_root_locations will not be None if and only if we are within an
                 # @optional scope. In this case, add the current location to the dictionary.
                 # TODO(shankha): Should this map to a list? <07-08-18>

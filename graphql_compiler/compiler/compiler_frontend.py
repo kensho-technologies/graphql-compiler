@@ -489,7 +489,6 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                      u'Location: {}'.format(location))
 
         if in_topmost_optional_block:
-            basic_blocks.append(blocks.EndOptional())
             del context['optional']
 
         # If we are currently evaluating a @fold vertex,
@@ -503,6 +502,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         )
         if backtracking_required:
             if optional_directive is not None:
+                basic_blocks.append(blocks.EndOptional())
                 basic_blocks.append(blocks.Backtrack(location, optional=True))
 
                 # Exiting optional block!
