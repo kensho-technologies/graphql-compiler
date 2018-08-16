@@ -257,7 +257,7 @@ class OptionalTraversalTrie(dict):
             for location in self
         }
         all_location_subsets = [
-            sorted(list(subset))
+            list(subset)
             for subset in itertools.chain(*[
                 itertools.combinations(self, x)
                 for x in range(0, len(self) + 1)
