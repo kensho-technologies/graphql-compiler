@@ -337,7 +337,7 @@ class Location(BaseLocation):
                 self.field == other.field and
                 self.visit_counter == other.visit_counter)
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         # TODO(shankha): Docstring <07-08-18>
         return repr(self) < repr(other)
 
