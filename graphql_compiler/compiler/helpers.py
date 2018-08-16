@@ -337,9 +337,9 @@ class Location(BaseLocation):
                 self.field == other.field and
                 self.visit_counter == other.visit_counter)
 
-    def __lt__(self, other):
+    # def __lt__(self, other):
         # TODO(shankha): Docstring <07-08-18>
-        return repr(self) < repr(other)
+        # return repr(self) < repr(other)
 
     def __ne__(self, other):
         """Check another object for non-equality against this one."""
