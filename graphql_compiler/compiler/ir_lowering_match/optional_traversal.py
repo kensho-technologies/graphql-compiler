@@ -110,13 +110,13 @@ def convert_optional_traversals_to_compound_match_query(
     ]
     optional_root_location_subsets = construct_optional_traversal_tree(
         complex_optional_roots, location_to_optional_roots)
-    optional_root_location_subsets = sorted([
+    omitted_location_subsets = sorted([
         set(complex_optional_roots) - set(subset)
         for subset in optional_root_location_subsets
     ], key=lambda l: ''.join(sorted(repr(x) for x in l)))
 
     compound_match_traversals = []
-    for omitted_locations in reversed(optional_root_location_subsets):
+    for omitted_locations in reversed(omitted_location_subsets):
         new_match_traversals = []
         for match_traversal in match_query.match_traversals:
             location = match_traversal[0].as_block.location
