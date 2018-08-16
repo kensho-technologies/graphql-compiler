@@ -24,6 +24,7 @@ INBOUND_EDGE_FIELD_PREFIX = 'in_'
 
 OUTBOUND_EDGE_DIRECTION = 'out'
 INBOUND_EDGE_DIRECTION = 'in'
+ALLOWED_EDGE_DIRECTIONS = frozenset({OUTBOUND_EDGE_DIRECTION, INBOUND_EDGE_DIRECTION})
 
 
 FilterOperationInfo = namedtuple(
@@ -197,7 +198,7 @@ def validate_edge_direction(edge_direction):
         raise TypeError(u'Expected string edge_direction, got: {} {}'.format(
                         type(edge_direction), edge_direction))
 
-    if edge_direction not in {INBOUND_EDGE_DIRECTION, OUTBOUND_EDGE_DIRECTION}:
+    if edge_direction not in ALLOWED_EDGE_DIRECTIONS:
         raise ValueError(u'Unrecognized edge direction: {}'.format(edge_direction))
 
 
@@ -209,6 +210,11 @@ def validate_marked_location(location):
 
     if location.field is not None:
         raise GraphQLCompilationError(u'Cannot mark location at a field: {}'.format(location))
+
+
+def _create_fold_path_component(edge_direction, edge_name):
+    """Return a tuple representing a fold_path component of a FoldScopeLocation."""
+    return ((edge_direction, edge_name),)  # tuple containing a tuple of two elements
 
 
 @six.add_metaclass(ABCMeta)
@@ -308,7 +314,7 @@ class Location(BaseLocation):
 
         edge_direction, edge_name = get_edge_direction_and_name(folded_child)
 
-        fold_path = ((edge_direction, edge_name),)  # tuple containing one tuple of two elements
+        fold_path = _create_fold_path_component(edge_direction, edge_name)
         return FoldScopeLocation(self, fold_path)
 
     def revisit(self):
@@ -373,7 +379,7 @@ class FoldScopeLocation(BaseLocation):
             raise TypeError(u'Expected fold_path to be a non-empty tuple, but got: {} {}'
                             .format(type(fold_path), fold_path))
         fold_path_is_valid = all(
-            len(element) == 2 and element[0] in {OUTBOUND_EDGE_DIRECTION, INBOUND_EDGE_DIRECTION}
+            len(element) == 2 and element[0] in ALLOWED_EDGE_DIRECTIONS
             for element in fold_path
         )
         if not fold_path_is_valid:
@@ -423,7 +429,7 @@ class FoldScopeLocation(BaseLocation):
             raise AssertionError(u'Currently at a field, cannot go to child: {}'.format(self))
 
         edge_direction, edge_name = get_edge_direction_and_name(child)
-        new_fold_path = self.fold_path + ((edge_direction, edge_name),)
+        new_fold_path = self.fold_path + _create_fold_path_component(edge_direction, edge_name)
         return FoldScopeLocation(self.base_location, new_fold_path)
 
     def __str__(self):
