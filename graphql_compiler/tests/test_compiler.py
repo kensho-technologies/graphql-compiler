@@ -5163,13 +5163,14 @@ class CompilerTests(unittest.TestCase):
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
                 .as('Animal__in_Animal_ParentOf___1')
-                    .ifThenElse{it == null}{null}{it.out('Animal_ParentOf')}
+                    .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
                     .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf___1')
                         .ifThenElse{it == null}{null}{it.out('Animal_OfSpecies')}
                         .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf
                              __out_Animal_OfSpecies___1')
                     .back('Animal__in_Animal_ParentOf__out_Animal_ParentOf___1')
-                .back('Animal__in_Animal_ParentOf___1')
+                .optional('Animal__in_Animal_ParentOf___1')
+                .as('Animal__in_Animal_ParentOf___2')
             .optional('Animal___1')
             .as('Animal___2')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
