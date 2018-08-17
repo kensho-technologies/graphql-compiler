@@ -125,13 +125,12 @@ def rewrite_filters_in_optional_blocks(ir_blocks):
 class GremlinFoldedOutputContextField(Expression):
     """A Gremlin-specific FoldedOutputContextField that knows how to output itself as Gremlin."""
 
-    def __init__(self, fold_scope_location, folded_ir_blocks, field_name, field_type):
+    def __init__(self, fold_scope_location, folded_ir_blocks, field_type):
         """Create a new GremlinFoldedOutputContextField."""
         super(GremlinFoldedOutputContextField, self).__init__(
-            fold_scope_location, folded_ir_blocks, field_name, field_type)
+            fold_scope_location, folded_ir_blocks, field_type)
         self.fold_scope_location = fold_scope_location
         self.folded_ir_blocks = folded_ir_blocks
-        self.field_name = field_name
         self.field_type = field_type
         self.validate()
 
@@ -149,17 +148,15 @@ class GremlinFoldedOutputContextField(Expression):
                     u'Allowed types are {}.'
                     .format(type(block), self.folded_ir_blocks, allowed_block_types))
 
-        validate_safe_string(self.field_name)
-
         if not isinstance(self.field_type, GraphQLList):
             raise ValueError(u'Invalid value of "field_type", expected a list type but got: '
                              u'{}'.format(self.field_type))
 
         inner_type = strip_non_null_from_type(self.field_type.of_type)
         if isinstance(inner_type, GraphQLList):
-            raise GraphQLCompilationError(u'Outputting list-valued fields in a @fold context is '
-                                          u'currently not supported: {} '
-                                          u'{}'.format(self.field_name, self.field_type.of_type))
+            raise GraphQLCompilationError(
+                u'Outputting list-valued fields in a @fold context is currently '
+                u'not supported: {} {}'.format(self.fold_scope_location, self.field_type.of_type))
 
     def to_match(self):
         """Must never be called."""
@@ -168,15 +165,20 @@ class GremlinFoldedOutputContextField(Expression):
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
-        edge_direction, edge_name = self.fold_scope_location.relative_position
+        edge_direction, edge_name = self.fold_scope_location.get_first_folded_edge()
+        validate_safe_string(edge_name)
+
         inverse_direction_table = {
             'out': 'in',
             'in': 'out',
         }
         inverse_direction = inverse_direction_table[edge_direction]
 
-        mark_name, _ = self.fold_scope_location.base_location.get_location_name()
-        validate_safe_string(mark_name)
+        base_location_name, _ = self.fold_scope_location.base_location.get_location_name()
+        validate_safe_string(base_location_name)
+
+        _, field_name = self.fold_scope_location.get_location_name()
+        validate_safe_string(field_name)
 
         if not self.folded_ir_blocks:
             # There is no filtering nor type coercions applied to this @fold scope.
@@ -189,8 +191,8 @@ class GremlinFoldedOutputContextField(Expression):
             #     )
             # )
             template = (
-                u'((m.{mark_name}.{direction}_{edge_name} == null) ? [] : ('
-                u'm.{mark_name}.{direction}_{edge_name}.collect{{'
+                u'((m.{base_location_name}.{direction}_{edge_name} == null) ? [] : ('
+                u'm.{base_location_name}.{direction}_{edge_name}.collect{{'
                 u'entry -> entry.{inverse_direction}V.next().{field_name}{maybe_format}'
                 u'}}'
                 u'))'
@@ -210,8 +212,8 @@ class GremlinFoldedOutputContextField(Expression):
             #     )
             # )
             template = (
-                u'((m.{mark_name}.{direction}_{edge_name} == null) ? [] : ('
-                u'm.{mark_name}.{direction}_{edge_name}.collect{{'
+                u'((m.{base_location_name}.{direction}_{edge_name} == null) ? [] : ('
+                u'm.{base_location_name}.{direction}_{edge_name}.collect{{'
                 u'entry -> entry.{inverse_direction}V.next()'
                 u'}}'
                 u'.{filters_and_traverses}'
@@ -229,10 +231,10 @@ class GremlinFoldedOutputContextField(Expression):
             maybe_format = '.format("' + STANDARD_DATETIME_FORMAT + '")'
 
         template_data = {
-            'mark_name': mark_name,
+            'base_location_name': base_location_name,
             'direction': edge_direction,
             'edge_name': edge_name,
-            'field_name': self.field_name,
+            'field_name': field_name,
             'inverse_direction': inverse_direction,
             'maybe_format': maybe_format,
             'filters_and_traverses': filter_and_traverse_data,
@@ -324,8 +326,8 @@ def lower_folded_outputs(ir_blocks):
 
     # Turn folded Filter blocks into GremlinFoldedFilter blocks.
     converted_folds = {
-        key: _convert_folded_blocks(folded_ir_blocks)
-        for key, folded_ir_blocks in six.iteritems(folds)
+        base_fold_location.get_location_name()[0]: _convert_folded_blocks(folded_ir_blocks)
+        for base_fold_location, folded_ir_blocks in six.iteritems(folds)
     }
 
     new_output_fields = dict()
@@ -335,10 +337,11 @@ def lower_folded_outputs(ir_blocks):
         # Turn FoldedOutputContextField expressions into GremlinFoldedOutputContextField ones.
         if isinstance(output_expression, FoldedOutputContextField):
             # Get the matching folded IR blocks and put them in the new context field.
-            folded_ir_blocks = converted_folds[output_expression.fold_scope_location]
+            base_fold_location_name = output_expression.fold_scope_location.get_location_name()[0]
+            folded_ir_blocks = converted_folds[base_fold_location_name]
             new_output_expression = GremlinFoldedOutputContextField(
                 output_expression.fold_scope_location, folded_ir_blocks,
-                output_expression.field_name, output_expression.field_type)
+                output_expression.field_type)
 
         new_output_fields[output_name] = new_output_expression
 
