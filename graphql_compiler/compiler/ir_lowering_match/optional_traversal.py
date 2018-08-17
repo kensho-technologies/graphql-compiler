@@ -104,19 +104,18 @@ def convert_optional_traversals_to_compound_match_query(
         CompoundMatchQuery object containing 2^n MatchQuery objects,
         one for each possible subset of the n optional edges being followed
     """
-    optional_root_location_combinations_list = [
-        itertools.combinations(complex_optional_roots, x)
-        for x in range(0, len(complex_optional_roots) + 1)
-    ]
-    optional_root_location_subsets = construct_optional_traversal_tree(
+    tree = construct_optional_traversal_tree(
         complex_optional_roots, location_to_optional_roots)
-    omitted_location_subsets = sorted([
+    rooted_optional_root_location_subsets = tree.get_all_rooted_subtrees_as_lists()
+
+    omitted_location_subsets = [
         set(complex_optional_roots) - set(subset)
-        for subset in optional_root_location_subsets
-    ], key=lambda l: ''.join(sorted(repr(x) for x in l)))
+        for subset in rooted_optional_root_location_subsets
+    ]
+    sorted_omitted_location_subsets = sorted(omitted_location_subsets)
 
     compound_match_traversals = []
-    for omitted_locations in reversed(omitted_location_subsets):
+    for omitted_locations in reversed(sorted_omitted_location_subsets):
         new_match_traversals = []
         for match_traversal in match_query.match_traversals:
             location = match_traversal[0].as_block.location

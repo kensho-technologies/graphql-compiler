@@ -227,35 +227,42 @@ class OptionalTraversalTrie(dict):
         #  TODO: Docstring <15-08-18, shankha> # 
         super(OptionalTraversalTrie, self).__init__()
         self._complex_optional_roots = complex_optional_roots
-        self._visited_locations = set()
 
     def insert(self, optional_root_locations_path):
         #  TODO: Docstring <15-08-18, shankha> # 
-        if not optional_root_locations_path:
+        if len(optional_root_locations_path) == 0:
+            # Reached end of path
             return
         optional_root_location = optional_root_locations_path[0]
-        if optional_root_location in self._visited_locations:
-            if optional_root_location not in self:
-                raise AssertionError(u'Shitfuck')
-        elif optional_root_location in self._complex_optional_roots:
-            self._visited_locations.add(optional_root_location)
-            self[optional_root_location] = OptionalTraversalTrie(self._complex_optional_roots)
-        else:
+        if optional_root_location not in self._complex_optional_roots:
+            # Simple optionals are ignored.
+            # There should be no copmplex optionals after a simple optional.
+            if len(optional_root_locations_path) != 1:
+                raise AssertionError(u'Encountered simple optional root location {} at first '
+                                     u'position along path, but further locations are present. '
+                                     u'This should not happen: {}'
+                                     .format(optional_root_location, optional_root_locations_path))
             return
+
+        if optional_root_location not in self:
+            self[optional_root_location] = OptionalTraversalTrie(self._complex_optional_roots)
+
         self[optional_root_location].insert(optional_root_locations_path[1:])
 
-    def get_all_rooted_subtrees(self):
+    def get_all_rooted_subtrees_as_lists(self):
         # TODO(shankha): Docstring <07-08-18>
         if self == {}:
             return [[]]
 
-        location_to_subtree_list = {
+        location_to_list_of_subtrees = {
             location: [
                 subtree
-                for subtree in self[location].get_all_rooted_subtrees()
+                for subtree in self[location].get_all_rooted_subtrees_as_lists()
             ]
             for location in self
         }
+
+        # All subsets of direct child locations
         all_location_subsets = [
             list(subset)
             for subset in itertools.chain(*[
@@ -264,17 +271,20 @@ class OptionalTraversalTrie(dict):
             ])
         ]
 
-        new_subtree_list = []
+        new_subtrees_as_lists = []
         for location_subset in all_location_subsets:
-            all_subtree_combinations = itertools.product(*[
-                location_to_subtree_list[location]
+            all_child_subtree_possibilities = [
+                location_to_list_of_subtrees[location]
                 for location in location_subset
-            ])
-            for subtree_combination in all_subtree_combinations:
-                new_subtree = location_subset + list(itertools.chain(*subtree_combination))
-                new_subtree_list.append(new_subtree)
+            ]
+            all_child_subtree_combinations = itertools.product(*all_child_subtree_possibilities)
 
-        return new_subtree_list
+            for child_subtree_combination in all_child_subtree_combinations:
+                merged_child_subtree_combination = list(itertools.chain(*child_subtree_combination))
+                new_subtree_as_list = location_subset + merged_child_subtree_combination
+                new_subtrees_as_lists.append(new_subtree_as_list)
+
+        return new_subtrees_as_lists
 
 
 def construct_optional_traversal_tree(complex_optional_roots, location_to_optional_roots):
@@ -293,4 +303,4 @@ def construct_optional_traversal_tree(complex_optional_roots, location_to_option
         optional_root_locations_tree_path = list(reversed(optional_root_locations_stack))
         tree.insert(list(optional_root_locations_stack))
 
-    return tree.get_all_rooted_subtrees()
+    return tree
