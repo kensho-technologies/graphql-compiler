@@ -219,8 +219,8 @@ def extract_optional_location_root_info(ir_blocks):
         complex_optional_roots: list of @optional locations (location immmediately preceding
                                 an @optional Traverse) that expand vertex fields
         location_to_optional_roots: dict mapping from location -> optional_roots where location is
-                                    within some number of @optionals and optional_roots is a list 
-                                    of optional root locations preceding the successive @optional 
+                                    within some number of @optionals and optional_roots is a list
+                                    of optional root locations preceding the successive @optional
                                     scopes within which the location resides
     """
     complex_optional_roots = []
@@ -240,12 +240,6 @@ def extract_optional_location_root_info(ir_blocks):
             encountered_traverse_within_optional[-1] = True
 
         if isinstance(current_block, Traverse) and current_block.optional:
-            # TODO(shankha): Add comments and change assertions. <07-08-18>
-            # TODO(shankha): Bad check should be [] instead of None <07-08-18>
-            # if in_optional_root_locations is not None:
-                # raise AssertionError(u'in_optional_root_locations was not None at an optional '
-                                     # u'Traverse: {} {}'.format(current_block, ir_blocks))
-
             if preceding_location is None:
                 raise AssertionError(u'No MarkLocation found before an optional Traverse: {} {}'
                                      .format(current_block, ir_blocks))
@@ -254,8 +248,8 @@ def extract_optional_location_root_info(ir_blocks):
             encountered_traverse_within_optional.append(False)
         elif isinstance(current_block, EndOptional):
             if len(in_optional_root_locations) == 0:
-                raise AssertionError(u'in_optional_root_locations was empty at an EndOptional block: '
-                                     u'{}'.format(ir_blocks))
+                raise AssertionError(u'in_optional_root_locations was empty at an EndOptional '
+                                     u'block: {}'.format(ir_blocks))
 
             if encountered_traverse_within_optional[-1]:
                 complex_optional_roots.append(in_optional_root_locations[-1])
@@ -265,9 +259,9 @@ def extract_optional_location_root_info(ir_blocks):
         elif isinstance(current_block, MarkLocation):
             preceding_location = current_block.location
             if len(in_optional_root_locations) != 0:
-                # in_optional_root_locations will not be None if and only if we are within an
-                # @optional scope. In this case, add the current location to the dictionary.
-                # TODO(shankha): Should this map to a list? <07-08-18>
+                # in_optional_root_locations will not be empty if and only if we are within an
+                # @optional scope. In this case, we add the current location to the dictionary
+                # mapping it to the sequence of optionals locations leading up to it.
                 optional_root_locations_stack = tuple(in_optional_root_locations)
                 location_to_optional_roots[current_block.location] = optional_root_locations_stack
         else:
@@ -286,8 +280,8 @@ def extract_simple_optional_location_info(
         complex_optional_roots: list of @optional locations (location immmediately preceding
                                 an @optional traverse) that expand vertex fields
         location_to_optional_roots: dict mapping from location -> optional_roots where location is
-                                    within some number of @optionals and optional_roots is a list 
-                                    of optional root locations preceding the successive @optional 
+                                    within some number of @optionals and optional_roots is a list
+                                    of optional root locations preceding the successive @optional
                                     scopes within which the location resides
 
     Returns:

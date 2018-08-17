@@ -219,10 +219,6 @@ def validate_vertex_field_directive_in_context(parent_location, vertex_field_nam
         raise GraphQLCompilationError(u'Found non-fold vertex field after the vertex marked '
                                       u'output source! Parent location: {}, vertex field name: {}'
                                       .format(parent_location, vertex_field_name))
-    # if optional_context and optional_directive:
-        # raise GraphQLCompilationError(u'@optional is not allowed within a @optional traversal! '
-                                      # u'Parent location: {}, vertex field name: {}'
-                                      # .format(parent_location, vertex_field_name))
     if optional_context and fold_directive:
         raise GraphQLCompilationError(u'@fold is not allowed within a @optional traversal! '
                                       u'Parent location: {}, vertex field name: {}'

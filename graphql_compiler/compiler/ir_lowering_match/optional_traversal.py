@@ -1,6 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from functools import partial
-import itertools
 
 import six
 
@@ -9,9 +8,8 @@ from ..expressions import (BinaryComposition, ContextField, FoldedOutputContextF
                            LocalField, OutputContextField, TernaryConditional, TrueLiteral,
                            UnaryTransformation, Variable)
 from ..match_query import MatchQuery, MatchStep
-from .utils import (BetweenClause, CompoundMatchQuery, expression_list_to_conjunction,
-                    filter_edge_field_non_existence)
-from .utils import construct_optional_traversal_tree, construct_where_filter_predicate
+from .utils import (BetweenClause, CompoundMatchQuery, construct_optional_traversal_tree,
+                    expression_list_to_conjunction, filter_edge_field_non_existence)
 
 
 def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
@@ -27,8 +25,8 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
         complex_optional_roots: list of all @optional locations (location immmediately preceding
                                 an @optional traverse) that expand vertex fields
         location_to_optional_roots: dict mapping from location -> optional_roots where location is
-                                    within some number of @optionals and optional_roots is a list 
-                                    of optional root locations preceding the successive @optional 
+                                    within some number of @optionals and optional_roots is a list
+                                    of optional root locations preceding the successive @optional
                                     scopes within which the location resides
 
     Returns:
@@ -96,8 +94,8 @@ def convert_optional_traversals_to_compound_match_query(
         complex_optional_roots: list of @optional locations (location preceding an @optional
                                 traverse) that expand vertex fields within
         location_to_optional_roots: dict mapping from location -> optional_roots where location is
-                                    within some number of @optionals and optional_roots is a list 
-                                    of optional root locations preceding the successive @optional 
+                                    within some number of @optionals and optional_roots is a list
+                                    of optional root locations preceding the successive @optional
                                     scopes within which the location resides
 
     Returns:

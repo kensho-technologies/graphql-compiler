@@ -223,18 +223,25 @@ CompoundMatchQuery = namedtuple('CompoundMatchQuery', ('match_queries'))
 
 
 class OptionalTraversalTrie(dict):
-    def __init__(self, complex_optional_roots):
-        #  TODO: Docstring <15-08-18, shankha> # 
+    def __init__(self):
+        """Initialize empty trie of optional root Locations (elements of complex_optional_roots)."""
         super(OptionalTraversalTrie, self).__init__()
-        self._complex_optional_roots = complex_optional_roots
 
-    def insert(self, optional_root_locations_path):
-        #  TODO: Docstring <15-08-18, shankha> # 
+    def insert(self, optional_root_locations_path, complex_optional_roots):
+        """Insert a path of optional Locations into the trie.
+
+        Each OptionalTraversalTrie object contains child Location objects as keys mapping to
+        other OptionalTraversalTrie objects.
+
+        Args:
+            optional_root_locations_path: list of optional root Locations all except the last
+                                          of which must be present in complex_optional_roots
+        """
         if len(optional_root_locations_path) == 0:
-            # Reached end of path
+            # Reached end of path.
             return
         optional_root_location = optional_root_locations_path[0]
-        if optional_root_location not in self._complex_optional_roots:
+        if optional_root_location not in complex_optional_roots:
             # Simple optionals are ignored.
             # There should be no copmplex optionals after a simple optional.
             if len(optional_root_locations_path) != 1:
@@ -245,15 +252,21 @@ class OptionalTraversalTrie(dict):
             return
 
         if optional_root_location not in self:
-            self[optional_root_location] = OptionalTraversalTrie(self._complex_optional_roots)
+            # Current Location does not exist as a child.
+            # Insert it and point it to an empty trie.
+            self[optional_root_location] = OptionalTraversalTrie()
 
-        self[optional_root_location].insert(optional_root_locations_path[1:])
+        # Recurse on the suffix of the path.
+        child_trie_node = self[optional_root_location]
+        child_trie_node.insert(optional_root_locations_path[1:], complex_optional_roots)
 
     def get_all_rooted_subtrees_as_lists(self):
-        # TODO(shankha): Docstring <07-08-18>
+        """Return a list of all rooted subtrees (each as a list of Location objects)."""
         if self == {}:
+            # Empty trie only retuens a singleton list containing the null set (as an empty list).
             return [[]]
 
+        # Recursively find all rooted subtrees of each of the children of the current node.
         location_to_list_of_subtrees = {
             location: [
                 subtree
@@ -262,7 +275,7 @@ class OptionalTraversalTrie(dict):
             for location in self
         }
 
-        # All subsets of direct child locations
+        # All subsets of direct child Location objects
         all_location_subsets = [
             list(subset)
             for subset in itertools.chain(*[
@@ -271,6 +284,8 @@ class OptionalTraversalTrie(dict):
             ])
         ]
 
+        # For every possible subset of the children, and every combination of the chosen
+        # subtrees within, create a list of subtree Location lists.
         new_subtrees_as_lists = []
         for location_subset in all_location_subsets:
             all_child_subtree_possibilities = [
@@ -288,19 +303,21 @@ class OptionalTraversalTrie(dict):
 
 
 def construct_optional_traversal_tree(complex_optional_roots, location_to_optional_roots):
-    """
-    # TODO(shankha): Complete docstring <07-08-18>
+    """Return a trie of complex optional root locations.
 
     Args:
+        complex_optional_roots: list of @optional locations (location immmediately preceding
+                                an @optional Traverse) that expand vertex fields
         location_to_optional_roots: dict mapping from location -> optional_roots where location is
-                                    within some number of @optionals and optional_roots is a list 
-                                    of optional root locations preceding the successive @optional 
+                                    within some number of @optionals and optional_roots is a list
+                                    of optional root locations preceding the successive @optional
                                     scopes within which the location resides
-    """
-    tree = OptionalTraversalTrie(complex_optional_roots)
 
+    Returns:
+        OptionalTraversalTrie object representing the tree of complex optional roots
+    """
+    tree = OptionalTraversalTrie()
     for location, optional_root_locations_stack in six.iteritems(location_to_optional_roots):
-        optional_root_locations_tree_path = list(reversed(optional_root_locations_stack))
-        tree.insert(list(optional_root_locations_stack))
+        tree.insert(list(optional_root_locations_stack), complex_optional_roots)
 
     return tree
