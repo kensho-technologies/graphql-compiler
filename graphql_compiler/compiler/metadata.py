@@ -13,7 +13,8 @@ LocationInfo = namedtuple(
         'coerced_from_type',       # str, the type before coercion, or None if no coercion applied
         'optional_scopes_depth',   # int, how many nested optional scopes this location is in
         'recursive_scopes_depth',  # int, how many nested recursion scopes this location is in
-        'is_within_fold',          # bool, True if this location is within an optional scope
+        'is_within_fold',          # bool, True if this location is within a fold scope;
+                                   #       fold scopes are not allowed to nest within each other.
     )
 )
 

@@ -403,6 +403,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         in_topmost_optional_block = False
 
         edge_traversal_is_optional = optional_directive is not None
+        edge_traversal_is_folded = fold_directive is not None
+        edge_traversal_is_recursive = recurse_directive is not None
 
         # This is true for any vertex expanded within an @optional scope.
         # Currently @optional is not allowed within @optional.
@@ -435,8 +437,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             optional_scopes_depth=(
                 current_location_info.optional_scopes_depth + edge_traversal_is_optional),
             recursive_scopes_depth=(
-                current_location_info.recursive_scopes_depth + (recurse_directive is not None)),
-            is_within_fold=current_location_info.is_within_fold or (fold_directive is not None),
+                current_location_info.recursive_scopes_depth + edge_traversal_is_recursive),
+            is_within_fold=(current_location_info.is_within_fold or edge_traversal_is_folded),
         )
         query_metadata_table.register_location(inner_location, inner_location_info)
 
@@ -465,7 +467,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                                 optional=edge_traversal_is_optional,
                                                 within_optional_scope=within_optional_scope))
 
-        if not fold_directive and not is_in_fold_scope(context):
+        if not edge_traversal_is_folded and not is_in_fold_scope(context):
             # Current block is either a Traverse or a Recurse that is not within any fold context.
             # Increment the `num_traverses` counter.
             old_location_stack_entry = context['marked_location_stack'][-1]
@@ -477,7 +479,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                                      inner_location, context)
         basic_blocks.extend(inner_basic_blocks)
 
-        if fold_directive:
+        if edge_traversal_is_folded:
             _validate_fold_has_outputs(context['fold'], context['outputs'])
             basic_blocks.append(blocks.Unfold())
             del context['fold']
@@ -501,7 +503,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             (not has_encountered_output_source(context))
         )
         if backtracking_required:
-            if optional_directive is not None:
+            if edge_traversal_is_optional:
                 basic_blocks.append(blocks.EndOptional())
                 basic_blocks.append(blocks.Backtrack(location, optional=True))
 
