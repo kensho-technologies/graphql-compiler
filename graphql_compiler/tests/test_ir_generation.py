@@ -32,14 +32,15 @@ def check_test_data(test_case, test_data, expected_blocks, expected_location_typ
     test_case.assertEqual(
         test_data.expected_output_metadata, compilation_results.output_metadata)
     test_case.assertEqual(
-        expected_location_types, comparable_location_types(compilation_results.location_types))
+        expected_location_types,
+        get_comparable_location_types(compilation_results.query_metadata_table))
 
 
-def comparable_location_types(location_types):
-    """Convert the dict of Location -> GraphQL object type into a dict of Location -> string."""
+def get_comparable_location_types(query_metadata_table):
+    """Return the dict of location -> GraphQL type name for each location in the query."""
     return {
-        location: graphql_type.name
-        for location, graphql_type in six.iteritems(location_types)
+        location: location_info.type.name
+        for location, location_info in query_metadata_table.registered_locations
     }
 
 

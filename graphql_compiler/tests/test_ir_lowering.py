@@ -15,8 +15,9 @@ from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
 from ..compiler.ir_lowering_match.utils import BetweenClause, CompoundMatchQuery
 from ..compiler.match_query import MatchQuery, convert_to_match_query
+from ..compiler.metadata import LocationInfo, QueryMetadataTable
 from ..schema import GraphQLDate
-from .test_helpers import compare_ir_blocks, construct_location_types
+from .test_helpers import compare_ir_blocks, construct_location_types, get_schema
 
 
 def check_test_data(test_case, expected_object, received_object):
@@ -721,6 +722,8 @@ class MatchIrLoweringTests(unittest.TestCase):
         #         }
         #     }
         # }'''
+        schema = get_schema()
+
         base_location = Location(('Animal',))
         child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         child_fed_at_location = child_location.navigate_to_subpath('out_Animal_FedAt')
@@ -752,13 +755,19 @@ class MatchIrLoweringTests(unittest.TestCase):
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
 
-        location_types = construct_location_types({
-            base_location: 'Animal',
-            child_location: 'Animal',
-            child_fed_at_location: 'Event',
-            revisited_base_location: 'Animal',
-        })
-        coerced_locations = set()
+        animal_graphql_type = schema.get_type('Animal')
+        event_graphql_type = schema.get_type('Event')
+        base_location_info = LocationInfo(None, animal_graphql_type, None, 0, 0, False)
+        query_metadata_table = QueryMetadataTable(base_location, base_location_info)
+
+        query_metadata_table.register_location(
+            child_location,
+            LocationInfo(base_location, animal_graphql_type, None, 1, 0, False))
+        query_metadata_table.register_location(
+            child_fed_at_location,
+            LocationInfo(child_location, event_graphql_type, None, 1, 0, False))
+        query_metadata_table.register_location(
+            revisited_base_location, base_location_info)
 
         expected_final_blocks_without_optional_traverse = [
             QueryRoot({'Animal'}),
@@ -811,7 +820,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             ]
         )
 
-        final_query = ir_lowering_match.lower_ir(ir_blocks, location_types, coerced_locations)
+        final_query = ir_lowering_match.lower_ir(ir_blocks, query_metadata_table)
 
         self.assertEqual(
             expected_compound_match_query, final_query,

@@ -28,14 +28,14 @@ from .utils import construct_where_filter_predicate
 ##############
 
 
-def lower_ir(ir_blocks, location_types, coerced_locations, type_equivalence_hints=None):
+def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     """Lower the IR into an IR form that can be represented in MATCH queries.
 
     Args:
         ir_blocks: list of IR blocks to lower into MATCH-compatible form
-        location_types: dict of location objects -> GraphQL type objects at that location
-        coerced_locations: set of locations where type coercions were applied to constrain the type
-                           relative to the type inferred by the GraphQL schema and the given field
+        query_metadata_table: QueryMetadataTable object containing all metadata collected during
+                              query processing, including location metadata (e.g. which locations
+                              are folded or optional).
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
                                 Used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a
@@ -56,6 +56,19 @@ def lower_ir(ir_blocks, location_types, coerced_locations, type_equivalence_hint
         MatchQuery object containing the IR blocks organized in a MATCH-like structure
     """
     sanity_check_ir_blocks_from_frontend(ir_blocks)
+
+    # Construct the mapping of each location to its corresponding GraphQL type.
+    location_types = {
+        location: location_info.type
+        for location, location_info in query_metadata_table.registered_locations
+    }
+
+    # Compute the set of all locations that have associated type coercions.
+    coerced_locations = {
+        location
+        for location, location_info in query_metadata_table.registered_locations
+        if location_info.coerced_from_type is not None
+    }
 
     # Extract information for both simple and complex @optional traverses
     location_to_optional_results = extract_optional_location_root_info(ir_blocks)
