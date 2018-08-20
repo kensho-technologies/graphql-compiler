@@ -204,8 +204,8 @@ def validate_edge_direction(edge_direction):
 
 def validate_marked_location(location):
     """Validate that a Location object is safe for marking, and not at a field."""
-    if not isinstance(location, Location):
-        raise TypeError(u'Expected Location location, got: {} {}'.format(
+    if not isinstance(location, (Location, FoldScopeLocation)):
+        raise TypeError(u'Expected Location or FoldScopeLocation location, got: {} {}'.format(
             type(location).__name__, location))
 
     if location.field is not None:

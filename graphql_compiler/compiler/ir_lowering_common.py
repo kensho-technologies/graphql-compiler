@@ -228,16 +228,19 @@ def extract_optional_location_root_info(ir_blocks):
     in_optional_root_location = None
     encountered_traverse_within_optional = False
 
+    # Blocks within folded scopes should not be taken into account in this function.
+    _, non_folded_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
+
     preceding_location = None
-    for current_block in ir_blocks:
+    for current_block in non_folded_ir_blocks:
         if isinstance(current_block, Traverse) and current_block.optional:
             if in_optional_root_location is not None:
                 raise AssertionError(u'in_optional_root_location was not None at an optional '
-                                     u'Traverse: {} {}'.format(current_block, ir_blocks))
+                                     u'Traverse: {} {}'.format(current_block, non_folded_ir_blocks))
 
             if preceding_location is None:
                 raise AssertionError(u'No MarkLocation found before an optional Traverse: {} {}'
-                                     .format(current_block, ir_blocks))
+                                     .format(current_block, non_folded_ir_blocks))
 
             in_optional_root_location = preceding_location
         elif all((in_optional_root_location is not None,
@@ -246,7 +249,7 @@ def extract_optional_location_root_info(ir_blocks):
         elif isinstance(current_block, EndOptional):
             if in_optional_root_location is None:
                 raise AssertionError(u'in_optional_root_location was None at an EndOptional block: '
-                                     u'{}'.format(ir_blocks))
+                                     u'{}'.format(non_folded_ir_blocks))
 
             if encountered_traverse_within_optional:
                 complex_optional_roots.append(in_optional_root_location)
@@ -297,9 +300,12 @@ def extract_simple_optional_location_info(
     }
     simple_optional_root_locations = set(simple_optional_root_to_inner_location.keys())
 
+    # Blocks within folded scopes should not be taken into account in this function.
+    _, non_folded_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
+
     simple_optional_root_info = {}
     preceding_location = None
-    for current_block in ir_blocks:
+    for current_block in non_folded_ir_blocks:
         if isinstance(current_block, MarkLocation):
             preceding_location = current_block.location
         elif isinstance(current_block, Traverse) and current_block.optional:
