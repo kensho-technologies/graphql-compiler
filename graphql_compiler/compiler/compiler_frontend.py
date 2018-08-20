@@ -78,9 +78,11 @@ from .directive_helpers import (get_local_filter_directives, get_unique_directiv
                                 validate_vertex_field_directive_in_context,
                                 validate_vertex_field_directive_interactions)
 from .filters import process_filter_directive
-from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_field_type_from_schema,
-                      get_uniquely_named_objects_by_name, get_vertex_field_type,
-                      is_vertex_field_name, strip_non_null_from_type, validate_safe_string)
+from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_edge_direction_and_name,
+                      get_field_type_from_schema, get_uniquely_named_objects_by_name,
+                      get_vertex_field_type, is_vertex_field_name, strip_non_null_from_type,
+                      validate_safe_string)
+from .metadata import LocationInfo, QueryMetadataTable
 
 
 # LocationStackEntry contains the following:
@@ -131,7 +133,7 @@ IrAndMetadata = namedtuple(
 
 
 def _get_fields(ast):
-    """Return a list of property fields, and a list of vertex fields, for the given AST node.
+    """Return a list of vertex fields, and a list of property fields, for the given AST node.
 
     Also verifies that all property fields for the AST node appear before all vertex fields,
     raising GraphQLCompilationError if that is not the case.
@@ -141,8 +143,8 @@ def _get_fields(ast):
 
     Returns:
         tuple of two lists
-            - the first list contains ASTs for property fields
-            - the second list contains ASTs for vertex fields
+            - the first list contains ASTs for vertex fields
+            - the second list contains ASTs for property fields
     """
     if not ast.selection_set:
         # There are no child fields.
@@ -330,21 +332,6 @@ def _validate_recurse_directive_types(current_schema_type, field_schema_type):
                                       u'{}'.format(current_schema_type, field_schema_type))
 
 
-def _get_edge_direction_and_name(vertex_field_name):
-    """Get the edge direction and name from a non-root vertex field name."""
-    edge_direction = None
-    edge_name = None
-    if vertex_field_name.startswith('out_'):
-        edge_direction = 'out'
-        edge_name = vertex_field_name[4:]
-    elif vertex_field_name.startswith('in_'):
-        edge_direction = 'in'
-        edge_name = vertex_field_name[3:]
-    else:
-        raise AssertionError(u'Unreachable condition reached:', vertex_field_name)
-    return edge_direction, edge_name
-
-
 def _compile_vertex_ast(schema, current_schema_type, ast,
                         location, context, unique_local_directives, fields):
     """Return a list of basic blocks corresponding to the vertex AST node.
@@ -365,6 +352,10 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         list of basic blocks, the compiled output of the vertex AST node
     """
     basic_blocks = []
+    query_metadata_table = context['metadata']
+    current_location_info = query_metadata_table.get_location_info(location)
+    context['location_types'][location] = strip_non_null_from_type(current_schema_type)
+
     vertex_fields, property_fields = fields
 
     validate_vertex_directives(unique_local_directives)
@@ -385,8 +376,6 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     # step V-3: mark the graph position, and process output_source directive
     if not is_in_fold_scope(context):
         # We only mark the position if we aren't in a folded scope.
-        # Folded scopes don't actually traverse to the location, so it's never really visited.
-        context['location_types'][location] = strip_non_null_from_type(current_schema_type)
         basic_blocks.append(_mark_location(location))
         # The following append is the Location corresponding to the initial MarkLocation
         # for the current vertex and the `num_traverses` counter set to 0.
@@ -400,14 +389,14 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     # step V-4: step into vertex fields
     for field_ast in vertex_fields:
         field_name = get_ast_field_name(field_ast)
-        inner_location = location.navigate_to_subpath(field_name)
-        validate_context_for_visiting_vertex_field(inner_location, context)
+        validate_context_for_visiting_vertex_field(location, field_name, context)
 
         field_schema_type = get_vertex_field_type(current_schema_type, field_name)
 
         inner_unique_directives = get_unique_directives(field_ast)
-        validate_vertex_field_directive_interactions(inner_location, inner_unique_directives)
-        validate_vertex_field_directive_in_context(inner_location, inner_unique_directives, context)
+        validate_vertex_field_directive_interactions(location, field_name, inner_unique_directives)
+        validate_vertex_field_directive_in_context(
+            location, field_name, inner_unique_directives, context)
 
         recurse_directive = inner_unique_directives.get('recurse', None)
         optional_directive = inner_unique_directives.get('optional', None)
@@ -415,6 +404,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         in_topmost_optional_block = False
 
         edge_traversal_is_optional = optional_directive is not None
+        edge_traversal_is_folded = fold_directive is not None
+        edge_traversal_is_recursive = recurse_directive is not None
 
         # This is true for any vertex expanded within an @optional scope.
         # Currently @optional is not allowed within @optional.
@@ -427,27 +418,44 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             # to jump back to. Otherwise, the traversal could rewind to an old marked location
             # and might ignore entire stretches of applied filtering.
             if context['marked_location_stack'][-1].num_traverses > 0:
-                location = location.revisit()
+                location = query_metadata_table.revisit_location(location)
+
                 context['location_types'][location] = strip_non_null_from_type(current_schema_type)
                 basic_blocks.append(_mark_location(location))
                 context['marked_location_stack'].pop()
                 new_stack_entry = _construct_location_stack_entry(location, 0)
                 context['marked_location_stack'].append(new_stack_entry)
 
+        if fold_directive:
+            inner_location = location.navigate_to_fold(field_name)
+        else:
+            inner_location = location.navigate_to_subpath(field_name)
+
+        inner_location_info = LocationInfo(
+            parent_location=location,
+            type=field_schema_type.name,
+            coerced_from_type=None,
+            optional_scopes_depth=(
+                current_location_info.optional_scopes_depth + edge_traversal_is_optional),
+            recursive_scopes_depth=(
+                current_location_info.recursive_scopes_depth + edge_traversal_is_recursive),
+            is_within_fold=(current_location_info.is_within_fold or edge_traversal_is_folded),
+        )
+        query_metadata_table.register_location(inner_location, inner_location_info)
+
+        if edge_traversal_is_optional:
             # Remember where the topmost optional context started.
             topmost_optional = context.get('optional', None)
             if topmost_optional is None:
                 context['optional'] = inner_location
                 in_topmost_optional_block = True
 
-        edge_direction, edge_name = _get_edge_direction_and_name(field_name)
+        edge_direction, edge_name = get_edge_direction_and_name(field_name)
 
         if fold_directive:
-            current_location = context['marked_location_stack'][-1].location
-            fold_scope_location = FoldScopeLocation(current_location, (edge_direction, edge_name))
-            fold_block = blocks.Fold(fold_scope_location)
+            fold_block = blocks.Fold(inner_location)
             basic_blocks.append(fold_block)
-            context['fold'] = fold_scope_location
+            context['fold'] = inner_location
         elif recurse_directive:
             recurse_depth = _get_recurse_directive_depth(field_name, inner_unique_directives)
             _validate_recurse_directive_types(current_schema_type, field_schema_type)
@@ -460,7 +468,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                                 optional=edge_traversal_is_optional,
                                                 within_optional_scope=within_optional_scope))
 
-        if not fold_directive and not is_in_fold_scope(context):
+        if not edge_traversal_is_folded and not is_in_fold_scope(context):
             # Current block is either a Traverse or a Recurse that is not within any fold context.
             # Increment the `num_traverses` counter.
             old_location_stack_entry = context['marked_location_stack'][-1]
@@ -472,7 +480,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                                      inner_location, context)
         basic_blocks.extend(inner_basic_blocks)
 
-        if fold_directive:
+        if edge_traversal_is_folded:
             _validate_fold_has_outputs(context['fold'], context['outputs'])
             basic_blocks.append(blocks.Unfold())
             del context['fold']
@@ -481,7 +489,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             else:
                 raise AssertionError(u'Output inside @fold scope did not add '
                                      u'"fold_innermost_scope" to context! '
-                                     u'Location: {}'.format(fold_scope_location))
+                                     u'Location: {}'.format(location))
 
         if in_topmost_optional_block:
             basic_blocks.append(blocks.EndOptional())
@@ -489,17 +497,23 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         # If we are currently evaluating a @fold vertex,
         # we didn't Traverse into it, so we don't need to backtrack out either.
-        # Alternatively, we don't backtrack if we've reached an @output_source.
+        # We also don't backtrack if we're currently inside a @fold scope, or
+        # if we've reached an @output_source.
         backtracking_required = (
-            (not fold_directive) and (not has_encountered_output_source(context)))
+            (not fold_directive) and
+            (not isinstance(location, FoldScopeLocation)) and
+            (not has_encountered_output_source(context))
+        )
         if backtracking_required:
-            if optional_directive is not None:
+            if edge_traversal_is_optional:
                 basic_blocks.append(blocks.Backtrack(location, optional=True))
 
                 # Exiting optional block!
-                # Add a MarkLocation right after the optional, to ensure future Backtrack blocks
-                # return to a position after the optional set of blocks.
-                location = location.revisit()
+                # Revisit the location so that there is a marked location right after the optional,
+                # so that future Backtrack blocks return after the optional set of blocks, and
+                # don't accidentally return to a prior location instead.
+                location = query_metadata_table.revisit_location(location)
+
                 context['location_types'][location] = strip_non_null_from_type(current_schema_type)
                 basic_blocks.append(_mark_location(location))
                 context['marked_location_stack'].pop()
@@ -551,10 +565,13 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     Returns:
         list of basic blocks, the compiled output of the vertex AST node
     """
+    query_metadata_table = context['metadata']
+
     # step F-2. Emit a type coercion block if appropriate,
     #           then recurse into the fragment's selection.
     coerces_to_type_name = ast.type_condition.name.value
     coerces_to_type_obj = schema.get_type(coerces_to_type_name)
+    query_metadata_table.record_coercion_at_location(location, coerces_to_type_name)
 
     basic_blocks = []
 
@@ -679,9 +696,21 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     # Validation passed, so the base_start_type must exist as a field of the root query.
     current_schema_type = get_field_type_from_schema(schema.get_query_type(), base_start_type)
 
-    # Construct the start location of the query, and the starting context object.
+    # Construct the start location of the query and its associated metadata.
     location = Location((base_start_type,))
+    base_location_info = LocationInfo(
+        parent_location=None,
+        type=base_start_type,
+        coerced_from_type=None,
+        optional_scopes_depth=0,
+        recursive_scopes_depth=0,
+        is_within_fold=False,
+    )
+    query_metadata_table = QueryMetadataTable(location, base_location_info)
+
+    # Construct the starting context object.
     context = {
+        'metadata': query_metadata_table,
         # 'tags' is a dict containing
         #  - location: Location where the tag was defined
         #  - optional: boolean representing whether the tag was defined within an @optional scope
@@ -777,18 +806,15 @@ def _compile_output_step(outputs):
         location = output_context['location']
         optional = output_context['optional']
         graphql_type = output_context['type']
-        fold_scope_location = output_context['fold']
 
         expression = None
         existence_check = None
-        if fold_scope_location:
+        if isinstance(location, FoldScopeLocation):
             if optional:
                 raise AssertionError(u'Unreachable state reached, optional in fold: '
                                      u'{}'.format(output_context))
 
-            _, field_name = location.get_location_name()
-            expression = expressions.FoldedOutputContextField(
-                fold_scope_location, field_name, graphql_type)
+            expression = expressions.FoldedOutputContextField(location, graphql_type)
         else:
             expression = expressions.OutputContextField(location, graphql_type)
 

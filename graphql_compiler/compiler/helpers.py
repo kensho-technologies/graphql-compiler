@@ -1,5 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Common helper objects, base classes and methods."""
+from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 import string
 
@@ -17,6 +18,13 @@ STANDARD_DATE_FORMAT = 'yyyy-MM-dd'
 STANDARD_DATETIME_FORMAT = 'yyyy-MM-dd\'T\'HH:mm:ssX'
 
 VARIABLE_ALLOWED_CHARS = frozenset(six.text_type(string.ascii_letters + string.digits + '_'))
+
+OUTBOUND_EDGE_FIELD_PREFIX = 'out_'
+INBOUND_EDGE_FIELD_PREFIX = 'in_'
+
+OUTBOUND_EDGE_DIRECTION = 'out'
+INBOUND_EDGE_DIRECTION = 'in'
+ALLOWED_EDGE_DIRECTIONS = frozenset({OUTBOUND_EDGE_DIRECTION, INBOUND_EDGE_DIRECTION})
 
 
 FilterOperationInfo = namedtuple(
@@ -88,9 +96,30 @@ def strip_non_null_from_type(graphql_type):
     return graphql_type
 
 
+def get_edge_direction_and_name(vertex_field_name):
+    """Get the edge direction and name from a non-root vertex field name."""
+    edge_direction = None
+    edge_name = None
+    if vertex_field_name.startswith(OUTBOUND_EDGE_FIELD_PREFIX):
+        edge_direction = OUTBOUND_EDGE_DIRECTION
+        edge_name = vertex_field_name[len(OUTBOUND_EDGE_FIELD_PREFIX):]
+    elif vertex_field_name.startswith(INBOUND_EDGE_FIELD_PREFIX):
+        edge_direction = INBOUND_EDGE_DIRECTION
+        edge_name = vertex_field_name[len(INBOUND_EDGE_FIELD_PREFIX):]
+    else:
+        raise AssertionError(u'Unreachable condition reached:', vertex_field_name)
+
+    validate_safe_string(edge_name)
+
+    return edge_direction, edge_name
+
+
 def is_vertex_field_name(field_name):
     """Return True if the field's name indicates it is a non-root vertex field."""
-    return field_name.startswith('out_') or field_name.startswith('in_')
+    return (
+        field_name.startswith(OUTBOUND_EDGE_FIELD_PREFIX) or
+        field_name.startswith(INBOUND_EDGE_FIELD_PREFIX)
+    )
 
 
 def is_vertex_field_type(graphql_type):
@@ -169,7 +198,7 @@ def validate_edge_direction(edge_direction):
         raise TypeError(u'Expected string edge_direction, got: {} {}'.format(
                         type(edge_direction), edge_direction))
 
-    if edge_direction not in {u'in', u'out'}:
+    if edge_direction not in ALLOWED_EDGE_DIRECTIONS:
         raise ValueError(u'Unrecognized edge direction: {}'.format(edge_direction))
 
 
@@ -183,8 +212,33 @@ def validate_marked_location(location):
         raise GraphQLCompilationError(u'Cannot mark location at a field: {}'.format(location))
 
 
+def _create_fold_path_component(edge_direction, edge_name):
+    """Return a tuple representing a fold_path component of a FoldScopeLocation."""
+    return ((edge_direction, edge_name),)  # tuple containing a tuple of two elements
+
+
+@six.add_metaclass(ABCMeta)
+class BaseLocation(object):
+    """An abstract location object, describing a location in the GraphQL query."""
+
+    @abstractmethod
+    def navigate_to_field(self, field):
+        """Return a new BaseLocation object at the specified field of the current BaseLocation."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def navigate_to_subpath(self, child):
+        """Return a new BaseLocation after a traversal to the specified child location."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_location_name(self):
+        """Return a tuple of a unique name of the location, and the current field name (or None)."""
+        raise NotImplementedError()
+
+
 @six.python_2_unicode_compatible
-class Location(object):
+class Location(BaseLocation):
     def __init__(self, query_path, field=None, visit_counter=1):
         """Create a new Location object.
 
@@ -250,6 +304,19 @@ class Location(object):
             raise AssertionError(u'Currently at a field, cannot go to child: {}'.format(self))
         return Location(self.query_path + (child,))
 
+    def navigate_to_fold(self, folded_child):
+        """Return a new FoldScopeLocation for the folded child vertex of the current Location."""
+        if not isinstance(folded_child, six.string_types):
+            raise TypeError(u'Expected folded_child to be a string, was: {}'.format(folded_child))
+        if self.field:
+            raise AssertionError(u'Currently at a field, cannot go to folded child: '
+                                 u'{}'.format(self))
+
+        edge_direction, edge_name = get_edge_direction_and_name(folded_child)
+
+        fold_path = _create_fold_path_component(edge_direction, edge_name)
+        return FoldScopeLocation(self, fold_path)
+
     def revisit(self):
         """Return a new Location object with an incremented 'visit_counter'."""
         if self.field:
@@ -286,18 +353,19 @@ class Location(object):
 
 
 @six.python_2_unicode_compatible
-class FoldScopeLocation(object):
-    def __init__(self, base_location, relative_position):
+class FoldScopeLocation(BaseLocation):
+    def __init__(self, base_location, fold_path, field=None):
         """Create a new FoldScopeLocation object. Used to represent the locations of @fold scopes.
 
         Args:
             base_location: Location object defining where the @fold scope is rooted. In other words,
                            the location of the tightest scope that fully contains the @fold scope.
-            relative_position: (edge_direction, edge_name) tuple, representing where the @fold scope
-                               lies within its base_location scope.
+            fold_path: tuple of (edge_direction, edge_name) tuples, containing the traversal path
+                       of the fold, starting from the base_location of the @fold scope.
+            field: string if at a field in a vertex, or None if at a vertex
 
         Returns:
-            a new FoldScopeLocation object
+            new FoldScopeLocation object
         """
         if not isinstance(base_location, Location):
             raise TypeError(u'Expected a Location for base_location, got: '
@@ -307,28 +375,67 @@ class FoldScopeLocation(object):
             raise ValueError(u'Expected Location object that points to a vertex, got: '
                              u'{}'.format(base_location))
 
-        if not isinstance(relative_position, tuple) or not len(relative_position) == 2:
-            raise TypeError(u'Expected relative_position to be a tuple of two elements, got: '
-                            u'{} {}'.format(type(relative_position), relative_position))
-
-        # If we ever allow folds deeper than a single level,
-        # relative_position might need rethinking.
-        edge_direction, edge_name = relative_position
-        validate_edge_direction(edge_direction)
-        validate_safe_string(edge_name)
+        if not isinstance(fold_path, tuple) or len(fold_path) == 0:
+            raise TypeError(u'Expected fold_path to be a non-empty tuple, but got: {} {}'
+                            .format(type(fold_path), fold_path))
+        fold_path_is_valid = all(
+            len(element) == 2 and element[0] in ALLOWED_EDGE_DIRECTIONS
+            for element in fold_path
+        )
+        if not fold_path_is_valid:
+            raise ValueError(u'Encountered an invalid fold_path: {}'.format(fold_path))
 
         self.base_location = base_location
-        self.relative_position = relative_position
+        self.fold_path = fold_path
+        self.field = field
 
     def get_location_name(self):
-        """Return a unique name for the FoldScopeLocation."""
-        edge_direction, edge_name = self.relative_position
-        return (self.base_location.get_location_name()[0] + u'___' +
-                edge_direction + u'_' + edge_name)
+        """Return a tuple of a unique name of the location, and the current field name (or None)."""
+        # We currently require that all outputs from a given fold are from the same location:
+        # any given fold has one set of traversals away from the root, and all outputs are
+        # at the tip of the set of traversals.
+        #
+        # Therefore, for the purposes of creating a unique edge name, it's sufficient to take
+        # only one traversal from the root of the fold. This allows fold names to be shorter.
+        first_folded_edge_direction, first_folded_edge_name = self.get_first_folded_edge()
+
+        unique_name = u''.join((
+            self.base_location.get_location_name()[0],
+            u'___',
+            first_folded_edge_direction,
+            u'_',
+            first_folded_edge_name
+        ))
+        return (unique_name, self.field)
+
+    def get_first_folded_edge(self):
+        """Return a tuple representing the first folded edge within the fold scope."""
+        # The constructor of this object guarantees that the fold has at least one traversal,
+        # so the [0]-indexing is guaranteed to not raise an exception.
+        first_folded_edge_direction, first_folded_edge_name = self.fold_path[0]
+        return first_folded_edge_direction, first_folded_edge_name
+
+    def navigate_to_field(self, field):
+        """Return a new location object at the specified field of the current location."""
+        if self.field:
+            raise AssertionError(u'Already at a field, cannot nest fields: {}'.format(self))
+        return FoldScopeLocation(self.base_location, self.fold_path, field=field)
+
+    def navigate_to_subpath(self, child):
+        """Return a new location after a traversal to the specified child location."""
+        if not isinstance(child, six.string_types):
+            raise TypeError(u'Expected child to be a string, was: {}'.format(child))
+        if self.field:
+            raise AssertionError(u'Currently at a field, cannot go to child: {}'.format(self))
+
+        edge_direction, edge_name = get_edge_direction_and_name(child)
+        new_fold_path = self.fold_path + _create_fold_path_component(edge_direction, edge_name)
+        return FoldScopeLocation(self.base_location, new_fold_path)
 
     def __str__(self):
         """Return a human-readable str representation of the FoldScopeLocation object."""
-        return u'FoldScopeLocation({}, {})'.format(self.base_location, self.relative_position)
+        return u'FoldScopeLocation({}, {}, field={})'.format(
+            self.base_location, self.fold_path, self.field)
 
     def __repr__(self):
         """Return a human-readable str representation of the FoldScopeLocation object."""
@@ -338,7 +445,8 @@ class FoldScopeLocation(object):
         """Return True if the FoldScopeLocations are equal, and False otherwise."""
         return (type(self) == type(other) and
                 self.base_location == other.base_location and
-                self.relative_position == other.relative_position)
+                self.fold_path == other.fold_path and
+                self.field == other.field)
 
     def __ne__(self, other):
         """Check another object for non-equality against this one."""
@@ -346,4 +454,4 @@ class FoldScopeLocation(object):
 
     def __hash__(self):
         """Return the object's hash value."""
-        return hash(self.base_location) ^ hash(self.relative_position)
+        return hash(self.base_location) ^ hash(self.fold_path) ^ hash(self.field)
