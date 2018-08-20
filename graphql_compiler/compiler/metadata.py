@@ -9,8 +9,11 @@ LocationInfo = namedtuple(
     'LocationInfo',
     (
         'parent_location',         # Location/FoldScopeLocation, the parent of the current location
-        'type',                    # str, the actual type name at that location
-        'coerced_from_type',       # str, the type before coercion, or None if no coercion applied
+        'type',                    # GraphQL type object for the type at that location
+
+        'coerced_from_type',       # GraphQL type object for the type before coercion,
+                                   # or None if no coercion was applied
+
         'optional_scopes_depth',   # int, how many nested optional scopes this location is in
         'recursive_scopes_depth',  # int, how many nested recursion scopes this location is in
         'is_within_fold',          # bool, True if this location is within a fold scope;
@@ -77,6 +80,12 @@ class QueryMetadataTable(object):
     def get_location_info(self, location):
         """Return the LocationInfo object for a given location."""
         return self._locations[location]
+
+    @property
+    def registered_locations(self):
+        """Return an iterable of (location, location_info) tuples for all registered locations."""
+        for location, location_info in six.iteritems(self._locations):
+            yield location, location_info
 
     def __str__(self):
         """Return a human-readable str representation of the QueryMetadataTable object."""

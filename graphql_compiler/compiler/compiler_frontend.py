@@ -353,7 +353,6 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     basic_blocks = []
     query_metadata_table = context['metadata']
     current_location_info = query_metadata_table.get_location_info(location)
-    context['location_types'][location] = strip_non_null_from_type(current_schema_type)
 
     vertex_fields, property_fields = fields
 
@@ -418,7 +417,6 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             if context['marked_location_stack'][-1].num_traverses > 0:
                 location = query_metadata_table.revisit_location(location)
 
-                context['location_types'][location] = strip_non_null_from_type(current_schema_type)
                 basic_blocks.append(_mark_location(location))
                 context['marked_location_stack'].pop()
                 new_stack_entry = _construct_location_stack_entry(location, 0)
@@ -431,7 +429,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         inner_location_info = LocationInfo(
             parent_location=location,
-            type=field_schema_type.name,
+            type=strip_non_null_from_type(field_schema_type),
             coerced_from_type=None,
             optional_scopes_depth=(
                 current_location_info.optional_scopes_depth + edge_traversal_is_optional),
@@ -512,7 +510,6 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 # don't accidentally return to a prior location instead.
                 location = query_metadata_table.revisit_location(location)
 
-                context['location_types'][location] = strip_non_null_from_type(current_schema_type)
                 basic_blocks.append(_mark_location(location))
                 context['marked_location_stack'].pop()
                 new_stack_entry = _construct_location_stack_entry(location, 0)
@@ -569,7 +566,7 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     #           then recurse into the fragment's selection.
     coerces_to_type_name = ast.type_condition.name.value
     coerces_to_type_obj = schema.get_type(coerces_to_type_name)
-    query_metadata_table.record_coercion_at_location(location, coerces_to_type_name)
+    query_metadata_table.record_coercion_at_location(location, coerces_to_type_obj)
 
     basic_blocks = []
 
@@ -586,7 +583,6 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
 
     if not (is_same_type_as_scope or is_base_type_of_union):
         # Coercion is required.
-        context['coerced_locations'].add(location)
         basic_blocks.append(blocks.CoerceType({coerces_to_type_name}))
 
     inner_basic_blocks = _compile_ast_node_to_ir(
@@ -698,7 +694,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     location = Location((base_start_type,))
     base_location_info = LocationInfo(
         parent_location=None,
-        type=base_start_type,
+        type=current_schema_type,
         coerced_from_type=None,
         optional_scopes_depth=0,
         recursive_scopes_depth=0,
@@ -724,12 +720,6 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         # 'inputs' is a dict mapping input parameter names to their respective expected GraphQL
         # types, as automatically inferred by inspecting the query structure
         'inputs': dict(),
-        # 'location_types' is a dict mapping each Location to its GraphQLType
-        # (schema type of the location)
-        'location_types': dict(),
-        # 'coerced_locations' is the set of all locations whose type was coerced to a subtype
-        # of the type already implied by the GraphQL schema for that vertex field.
-        'coerced_locations': set(),
         # 'type_equivalence_hints' is a dict mapping GraphQL types to equivalent GraphQL unions
         'type_equivalence_hints': type_equivalence_hints or dict(),
         # The marked_location_stack explicitly maintains a stack (implemented as list)
@@ -776,12 +766,23 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         for name, value in six.iteritems(outputs_context)
     }
 
+    location_types = {
+        location: location_info.type
+        for location, location_info in query_metadata_table.registered_locations
+    }
+
+    coerced_locations = {
+        location
+        for location, location_info in query_metadata_table.registered_locations
+        if location_info.coerced_from_type is not None
+    }
+
     return IrAndMetadata(
         ir_blocks=basic_blocks,
         input_metadata=context['inputs'],
         output_metadata=output_metadata,
-        location_types=context['location_types'],
-        coerced_locations=context['coerced_locations'])
+        location_types=location_types,
+        coerced_locations=coerced_locations)
 
 
 def _compile_output_step(outputs):
