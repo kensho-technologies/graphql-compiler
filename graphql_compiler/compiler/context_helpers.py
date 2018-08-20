@@ -24,8 +24,9 @@ def has_encountered_output_source(context):
     return 'output_source' in context
 
 
-def validate_context_for_visiting_vertex_field(location, context):
+def validate_context_for_visiting_vertex_field(parent_location, vertex_field_name, context):
     """Ensure that the current context allows for visiting a vertex field."""
     if is_in_fold_innermost_scope_scope(context):
         raise GraphQLCompilationError(u'Traversing inside a @fold block after output is '
-                                      u'not supported! Location: {}'.format(location))
+                                      u'not supported! Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))
