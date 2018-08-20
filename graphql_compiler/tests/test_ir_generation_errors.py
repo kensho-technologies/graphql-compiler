@@ -2,6 +2,8 @@
 import string
 import unittest
 
+from graphql import parse
+from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
 from ..compiler.compiler_frontend import graphql_to_ir
@@ -1060,3 +1062,175 @@ class IrGenerationErrorTests(unittest.TestCase):
         for invalid_graphql in invalid_queries:
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, invalid_graphql)
+
+    def test_missing_directives_in_schema(self):
+        """Ensure that validators properly identifiy missing directives in the schema.
+
+        The schema should contain all directives that are supported by the graphql compiler,
+        even if they might not be used in the query. Hence we raise an error when the following
+        directive is not declared in the schema: directive @recurse(depth: Int!) on FIELD.
+        """
+        incomplete_schema_text = '''
+            schema {
+                query: RootSchemaQuery
+            }
+            directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
+            directive @tag(tag_name: String!) on FIELD
+            directive @output(out_name: String!) on FIELD
+            directive @output_source on FIELD
+            directive @optional on FIELD
+            directive @fold on FIELD
+            type Animal {
+                name: String
+            }
+            type RootSchemaQuery {
+                Animal: Animal
+            }
+        '''
+        incomplete_schema = build_ast_schema(parse(incomplete_schema_text))
+        query = '''{
+            Animal {
+                name @output(out_name: "animal_name")
+            }
+        }'''
+        with self.assertRaises(GraphQLValidationError):
+            graphql_to_ir(incomplete_schema, query)
+
+    def test_incorrect_directive_locations_in_schema(self):
+        """Ensure appropriate errors are raised if nonexistent directive is provided."""
+        schema_with_extra_directive = '''
+            schema {
+                query: RootSchemaQuery
+            }
+            directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
+            directive @tag(tag_name: String!) on FIELD
+            directive @output(out_name: String!) on FIELD
+            directive @output_source on FIELD
+            directive @optional on FIELD
+            directive @fold on FIELD
+            directive @recurse(depth: Int!) on FIELD
+            directive @nonexistent on FIELD
+            type Animal {
+                name: String
+            }
+            type RootSchemaQuery {
+                Animal: Animal
+            }
+        '''
+        parsed_schema_with_extra_directive = build_ast_schema(parse(schema_with_extra_directive))
+        query = '''{
+            Animal {
+                name @output(out_name: "animal_name")
+            }
+        }'''
+        with self.assertRaises(GraphQLValidationError):
+            graphql_to_ir(parsed_schema_with_extra_directive, query)
+
+    def test_directives_on_wrong_fields(self):
+        """Ensure appropriate errors are raised if any directives are on the wrong location."""
+        # Change @tag from FIELD to INLINE_FRAGMENT
+        schema_with_wrong_directive_on_inline_fragment = '''
+            schema {
+                query: RootSchemaQuery
+            }
+            directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
+            directive @tag(tag_name: String!) on INLINE_FRAGMENT
+            directive @output(out_name: String!) on FIELD
+            directive @output_source on FIELD
+            directive @optional on FIELD
+            directive @fold on FIELD
+            directive @recurse(depth: Int!) on FIELD
+            type Animal {
+                name: String
+            }
+            type RootSchemaQuery {
+                Animal: Animal
+            }
+        '''
+
+        # Remove INLINE_FRAGMENT from @filter
+        schema_with_directive_missing_location = '''
+            schema {
+                query: RootSchemaQuery
+            }
+            directive @filter(op_name: String!, value: [String!]!) on FIELD
+            directive @tag(tag_name: String!) on FIELD
+            directive @output(out_name: String!) on FIELD
+            directive @output_source on FIELD
+            directive @optional on FIELD
+            directive @fold on FIELD
+            directive @recurse(depth: Int!) on FIELD
+            type Animal {
+                name: String
+            }
+            type RootSchemaQuery {
+                Animal: Animal
+            }
+        '''
+
+        # Change @output_source from FIELD to FIELD | INLINE_FRAGMENT
+        schema_with_directive_missing_location = '''
+            schema {
+                query: RootSchemaQuery
+            }
+            directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
+            directive @tag(tag_name: String!) on FIELD
+            directive @output(out_name: String!) on FIELD
+            directive @output_source on FIELD | INLINE_FRAGMENT
+            directive @optional on FIELD
+            directive @fold on FIELD
+            directive @recurse(depth: Int!) on FIELD
+            type Animal {
+                name: String
+            }
+            type RootSchemaQuery {
+                Animal: Animal
+            }
+        '''
+
+        incorrect_schemas = [
+            schema_with_wrong_directive_on_inline_fragment,
+            schema_with_directive_missing_location,
+            schema_with_directive_missing_location,
+        ]
+
+        query = '''{
+            Animal {
+                name @output(out_name: "animal_name")
+            }
+        }'''
+
+        for schema in incorrect_schemas:
+            parsed_incorrect_schema = build_ast_schema(parse(schema))
+            with self.assertRaises(GraphQLValidationError):
+                graphql_to_ir(parsed_incorrect_schema, query)
+
+    def test_directives_with_incorrect_arguments(self):
+        """Ensure that proper errors are raised if directives are provided with incorrect args."""
+        # Change @filter arg from String! to Int!
+        schema_with_incorrect_args = '''
+            schema {
+                query: RootSchemaQuery
+            }
+            directive @filter(op_name: Int!, value: [String!]!) on FIELD | INLINE_FRAGMENT
+            directive @tag(tag_name: String!) on INLINE_FRAGMENT
+            directive @output(out_name: String!) on FIELD
+            directive @output_source on FIELD
+            directive @optional on FIELD
+            directive @fold on FIELD
+            directive @recurse(depth: Int!) on FIELD
+            type Animal {
+                name: String
+            }
+            type RootSchemaQuery {
+                Animal: Animal
+            }
+        '''
+        parsed_incorrect_schema = build_ast_schema(parse(schema_with_incorrect_args))
+        query = '''{
+            Animal {
+                name @output(out_name: "animal_name")
+            }
+        }'''
+        with self.assertRaises(GraphQLValidationError):
+            graphql_to_ir(parsed_incorrect_schema, query)
