@@ -372,9 +372,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     initial_marked_location_stack_size = len(context['marked_location_stack'])
 
     # step V-3: mark the graph position, and process output_source directive
+    basic_blocks.append(_mark_location(location))
     if not is_in_fold_scope(context):
-        # We only mark the position if we aren't in a folded scope.
-        basic_blocks.append(_mark_location(location))
         # The following append is the Location corresponding to the initial MarkLocation
         # for the current vertex and the `num_traverses` counter set to 0.
         context['marked_location_stack'].append(_construct_location_stack_entry(location, 0))

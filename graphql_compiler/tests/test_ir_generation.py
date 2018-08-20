@@ -2146,6 +2146,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(animal_location),
             blocks.Fold(animal_fold),
+            blocks.MarkLocation(animal_fold),
             blocks.Unfold(),
             blocks.Backtrack(base_location),
             blocks.ConstructResult({
@@ -2175,6 +2176,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(base_fold),
+            blocks.MarkLocation(base_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2203,6 +2205,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Traverse('in', 'Animal_ParentOf'),
             blocks.MarkLocation(parent_location),
             blocks.Fold(parent_fold),
+            blocks.MarkLocation(parent_fold),
             blocks.Unfold(),
             blocks.Backtrack(base_location),
             blocks.ConstructResult({
@@ -2231,7 +2234,9 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(parent_fold),
+            blocks.MarkLocation(parent_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.MarkLocation(first_traversed_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2260,8 +2265,11 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(parent_fold),
+            blocks.MarkLocation(parent_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.MarkLocation(first_traversed_fold),
             blocks.Traverse('out', 'Animal_OfSpecies'),
+            blocks.MarkLocation(second_traversed_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2293,7 +2301,9 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Traverse('in', 'Animal_ParentOf'),
             blocks.MarkLocation(parent_location),
             blocks.Fold(sibling_fold),
+            blocks.MarkLocation(sibling_fold),
             blocks.Traverse('out', 'Animal_OfSpecies'),
+            blocks.MarkLocation(sibling_species_fold),
             blocks.Unfold(),
             blocks.Backtrack(base_location),
             blocks.ConstructResult({
@@ -2322,6 +2332,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(base_fold),
+            blocks.MarkLocation(base_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2350,7 +2361,9 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(base_fold),
+            blocks.MarkLocation(base_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.MarkLocation(first_traversed_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2380,8 +2393,10 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(base_out_fold),
+            blocks.MarkLocation(base_out_fold),
             blocks.Unfold(),
             blocks.Fold(base_in_fold),
+            blocks.MarkLocation(base_in_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2416,10 +2431,14 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(base_out_fold),
+            blocks.MarkLocation(base_out_fold),
             blocks.Traverse('in', 'Animal_ParentOf'),
+            blocks.MarkLocation(base_out_traversed_fold),
             blocks.Unfold(),
             blocks.Fold(base_in_fold),
+            blocks.MarkLocation(base_in_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.MarkLocation(base_in_traversed_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2455,8 +2474,10 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(base_parent_fold),
+            blocks.MarkLocation(base_parent_fold),
             blocks.Unfold(),
             blocks.Fold(base_fed_at_fold),
+            blocks.MarkLocation(base_fed_at_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2487,6 +2508,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(important_event_fold),
+            blocks.MarkLocation(important_event_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2525,6 +2547,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.Variable('$latest', GraphQLDate)
                 )
             ),
+            blocks.MarkLocation(related_entity_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'related_animals': expressions.FoldedOutputContextField(
@@ -2553,6 +2576,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(parent_fold),
+            blocks.MarkLocation(parent_fold),
             blocks.Traverse('out', 'Entity_Related'),
             blocks.CoerceType({'Animal'}),
             blocks.Filter(expressions.BinaryComposition(
@@ -2567,6 +2591,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.Variable('$latest', GraphQLDate)
                 )
             ),
+            blocks.MarkLocation(inner_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
@@ -2596,6 +2621,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(related_entity_fold),
+            blocks.MarkLocation(related_entity_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2628,6 +2654,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.Variable('$desired', GraphQLString)
                 )
             ),
+            blocks.MarkLocation(base_parent_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
@@ -2670,6 +2697,7 @@ class IrGenerationTests(unittest.TestCase):
                     )
                 )
             ),
+            blocks.MarkLocation(base_parent_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
@@ -2696,6 +2724,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(base_location),
             blocks.Fold(related_entity_fold),
             blocks.CoerceType({'Animal'}),
+            blocks.MarkLocation(related_entity_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
@@ -2723,9 +2752,12 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(base_parent_fold),
+            blocks.MarkLocation(base_parent_fold),
             blocks.Traverse('out', 'Entity_Related'),
             blocks.CoerceType({'Animal'}),
+            blocks.MarkLocation(first_traversed_fold),
             blocks.Traverse('out', 'Animal_OfSpecies'),
+            blocks.MarkLocation(second_traversed_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2754,6 +2786,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(base_location),
             blocks.Fold(important_event_fold),
             blocks.CoerceType({'BirthEvent'}),
+            blocks.MarkLocation(important_event_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
@@ -3539,6 +3572,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
             blocks.Fold(fold_scope),
+            blocks.MarkLocation(fold_scope),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -3574,6 +3608,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(base_fold),
+            blocks.MarkLocation(base_fold),
             blocks.Unfold(),
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(parent_location),
@@ -3624,7 +3659,9 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
             blocks.Fold(fold_scope),
+            blocks.MarkLocation(fold_scope),
             blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.MarkLocation(first_traversed_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'grandparent_name': expressions.TernaryConditional(
@@ -3664,7 +3701,9 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Fold(base_fold),
+            blocks.MarkLocation(base_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.MarkLocation(first_traversed_fold),
             blocks.Unfold(),
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(parent_location),
