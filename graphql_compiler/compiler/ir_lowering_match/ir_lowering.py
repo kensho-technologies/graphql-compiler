@@ -8,14 +8,13 @@ to generate directly from this Expression object. An output-language-aware IR lo
 us to convert this Expression into other Expressions, using data already present in the IR,
 to simplify the final code generation step.
 """
-import funcy.py2 as funcy
 import six
 
-from ..blocks import Backtrack, CoerceType, Filter, MarkLocation, QueryRoot
+from ..blocks import Backtrack, CoerceType, MarkLocation, QueryRoot
 from ..expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
-                           FoldedOutputContextField, Literal, LocalField, TernaryConditional,
-                           TrueLiteral)
+                           FoldedOutputContextField, Literal, TernaryConditional, TrueLiteral)
 from ..helpers import FoldScopeLocation
+from .utils import convert_coerce_type_to_instanceof_filter
 
 
 ##################################
@@ -158,13 +157,13 @@ def truncate_repeated_single_step_traversals(match_query):
             if single_step.as_block.location in visited_locations:
                 # This location was visited before, omit the traversal.
                 ignore_traversal = True
-        else:
+
+        if not ignore_traversal:
             # For each step in this traversal, mark its location as visited.
             for step in current_match_traversal:
                 if step.as_block is not None:
                     visited_locations.add(step.as_block.location)
 
-        if not ignore_traversal:
             new_match_traversals.append(current_match_traversal)
 
     return match_query._replace(match_traversals=new_match_traversals)
@@ -203,6 +202,11 @@ def lower_backtrack_blocks(match_query, location_types):
                 #    as equivalent to the location where the Backtrack pointed.
                 if step.as_block is not None:
                     location_translations[step.as_block.location] = backtrack_location
+
+                if step.coerce_type_block is not None:
+                    raise AssertionError(u'Encountered type coercion in a MatchStep with '
+                                         u'a Backtrack root block, this is unexpected: {} {}'
+                                         .format(step, match_query))
 
                 new_step = step._replace(root_block=new_root_block, as_block=new_as_block)
                 new_traversal.append(new_step)
@@ -264,12 +268,12 @@ def _translate_equivalent_locations(match_query, location_translations):
             old_location = expression.fold_scope_location.base_location
             new_location = location_translations.get(old_location, old_location)
 
-            relative_position = expression.fold_scope_location.relative_position
-            new_fold_scope_location = FoldScopeLocation(new_location, relative_position)
-            field_name = expression.field_name
+            fold_path = expression.fold_scope_location.fold_path
+            fold_field = expression.fold_scope_location.field
+            new_fold_scope_location = FoldScopeLocation(new_location, fold_path, field=fold_field)
             field_type = expression.field_type
 
-            return FoldedOutputContextField(new_fold_scope_location, field_name, field_type)
+            return FoldedOutputContextField(new_fold_scope_location, field_type)
         else:
             return expression
 
@@ -305,10 +309,11 @@ def _translate_equivalent_locations(match_query, location_translations):
     new_folds = {}
     # Update the Location within each FoldScopeLocation
     for fold_scope_location, fold_ir_blocks in six.iteritems(match_query.folds):
-        relative_position = fold_scope_location.relative_position
+        fold_path = fold_scope_location.fold_path
+        fold_field = fold_scope_location.field
         old_location = fold_scope_location.base_location
         new_location = location_translations.get(old_location, old_location)
-        new_fold_scope_location = FoldScopeLocation(new_location, relative_position)
+        new_fold_scope_location = FoldScopeLocation(new_location, fold_path, field=fold_field)
 
         new_folds[new_fold_scope_location] = fold_ir_blocks
 
@@ -323,21 +328,10 @@ def lower_folded_coerce_types_into_filter_blocks(folded_ir_blocks):
     """Lower CoerceType blocks into "INSTANCEOF" Filter blocks. Indended for folded IR blocks."""
     new_folded_ir_blocks = []
     for block in folded_ir_blocks:
-        new_block = block
-
         if isinstance(block, CoerceType):
-            coerce_type_target = block.target_class
-            if len(coerce_type_target) != 1:
-                raise AssertionError(u'Unexpected "coerce_type_target" for MATCH query: '
-                                     u'{}'.format(coerce_type_target))
-            coerce_type_target = funcy.first(coerce_type_target)
-
-            # INSTANCEOF requires the target class to be passed in as a string,
-            # so we make the target class a string literal.
-            new_predicate = BinaryComposition(
-                u'INSTANCEOF', LocalField('@this'), Literal(coerce_type_target))
-
-            new_block = Filter(new_predicate)
+            new_block = convert_coerce_type_to_instanceof_filter(block)
+        else:
+            new_block = block
 
         new_folded_ir_blocks.append(new_block)
 
@@ -351,3 +345,13 @@ def remove_backtrack_blocks_from_fold(folded_ir_blocks):
         if not isinstance(block, Backtrack):
             new_folded_ir_blocks.append(block)
     return new_folded_ir_blocks
+
+
+def truncate_repeated_single_step_traversals_in_sub_queries(compound_match_query):
+    """For each sub-query, remove one-step traversals that overlap a previous traversal location."""
+    lowered_match_queries = []
+    for match_query in compound_match_query.match_queries:
+        new_match_query = truncate_repeated_single_step_traversals(match_query)
+        lowered_match_queries.append(new_match_query)
+
+    return compound_match_query._replace(match_queries=lowered_match_queries)

@@ -468,7 +468,7 @@ def _process_contains_filter_directive(filter_operation_info, context, parameter
                     if the collection is optional and missing, the check will return True
 
     Returns:
-        a Filter basic block that performs the substring check
+        a Filter basic block that performs the contains check
     """
     filtered_field_type = filter_operation_info.field_type
     filtered_field_name = filter_operation_info.field_name
@@ -484,6 +484,43 @@ def _process_contains_filter_directive(filter_operation_info, context, parameter
 
     filter_predicate = expressions.BinaryComposition(
         u'contains', expressions.LocalField(filtered_field_name), argument_expression)
+    if non_existence_expression is not None:
+        # The argument comes from an optional block and might not exist,
+        # in which case the filter expression should evaluate to True.
+        filter_predicate = expressions.BinaryComposition(
+            u'||', non_existence_expression, filter_predicate)
+
+    return blocks.Filter(filter_predicate)
+
+
+@takes_parameters(1)
+def _process_intersects_filter_directive(filter_operation_info, context, parameters):
+    """Return a Filter basic block that checks if the directive arg and the field intersect.
+
+    Args:
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
+        context: dict, various per-compilation data (e.g. declared tags, whether the current block
+                 is optional, etc.). May be mutated in-place in this function!
+        parameters: list of 1 element, specifying the collection in which the value must exist;
+                    if the collection is optional and missing, the check will return True
+
+    Returns:
+        a Filter basic block that performs the intersects check
+    """
+    filtered_field_type = filter_operation_info.field_type
+    filtered_field_name = filter_operation_info.field_name
+
+    argument_inferred_type = strip_non_null_from_type(filtered_field_type)
+    if not isinstance(argument_inferred_type, GraphQLList):
+        raise GraphQLCompilationError(u'Cannot apply "intersects" to non-list '
+                                      u'type {}'.format(filtered_field_type))
+
+    argument_expression, non_existence_expression = _represent_argument(
+        context, parameters[0], argument_inferred_type)
+
+    filter_predicate = expressions.BinaryComposition(
+        u'intersects', expressions.LocalField(filtered_field_name), argument_expression)
     if non_existence_expression is not None:
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
@@ -520,6 +557,7 @@ PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset({
     u'between',
     u'in_collection',
     u'contains',
+    u'intersects',
     u'has_substring',
     u'has_edge_degree',
 })
@@ -574,6 +612,7 @@ def process_filter_directive(filter_operation_info, context):
         u'in_collection': _process_in_collection_filter_directive,
         u'has_substring': _process_has_substring_filter_directive,
         u'contains': _process_contains_filter_directive,
+        u'intersects': _process_intersects_filter_directive,
         u'has_edge_degree': _process_has_edge_degree_filter_directive,
     }
     all_recognized_filters = frozenset(non_comparison_filters.keys()) | COMPARISON_OPERATORS

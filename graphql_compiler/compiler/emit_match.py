@@ -4,9 +4,9 @@ from collections import deque
 
 import six
 
-from .blocks import Filter, QueryRoot, Recurse, Traverse
+from .blocks import Filter, MarkLocation, QueryRoot, Recurse, Traverse
 from .expressions import TrueLiteral
-from .helpers import validate_safe_string
+from .helpers import get_only_element_from_collection, validate_safe_string
 
 
 def _get_vertex_location_name(location):
@@ -20,31 +20,30 @@ def _get_vertex_location_name(location):
 
 def _first_step_to_match(match_step):
     """Transform the very first MATCH step into a MATCH query string."""
-    if not isinstance(match_step.root_block, QueryRoot):
-        raise AssertionError(u'Expected QueryRoot root block, received: '
-                             u'{} {}'.format(match_step.root_block, match_step))
+    parts = []
 
-    match_step.root_block.validate()
+    if match_step.root_block is not None:
+        if not isinstance(match_step.root_block, QueryRoot):
+            raise AssertionError(u'Expected None or QueryRoot root block, received: '
+                                 u'{} {}'.format(match_step.root_block, match_step))
 
-    start_class_set = match_step.root_block.start_class
-    if len(start_class_set) != 1:
-        raise AssertionError(u'Attempted to emit MATCH but did not have exactly one start class: '
-                             u'{} {}'.format(start_class_set, match_step))
-    start_class = list(start_class_set)[0]
+        match_step.root_block.validate()
+
+        start_class = get_only_element_from_collection(match_step.root_block.start_class)
+        parts.append(u'class: %s' % (start_class,))
 
     # MATCH steps with a QueryRoot root block shouldn't have a 'coerce_type_block'.
     if match_step.coerce_type_block is not None:
         raise AssertionError(u'Invalid MATCH step: {}'.format(match_step))
 
-    parts = [
-        u'class: %s' % (start_class,),
-    ]
-
     if match_step.where_block:
         match_step.where_block.validate()
         parts.append(u'where: (%s)' % (match_step.where_block.predicate.to_match(),))
 
-    if match_step.as_block:
+    if match_step.as_block is None:
+        raise AssertionError(u'Found a MATCH step without a corresponding Location. '
+                             u'This should never happen: {}'.format(match_step))
+    else:
         match_step.as_block.validate()
         parts.append(u'as: %s' % (_get_vertex_location_name(match_step.as_block.location),))
 
@@ -108,8 +107,8 @@ def _represent_fold(fold_location, fold_ir_blocks):
     start_let_template = u'$%(mark_name)s = %(base_location)s'
     traverse_edge_template = u'.%(direction)s("%(edge_name)s")'
     base_template = start_let_template + traverse_edge_template
-    edge_direction, edge_name = fold_location.relative_position
-    mark_name = fold_location.get_location_name()
+    edge_direction, edge_name = fold_location.get_first_folded_edge()
+    mark_name, _ = fold_location.get_location_name()
     base_location_name, _ = fold_location.base_location.get_location_name()
 
     validate_safe_string(mark_name)
@@ -134,8 +133,11 @@ def _represent_fold(fold_location, fold_ir_blocks):
                 'edge_name': block.edge_name,
             }
             final_string += traverse_edge_template % template_data
+        elif isinstance(block, MarkLocation):
+            # MarkLocation blocks inside a fold do not result in any MATCH output.
+            pass
         else:
-            raise AssertionError(u'Found a non-Filter/Traverse IR block in the folded IR blocks: '
+            raise AssertionError(u'Found an unexpected IR block in the folded IR blocks: '
                                  u'{} {} {}'.format(type(block), block, fold_ir_blocks))
 
     # Workaround for OrientDB's inconsistent return type when filtering a list.

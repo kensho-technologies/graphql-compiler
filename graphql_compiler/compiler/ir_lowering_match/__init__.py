@@ -11,14 +11,16 @@ from .ir_lowering import (lower_backtrack_blocks,
                           lower_has_substring_binary_compositions,
                           remove_backtrack_blocks_from_fold,
                           rewrite_binary_composition_inside_ternary_conditional,
-                          truncate_repeated_single_step_traversals)
+                          truncate_repeated_single_step_traversals,
+                          truncate_repeated_single_step_traversals_in_sub_queries)
 from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .between_lowering import lower_comparisons_to_between
 from .optional_traversal import (collect_filters_to_first_location_occurrence,
                                  convert_optional_traversals_to_compound_match_query,
                                  lower_context_field_expressions, prune_non_existent_outputs)
 from ..match_query import convert_to_match_query
-from ..workarounds import orientdb_class_with_while, orientdb_eval_scheduling
+from ..workarounds import (orientdb_class_with_while, orientdb_eval_scheduling,
+                           orientdb_query_execution)
 from .utils import construct_where_filter_predicate
 
 ##############
@@ -26,12 +28,14 @@ from .utils import construct_where_filter_predicate
 ##############
 
 
-def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
+def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     """Lower the IR into an IR form that can be represented in MATCH queries.
 
     Args:
         ir_blocks: list of IR blocks to lower into MATCH-compatible form
-        location_types: a dict of location objects -> GraphQL type objects at that location
+        query_metadata_table: QueryMetadataTable object containing all metadata collected during
+                              query processing, including location metadata (e.g. which locations
+                              are folded or optional).
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
                                 Used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a
@@ -52,6 +56,19 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
         MatchQuery object containing the IR blocks organized in a MATCH-like structure
     """
     sanity_check_ir_blocks_from_frontend(ir_blocks)
+
+    # Construct the mapping of each location to its corresponding GraphQL type.
+    location_types = {
+        location: location_info.type
+        for location, location_info in query_metadata_table.registered_locations
+    }
+
+    # Compute the set of all locations that have associated type coercions.
+    coerced_locations = {
+        location
+        for location, location_info in query_metadata_table.registered_locations
+        if location_info.coerced_from_type is not None
+    }
 
     # Extract information for both simple and complex @optional traverses
     location_to_optional_results = extract_optional_location_root_info(ir_blocks)
@@ -102,5 +119,10 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     compound_match_query = collect_filters_to_first_location_occurrence(compound_match_query)
     compound_match_query = lower_context_field_expressions(
         compound_match_query)
+
+    compound_match_query = truncate_repeated_single_step_traversals_in_sub_queries(
+        compound_match_query)
+    compound_match_query = orientdb_query_execution.expose_ideal_query_execution_start_points(
+        compound_match_query, location_types, coerced_locations)
 
     return compound_match_query
