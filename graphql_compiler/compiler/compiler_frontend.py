@@ -126,8 +126,7 @@ IrAndMetadata = namedtuple(
         'ir_blocks',
         'input_metadata',
         'output_metadata',
-        'location_types',
-        'coerced_locations',
+        'query_metadata_table',
     )
 )
 
@@ -705,6 +704,8 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
 
     # Construct the starting context object.
     context = {
+        # 'metadata' is the QueryMetadataTable describing all the metadata collected during query
+        # processing, including location metadata (e.g. which locations are folded or optional).
         'metadata': query_metadata_table,
         # 'tags' is a dict containing
         #  - location: Location where the tag was defined
@@ -767,23 +768,11 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         for name, value in six.iteritems(outputs_context)
     }
 
-    location_types = {
-        location: location_info.type
-        for location, location_info in query_metadata_table.registered_locations
-    }
-
-    coerced_locations = {
-        location
-        for location, location_info in query_metadata_table.registered_locations
-        if location_info.coerced_from_type is not None
-    }
-
     return IrAndMetadata(
         ir_blocks=basic_blocks,
         input_metadata=context['inputs'],
         output_metadata=output_metadata,
-        location_types=location_types,
-        coerced_locations=coerced_locations)
+        query_metadata_table=context['metadata'])
 
 
 def _compile_output_step(outputs):
