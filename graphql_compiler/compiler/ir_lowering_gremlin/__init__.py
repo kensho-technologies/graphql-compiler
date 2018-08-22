@@ -37,7 +37,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     Returns:
         list of IR blocks suitable for outputting as Gremlin
     """
-    sanity_check_ir_blocks_from_frontend(ir_blocks)
+    sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
     ir_blocks = lower_context_field_existence(ir_blocks)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)

@@ -4,6 +4,8 @@ from collections import namedtuple
 
 import six
 
+from .helpers import Location
+
 
 LocationInfo = namedtuple(
     'LocationInfo',
@@ -28,6 +30,11 @@ class QueryMetadataTable(object):
 
     def __init__(self, root_location, root_location_info):
         """Create a new empty QueryMetadataTable object."""
+        if not isinstance(root_location, Location):
+            raise AssertionError(u'Expected Location object as the root of the QueryMetadataTable. '
+                                 u'Note that FoldScopeLocation objects cannot be root locations. '
+                                 u'Got: {} {}'.format(type(root_location).__name__, root_location))
+
         self._root_location = root_location  # Location, the root location of the entire query
         self._locations = dict()             # dict, Location/FoldScopeLocation -> LocationInfo
         self._inputs = dict()                # dict, input name -> input info namedtuple
@@ -47,6 +54,21 @@ class QueryMetadataTable(object):
             raise AssertionError(u'Attempting to register an already-registered location {}: '
                                  u'old info {}, new info {}'
                                  .format(location, old_info, location_info))
+
+        if location.field is not None:
+            raise AssertionError(u'Attempting to register a location at a field, this is '
+                                 u'not allowed: {} {}'.format(location, location_info))
+
+        if location_info.parent_location is None:
+            # Only the root location and revisits of the root location are allowed
+            # to not have a parent location.
+            is_root_location = location == self._root_location
+            is_revisit_of_root_location = self._root_location.is_revisited_at(location)
+            if not (is_root_location or is_revisit_of_root_location):
+                raise AssertionError(u'All locations other than the root location and its revisits '
+                                     u'must have a parent location, but received a location with '
+                                     u'no parent: {} {}'.format(location, location_info))
+
         self._locations[location] = location_info
 
     def revisit_location(self, location):
@@ -79,7 +101,11 @@ class QueryMetadataTable(object):
 
     def get_location_info(self, location):
         """Return the LocationInfo object for a given location."""
-        return self._locations[location]
+        location_info = self._locations.get(location, None)
+        if location_info is None:
+            raise AssertionError(u'Attempted to get the location info of an unregistered location: '
+                                 u'{}'.format(location))
+        return location_info
 
     @property
     def registered_locations(self):

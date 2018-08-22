@@ -55,7 +55,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     Returns:
         MatchQuery object containing the IR blocks organized in a MATCH-like structure
     """
-    sanity_check_ir_blocks_from_frontend(ir_blocks)
+    sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
     # Construct the mapping of each location to its corresponding GraphQL type.
     location_types = {
