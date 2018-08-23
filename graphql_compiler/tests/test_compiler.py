@@ -5196,6 +5196,7 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
     def test_complex_nested_optionals(self):
+        # This test case is failing right now. The correct MATCH output is outrageously long.
         test_data = test_input_data.complex_nested_optionals()
 
         expected_match = '''
