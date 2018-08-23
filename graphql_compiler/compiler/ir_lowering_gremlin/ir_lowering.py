@@ -303,9 +303,9 @@ def _convert_folded_blocks(folded_ir_blocks):
             new_block = GremlinFoldedFilter(new_predicate)
         elif isinstance(block, Traverse):
             new_block = GremlinFoldedTraverse.from_traverse(block)
-        elif isinstance(block, MarkLocation):
-            # We remove MarkLocation blocks from the folded blocks output,
-            # since they do not produce any Gremlin output code.
+        elif isinstance(block, (MarkLocation, Backtrack)):
+            # We remove MarkLocation and Backtrack blocks from the folded blocks output,
+            # since they do not produce any Gremlin output code inside folds.
             continue
         else:
             raise AssertionError(u'Found an unexpected IR block in the folded IR blocks: '

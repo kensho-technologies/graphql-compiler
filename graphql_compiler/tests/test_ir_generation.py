@@ -2238,6 +2238,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(parent_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
             blocks.MarkLocation(first_traversed_fold),
+            blocks.Backtrack(parent_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2271,6 +2272,8 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(first_traversed_fold),
             blocks.Traverse('out', 'Animal_OfSpecies'),
             blocks.MarkLocation(second_traversed_fold),
+            blocks.Backtrack(first_traversed_fold),
+            blocks.Backtrack(parent_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2305,6 +2308,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(sibling_fold),
             blocks.Traverse('out', 'Animal_OfSpecies'),
             blocks.MarkLocation(sibling_species_fold),
+            blocks.Backtrack(sibling_fold),
             blocks.Unfold(),
             blocks.Backtrack(base_location),
             blocks.ConstructResult({
@@ -2365,6 +2369,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(base_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
             blocks.MarkLocation(first_traversed_fold),
+            blocks.Backtrack(base_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2435,11 +2440,13 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(base_out_fold),
             blocks.Traverse('in', 'Animal_ParentOf'),
             blocks.MarkLocation(base_out_traversed_fold),
+            blocks.Backtrack(base_out_fold),
             blocks.Unfold(),
             blocks.Fold(base_in_fold),
             blocks.MarkLocation(base_in_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
             blocks.MarkLocation(base_in_traversed_fold),
+            blocks.Backtrack(base_in_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -2593,6 +2600,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(inner_fold),
+            blocks.Backtrack(parent_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
@@ -2759,6 +2767,8 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(first_traversed_fold),
             blocks.Traverse('out', 'Animal_OfSpecies'),
             blocks.MarkLocation(second_traversed_fold),
+            blocks.Backtrack(first_traversed_fold),
+            blocks.Backtrack(base_parent_fold),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
@@ -3663,6 +3673,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(fold_scope),
             blocks.Traverse('out', 'Animal_ParentOf'),
             blocks.MarkLocation(first_traversed_fold),
+            blocks.Backtrack(fold_scope),
             blocks.Unfold(),
             blocks.ConstructResult({
                 'grandparent_name': expressions.TernaryConditional(
@@ -3705,6 +3716,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(base_fold),
             blocks.Traverse('out', 'Animal_ParentOf'),
             blocks.MarkLocation(first_traversed_fold),
+            blocks.Backtrack(base_fold),
             blocks.Unfold(),
             blocks.Traverse('in', 'Animal_ParentOf', optional=True),
             blocks.MarkLocation(parent_location),

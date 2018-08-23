@@ -493,11 +493,9 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         # If we are currently evaluating a @fold vertex,
         # we didn't Traverse into it, so we don't need to backtrack out either.
-        # We also don't backtrack if we're currently inside a @fold scope, or
-        # if we've reached an @output_source.
+        # We also don't backtrack if we've reached an @output_source.
         backtracking_required = (
             (not fold_directive) and
-            (not isinstance(location, FoldScopeLocation)) and
             (not has_encountered_output_source(context))
         )
         if backtracking_required:
