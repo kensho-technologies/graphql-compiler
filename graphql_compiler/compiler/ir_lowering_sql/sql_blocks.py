@@ -8,8 +8,9 @@ class SqlBlocks:
     considering SQL queries.
     """
     class BaseBlock:
-        def __init__(self, query_state):
+        def __init__(self, query_state, block):
             self.query_state = query_state
+            self.block = block
             self.table = None
 
         @property
@@ -46,11 +47,11 @@ class SqlBlocks:
             return self.query_state.in_fold
 
     class Selection(BaseBlock):
-        def __init__(self, field_name, alias, query_state):
+        def __init__(self, field_name, alias, query_state, block):
             self.field_name = field_name
             self.alias = alias
             self.renamed = False
-            super(SqlBlocks.Selection, self).__init__(query_state)
+            super(SqlBlocks.Selection, self).__init__(query_state, block)
 
         def rename(self):
             if self.alias is None:
@@ -76,7 +77,7 @@ class SqlBlocks:
         }
 
         def __init__(self, field_name, param_names, operator_name, is_tag, tag_location, tag_field,
-                     query_state):
+                     query_state, block):
             """Creates a new Predicate block."""
             self.field_name = field_name
             self.param_names = param_names
@@ -89,14 +90,10 @@ class SqlBlocks:
                     'Invalid operator "{}" supplied to predicate.'.format(operator_name)
                 )
             self.operator = self.operators[operator_name]
-            super(SqlBlocks.Predicate, self).__init__(query_state)
+            super(SqlBlocks.Predicate, self).__init__(query_state, block)
 
     class Relation(BaseBlock):
 
-        def __init__(self, query_state, recursion_depth=None, direction=None):
-            self.recursion_depth = recursion_depth
-            self.direction = direction
-            super(SqlBlocks.Relation, self).__init__(query_state)
+        def __init__(self, query_state, block):
+            super(SqlBlocks.Relation, self).__init__(query_state, block)
 
-        def __repr__(self):
-            return self.location.query_path.__repr__()

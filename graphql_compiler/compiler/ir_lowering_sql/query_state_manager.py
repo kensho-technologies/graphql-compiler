@@ -25,12 +25,12 @@ class QueryStateManager:
 
         @property
         def current_vertex(self):
-            return self.location.query_path[-1]
+            return self.location[-1]
 
         def outer_type(self):
-            if len(self.location.query_path) < 2:
+            if len(self.location) < 2:
                 return None
-            outer_location = Location(self.location.query_path[:-1])
+            outer_location = self.location[:-1]
             return self.location_types[outer_location].name
 
         def get_location(self):
@@ -47,23 +47,26 @@ class QueryStateManager:
         self.location_types = location_types
         self.recursive_count = 0
 
+    @property
+    def current_location(self):
+        return tuple(self.query_path)
+
     def snapshot_state(self):
-        current_location = Location(tuple(self.query_path))
-        if current_location in self.location_to_state:
+        if self.current_location in self.location_to_state:
             raise QueryStateManager.StateTransitionError(
-                'Snapshot for location {} already exists.'.format(current_location)
+                'Snapshot for location {} already exists.'.format(self.current_location)
             )
-        self.location_to_state[current_location] = QueryStateManager.QueryState(
-            location=current_location,
+        self.location_to_state[self.current_location] = QueryStateManager.QueryState(
+            location=self.current_location,
             in_optional=self.in_optional,
             in_fold=self.in_fold,
             is_recursive=self.is_recursive,
             location_types=self.location_types,
         )
-        self.latest_snapshot = self.location_to_state[current_location]
+        self.latest_snapshot = self.location_to_state[self.current_location]
 
     def state_for_path(self, query_path):
-        return self.location_to_state[Location(query_path)]
+        return self.location_to_state[query_path]
 
     def get_state(self):
         if self.latest_snapshot is None:

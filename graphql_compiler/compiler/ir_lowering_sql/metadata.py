@@ -1,5 +1,6 @@
 from sqlalchemy import MetaData, bindparam, or_
 
+from graphql_compiler.compiler import blocks
 from graphql_compiler.compiler.ir_lowering_sql import SqlBlocks
 from .constants import SqlBackend, Cardinality
 
@@ -94,7 +95,7 @@ class CompilerMetadata:
             return column_name
         return column_map[block.field_name]
 
-    def get_predicate_condition(self, block):
+    def get_predicate_condition(self, node, block):
         column = self.get_column_for_block(block)
         if block.is_tag:
             tag_column = self._get_tag_column(block)
@@ -132,17 +133,17 @@ class CompilerMetadata:
             )
         if clause is None:
             raise AssertionError("This should be unreachable.")
-        if not block.in_optional:
+        if isinstance(node.block, (blocks.Traverse, blocks.Recurse)) and node.block.within_optional_scope:
             return clause
         # the == None below is valid SQLAlchemy, the == operator is heavily overloaded.
         return or_(column == None, clause)  # noqa: E711
 
     def get_on_clause_for_node(self, node):
-        edge = self.get_edge(node.relation)
+        edge = self.get_edge(node, node.relation)
         if isinstance(edge, BasicEdge):
             source_col = edge.source_col
             sink_col = edge.sink_col
-            if node.relation.direction == 'in':
+            if node.block.direction == 'in':
                 source_col, sink_col = sink_col, source_col
             if edge is None:
                 return None
@@ -154,13 +155,13 @@ class CompilerMetadata:
             junction_table = self.get_table_by_name(traversal_edge.table_name).alias()
             source_col = traversal_edge.source_col
             sink_col = traversal_edge.sink_col
-            if node.relation.direction == 'in':
+            if node.block.direction == 'in':
                 source_col, sink_col = sink_col, source_col
 
             outer_column = self._get_column_from_table(node.parent_node.from_clause, source_col)
             inner_column = self._get_column_from_table(junction_table, sink_col)
             traversal_onclause = outer_column == inner_column
-            if node.relation.in_optional:
+            if node.in_optional:
                 node.parent_node.from_clause = node.parent_node.from_clause.outerjoin(
                     junction_table, onclause=traversal_onclause
                 )
@@ -169,7 +170,7 @@ class CompilerMetadata:
             final_edge = edge.final_edge
             source_col = final_edge.source_col
             sink_col = final_edge.sink_col
-            if node.relation.direction == 'in':
+            if node.block.direction == 'in':
                 source_col, sink_col = sink_col, source_col
 
             outer_column = self._get_column_from_table(junction_table, source_col)
@@ -177,12 +178,12 @@ class CompilerMetadata:
             return [(node.from_clause, outer_column==inner_column)]
 
     def _get_tag_column(self, block):
-        if block.tag_node.relation.relative_type not in self.config:
+        if block.tag_node.relative_type not in self.config:
             raise AssertionError(
-                'No config found for schema "{}"'.format(block.tag_node.relation.relative_type)
+                'No config found for schema "{}"'.format(block.tag_node.relative_type)
             )
         column_name = block.tag_field
-        schema_config = self.config[block.tag_node.relation.relative_type]
+        schema_config = self.config[block.tag_node.relative_type]
         if 'column_names' not in schema_config:
             return self._get_column_from_table(block.tag_node.table, column_name)
         column_map = schema_config['column_names']
@@ -201,9 +202,11 @@ class CompilerMetadata:
             )
         return getattr(table.c, column_name)
 
-    def get_edge(self, block):
+    def get_edge(self, node, block):
         edge_name = block.edge_name
-        if not block.is_recursive:
+        if not isinstance(node.block, blocks.Recurse):
+            if block.outer_type != node.outer_type:
+                print('hello')
             outer_type_name = block.outer_type
             relative_type = block.relative_type
         else:

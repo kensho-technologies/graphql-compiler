@@ -1,6 +1,9 @@
 ##############
 # Public API #
 ##############
+import six
+
+from graphql_compiler.compiler import blocks
 from graphql_compiler.compiler.helpers import Location
 from graphql_compiler.compiler.ir_lowering_sql.sql_blocks import SqlBlocks
 from graphql_compiler.compiler.ir_lowering_sql.sql_tree import SqlNode
@@ -8,7 +11,7 @@ from .ir_lowering import SqlBlockLowering
 from .query_state_manager import QueryStateManager
 
 
-def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
+def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     """Lower the IR into an IR form that can be represented in MATCH queries.
 
     Args:
@@ -33,20 +36,38 @@ def lower_ir(ir_blocks, location_types, type_equivalence_hints=None):
     Returns:
         MatchQuery object containing the IR blocks organized in a MATCH-like structure
     """
+    location_types = {
+        location.query_path: location_info.type
+        for location, location_info in query_metadata_table.registered_locations
+    }
+    block_to_location = {}
+    current_block_ixs = []
+    for num, ir_block in enumerate(ir_blocks):
+        current_block_ixs.append(num)
+        if isinstance(ir_block, blocks.MarkLocation):
+            for ix in current_block_ixs:
+                block_to_location[ix] = ir_block.location
+            current_block_ixs = []
     state_manager = QueryStateManager(location_types)
     location_to_node = {}
     tree_root = None
-    for block in ir_blocks:
+    for num, block in enumerate(ir_blocks):
+        # todo we can skip queryroot and construct result, which simplifies this
+        if num in block_to_location:
+            location = block_to_location[num]
         sql_blocks = SqlBlockLowering.lower_block(block, state_manager)
         for block in sql_blocks:
             if isinstance(block, SqlBlocks.Relation):
                 if tree_root is None:
-                    tree_root = SqlNode(parent_node=None, relation=block)
+                    location_info = query_metadata_table.get_location_info(location)
+                    tree_root = SqlNode(parent_node=None, relation=block, location_info=location_info, parent_location_info=None)
                     location_to_node[block.location] = tree_root
                 elif block.location not in location_to_node:
-                    prev_location = Location(block.location.query_path[:-1])
+                    prev_location = block.location[:-1]
+                    location_info = query_metadata_table.get_location_info(location)
+                    parent_location_info = query_metadata_table.get_location_info(location_info.parent_location)
                     parent_node = location_to_node[prev_location]
-                    child_node = SqlNode(parent_node=parent_node, relation=block)
+                    child_node = SqlNode(parent_node=parent_node, relation=block, location_info=location_info, parent_location_info=parent_location_info)
                     parent_node.add_child_node(child_node)
                     location_to_node[block.location] = child_node
                 else:

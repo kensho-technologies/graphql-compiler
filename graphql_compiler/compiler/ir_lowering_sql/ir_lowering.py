@@ -1,5 +1,4 @@
 from graphql_compiler.compiler.expressions import ContextField
-from graphql_compiler.compiler.helpers import Location
 from .. import blocks as compiler_blocks
 from .. import expressions as compiler_expr
 from .sql_blocks import SqlBlocks as sql_blocks
@@ -42,7 +41,8 @@ class SqlBlockLowering(object):
         type_name = next(iter(start_class))
         state_manager.enter_location(type_name)
         yield sql_blocks.Relation(
-            query_state=state_manager.get_state()
+            query_state=state_manager.get_state(),
+            block=block
         )
 
     @staticmethod
@@ -59,7 +59,7 @@ class SqlBlockLowering(object):
                 variable, field = right, left
             if isinstance(variable, ContextField):
                 tag_field = variable.location.field
-                tag_location = Location(variable.location.query_path)
+                tag_location = variable.location.query_path
                 yield sql_blocks.Predicate(
                     field_name=field.field_name,
                     # todo remove need for surrounding list
@@ -68,7 +68,8 @@ class SqlBlockLowering(object):
                     is_tag=True,
                     tag_field=tag_field,
                     tag_location=tag_location,
-                    query_state=state_manager.get_state()
+                    query_state=state_manager.get_state(),
+                    block=block,
                 )
             else:
                 field_name = field.field_name
@@ -80,7 +81,8 @@ class SqlBlockLowering(object):
                     is_tag=False,
                     tag_field=None,
                     tag_location=None,
-                    query_state=state_manager.get_state()
+                    query_state=state_manager.get_state(),
+                    block=block
                 )
         else:
             raise AssertionError('This should be unreachable.')
@@ -95,7 +97,7 @@ class SqlBlockLowering(object):
         state_manager.enter_location(type_name)
         yield sql_blocks.Relation(
             query_state=state_manager.get_state(),
-            direction = block.direction
+            block=block,
         )
 
     @staticmethod
@@ -107,19 +109,18 @@ class SqlBlockLowering(object):
         state_manager.enter_location(type_name)
         yield sql_blocks.Relation(
             query_state=state_manager.get_state(),
-            recursion_depth=block.depth,
-            direction=block.direction,
+            block=block
         )
         state_manager.exit_recursive()
 
     @staticmethod
     def _lower_construct_result(block, state_manager):
         for field_alias, field in block.fields.items():
-            for sql_block in SqlBlockLowering._lower_output_field(field, field_alias, state_manager):
+            for sql_block in SqlBlockLowering._lower_output_field(block, field, field_alias, state_manager):
                 yield sql_block
 
     @staticmethod
-    def _lower_output_field(field, field_alias, state_manager):
+    def _lower_output_field(block, field, field_alias, state_manager):
         if isinstance(field, compiler_expr.TernaryConditional):
             # todo: This probably isn't the way to go in the general case
             field = field.if_true
@@ -129,7 +130,8 @@ class SqlBlockLowering(object):
             yield sql_blocks.Selection(
                 field_name=field_name,
                 alias=field_alias,
-                query_state=state_manager.state_for_path(path)
+                query_state=state_manager.state_for_path(path),
+                block=block,
             )
         elif isinstance(field, compiler_expr.FoldedOutputContextField):
             path = field.fold_scope_location.base_location.query_path
@@ -138,7 +140,8 @@ class SqlBlockLowering(object):
             yield sql_blocks.Selection(
                 field_name=field_name,
                 alias=field_alias,
-                query_state=state_manager.state_for_path(path)
+                query_state=state_manager.state_for_path(path),
+                block=block,
             )
         else:
             raise AssertionError('This should be unreachable.')
@@ -151,7 +154,7 @@ class SqlBlockLowering(object):
         state_manager.enter_location(type_name)
         yield sql_blocks.Relation(
             query_state=state_manager.get_state(),
-            direction=direction
+            block=block,
         )
 
     @staticmethod

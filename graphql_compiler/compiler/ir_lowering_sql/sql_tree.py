@@ -1,3 +1,4 @@
+from graphql_compiler.compiler import blocks
 from graphql_compiler.compiler.ir_lowering_sql import SqlBlocks
 
 
@@ -10,8 +11,15 @@ class SqlNode(object):
     underlying SQL alchemy table for these blocks, and manages the relationship to other nodes
     in the tree.
     """
-    def __init__(self, parent_node, relation):
+    def __init__(self, parent_node, relation, location_info, parent_location_info):
         self.parent_node = parent_node
+        self.query_state = relation.query_state
+        self.location = self.query_state.location
+        self.location_info = location_info
+        self.parent_location_info = parent_location_info
+        self.outer_type = None if self.parent_location_info is None else self.parent_location_info.type.name
+        self.relative_type = self.location_info.type.name
+        self.block = relation.block
         self.children_nodes = []
         self.recursions = []
         self.selections = []
@@ -23,11 +31,17 @@ class SqlNode(object):
         self.from_clause = None
         self.table = None
 
-    def is_tree_root(self):
-        return self.parent_node is None
+    @property
+    def in_optional(self):
+        """
+        Whether or not this block is optional itself, or in an optional scope.
+        :return:
+        """
+        return (isinstance(self.block, (blocks.Traverse, blocks.Recurse))
+                and (self.block.within_optional_scope or self.block.optional))
 
     def add_child_node(self, child_node):
-        if child_node.relation.is_recursive:
+        if isinstance(child_node.block, blocks.Recurse):
             self.recursions.append(child_node)
         else:
             self.children_nodes.append(child_node)
