@@ -35,6 +35,10 @@ class QueryMetadataTable(object):
                                  u'Note that FoldScopeLocation objects cannot be root locations. '
                                  u'Got: {} {}'.format(type(root_location).__name__, root_location))
 
+        if len(root_location.query_path) != 1 or root_location.visit_counter != 1:
+            raise AssertionError(u'Expected a root location with a query path of length 1, and a '
+                                 u'visit counter of 1, but received: {}'.format(root_location))
+
         self._root_location = root_location  # Location, the root location of the entire query
         self._locations = dict()             # dict, Location/FoldScopeLocation -> LocationInfo
         self._inputs = dict()                # dict, input name -> input info namedtuple

@@ -331,7 +331,9 @@ class Location(BaseLocation):
     def is_revisited_at(self, other_location):
         """Return True if other_location is a revisit of this location, and False otherwise."""
         # Note that FoldScopeLocation objects cannot revisit Location objects, or each other.
-        return isinstance(other_location, Location) and self.query_path == other_location.query_path
+        return (isinstance(other_location, Location) and
+                self.query_path == other_location.query_path and
+                self.visit_counter < other_location.visit_counter)
 
     def __str__(self):
         """Return a human-readable str representation of the Location object."""

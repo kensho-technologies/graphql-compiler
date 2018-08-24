@@ -36,7 +36,16 @@ def sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table):
 
 def _sanity_check_registered_locations_parent_locations(query_metadata_table):
     """Assert that all registered locations' parent locations are also registered."""
-    for _, location_info in query_metadata_table.registered_locations:
+    for location, location_info in query_metadata_table.registered_locations:
+        if (location != query_metadata_table.root_location and
+                not query_metadata_table.root_location.is_revisited_at(location)):
+            # If the location is not the root location and is not a revisit of the root,
+            # then it must have a parent location.
+            if location_info.parent_location is None:
+                raise AssertionError(u'Found a location that is not the root location of the query '
+                                     u'or a revisit of the root, but does not have a parent: '
+                                     u'{} {}'.format(location, location_info))
+
         if location_info.parent_location is not None:
             # Make sure the parent_location is also registered.
             # If the location is not registered, the following line will raise an error.
@@ -184,7 +193,7 @@ def _sanity_check_every_location_is_marked(ir_blocks):
     # - from one Traverse to the next Traverse
     # - from Traverse to Backtrack
     found_start_block = False
-    mark_location_blocks = 0
+    mark_location_blocks_count = 0
 
     start_interval_types = (QueryRoot, Traverse, Recurse, Fold)
     end_interval_types = (Backtrack, ConstructResult, Recurse, Traverse, Unfold)
@@ -193,16 +202,16 @@ def _sanity_check_every_location_is_marked(ir_blocks):
         # Terminate started intervals before opening new ones.
         if isinstance(block, end_interval_types) and found_start_block:
             found_start_block = False
-            if mark_location_blocks != 1:
-                raise AssertionError(u'Expected 1 MarkLocation block between traversals, '
-                                     u'found: {} {}'.format(mark_location_blocks, ir_blocks))
+            if mark_location_blocks_count != 1:
+                raise AssertionError(u'Expected 1 MarkLocation block between traversals, found: '
+                                     u'{} {}'.format(mark_location_blocks_count, ir_blocks))
 
         # Now consider opening new intervals or processing MarkLocation blocks.
         if isinstance(block, MarkLocation):
-            mark_location_blocks += 1
+            mark_location_blocks_count += 1
         elif isinstance(block, start_interval_types):
             found_start_block = True
-            mark_location_blocks = 0
+            mark_location_blocks_count = 0
 
 
 def _sanity_check_coerce_type_outside_of_fold(ir_blocks):
