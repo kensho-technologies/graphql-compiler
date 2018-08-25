@@ -49,35 +49,37 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                 block_to_location[ix] = ir_block.location
             current_block_ixs = []
     state_manager = QueryStateManager(location_types)
-    location_to_node = {}
+    query_path_to_node = {}
     tree_root = None
     for num, block in enumerate(ir_blocks):
         # todo we can skip queryroot and construct result, which simplifies this
         if num in block_to_location:
             location = block_to_location[num]
+            query_path = location.query_path
         sql_blocks = SqlBlockLowering.lower_block(block, state_manager)
         for block in sql_blocks:
-            if isinstance(block, SqlBlocks.Relation):
+            if isinstance(block, (blocks.Recurse, blocks.Traverse, blocks.QueryRoot)):
                 if tree_root is None:
                     location_info = query_metadata_table.get_location_info(location)
-                    tree_root = SqlNode(parent_node=None, relation=block, location_info=location_info, parent_location_info=None)
-                    location_to_node[block.location] = tree_root
-                elif block.location not in location_to_node:
-                    prev_location = block.location[:-1]
+                    tree_root = SqlNode(parent_node=None, block=block, location_info=location_info, parent_location_info=None)
+                    query_path_to_node[query_path] = tree_root
+                elif query_path not in query_path_to_node:
                     location_info = query_metadata_table.get_location_info(location)
-                    parent_location_info = query_metadata_table.get_location_info(location_info.parent_location)
-                    parent_node = location_to_node[prev_location]
-                    child_node = SqlNode(parent_node=parent_node, relation=block, location_info=location_info, parent_location_info=parent_location_info)
+                    parent_location = location_info.parent_location
+                    parent_query_path = parent_location.query_path
+                    parent_location_info = query_metadata_table.get_location_info(parent_location)
+                    parent_node = query_path_to_node[parent_query_path]
+                    child_node = SqlNode(parent_node=parent_node, block=block, location_info=location_info, parent_location_info=parent_location_info)
                     parent_node.add_child_node(child_node)
-                    location_to_node[block.location] = child_node
+                    query_path_to_node[query_path] = child_node
                 else:
                     raise AssertionError('Relations should never share a location')
             elif isinstance(block, SqlBlocks.Selection):
-                node = location_to_node[block.location]
+                node = query_path_to_node[block.field.location.query_path]
                 node.add_selection(block)
             elif isinstance(block, SqlBlocks.Predicate):
-                node = location_to_node[block.location]
+                node = query_path_to_node[query_path]
                 if block.is_tag:
-                    block.tag_node = location_to_node[block.tag_location]
+                    block.tag_node = query_path_to_node[block.tag_location]
                 node.add_predicate(block)
     return tree_root

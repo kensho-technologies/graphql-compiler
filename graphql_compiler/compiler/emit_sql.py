@@ -60,7 +60,7 @@ def _collapse_query_tree(node, location_to_selectable, compiler_metadata):
 
 
 def _create_recursive_clause(node, compiler_metadata, out_link_column):
-    edge = compiler_metadata.get_edge(node, node.relation)
+    edge = compiler_metadata.get_edge(node)
     if isinstance(edge, BasicEdge):
         source_col = edge.source_col
         sink_col = edge.sink_col
@@ -68,7 +68,7 @@ def _create_recursive_clause(node, compiler_metadata, out_link_column):
         base_column = node.table.c[base_col]
         if node.block.direction == 'in':
             source_col, sink_col = sink_col, source_col
-        recursive_table = compiler_metadata.get_table(node.relation).alias()
+        recursive_table = compiler_metadata.get_table(node).alias()
     elif isinstance(edge, MultiEdge):
         traversal_edge = edge.junction_edge
         final_edge = edge.final_edge
@@ -145,7 +145,7 @@ def _create_recursive_clause(node, compiler_metadata, out_link_column):
 
 
 def _create_and_reference_table(node, compiler_metadata):
-    table = compiler_metadata.get_table(node.relation).alias()
+    table = compiler_metadata.get_table(node).alias()
     node.table = table
     node.from_clause = table
     # ensure SQL blocks hold reference to Relation's table
@@ -184,17 +184,17 @@ def _update_table_for_blocks(table, blocks):
         block.table = table
 
 
-def _create_link_for_recursion(node, recursion, compiler_metadata):
-    edge = compiler_metadata.get_edge(node, recursion.relation)
+def _create_link_for_recursion(node, recursion_node, compiler_metadata):
+    edge = compiler_metadata.get_edge(recursion_node)
     if isinstance(edge, BasicEdge):
         from_col = edge.source_col
         recursion_in_column = node.table.c[from_col]
-        node.add_recursive_link_column(recursion, recursion_in_column)
+        node.add_recursive_link_column(recursion_node, recursion_in_column)
         return
     elif isinstance(edge, MultiEdge):
         from_col = edge.junction_edge.source_col
         recursion_in_column = node.table.c[from_col]
-        node.add_recursive_link_column(recursion, recursion_in_column)
+        node.add_recursive_link_column(recursion_node, recursion_in_column)
         return
     raise AssertionError
 

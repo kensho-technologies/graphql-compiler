@@ -40,10 +40,7 @@ class SqlBlockLowering(object):
             raise AssertionError('SQL backend should only have one root selection.')
         type_name = next(iter(start_class))
         state_manager.enter_location(type_name)
-        yield sql_blocks.Relation(
-            query_state=state_manager.get_state(),
-            block=block
-        )
+        yield block
 
     @staticmethod
     def _lower_filter(block, state_manager):
@@ -95,10 +92,7 @@ class SqlBlockLowering(object):
         if block.optional:
             state_manager.enter_optional()
         state_manager.enter_location(type_name)
-        yield sql_blocks.Relation(
-            query_state=state_manager.get_state(),
-            block=block,
-        )
+        yield block
 
     @staticmethod
     def _lower_recurse(block, state_manager):
@@ -107,10 +101,7 @@ class SqlBlockLowering(object):
         type_name = (block.direction + '_' + block.edge_name)
         state_manager.enter_recursive()
         state_manager.enter_location(type_name)
-        yield sql_blocks.Relation(
-            query_state=state_manager.get_state(),
-            block=block
-        )
+        yield block
         state_manager.exit_recursive()
 
     @staticmethod
@@ -127,12 +118,14 @@ class SqlBlockLowering(object):
         if isinstance(field, compiler_expr.OutputContextField):
             path = field.location.query_path
             field_name = field.location.field
-            yield sql_blocks.Selection(
+            selection = sql_blocks.Selection(
                 field_name=field_name,
                 alias=field_alias,
                 query_state=state_manager.state_for_path(path),
                 block=block,
+                field=field,
             )
+            yield selection
         elif isinstance(field, compiler_expr.FoldedOutputContextField):
             path = field.fold_scope_location.base_location.query_path
             path += ('_'.join(field.fold_scope_location.relative_position),)
@@ -142,6 +135,7 @@ class SqlBlockLowering(object):
                 alias=field_alias,
                 query_state=state_manager.state_for_path(path),
                 block=block,
+                field=field,
             )
         else:
             raise AssertionError('This should be unreachable.')
@@ -152,10 +146,7 @@ class SqlBlockLowering(object):
         type_name = '{direction}_{position}'.format(direction=direction, position=position)
         state_manager.enter_fold()
         state_manager.enter_location(type_name)
-        yield sql_blocks.Relation(
-            query_state=state_manager.get_state(),
-            block=block,
-        )
+        yield block
 
     @staticmethod
     def _lower_noop(block, state_manager):

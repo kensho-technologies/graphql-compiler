@@ -37,8 +37,8 @@ class CompilerMetadata:
             name.lower(): table for name, table in self.sqlalchemy_metadata.tables.items()
         }
 
-    def get_table(self, block):
-        return self._get_table_for_schema_name(block.relative_type)
+    def get_table(self, node):
+        return self._get_table_for_schema_name(node.relative_type)
 
     def _get_table_for_schema_name(self, schema_name):
         """
@@ -139,7 +139,7 @@ class CompilerMetadata:
         return or_(column == None, clause)  # noqa: E711
 
     def get_on_clause_for_node(self, node):
-        edge = self.get_edge(node, node.relation)
+        edge = self.get_edge(node)
         if isinstance(edge, BasicEdge):
             source_col = edge.source_col
             sink_col = edge.sink_col
@@ -202,17 +202,15 @@ class CompilerMetadata:
             )
         return getattr(table.c, column_name)
 
-    def get_edge(self, node, block):
-        edge_name = block.edge_name
+    def get_edge(self, node):
+        edge_name = node.block.edge_name
         if not isinstance(node.block, blocks.Recurse):
-            if block.outer_type != node.outer_type:
-                print('hello')
-            outer_type_name = block.outer_type
-            relative_type = block.relative_type
+            outer_type_name = node.outer_type
+            relative_type = node.relative_type
         else:
             # this is a recursive edge, from a type back onto itself
-            outer_type_name = block.relative_type
-            relative_type = block.relative_type
+            outer_type_name = node.relative_type
+            relative_type = node.relative_type
         if outer_type_name in self.config:
             parent_config = self.config[outer_type_name]
             if 'edges' in parent_config:

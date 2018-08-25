@@ -11,15 +11,13 @@ class SqlNode(object):
     underlying SQL alchemy table for these blocks, and manages the relationship to other nodes
     in the tree.
     """
-    def __init__(self, parent_node, relation, location_info, parent_location_info):
+    def __init__(self, parent_node, block, location_info, parent_location_info):
         self.parent_node = parent_node
-        self.query_state = relation.query_state
-        self.location = self.query_state.location
         self.location_info = location_info
         self.parent_location_info = parent_location_info
         self.outer_type = None if self.parent_location_info is None else self.parent_location_info.type.name
         self.relative_type = self.location_info.type.name
-        self.block = relation.block
+        self.block = block
         self.children_nodes = []
         self.recursions = []
         self.selections = []
@@ -27,7 +25,6 @@ class SqlNode(object):
         self.link_columns = []
         self.recursion_to_column = {}
         self.link_column = None
-        self.relation = relation
         self.from_clause = None
         self.table = None
 

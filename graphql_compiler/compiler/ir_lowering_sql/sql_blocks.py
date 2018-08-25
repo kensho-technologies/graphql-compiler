@@ -47,10 +47,11 @@ class SqlBlocks:
             return self.query_state.in_fold
 
     class Selection(BaseBlock):
-        def __init__(self, field_name, alias, query_state, block):
+        def __init__(self, field_name, alias, query_state, block, field):
             self.field_name = field_name
             self.alias = alias
             self.renamed = False
+            self.field = field
             super(SqlBlocks.Selection, self).__init__(query_state, block)
 
         def rename(self):
