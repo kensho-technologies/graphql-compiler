@@ -11,12 +11,13 @@ from graphql_compiler.compiler.ir_lowering_sql.metadata import BasicEdge, MultiE
 def emit_code_from_ir(sql_query_tree_root_metadata, compiler_metadata):
     query_path_to_selectable = {}
     sql_query_tree, query_path_to_location_info = sql_query_tree_root_metadata
-    return _query_tree_to_query(sql_query_tree, query_path_to_selectable, query_path_to_location_info, compiler_metadata)
+    return _query_tree_to_query(
+        sql_query_tree, query_path_to_selectable, query_path_to_location_info, compiler_metadata)
 
 
 def _query_tree_to_query(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata, recursion_in_column=None):
-    # step 1: Collapse query tree, ignoring recursive blocks
-    paths = _collapse_query_tree(node, query_path_to_selectable, compiler_metadata)
+    # step 1: Collapse query tree, ignoring recursive
+    visited_nodes = _visit_and_flatten_nonrecursive_nodes(node, query_path_to_selectable, compiler_metadata)
     recursion_out_column = None
     # step 2: If the tree rooted at the current node is recursive, create the recursive element
     if isinstance(node.block, blocks.Recurse):
@@ -25,19 +26,22 @@ def _query_tree_to_query(node, query_path_to_selectable, query_path_to_location_
         )
     # step 3: query tree is collapsed, recursion at current node is created
     # materialize and wrap this query in a CTE
-    query = _create_query(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata, use_predicates=True)
-    cte = _wrap_query_as_cte(node, query)
-    for path in paths:
-        query_path_to_selectable[path] = cte
-
-    for child_node in node.children_nodes:
-        query_path_to_selectable[child_node.query_path] = cte
+    query = _create_query(
+        node, query_path_to_selectable, query_path_to_location_info, compiler_metadata,
+        apply_filters=True)
+    query = query.cte()
+    node.from_clause = query
+    node.table = query
+    for visited_node in visited_nodes:
+        query_path = visited_node.query_path
+        query_path_to_selectable[query_path] = query
 
     # step 4: collapse and return recursive node trees
     _traverse_recursions(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata)
     if isinstance(node.block, blocks.QueryRoot):
-        # This is the root
-        return _create_query(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata, use_predicates=False)
+        # filters have already been applied within the CTE, no need to reapply
+        return _create_query(node, query_path_to_selectable, query_path_to_location_info,
+                             compiler_metadata, apply_filters=False)
     return recursion_out_column
 
 
@@ -54,11 +58,11 @@ def _traverse_recursions(node, query_path_to_selectable, query_path_to_location_
             node.fields_to_rename[field_alias] = recursive_node.fields_to_rename[field_alias]
 
 
-def _collapse_query_tree(node, query_path_to_selectable, compiler_metadata):
+def _visit_and_flatten_nonrecursive_nodes(node, query_path_to_selectable, compiler_metadata):
     # recursively collapse the children's trees
-    paths = [node.query_path]
+    visited_nodes = [node]
     for child_node in node.children_nodes:
-        paths.extend(_collapse_query_tree(child_node, query_path_to_selectable, compiler_metadata))
+        visited_nodes.extend(_visit_and_flatten_nonrecursive_nodes(child_node, query_path_to_selectable, compiler_metadata))
     for child_node in node.children_nodes:
         for field_alias, field_data in six.iteritems(child_node.fields):
             node.fields[field_alias] = field_data
@@ -73,7 +77,7 @@ def _collapse_query_tree(node, query_path_to_selectable, compiler_metadata):
         _pull_up_node_blocks(node, child_node)
         # join to the child
         _join_to_node(node, child_node, compiler_metadata)
-    return paths
+    return visited_nodes
 
 
 def _create_recursive_clause(node, compiler_metadata, out_link_column):
@@ -229,7 +233,7 @@ def _join_to_recursive_node(node, recursion_in_column, recursive_node, recursion
     )
 
 
-def get_output_columns(node, query_path_to_selectable, compiler_metadata):
+def _get_output_columns(node, query_path_to_selectable, compiler_metadata):
     columns = []
     for field_alias, (field, schema_type) in six.iteritems(node.fields):
         is_renamed = node.fields_to_rename[field_alias]
@@ -245,26 +249,19 @@ def get_output_columns(node, query_path_to_selectable, compiler_metadata):
     return columns
 
 
-def _wrap_query_as_cte(node, query):
-    cte = query.cte()
-    node.from_clause = cte
-    node.table = cte
-    return cte
-
-
-def _create_query(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata, use_predicates):
-    columns = get_output_columns(node, query_path_to_selectable, compiler_metadata)
-    columns += node.link_columns
+def _create_query(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata, apply_filters):
+    columns = _get_output_columns(node, query_path_to_selectable, compiler_metadata)
+    columns.extend(node.link_columns)
     node.link_columns = []
     query = select(columns, distinct=True).select_from(node.from_clause)
-    if not use_predicates:
+    if not apply_filters:
         return query
 
-    predicates = [
+    filter_clauses = [
         convert_filter_to_sql(filter_block, query_path, query_path_to_selectable, query_path_to_location_info, location_info, compiler_metadata)
         for filter_block, query_path, location_info in node.filters
     ]
-    return query.where(and_(*predicates))
+    return query.where(and_(*filter_clauses))
 
 
 def convert_filter_to_sql(filter_block, query_path, query_path_to_selectable, query_path_to_location_info, location_info, compiler_metadata):
