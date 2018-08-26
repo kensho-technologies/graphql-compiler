@@ -1,16 +1,20 @@
-import six
-from sqlalchemy import select, and_, literal_column, cast, String, case
+from _operator import or_
 
-from graphql_compiler.compiler import blocks
+import six
+from sqlalchemy import select, and_, literal_column, cast, String, case, bindparam
+
+from graphql_compiler.compiler import blocks, expressions
+from graphql_compiler.compiler.ir_lowering_sql.constants import OPERATORS, Cardinality
 from graphql_compiler.compiler.ir_lowering_sql.metadata import BasicEdge, MultiEdge
 
 
-def emit_code_from_ir(sql_query_tree, compiler_metadata):
+def emit_code_from_ir(sql_query_tree_root_metadata, compiler_metadata):
     query_path_to_selectable = {}
-    return _query_tree_to_query(sql_query_tree, query_path_to_selectable, compiler_metadata)
+    sql_query_tree, query_path_to_location_info = sql_query_tree_root_metadata
+    return _query_tree_to_query(sql_query_tree, query_path_to_selectable, query_path_to_location_info, compiler_metadata)
 
 
-def _query_tree_to_query(node, query_path_to_selectable, compiler_metadata, recursion_in_column=None):
+def _query_tree_to_query(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata, recursion_in_column=None):
     # step 1: Collapse query tree, ignoring recursive blocks
     paths = _collapse_query_tree(node, query_path_to_selectable, compiler_metadata)
     recursion_out_column = None
@@ -22,7 +26,7 @@ def _query_tree_to_query(node, query_path_to_selectable, compiler_metadata, recu
         )
     # step 3: query tree is collapsed, recursion at current node is created
     # materialize and wrap this query in a CTE
-    query = _create_base_query(node, query_path_to_selectable, compiler_metadata)
+    query = _create_base_query(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata)
     cte = _wrap_query_as_cte(node, query)
     for path in paths:
         query_path_to_selectable[path] = cte
@@ -31,19 +35,19 @@ def _query_tree_to_query(node, query_path_to_selectable, compiler_metadata, recu
         query_path_to_selectable[child_node.query_path] = cte
 
     # step 4: collapse and return recursive node trees
-    _traverse_recursions(node, query_path_to_selectable, compiler_metadata)
+    _traverse_recursions(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata)
     if node.parent_node is None:
         # This is the root
         return _create_final_query(node, query_path_to_selectable, compiler_metadata)
     return recursion_out_column
 
 
-def _traverse_recursions(node, query_path_to_selectable, compiler_metadata):
+def _traverse_recursions(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata):
     for recursive_node in node.recursions:
         # retrieve the column that will be attached to the recursive element
         recursion_in_column = node.recursion_to_column[recursive_node]
         recursion_out_column = _query_tree_to_query(
-            recursive_node, query_path_to_selectable, compiler_metadata, recursion_in_column=recursion_in_column
+            recursive_node, query_path_to_selectable, query_path_to_location_info, compiler_metadata, recursion_in_column=recursion_in_column
         )
         _join_to_recursive_node(node, recursion_in_column, recursive_node, recursion_out_column)
         for field_alias, field_data in six.iteritems(recursive_node.fields):
@@ -170,6 +174,7 @@ def _create_and_reference_table(node, compiler_metadata):
 
 def _pull_up_node_blocks(node, child_node):
     node.predicates.extend(child_node.predicates)
+    node.filters.extend(child_node.filters)
     node.recursions.extend(child_node.recursions)
     for recursion, link_column in child_node.recursion_to_column.items():
         node.recursion_to_column[recursion] = link_column
@@ -257,7 +262,7 @@ def _wrap_query_as_cte(node, query):
     return cte
 
 
-def _create_base_query(node, query_path_to_selectable, compiler_metadata):
+def _create_base_query(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata):
     selection_columns = []
     for field_alias, (field, schema_type) in six.iteritems(node.fields):
         is_renamed = node.fields_to_rename[field_alias]
@@ -274,8 +279,63 @@ def _create_base_query(node, query_path_to_selectable, compiler_metadata):
     predicates = [
         compiler_metadata.get_predicate_condition(node, predicate) for predicate in node.predicates
     ]
+    predicates = [
+        convert_filter_to_sql(filter_block, query_path, query_path_to_selectable, query_path_to_location_info, location_info, compiler_metadata)
+        for filter_block, query_path, location_info in node.filters
+    ]
     return _create_query(node, selection_columns, predicates)
 
+
+def convert_filter_to_sql(filter_block, query_path, query_path_to_selectable, query_path_to_location_info, location_info, compiler_metadata):
+    selectable = query_path_to_selectable[query_path]
+    predicate = filter_block.predicate
+    if not isinstance(predicate, expressions.BinaryComposition):
+        raise AssertionError
+    sql_operator = OPERATORS[predicate.operator]
+    left = predicate.left
+    right = predicate.right
+    # todo: Between comes in as x >= lower and x <= upper, which are each
+    # themselves BinaryComposition objects
+    variable, field = left, right
+    if isinstance(variable, expressions.LocalField):
+        variable, field = right, left
+    column_name = compiler_metadata.get_column_name_for_type(location_info.type.name, field.field_name)
+    column = selectable.c[column_name]
+    if isinstance(variable, expressions.ContextField):
+        tag_field_name = variable.location.field
+        tag_query_path = variable.location.query_path
+        tag_location_info = query_path_to_location_info[tag_query_path]
+        tag_column_name = compiler_metadata.get_column_name_for_type(tag_location_info.type.name, tag_field_name)
+        tag_selectable = query_path_to_selectable[tag_query_path]
+        tag_column = tag_selectable.c[tag_column_name]
+        operation = getattr(column, sql_operator.name)
+        clause = operation(tag_column)
+    else:
+        param_name = variable.variable_name
+
+        if sql_operator.cardinality == Cardinality.SINGLE:
+            operation = getattr(column, sql_operator.name)
+            clause = operation(bindparam(param_name))
+        elif sql_operator.cardinality == Cardinality.MANY:
+            operation = getattr(column, sql_operator.name)
+            clause = operation(bindparam(param_name, expanding=True))
+
+        elif sql_operator.cardinality == Cardinality.DUAL:
+            first_param, second_param = filter_block.param_names
+            operation = getattr(column, filter_block.operator.name)
+            clause = operation(bindparam(first_param), bindparam(second_param))
+        else:
+            raise AssertionError(
+                'Unable to construct where clause with cardinality "{}"'.format(
+                    filter_block.operator.cardinality
+                )
+            )
+    if clause is None:
+        raise AssertionError("This should be unreachable.")
+    if location_info.optional_scopes_depth == 0:
+        return clause
+    # the == None below is valid SQLAlchemy, the == operator is heavily overloaded.
+    return or_(column == None, clause)  # noqa: E711
 
 def _create_query(node, columns, predicates):
     query = select(columns, distinct=True).select_from(node.from_clause)

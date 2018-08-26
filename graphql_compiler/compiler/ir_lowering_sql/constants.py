@@ -11,6 +11,22 @@ class Cardinality(Enum):
     DUAL = 2
     MANY = 3
 
+class Operator:
+    def __init__(self, name, cardinality):
+        self.name = name
+        self.cardinality = cardinality
+
+
+OPERATORS = {
+    "contains": Operator('in_', Cardinality.MANY),
+    "=": Operator('__eq__', Cardinality.SINGLE),
+    "<": Operator('__lt__', Cardinality.SINGLE),
+    ">": Operator('__gt__', Cardinality.SINGLE),
+    "<=": Operator('__le__', Cardinality.SINGLE),
+    ">=": Operator('__ge__', Cardinality.SINGLE),
+    "between": Operator('between', Cardinality.DUAL),
+    'has_substring': Operator('contains', Cardinality.SINGLE),
+}
 
 class group_concat(functions.GenericFunction):
     '''

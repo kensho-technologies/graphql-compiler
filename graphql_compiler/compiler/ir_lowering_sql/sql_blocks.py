@@ -1,4 +1,4 @@
-from .constants import Cardinality
+from .constants import Cardinality, OPERATORS
 
 
 class SqlBlocks:
@@ -53,16 +53,7 @@ class SqlBlocks:
                 self.name = name
                 self.cardinality = cardinality
 
-        operators = {
-            "contains": Operator('in_', Cardinality.MANY),
-            "=": Operator('__eq__', Cardinality.SINGLE),
-            "<": Operator('__lt__', Cardinality.SINGLE),
-            ">": Operator('__gt__', Cardinality.SINGLE),
-            "<=": Operator('__le__', Cardinality.SINGLE),
-            ">=": Operator('__ge__', Cardinality.SINGLE),
-            "between": Operator('between', Cardinality.DUAL),
-            'has_substring': Operator('contains', Cardinality.SINGLE),
-        }
+
 
         def __init__(self, field_name, param_names, operator_name, is_tag, tag_location, tag_field,
                      query_state, block):
@@ -73,11 +64,11 @@ class SqlBlocks:
             self.tag_location = tag_location
             self.tag_field = tag_field
             self.tag_node = None
-            if operator_name not in self.operators:
+            if operator_name not in OPERATORS:
                 raise AssertionError(
                     'Invalid operator "{}" supplied to predicate.'.format(operator_name)
                 )
-            self.operator = self.operators[operator_name]
+            self.operator = OPERATORS[operator_name]
             super(SqlBlocks.Predicate, self).__init__(query_state, block)
 
     class Relation(BaseBlock):

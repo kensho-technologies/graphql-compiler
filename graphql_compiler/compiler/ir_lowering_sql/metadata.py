@@ -1,6 +1,6 @@
 from sqlalchemy import MetaData, bindparam, or_
 
-from graphql_compiler.compiler import blocks
+from graphql_compiler.compiler import blocks, expressions
 from graphql_compiler.compiler.ir_lowering_sql import SqlBlocks
 from .constants import SqlBackend, Cardinality
 
@@ -65,9 +65,7 @@ class CompilerMetadata:
         return self._db_backend
 
     def get_column_for_block(self, block):
-        if isinstance(block, SqlBlocks.Predicate):
-            return self._get_column_for_block(block)
-        raise AssertionError
+        return self._get_column_for_block(block)
 
     def _get_column_for_block(self, block):
         column_name = self._get_column_name_from_schema(block)
@@ -139,6 +137,8 @@ class CompilerMetadata:
             return clause
         # the == None below is valid SQLAlchemy, the == operator is heavily overloaded.
         return or_(column == None, clause)  # noqa: E711
+
+
 
     def get_on_clause_for_node(self, node):
         edge = self.get_edge(node)

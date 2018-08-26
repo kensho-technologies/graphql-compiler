@@ -40,6 +40,10 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
         location.query_path: location_info.type
         for location, location_info in query_metadata_table.registered_locations
     }
+    query_path_to_location_info = {
+        location.query_path: location_info
+        for location, location_info in query_metadata_table.registered_locations
+    }
     block_index_to_location = get_block_index_to_location_map(ir_blocks)
     construct_result = ir_blocks.pop()
     state_manager = QueryStateManager(location_types)
@@ -77,8 +81,9 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                 if block.is_tag:
                     block.tag_node = query_path_to_node[block.tag_location]
                 node.add_predicate(block)
+                node.filters.append((block.block, query_path, query_path_to_location_info[query_path]))
     assign_output_fields_to_nodes(construct_result, location_types, query_path_to_node)
-    return tree_root
+    return (tree_root, query_path_to_location_info)
 
 
 def assign_output_fields_to_nodes(construct_result, location_types, query_path_to_node):

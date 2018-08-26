@@ -18,6 +18,7 @@ class SqlNode(object):
         self.outer_type = None if self.parent_location_info is None else self.parent_location_info.type.name
         self.relative_type = self.location_info.type.name
         self.block = block
+        self.filters = []
         self.children_nodes = []
         self.recursions = []
         self.predicates = []
