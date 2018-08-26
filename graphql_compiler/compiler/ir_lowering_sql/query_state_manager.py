@@ -23,19 +23,6 @@ class QueryStateManager:
         def current_type(self):
             return self.location_types[self.location].name
 
-        @property
-        def current_vertex(self):
-            return self.location[-1]
-
-        def outer_type(self):
-            if len(self.location) < 2:
-                return None
-            outer_location = self.location[:-1]
-            return self.location_types[outer_location].name
-
-        def get_location(self):
-            return self.location
-
     def __init__(self, location_types):
         self.query_path = []
         self.in_optional = False

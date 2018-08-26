@@ -22,7 +22,7 @@ class SqlBlockLowering(object):
         elif isinstance(block, compiler_blocks.Backtrack):
             return SqlBlockLowering._lower_backtrack(block, state_manager)
         elif isinstance(block, compiler_blocks.ConstructResult):
-            return SqlBlockLowering._lower_construct_result(block, state_manager)
+            return SqlBlockLowering._lower_noop(block, state_manager)
         elif isinstance(block, compiler_blocks.Fold):
             return SqlBlockLowering._lower_fold(block, state_manager)
         elif isinstance(block, compiler_blocks.Unfold):

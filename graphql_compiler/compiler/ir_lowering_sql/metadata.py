@@ -65,35 +65,37 @@ class CompilerMetadata:
         return self._db_backend
 
     def get_column_for_block(self, block):
-        if isinstance(block, SqlBlocks.Selection):
-            return self._get_selection_column(block)
-        elif isinstance(block, SqlBlocks.Predicate):
+        if isinstance(block, SqlBlocks.Predicate):
             return self._get_column_for_block(block)
         raise AssertionError
-
-    def _get_selection_column(self, block):
-        if not block.renamed:
-            column = self._get_column_for_block(block)
-            if block.alias is not None:
-                return column.label(block.alias)
-            return column
-        return block.table.c[block.alias]
 
     def _get_column_for_block(self, block):
         column_name = self._get_column_name_from_schema(block)
         return self._get_column_from_table(block.table, column_name)
 
-    def _get_column_name_from_schema(self, block):
-        if block.relative_type not in self.config:
-            return block.field_name
-        column_name = block.field_name
-        schema_config = self.config[block.relative_type]
+    def _get_column_name_from_schema(self, node):
+        if node.relative_type not in self.config:
+            return node.field_name
+        column_name = node.field_name
+        schema_config = self.config[node.relative_type]
         if 'column_names' not in schema_config:
             return column_name
         column_map = schema_config['column_names']
-        if block.field_name not in column_map:
+        if node.field_name not in column_map:
             return column_name
-        return column_map[block.field_name]
+        return column_map[node.field_name]
+
+    def get_column_name_for_type(self, schema_type, field_name):
+        if schema_type not in self.config:
+            return field_name
+        column_name = field_name
+        schema_config = self.config[schema_type]
+        if 'column_names' not in schema_config:
+            return column_name
+        column_map = schema_config['column_names']
+        if field_name not in column_map:
+            return column_name
+        return column_map[field_name]
 
     def get_predicate_condition(self, node, block):
         column = self.get_column_for_block(block)
