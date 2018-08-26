@@ -20,13 +20,12 @@ def _query_tree_to_query(node, query_path_to_selectable, query_path_to_location_
     recursion_out_column = None
     # step 2: If the tree rooted at the current node is recursive, create the recursive element
     if isinstance(node.block, blocks.Recurse):
-        # this node is itself recursive, setup recursion linked to supplied link column
         recursion_out_column = _create_recursive_clause(
             node, compiler_metadata, recursion_in_column
         )
     # step 3: query tree is collapsed, recursion at current node is created
     # materialize and wrap this query in a CTE
-    query = _create_base_query(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata)
+    query = _create_query(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata, use_predicates=True)
     cte = _wrap_query_as_cte(node, query)
     for path in paths:
         query_path_to_selectable[path] = cte
@@ -36,9 +35,9 @@ def _query_tree_to_query(node, query_path_to_selectable, query_path_to_location_
 
     # step 4: collapse and return recursive node trees
     _traverse_recursions(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata)
-    if node.parent_node is None:
+    if isinstance(node.block, blocks.QueryRoot):
         # This is the root
-        return _create_final_query(node, query_path_to_selectable, compiler_metadata)
+        return _create_query(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata, use_predicates=False)
     return recursion_out_column
 
 
@@ -167,13 +166,11 @@ def _create_and_reference_table(node, compiler_metadata):
     node.table = table
     node.from_clause = table
     # ensure SQL blocks hold reference to Relation's table
-    _update_table_for_blocks(table, node.predicates)
     return table
 
 
 
 def _pull_up_node_blocks(node, child_node):
-    node.predicates.extend(child_node.predicates)
     node.filters.extend(child_node.filters)
     node.recursions.extend(child_node.recursions)
     for recursion, link_column in child_node.recursion_to_column.items():
@@ -232,13 +229,6 @@ def _join_to_recursive_node(node, recursion_in_column, recursive_node, recursion
     )
 
 
-def _create_final_query(node, query_path_to_selectable, compiler_metadata):
-    # no need to adjust predicates, they are already
-    columns = get_output_columns(node, query_path_to_selectable, compiler_metadata)
-    # no predicates required,  since they are captured in the base CTE
-    return _create_query(node, columns, None)
-
-
 def get_output_columns(node, query_path_to_selectable, compiler_metadata):
     columns = []
     for field_alias, (field, schema_type) in six.iteritems(node.fields):
@@ -262,28 +252,19 @@ def _wrap_query_as_cte(node, query):
     return cte
 
 
-def _create_base_query(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata):
-    selection_columns = []
-    for field_alias, (field, schema_type) in six.iteritems(node.fields):
-        is_renamed = node.fields_to_rename[field_alias]
-        selectable = query_path_to_selectable[field.location.query_path]
-        if is_renamed:
-            column = selectable.c[field_alias]
-        else:
-            field_name = field.location.field
-            column_name = compiler_metadata.get_column_name_for_type(schema_type.name, field_name)
-            column = selectable.c[column_name].label(field_alias)
-            node.fields_to_rename[field_alias] = True
-        selection_columns.append(column)
-    selection_columns += node.link_columns
-    predicates = [
-        compiler_metadata.get_predicate_condition(node, predicate) for predicate in node.predicates
-    ]
+def _create_query(node, query_path_to_selectable, query_path_to_location_info, compiler_metadata, use_predicates):
+    columns = get_output_columns(node, query_path_to_selectable, compiler_metadata)
+    columns += node.link_columns
+    node.link_columns = []
+    query = select(columns, distinct=True).select_from(node.from_clause)
+    if not use_predicates:
+        return query
+
     predicates = [
         convert_filter_to_sql(filter_block, query_path, query_path_to_selectable, query_path_to_location_info, location_info, compiler_metadata)
         for filter_block, query_path, location_info in node.filters
     ]
-    return _create_query(node, selection_columns, predicates)
+    return query.where(and_(*predicates))
 
 
 def convert_filter_to_sql(filter_block, query_path, query_path_to_selectable, query_path_to_location_info, location_info, compiler_metadata):
@@ -312,7 +293,6 @@ def convert_filter_to_sql(filter_block, query_path, query_path_to_selectable, qu
         clause = operation(tag_column)
     else:
         param_name = variable.variable_name
-
         if sql_operator.cardinality == Cardinality.SINGLE:
             operation = getattr(column, sql_operator.name)
             clause = operation(bindparam(param_name))
@@ -337,8 +317,3 @@ def convert_filter_to_sql(filter_block, query_path, query_path_to_selectable, qu
     # the == None below is valid SQLAlchemy, the == operator is heavily overloaded.
     return or_(column == None, clause)  # noqa: E711
 
-def _create_query(node, columns, predicates):
-    query = select(columns, distinct=True).select_from(node.from_clause)
-    if predicates is None:
-        return query
-    return query.where(and_(*predicates))

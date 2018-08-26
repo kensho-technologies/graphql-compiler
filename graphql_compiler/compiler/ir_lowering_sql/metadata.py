@@ -1,7 +1,6 @@
 from sqlalchemy import MetaData, bindparam, or_
 
-from graphql_compiler.compiler import blocks, expressions
-from graphql_compiler.compiler.ir_lowering_sql import SqlBlocks
+from graphql_compiler.compiler import blocks
 from .constants import SqlBackend, Cardinality
 
 
@@ -64,25 +63,6 @@ class CompilerMetadata:
     def db_backend(self):
         return self._db_backend
 
-    def get_column_for_block(self, block):
-        return self._get_column_for_block(block)
-
-    def _get_column_for_block(self, block):
-        column_name = self._get_column_name_from_schema(block)
-        return self._get_column_from_table(block.table, column_name)
-
-    def _get_column_name_from_schema(self, node):
-        if node.relative_type not in self.config:
-            return node.field_name
-        column_name = node.field_name
-        schema_config = self.config[node.relative_type]
-        if 'column_names' not in schema_config:
-            return column_name
-        column_map = schema_config['column_names']
-        if node.field_name not in column_map:
-            return column_name
-        return column_map[node.field_name]
-
     def get_column_name_for_type(self, schema_type, field_name):
         if schema_type not in self.config:
             return field_name
@@ -94,51 +74,6 @@ class CompilerMetadata:
         if field_name not in column_map:
             return column_name
         return column_map[field_name]
-
-    def get_predicate_condition(self, node, block):
-        column = self.get_column_for_block(block)
-        if block.is_tag:
-            tag_column = self._get_tag_column(block)
-            operation = getattr(column, block.operator.name)
-            clause = operation(tag_column)
-
-        elif block.operator.cardinality == Cardinality.SINGLE:
-            if len(block.param_names) != 1:
-                raise AssertionError(
-                    'Only one value can be supplied to an operator with singular cardinality.'
-                )
-            operation = getattr(column, block.operator.name)
-            clause = operation(bindparam(block.param_names[0]))
-        elif block.operator.cardinality == Cardinality.MANY:
-            if len(block.param_names) != 1:
-                raise AssertionError(
-                    'Only one value can be supplied to an operator with cardinality many.'
-                )
-            operation = getattr(column, block.operator.name)
-            clause = operation(bindparam(block.param_names[0], expanding=True))
-
-        elif block.operator.cardinality == Cardinality.DUAL:
-            if len(block.param_names) != 2:
-                raise AssertionError(
-                    'Two values must be supplied to an operator with dual cardinality.'
-                )
-            first_param, second_param = block.param_names
-            operation = getattr(column, block.operator.name)
-            clause = operation(bindparam(first_param), bindparam(second_param))
-        else:
-            raise AssertionError(
-                'Unable to construct where clause with cardinality "{}"'.format(
-                    block.operator.cardinality
-                )
-            )
-        if clause is None:
-            raise AssertionError("This should be unreachable.")
-        if isinstance(node.block, (blocks.Traverse, blocks.Recurse)) and node.block.within_optional_scope:
-            return clause
-        # the == None below is valid SQLAlchemy, the == operator is heavily overloaded.
-        return or_(column == None, clause)  # noqa: E711
-
-
 
     def get_on_clause_for_node(self, node):
         edge = self.get_edge(node)
@@ -178,21 +113,6 @@ class CompilerMetadata:
             outer_column = self._get_column_from_table(junction_table, source_col)
             inner_column = self._get_column_from_table(node.table, sink_col)
             return [(node.from_clause, outer_column==inner_column)]
-
-    def _get_tag_column(self, block):
-        if block.tag_node.relative_type not in self.config:
-            raise AssertionError(
-                'No config found for schema "{}"'.format(block.tag_node.relative_type)
-            )
-        column_name = block.tag_field
-        schema_config = self.config[block.tag_node.relative_type]
-        if 'column_names' not in schema_config:
-            return self._get_column_from_table(block.tag_node.table, column_name)
-        column_map = schema_config['column_names']
-        if block.tag_field not in column_map:
-            return self._get_column_from_table(block.tag_node.table, column_name)
-        column_name = column_map[block.tag_field]
-        return self._get_column_from_table(block.tag_node.table, column_name)
 
     @staticmethod
     def _get_column_from_table(table, column_name):

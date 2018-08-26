@@ -1,7 +1,6 @@
 from collections import defaultdict
 
 from graphql_compiler.compiler import blocks
-from graphql_compiler.compiler.ir_lowering_sql import SqlBlocks
 
 
 class SqlNode(object):
@@ -21,7 +20,6 @@ class SqlNode(object):
         self.filters = []
         self.children_nodes = []
         self.recursions = []
-        self.predicates = []
         self.link_columns = []
         self.recursion_to_column = {}
         self.link_column = None
@@ -46,11 +44,6 @@ class SqlNode(object):
     def add_recursive_link_column(self, recursion, recursion_in_column):
         self.recursion_to_column[recursion] = recursion_in_column
         self.link_columns.append(recursion_in_column)
-
-    def add_predicate(self, predicate):
-        if not isinstance(predicate, SqlBlocks.Predicate):
-            raise AssertionError('Trying to add non-predicate')
-        self.predicates.append(predicate)
 
     def __str__(self):
         return 'SqlNode({}, children={})'.format(self.query_path, self.children_nodes)
