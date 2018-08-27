@@ -3848,33 +3848,6 @@ class CompilerTests(unittest.TestCase):
             $optional__1 = (
                 SELECT
                     Animal___1.name AS `animal_name`,
-                    Animal__in_Animal_ParentOf___1.name AS `child_name`,
-                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name
-                        AS `spouse_and_self_name`
-                FROM (
-                    MATCH {{
-                        class: Animal,
-                        where: ((
-                            (
-                                (out_Animal_ParentOf IS null)
-                                OR
-                                (out_Animal_ParentOf.size() = 0)
-                            )
-                            AND
-                            (name LIKE ('%' + ({wanted} + '%')))
-                        )),
-                        as: Animal___1
-                    }}.in('Animal_ParentOf') {{
-                        as: Animal__in_Animal_ParentOf___1
-                    }}.out('Animal_ParentOf') {{
-                        as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
-                    }}
-                    RETURN $matches
-                )
-            ),
-            $optional__2 = (
-                SELECT
-                    Animal___1.name AS `animal_name`,
                     Animal__out_Animal_ParentOf___1.name AS `parent_name`,
                     Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name AS `parent_species`
                 FROM (
@@ -3898,6 +3871,33 @@ class CompilerTests(unittest.TestCase):
                         as: Animal__out_Animal_ParentOf___1
                     }}.out('Animal_OfSpecies') {{
                         as: Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1
+                    }}
+                    RETURN $matches
+                )
+            ),
+            $optional__2 = (
+                SELECT
+                    Animal___1.name AS `animal_name`,
+                    Animal__in_Animal_ParentOf___1.name AS `child_name`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name
+                        AS `spouse_and_self_name`
+                FROM (
+                    MATCH {{
+                        class: Animal,
+                        where: ((
+                            (
+                                (out_Animal_ParentOf IS null)
+                                OR
+                                (out_Animal_ParentOf.size() = 0)
+                            )
+                            AND
+                            (name LIKE ('%' + ({wanted} + '%')))
+                        )),
+                        as: Animal___1
+                    }}.in('Animal_ParentOf') {{
+                        as: Animal__in_Animal_ParentOf___1
+                    }}.out('Animal_ParentOf') {{
+                        as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
                     }}
                     RETURN $matches
                 )
