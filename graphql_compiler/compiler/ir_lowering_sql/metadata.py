@@ -75,44 +75,7 @@ class CompilerMetadata:
             return column_name
         return column_map[field_name]
 
-    def get_on_clause_for_node(self, node):
-        edge = self.get_edge(node)
-        if isinstance(edge, BasicEdge):
-            source_col = edge.source_col
-            sink_col = edge.sink_col
-            if node.block.direction == 'in':
-                source_col, sink_col = sink_col, source_col
-            if edge is None:
-                return None
-            outer_column = self._get_column_from_table(node.parent_node.table, source_col)
-            inner_column = self._get_column_from_table(node.table, sink_col)
-            return [(node.from_clause, outer_column == inner_column)]
-        elif isinstance(edge, MultiEdge):
-            traversal_edge = edge.junction_edge
-            junction_table = self.get_table_by_name(traversal_edge.table_name).alias()
-            source_col = traversal_edge.source_col
-            sink_col = traversal_edge.sink_col
-            if node.block.direction == 'in':
-                source_col, sink_col = sink_col, source_col
 
-            outer_column = self._get_column_from_table(node.parent_node.from_clause, source_col)
-            inner_column = self._get_column_from_table(junction_table, sink_col)
-            traversal_onclause = outer_column == inner_column
-            if node.in_optional:
-                node.parent_node.from_clause = node.parent_node.from_clause.outerjoin(
-                    junction_table, onclause=traversal_onclause
-                )
-            else:
-                node.parent_node.from_clause = node.parent_node.from_clause.join(junction_table, onclause=traversal_onclause)
-            final_edge = edge.final_edge
-            source_col = final_edge.source_col
-            sink_col = final_edge.sink_col
-            if node.block.direction == 'in':
-                source_col, sink_col = sink_col, source_col
-
-            outer_column = self._get_column_from_table(junction_table, source_col)
-            inner_column = self._get_column_from_table(node.table, sink_col)
-            return [(node.from_clause, outer_column==inner_column)]
 
     @staticmethod
     def _get_column_from_table(table, column_name):
@@ -125,6 +88,8 @@ class CompilerMetadata:
         return getattr(table.c, column_name)
 
     def get_edge(self, node):
+        if not hasattr(node.block, 'edge_name'):
+            print('hi')
         edge_name = node.block.edge_name
         if not isinstance(node.block, blocks.Recurse):
             outer_type_name = node.outer_type

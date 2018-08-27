@@ -18,13 +18,13 @@ class SqlNode(object):
         self.relative_type = self.location_info.type.name
         self.block = block
         self.filters = []
+        self.children = []
         self.children_nodes = []
         self.recursions = []
         self.link_columns = []
         self.recursion_to_column = {}
         self.link_column = None
         self.from_clause = None
-        self.table = None
 
     @property
     def in_optional(self):
@@ -40,6 +40,7 @@ class SqlNode(object):
             self.recursions.append(child_node)
         else:
             self.children_nodes.append(child_node)
+        self.children.append(child_node)
 
     def add_recursive_link_column(self, recursion, recursion_in_column):
         self.recursion_to_column[recursion] = recursion_in_column
