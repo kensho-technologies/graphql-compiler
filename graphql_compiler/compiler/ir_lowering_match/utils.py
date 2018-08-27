@@ -344,16 +344,16 @@ class OptionalTraversalTrie():
         if start_location is not None and start_location not in self._location_to_children.keys():
             raise AssertionError(u'received invalid start_location {} that was not present '
                                  u'in complex_optional_roots: {}'
-                                 .format(start_location, complex_optional_roots))
+                                 .format(start_location, self._location_to_children.keys()))
 
-        if start_location == None:
+        if start_location is None:
             start_location = self._root_location
 
         if len(self._location_to_children[start_location]) == 0:
             # Node with no children only returns a singleton list containing the null set.
             return [[]]
 
-        current_children = sorted(self._location_to_children[start_location], key= lambda l: repr(l))
+        current_children = sorted(self._location_to_children[start_location], key=lambda l: repr(l))
 
         # Recursively find all rooted subtrees of each of the children of the current node.
         location_to_list_of_subtrees = {
