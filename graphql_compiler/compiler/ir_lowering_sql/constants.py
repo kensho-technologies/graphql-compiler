@@ -11,6 +11,13 @@ class Cardinality(Enum):
     DUAL = 2
     MANY = 3
 
+
+DEPTH_INTERNAL_NAME = '__depth_internal_name'
+PATH_INTERNAL_NAME = '__path_internal_name'
+LINK_INTERNAL_NAME = '__link_internal_name'
+RESERVED_COLUMN_NAMES = {DEPTH_INTERNAL_NAME, PATH_INTERNAL_NAME, LINK_INTERNAL_NAME}
+
+
 class Operator:
     def __init__(self, name, cardinality):
         self.name = name
@@ -24,9 +31,10 @@ OPERATORS = {
     ">": Operator('__gt__', Cardinality.SINGLE),
     "<=": Operator('__le__', Cardinality.SINGLE),
     ">=": Operator('__ge__', Cardinality.SINGLE),
-    "between": Operator('between', Cardinality.DUAL),
+    "&&": Operator('and_', Cardinality.DUAL),
     'has_substring': Operator('contains', Cardinality.SINGLE),
 }
+
 
 class group_concat(functions.GenericFunction):
     '''

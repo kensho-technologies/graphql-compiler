@@ -2,53 +2,57 @@ from _operator import or_
 from collections import namedtuple
 
 import six
-from sqlalchemy import select, and_, literal_column, cast, String, case, bindparam
+from sqlalchemy import select, and_, literal_column, cast, String, case, bindparam, Column
+from sqlalchemy.sql.elements import BindParameter
 
 from graphql_compiler.compiler import blocks, expressions
-from graphql_compiler.compiler.ir_lowering_sql.constants import OPERATORS, Cardinality
+from sqlalchemy.sql import expression as sql_expressions
+from graphql_compiler.compiler.ir_lowering_sql.constants import OPERATORS, Cardinality, \
+    DEPTH_INTERNAL_NAME, PATH_INTERNAL_NAME, LINK_INTERNAL_NAME
 from graphql_compiler.compiler.ir_lowering_sql.metadata import BasicEdge, MultiEdge
 
 
 CompilationContext = namedtuple('CompilationContext', [
     'query_path_to_selectable',
+    'query_path_to_from_clause',
     'query_path_to_location_info',
     'compiler_metadata',
 ])
 
 
-def emit_code_from_ir(sql_query_tree_root_metadata, compiler_metadata):
-    sql_query_tree, query_path_to_location_info = sql_query_tree_root_metadata
+def emit_code_from_ir(sql_query_tree, compiler_metadata):
     context = CompilationContext(
         query_path_to_selectable={},
-        query_path_to_location_info=query_path_to_location_info,
+        query_path_to_from_clause={},
+        query_path_to_location_info=sql_query_tree.query_path_to_location_info,
         compiler_metadata=compiler_metadata,
     )
-    return _query_tree_to_query(sql_query_tree, context)
+    return _query_tree_to_query(sql_query_tree.root, context)
 
 
 def _query_tree_to_query(node, context, recursion_in_column=None):
-    # step 1: Collapse query tree, ignoring recursive
+    # step 1: Collapse query tree, ignoring recursive nodes
     visited_nodes = _visit_and_flatten_nonrecursive_nodes(node, context)
-    recursion_out_column = None
-    # step 2: If the tree rooted at the current node is recursive, create the recursive element
-    if isinstance(node.block, blocks.Recurse):
-        recursion_out_column = _create_recursive_clause(
-            node, context, recursion_in_column
-        )
-    # step 3: query tree is collapsed, recursion at current node is created
-    # materialize and wrap this query in a CTE
-    query = _create_query(node, context, apply_filters=True)
-    cte = query.cte()
-    node.from_clause = cte
-    for visited_node in visited_nodes:
-        context.query_path_to_selectable[visited_node.query_path] = cte
-
+    # step 2: Create the recursive element
+    recursion_out_column = _prepare_recursive_clause(
+        node, context, recursion_in_column
+    )
+    # step 3: Materialize query
+    _materialize_query(node, visited_nodes, context)
     # step 4: collapse and return recursive node trees
     _traverse_recursions(node, context)
     if isinstance(node.block, blocks.QueryRoot):
         # filters have already been applied within the CTE, no need to reapply
         return _create_query(node, context, apply_filters=False)
     return recursion_out_column
+
+
+def _materialize_query(node, visited_nodes, context):
+    query = _create_query(node, context, apply_filters=True)
+    cte = query.cte()
+    context.query_path_to_from_clause[node.query_path] = cte
+    for visited_node in visited_nodes:
+        context.query_path_to_selectable[visited_node.query_path] = cte
 
 
 def _traverse_recursions(node, context):
@@ -78,7 +82,7 @@ def _visit_and_flatten_nonrecursive_nodes(node, context):
     for child_node in node.children_nodes:
         _flatten_node(node, child_node)
         # join to the child
-        _join_to_node(node, child_node, context)
+        join_to_node(node, child_node, context)
     return visited_nodes
 
 
@@ -88,8 +92,17 @@ def get_node_selectable(node, context):
     return selectable
 
 
-def _create_recursive_clause(node, context, out_link_column):
-    edge = context.compiler_metadata.get_edge(node)
+def get_schema_type(node, context):
+    query_path = node.query_path
+    location_info = context.query_path_to_location_info[query_path]
+    return location_info.type.name
+
+
+def _prepare_recursive_clause(node, context, out_link_column):
+    if not isinstance(node.block, blocks.Recurse):
+        return None
+    schema_type = get_schema_type(node, context)
+    edge = context.compiler_metadata.get_edge(node.block, None, schema_type)
     selectable = get_node_selectable(node, context)
     if isinstance(edge, BasicEdge):
         source_col = edge.source_col
@@ -98,7 +111,8 @@ def _create_recursive_clause(node, context, out_link_column):
         base_column = selectable.c[base_col]
         if node.block.direction == 'in':
             source_col, sink_col = sink_col, source_col
-        recursive_table = context.compiler_metadata.get_table(node).alias()
+        schema_type = get_schema_type(node, context)
+        recursive_table = context.compiler_metadata.get_table(schema_type).alias()
     elif isinstance(edge, MultiEdge):
         traversal_edge = edge.junction_edge
         final_edge = edge.final_edge
@@ -113,21 +127,20 @@ def _create_recursive_clause(node, context, out_link_column):
         raise AssertionError
 
     parent_cte_column = selectable.c[out_link_column.name]
-    distinct_parent_column_query = select([parent_cte_column.label('link')],
-                                          distinct=True).alias()
+    distinct_parent_column_query = select([parent_cte_column.label(LINK_INTERNAL_NAME)], distinct=True).alias()
     anchor_query = (
         select(
             [
                 selectable.c[base_col].label(source_col),
                 selectable.c[base_col].label(sink_col),
-                literal_column('0').label('__depth_internal_name'),
-                cast(base_column, String()).concat(',').label('path'),
+                literal_column('0').label(DEPTH_INTERNAL_NAME),
+                cast(base_column, String()).concat(',').label(PATH_INTERNAL_NAME),
             ],
             distinct=True)
         .select_from(
             selectable.join(
                 distinct_parent_column_query,
-                base_column == distinct_parent_column_query.c['link']
+                base_column == distinct_parent_column_query.c[LINK_INTERNAL_NAME]
             )
         )
     )
@@ -137,11 +150,11 @@ def _create_recursive_clause(node, context, out_link_column):
             [
                 recursive_table.c[source_col],
                 recursive_cte.c[sink_col],
-                (recursive_cte.c['__depth_internal_name'] + 1).label('__depth_internal_name'),
-                (recursive_cte.c.path
+                (recursive_cte.c[DEPTH_INTERNAL_NAME] + 1).label(DEPTH_INTERNAL_NAME),
+                (recursive_cte.c[PATH_INTERNAL_NAME]
                  .concat(cast(recursive_table.c[source_col], String()))
                  .concat(',')
-                 .label('path')),
+                 .label(PATH_INTERNAL_NAME)),
             ]
         )
         .select_from(
@@ -150,9 +163,9 @@ def _create_recursive_clause(node, context, out_link_column):
                 recursive_table.c[sink_col] == recursive_cte.c[source_col]
             )
         ).where(and_(
-            recursive_cte.c['__depth_internal_name'] < node.block.depth,
+            recursive_cte.c[DEPTH_INTERNAL_NAME] < node.block.depth,
             case(
-                [(recursive_cte.c.path.contains(cast(recursive_table.c[source_col], String())), 1)],
+                [(recursive_cte.c[PATH_INTERNAL_NAME].contains(cast(recursive_table.c[source_col], String())), 1)],
                 else_=0
             ) == 0
         ))
@@ -165,18 +178,21 @@ def _create_recursive_clause(node, context, out_link_column):
             )
         )
     recursive_query = getattr(recursive_cte, recursion_combinator)(recursive_query)
-    node.from_clause = node.from_clause.join(
+    from_clause = context.query_path_to_from_clause[node.query_path]
+    from_clause = from_clause.join(
         recursive_query,
         selectable.c[base_col] == recursive_query.c[source_col]
     )
+    context.query_path_to_from_clause[node.query_path] = from_clause
     out_link_column = recursive_query.c[sink_col].label(None)
     node.add_recursive_link_column(recursive_query, out_link_column)
     return out_link_column
 
 
 def _create_and_reference_table(node, context):
-    table = context.compiler_metadata.get_table(node).alias()
-    node.from_clause = table
+    schema_type = get_schema_type(node, context)
+    table = context.compiler_metadata.get_table(schema_type).alias()
+    context.query_path_to_from_clause[node.query_path] = table
     context.query_path_to_selectable[node.query_path] = table
     # ensure SQL blocks hold reference to Relation's table
     return table
@@ -193,25 +209,27 @@ def _flatten_node(node, child_node):
     node.link_columns.extend(child_node.link_columns)
 
 
-def _join_to_node(node, child_node, context):
-    onclauses = get_on_clause_for_node(node, child_node, context)
+def join_to_node(parent_node, child_node, context):
+    onclause = get_on_clause_for_node(parent_node, child_node, context)
     location_info = context.query_path_to_location_info[child_node.query_path]
-    if location_info.optional_scopes_depth > 0:
-        for table, onclause in onclauses:
-            node.from_clause = node.from_clause.outerjoin(
-                child_node.from_clause, onclause=onclause
-            )
-        return
-    for table, onclause in onclauses:
-        node.from_clause = node.from_clause.join(
-            child_node.from_clause, onclause=onclause
-        )
+    is_optional = location_info.optional_scopes_depth > 0
+    parent_from_clause = context.query_path_to_from_clause[parent_node.query_path]
+    child_from_clause = context.query_path_to_from_clause[child_node.query_path]
+    if is_optional:
+        parent_from_clause = parent_from_clause.outerjoin(child_from_clause, onclause=onclause)
+    else:
+        parent_from_clause = parent_from_clause.join(child_from_clause, onclause=onclause)
+    context.query_path_to_from_clause[parent_node.query_path] = parent_from_clause
+    del context.query_path_to_from_clause[child_node.query_path]
 
 
-def get_on_clause_for_node(node, child_node, context):
-    parent_selectable = get_node_selectable(node, context)
+def get_on_clause_for_node(parent_node, child_node, context):
+    parent_selectable = get_node_selectable(parent_node, context)
     child_selectable = get_node_selectable(child_node, context)
-    edge = context.compiler_metadata.get_edge(child_node)
+    child_schema_type = get_schema_type(child_node, context)
+    parent_schema_type = get_schema_type(parent_node, context)
+    parent_from_clause = context.query_path_to_from_clause[parent_node.query_path]
+    edge = context.compiler_metadata.get_edge(child_node.block, parent_schema_type, child_schema_type)
     if isinstance(edge, BasicEdge):
         source_col = edge.source_col
         sink_col = edge.sink_col
@@ -219,9 +237,9 @@ def get_on_clause_for_node(node, child_node, context):
             source_col, sink_col = sink_col, source_col
         if edge is None:
             return None
-        outer_column = context.compiler_metadata._get_column_from_table(parent_selectable, source_col)
-        inner_column = context.compiler_metadata._get_column_from_table(child_selectable, sink_col)
-        return [(child_node.from_clause, outer_column == inner_column)]
+        outer_column = parent_selectable.c[source_col]
+        inner_column = child_selectable.c[sink_col]
+        return outer_column == inner_column
     elif isinstance(edge, MultiEdge):
         traversal_edge = edge.junction_edge
         junction_table = context.compiler_metadata.get_table_by_name(traversal_edge.table_name).alias()
@@ -230,15 +248,20 @@ def get_on_clause_for_node(node, child_node, context):
         if child_node.block.direction == 'in':
             source_col, sink_col = sink_col, source_col
 
-        outer_column = context.compiler_metadata._get_column_from_table(child_node.parent_node.from_clause, source_col)
-        inner_column = context.compiler_metadata._get_column_from_table(junction_table, sink_col)
+        outer_column = parent_selectable.c[source_col]
+        inner_column = junction_table.c[sink_col]
         traversal_onclause = outer_column == inner_column
-        if child_node.in_optional:
-            child_node.parent_node.from_clause = child_node.parent_node.from_clause.outerjoin(
+        child_location_info = context.query_path_to_location_info[child_node.query_path]
+        if child_location_info.optional_scopes_depth > 0:
+            parent_from_clause = parent_from_clause.outerjoin(
                 junction_table, onclause=traversal_onclause
             )
+            context.query_path_to_from_clause[parent_node.query_path] = parent_from_clause
         else:
-            child_node.parent_node.from_clause = child_node.parent_node.from_clause.join(junction_table, onclause=traversal_onclause)
+            parent_from_clause = parent_from_clause.join(
+                junction_table, onclause=traversal_onclause
+            )
+            context.query_path_to_from_clause[parent_node.query_path] = parent_from_clause
         final_edge = edge.final_edge
         source_col = final_edge.source_col
         sink_col = final_edge.sink_col
@@ -247,12 +270,12 @@ def get_on_clause_for_node(node, child_node, context):
 
         outer_column = context.compiler_metadata._get_column_from_table(junction_table, source_col)
         inner_column = context.compiler_metadata._get_column_from_table(child_selectable, sink_col)
-        return [(child_node.from_clause, outer_column == inner_column)]
-
-
+        return outer_column == inner_column
 
 def _create_link_for_recursion(node, recursion_node, context):
-    edge = context.compiler_metadata.get_edge(recursion_node)
+    recursion_schema_type = get_schema_type(recursion_node, context)
+    parent_schema_type = get_schema_type(node, context)
+    edge = context.compiler_metadata.get_edge(recursion_node.block, parent_schema_type, recursion_schema_type)
     selectable = get_node_selectable(node, context)
     if isinstance(edge, BasicEdge):
         from_col = edge.source_col
@@ -280,9 +303,12 @@ def _join_to_recursive_node(node, recursive_node, recursion_in_column, recursion
     recursive_selectable = get_node_selectable(recursive_node, context)
     current_cte_column = selectable.c[recursion_in_column.name]
     recursive_cte_column = recursive_selectable.c[recursion_out_column.name]
-    node.from_clause = node.from_clause.join(
-        recursive_node.from_clause, onclause=current_cte_column == recursive_cte_column
+    parent_from_clause = context.query_path_to_from_clause[node.query_path]
+    recursive_from_clause = context.query_path_to_from_clause[recursive_node.query_path]
+    parent_from_clause = parent_from_clause.join(
+        recursive_from_clause, onclause=current_cte_column == recursive_cte_column
     )
+    context.query_path_to_from_clause[node.query_path] = parent_from_clause
 
 
 def _get_output_columns(node, context):
@@ -294,8 +320,7 @@ def _get_output_columns(node, context):
             column = selectable.c[field_alias]
         else:
             field_name = field.location.field
-            column_name = context.compiler_metadata.get_column_name_for_type(schema_type.name, field_name)
-            column = selectable.c[column_name].label(field_alias)
+            column = selectable.c[field_name].label(field_alias)
             node.fields_to_rename[field_alias] = True
         columns.append(column)
     return columns
@@ -305,7 +330,8 @@ def _create_query(node, context, apply_filters):
     columns = _get_output_columns(node, context)
     columns.extend(node.link_columns)
     node.link_columns = []
-    query = select(columns, distinct=True).select_from(node.from_clause)
+    from_clause = context.query_path_to_from_clause[node.query_path]
+    query = select(columns, distinct=True).select_from(from_clause)
     if not apply_filters:
         return query
 
@@ -318,51 +344,49 @@ def _create_query(node, context, apply_filters):
 
 def convert_filter_to_sql(filter_block, query_path, location_info, context):
     selectable = context.query_path_to_selectable[query_path]
-    predicate = filter_block.predicate
-    if not isinstance(predicate, expressions.BinaryComposition):
-        raise AssertionError
-    sql_operator = OPERATORS[predicate.operator]
-    left = predicate.left
-    right = predicate.right
-    # todo: Between comes in as x >= lower and x <= upper, which are each
-    # themselves BinaryComposition objects
-    variable, field = left, right
-    if isinstance(variable, expressions.LocalField):
-        variable, field = right, left
-    column_name = context.compiler_metadata.get_column_name_for_type(location_info.type.name, field.field_name)
-    column = selectable.c[column_name]
-    if isinstance(variable, expressions.ContextField):
-        tag_field_name = variable.location.field
-        tag_query_path = variable.location.query_path
-        tag_location_info = context.query_path_to_location_info[tag_query_path]
-        tag_column_name = context.compiler_metadata.get_column_name_for_type(tag_location_info.type.name, tag_field_name)
+    expression = filter_block.predicate
+    return _unwrap_expression(expression, selectable, location_info, context)
+
+
+def _unwrap_expression(expression, selectable, location_info, context):
+    if isinstance(expression, expressions.LocalField):
+        column_name = expression.field_name
+        column = selectable.c[column_name]
+        return column
+    elif isinstance(expression, expressions.Variable):
+        variable_name = expression.variable_name
+        return bindparam(variable_name)
+    elif isinstance(expression, expressions.ContextField):
+        tag_field_name = expression.location.field
+        tag_query_path = expression.location.query_path
+        tag_column_name = tag_field_name
         tag_selectable = context.query_path_to_selectable[tag_query_path]
         tag_column = tag_selectable.c[tag_column_name]
-        operation = getattr(column, sql_operator.name)
-        clause = operation(tag_column)
-    else:
-        param_name = variable.variable_name
+        return tag_column
+    elif isinstance(expression, expressions.BinaryComposition):
+        sql_operator = OPERATORS[expression.operator]
+        left = _unwrap_expression(expression.left, selectable, location_info, context)
+        right = _unwrap_expression(expression.right, selectable, location_info, context)
         if sql_operator.cardinality == Cardinality.SINGLE:
-            operation = getattr(column, sql_operator.name)
-            clause = operation(bindparam(param_name))
-        elif sql_operator.cardinality == Cardinality.MANY:
-            operation = getattr(column, sql_operator.name)
-            clause = operation(bindparam(param_name, expanding=True))
-
+            clause = getattr(left, sql_operator.name)(right)
         elif sql_operator.cardinality == Cardinality.DUAL:
-            first_param, second_param = filter_block.param_names
-            operation = getattr(column, filter_block.operator.name)
-            clause = operation(bindparam(first_param), bindparam(second_param))
+            clause = getattr(sql_expressions, sql_operator.name)(left, right)
+        elif sql_operator.cardinality == Cardinality.MANY:
+            if not isinstance(left, BindParameter):
+                raise AssertionError
+            if not isinstance(right, Column):
+                raise AssertionError
+            left.expanding = True
+            clause = getattr(right, sql_operator.name)(left)
         else:
-            raise AssertionError(
-                'Unable to construct where clause with cardinality "{}"'.format(
-                    filter_block.operator.cardinality
-                )
-            )
-    if clause is None:
-        raise AssertionError("This should be unreachable.")
-    if location_info.optional_scopes_depth == 0:
-        return clause
-    # the == None below is valid SQLAlchemy, the == operator is heavily overloaded.
-    return or_(column == None, clause)  # noqa: E711
+            raise AssertionError
+        if location_info.optional_scopes_depth == 0:
+            return clause
+        if not isinstance(left, Column):
+            return clause
+        # the == None below is valid SQLAlchemy, the == operator is heavily overloaded.
+        return or_(left == None, clause)  # noqa: E711
+    else:
+        raise AssertionError
+
 

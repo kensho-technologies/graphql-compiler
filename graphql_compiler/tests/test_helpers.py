@@ -293,11 +293,6 @@ def get_sql_test_schema():
 def get_test_sql_config():
     return {
         'Animal': {
-            'table_name': 'animal',
-            'column_names': {
-                'name': 'animal_name',
-                'description': 'animal_description',
-            },
             'edges': {
                 'Animal_ParentOf': BasicEdge(
                     table_name='animal', source_column='animal_id', sink_column='parent_id'
@@ -318,16 +313,8 @@ def get_test_sql_config():
                         table_name='animal', source_column='friendId', sink_column='animal_id'
                     )
                 ),
-
             }
         },
-        'Food': {
-            'column_names': {
-                'type': BasicEdge(
-                    table_name='food_type', source_column='food_type_id', sink_column='food_type_id'
-                )
-            }
-        }
     }
 
 
@@ -338,8 +325,8 @@ def create_sqlite_db():
         'animal',
         metadata,
         Column('animal_id', Integer, primary_key=True),
-        Column('animal_name', String(10), nullable=False),
-        Column('animal_description', String(50), nullable=False),
+        Column('name', String(10), nullable=False),
+        Column('description', String(50), nullable=False),
         Column('parent_id', Integer, ForeignKey("animal.animal_id"), nullable=True)
     )
     location = Table(

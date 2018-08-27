@@ -4,14 +4,15 @@
 import six
 
 from graphql_compiler.compiler import blocks, expressions
-from graphql_compiler.compiler.ir_lowering_sql.sql_tree import SqlNode
+from graphql_compiler.compiler.ir_lowering_sql.constants import RESERVED_COLUMN_NAMES
+from graphql_compiler.compiler.ir_lowering_sql.sql_tree import SqlNode, SqlQueryTree
 
 
 def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
-    """Lower the IR into an IR form that can be represented in MATCH queries.
+    """Lower the IR into an IR form that can be represented in SQL queries.
 
     Args:
-        ir_blocks: list of IR blocks to lower into MATCH-compatible form
+        ir_blocks: list of IR blocks to lower into SQL-compatible form
         location_types: a dict of location objects -> GraphQL type objects at that location
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
                                 Used as a workaround for GraphQL's lack of support for
@@ -32,10 +33,6 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     Returns:
         MatchQuery object containing the IR blocks organized in a MATCH-like structure
     """
-    location_types = {
-        location.query_path: location_info.type
-        for location, location_info in query_metadata_table.registered_locations
-    }
     query_path_to_location_info = {
         location.query_path: location_info
         for location, location_info in query_metadata_table.registered_locations
@@ -46,39 +43,40 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     tree_root = None
     for index, block in enumerate(ir_blocks):
         # todo we can skip queryroot and construct result, which simplifies this
-        if index in block_index_to_location:
+        if isinstance(block, (blocks.Recurse, blocks.Traverse, blocks.QueryRoot)):
             location = block_index_to_location[index]
             query_path = location.query_path
-        if isinstance(block, (blocks.Recurse, blocks.Traverse, blocks.QueryRoot)):
             if tree_root is None:
-                location_info = query_metadata_table.get_location_info(location)
-                tree_root = SqlNode(
-                    parent_node=None, block=block, location_info=location_info,
-                    parent_location_info=None, query_path=query_path)
+                if not isinstance(block, blocks.QueryRoot):
+                    raise AssertionError
+                tree_root = SqlNode(block=block, query_path=query_path)
                 query_path_to_node[query_path] = tree_root
-            elif query_path not in query_path_to_node:
+            else:
                 location_info = query_metadata_table.get_location_info(location)
                 parent_location = location_info.parent_location
                 parent_query_path = parent_location.query_path
-                parent_location_info = query_metadata_table.get_location_info(parent_location)
                 parent_node = query_path_to_node[parent_query_path]
-                child_node = SqlNode(
-                    parent_node=parent_node, block=block, location_info=location_info,
-                    parent_location_info=parent_location_info, query_path=query_path)
+                child_node = SqlNode(block=block, query_path=query_path)
                 parent_node.add_child_node(child_node)
                 query_path_to_node[query_path] = child_node
-            else:
-                raise AssertionError('Relations should never share a location')
         elif isinstance(block, blocks.Filter):
             node = query_path_to_node[query_path]
             # todo don't pass the dict below since we have the whole dict available
             node.filters.append((block, query_path, query_path_to_location_info[query_path]))
+        else:
+            continue
+    location_types = {
+        location.query_path: location_info.type
+        for location, location_info in query_metadata_table.registered_locations
+    }
     assign_output_fields_to_nodes(construct_result, location_types, query_path_to_node)
-    return (tree_root, query_path_to_location_info)
+    return SqlQueryTree(tree_root, query_path_to_location_info)
 
 
 def assign_output_fields_to_nodes(construct_result, location_types, query_path_to_node):
     for field_alias, field in six.iteritems(construct_result.fields):
+        if field_alias in RESERVED_COLUMN_NAMES:
+            raise AssertionError
         if isinstance(field, expressions.TernaryConditional):
             # todo: This probably isn't the way to go in the general case
             field = field.if_true

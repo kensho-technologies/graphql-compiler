@@ -1,7 +1,7 @@
-from sqlalchemy import MetaData, bindparam, or_
+from sqlalchemy import MetaData
 
 from graphql_compiler.compiler import blocks
-from .constants import SqlBackend, Cardinality
+from .constants import SqlBackend
 
 
 class BasicEdge:
@@ -14,7 +14,7 @@ class BasicEdge:
 class MultiEdge:
     def __init__(self, junction_edge, final_edge):
         if not isinstance(junction_edge, BasicEdge) or not isinstance(final_edge, BasicEdge):
-            raise AssertionError('A multi-edge must be comprised of basic edges.')
+            raise AssertionError('A MultiEdge must be comprised of BasicEdges')
         self.junction_edge = junction_edge
         self.final_edge = final_edge
 
@@ -36,10 +36,10 @@ class CompilerMetadata:
             name.lower(): table for name, table in self.sqlalchemy_metadata.tables.items()
         }
 
-    def get_table(self, node):
-        return self._get_table_for_schema_name(node.relative_type)
+    def get_table(self, schema_type):
+        return self._get_table_for_schema_type(schema_type)
 
-    def _get_table_for_schema_name(self, schema_name):
+    def _get_table_for_schema_type(self, schema_name):
         """
         Retrieve a SQLAlchemy table based on the supplied schema name.
         :param schema_name: Name of the type in the GraphQL schema
@@ -63,20 +63,6 @@ class CompilerMetadata:
     def db_backend(self):
         return self._db_backend
 
-    def get_column_name_for_type(self, schema_type, field_name):
-        if schema_type not in self.config:
-            return field_name
-        column_name = field_name
-        schema_config = self.config[schema_type]
-        if 'column_names' not in schema_config:
-            return column_name
-        column_map = schema_config['column_names']
-        if field_name not in column_map:
-            return column_name
-        return column_map[field_name]
-
-
-
     @staticmethod
     def _get_column_from_table(table, column_name):
         if not hasattr(table, 'c'):
@@ -87,25 +73,23 @@ class CompilerMetadata:
             )
         return getattr(table.c, column_name)
 
-    def get_edge(self, node):
-        if not hasattr(node.block, 'edge_name'):
-            print('hi')
-        edge_name = node.block.edge_name
-        if not isinstance(node.block, blocks.Recurse):
-            outer_type_name = node.outer_type
-            relative_type = node.relative_type
+    def get_edge(self, block, parent_schema_type, child_schema_type):
+        edge_name = block.edge_name
+        if not isinstance(block, blocks.Recurse):
+            outer_type_name = parent_schema_type
+            relative_type = child_schema_type
         else:
             # this is a recursive edge, from a type back onto itself
-            outer_type_name = node.relative_type
-            relative_type = node.relative_type
+            outer_type_name = child_schema_type
+            relative_type = child_schema_type
         if outer_type_name in self.config:
             parent_config = self.config[outer_type_name]
             if 'edges' in parent_config:
                 edges = parent_config['edges']
                 if edge_name in edges:
                     return edges[edge_name]
-        outer_table = self._get_table_for_schema_name(outer_type_name)
-        inner_table = self._get_table_for_schema_name(relative_type)
+        outer_table = self._get_table_for_schema_type(outer_type_name)
+        inner_table = self._get_table_for_schema_type(relative_type)
         inner_table_fks = [fk for fk in inner_table.foreign_keys if fk.column.table == outer_table]
         outer_table_fks = [fk for fk in outer_table.foreign_keys if fk.column.table == inner_table]
         outer_matches = [foreign_key for foreign_key in inner_table_fks if
@@ -120,7 +104,7 @@ class CompilerMetadata:
             return BasicEdge(source_column=fk.parent.name, sink_column=fk.column.name)
         elif len(inner_matches) == 0 and len(outer_matches) == 0:
             raise AssertionError(
-                'No foreign key found from type {} to type {}'.format(outer_type_name, relative_type)
+                'No foreign key found from type "{}" to type "{}"'.format(outer_type_name, relative_type)
             )
         else:
             raise AssertionError('Ambiguous foreign key specified.')

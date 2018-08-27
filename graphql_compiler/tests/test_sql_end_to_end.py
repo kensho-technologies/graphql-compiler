@@ -24,7 +24,7 @@ class SqlQueryTests(unittest.TestCase):
 
     def test_db(self):
         query = text('''
-        SELECT animal_name FROM animal
+        SELECT name AS animal_name FROM animal
         ''')
         expected_results = [
             {'animal_name': 'Big Bear'},
@@ -72,6 +72,29 @@ class SqlQueryTests(unittest.TestCase):
         ]
         params = {
             '$name': 'Big Bear'
+        }
+        results = self.run_query(query, ['name'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_basic_filter_between(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "between", value: ["$lower", "$upper"])
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'name': 'Big Bear'},
+            {'name': 'Biggest Bear'},
+        ]
+        params = {
+            '$lower': 'Big Bear',
+            '$upper': 'Biggest Bear',
         }
         results = self.run_query(query, ['name'], **params)
         self.assertListEqual(expected_results, results)
@@ -166,6 +189,34 @@ class SqlQueryTests(unittest.TestCase):
         ]
         params = {
             '$names': ['Biggest Bear', 'Big Bear']
+        }
+        results = self.run_query(query, ['name'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_optional_out_edge_between(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "in_collection", value: ["$names"])
+                out_Animal_LivesIn @optional {
+                    name @output(out_name: "location_name")
+                         @filter(op_name: "between", value: ["$lower", "$upper"])
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'name': 'Big Bear', 'location_name': 'Wisconsin'},
+            {'name': 'Biggest Bear', 'location_name': None},
+        ]
+        params = {
+            '$names': ['Biggest Bear', 'Big Bear'],
+            '$lower': 'Wisconsin',
+            '$upper': 'Wisconsin',
         }
         results = self.run_query(query, ['name'], **params)
         self.assertListEqual(expected_results, results)
