@@ -3775,3 +3775,64 @@ class IrGenerationTests(unittest.TestCase):
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_nested_optional_and_traverse(self):
+        test_data = test_input_data.nested_optional_and_traverse()
+
+        base_location = helpers.Location(('Animal',))
+        child_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        spouse_location = child_location.navigate_to_subpath('out_Animal_ParentOf')
+        spouse_species_location = spouse_location.navigate_to_subpath('out_Animal_OfSpecies')
+        revisited_child_location = child_location.revisit()
+        revisited_base_location = base_location.revisit()
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('in', 'Animal_ParentOf', True),
+            blocks.MarkLocation(child_location),
+            blocks.Traverse('out', 'Animal_ParentOf', True),
+            blocks.MarkLocation(spouse_location),
+            blocks.Traverse('out', 'Animal_OfSpecies'),
+            blocks.MarkLocation(spouse_species_location),
+            blocks.Backtrack(spouse_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(child_location, True),
+            blocks.MarkLocation(revisited_child_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, True),
+            blocks.MarkLocation(revisited_base_location),
+            blocks.ConstructResult({
+                'spouse_and_self_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(spouse_location),
+                    expressions.OutputContextField(
+                        spouse_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'animal_name': expressions.OutputContextField(
+                        base_location.navigate_to_field('name'), GraphQLString
+                ),
+                'spouse_species': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(spouse_species_location),
+                    expressions.OutputContextField(
+                        spouse_species_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'child_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(child_location),
+                    expressions.OutputContextField(
+                        child_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            child_location: 'Animal',
+            spouse_location: 'Animal',
+            spouse_species_location: 'Species',
+            revisited_child_location: 'Animal',
+            revisited_base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)

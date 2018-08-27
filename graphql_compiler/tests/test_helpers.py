@@ -38,6 +38,8 @@ def compare_ir_blocks(test_case, expected_blocks, received_blocks):
     for i in six.moves.xrange(len(expected_blocks)):
         expected = expected_blocks[i]
         received = received_blocks[i]
+        if expected != received:
+            __import__('pdb').set_trace()
         test_case.assertEqual(expected, received,
                               msg=u'Blocks at position {} were different: {} vs {}\n\n'
                                   u'{}'.format(i, expected, received, mismatch_message))
