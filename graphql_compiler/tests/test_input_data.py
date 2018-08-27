@@ -2416,8 +2416,13 @@ def complex_nested_optionals():
     expected_output_metadata = {
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
         'child_name': OutputMetadata(type=GraphQLString, optional=True),
-        'spouse_and_self_name': OutputMetadata(type=GraphQLString, optional=True),
-        'spouse_species': OutputMetadata(type=GraphQLString, optional=True),
+        'grandchild_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandchild_species': OutputMetadata(type=GraphQLString, optional=True),
+        'grandchild_relation_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandchild_relation_species': OutputMetadata(type=GraphQLString, optional=True),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandparent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandparent_species': OutputMetadata(type=GraphQLString, optional=True),
     }
     expected_input_metadata = {}
 
