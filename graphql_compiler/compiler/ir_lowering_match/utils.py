@@ -222,21 +222,30 @@ def construct_where_filter_predicate(simple_optional_root_info):
 CompoundMatchQuery = namedtuple('CompoundMatchQuery', ('match_queries'))
 
 
-class OptionalTraversalTrie():
+class OptionalTraversalTree(object):
     def __init__(self, complex_optional_roots):
-        """Initialize empty trie of optional root Locations (elements of complex_optional_roots)."""
+        """Initialize empty tree of optional root Locations (elements of complex_optional_roots).
+
+        This object construst a tree of complex optional roots. These are locations preceding an
+        @optional traverse that expand vertex fields within. Simple @optional traverses i.e.
+        ones that do not expand vertex fields within them are excluded.
+
+        Args:
+            complex_optional_roots: list of @optional locations (location preceding an @optional
+                                    traverse) that expand vertex fields within
+        """
         self._location_to_children = {
             optional_root_location: set()
             for optional_root_location in complex_optional_roots
         }
-        self._root_location = Location(())
+        self._root_location = None
         self._location_to_children[self._root_location] = set()
 
     def insert(self, optional_root_locations_path):
-        """Insert a path of optional Locations into the trie.
+        """Insert a path of optional Locations into the tree.
 
-        Each OptionalTraversalTrie object contains child Location objects as keys mapping to
-        other OptionalTraversalTrie objects.
+        Each OptionalTraversalTree object contains child Location objects as keys mapping to
+        other OptionalTraversalTree objects.
 
         Args:
             optional_root_locations_path: list of optional root Locations all except the last
@@ -261,9 +270,10 @@ class OptionalTraversalTrie():
 
     def get_all_rooted_subtrees_as_lists(self, start_location=None):
         """Return a list of all rooted subtrees (each as a list of Location objects)."""
-        if start_location is not None and start_location not in self._location_to_children.keys():
-            raise AssertionError(u'received invalid start_location {} that was not present '
-                                 u'in complex_optional_roots: {}'
+        if start_location is not None and start_location not in self._location_to_children:
+            raise AssertionError(u'Received invalid start_location {} that was not present '
+                                 u'in the tree. Present root locations of complex @optional '
+                                 u'queries (ones that expand vertex fields within) are: {}'
                                  .format(start_location, self._location_to_children.keys()))
 
         if start_location is None:
@@ -312,7 +322,7 @@ class OptionalTraversalTrie():
 
 
 def construct_optional_traversal_tree(complex_optional_roots, location_to_optional_roots):
-    """Return a trie of complex optional root locations.
+    """Return a tree of complex optional root locations.
 
     Args:
         complex_optional_roots: list of @optional locations (location immmediately preceding
@@ -323,9 +333,9 @@ def construct_optional_traversal_tree(complex_optional_roots, location_to_option
                                     scopes within which the location resides
 
     Returns:
-        OptionalTraversalTrie object representing the tree of complex optional roots
+        OptionalTraversalTree object representing the tree of complex optional roots
     """
-    tree = OptionalTraversalTrie(complex_optional_roots)
+    tree = OptionalTraversalTree(complex_optional_roots)
     for location, optional_root_locations_stack in six.iteritems(location_to_optional_roots):
         tree.insert(list(optional_root_locations_stack))
 

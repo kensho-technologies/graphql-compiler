@@ -5201,7 +5201,8 @@ class CompilerTests(unittest.TestCase):
 
         # The correct MATCH output is outrageously long, and is stored in a separate file.
         match_output_file = './complex_nested_optionals_output.sql'
-        expected_match = open(os.path.join(os.path.dirname(__file__), match_output_file)).read()
+        wirth f as open(os.path.join(os.path.dirname(__file__), match_output_file)):
+            expected_match = f.read()
 
         expected_gremlin = '''
             g.V('@class', 'Animal')
