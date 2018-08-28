@@ -4,7 +4,8 @@ from sqlalchemy import text
 
 from graphql_compiler.compiler import compile_graphql_to_sql
 from graphql_compiler.compiler.ir_lowering_sql.metadata import CompilerMetadata
-from graphql_compiler.tests.test_helpers import create_sqlite_db, get_test_sql_config, get_sql_test_schema
+from graphql_compiler.tests.test_helpers import (
+    create_sqlite_db, get_test_sql_config, get_sql_test_schema)
 
 
 class SqlQueryTests(unittest.TestCase):
@@ -742,7 +743,7 @@ class SqlQueryTests(unittest.TestCase):
                     out_Animal_ParentOf @recurse(depth: 1) {
                         name @output(out_name: "ancestor_or_ancestor_child")
                         out_Animal_Eats @optional {
-                            ... on Food { 
+                            ... on Food {
                                 name @output(out_name: "ancestor_or_ancestor_child_eats")
                             }
                         }
@@ -936,7 +937,6 @@ class SqlQueryTests(unittest.TestCase):
         results = self.run_query(query, ['name', 'friend_name'], **params)
         self.assertListEqual(expected_results, results)
 
-
     def test_many_to_many_junction_recursive(self):
         # recursion is very high below to make sure cycle detection is working
         # if it is not, the query below will fail because it will continually traverse the
@@ -990,7 +990,11 @@ class SqlQueryTests(unittest.TestCase):
                                                     self.compiler_metadata)
         query = compilation_result.query
         expected_results = [
-            {'name': 'Biggest Bear', 'self_or_friend_name': 'Medium Bear', 'self_or_friend_eats': 'Gummy Bears'},
+            {
+                'name': 'Biggest Bear',
+                'self_or_friend_name': 'Medium Bear',
+                'self_or_friend_eats': 'Gummy Bears',
+            },
         ]
         params = {
             '$name': 'Biggest Bear',

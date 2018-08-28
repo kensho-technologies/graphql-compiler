@@ -1,19 +1,23 @@
-##############
-# Public API #
-##############
+# Copyright 2018-present Kensho Technologies, LLC.
 import six
 
 from graphql_compiler.compiler import blocks, expressions
 from graphql_compiler.compiler.ir_lowering_sql.constants import RESERVED_COLUMN_NAMES
 from graphql_compiler.compiler.ir_lowering_sql.sql_tree import SqlNode, SqlQueryTree
 
+##############
+# Public API #
+##############
+
 
 def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
-    """Lower the IR into an IR form that can be represented in SQL queries.
+    """Lower the IR into a form that can be represented by a SQL query.
 
     Args:
         ir_blocks: list of IR blocks to lower into SQL-compatible form
-        location_types: a dict of location objects -> GraphQL type objects at that location
+        query_metadata_table: QueryMetadataTable object containing all metadata collected during
+                              query processing, including location metadata (e.g. which locations
+                              are folded or optional).
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
                                 Used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a
@@ -31,7 +35,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        MatchQuery object containing the IR blocks organized in a MATCH-like structure
+        SqlTree object containing the SqlNodes organized in a tree structure.
     """
     query_path_to_location_info = {
         location.query_path: location_info
@@ -42,7 +46,6 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     query_path_to_node = {}
     tree_root = None
     for index, block in enumerate(ir_blocks):
-        # todo we can skip queryroot and construct result, which simplifies this
         if isinstance(block, (blocks.Recurse, blocks.Traverse, blocks.QueryRoot)):
             location = block_index_to_location[index]
             query_path = location.query_path
@@ -61,7 +64,6 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                 query_path_to_node[query_path] = child_node
         elif isinstance(block, blocks.Filter):
             node = query_path_to_node[query_path]
-            # todo don't pass the dict below since we have the whole dict available
             node.filters.append((block, query_path, query_path_to_location_info[query_path]))
         else:
             continue
@@ -74,6 +76,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
 
 
 def assign_output_fields_to_nodes(construct_result, location_types, query_path_to_node):
+    """Assign the output fields of a ConstructResult block to their respective SqlNodes."""
     for field_alias, field in six.iteritems(construct_result.fields):
         if field_alias in RESERVED_COLUMN_NAMES:
             raise AssertionError
@@ -86,6 +89,7 @@ def assign_output_fields_to_nodes(construct_result, location_types, query_path_t
 
 
 def get_block_index_to_location_map(ir_blocks):
+    """Associate each IR block with it's corresponding location, by index."""
     block_to_location = {}
     current_block_ixs = []
     for num, ir_block in enumerate(ir_blocks):

@@ -6,7 +6,7 @@ import re
 from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey, Boolean
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey
 
 from ..compiler.ir_lowering_sql.metadata import BasicEdge, MultiEdge
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
@@ -253,7 +253,7 @@ def get_sql_test_schema():
         scalar DateTime
 
         scalar Date
-        
+
         interface Entity {
             name: String
         }
@@ -273,7 +273,7 @@ def get_sql_test_schema():
             uuid: ID
             in_Animal_LivesIn: [Animal]
         }
-        
+
         type Food implements Entity {
             name: String
             type: String
@@ -299,7 +299,9 @@ def get_test_sql_config():
                 ),
                 'Animal_Eats': MultiEdge(
                     junction_edge=BasicEdge(
-                        table_name='AnimalToFood', source_column='animal_id', sink_column='animal_id'
+                        table_name='AnimalToFood',
+                        source_column='animal_id',
+                        sink_column='animal_id'
                     ),
                     final_edge=BasicEdge(
                         table_name='food', source_column='food_id', sink_column='food_id'
@@ -307,7 +309,9 @@ def get_test_sql_config():
                 ),
                 'Animal_FriendsWith': MultiEdge(
                     junction_edge=BasicEdge(
-                        table_name='AnimalToFriend', source_column='animal_id', sink_column='animalId'
+                        table_name='AnimalToFriend',
+                        source_column='animal_id',
+                        sink_column='animalId'
                     ),
                     final_edge=BasicEdge(
                         table_name='animal', source_column='friendId', sink_column='animal_id'
@@ -419,4 +423,3 @@ def create_sqlite_db():
         for val in vals:
             engine.execute(table.insert(val))
     return engine, metadata
-
