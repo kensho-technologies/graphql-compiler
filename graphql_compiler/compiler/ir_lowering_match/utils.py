@@ -283,7 +283,7 @@ class OptionalTraversalTree(object):
             # Node with no children only returns a singleton list containing the null set.
             return [[]]
 
-        current_children = sorted(self._location_to_children[start_location], key=lambda l: repr(l))
+        current_children = sorted(self._location_to_children[start_location])
 
         # Recursively find all rooted subtrees of each of the children of the current node.
         location_to_list_of_subtrees = {

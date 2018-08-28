@@ -3843,12 +3843,15 @@ class IrGenerationTests(unittest.TestCase):
         base_location = helpers.Location(('Animal',))
         child_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         grandchild_location = child_location.navigate_to_subpath('in_Animal_ParentOf')
-        grandchild_species_location = grandchild_location.navigate_to_subpath('out_Animal_OfSpecies')
+        grandchild_species_location = grandchild_location.navigate_to_subpath(
+            'out_Animal_OfSpecies')
         child_related_location = child_location.navigate_to_subpath('in_Entity_Related')
-        child_related_species_location = child_related_location.navigate_to_subpath('out_Animal_OfSpecies')
+        child_related_species_location = child_related_location.navigate_to_subpath(
+            'out_Animal_OfSpecies')
         parent_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         grandparent_location = parent_location.navigate_to_subpath('out_Animal_ParentOf')
-        grandparent_species_location = grandparent_location.navigate_to_subpath('out_Animal_OfSpecies')
+        grandparent_species_location = grandparent_location.navigate_to_subpath(
+            'out_Animal_OfSpecies')
         revisited_child_location = child_location.revisit()
         re_revisited_child_location = revisited_child_location.revisit()
         revisited_base_location = base_location.revisit()
@@ -3965,19 +3968,5 @@ class IrGenerationTests(unittest.TestCase):
             re_revisited_child_location: 'Animal',
             revisited_parent_location: 'Animal',
         }
-        base_location = helpers.Location(('Animal',))
-        child_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
-        grandchild_location = child_location.navigate_to_subpath('in_Animal_ParentOf')
-        grandchild_species_location = grandchild_location.navigate_to_subpath('out_Animal_OfSpecies')
-        child_related_location = child_location.navigate_to_subpath('in_Entity_Related')
-        child_related_species_location = child_related_location.navigate_to_subpath('out_Animal_OfSpecies')
-        parent_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
-        grandparent_location = parent_location.navigate_to_subpath('out_Animal_ParentOf')
-        grandparent_species_location = grandparent_location.navigate_to_subpath('out_Animal_OfSpecies')
-        revisited_child_location = child_location.revisit()
-        re_revisited_child_location = revisited_child_location.revisit()
-        revisited_base_location = base_location.revisit()
-        revisited_parent_location = parent_location.revisit()
-        re_revisited_base_location = revisited_base_location.revisit()
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)

@@ -2,6 +2,7 @@
 """Common helper objects, base classes and methods."""
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
+from functools import total_ordering
 import string
 
 import funcy
@@ -237,6 +238,7 @@ class BaseLocation(object):
         raise NotImplementedError()
 
 
+@total_ordering
 @six.python_2_unicode_compatible
 class Location(BaseLocation):
     def __init__(self, query_path, field=None, visit_counter=1):
@@ -346,6 +348,26 @@ class Location(BaseLocation):
     def __ne__(self, other):
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
+
+    def __lt__(self, other):
+        """Check another object for non-equality against this one."""
+        if len(self.query_path) != len(other.query_path):
+            return len(self.query_path) < len(other.query_path)
+
+        for self_vertex_field, other_vertex_field in zip(self.query_path, other.query_path):
+            if self_vertex_field != other_vertex_field:
+                return self_vertex_field < other_vertex_field
+
+        if self.visit_counter != other.visit_counter:
+            return self.visit_counter < other.visit_counter
+
+        if self.field is None:
+            return True
+
+        if other.field is None:
+            return False
+
+        return self.field < other.field
 
     def __hash__(self):
         """Return the object's hash value."""
