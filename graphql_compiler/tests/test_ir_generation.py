@@ -3837,61 +3837,147 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
-    def test_complex_optional_and_traverse(self):
-        test_data = test_input_data.complex_optional_and_traverse()
+    def test_complex_nested_optionals(self):
+        test_data = test_input_data.complex_nested_optionals()
 
         base_location = helpers.Location(('Animal',))
         child_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
         grandchild_location = child_location.navigate_to_subpath('in_Animal_ParentOf')
-        child_fed_at_location = child_location.navigate_to_subpath('out_Animal_FedAt')
+        grandchild_species_location = grandchild_location.navigate_to_subpath('out_Animal_OfSpecies')
+        child_related_location = child_location.navigate_to_subpath('in_Entity_Related')
+        child_related_species_location = child_related_location.navigate_to_subpath('out_Animal_OfSpecies')
+        parent_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        grandparent_location = parent_location.navigate_to_subpath('out_Animal_ParentOf')
+        grandparent_species_location = grandparent_location.navigate_to_subpath('out_Animal_OfSpecies')
         revisited_child_location = child_location.revisit()
+        re_revisited_child_location = revisited_child_location.revisit()
         revisited_base_location = base_location.revisit()
+        revisited_parent_location = parent_location.revisit()
+        re_revisited_base_location = revisited_base_location.revisit()
 
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
             blocks.Traverse('in', 'Animal_ParentOf', True),
             blocks.MarkLocation(child_location),
-            blocks.Traverse('in', 'Animal_ParentOf'),
+
+            blocks.Traverse('in', 'Animal_ParentOf', True),
             blocks.MarkLocation(grandchild_location),
-            blocks.Backtrack(child_location),
-            blocks.Traverse('out', 'Animal_FedAt'),
-            blocks.MarkLocation(child_fed_at_location),
+            blocks.Traverse('out', 'Animal_OfSpecies'),
+            blocks.MarkLocation(grandchild_species_location),
+            blocks.Backtrack(grandchild_location),
             blocks.EndOptional(),
             blocks.Backtrack(child_location, True),
             blocks.MarkLocation(revisited_child_location),
+
+            blocks.Traverse('in', 'Entity_Related', optional=True),
+            blocks.CoerceType({'Animal'}),
+            blocks.MarkLocation(child_related_location),
+            blocks.Traverse('out', 'Animal_OfSpecies'),
+            blocks.MarkLocation(child_related_species_location),
+            blocks.Backtrack(child_related_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(revisited_child_location, True),
+            blocks.MarkLocation(re_revisited_child_location),
+
             blocks.EndOptional(),
             blocks.Backtrack(base_location, True),
             blocks.MarkLocation(revisited_base_location),
+            blocks.Traverse('out', 'Animal_ParentOf', optional=True),
+            blocks.MarkLocation(parent_location),
+            blocks.Traverse('out', 'Animal_ParentOf', optional=True),
+            blocks.MarkLocation(grandparent_location),
+            blocks.Traverse('out', 'Animal_OfSpecies'),
+            blocks.MarkLocation(grandparent_species_location),
+            blocks.Backtrack(grandparent_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(parent_location, True),
+            blocks.MarkLocation(revisited_parent_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(revisited_base_location, optional=True),
+            blocks.MarkLocation(re_revisited_base_location),
             blocks.ConstructResult({
-                'grandchild_name': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(grandchild_location),
-                    expressions.OutputContextField(
-                        grandchild_location.navigate_to_field('name'), GraphQLString),
-                    expressions.NullLiteral
-                ),
+                'animal_name': expressions.OutputContextField(
+                        base_location.navigate_to_field('name'), GraphQLString),
                 'child_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(child_location),
                     expressions.OutputContextField(
                         child_location.navigate_to_field('name'), GraphQLString),
                     expressions.NullLiteral
                 ),
-                'child_feeding_time': expressions.TernaryConditional(
-                    expressions.ContextFieldExistence(child_fed_at_location),
+                'grandchild_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(grandchild_location),
                     expressions.OutputContextField(
-                        child_fed_at_location.navigate_to_field('name'), GraphQLString),
+                        grandchild_location.navigate_to_field('name'), GraphQLString),
                     expressions.NullLiteral
                 ),
-                'name': expressions.OutputContextField(
-                        base_location.navigate_to_field('name'), GraphQLString),
+                'grandchild_species': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(grandchild_species_location),
+                    expressions.OutputContextField(
+                        grandchild_species_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'grandchild_relation_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(child_related_location),
+                    expressions.OutputContextField(
+                        child_related_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'grandchild_relation_species': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(child_related_species_location),
+                    expressions.OutputContextField(
+                        child_related_species_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'parent_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(parent_location),
+                    expressions.OutputContextField(
+                        parent_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'grandparent_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(grandparent_location),
+                    expressions.OutputContextField(
+                        grandparent_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'grandparent_species': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(grandparent_species_location),
+                    expressions.OutputContextField(
+                        grandparent_species_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
             }),
         ]
         expected_location_types = {
             base_location: 'Animal',
             child_location: 'Animal',
             grandchild_location: 'Animal',
+            grandchild_species_location: 'Species',
+            child_related_location: 'Animal',
+            child_related_species_location: 'Species',
+            parent_location: 'Animal',
+            grandparent_location: 'Animal',
+            grandparent_species_location: 'Species',
             revisited_base_location: 'Animal',
-            child_fed_at_location: 'Event',
+            re_revisited_base_location: 'Animal',
+            revisited_child_location: 'Animal',
+            re_revisited_child_location: 'Animal',
+            revisited_parent_location: 'Animal',
         }
+        base_location = helpers.Location(('Animal',))
+        child_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        grandchild_location = child_location.navigate_to_subpath('in_Animal_ParentOf')
+        grandchild_species_location = grandchild_location.navigate_to_subpath('out_Animal_OfSpecies')
+        child_related_location = child_location.navigate_to_subpath('in_Entity_Related')
+        child_related_species_location = child_related_location.navigate_to_subpath('out_Animal_OfSpecies')
+        parent_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        grandparent_location = parent_location.navigate_to_subpath('out_Animal_ParentOf')
+        grandparent_species_location = grandparent_location.navigate_to_subpath('out_Animal_OfSpecies')
+        revisited_child_location = child_location.revisit()
+        re_revisited_child_location = revisited_child_location.revisit()
+        revisited_base_location = base_location.revisit()
+        revisited_parent_location = parent_location.revisit()
+        re_revisited_base_location = revisited_base_location.revisit()
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
