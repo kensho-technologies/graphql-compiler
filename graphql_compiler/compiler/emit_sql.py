@@ -16,7 +16,6 @@ CompilationContext = namedtuple('CompilationContext', [
     'query_path_to_from_clause',
     'query_path_to_location_info',
     'query_path_to_recursion_in',
-    'query_path_to_recursion_out',
     'query_path_to_filter',
     'query_path_to_output_fields',
     'compiler_metadata',
@@ -29,7 +28,6 @@ def emit_code_from_ir(sql_query_tree, compiler_metadata):
         query_path_to_selectable={},
         query_path_to_from_clause={},
         query_path_to_recursion_in={},
-        query_path_to_recursion_out={},
         query_path_to_location_info=sql_query_tree.query_path_to_location_info,
         query_path_to_filter=sql_query_tree.query_path_to_filter,
         query_path_to_output_fields=sql_query_tree.query_path_to_output_fields,
@@ -213,7 +211,6 @@ def _create_and_reference_table(node, context):
     table = context.compiler_metadata.get_table(schema_type).alias()
     context.query_path_to_from_clause[node.query_path] = table
     context.query_path_to_selectable[node.query_path] = table
-    # ensure SQL blocks hold reference to Relation's table
     return table
 
 
@@ -356,6 +353,7 @@ def _create_query(node, context, apply_filters):
         if apply_filters:
             in_col, _ = context.query_path_to_recursion_in[recursion.query_path]
             columns.append(in_col)
+            # del context.query_path_to_recursion_in[recursion.query_path]
     if node.query_path in context.query_path_to_recursion_in:
         _, out_col = context.query_path_to_recursion_in[node.query_path]
         columns.append(out_col)

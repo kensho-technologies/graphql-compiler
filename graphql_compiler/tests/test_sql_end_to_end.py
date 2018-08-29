@@ -721,7 +721,9 @@ class SqlQueryTests(unittest.TestCase):
         results = self.run_query(query, ['name', 'descendant'], **params)
         self.assertListEqual(expected_results, results)
 
-    def test_basic_recurse_with_nested_expansion(self):
+    def test_basic_recurse_with_filtered_nested_expansion(self):
+        # the filter using a tag below should be a no-op, since we traverse forward and then back
+        # over the edge
         graphql_string = '''
         {
             Animal {
@@ -729,10 +731,12 @@ class SqlQueryTests(unittest.TestCase):
                      @filter(op_name: "=", value: ["$bear_name"])
                 out_Animal_ParentOf @recurse(depth: 3){
                     name @output(out_name: "descendant")
+                         @tag(tag_name: "descendant")
                     in_Animal_ParentOf @optional {
                         name @output(out_name: "descendant_parent")
                         out_Animal_ParentOf {
                             name @output(out_name: "same_as_descendant")
+                                 @filter(op_name: "=", value: ["%descendant"])
                         }
                     }
                 }
@@ -743,7 +747,7 @@ class SqlQueryTests(unittest.TestCase):
                                                     self.compiler_metadata)
         query = compilation_result.query
         params = {
-            '$bear_name': 'Biggest Bear'
+            '$bear_name': 'Biggest Bear',
         }
         expected_results = [
             {'name': 'Biggest Bear', 'descendant': 'Big Bear', 'same_as_descendant': 'Big Bear',
@@ -887,6 +891,33 @@ class SqlQueryTests(unittest.TestCase):
         ]
         params = {
             '$name': 'Big Bear'
+        }
+        results = self.run_query(query, ['name', 'species_name'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_many_to_many_junction_union_optional(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "in_collection", value: ["$names"])
+                out_Animal_Eats @optional {
+                    ... on Species {
+                        name @output(out_name: "species_name")
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'name': 'Big Bear', 'species_name': 'Rabbit'},
+            {'name': 'Biggest Bear', 'species_name': None},
+        ]
+        params = {
+            '$names': ['Big Bear', 'Biggest Bear']
         }
         results = self.run_query(query, ['name', 'species_name'], **params)
         self.assertListEqual(expected_results, results)

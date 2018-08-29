@@ -22,8 +22,6 @@ class SqlNode(object):
         self.block = block
         self.children_nodes = []
         self.recursions = []
-        self.link_columns = []
-        self.recursion_to_column = {}
 
     def add_child_node(self, child_node):
         """Add a child node reference to this SqlNode, either non-recursive or recursive."""
@@ -31,11 +29,6 @@ class SqlNode(object):
             self.recursions.append(child_node)
         else:
             self.children_nodes.append(child_node)
-
-    def add_recursive_link_column(self, recursion, recursion_in_column):
-        """Add a link column to ensure a recursion can be later connected to this SqlNode."""
-        self.recursion_to_column[recursion] = recursion_in_column
-        self.link_columns.append(recursion_in_column)
 
     def __str__(self):
         """Return a string representation of a SqlNode."""
