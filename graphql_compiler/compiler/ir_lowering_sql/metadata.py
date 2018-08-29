@@ -47,14 +47,12 @@ class CompilerMetadata:
             )
         return self.table_name_to_table[table_name]
 
-    def get_edge(self, type_name, edge_name):
+    def get_edge(self, outer_type_name, inner_type_name, edge_name):
         """Retrieve a SimpleEdge or MultiEdge from the config, if it exists."""
-        if type_name in self.config:
-            parent_config = self.config[type_name]
-            if 'edges' in parent_config:
-                edges = parent_config['edges']
-                if edge_name in edges:
-                    return edges[edge_name]
+        if outer_type_name in self.config:
+            parent_config = self.config[outer_type_name]
+            if edge_name in parent_config:
+                return parent_config[edge_name][inner_type_name]
         return None
 
     @property

@@ -1,5 +1,5 @@
 from _operator import or_
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
 import six
 from sqlalchemy import select, and_, literal_column, cast, String, case, bindparam, Column
@@ -15,6 +15,10 @@ CompilationContext = namedtuple('CompilationContext', [
     'query_path_to_selectable',
     'query_path_to_from_clause',
     'query_path_to_location_info',
+    'query_path_to_recursion_in',
+    'query_path_to_recursion_out',
+    'query_path_to_filter',
+    'query_path_to_output_fields',
     'compiler_metadata',
 ])
 
@@ -24,7 +28,11 @@ def emit_code_from_ir(sql_query_tree, compiler_metadata):
     context = CompilationContext(
         query_path_to_selectable={},
         query_path_to_from_clause={},
+        query_path_to_recursion_in={},
+        query_path_to_recursion_out={},
         query_path_to_location_info=sql_query_tree.query_path_to_location_info,
+        query_path_to_filter=sql_query_tree.query_path_to_filter,
+        query_path_to_output_fields=sql_query_tree.query_path_to_output_fields,
         compiler_metadata=compiler_metadata,
     )
     return _query_tree_to_query(sql_query_tree.root, context, None)
@@ -36,9 +44,9 @@ def _query_tree_to_query(node, context, recursion_link_column):
     visited_nodes = _flatten_and_join_nonrecursive_nodes(node, context)
     # step 2: Create the recursive element
     recursion_out_column = _create_recursive_clause(node, context, recursion_link_column)
-    # step 3: Materialize query as a CTE. Output fields from individual tables become output
-    # fields from the CTE
+    # step 3: Materialize query as a CTE.
     cte = _create_query(node, context, apply_filters=True).cte()
+    # Output fields from individual tables become output fields from the CTE
     _update_context_paths(node, visited_nodes, cte, context)
     # step 4: collapse and return recursive node trees
     _flatten_and_join_recursive_nodes(node, context)
@@ -52,11 +60,13 @@ def _flatten_and_join_recursive_nodes(node, context):
     """Join recursive child nodes to parent, flattening child's references."""
     for recursive_node in node.recursions:
         # retrieve the column that will be attached to the recursive element
-        recursion_source_column = node.recursion_to_column[recursive_node]
+        recursion_source_column, _ = context.query_path_to_recursion_in[recursive_node.query_path]
+        # del context.query_path_to_recursion_in[recursive_node.query_path]
+        # recursion_source_column = node.recursion_to_column[recursive_node]
         recursion_sink_column = _query_tree_to_query(
             recursive_node, context, recursion_link_column=recursion_source_column
         )
-        _flatten_output_fields(node, recursive_node)
+        _flatten_output_fields(node, recursive_node, context)
         onclause = _get_recursive_onclause(node, recursive_node, recursion_source_column,
                                            recursion_sink_column, context)
         _join_nodes(node, recursive_node, onclause, context)
@@ -82,7 +92,7 @@ def _flatten_and_join_nonrecursive_nodes(node, context):
     # ensure that columns required to link recursion are present
     _create_links_for_recursions(node, context)
     for child_node in node.children_nodes:
-        _flatten_node(node, child_node)
+        _flatten_node(node, child_node, context)
         onclause = _get_on_clause_for_node(node, child_node, context)
         _join_nodes(node, child_node, onclause, context)
     return visited_nodes
@@ -193,7 +203,8 @@ def _create_recursive_clause(node, context, out_link_column):
     )
     context.query_path_to_from_clause[node.query_path] = from_clause
     out_link_column = recursive_query.c[sink_col].label(None)
-    node.add_recursive_link_column(recursive_query, out_link_column)
+    (in_col, _) = context.query_path_to_recursion_in[node.query_path]
+    context.query_path_to_recursion_in[node.query_path] = (in_col, out_link_column)
     return out_link_column
 
 
@@ -206,21 +217,23 @@ def _create_and_reference_table(node, context):
     return table
 
 
-def _flatten_node(node, child_node):
+def _flatten_node(node, child_node, context):
     """Flatten a child node's references onto it's parent."""
-    _flatten_output_fields(node, child_node)
-    node.filters.extend(child_node.filters)
+    _flatten_output_fields(node, child_node, context)
+    context.query_path_to_filter[node.query_path].extend(
+        context.query_path_to_filter[child_node.query_path]
+    )
+    del context.query_path_to_filter[child_node.query_path]
     node.recursions.extend(child_node.recursions)
-    for recursion, link_column in child_node.recursion_to_column.items():
-        node.recursion_to_column[recursion] = link_column
-    node.link_columns.extend(child_node.link_columns)
 
 
-def _flatten_output_fields(parent_node, child_node):
+def _flatten_output_fields(parent_node, child_node, context):
     """Flatten child node output fields onto parent node after join operation has been performed."""
-    for field_alias, field_data in six.iteritems(child_node.fields):
-        parent_node.fields[field_alias] = field_data
-        parent_node.fields_to_rename[field_alias] = child_node.fields_to_rename[field_alias]
+    child_output_fields = context.query_path_to_output_fields[child_node.query_path]
+    parent_output_fields = context.query_path_to_output_fields[parent_node.query_path]
+    for field_alias, (field, field_type, is_renamed) in six.iteritems(child_output_fields):
+        parent_output_fields[field_alias] = (field, field_type, is_renamed)
+    del context.query_path_to_output_fields[child_node.query_path]
 
 
 def _join_nodes(parent_node, child_node, onclause, context):
@@ -295,12 +308,12 @@ def _create_link_for_recursion(node, recursion_node, context):
     if isinstance(edge, BasicEdge):
         from_col = edge.source_col
         recursion_in_column = selectable.c[from_col]
-        node.add_recursive_link_column(recursion_node, recursion_in_column)
+        context.query_path_to_recursion_in[recursion_node.query_path] = (recursion_in_column, None)
         return recursion_in_column
     elif isinstance(edge, MultiEdge):
         from_col = edge.junction_edge.source_col
         recursion_in_column = selectable.c[from_col]
-        node.add_recursive_link_column(recursion_node, recursion_in_column)
+        context.query_path_to_recursion_in[recursion_node.query_path] = (recursion_in_column, None)
         return recursion_in_column
     raise AssertionError
 
@@ -322,16 +335,16 @@ def _get_recursive_onclause(node, recursive_node, in_column, out_column, context
 
 def _get_output_columns(node, context):
     """Convert the output fields of a SqlNode to aliased Column objects."""
+    output_fields = context.query_path_to_output_fields[node.query_path]
     columns = []
-    for field_alias, (field, _) in six.iteritems(node.fields):
-        is_renamed = node.fields_to_rename[field_alias]
+    for field_alias, (field, field_type, is_renamed) in six.iteritems(output_fields):
         selectable = context.query_path_to_selectable[field.location.query_path]
         if is_renamed:
             column = selectable.c[field_alias]
         else:
             field_name = field.location.field
             column = selectable.c[field_name].label(field_alias)
-            node.fields_to_rename[field_alias] = True
+            output_fields[field_alias] = (field, field_type, True)
         columns.append(column)
     return columns
 
@@ -339,22 +352,29 @@ def _get_output_columns(node, context):
 def _create_query(node, context, apply_filters):
     """Create a query from a SqlNode."""
     columns = _get_output_columns(node, context)
-    columns.extend(node.link_columns)
-    node.link_columns = []
+    for recursion in node.recursions:
+        if apply_filters:
+            in_col, _ = context.query_path_to_recursion_in[recursion.query_path]
+            columns.append(in_col)
+    if node.query_path in context.query_path_to_recursion_in:
+        _, out_col = context.query_path_to_recursion_in[node.query_path]
+        columns.append(out_col)
+
     from_clause = context.query_path_to_from_clause[node.query_path]
     query = select(columns, distinct=True).select_from(from_clause)
     if not apply_filters:
         return query
 
     filter_clauses = [
-        _convert_filter_to_sql(filter_block, query_path, location_info, context)
-        for filter_block, query_path, location_info in node.filters
+        _convert_filter_to_sql(filter_block, filter_query_path, context)
+        for filter_block, filter_query_path in context.query_path_to_filter[node.query_path]
     ]
     return query.where(and_(*filter_clauses))
 
 
-def _convert_filter_to_sql(filter_block, query_path, location_info, context):
+def _convert_filter_to_sql(filter_block, query_path, context):
     """Return the SQLAlchemy expression for a Filter predicate."""
+    location_info = context.query_path_to_location_info[query_path]
     selectable = context.query_path_to_selectable[query_path]
     expression = filter_block.predicate
     return _expression_to_sql(expression, selectable, location_info, context)
@@ -418,7 +438,7 @@ def _get_edge(block, parent_schema_type, child_schema_type, context):
         # this is a recursive edge, from a type back onto itself
         outer_type_name = child_schema_type
         relative_type = child_schema_type
-    edge_override = context.compiler_metadata.get_edge(outer_type_name, edge_name)
+    edge_override = context.compiler_metadata.get_edge(outer_type_name, relative_type, edge_name)
     if edge_override is not None:
         return edge_override
 

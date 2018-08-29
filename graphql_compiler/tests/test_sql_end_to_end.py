@@ -5,7 +5,7 @@ from sqlalchemy import text
 from graphql_compiler.compiler import compile_graphql_to_sql
 from graphql_compiler.compiler.ir_lowering_sql.metadata import CompilerMetadata
 from graphql_compiler.tests.test_helpers import (
-    create_sqlite_db, get_test_sql_config, get_sql_test_schema)
+    create_sqlite_db, get_test_sql_config, get_sql_test_schema, get_schema)
 
 
 class SqlQueryTests(unittest.TestCase):
@@ -434,6 +434,32 @@ class SqlQueryTests(unittest.TestCase):
         results = self.run_query(query, ['name', 'ancestor'], **params)
         self.assertListEqual(expected_results, results)
 
+    def test_recurse_with_tag_post_filter(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @tag(tag_name: "ancestor_name")
+                     @filter(op_name: "=", value: ["$bear_name"])
+                in_Animal_ParentOf @recurse(depth: 3){
+                    name @output(out_name: "ancestor")
+                         @filter(op_name: ">", value: ["%ancestor_name"])
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        params = {
+            '$bear_name': 'Little Bear',
+        }
+        expected_results = [
+            {'name': 'Little Bear', 'ancestor': 'Medium Bear'},
+        ]
+        results = self.run_query(query, ['name', 'ancestor'], **params)
+        self.assertListEqual(expected_results, results)
+
     def test_basic_recurse_limit_depth(self):
         graphql_string = '''
         {
@@ -773,19 +799,23 @@ class SqlQueryTests(unittest.TestCase):
                                  **params)
         self.assertListEqual(expected_results, results)
 
-    def test_double_recursion_in_recursion(self):
+    def test_double_recursion_in_recursion_tags(self):
         graphql_string = '''
         {
             Animal {
                 name @output(out_name: "name")
                      @filter(op_name: "=", value: ["$bear_name"])
+                     @tag(tag_name: "name")
                 in_Animal_ParentOf @recurse(depth: 1){
                     name @output(out_name: "self_or_ancestor")
+                         @filter(op_name: ">", value: ["%name"])
                     out_Animal_ParentOf @recurse(depth: 1) {
                         name @output(out_name: "ancestor_or_ancestor_child")
+                             @filter(op_name: ">", value: ["%name"])
                     }
                     in_Animal_ParentOf @recurse(depth: 1) {
                         name @output(out_name: "ancestor_or_ancestor_parent")
+                             @filter(op_name: ">", value: ["%name"])
                     }
                 }
             }
@@ -798,26 +828,6 @@ class SqlQueryTests(unittest.TestCase):
             '$bear_name': 'Little Bear'
         }
         expected_results = [
-            {'name': 'Little Bear',
-             'self_or_ancestor': 'Little Bear',
-             'ancestor_or_ancestor_child': 'Little Bear',
-             'ancestor_or_ancestor_parent': 'Little Bear'},
-            {'name': 'Little Bear',
-             'self_or_ancestor': 'Little Bear',
-             'ancestor_or_ancestor_child': 'Little Bear',
-             'ancestor_or_ancestor_parent': 'Medium Bear'},
-            {'name': 'Little Bear',
-             'self_or_ancestor': 'Medium Bear',
-             'ancestor_or_ancestor_child': 'Little Bear',
-             'ancestor_or_ancestor_parent': 'Big Bear'},
-            {'name': 'Little Bear',
-             'self_or_ancestor': 'Medium Bear',
-             'ancestor_or_ancestor_child': 'Little Bear',
-             'ancestor_or_ancestor_parent': 'Medium Bear'},
-            {'name': 'Little Bear',
-             'self_or_ancestor': 'Medium Bear',
-             'ancestor_or_ancestor_child': 'Medium Bear',
-             'ancestor_or_ancestor_parent': 'Big Bear'},
             {'name': 'Little Bear',
              'self_or_ancestor': 'Medium Bear',
              'ancestor_or_ancestor_child': 'Medium Bear',
@@ -853,6 +863,32 @@ class SqlQueryTests(unittest.TestCase):
             '$name': 'Big Bear'
         }
         results = self.run_query(query, ['name', 'food_name'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_many_to_many_junction_union(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["$name"])
+                out_Animal_Eats {
+                    ... on Species {
+                        name @output(out_name: "species_name")
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        expected_results = [
+            {'name': 'Big Bear', 'species_name': 'Rabbit'},
+        ]
+        params = {
+            '$name': 'Big Bear'
+        }
+        results = self.run_query(query, ['name', 'species_name'], **params)
         self.assertListEqual(expected_results, results)
 
     def test_many_to_many_junction_basic_optional(self):

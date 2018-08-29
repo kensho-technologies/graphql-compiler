@@ -263,9 +263,17 @@ def get_sql_test_schema():
             out_Animal_ParentOf: [Animal]
             in_Animal_ParentOf: [Animal]
             out_Animal_LivesIn: [Location]
-            out_Animal_Eats: [Entity]
+            out_Animal_Eats: [FoodOrSpecies]
             out_Animal_FriendsWith: [Animal]
             in_Animal_FriendsWith: [Animal]
+        }
+        
+        union FoodOrSpecies = Food | Species
+        
+        type Species {
+            name: String
+            uuid: ID
+            in_Animal_EatenBy: [Animal]
         }
 
         type Location {
@@ -293,11 +301,14 @@ def get_sql_test_schema():
 def get_test_sql_config():
     return {
         'Animal': {
-            'edges': {
-                'Animal_ParentOf': BasicEdge(
-                    table_name='animal', source_column='animal_id', sink_column='parent_id'
-                ),
-                'Animal_Eats': MultiEdge(
+            'Animal_ParentOf': {
+                'Animal': BasicEdge(
+                    table_name='animal',
+                    source_column='animal_id',
+                    sink_column='parent_id'),
+            },
+            'Animal_Eats': {
+                'Food': MultiEdge(
                     junction_edge=BasicEdge(
                         table_name='AnimalToFood',
                         source_column='animal_id',
@@ -307,7 +318,19 @@ def get_test_sql_config():
                         table_name='food', source_column='food_id', sink_column='food_id'
                     )
                 ),
-                'Animal_FriendsWith': MultiEdge(
+                'Species': MultiEdge(
+                    junction_edge=BasicEdge(
+                        table_name='AnimalToSpeciesEaten',
+                        source_column='animal_id',
+                        sink_column='animal_id'
+                    ),
+                    final_edge=BasicEdge(
+                        table_name='species', source_column='species_id', sink_column='species_id'
+                    )
+                )
+            },
+            'Animal_FriendsWith': {
+                'Animal': MultiEdge(
                     junction_edge=BasicEdge(
                         table_name='AnimalToFriend',
                         source_column='animal_id',
@@ -316,8 +339,8 @@ def get_test_sql_config():
                     final_edge=BasicEdge(
                         table_name='animal', source_column='friendId', sink_column='animal_id'
                     )
-                ),
-            }
+                )
+            },
         },
     }
 
@@ -353,12 +376,27 @@ def create_sqlite_db():
         Column('name', String(10)),
         Column('food_type_id', Integer, ForeignKey("food_type.food_type_id"))
     )
+
+    species = Table(
+        'species',
+        metadata,
+        Column('species_id', Integer, primary_key=True),
+        Column('name', String(10)),
+    )
+
     animal_to_food = Table(
         'AnimalToFood',
         metadata,
         Column('animal_to_food_id', Integer, primary_key=True),
         Column('animal_id', Integer, ForeignKey("animal.animal_id")),
         Column('food_id', Integer, ForeignKey("food.food_id")),
+    )
+    animal_to_species_eaten = Table(
+        'AnimalToSpeciesEaten',
+        metadata,
+        Column('animal_to_species_eaten_id', Integer, primary_key=True),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('species_id', Integer, ForeignKey("species.species_id")),
     )
     animal_to_friend = Table(
         'AnimalToFriend',
@@ -410,13 +448,25 @@ def create_sqlite_db():
         # medium bear is friends with biggest bear
         (21, 3, 4),
     ]
+    species_data = [
+        (22, 'Rabbit'),
+        (23, 'Wolf'),
+        (24, 'Bear'),
+    ]
+    animals_to_species_eaten = [
+        (25, 1, 22),
+        (26, 2, 22),
+        (27, 3, 22)
+    ]
     tables_values = [
         (animal, animals),
         (location, locations),
         (food_type, food_types),
         (food, foods),
+        (species, species_data),
         (animal_to_food, animals_to_foods),
         (animal_to_friend, animals_to_friends),
+        (animal_to_species_eaten, animals_to_species_eaten),
     ]
 
     for table, vals in tables_values:

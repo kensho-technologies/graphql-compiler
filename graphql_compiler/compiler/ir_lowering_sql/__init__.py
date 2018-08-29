@@ -1,5 +1,6 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import six
+from collections import defaultdict
 
 from graphql_compiler.compiler import blocks, expressions
 from graphql_compiler.compiler.ir_lowering_sql.constants import RESERVED_COLUMN_NAMES
@@ -44,10 +45,12 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     block_index_to_location = get_block_index_to_location_map(ir_blocks)
     construct_result = ir_blocks.pop()
     query_path_to_node = {}
+    query_path_to_filter = defaultdict(list)
     tree_root = None
     for index, block in enumerate(ir_blocks):
         if isinstance(block, (blocks.Recurse, blocks.Traverse, blocks.QueryRoot)):
             location = block_index_to_location[index]
+            location_info = query_metadata_table.get_location_info(location)
             query_path = location.query_path
             if tree_root is None:
                 if not isinstance(block, blocks.QueryRoot):
@@ -55,7 +58,6 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                 tree_root = SqlNode(block=block, query_path=query_path)
                 query_path_to_node[query_path] = tree_root
             else:
-                location_info = query_metadata_table.get_location_info(location)
                 parent_location = location_info.parent_location
                 parent_query_path = parent_location.query_path
                 parent_node = query_path_to_node[parent_query_path]
@@ -63,20 +65,22 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                 parent_node.add_child_node(child_node)
                 query_path_to_node[query_path] = child_node
         elif isinstance(block, blocks.Filter):
-            node = query_path_to_node[query_path]
-            node.filters.append((block, query_path, query_path_to_location_info[query_path]))
+            query_path_to_filter[query_path].append((block, query_path))
         else:
             continue
     location_types = {
         location.query_path: location_info.type
         for location, location_info in query_metadata_table.registered_locations
     }
-    assign_output_fields_to_nodes(construct_result, location_types, query_path_to_node)
-    return SqlQueryTree(tree_root, query_path_to_location_info)
+    query_path_to_output_fields = assign_output_fields_to_nodes(
+        construct_result, location_types, query_path_to_node)
+    return SqlQueryTree(tree_root, query_path_to_location_info, query_path_to_filter,
+                        query_path_to_output_fields)
 
 
 def assign_output_fields_to_nodes(construct_result, location_types, query_path_to_node):
     """Assign the output fields of a ConstructResult block to their respective SqlNodes."""
+    query_path_to_output_fields = defaultdict(dict)
     for field_alias, field in six.iteritems(construct_result.fields):
         if field_alias in RESERVED_COLUMN_NAMES:
             raise AssertionError
@@ -84,8 +88,9 @@ def assign_output_fields_to_nodes(construct_result, location_types, query_path_t
             # todo: This probably isn't the way to go in the general case
             field = field.if_true
         output_query_path = field.location.query_path
-        node = query_path_to_node[output_query_path]
-        node.fields[field_alias] = (field, location_types[output_query_path])
+        output_field_info = (field, location_types[output_query_path], False)
+        query_path_to_output_fields[output_query_path][field_alias] = output_field_info
+    return query_path_to_output_fields
 
 
 def get_block_index_to_location_map(ir_blocks):

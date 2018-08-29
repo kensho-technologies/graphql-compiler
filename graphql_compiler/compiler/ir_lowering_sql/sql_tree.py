@@ -5,10 +5,12 @@ from graphql_compiler.compiler import blocks
 
 
 class SqlQueryTree(object):
-    def __init__(self, root, query_path_to_location_info):
+    def __init__(self, root, query_path_to_location_info, query_path_to_filter, query_path_to_output_fields):
         """Wrap a SqlNode root with additional location_info metadata."""
         self.root = root
         self.query_path_to_location_info = query_path_to_location_info
+        self.query_path_to_filter = query_path_to_filter
+        self.query_path_to_output_fields = query_path_to_output_fields
 
 
 class SqlNode(object):
@@ -17,10 +19,7 @@ class SqlNode(object):
     def __init__(self, block, query_path):
         """Create a new SqlNode wrapping a Traverse/Recurse/QueryRoot block at a query_path."""
         self.query_path = query_path
-        self.fields = {}
-        self.fields_to_rename = defaultdict(lambda: False)
         self.block = block
-        self.filters = []
         self.children_nodes = []
         self.recursions = []
         self.link_columns = []
