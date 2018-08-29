@@ -46,6 +46,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     construct_result = ir_blocks.pop()
     query_path_to_node = {}
     query_path_to_filter = defaultdict(list)
+    query_path_to_tag_fields = defaultdict(list)
     tree_root = None
     for index, block in enumerate(ir_blocks):
         if isinstance(block, (blocks.Recurse, blocks.Traverse, blocks.QueryRoot)):
@@ -65,6 +66,8 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                 parent_node.add_child_node(child_node)
                 query_path_to_node[query_path] = child_node
         elif isinstance(block, blocks.Filter):
+            for context_field in get_tag_fields(block.predicate):
+                query_path_to_tag_fields[context_field.location.query_path].append(context_field)
             query_path_to_filter[query_path].append((block, query_path))
         else:
             continue
@@ -75,7 +78,17 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     query_path_to_output_fields = assign_output_fields_to_nodes(
         construct_result, location_types, query_path_to_node)
     return SqlQueryTree(tree_root, query_path_to_location_info, query_path_to_filter,
-                        query_path_to_output_fields)
+                        query_path_to_output_fields, query_path_to_tag_fields)
+
+
+def get_tag_fields(expression):
+    if isinstance(expression, expressions.ContextField):
+        yield expression
+    if isinstance(expression, expressions.BinaryComposition):
+        for context_field in get_tag_fields(expression.left):
+            yield context_field
+        for context_field in get_tag_fields(expression.right):
+            yield context_field
 
 
 def assign_output_fields_to_nodes(construct_result, location_types, query_path_to_node):

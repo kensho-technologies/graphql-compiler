@@ -18,6 +18,8 @@ CompilationContext = namedtuple('CompilationContext', [
     'query_path_to_recursion_in',
     'query_path_to_filter',
     'query_path_to_output_fields',
+    'query_path_field_renames',
+    'query_path_to_tag_fields',
     'compiler_metadata',
 ])
 
@@ -28,33 +30,35 @@ def emit_code_from_ir(sql_query_tree, compiler_metadata):
         query_path_to_selectable={},
         query_path_to_from_clause={},
         query_path_to_recursion_in={},
+        query_path_field_renames=defaultdict(dict),
+        query_path_to_tag_fields=sql_query_tree.query_path_to_tag_fields,
         query_path_to_location_info=sql_query_tree.query_path_to_location_info,
         query_path_to_filter=sql_query_tree.query_path_to_filter,
         query_path_to_output_fields=sql_query_tree.query_path_to_output_fields,
         compiler_metadata=compiler_metadata,
     )
-    return _query_tree_to_query(sql_query_tree.root, context, None)
+    return _query_tree_to_query(sql_query_tree.root, context, None, None)
 
 
-def _query_tree_to_query(node, context, recursion_link_column):
+def _query_tree_to_query(node, context, recursion_link_column, outer_cte):
     """Recursively converts a SqlNode tree to a SQLAlchemy query."""
     # step 1: Collapse query tree, ignoring recursive nodes
     visited_nodes = _flatten_and_join_nonrecursive_nodes(node, context)
     # step 2: Create the recursive element
-    recursion_out_column = _create_recursive_clause(node, context, recursion_link_column)
+    recursion_out_column = _create_recursive_clause(node, context, recursion_link_column, outer_cte)
     # step 3: Materialize query as a CTE.
-    cte = _create_query(node, context, apply_filters=True).cte()
+    cte = _create_query(node, context, is_final_query=False).cte()
     # Output fields from individual tables become output fields from the CTE
     _update_context_paths(node, visited_nodes, cte, context)
     # step 4: collapse and return recursive node trees
-    _flatten_and_join_recursive_nodes(node, context)
+    _flatten_and_join_recursive_nodes(node, cte, context)
     if isinstance(node.block, blocks.QueryRoot):
         # filters have already been applied within the CTE, no need to reapply
-        return _create_query(node, context, apply_filters=False)
+        return _create_query(node, context, is_final_query=True)
     return recursion_out_column
 
 
-def _flatten_and_join_recursive_nodes(node, context):
+def _flatten_and_join_recursive_nodes(node, cte, context):
     """Join recursive child nodes to parent, flattening child's references."""
     for recursive_node in node.recursions:
         # retrieve the column that will be attached to the recursive element
@@ -62,7 +66,7 @@ def _flatten_and_join_recursive_nodes(node, context):
         # del context.query_path_to_recursion_in[recursive_node.query_path]
         # recursion_source_column = node.recursion_to_column[recursive_node]
         recursion_sink_column = _query_tree_to_query(
-            recursive_node, context, recursion_link_column=recursion_source_column
+            recursive_node, context, recursion_link_column=recursion_source_column, outer_cte=cte
         )
         _flatten_output_fields(node, recursive_node, context)
         onclause = _get_recursive_onclause(node, recursive_node, recursion_source_column,
@@ -110,7 +114,7 @@ def _get_schema_type(node, context):
     return location_info.type.name
 
 
-def _create_recursive_clause(node, context, out_link_column):
+def _create_recursive_clause(node, context, out_link_column, outer_cte):
     """Create a recursive clause for a Recurse block."""
     if not isinstance(node.block, blocks.Recurse):
         return None
@@ -139,9 +143,7 @@ def _create_recursive_clause(node, context, out_link_column):
     else:
         raise AssertionError
 
-    parent_cte_column = selectable.c[out_link_column.name]
-    distinct_parent_column_query = select([
-        parent_cte_column.label(constants.LINK_INTERNAL_NAME)], distinct=True).alias()
+    parent_cte_column = outer_cte.c[out_link_column.name]
     anchor_query = (
         select(
             [
@@ -153,8 +155,8 @@ def _create_recursive_clause(node, context, out_link_column):
             distinct=True)
         .select_from(
             selectable.join(
-                distinct_parent_column_query,
-                base_column == distinct_parent_column_query.c[constants.LINK_INTERNAL_NAME]
+                outer_cte,
+                base_column == parent_cte_column
             )
         )
     )
@@ -199,6 +201,9 @@ def _create_recursive_clause(node, context, out_link_column):
         recursive_query,
         selectable.c[base_col] == recursive_query.c[source_col]
     )
+    from_clause = from_clause.join(
+        outer_cte, recursive_query.c[sink_col] == parent_cte_column
+    )
     context.query_path_to_from_clause[node.query_path] = from_clause
     out_link_column = recursive_query.c[sink_col].label(None)
     (in_col, _) = context.query_path_to_recursion_in[node.query_path]
@@ -230,6 +235,7 @@ def _flatten_output_fields(parent_node, child_node, context):
     parent_output_fields = context.query_path_to_output_fields[parent_node.query_path]
     for field_alias, (field, field_type, is_renamed) in six.iteritems(child_output_fields):
         parent_output_fields[field_alias] = (field, field_type, is_renamed)
+    context.query_path_to_tag_fields[parent_node.query_path].extend(context.query_path_to_tag_fields[child_node.query_path])
     del context.query_path_to_output_fields[child_node.query_path]
 
 
@@ -330,7 +336,7 @@ def _get_recursive_onclause(node, recursive_node, in_column, out_column, context
     return onclause
 
 
-def _get_output_columns(node, context):
+def _get_output_columns(node, is_final_query, context):
     """Convert the output fields of a SqlNode to aliased Column objects."""
     output_fields = context.query_path_to_output_fields[node.query_path]
     columns = []
@@ -342,15 +348,32 @@ def _get_output_columns(node, context):
             field_name = field.location.field
             column = selectable.c[field_name].label(field_alias)
             output_fields[field_alias] = (field, field_type, True)
+            context.query_path_field_renames[field.location.query_path][field_name] = field_alias
         columns.append(column)
+    if not is_final_query:
+        for tag_field in context.query_path_to_tag_fields[node.query_path]:
+            selectable = context.query_path_to_selectable[tag_field.location.query_path]
+            field_name = tag_field.location.field
+            column = selectable.c[field_name].label(None)
+            columns.append(column)
+            context.query_path_field_renames[tag_field.location.query_path][field_name] = column.name
     return columns
 
 
-def _create_query(node, context, apply_filters):
+def _create_query(node, context, is_final_query):
     """Create a query from a SqlNode."""
-    columns = _get_output_columns(node, context)
+    # filters are computed *before* output columns, so that tag columns can get associated before
+    # any renames occur
+    filter_clauses = []
+    if not is_final_query:
+        filter_clauses = [
+            _convert_filter_to_sql(filter_block, filter_query_path, context)
+            for filter_block, filter_query_path in context.query_path_to_filter[node.query_path]
+        ]
+
+    columns = _get_output_columns(node, is_final_query, context)
     for recursion in node.recursions:
-        if apply_filters:
+        if not is_final_query:
             in_col, _ = context.query_path_to_recursion_in[recursion.query_path]
             columns.append(in_col)
             # del context.query_path_to_recursion_in[recursion.query_path]
@@ -360,13 +383,8 @@ def _create_query(node, context, apply_filters):
 
     from_clause = context.query_path_to_from_clause[node.query_path]
     query = select(columns, distinct=True).select_from(from_clause)
-    if not apply_filters:
+    if is_final_query:
         return query
-
-    filter_clauses = [
-        _convert_filter_to_sql(filter_block, filter_query_path, context)
-        for filter_block, filter_query_path in context.query_path_to_filter[node.query_path]
-    ]
     return query.where(and_(*filter_clauses))
 
 
@@ -391,10 +409,18 @@ def _expression_to_sql(expression, selectable, location_info, context):
         tag_field_name = expression.location.field
         tag_query_path = expression.location.query_path
         tag_column_name = tag_field_name
+        if tag_query_path in context.query_path_field_renames:
+            if tag_field_name in context.query_path_field_renames[tag_query_path]:
+                tag_column_name = context.query_path_field_renames[tag_query_path][tag_field_name]
+
         tag_selectable = context.query_path_to_selectable[tag_query_path]
         tag_column = tag_selectable.c[tag_column_name]
         return tag_column
+    elif isinstance(expression, expressions.ContextFieldExistence):
+        return None
     elif isinstance(expression, expressions.BinaryComposition):
+        if expression.operator == '||':
+            return _expression_to_sql(expression.right, selectable, location_info, context)
         sql_operator = constants.OPERATORS[expression.operator]
         left = _expression_to_sql(expression.left, selectable, location_info, context)
         right = _expression_to_sql(expression.right, selectable, location_info, context)

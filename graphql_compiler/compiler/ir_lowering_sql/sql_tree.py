@@ -5,12 +5,13 @@ from graphql_compiler.compiler import blocks
 
 
 class SqlQueryTree(object):
-    def __init__(self, root, query_path_to_location_info, query_path_to_filter, query_path_to_output_fields):
+    def __init__(self, root, query_path_to_location_info, query_path_to_filter, query_path_to_output_fields, query_path_to_tag_fields):
         """Wrap a SqlNode root with additional location_info metadata."""
         self.root = root
         self.query_path_to_location_info = query_path_to_location_info
         self.query_path_to_filter = query_path_to_filter
         self.query_path_to_output_fields = query_path_to_output_fields
+        self.query_path_to_tag_fields = query_path_to_tag_fields
 
 
 class SqlNode(object):

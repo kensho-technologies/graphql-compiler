@@ -603,6 +603,95 @@ class SqlQueryTests(unittest.TestCase):
         results = self.run_query(query, ['name', 'child', 'child_or_descendant'], **params)
         self.assertListEqual(expected_results, results)
 
+    def test_nested_recurse_with_tag(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "in_collection", value: ["$bear_names"])
+                out_Animal_ParentOf {
+                    name @output(out_name: "child")
+                         @tag(tag_name: "child_name")
+                    out_Animal_ParentOf @recurse(depth: 3){
+                        name @output(out_name: "child_or_descendant")
+                             @filter(op_name: "=", value: ["%child_name"])
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        params = {
+            '$bear_names': ['Biggest Bear', 'Little Bear']
+        }
+        expected_results = [
+            {'name': 'Biggest Bear', 'child': 'Big Bear', 'child_or_descendant': 'Big Bear'},
+        ]
+        results = self.run_query(query, ['name', 'child', 'child_or_descendant'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_nested_recurse_with_tag_optional(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "in_collection", value: ["$bear_names"])
+                out_Animal_ParentOf @optional {
+                    name @tag(tag_name: "child_name")
+                    out_Animal_ParentOf @recurse(depth: 3){
+                        name @output(out_name: "child_or_descendant")
+                             @filter(op_name: "=", value: ["%child_name"])
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        params = {
+            '$bear_names': ['Biggest Bear', 'Little Bear']
+        }
+        expected_results = [
+            {'name': 'Biggest Bear', 'child_or_descendant': 'Big Bear'},
+            {'name': 'Little Bear', 'child_or_descendant': None},
+        ]
+        results = self.run_query(query, ['name', 'child_or_descendant'], **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_nested_recurse_with_tag_junction(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "in_collection", value: ["$bear_names"])
+                out_Animal_FriendsWith {
+                    name @tag(tag_name: "friend_name")
+                    out_Animal_FriendsWith @recurse(depth: 3){
+                        name @output(out_name: "friend_or_friend_of_friend")
+                             @filter(op_name: "=", value: ["%friend_name"])
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        params = {
+            '$bear_names': ['Biggest Bear', 'Little Bear']
+        }
+        expected_results = [
+            {'name': 'Biggest Bear', 'friend_or_friend_of_friend': 'Medium Bear'},
+            {'name': 'Little Bear', 'friend_or_friend_of_friend': 'Big Bear'},
+            {'name': 'Little Bear', 'friend_or_friend_of_friend': 'Biggest Bear'}
+        ]
+        results = self.run_query(query, ['name', 'friend_or_friend_of_friend'], **params)
+
+        self.assertListEqual(expected_results, results)
+
     def test_recurse_out_and_in(self):
         graphql_string = '''
         {
@@ -800,6 +889,35 @@ class SqlQueryTests(unittest.TestCase):
              'ancestor_or_ancestor_child_eats': 'Gummy Bears'},
         ]
         results = self.run_query(query, ['name', 'ancestor', 'ancestor_or_ancestor_child'],
+                                 **params)
+        self.assertListEqual(expected_results, results)
+
+    def test_recursion_in_recursion_with_deep_tag(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["$bear_name"])
+                     @tag(tag_name: "name")
+                in_Animal_ParentOf @recurse(depth: 1){
+                    out_Animal_ParentOf @recurse(depth: 1) {
+                        name @output(out_name: "ancestor_or_self")
+                             @filter(op_name: "=", value: ["%name"])
+                    }
+                }
+            }
+        }
+        '''
+        compilation_result = compile_graphql_to_sql(self.schema, graphql_string,
+                                                    self.compiler_metadata)
+        query = compilation_result.query
+        params = {
+            '$bear_name': 'Little Bear'
+        }
+        expected_results = [
+            {'name': 'Little Bear', 'ancestor_or_self': 'Little Bear'},
+        ]
+        results = self.run_query(query, ['name', 'ancestor_or_self'],
                                  **params)
         self.assertListEqual(expected_results, results)
 
