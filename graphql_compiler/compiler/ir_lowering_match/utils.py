@@ -336,7 +336,7 @@ def construct_optional_traversal_tree(complex_optional_roots, location_to_option
         OptionalTraversalTree object representing the tree of complex optional roots
     """
     tree = OptionalTraversalTree(complex_optional_roots)
-    for location, optional_root_locations_stack in six.iteritems(location_to_optional_roots):
+    for optional_root_locations_stack in six.itervalues(location_to_optional_roots):
         tree.insert(list(optional_root_locations_stack))
 
     return tree
