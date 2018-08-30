@@ -237,6 +237,18 @@ class BaseLocation(object):
         """Return a tuple of a unique name of the location, and the current field name (or None)."""
         raise NotImplementedError()
 
+    @abstractmethod
+    def _compare(self, other):
+        """Return True if the other object is smaller than self in the total ordering."""
+        raise NotImplementedError()
+
+    def __lt__(self, other):
+        """Return True if the other object is smaller than self in the total ordering."""
+        if isinstance(self, Location) and isinstance(other, Location):
+            return self._compare(other)
+        elif isinstance(self, FoldScopeLocation) and isinstance(other, FoldScopeLocation):
+            return self._compare(other)
+
 
 @total_ordering
 @six.python_2_unicode_compatible
@@ -349,8 +361,12 @@ class Location(BaseLocation):
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
 
-    def __lt__(self, other):
-        """Return True is another objects is smaller than self in the total ordering."""
+    def _compare(self, other):
+        """Return True if the other object is smaller than self in the total ordering."""
+        if not isinstance(other, Location):
+            raise AssertionError(u'Expected Location type for other. Received {}: {}'
+                                 .format(type(other).__name__, other))
+
         if len(self.query_path) != len(other.query_path):
             return len(self.query_path) < len(other.query_path)
 
@@ -477,3 +493,24 @@ class FoldScopeLocation(BaseLocation):
     def __hash__(self):
         """Return the object's hash value."""
         return hash(self.base_location) ^ hash(self.fold_path) ^ hash(self.field)
+
+    def _compare(self, other):
+        """Return True if the other object is smaller than self in the total ordering."""
+        if not isinstance(other, FoldScopeLocation):
+            raise AssertionError(u'Expected FoldScopeLocation type for other. Received {}: {}'
+                                 .format(type(other).__name__, other))
+
+        if self.base_location != other.base_location:
+            return self.base_location < other.base_location
+
+        for self_edge_tuple, other_edge_tuple in zip(self.fold_path, other.fold_path):
+            if self_edge_tuple != other_edge_tuple:
+                return self_edge_tuple < other_edge_tuple
+
+        if self.field is None:
+            return other.field is not None
+
+        if other.field is None:
+            return False
+
+        return self.field < other.field
