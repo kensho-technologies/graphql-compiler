@@ -252,12 +252,12 @@ class BaseLocation(object):
             if self != other.base_location:
                 return self < other.base_location
             return False
-        elif isinstance(self, FoldScopeLocation) and isinstance(other, FoldScopeLocation):
+        elif isinstance(self, FoldScopeLocation) and isinstance(other, Location):
             if self.base_location != other:
                 return self.base_location < other
             return True
         else:
-            raise AssertionError(u'Received objects of types {}, {} in BaseLocation comparison.'
+            raise AssertionError(u'Received objects of types {}, {} in BaseLocation comparison. '
                                  u'Only Location and FoldScopeLocation are allowed: {} {}'
                                  .format(type(self).__name__, type(other).__name__, self, other))
 
@@ -514,6 +514,9 @@ class FoldScopeLocation(BaseLocation):
 
         if self.base_location != other.base_location:
             return self.base_location < other.base_location
+
+        if len(self.fold_path) != len(other.fold_path):
+            return len(self.fold_path) < len(other.fold_path)
 
         for self_edge_tuple, other_edge_tuple in zip(self.fold_path, other.fold_path):
             if self_edge_tuple != other_edge_tuple:
