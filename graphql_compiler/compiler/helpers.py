@@ -242,6 +242,21 @@ class BaseLocation(object):
         """Return True if the other object is smaller than self in the total ordering."""
         raise NotImplementedError()
 
+    def __eq__(self, other):
+        """Return True if the other object is smaller than self in the total ordering."""
+        if isinstance(self, Location) and isinstance(other, Location):
+            return self == other
+        elif isinstance(self, FoldScopeLocation) and isinstance(other, FoldScopeLocation):
+            return self == other
+        elif isinstance(self, Location) and isinstance(other, FoldScopeLocation):
+            return False
+        elif isinstance(self, FoldScopeLocation) and isinstance(other, Location):
+            return False
+        else:
+            raise AssertionError(u'Received objects of types {}, {} in BaseLocation comparison. '
+                                 u'Only Location and FoldScopeLocation are allowed: {} {}'
+                                 .format(type(self).__name__, type(other).__name__, self, other))
+
     def __lt__(self, other):
         """Return True if the other object is smaller than self in the total ordering."""
         if isinstance(self, Location) and isinstance(other, Location):
