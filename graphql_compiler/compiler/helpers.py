@@ -350,7 +350,7 @@ class Location(BaseLocation):
         return not self.__eq__(other)
 
     def __lt__(self, other):
-        """Check another object for non-equality against this one."""
+        """Return True is another objects is smaller than self in the total ordering."""
         if len(self.query_path) != len(other.query_path):
             return len(self.query_path) < len(other.query_path)
 
@@ -362,7 +362,7 @@ class Location(BaseLocation):
             return self.visit_counter < other.visit_counter
 
         if self.field is None:
-            return True
+            return other.field is not None
 
         if other.field is None:
             return False

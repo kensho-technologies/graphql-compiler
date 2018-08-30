@@ -263,7 +263,6 @@ class OptionalTraversalTree(object):
                 # Simple optionals are ignored.
                 # There should be no complex optionals after a simple optional.
                 encountered_simple_optional = True
-
             else:
                 self._location_to_children[parent_location].add(optional_root_location)
                 parent_location = optional_root_location
@@ -287,10 +286,7 @@ class OptionalTraversalTree(object):
 
         # Recursively find all rooted subtrees of each of the children of the current node.
         location_to_list_of_subtrees = {
-            location: [
-                subtree
-                for subtree in self.get_all_rooted_subtrees_as_lists(location)
-            ]
+            location: list(self.get_all_rooted_subtrees_as_lists(location))
             for location in current_children
         }
 
