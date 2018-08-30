@@ -248,6 +248,18 @@ class BaseLocation(object):
             return self._compare(other)
         elif isinstance(self, FoldScopeLocation) and isinstance(other, FoldScopeLocation):
             return self._compare(other)
+        elif isinstance(self, Location) and isinstance(other, FoldScopeLocation):
+            if self != other.base_location:
+                return self < other.base_location
+            return False
+        elif isinstance(self, FoldScopeLocation) and isinstance(other, FoldScopeLocation):
+            if self.base_location != other:
+                return self.base_location < other
+            return True
+        else:
+            raise AssertionError(u'Received objects of types {}, {} in BaseLocation comparison.'
+                                 u'Only Location and FoldScopeLocation are allowed: {} {}'
+                                 .format(type(self).__name__, type(other).__name__, self, other))
 
 
 @total_ordering
