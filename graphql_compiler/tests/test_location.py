@@ -82,7 +82,6 @@ class LocationTests(unittest.TestCase):
                 received_comparison = first_location < second_location
                 self.assertEqual(expected_comparison, received_comparison)
 
-
     def test_mixed_location_comparisons(self):
         sorted_locations = [
             FoldScopeLocation(
