@@ -69,6 +69,7 @@ import six
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
+from ..schema import DIRECTIVES
 from .context_helpers import (has_encountered_output_source, is_in_fold_scope, is_in_optional_scope,
                               validate_context_for_visiting_vertex_field)
 from .directive_helpers import (get_local_filter_directives, get_unique_directives,
@@ -125,8 +126,7 @@ IrAndMetadata = namedtuple(
         'ir_blocks',
         'input_metadata',
         'output_metadata',
-        'location_types',
-        'coerced_locations',
+        'query_metadata_table',
     )
 )
 
@@ -353,7 +353,6 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     basic_blocks = []
     query_metadata_table = context['metadata']
     current_location_info = query_metadata_table.get_location_info(location)
-    context['location_types'][location] = strip_non_null_from_type(current_schema_type)
 
     vertex_fields, property_fields = fields
 
@@ -373,9 +372,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     initial_marked_location_stack_size = len(context['marked_location_stack'])
 
     # step V-3: mark the graph position, and process output_source directive
+    basic_blocks.append(_mark_location(location))
     if not is_in_fold_scope(context):
-        # We only mark the position if we aren't in a folded scope.
-        basic_blocks.append(_mark_location(location))
         # The following append is the Location corresponding to the initial MarkLocation
         # for the current vertex and the `num_traverses` counter set to 0.
         context['marked_location_stack'].append(_construct_location_stack_entry(location, 0))
@@ -419,7 +417,6 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             if context['marked_location_stack'][-1].num_traverses > 0:
                 location = query_metadata_table.revisit_location(location)
 
-                context['location_types'][location] = strip_non_null_from_type(current_schema_type)
                 basic_blocks.append(_mark_location(location))
                 context['marked_location_stack'].pop()
                 new_stack_entry = _construct_location_stack_entry(location, 0)
@@ -432,7 +429,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         inner_location_info = LocationInfo(
             parent_location=location,
-            type=field_schema_type.name,
+            type=strip_non_null_from_type(field_schema_type),
             coerced_from_type=None,
             optional_scopes_depth=(
                 current_location_info.optional_scopes_depth + edge_traversal_is_optional),
@@ -495,11 +492,9 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         # If we are currently evaluating a @fold vertex,
         # we didn't Traverse into it, so we don't need to backtrack out either.
-        # We also don't backtrack if we're currently inside a @fold scope, or
-        # if we've reached an @output_source.
+        # We also don't backtrack if we've reached an @output_source.
         backtracking_required = (
             (not fold_directive) and
-            (not isinstance(location, FoldScopeLocation)) and
             (not has_encountered_output_source(context))
         )
         if backtracking_required:
@@ -513,7 +508,6 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 # don't accidentally return to a prior location instead.
                 location = query_metadata_table.revisit_location(location)
 
-                context['location_types'][location] = strip_non_null_from_type(current_schema_type)
                 basic_blocks.append(_mark_location(location))
                 context['marked_location_stack'].pop()
                 new_stack_entry = _construct_location_stack_entry(location, 0)
@@ -570,7 +564,7 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     #           then recurse into the fragment's selection.
     coerces_to_type_name = ast.type_condition.name.value
     coerces_to_type_obj = schema.get_type(coerces_to_type_name)
-    query_metadata_table.record_coercion_at_location(location, coerces_to_type_name)
+    query_metadata_table.record_coercion_at_location(location, coerces_to_type_obj)
 
     basic_blocks = []
 
@@ -587,7 +581,6 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
 
     if not (is_same_type_as_scope or is_base_type_of_union):
         # Coercion is required.
-        context['coerced_locations'].add(location)
         basic_blocks.append(blocks.CoerceType({coerces_to_type_name}))
 
     inner_basic_blocks = _compile_ast_node_to_ir(
@@ -699,7 +692,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     location = Location((base_start_type,))
     base_location_info = LocationInfo(
         parent_location=None,
-        type=base_start_type,
+        type=current_schema_type,
         coerced_from_type=None,
         optional_scopes_depth=0,
         recursive_scopes_depth=0,
@@ -709,6 +702,8 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
 
     # Construct the starting context object.
     context = {
+        # 'metadata' is the QueryMetadataTable describing all the metadata collected during query
+        # processing, including location metadata (e.g. which locations are folded or optional).
         'metadata': query_metadata_table,
         # 'tags' is a dict containing
         #  - location: Location where the tag was defined
@@ -725,12 +720,6 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         # 'inputs' is a dict mapping input parameter names to their respective expected GraphQL
         # types, as automatically inferred by inspecting the query structure
         'inputs': dict(),
-        # 'location_types' is a dict mapping each Location to its GraphQLType
-        # (schema type of the location)
-        'location_types': dict(),
-        # 'coerced_locations' is the set of all locations whose type was coerced to a subtype
-        # of the type already implied by the GraphQL schema for that vertex field.
-        'coerced_locations': set(),
         # 'type_equivalence_hints' is a dict mapping GraphQL types to equivalent GraphQL unions
         'type_equivalence_hints': type_equivalence_hints or dict(),
         # The marked_location_stack explicitly maintains a stack (implemented as list)
@@ -781,8 +770,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         ir_blocks=basic_blocks,
         input_metadata=context['inputs'],
         output_metadata=output_metadata,
-        location_types=context['location_types'],
-        coerced_locations=context['coerced_locations'])
+        query_metadata_table=context['metadata'])
 
 
 def _compile_output_step(outputs):
@@ -838,9 +826,86 @@ def _preprocess_graphql_string(graphql_string):
     return graphql_string + '\n'
 
 
+def _validate_schema_and_ast(schema, ast):
+    """Validate the supplied graphql schema and ast.
+
+    This method wraps around graphql-core's validation to enforce a stricter requirement of the
+    schema -- all directives supported by the compiler must be declared by the schema, regardless of
+    whether each directive is used in the query or not.
+
+    Args:
+        schema: GraphQL schema object, created using the GraphQL library
+        ast: abstract syntax tree representation of a graphql query
+
+    Returns:
+        list containing schema and/or query validation errors
+    """
+    core_graphql_errors = validate(schema, ast)
+
+    # The following directives appear in the core-graphql library, but are not supported by the
+    # graphql compiler.
+    unsupported_default_directives = frozenset([
+        frozenset([
+            'include',
+            frozenset(['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']),
+            frozenset(['if'])
+        ]),
+        frozenset([
+            'skip',
+            frozenset(['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']),
+            frozenset(['if'])
+        ]),
+        frozenset([
+            'deprecated',
+            frozenset(['ENUM_VALUE', 'FIELD_DEFINITION']),
+            frozenset(['reason'])
+        ])
+    ])
+
+    # Directives expected by the graphql compiler.
+    expected_directives = {
+        frozenset([
+            directive.name,
+            frozenset(directive.locations),
+            frozenset(six.viewkeys(directive.args))
+        ])
+        for directive in DIRECTIVES
+    }
+
+    # Directives provided in the parsed graphql schema.
+    actual_directives = {
+        frozenset([
+            directive.name,
+            frozenset(directive.locations),
+            frozenset(six.viewkeys(directive.args))
+        ])
+        for directive in schema.get_directives()
+    }
+
+    # Directives missing from the actual directives provided.
+    missing_directives = expected_directives - actual_directives
+    if missing_directives:
+        missing_message = (u'The following directives were missing from the '
+                           u'provided schema: {}'.format(missing_directives))
+        core_graphql_errors.append(missing_message)
+
+    # Directives that are not specified by the core graphql library. Note that Graphql-core
+    # automatically injects default directives into the schema, regardless of whether
+    # the schema supports said directives. Hence, while the directives contained in
+    # unsupported_default_directives are incompatible with the graphql-compiler, we allow them to
+    # be present in the parsed schema string.
+    extra_directives = actual_directives - expected_directives - unsupported_default_directives
+    if extra_directives:
+        extra_message = (u'The following directives were supplied in the given schema, but are not '
+                         u'not supported by the GraphQL compiler: {}'.format(extra_directives))
+        core_graphql_errors.append(extra_message)
+
+    return core_graphql_errors
+
 ##############
 # Public API #
 ##############
+
 
 def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
     """Convert the given GraphQL string into compiler IR, using the given schema object.
@@ -888,7 +953,7 @@ def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
     except GraphQLSyntaxError as e:
         raise GraphQLParsingError(e)
 
-    validation_errors = validate(schema, ast)
+    validation_errors = _validate_schema_and_ast(schema, ast)
 
     if validation_errors:
         raise GraphQLValidationError(u'String does not validate: {}'.format(validation_errors))

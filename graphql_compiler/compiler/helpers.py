@@ -205,8 +205,8 @@ def validate_edge_direction(edge_direction):
 
 def validate_marked_location(location):
     """Validate that a Location object is safe for marking, and not at a field."""
-    if not isinstance(location, Location):
-        raise TypeError(u'Expected Location location, got: {} {}'.format(
+    if not isinstance(location, (Location, FoldScopeLocation)):
+        raise TypeError(u'Expected Location or FoldScopeLocation location, got: {} {}'.format(
             type(location).__name__, location))
 
     if location.field is not None:
@@ -355,6 +355,13 @@ class Location(BaseLocation):
         """Return a tuple of a unique name of the Location, and the current field name (or None)."""
         mark_name = u'__'.join(self.query_path) + u'___' + six.text_type(self.visit_counter)
         return (mark_name, self.field)
+
+    def is_revisited_at(self, other_location):
+        """Return True if other_location is a revisit of this location, and False otherwise."""
+        # Note that FoldScopeLocation objects cannot revisit Location objects, or each other.
+        return (isinstance(other_location, Location) and
+                self.query_path == other_location.query_path and
+                self.visit_counter < other_location.visit_counter)
 
     def __str__(self):
         """Return a human-readable str representation of the Location object."""
