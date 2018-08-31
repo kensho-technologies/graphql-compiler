@@ -218,6 +218,7 @@ def _create_fold_path_component(edge_direction, edge_name):
     return ((edge_direction, edge_name),)  # tuple containing a tuple of two elements
 
 
+@total_ordering
 @six.add_metaclass(ABCMeta)
 class BaseLocation(object):
     """An abstract location object, describing a location in the GraphQL query."""
@@ -238,12 +239,13 @@ class BaseLocation(object):
         raise NotImplementedError()
 
     @abstractmethod
-    def _compare(self, other):
+    def _check_if_object_of_same_type_is_smaller(self, other):
         """Return True if the other object is smaller than self in the total ordering."""
         raise NotImplementedError()
 
+    @abstractmethod
     def __eq__(self, other):
-        """Return True if the other object is smaller than self in the total ordering."""
+        """Return True if the other object is equal to self and False otherwise."""
         if isinstance(self, Location) and isinstance(other, Location):
             return self == other
         elif isinstance(self, FoldScopeLocation) and isinstance(other, FoldScopeLocation):
@@ -257,12 +259,13 @@ class BaseLocation(object):
                                  u'Only Location and FoldScopeLocation are allowed: {} {}'
                                  .format(type(self).__name__, type(other).__name__, self, other))
 
+    # pylint: disable=no-member
     def __lt__(self, other):
         """Return True if the other object is smaller than self in the total ordering."""
         if isinstance(self, Location) and isinstance(other, Location):
-            return self._compare(other)
+            return self._check_if_object_of_same_type_is_smaller(other)
         elif isinstance(self, FoldScopeLocation) and isinstance(other, FoldScopeLocation):
-            return self._compare(other)
+            return self._check_if_object_of_same_type_is_smaller(other)
         elif isinstance(self, Location) and isinstance(other, FoldScopeLocation):
             if self != other.base_location:
                 return self < other.base_location
@@ -275,9 +278,9 @@ class BaseLocation(object):
             raise AssertionError(u'Received objects of types {}, {} in BaseLocation comparison. '
                                  u'Only Location and FoldScopeLocation are allowed: {} {}'
                                  .format(type(self).__name__, type(other).__name__, self, other))
+    # pylint: enable=no-member
 
 
-@total_ordering
 @six.python_2_unicode_compatible
 class Location(BaseLocation):
     def __init__(self, query_path, field=None, visit_counter=1):
@@ -388,7 +391,7 @@ class Location(BaseLocation):
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
 
-    def _compare(self, other):
+    def _check_if_object_of_same_type_is_smaller(self, other):
         """Return True if the other object is smaller than self in the total ordering."""
         if not isinstance(other, Location):
             raise AssertionError(u'Expected Location type for other. Received {}: {}'
@@ -397,9 +400,8 @@ class Location(BaseLocation):
         if len(self.query_path) != len(other.query_path):
             return len(self.query_path) < len(other.query_path)
 
-        for self_vertex_field, other_vertex_field in zip(self.query_path, other.query_path):
-            if self_vertex_field != other_vertex_field:
-                return self_vertex_field < other_vertex_field
+        if self.query_path != other.query_path:
+            return self.query_path < other.query_path
 
         if self.visit_counter != other.visit_counter:
             return self.visit_counter < other.visit_counter
@@ -521,7 +523,7 @@ class FoldScopeLocation(BaseLocation):
         """Return the object's hash value."""
         return hash(self.base_location) ^ hash(self.fold_path) ^ hash(self.field)
 
-    def _compare(self, other):
+    def _check_if_object_of_same_type_is_smaller(self, other):
         """Return True if the other object is smaller than self in the total ordering."""
         if not isinstance(other, FoldScopeLocation):
             raise AssertionError(u'Expected FoldScopeLocation type for other. Received {}: {}'
@@ -533,9 +535,8 @@ class FoldScopeLocation(BaseLocation):
         if len(self.fold_path) != len(other.fold_path):
             return len(self.fold_path) < len(other.fold_path)
 
-        for self_edge_tuple, other_edge_tuple in zip(self.fold_path, other.fold_path):
-            if self_edge_tuple != other_edge_tuple:
-                return self_edge_tuple < other_edge_tuple
+        if self.fold_path != other.fold_path:
+            return self.fold_path < other.fold_path
 
         if self.field is None:
             return other.field is not None
