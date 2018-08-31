@@ -254,16 +254,12 @@ class BaseLocation(object):
             return self._check_if_object_of_same_type_is_smaller(other)
         elif isinstance(self, FoldScopeLocation) and isinstance(other, FoldScopeLocation):
             return self._check_if_object_of_same_type_is_smaller(other)
-        # pylint: disable=no-member
         elif isinstance(self, Location) and isinstance(other, FoldScopeLocation):
             if self != other.base_location:
                 return self < other.base_location
             return False
         elif isinstance(self, FoldScopeLocation) and isinstance(other, Location):
-            if self.base_location != other:
-                return self.base_location < other
-            return True
-        # pylint: enable=no-member
+            return not other < self
         else:
             raise AssertionError(u'Received objects of types {}, {} in BaseLocation comparison. '
                                  u'Only Location and FoldScopeLocation are allowed: {} {}'
