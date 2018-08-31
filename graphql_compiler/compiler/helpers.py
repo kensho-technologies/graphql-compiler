@@ -245,7 +245,7 @@ class BaseLocation(object):
 
     @abstractmethod
     def __eq__(self, other):
-        """Return True if the FoldScopeLocations are equal, and False otherwise."""
+        """Return True if the BaseLocations are equal, and False otherwise."""
         raise NotImplementedError()
 
     def __lt__(self, other):
