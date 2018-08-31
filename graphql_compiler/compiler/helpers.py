@@ -243,6 +243,11 @@ class BaseLocation(object):
         """Return True if the other object is smaller than self in the total ordering."""
         raise NotImplementedError()
 
+    @abstractmethod
+    def __eq__(self, other):
+        """Return True if the FoldScopeLocations are equal, and False otherwise."""
+        raise NotImplementedError()
+
     def __lt__(self, other):
         """Return True if the other object is smaller than self in the total ordering."""
         if isinstance(self, Location) and isinstance(other, Location):
