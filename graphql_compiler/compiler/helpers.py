@@ -243,29 +243,13 @@ class BaseLocation(object):
         """Return True if the other object is smaller than self in the total ordering."""
         raise NotImplementedError()
 
-    @abstractmethod
-    def __eq__(self, other):
-        """Return True if the other object is equal to self and False otherwise."""
-        if isinstance(self, Location) and isinstance(other, Location):
-            return self == other
-        elif isinstance(self, FoldScopeLocation) and isinstance(other, FoldScopeLocation):
-            return self == other
-        elif isinstance(self, Location) and isinstance(other, FoldScopeLocation):
-            return False
-        elif isinstance(self, FoldScopeLocation) and isinstance(other, Location):
-            return False
-        else:
-            raise AssertionError(u'Received objects of types {}, {} in BaseLocation comparison. '
-                                 u'Only Location and FoldScopeLocation are allowed: {} {}'
-                                 .format(type(self).__name__, type(other).__name__, self, other))
-
-    # pylint: disable=no-member
     def __lt__(self, other):
         """Return True if the other object is smaller than self in the total ordering."""
         if isinstance(self, Location) and isinstance(other, Location):
             return self._check_if_object_of_same_type_is_smaller(other)
         elif isinstance(self, FoldScopeLocation) and isinstance(other, FoldScopeLocation):
             return self._check_if_object_of_same_type_is_smaller(other)
+        # pylint: disable=no-member
         elif isinstance(self, Location) and isinstance(other, FoldScopeLocation):
             if self != other.base_location:
                 return self < other.base_location
@@ -274,11 +258,11 @@ class BaseLocation(object):
             if self.base_location != other:
                 return self.base_location < other
             return True
+        # pylint: enable=no-member
         else:
             raise AssertionError(u'Received objects of types {}, {} in BaseLocation comparison. '
                                  u'Only Location and FoldScopeLocation are allowed: {} {}'
                                  .format(type(self).__name__, type(other).__name__, self, other))
-    # pylint: enable=no-member
 
 
 @six.python_2_unicode_compatible
