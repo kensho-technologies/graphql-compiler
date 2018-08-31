@@ -14,7 +14,7 @@ import six
 
 from ...exceptions import GraphQLCompilationError
 from ...schema import GraphQLDate, GraphQLDateTime
-from ..blocks import Backtrack, CoerceType, ConstructResult, Filter, Traverse
+from ..blocks import Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, Traverse
 from ..compiler_entities import Expression
 from ..expressions import (BinaryComposition, FoldedOutputContextField, Literal, LocalField,
                            NullLiteral)
@@ -303,8 +303,13 @@ def _convert_folded_blocks(folded_ir_blocks):
             new_block = GremlinFoldedFilter(new_predicate)
         elif isinstance(block, Traverse):
             new_block = GremlinFoldedTraverse.from_traverse(block)
-        else:
+        elif isinstance(block, (MarkLocation, Backtrack)):
+            # We remove MarkLocation and Backtrack blocks from the folded blocks output,
+            # since they do not produce any Gremlin output code inside folds.
             continue
+        else:
+            raise AssertionError(u'Found an unexpected IR block in the folded IR blocks: '
+                                 u'{} {} {}'.format(type(block), block, folded_ir_blocks))
 
         new_folded_ir_blocks.append(new_block)
 
