@@ -259,7 +259,7 @@ class BaseLocation(object):
                 return self < other.base_location
             return False
         elif isinstance(self, FoldScopeLocation) and isinstance(other, Location):
-            return not other < self
+            return not other <= self
         else:
             raise AssertionError(u'Received objects of types {}, {} in BaseLocation comparison. '
                                  u'Only Location and FoldScopeLocation are allowed: {} {}'
