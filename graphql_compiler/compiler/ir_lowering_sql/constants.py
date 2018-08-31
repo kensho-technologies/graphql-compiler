@@ -35,7 +35,7 @@ OPERATORS = {
     "<=": Operator('__le__', Cardinality.SINGLE),
     ">=": Operator('__ge__', Cardinality.SINGLE),
     "&&": Operator('and_', Cardinality.DUAL),
-    # "||": Operator('or_', Cardinality.DUAL),
+    "||": Operator('or_', Cardinality.DUAL),
     'has_substring': Operator('contains', Cardinality.SINGLE),
 }
 

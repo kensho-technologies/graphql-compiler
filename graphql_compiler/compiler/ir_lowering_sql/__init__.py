@@ -44,6 +44,9 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     }
     block_index_to_location = get_block_index_to_location_map(ir_blocks)
     construct_result = ir_blocks.pop()
+    # Perform lowering passes over IR blocks
+    ir_blocks = lower_context_field_existence(ir_blocks)
+    ir_blocks = lower_optional_fields(ir_blocks, block_index_to_location, query_path_to_location_info)
     query_path_to_node = {}
     query_path_to_filter = defaultdict(list)
     query_path_to_tag_fields = defaultdict(list)
@@ -117,3 +120,133 @@ def get_block_index_to_location_map(ir_blocks):
                 block_to_location[ix] = ir_block.location
             current_block_ixs = []
     return block_to_location
+
+
+def lower_context_field_existence(ir_blocks):
+    def visitor_fn(expression):
+        """Rewrite predicates wrapping ContextFieldExistence expressions.
+
+        This applies to BinaryCompositions of the form:
+        
+            BinaryComposition(
+                '||',
+                BinaryComposition(
+                    op,
+                    ContextFieldExistence(...),
+                    Literal(False),
+                ),
+                BinaryComposition(
+                    op,
+                    LocalField(...)
+                    ContextField(...),
+                )
+            )
+
+
+        Rewriting them to:
+
+            BinaryComposition(
+                '||',
+                BinaryComposition(
+                    '=',
+                    Literal(None)
+                    ContextField(..._
+                )
+                BinaryComposition(
+                    op,
+                    LocalField(...)
+                    ContextField(...),
+                )
+            )
+
+        so that a ContextFieldExistence is rewritten to checking if the ContextField is None
+        or if the right predicate involving the ContextField holds.
+
+        """
+        if not isinstance(expression, expressions.BinaryComposition):
+            return expression
+        if not expression.operator == '||':
+            return expression
+        if not isinstance(expression.left, expressions.BinaryComposition):
+            return expression
+        if not isinstance(expression.left.left, expressions.ContextFieldExistence):
+            return expression
+        if not isinstance(expression.left.right, expressions.Literal):
+            return expression
+        if not expression.left.right.value == False:
+            return expression
+        if not isinstance(expression.right, expressions.BinaryComposition):
+            return expression
+        if not isinstance(expression.right.right, expressions.ContextField):
+            return expression
+        if not isinstance(expression.right.left, expressions.LocalField):
+            return expression
+
+        return expressions.BinaryComposition(
+            '||',
+            expressions.BinaryComposition(
+                '=',
+                expressions.Literal(None),
+                expression.right.right
+            ),
+            expression.right,
+        )
+    new_ir_blocks = [
+        block.visit_and_update_expressions(visitor_fn)
+        for block in ir_blocks
+    ]
+    return new_ir_blocks
+
+
+def lower_optional_fields(ir_blocks, block_index_to_location, query_path_to_location_info):
+    """Lowering step for Filter blocks in an optional scope."""
+
+    def rewrite_optional(expression):
+        """Rewrite optional predicates to support the compiler's semantics.
+
+        For comparison to a field that originates from an optional context, the field will
+        be associated with a table that has been joined to the query with a LEFT JOIN.
+        The spec says that a predicate applied to this field should pass if this field doesn't
+        exist, which can be expressed in SQL as an (field IS NULL OR predicate) statement,
+        which can be constructed with this particular rewrite.
+        """
+        if not isinstance(expression, expressions.BinaryComposition):
+            return expression
+        if not isinstance(expression.left, expressions.LocalField):
+            return expression
+        if not isinstance(expression.right, (expressions.Variable, expressions.ContextField)):
+            return expression
+        # Either the expression is true, or
+        return expressions.BinaryComposition(
+            '||',
+            # either the expression is true
+            expression,
+            # or the field referenced by the expression is NULL (doesn't exist)
+            expressions.BinaryComposition(
+                '=',
+                expressions.Literal(None),
+                expression.left
+            )
+        )
+
+    def visit_no_op(expression):
+        """No-op visitor for blocks that are not Filter blocks or within an optional scope."""
+        return expression
+
+    new_ir_blocks = []
+    for index, block in enumerate(ir_blocks):
+        visitor_fn = visit_no_op
+        if isinstance(block, blocks.Filter):
+            query_path = block_index_to_location[index].query_path
+            location_info = query_path_to_location_info[query_path]
+            if location_info.optional_scopes_depth > 0:
+                visitor_fn = rewrite_optional
+        new_ir_blocks.append(
+            block.visit_and_update_expressions(visitor_fn)
+        )
+    return new_ir_blocks
+
+
+
+
+

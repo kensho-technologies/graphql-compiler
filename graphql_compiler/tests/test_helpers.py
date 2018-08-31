@@ -8,7 +8,7 @@ from graphql.utils.build_ast_schema import build_ast_schema
 import six
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey
 
-from ..compiler.ir_lowering_sql.metadata import BasicEdge, MultiEdge
+from ..compiler.ir_lowering_sql.metadata import DirectEdge, JunctionEdge
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 
 
@@ -302,42 +302,42 @@ def get_test_sql_config():
     return {
         'Animal': {
             'Animal_ParentOf': {
-                'Animal': BasicEdge(
+                'Animal': DirectEdge(
                     table_name='animal',
                     source_column='animal_id',
                     sink_column='parent_id'),
             },
             'Animal_Eats': {
-                'Food': MultiEdge(
-                    junction_edge=BasicEdge(
+                'Food': JunctionEdge(
+                    junction_edge=DirectEdge(
                         table_name='AnimalToFood',
                         source_column='animal_id',
                         sink_column='animal_id'
                     ),
-                    final_edge=BasicEdge(
+                    final_edge=DirectEdge(
                         table_name='food', source_column='food_id', sink_column='food_id'
                     )
                 ),
-                'Species': MultiEdge(
-                    junction_edge=BasicEdge(
+                'Species': JunctionEdge(
+                    junction_edge=DirectEdge(
                         table_name='AnimalToSpeciesEaten',
                         source_column='animal_id',
                         sink_column='animal_id'
                     ),
-                    final_edge=BasicEdge(
+                    final_edge=DirectEdge(
                         table_name='species', source_column='species_id', sink_column='species_id'
                     )
                 )
             },
             'Animal_FriendsWith': {
-                'Animal': MultiEdge(
-                    junction_edge=BasicEdge(
+                'Animal': JunctionEdge(
+                    junction_edge=DirectEdge(
                         table_name='AnimalToFriend',
                         source_column='animal_id',
-                        sink_column='animalId'
+                        sink_column='animal_id'
                     ),
-                    final_edge=BasicEdge(
-                        table_name='animal', source_column='friendId', sink_column='animal_id'
+                    final_edge=DirectEdge(
+                        table_name='animal', source_column='friend_id', sink_column='animal_id'
                     )
                 )
             },
@@ -402,8 +402,8 @@ def create_sqlite_db():
         'AnimalToFriend',
         metadata,
         Column('animal_to_friend_id', Integer, primary_key=True),
-        Column('animalId', Integer, ForeignKey("animal.animal_id")),
-        Column('friendId', Integer, ForeignKey("animal.animal_id")),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('friend_id', Integer, ForeignKey("animal.animal_id")),
     )
     metadata.create_all(engine)
     animals = [

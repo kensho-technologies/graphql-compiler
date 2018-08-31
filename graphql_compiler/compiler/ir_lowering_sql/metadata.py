@@ -4,7 +4,7 @@ from sqlalchemy import MetaData
 from .constants import SqlBackend
 
 
-class BasicEdge:
+class DirectEdge:
     def __init__(self, source_column, sink_column, table_name=None):
         """Create a new Edge representing a simple foreign key relationship between tables."""
         self.source_col = source_column
@@ -12,10 +12,10 @@ class BasicEdge:
         self.table_name = table_name
 
 
-class MultiEdge:
+class JunctionEdge:
     def __init__(self, junction_edge, final_edge):
         """Create a new MultiEdge representing an edge that traverses a junction table."""
-        if not isinstance(junction_edge, BasicEdge) or not isinstance(final_edge, BasicEdge):
+        if not isinstance(junction_edge, DirectEdge) or not isinstance(final_edge, DirectEdge):
             raise AssertionError('A MultiEdge must be comprised of BasicEdges')
         self.junction_edge = junction_edge
         self.final_edge = final_edge
@@ -29,7 +29,7 @@ class CompilerMetadata:
     and GraphQL Edge -> SQL JOIN.
     """
 
-    def __init__(self, config, dialect, sqlalchemy_metadata: MetaData):
+    def __init__(self, config, dialect, sqlalchemy_metadata):
         """Initialize a new compiler metadata manager."""
         self.config = config
         self.sqlalchemy_metadata = sqlalchemy_metadata
