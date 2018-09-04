@@ -2302,6 +2302,35 @@ def fold_traversal_and_optional_traversal():
         type_equivalence_hints=None)
 
 
+def fold_traversal_within_optional_traversal():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_ParentOf @optional {
+                name @output(out_name: "child_name")
+                out_Animal_OfSpecies @fold {
+                    out_Entity_Related {
+                        name @output(out_name: "related_entities")
+                    }
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'child_name': OutputMetadata(type=GraphQLString, optional=True),
+        'related_entities': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=True),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def between_lowering():
     graphql_input = '''{
         Animal {

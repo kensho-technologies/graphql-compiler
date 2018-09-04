@@ -3750,6 +3750,55 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_fold_traversal_within_optional_traversal(self):
+        test_data = test_input_data.fold_traversal_within_optional_traversal()
+
+        base_location = helpers.Location(('Animal',))
+        child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        species_fold = child_location.navigate_to_fold('out_Animal_OfSpecies')
+        entity_fold = species_fold.navigate_to_subpath('out_Entity_Related')
+        revisited_base_location = base_location.revisit()
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('out', 'Animal_ParentOf', optional=True),
+            blocks.Fold(species_fold),
+            blocks.MarkLocation(species_fold),
+            blocks.Traverse('out', 'Entity_Related'),
+            blocks.MarkLocation(entity_fold),
+            blocks.Backtrack(species_fold),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, optional=True),
+            blocks.MarkLocation(revisited_base_location),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'child_name': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(child_location),
+                    expressions.OutputContextField(
+                        child_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral
+                ),
+                'related_entities': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(child_location),
+                    expressions.FoldedOutputContextField(
+                        entity_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+                    expressions.NullLiteral
+                ),
+            }),
+        ]
+
+        expected_location_types = {
+            base_location: 'Animal',
+            child_location: 'Animal',
+            species_fold: 'Species',
+            entity_fold: 'Entity',
+            revisited_base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_between_lowering(self):
         test_data = test_input_data.between_lowering()
 
