@@ -3,13 +3,21 @@ from collections import namedtuple, defaultdict
 
 import six
 from sqlalchemy import select, and_, literal_column, cast, String, case, bindparam, Column
+from sqlalchemy import exc as sqlalchemy_exceptions
 from sqlalchemy.sql.elements import BindParameter
+from sqlalchemy.sql.util import join_condition
 
+from graphql_compiler import exceptions
 from graphql_compiler.compiler import blocks, expressions
-from sqlalchemy.sql import expression as sql_expressions
+from sqlalchemy.sql import expression as sql_expressions, Join
 from graphql_compiler.compiler.ir_lowering_sql import constants
 from graphql_compiler.compiler.ir_lowering_sql.metadata import DirectEdge, JunctionEdge
 
+
+SQLALCHEMY_FK_NOT_FOUND_EXCEPTIONS = (
+    sqlalchemy_exceptions.AmbiguousForeignKeysError,
+    sqlalchemy_exceptions.NoForeignKeysError
+)
 
 CompilationContext = namedtuple('CompilationContext', [
     'query_path_to_selectable',
@@ -120,9 +128,27 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
     if out_link_column is None or outer_cte is None:
         raise AssertionError()
     schema_type = _get_schema_type(node, context)
-    edge = _get_edge(node.block, None, schema_type, context)
+    edge = _get_edge(node.block, None, schema_type, None, None, context)
     selectable = _get_node_selectable(node, context)
-    if isinstance(edge, DirectEdge):
+    if isinstance(edge, sql_expressions.BinaryExpression):
+        source_col, sink_col = edge.left, edge.right
+        source_col = source_col.name
+        sink_col = sink_col.name
+        base_col = source_col
+        base_column = selectable.c[base_col]
+        if node.block.direction == 'in':
+            source_col, sink_col = sink_col, source_col
+        schema_type = _get_schema_type(node, context)
+        recursive_table = context.compiler_metadata.get_table(schema_type).alias()
+    elif isinstance(edge, tuple):
+        traversal_edge, recursive_table, final_edge = edge
+        source_col = final_edge.right.name
+        sink_col = traversal_edge.right.name
+        base_col = traversal_edge.left.name
+        base_column = selectable.c[base_col]
+        if node.block.direction == 'in':
+            source_col, sink_col = sink_col, source_col
+    elif isinstance(edge, DirectEdge):
         source_col = edge.source_col
         sink_col = edge.sink_col
         base_col = source_col
@@ -247,9 +273,19 @@ def _join_nodes(parent_node, child_node, onclause, context):
     parent_from_clause = context.query_path_to_from_clause[parent_node.query_path]
     child_from_clause = context.query_path_to_from_clause[child_node.query_path]
     if is_optional:
-        parent_from_clause = parent_from_clause.outerjoin(child_from_clause, onclause=onclause)
+        if isinstance(onclause, tuple):
+            parent_to_junction_onclause, junction_table, junction_to_child_onclause = onclause
+            parent_from_clause = parent_from_clause.outerjoin(junction_table, onclause=parent_to_junction_onclause)
+            parent_from_clause = parent_from_clause.outerjoin(child_from_clause, onclause=junction_to_child_onclause)
+        else:
+            parent_from_clause = parent_from_clause.outerjoin(child_from_clause, onclause=onclause)
     else:
-        parent_from_clause = parent_from_clause.join(child_from_clause, onclause=onclause)
+        if isinstance(onclause, tuple):
+            parent_to_junction_onclause, junction_table, junction_to_child_onclause = onclause
+            parent_from_clause = parent_from_clause.join(junction_table, onclause=parent_to_junction_onclause)
+            parent_from_clause = parent_from_clause.join(child_from_clause, onclause=junction_to_child_onclause)
+        else:
+            parent_from_clause = parent_from_clause.join(child_from_clause, onclause=onclause)
     context.query_path_to_from_clause[parent_node.query_path] = parent_from_clause
     del context.query_path_to_from_clause[child_node.query_path]
 
@@ -260,71 +296,24 @@ def _get_on_clause_for_node(parent_node, child_node, context):
     child_selectable = _get_node_selectable(child_node, context)
     child_schema_type = _get_schema_type(child_node, context)
     parent_schema_type = _get_schema_type(parent_node, context)
-    parent_from_clause = context.query_path_to_from_clause[parent_node.query_path]
-    edge = _get_edge(child_node.block, parent_schema_type, child_schema_type, context)
-    if isinstance(edge, DirectEdge):
-        source_col = edge.source_col
-        sink_col = edge.sink_col
-        if child_node.block.direction == 'in':
-            source_col, sink_col = sink_col, source_col
-        if edge is None:
-            return None
-        outer_column = parent_selectable.c[source_col]
-        inner_column = child_selectable.c[sink_col]
-        return outer_column == inner_column
-    elif isinstance(edge, JunctionEdge):
-        direction = child_node.block.direction
-        traversal_edge = edge.junction_edge
-        final_edge = edge.final_edge
-        junction_table = context.compiler_metadata.get_table(traversal_edge.table_name).alias()
-        if direction == 'in':
-            traversal_edge, final_edge = final_edge, traversal_edge
-        source_col = traversal_edge.source_col
-        sink_col = traversal_edge.sink_col
-        if child_node.block.direction == 'in':
-            source_col, sink_col = sink_col, source_col
-        outer_column = parent_selectable.c[source_col]
-        inner_column = junction_table.c[sink_col]
-        traversal_onclause = outer_column == inner_column
-        child_location_info = context.query_path_to_location_info[child_node.query_path]
-        if child_location_info.optional_scopes_depth > 0:
-            parent_from_clause = parent_from_clause.outerjoin(
-                junction_table, onclause=traversal_onclause
-            )
-            context.query_path_to_from_clause[parent_node.query_path] = parent_from_clause
-        else:
-            parent_from_clause = parent_from_clause.join(
-                junction_table, onclause=traversal_onclause
-            )
-            context.query_path_to_from_clause[parent_node.query_path] = parent_from_clause
-        source_col = final_edge.source_col
-        sink_col = final_edge.sink_col
-        if child_node.block.direction == 'in':
-            source_col, sink_col = sink_col, source_col
-        outer_column = junction_table.c[source_col]
-        if sink_col not in child_selectable.c:
-            raise AssertionError
-        inner_column = child_selectable.c[sink_col]
-        return outer_column == inner_column
-
+    edge = _get_edge(child_node.block, parent_schema_type, child_schema_type, parent_selectable, child_selectable, context)
+    return edge
 
 def _create_link_for_recursion(node, recursion_node, context):
     """Ensure that the column necessary to link to a recursion is present in the CTE columns."""
     recursion_schema_type = _get_schema_type(recursion_node, context)
     parent_schema_type = _get_schema_type(node, context)
-    edge = _get_edge(recursion_node.block, parent_schema_type, recursion_schema_type, context)
     selectable = _get_node_selectable(node, context)
-    if isinstance(edge, DirectEdge):
-        from_col = edge.source_col
-        recursion_in_column = selectable.c[from_col]
-        context.query_path_to_recursion_columns[recursion_node.query_path] = (recursion_in_column, None)
-        return recursion_in_column
-    elif isinstance(edge, JunctionEdge):
-        from_col = edge.junction_edge.source_col
-        recursion_in_column = selectable.c[from_col]
-        context.query_path_to_recursion_columns[recursion_node.query_path] = (recursion_in_column, None)
-        return recursion_in_column
-    raise AssertionError()
+    recursive_selectable = _get_node_selectable(node, context)
+    edge = _get_edge(recursion_node.block, parent_schema_type, recursion_schema_type, selectable, recursive_selectable, context)
+    recursion_in_col = None
+    if isinstance(edge, tuple):
+        recursion_on_clause, _, _ = edge
+        recursion_in_col = recursion_on_clause.left
+    else:
+        recursion_in_col = edge.left
+    context.query_path_to_recursion_columns[recursion_node.query_path] = (recursion_in_col, None)
+    return recursion_in_col
 
 
 def _create_links_for_recursions(node, context):
@@ -423,7 +412,6 @@ def _expression_to_sql(expression, selectable, location_info, context):
         if tag_query_path in context.query_path_field_renames:
             if tag_field_name in context.query_path_field_renames[tag_query_path]:
                 tag_column_name = context.query_path_field_renames[tag_query_path][tag_field_name]
-
         tag_selectable = context.query_path_to_selectable[tag_query_path]
         tag_column = tag_selectable.c[tag_column_name]
         return tag_column
@@ -433,7 +421,7 @@ def _expression_to_sql(expression, selectable, location_info, context):
         right = _expression_to_sql(expression.right, selectable, location_info, context)
         if sql_operator.cardinality == constants.Cardinality.SINGLE:
             if right is None and left is None:
-                raise AssertionError
+                raise AssertionError()
             if left is None and right is not None:
                 left, right = right, left
             clause = getattr(left, sql_operator.name)(right)
@@ -448,12 +436,12 @@ def _expression_to_sql(expression, selectable, location_info, context):
             clause = getattr(right, sql_operator.name)(left)
         else:
             raise AssertionError()
-        return clause  # noqa: E711
+        return clause
     else:
         raise AssertionError()
 
 
-def _get_edge(block, parent_schema_type, child_schema_type, context):
+def _get_edge(block, parent_schema_type, child_schema_type, outer_table, inner_table, context):
     """Return the SimpleEdge or MultiEdge linking two GraphQL schema types.
 
     Note that this edge may be overridden in the external configuration.
@@ -466,28 +454,94 @@ def _get_edge(block, parent_schema_type, child_schema_type, context):
         # this is a recursive edge, from a type back onto itself
         outer_type_name = child_schema_type
         relative_type = child_schema_type
-    edge_override = context.compiler_metadata.get_edge(outer_type_name, relative_type, edge_name)
-    if edge_override is not None:
-        return edge_override
+    if outer_table is None and inner_table is None:
+        outer_table = context.compiler_metadata.get_table(outer_type_name)
+        inner_table = context.compiler_metadata.get_table(relative_type)
+    return find_join_condition(block, outer_table, inner_table, relative_type, context)
+    # edge_override = context.compiler_metadata.get_edge(outer_type_name, relative_type, edge_name)
+    # if edge_override is not None:
+    #     return edge_override
 
-    outer_table = context.compiler_metadata.get_table(outer_type_name)
-    inner_table = context.compiler_metadata.get_table(relative_type)
-    inner_table_fks = [fk for fk in inner_table.foreign_keys if fk.column.table == outer_table]
-    outer_table_fks = [fk for fk in outer_table.foreign_keys if fk.column.table == inner_table]
-    outer_matches = [foreign_key for foreign_key in inner_table_fks if
-                     foreign_key.column.name in outer_table.columns]
-    inner_matches = [foreign_key for foreign_key in outer_table_fks if
-                     foreign_key.column.name in inner_table.columns]
-    if len(outer_matches) == 1 and len(inner_matches) == 0:
-        fk = outer_matches[0]
-        return DirectEdge(source_column=fk.column.name, sink_column=fk.parent.name)
-    elif len(inner_matches) == 1 and len(outer_matches) == 0:
-        fk = inner_matches[0]
-        return DirectEdge(source_column=fk.parent.name, sink_column=fk.column.name)
-    elif len(inner_matches) == 0 and len(outer_matches) == 0:
-        raise AssertionError(
-            'No foreign key found from type "{}" to type "{}"'.format(
-                outer_type_name, relative_type)
-        )
-    else:
-        raise AssertionError('Ambiguous foreign key specified.')
+
+def find_join_condition(block, outer_table, inner_table, type_name, context):
+    onclause = find_many_to_many_join_condition(block, outer_table, inner_table, type_name, context)
+    if onclause is not None:
+        return onclause
+    onclause = _try_get_on_clause(outer_table, inner_table)
+    if onclause is not None:
+        # handle the case where a table holds a foreign key back onto itself
+        if isinstance(onclause, sql_expressions.BooleanClauseList) and _tables_equal(outer_table, inner_table):
+            out_clause, in_clause = onclause.clauses
+            if block.direction == 'in':
+                return in_clause
+            elif block.direction == 'out':
+                return out_clause
+        return onclause
+    raise AssertionError()
+
+
+def find_many_to_many_join_condition(block, outer_table, inner_table, type_name, context):
+    junction_table_name = block.edge_name.lower()
+    junction_table = None
+    if junction_table_name in context.compiler_metadata.table_name_to_table:
+        junction_table = context.compiler_metadata.get_table(junction_table_name)
+    junction_table_name = u'{junction_table_name}_{type_name}'.format(junction_table_name=junction_table_name, type_name=type_name.lower())
+    if junction_table_name in context.compiler_metadata.table_name_to_table:
+        junction_table = context.compiler_metadata.table_name_to_table[junction_table_name]
+    if junction_table is None:
+        return None
+    junction_table = junction_table.alias()
+    outer_to_junction_onclause = _try_get_on_clause(outer_table, junction_table)
+    is_in_edge = block.direction == 'in'
+    if isinstance(outer_to_junction_onclause, list):
+        if len(outer_to_junction_onclause) == 1:
+            outer_to_junction_onclause = outer_to_junction_onclause[0]
+        elif len(outer_to_junction_onclause) == 2:
+            if is_in_edge:
+                outer_to_junction_onclause = [onclause for onclause in outer_to_junction_onclause
+                                              if onclause.right.name.startswith('in_')][0]
+            else:
+                outer_to_junction_onclause = [onclause for onclause in outer_to_junction_onclause
+                                              if onclause.right.name.startswith('out_')][0]
+        else:
+            raise AssertionError()
+    junction_to_inner_onclause = _try_get_on_clause(junction_table, inner_table)
+    if isinstance(junction_to_inner_onclause, list):
+        if len(junction_to_inner_onclause) == 1:
+            outer_to_junction_onclause = junction_to_inner_onclause[0]
+        elif len(junction_to_inner_onclause) == 2:
+            if is_in_edge:
+                junction_to_inner_onclause = [onclause for onclause in junction_to_inner_onclause if onclause.right.name.startswith('out_')][0]
+            else:
+                junction_to_inner_onclause = [onclause for onclause in junction_to_inner_onclause if onclause.right.name.startswith('in_')][0]
+        else:
+            raise AssertionError()
+
+    return outer_to_junction_onclause, junction_table, junction_to_inner_onclause
+
+
+def _try_get_on_clause(outer_table, inner_table):
+    """Attempt to find onclause for joining outer_table to inner_table
+
+    Return None if this clause cannot be uniquely determined.
+    """
+    try:
+        return join_condition(outer_table, inner_table)
+    except SQLALCHEMY_FK_NOT_FOUND_EXCEPTIONS:
+        constraints = Join._joincond_scan_left_right(outer_table, None, inner_table, None)
+        onclauses = []
+        for constraint_list in constraints.values():
+            for x, y in constraint_list:
+                onclauses.append(x == y)
+        if len(onclauses) == 0:
+            return None
+        return onclauses
+
+def _tables_equal(right_table, left_table):
+    if hasattr(right_table, 'original'):
+        right_table = right_table.original
+    if hasattr(left_table, 'original'):
+        left_table = left_table.original
+    return right_table == left_table
+
+

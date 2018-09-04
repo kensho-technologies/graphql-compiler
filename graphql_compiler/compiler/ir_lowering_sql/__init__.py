@@ -42,9 +42,10 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
         location.query_path: location_info
         for location, location_info in query_metadata_table.registered_locations
     }
-    block_index_to_location = get_block_index_to_location_map(ir_blocks)
-    construct_result = ir_blocks.pop()
     # Perform lowering passes over IR blocks
+    construct_result = ir_blocks.pop()
+    construct_result = lower_construct_result(construct_result)
+    block_index_to_location = get_block_index_to_location_map(ir_blocks)
     ir_blocks = lower_context_field_existence(ir_blocks)
     ir_blocks = lower_optional_fields(ir_blocks, block_index_to_location, query_path_to_location_info)
     query_path_to_node = {}
@@ -78,13 +79,13 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
         location.query_path: location_info.type
         for location, location_info in query_metadata_table.registered_locations
     }
-    query_path_to_output_fields = assign_output_fields_to_nodes(
-        construct_result, location_types, query_path_to_node)
+    query_path_to_output_fields = assign_output_fields_to_nodes(construct_result, location_types)
     return SqlQueryTree(tree_root, query_path_to_location_info, query_path_to_filter,
                         query_path_to_output_fields, query_path_to_tag_fields)
 
 
 def get_tag_fields(expression):
+    """Return an iterator over the tag fields of an expression."""
     if isinstance(expression, expressions.ContextField):
         yield expression
     if isinstance(expression, expressions.BinaryComposition):
@@ -94,15 +95,12 @@ def get_tag_fields(expression):
             yield context_field
 
 
-def assign_output_fields_to_nodes(construct_result, location_types, query_path_to_node):
+def assign_output_fields_to_nodes(construct_result, location_types):
     """Assign the output fields of a ConstructResult block to their respective SqlNodes."""
     query_path_to_output_fields = defaultdict(dict)
     for field_alias, field in six.iteritems(construct_result.fields):
         if field_alias in RESERVED_COLUMN_NAMES:
             raise AssertionError
-        if isinstance(field, expressions.TernaryConditional):
-            # todo: This probably isn't the way to go in the general case
-            field = field.if_true
         output_query_path = field.location.query_path
         output_field_info = (field, location_types[output_query_path], False)
         query_path_to_output_fields[output_query_path][field_alias] = output_field_info
@@ -122,12 +120,26 @@ def get_block_index_to_location_map(ir_blocks):
     return block_to_location
 
 
+def lower_construct_result(construct_result):
+    """Lower the ConstructResult IR Block."""
+    def visitor_fn(expression):
+        """Rewrite output fields in optional scopes to their if_true branch.
+
+        The SQL backend does not require special handling to get the correct semantics for such
+        output fields.
+        """
+        if not isinstance(expression, expressions.TernaryConditional):
+            return expression
+        return expression.if_true
+    return construct_result.visit_and_update_expressions(visitor_fn)
+
+
 def lower_context_field_existence(ir_blocks):
     def visitor_fn(expression):
         """Rewrite predicates wrapping ContextFieldExistence expressions.
 
         This applies to BinaryCompositions of the form:
-        
+
             BinaryComposition(
                 '||',
                 BinaryComposition(

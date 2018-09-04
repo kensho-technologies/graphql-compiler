@@ -384,26 +384,26 @@ def create_sqlite_db():
         Column('name', String(10)),
     )
 
-    animal_to_food = Table(
-        'AnimalToFood',
+    animal_eats = Table(
+        'animal_eats_food',
         metadata,
-        Column('animal_to_food_id', Integer, primary_key=True),
+        Column('animal_eats_food_id', Integer, primary_key=True),
         Column('animal_id', Integer, ForeignKey("animal.animal_id")),
         Column('food_id', Integer, ForeignKey("food.food_id")),
     )
     animal_to_species_eaten = Table(
-        'AnimalToSpeciesEaten',
+        'animal_eats_species',
         metadata,
-        Column('animal_to_species_eaten_id', Integer, primary_key=True),
+        Column('animal_eats_species_id', Integer, primary_key=True),
         Column('animal_id', Integer, ForeignKey("animal.animal_id")),
         Column('species_id', Integer, ForeignKey("species.species_id")),
     )
     animal_to_friend = Table(
-        'AnimalToFriend',
+        'animal_friendswith',
         metadata,
-        Column('animal_to_friend_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('friend_id', Integer, ForeignKey("animal.animal_id")),
+        Column('animal_friendswith_id', Integer, primary_key=True),
+        Column('out_animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('in_friend_id', Integer, ForeignKey("animal.animal_id")),
     )
     metadata.create_all(engine)
     animals = [
@@ -464,7 +464,7 @@ def create_sqlite_db():
         (food_type, food_types),
         (food, foods),
         (species, species_data),
-        (animal_to_food, animals_to_foods),
+        (animal_eats, animals_to_foods),
         (animal_to_friend, animals_to_friends),
         (animal_to_species_eaten, animals_to_species_eaten),
     ]
