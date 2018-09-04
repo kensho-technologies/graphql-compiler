@@ -153,16 +153,6 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
 
-        optional_traversal_inside_optional_block = '''{
-            Animal {
-                out_Animal_ParentOf @optional {
-                    out_Animal_FedAt @optional {
-                        uuid @output(out_name: "uuid")
-                    }
-                }
-            }
-        }'''
-
         optional_on_output_source_vertex_field = '''{
             Animal {
                 out_Animal_ParentOf @optional @output_source {
@@ -192,7 +182,6 @@ class IrGenerationErrorTests(unittest.TestCase):
                         output_source_inside_optional_block,
                         recurse_traversal_inside_optional_block,
                         fold_traversal_inside_optional_block,
-                        optional_traversal_inside_optional_block,
                         optional_on_output_source_vertex_field,
                         optional_on_recurse_vertex_field,
                         optional_on_fold_vertex_field):

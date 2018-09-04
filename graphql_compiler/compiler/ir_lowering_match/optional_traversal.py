@@ -1,6 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from functools import partial
-import itertools
 
 import six
 
@@ -9,12 +8,12 @@ from ..expressions import (BinaryComposition, ContextField, FoldedOutputContextF
                            LocalField, OutputContextField, TernaryConditional, TrueLiteral,
                            UnaryTransformation, Variable)
 from ..match_query import MatchQuery, MatchStep
-from .utils import (BetweenClause, CompoundMatchQuery, expression_list_to_conjunction,
-                    filter_edge_field_non_existence)
+from .utils import (BetweenClause, CompoundMatchQuery, construct_optional_traversal_tree,
+                    expression_list_to_conjunction, filter_edge_field_non_existence)
 
 
 def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
-                                            complex_optional_roots, location_to_optional_root):
+                                            complex_optional_roots, location_to_optional_roots):
     """Return a prefix of the given traverse, excluding any blocks after an omitted optional.
 
     Given a subset (omitted_locations) of complex_optional_roots, return a new match traversal
@@ -25,10 +24,10 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
         omitted_locations: subset of complex_optional_roots to be omitted
         complex_optional_roots: list of all @optional locations (location immmediately preceding
                                 an @optional traverse) that expand vertex fields
-        location_to_optional_root: dict mapping location -> complex_optional_root, where location is
-                                   within optional (not necessarily one that expands vertex fields),
-                                   and complex_optional_root is the location preceding the
-                                   associated @optional scope
+        location_to_optional_roots: dict mapping from location -> optional_roots where location is
+                                    within some number of @optionals and optional_roots is a list
+                                    of optional root locations preceding the successive @optional
+                                    scopes within which the location resides
 
     Returns:
         list of MatchStep objects as a copy of the given match traversal
@@ -39,12 +38,13 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
         new_step = step
         if isinstance(step.root_block, Traverse) and step.root_block.optional:
             current_location = step.as_block.location
-            optional_root_location = location_to_optional_root.get(current_location, None)
+            optional_root_locations_stack = location_to_optional_roots.get(current_location, None)
+            optional_root_location = optional_root_locations_stack[-1]
 
             if optional_root_location is None:
                 raise AssertionError(u'Found optional Traverse location {} that was not present '
-                                     u'in location_to_optional_root dict: {}'
-                                     .format(current_location, location_to_optional_root))
+                                     u'in location_to_optional_roots dict: {}'
+                                     .format(current_location, location_to_optional_roots))
             elif optional_root_location in omitted_locations:
                 # Add filter to indicate that the omitted edge(s) shoud not exist
                 field_name = step.root_block.get_field_name()
@@ -80,7 +80,7 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
 
 
 def convert_optional_traversals_to_compound_match_query(
-        match_query, complex_optional_roots, location_to_optional_root):
+        match_query, complex_optional_roots, location_to_optional_roots):
     """Return 2^n distinct MatchQuery objects in a CompoundMatchQuery.
 
     Given a MatchQuery containing `n` optional traverses that expand vertex fields,
@@ -93,31 +93,40 @@ def convert_optional_traversals_to_compound_match_query(
         match_query: MatchQuery object containing n `@optional` scopes which expand vertex fields
         complex_optional_roots: list of @optional locations (location preceding an @optional
                                 traverse) that expand vertex fields within
-        location_to_optional_root: dict mapping all locations within optional scopes
-                                   to the corresponding optional location
+        location_to_optional_roots: dict mapping from location -> optional_roots where location is
+                                    within some number of @optionals and optional_roots is a list
+                                    of optional root locations preceding the successive @optional
+                                    scopes within which the location resides
 
     Returns:
         CompoundMatchQuery object containing 2^n MatchQuery objects,
         one for each possible subset of the n optional edges being followed
     """
-    optional_root_location_combinations_list = [
-        itertools.combinations(complex_optional_roots, x)
-        for x in range(0, len(complex_optional_roots) + 1)
+    tree = construct_optional_traversal_tree(
+        complex_optional_roots, location_to_optional_roots)
+    rooted_optional_root_location_subsets = tree.get_all_rooted_subtrees_as_lists()
+
+    omitted_location_subsets = [
+        set(complex_optional_roots) - set(subset)
+        for subset in rooted_optional_root_location_subsets
     ]
-    optional_root_location_subsets = itertools.chain(*optional_root_location_combinations_list)
-    optional_root_location_subsets = [set(subset) for subset in optional_root_location_subsets]
+    sorted_omitted_location_subsets = sorted(omitted_location_subsets)
 
     compound_match_traversals = []
-    for omitted_locations in reversed(optional_root_location_subsets):
+    for omitted_locations in reversed(sorted_omitted_location_subsets):
         new_match_traversals = []
         for match_traversal in match_query.match_traversals:
             location = match_traversal[0].as_block.location
-            optional_root_location = location_to_optional_root.get(location, None)
+            optional_root_locations_stack = location_to_optional_roots.get(location, None)
+            if optional_root_locations_stack is not None:
+                optional_root_location = optional_root_locations_stack[-1]
+            else:
+                optional_root_location = None
 
             if optional_root_location is None or optional_root_location not in omitted_locations:
                 new_match_traversal = _prune_traverse_using_omitted_locations(
                     match_traversal, set(omitted_locations),
-                    complex_optional_roots, location_to_optional_root)
+                    complex_optional_roots, location_to_optional_roots)
                 new_match_traversals.append(new_match_traversal)
             else:
                 # The root_block is within an omitted scope.

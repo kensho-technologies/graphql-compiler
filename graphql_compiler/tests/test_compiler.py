@@ -1,5 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """End-to-end tests of the GraphQL compiler."""
+import os
 import unittest
 
 from graphql import GraphQLID, GraphQLString
@@ -3848,33 +3849,6 @@ class CompilerTests(unittest.TestCase):
             $optional__1 = (
                 SELECT
                     Animal___1.name AS `animal_name`,
-                    Animal__in_Animal_ParentOf___1.name AS `child_name`,
-                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name
-                        AS `spouse_and_self_name`
-                FROM (
-                    MATCH {{
-                        class: Animal,
-                        where: ((
-                            (
-                                (out_Animal_ParentOf IS null)
-                                OR
-                                (out_Animal_ParentOf.size() = 0)
-                            )
-                            AND
-                            (name LIKE ('%' + ({wanted} + '%')))
-                        )),
-                        as: Animal___1
-                    }}.in('Animal_ParentOf') {{
-                        as: Animal__in_Animal_ParentOf___1
-                    }}.out('Animal_ParentOf') {{
-                        as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
-                    }}
-                    RETURN $matches
-                )
-            ),
-            $optional__2 = (
-                SELECT
-                    Animal___1.name AS `animal_name`,
                     Animal__out_Animal_ParentOf___1.name AS `parent_name`,
                     Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name AS `parent_species`
                 FROM (
@@ -3898,6 +3872,33 @@ class CompilerTests(unittest.TestCase):
                         as: Animal__out_Animal_ParentOf___1
                     }}.out('Animal_OfSpecies') {{
                         as: Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1
+                    }}
+                    RETURN $matches
+                )
+            ),
+            $optional__2 = (
+                SELECT
+                    Animal___1.name AS `animal_name`,
+                    Animal__in_Animal_ParentOf___1.name AS `child_name`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name
+                        AS `spouse_and_self_name`
+                FROM (
+                    MATCH {{
+                        class: Animal,
+                        where: ((
+                            (
+                                (out_Animal_ParentOf IS null)
+                                OR
+                                (out_Animal_ParentOf.size() = 0)
+                            )
+                            AND
+                            (name LIKE ('%' + ({wanted} + '%')))
+                        )),
+                        as: Animal___1
+                    }}.in('Animal_ParentOf') {{
+                        as: Animal__in_Animal_ParentOf___1
+                    }}.out('Animal_ParentOf') {{
+                        as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
                     }}
                     RETURN $matches
                 )
@@ -5084,6 +5085,199 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 origin: m.Animal___1.name,
                 related_name: m.Animal__out_Entity_Related___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_nested_optional_and_traverse(self):
+        test_data = test_input_data.nested_optional_and_traverse()
+
+        expected_match = '''
+            SELECT EXPAND($result)
+            LET
+            $optional__0 = (
+                SELECT
+                    Animal___1.name AS `animal_name`
+                FROM (
+                    MATCH {{
+                        class: Animal,
+                        where: ((
+                            (in_Animal_ParentOf IS null)
+                            OR
+                            (in_Animal_ParentOf.size() = 0)
+                        )),
+                        as: Animal___1
+                    }}
+                    RETURN $matches
+                )
+            ),
+            $optional__1 = (
+                SELECT
+                    Animal___1.name AS `animal_name`,
+                    Animal__in_Animal_ParentOf___1.name AS `child_name`
+                FROM (
+                    MATCH {{
+                        as: Animal___1
+                    }}.in('Animal_ParentOf') {{
+                        class: Animal,
+                        where: ((
+                            (out_Animal_ParentOf IS null)
+                            OR
+                            (out_Animal_ParentOf.size() = 0)
+                        )),
+                        as: Animal__in_Animal_ParentOf___1
+                    }}
+                    RETURN $matches
+                )
+            ),
+            $optional__2 = (
+                SELECT
+                    Animal___1.name AS `animal_name`,
+                    Animal__in_Animal_ParentOf___1.name AS `child_name`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name
+                        AS `spouse_and_self_name`,
+                    Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
+                        AS `spouse_species`
+                FROM (
+                    MATCH {{
+                        class: Animal,
+                        as: Animal___1
+                    }}.in('Animal_ParentOf') {{
+                        class: Animal,
+                        as: Animal__in_Animal_ParentOf___1
+                    }}.out('Animal_ParentOf') {{
+                        class: Animal,
+                        as: Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
+                    }}.out('Animal_OfSpecies') {{
+                        class: Species,
+                        as: Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                            __out_Animal_OfSpecies___1
+                    }}
+                    RETURN $matches
+                )
+            ),
+            $result = UNIONALL($optional__0, $optional__1, $optional__2)
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+                .as('Animal__in_Animal_ParentOf___1')
+                    .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
+                    .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf___1')
+                        .ifThenElse{it == null}{null}{it.out('Animal_OfSpecies')}
+                        .as('Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                             __out_Animal_OfSpecies___1')
+                    .back('Animal__in_Animal_ParentOf__out_Animal_ParentOf___1')
+                .optional('Animal__in_Animal_ParentOf___1')
+                .as('Animal__in_Animal_ParentOf___2')
+            .optional('Animal___1')
+            .as('Animal___2')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                child_name: (
+                    (m.Animal__in_Animal_ParentOf___1 != null) ?
+                        m.Animal__in_Animal_ParentOf___1.name : null
+                ),
+                spouse_and_self_name: (
+                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 != null) ?
+                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
+                ),
+                spouse_species: (
+                    (m.Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                       __out_Animal_OfSpecies___1 != null) ?
+                        m.Animal__in_Animal_ParentOf__out_Animal_ParentOf
+                          __out_Animal_OfSpecies___1.name
+                        : null
+                )
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_complex_nested_optionals(self):
+        test_data = test_input_data.complex_nested_optionals()
+
+        # The correct MATCH output is outrageously long, and is stored in a separate file.
+        match_output_file = './complex_nested_optionals_output.sql'
+        with open(os.path.join(os.path.dirname(__file__), match_output_file)) as f:
+            expected_match = f.read()
+
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+                .as('Animal__in_Animal_ParentOf___1')
+                    .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+                    .as('Animal__in_Animal_ParentOf__in_Animal_ParentOf___1')
+                        .ifThenElse{it == null}{null}{it.out('Animal_OfSpecies')}
+                        .as('Animal__in_Animal_ParentOf__in_Animal_ParentOf__out_Animal_OfSpecies___1')
+                    .back('Animal__in_Animal_ParentOf__in_Animal_ParentOf___1')
+                .optional('Animal__in_Animal_ParentOf___1')
+                .as('Animal__in_Animal_ParentOf___2')
+                    .ifThenElse{it.in_Entity_Related == null}{null}{it.in('Entity_Related')}
+                    .filter{it, m -> ((it == null) || ['Animal'].contains(it['@class']))}
+                    .as('Animal__in_Animal_ParentOf__in_Entity_Related___1')
+                        .ifThenElse{it == null}{null}{it.out('Animal_OfSpecies')}
+                        .as('Animal__in_Animal_ParentOf__in_Entity_Related__out_Animal_OfSpecies___1')
+                    .back('Animal__in_Animal_ParentOf__in_Entity_Related___1')
+                .optional('Animal__in_Animal_ParentOf___2')
+                .as('Animal__in_Animal_ParentOf___3')
+            .optional('Animal___1')
+            .as('Animal___2')
+                .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
+                .as('Animal__out_Animal_ParentOf___1')
+                    .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
+                    .as('Animal__out_Animal_ParentOf__out_Animal_ParentOf___1')
+                        .ifThenElse{it == null}{null}{it.out('Animal_OfSpecies')}
+                        .as('Animal__out_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1')
+                    .back('Animal__out_Animal_ParentOf__out_Animal_ParentOf___1')
+                .optional('Animal__out_Animal_ParentOf___1')
+                .as('Animal__out_Animal_ParentOf___2')
+            .optional('Animal___2')
+            .as('Animal___3')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                child_name: (
+                    (m.Animal__in_Animal_ParentOf___1 != null) ?
+                    m.Animal__in_Animal_ParentOf___1.name : null
+                ),
+                grandchild_name: (
+                    (m.Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
+                        != null) ?
+                    m.Animal__in_Animal_ParentOf__in_Animal_ParentOf___1.name : null
+                ),
+                grandchild_relation_name: (
+                    (m.Animal__in_Animal_ParentOf__in_Entity_Related___1
+                        != null) ?
+                    m.Animal__in_Animal_ParentOf__in_Entity_Related___1.name : null
+                ),
+                grandchild_relation_species: (
+                    (m.Animal__in_Animal_ParentOf__in_Entity_Related__out_Animal_OfSpecies___1
+                        != null) ?
+                    m.Animal__in_Animal_ParentOf__in_Entity_Related__out_Animal_OfSpecies___1.name
+                    : null
+                ),
+                grandchild_species: (
+                    (m.Animal__in_Animal_ParentOf__in_Animal_ParentOf__out_Animal_OfSpecies___1
+                        != null) ?
+                    m.Animal__in_Animal_ParentOf__in_Animal_ParentOf__out_Animal_OfSpecies___1.name
+                    : null
+                ),
+                grandparent_name: (
+                    (m.Animal__out_Animal_ParentOf__out_Animal_ParentOf___1 != null) ?
+                    m.Animal__out_Animal_ParentOf__out_Animal_ParentOf___1.name : null
+                ),
+                grandparent_species: (
+                    (m.Animal__out_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
+                        != null) ?
+                    m.Animal__out_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1.name
+                    : null
+                ),
+                parent_name: (
+                    (m.Animal__out_Animal_ParentOf___1 != null) ?
+                    m.Animal__out_Animal_ParentOf___1.name : null)
             ])}
         '''
 

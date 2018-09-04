@@ -1,5 +1,6 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
+import itertools
 
 import six
 
@@ -219,3 +220,119 @@ def construct_where_filter_predicate(simple_optional_root_info):
 # A CompoundMatchQuery is a representation of several MatchQuery objects containing
 #   - match_queries: a list MatchQuery objects
 CompoundMatchQuery = namedtuple('CompoundMatchQuery', ('match_queries'))
+
+
+class OptionalTraversalTree(object):
+    def __init__(self, complex_optional_roots):
+        """Initialize empty tree of optional root Locations (elements of complex_optional_roots).
+
+        This object construst a tree of complex optional roots. These are locations preceding an
+        @optional traverse that expand vertex fields within. Simple @optional traverses i.e.
+        ones that do not expand vertex fields within them are excluded.
+
+        Args:
+            complex_optional_roots: list of @optional locations (location preceding an @optional
+                                    traverse) that expand vertex fields within
+        """
+        self._location_to_children = {
+            optional_root_location: set()
+            for optional_root_location in complex_optional_roots
+        }
+        self._root_location = None
+        self._location_to_children[self._root_location] = set()
+
+    def insert(self, optional_root_locations_path):
+        """Insert a path of optional Locations into the tree.
+
+        Each OptionalTraversalTree object contains child Location objects as keys mapping to
+        other OptionalTraversalTree objects.
+
+        Args:
+            optional_root_locations_path: list of optional root Locations all except the last
+                                          of which must be present in complex_optional_roots
+        """
+        encountered_simple_optional = False
+        parent_location = self._root_location
+        for optional_root_location in optional_root_locations_path:
+            if encountered_simple_optional:
+                raise AssertionError(u'Encountered simple optional root location {} in path, but'
+                                     u'further locations are present. This should not happen: {}'
+                                     .format(optional_root_location, optional_root_locations_path))
+
+            if optional_root_location not in self._location_to_children:
+                # Simple optionals are ignored.
+                # There should be no complex optionals after a simple optional.
+                encountered_simple_optional = True
+            else:
+                self._location_to_children[parent_location].add(optional_root_location)
+                parent_location = optional_root_location
+
+    def get_all_rooted_subtrees_as_lists(self, start_location=None):
+        """Return a list of all rooted subtrees (each as a list of Location objects)."""
+        if start_location is not None and start_location not in self._location_to_children:
+            raise AssertionError(u'Received invalid start_location {} that was not present '
+                                 u'in the tree. Present root locations of complex @optional '
+                                 u'queries (ones that expand vertex fields within) are: {}'
+                                 .format(start_location, self._location_to_children.keys()))
+
+        if start_location is None:
+            start_location = self._root_location
+
+        if len(self._location_to_children[start_location]) == 0:
+            # Node with no children only returns a singleton list containing the null set.
+            return [[]]
+
+        current_children = sorted(self._location_to_children[start_location])
+
+        # Recursively find all rooted subtrees of each of the children of the current node.
+        location_to_list_of_subtrees = {
+            location: list(self.get_all_rooted_subtrees_as_lists(location))
+            for location in current_children
+        }
+
+        # All subsets of direct child Location objects
+        all_location_subsets = [
+            list(subset)
+            for subset in itertools.chain(*[
+                itertools.combinations(current_children, x)
+                for x in range(0, len(current_children) + 1)
+            ])
+        ]
+
+        # For every possible subset of the children, and every combination of the chosen
+        # subtrees within, create a list of subtree Location lists.
+        new_subtrees_as_lists = []
+        for location_subset in all_location_subsets:
+            all_child_subtree_possibilities = [
+                location_to_list_of_subtrees[location]
+                for location in location_subset
+            ]
+            all_child_subtree_combinations = itertools.product(*all_child_subtree_possibilities)
+
+            for child_subtree_combination in all_child_subtree_combinations:
+                merged_child_subtree_combination = list(itertools.chain(*child_subtree_combination))
+                new_subtree_as_list = location_subset + merged_child_subtree_combination
+                new_subtrees_as_lists.append(new_subtree_as_list)
+
+        return new_subtrees_as_lists
+
+
+def construct_optional_traversal_tree(complex_optional_roots, location_to_optional_roots):
+    """Return a tree of complex optional root locations.
+
+    Args:
+        complex_optional_roots: list of @optional locations (location immmediately preceding
+                                an @optional Traverse) that expand vertex fields
+        location_to_optional_roots: dict mapping from location -> optional_roots where location is
+                                    within some number of @optionals and optional_roots is a list
+                                    of optional root locations preceding the successive @optional
+                                    scopes within which the location resides
+
+    Returns:
+        OptionalTraversalTree object representing the tree of complex optional roots
+    """
+    tree = OptionalTraversalTree(complex_optional_roots)
+    for optional_root_locations_stack in six.itervalues(location_to_optional_roots):
+        tree.insert(list(optional_root_locations_stack))
+
+    return tree
