@@ -172,7 +172,7 @@ For each `Animal`:
   However, doing so is currently associated with a performance penalty in `MATCH`.
   For more detail, see: [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields).
 - `@recurse`, `@fold`, or `@output_source` may not be used at the same vertex field as `@optional`.
-- `@optional`, `@output_source` and `@fold` may not be used anywhere within a scope
+- `@output_source` and `@fold` may not be used anywhere within a scope
   marked `@optional`.
 
 If a given result set is unable to produce a value for a vertex field marked `@optional`,
@@ -677,9 +677,9 @@ in a column named `animal_name`.
     }
 }
 ```
-This returns one row for every `Animal` whose list of aliases has a non-empty intersection 
-with the list of values supplied for the `$wanted` parameter. 
-Each row contains the matching `Animal`'s name in a column named `animal_name`. 
+This returns one row for every `Animal` whose list of aliases has a non-empty intersection
+with the list of values supplied for the `$wanted` parameter.
+Each row contains the matching `Animal`'s name in a column named `animal_name`.
 
 #### Constraints and Rules
 - Must be on a property field of list type.
@@ -1114,6 +1114,9 @@ Therefore, we get a performance penalty that grows exponentially
 with the number of *compound* optional edges.
 This is important to keep in mind when writing queries with many optional directives.
 
+If some of those *compound* optionals contain `@optional` vertex fields of their own,
+the performance penalty grows since we have to account for all possible subsets of `@optional`
+statements that can be satisfied simultaneously.
 
 ### Optional `type_equivalence_hints` parameter
 
