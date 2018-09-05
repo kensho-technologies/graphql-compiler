@@ -36,7 +36,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        SqlTree object containing the SqlNodes organized in a tree structure.
+        SqlTree object containing SqlNodes organized in a tree structure.
     """
     query_path_to_location_info = {
         location.query_path: location_info
@@ -47,7 +47,8 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     construct_result = lower_construct_result(construct_result)
     block_index_to_location = get_block_index_to_location_map(ir_blocks)
     ir_blocks = lower_context_field_existence(ir_blocks)
-    ir_blocks = lower_optional_fields(ir_blocks, block_index_to_location, query_path_to_location_info)
+    ir_blocks = lower_optional_fields(
+        ir_blocks, block_index_to_location, query_path_to_location_info)
     query_path_to_node = {}
     query_path_to_filter = defaultdict(list)
     query_path_to_tag_fields = defaultdict(list)
@@ -173,7 +174,6 @@ def lower_context_field_existence(ir_blocks):
 
         so that a ContextFieldExistence is rewritten to checking if the ContextField is None
         or if the right predicate involving the ContextField holds.
-
         """
         if not isinstance(expression, expressions.BinaryComposition):
             return expression

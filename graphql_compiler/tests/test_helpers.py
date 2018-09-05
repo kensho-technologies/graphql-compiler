@@ -8,7 +8,6 @@ from graphql.utils.build_ast_schema import build_ast_schema
 import six
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey
 
-from ..compiler.ir_lowering_sql.metadata import DirectEdge, JunctionEdge
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 
 
@@ -129,7 +128,10 @@ def get_schema():
             uuid: ID
             out_Animal_ParentOf: [Animal]
             in_Animal_ParentOf: [Animal]
+            out_Animal_FriendsWith: [Animal]
+            in_Animal_FriendsWith: [Animal]
             out_Animal_OfSpecies: [Species]
+            out_Animal_Eats: [FoodOrSpecies]
             out_Animal_FedAt: [Event]
             out_Animal_BornAt: [BirthEvent]
             out_Animal_ImportantEvent: [EventOrBirthEvent]
@@ -152,6 +154,7 @@ def get_schema():
             uuid: ID
             out_Species_Eats: [FoodOrSpecies]
             in_Species_Eats: [Species]
+            in_Animal_Eats: [Animal]
             in_Animal_OfSpecies: [Animal]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
@@ -164,6 +167,7 @@ def get_schema():
             alias: [String]
             uuid: ID
             in_Species_Eats: [Species]
+            in_Animal_Eats: [Animal]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
         }
@@ -224,127 +228,6 @@ def construct_location_types(location_types_as_strings):
     }
 
 
-def get_sql_test_schema():
-    """Get a schema object for testing."""
-    # This schema isn't meant to be a paragon of good schema design.
-    # Instead, it aims to capture as many real-world edge cases as possible,
-    # without requiring a massive number of types and interfaces.
-    schema_text = '''
-        schema {
-            query: RootSchemaQuery
-        }
-
-        directive @recurse(depth: Int!) on FIELD
-
-        directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
-
-        directive @tag(tag_name: String!) on FIELD
-
-        directive @output(out_name: String!) on FIELD
-
-        directive @output_source on FIELD
-
-        directive @optional on FIELD
-
-        directive @fold on FIELD
-
-        scalar Decimal
-
-        scalar DateTime
-
-        scalar Date
-
-        interface Entity {
-            name: String
-        }
-
-        type Animal implements Entity {
-            name: String
-            out_Animal_ParentOf: [Animal]
-            in_Animal_ParentOf: [Animal]
-            out_Animal_LivesIn: [Location]
-            out_Animal_Eats: [FoodOrSpecies]
-            out_Animal_FriendsWith: [Animal]
-            in_Animal_FriendsWith: [Animal]
-        }
-        
-        union FoodOrSpecies = Food | Species
-        
-        type Species {
-            name: String
-            uuid: ID
-            in_Animal_EatenBy: [Animal]
-        }
-
-        type Location {
-            name: String
-            uuid: ID
-            in_Animal_LivesIn: [Animal]
-        }
-
-        type Food implements Entity {
-            name: String
-            type: String
-            out_Food_EatenBy: [Animal]
-        }
-
-        type RootSchemaQuery {
-            Animal: Animal
-            Location: Location
-        }
-    '''
-
-    ast = parse(schema_text)
-    return build_ast_schema(ast)
-
-
-def get_test_sql_config():
-    return {
-        'Animal': {
-            'Animal_ParentOf': {
-                'Animal': DirectEdge(
-                    table_name='animal',
-                    source_column='animal_id',
-                    sink_column='parent_id'),
-            },
-            'Animal_Eats': {
-                'Food': JunctionEdge(
-                    junction_edge=DirectEdge(
-                        table_name='AnimalToFood',
-                        source_column='animal_id',
-                        sink_column='animal_id'
-                    ),
-                    final_edge=DirectEdge(
-                        table_name='food', source_column='food_id', sink_column='food_id'
-                    )
-                ),
-                'Species': JunctionEdge(
-                    junction_edge=DirectEdge(
-                        table_name='AnimalToSpeciesEaten',
-                        source_column='animal_id',
-                        sink_column='animal_id'
-                    ),
-                    final_edge=DirectEdge(
-                        table_name='species', source_column='species_id', sink_column='species_id'
-                    )
-                )
-            },
-            'Animal_FriendsWith': {
-                'Animal': JunctionEdge(
-                    junction_edge=DirectEdge(
-                        table_name='AnimalToFriend',
-                        source_column='animal_id',
-                        sink_column='animal_id'
-                    ),
-                    final_edge=DirectEdge(
-                        table_name='animal', source_column='friend_id', sink_column='animal_id'
-                    )
-                )
-            },
-        },
-    }
-
-
 def create_sqlite_db():
     engine = create_engine('sqlite:///:memory:')
     metadata = MetaData()
@@ -354,7 +237,8 @@ def create_sqlite_db():
         Column('animal_id', Integer, primary_key=True),
         Column('name', String(10), nullable=False),
         Column('description', String(50), nullable=False),
-        Column('parent_id', Integer, ForeignKey("animal.animal_id"), nullable=True)
+        Column('parentof_id', Integer, ForeignKey("animal.animal_id"), nullable=True),
+        Column('bestfriend_id', Integer, ForeignKey("animal.animal_id"), nullable=True),
     )
     location = Table(
         'location',
@@ -382,6 +266,7 @@ def create_sqlite_db():
         metadata,
         Column('species_id', Integer, primary_key=True),
         Column('name', String(10)),
+        Column('eats_id', Integer, ForeignKey('species.species_id'), nullable=True),
     )
 
     animal_eats = Table(
@@ -389,21 +274,14 @@ def create_sqlite_db():
         metadata,
         Column('animal_eats_food_id', Integer, primary_key=True),
         Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('food_id', Integer, ForeignKey("food.food_id")),
-    )
-    animal_to_species_eaten = Table(
-        'animal_eats_species',
-        metadata,
-        Column('animal_eats_species_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('species_id', Integer, ForeignKey("species.species_id")),
+        Column('eats_food_id', Integer, ForeignKey("food.food_id")),
     )
     animal_to_friend = Table(
         'animal_friendswith',
         metadata,
         Column('animal_friendswith_id', Integer, primary_key=True),
-        Column('out_animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('in_friend_id', Integer, ForeignKey("animal.animal_id")),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('friendswith_id', Integer, ForeignKey("animal.animal_id")),
     )
     metadata.create_all(engine)
     animals = [
@@ -449,14 +327,9 @@ def create_sqlite_db():
         (21, 3, 4),
     ]
     species_data = [
-        (22, 'Rabbit'),
-        (23, 'Wolf'),
-        (24, 'Bear'),
-    ]
-    animals_to_species_eaten = [
-        (25, 1, 22),
-        (26, 2, 22),
-        (27, 3, 22)
+        (22, 'Rabbit', None),
+        (23, 'Wolf', 22),
+        (24, 'Bear', 22),
     ]
     tables_values = [
         (animal, animals),
@@ -466,7 +339,6 @@ def create_sqlite_db():
         (species, species_data),
         (animal_eats, animals_to_foods),
         (animal_to_friend, animals_to_friends),
-        (animal_to_species_eaten, animals_to_species_eaten),
     ]
 
     for table, vals in tables_values:

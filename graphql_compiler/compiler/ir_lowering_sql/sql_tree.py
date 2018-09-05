@@ -23,6 +23,13 @@ class SqlNode(object):
         self.block = block
         self.children_nodes = []
         self.recursions = []
+        self._parent = None
+
+    @property
+    def parent(self):
+        if self._parent is None:
+            raise AssertionError()
+        return self._parent
 
     def add_child_node(self, child_node):
         """Add a child node reference to this SqlNode, either non-recursive or recursive."""
@@ -30,6 +37,7 @@ class SqlNode(object):
             self.recursions.append(child_node)
         else:
             self.children_nodes.append(child_node)
+        child_node._parent = self
 
     def __str__(self):
         """Return a string representation of a SqlNode."""

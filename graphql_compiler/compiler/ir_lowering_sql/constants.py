@@ -4,7 +4,15 @@ from enum import Enum
 
 from sqlalchemy.sql import functions
 
-from sqlalchemy import func, String
+from sqlalchemy import func, String, exc as sqlalchemy_exceptions
+
+from graphql_compiler import exceptions
+
+
+UNRESOLVABLE_JOIN_EXCEPTIONS = (
+    sqlalchemy_exceptions.AmbiguousForeignKeysError,
+    sqlalchemy_exceptions.NoForeignKeysError
+)
 
 
 class Cardinality(Enum):
@@ -14,9 +22,9 @@ class Cardinality(Enum):
 
 
 # These columns are reserved for the construction of recursive queries
-DEPTH_INTERNAL_NAME = '__depth_internal_name'
-PATH_INTERNAL_NAME = '__path_internal_name'
-LINK_INTERNAL_NAME = '__link_internal_name'
+DEPTH_INTERNAL_NAME = u'__depth_internal_name'
+PATH_INTERNAL_NAME = u'__path_internal_name'
+LINK_INTERNAL_NAME = u'__link_internal_name'
 RESERVED_COLUMN_NAMES = {DEPTH_INTERNAL_NAME, PATH_INTERNAL_NAME, LINK_INTERNAL_NAME}
 
 
@@ -28,15 +36,15 @@ class Operator:
 
 
 OPERATORS = {
-    "contains": Operator('in_', Cardinality.MANY),
-    "=": Operator('__eq__', Cardinality.SINGLE),
-    "<": Operator('__lt__', Cardinality.SINGLE),
-    ">": Operator('__gt__', Cardinality.SINGLE),
-    "<=": Operator('__le__', Cardinality.SINGLE),
-    ">=": Operator('__ge__', Cardinality.SINGLE),
-    "&&": Operator('and_', Cardinality.DUAL),
-    "||": Operator('or_', Cardinality.DUAL),
-    'has_substring': Operator('contains', Cardinality.SINGLE),
+    u'contains': Operator(u'in_', Cardinality.MANY),
+    u'&&': Operator(u'and_', Cardinality.DUAL),
+    u'||': Operator(u'or_', Cardinality.DUAL),
+    u'=': Operator(u'__eq__', Cardinality.SINGLE),
+    u'<': Operator(u'__lt__', Cardinality.SINGLE),
+    u'>': Operator(u'__gt__', Cardinality.SINGLE),
+    u'<=': Operator(u'__le__', Cardinality.SINGLE),
+    u'>=': Operator(u'__ge__', Cardinality.SINGLE),
+    u'has_substring': Operator(u'contains', Cardinality.SINGLE),
 }
 
 
@@ -52,24 +60,24 @@ FoldAggregate = namedtuple('FoldAggregate', ['func', 'args'])
 class SqlBackend(object):
 
     supported_backend_to_fold_aggregate = {
-        'postgresql': FoldAggregate(func=func.array_agg, args=[]),
-        'sqlite': FoldAggregate(func.group_concat, args=[';;']),
-        'mssql': FoldAggregate(func=func.string_agg, args=[';;']),
+        u'postgresql': FoldAggregate(func=func.array_agg, args=[]),
+        u'sqlite': FoldAggregate(func.group_concat, args=[';;']),
+        u'mssql': FoldAggregate(func=func.string_agg, args=[';;']),
     }
     supported_backend_recursion_combinator = {
-        'mssql': 'union_all',
-        'sqlite': 'union',
-        'postgresql': 'union',
+        u'mssql': u'union_all',
+        u'sqlite': u'union',
+        u'postgresql': u'union',
     }
 
     def __init__(self, backend):
         """Create a new SqlBackend to manage backend specific properties for compilation."""
         if backend not in self.supported_backend_to_fold_aggregate:
-            raise AssertionError(
+            raise exceptions.GraphQLValidationError(
                 u'Backend "{}" is unsupported for folding, SQL cannot be compiled.'
             )
         if backend not in self.supported_backend_recursion_combinator:
-            raise AssertionError(
+            raise exceptions.GraphQLValidationError(
                 u'Backend "{}" is unsupported for recursion, SQL cannot be compiled.'
             )
         self._backend = backend
