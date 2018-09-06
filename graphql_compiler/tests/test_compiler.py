@@ -5287,7 +5287,8 @@ class CompilerTests(unittest.TestCase):
         test_data = test_input_data.no_op_coercion()
 
         expected_match = '''
-        SELECT Animal__out_Animal_ParentOf__out_Animal_ParentOf___1.name AS `animal_name` FROM (MATCH {{
+        SELECT Animal__out_Animal_ParentOf__out_Animal_ParentOf___1.name
+            AS `animal_name` FROM (MATCH {{
             as: Animal___1
         }}.out('Animal_ParentOf') {{
             as: Animal__out_Animal_ParentOf___1

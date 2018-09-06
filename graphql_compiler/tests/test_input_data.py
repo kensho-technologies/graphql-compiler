@@ -2432,6 +2432,7 @@ def complex_nested_optionals():
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
 
+
 def no_op_coercion():
     # This test case has a no-op coercion and an eligible location that is
     # a subpath of a preferred location. The no-op must be optimized away,
