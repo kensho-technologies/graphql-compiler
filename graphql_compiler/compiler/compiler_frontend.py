@@ -579,6 +579,7 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     )
 
     if not is_same_type_as_scope:
+        # TODO(bojanserafimov): Only record coercion if there's actually a coerce block
         query_metadata_table.record_coercion_at_location(location, coerces_to_type_obj)
 
     if not (is_same_type_as_scope or is_base_type_of_union):

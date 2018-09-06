@@ -4061,7 +4061,6 @@ class IrGenerationTests(unittest.TestCase):
             kid_location: 'Animal',
             grandkid_location: 'Animal',
             related_location: 'Entity',
-
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
