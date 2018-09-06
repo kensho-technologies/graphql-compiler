@@ -55,7 +55,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     Returns:
         MatchQuery object containing the IR blocks organized in a MATCH-like structure
     """
-    sanity_check_ir_blocks_from_frontend(ir_blocks)
+    sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
     # Construct the mapping of each location to its corresponding GraphQL type.
     location_types = {
@@ -72,9 +72,9 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
 
     # Extract information for both simple and complex @optional traverses
     location_to_optional_results = extract_optional_location_root_info(ir_blocks)
-    complex_optional_roots, location_to_optional_root = location_to_optional_results
+    complex_optional_roots, location_to_optional_roots = location_to_optional_results
     simple_optional_root_info = extract_simple_optional_location_info(
-        ir_blocks, complex_optional_roots, location_to_optional_root)
+        ir_blocks, complex_optional_roots, location_to_optional_roots)
     ir_blocks = remove_end_optionals(ir_blocks)
 
     # Append global operation block(s) to filter out incorrect results
@@ -114,7 +114,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     match_query = match_query._replace(folds=new_folds)
 
     compound_match_query = convert_optional_traversals_to_compound_match_query(
-        match_query, complex_optional_roots, location_to_optional_root)
+        match_query, complex_optional_roots, location_to_optional_roots)
     compound_match_query = prune_non_existent_outputs(compound_match_query)
     compound_match_query = collect_filters_to_first_location_occurrence(compound_match_query)
     compound_match_query = lower_context_field_expressions(
