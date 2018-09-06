@@ -564,7 +564,6 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     #           then recurse into the fragment's selection.
     coerces_to_type_name = ast.type_condition.name.value
     coerces_to_type_obj = schema.get_type(coerces_to_type_name)
-    query_metadata_table.record_coercion_at_location(location, coerces_to_type_obj)
 
     basic_blocks = []
 
@@ -578,6 +577,9 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
         isinstance(current_schema_type, GraphQLUnionType) and
         current_schema_type.is_same_type(equivalent_union_type)
     )
+
+    if not is_same_type_as_scope:
+        query_metadata_table.record_coercion_at_location(location, coerces_to_type_obj)
 
     if not (is_same_type_as_scope or is_base_type_of_union):
         # Coercion is required.
