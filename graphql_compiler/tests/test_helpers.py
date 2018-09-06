@@ -154,6 +154,7 @@ def get_schema():
             uuid: ID
             out_Species_Eats: [FoodOrSpecies]
             in_Species_Eats: [Species]
+            out_Species_EatenBy: [Species]
             in_Animal_Eats: [Animal]
             in_Animal_OfSpecies: [Animal]
             in_Entity_Related: [Entity]
@@ -244,7 +245,7 @@ def create_sqlite_db():
         'location',
         metadata,
         Column('location_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('livesin_id', Integer, ForeignKey("animal.animal_id")),
         Column('name', String(10))
     )
     food_type = Table(
@@ -267,6 +268,7 @@ def create_sqlite_db():
         Column('species_id', Integer, primary_key=True),
         Column('name', String(10)),
         Column('eats_id', Integer, ForeignKey('species.species_id'), nullable=True),
+        Column('eatenby_id', Integer, ForeignKey('species.species_id'), nullable=True),
     )
 
     animal_eats = Table(
@@ -274,7 +276,7 @@ def create_sqlite_db():
         metadata,
         Column('animal_eats_food_id', Integer, primary_key=True),
         Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('eats_food_id', Integer, ForeignKey("food.food_id")),
+        Column('eats_id', Integer, ForeignKey("food.food_id")),
     )
     animal_to_friend = Table(
         'animal_friendswith',
@@ -285,10 +287,10 @@ def create_sqlite_db():
     )
     metadata.create_all(engine)
     animals = [
-        (1, 'Big Bear', 'The second biggest bear.', 4),
-        (2, 'Little Bear', 'The smallest bear', 3),
-        (3, 'Medium Bear', 'The midsize bear.', 1),
-        (4, 'Biggest Bear', 'The biggest bear.', None),
+        (1, 'Big Bear', 'The second biggest bear.', 3),
+        (2, 'Little Bear', 'The smallest bear', None),
+        (3, 'Medium Bear', 'The midsize bear.', 2),
+        (4, 'Biggest Bear', 'The biggest bear.', 1),
     ]
     locations = [
         (4, 1, 'Wisconsin'),
@@ -327,9 +329,9 @@ def create_sqlite_db():
         (21, 3, 4),
     ]
     species_data = [
-        (22, 'Rabbit', None),
-        (23, 'Wolf', 22),
-        (24, 'Bear', 22),
+        (24, 'Bear', 22, None),
+        (23, 'Wolf', 22, None),
+        (22, 'Rabbit', None, 24)
     ]
     tables_values = [
         (animal, animals),

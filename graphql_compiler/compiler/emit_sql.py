@@ -4,10 +4,10 @@ from collections import namedtuple, defaultdict
 import six
 from sqlalchemy import select, and_, literal_column, cast, String, case, bindparam, Column
 from sqlalchemy.sql.elements import BindParameter
-from sqlalchemy.sql.util import join_condition
 
+from graphql_compiler import exceptions
 from graphql_compiler.compiler import blocks, expressions
-from sqlalchemy.sql import expression as sql_expressions, Join
+from sqlalchemy.sql import expression as sql_expressions
 
 from graphql_compiler.compiler.helpers import INBOUND_EDGE_DIRECTION
 from graphql_compiler.compiler.ir_lowering_sql import constants
@@ -24,6 +24,12 @@ CompilationContext = namedtuple('CompilationContext', [
     'query_path_field_renames',
     'query_path_to_tag_fields',
     'compiler_metadata',
+])
+
+ManyToManyJoin = namedtuple('JunctionJoinExpression', [
+    'join_to_junction_expression',
+    'junction_table',
+    'join_from_junction_expression'
 ])
 
 
@@ -65,14 +71,15 @@ def _flatten_and_join_recursive_nodes(node, cte, context):
     """Join recursive child nodes to parent, flattening child's references."""
     for recursive_node in node.recursions:
         # retrieve the column that will be attached to the recursive element
-        recursion_source_column, _ = context.query_path_to_recursion_columns[recursive_node.query_path]
+        recursion_source_column, _ = context.query_path_to_recursion_columns[
+            recursive_node.query_path]
         recursion_sink_column = _query_tree_to_query(
             recursive_node, context, recursion_link_column=recursion_source_column, outer_cte=cte
         )
         _flatten_output_fields(node, recursive_node, context)
-        onclause = _get_recursive_join_condition(node, recursive_node, recursion_source_column,
-                                                 recursion_sink_column, context)
-        _join_nodes(node, recursive_node, onclause, context)
+        join_expression = _get_recursive_node_join_expression(
+            node, recursive_node, recursion_source_column, recursion_sink_column, context)
+        _join_nodes(node, recursive_node, join_expression, context)
 
 
 def _update_context_paths(node, visited_nodes, cte, context):
@@ -90,28 +97,40 @@ def _flatten_and_join_nonrecursive_nodes(node, context):
     for child_node in node.children_nodes:
         nodes_visited_from_child = _flatten_and_join_nonrecursive_nodes(child_node, context)
         visited_nodes.extend(nodes_visited_from_child)
-
     # create the current node's table
     _create_and_reference_table(node, context)
     # ensure that columns required to link recursion are present
     _create_links_for_recursions(node, context)
     for child_node in node.children_nodes:
         _flatten_node(node, child_node, context)
-        onclause = _get_join_condition(node, child_node, context)
-        _join_nodes(node, child_node, onclause, context)
+        join_expression = _get_node_join_expression(node, child_node, context)
+        _join_nodes(node, child_node, join_expression, context)
     return visited_nodes
 
 
 def _get_node_selectable(node, context):
     """Return the selectable (Table, CTE) of a node."""
     query_path = node.query_path
+    if query_path not in context.query_path_to_selectable:
+        raise AssertionError()
     selectable = context.query_path_to_selectable[query_path]
     return selectable
 
 
-def _get_schema_type(node, context):
+def _get_node_from_clause(node, context):
+    """Return the from clause of a node."""
+    query_path = node.query_path
+    if query_path not in context.query_path_to_from_clause:
+        raise AssertionError()
+    from_clause = context.query_path_to_from_clause[query_path]
+    return from_clause
+
+
+def _get_schema_type_name(node, context):
     """Return the GraphQL type name of a node."""
     query_path = node.query_path
+    if query_path not in context.query_path_to_location_info:
+        raise AssertionError()
     location_info = context.query_path_to_location_info[query_path]
     return location_info.type.name
 
@@ -122,6 +141,12 @@ def _get_block_direction(block):
     return block.direction
 
 
+def _get_block_edge_name(block):
+    if not isinstance(block, (blocks.Traverse, blocks.Recurse)):
+        raise AssertionError()
+    return block.edge_name
+
+
 def _create_recursive_clause(node, context, out_link_column, outer_cte):
     """Create a recursive clause for a Recurse block."""
     if not isinstance(node.block, blocks.Recurse):
@@ -129,30 +154,30 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
     if out_link_column is None or outer_cte is None:
         raise AssertionError()
     selectable = _get_node_selectable(node, context)
-    edge = _get_join_condition(node, node, context)
-    if isinstance(edge, sql_expressions.BinaryExpression):
-        out_edge_name = edge.left.name
-        in_edge_name = edge.right.name
-        base_column_name = out_edge_name
-        schema_type = _get_schema_type(node, context)
+    join_expression = _get_node_join_expression(node, node, context)
+    if isinstance(join_expression, sql_expressions.BinaryExpression):
+        left_column_name = join_expression.left.name
+        right_column_name = join_expression.right.name
+        base_column_name = right_column_name
+        schema_type = _get_schema_type_name(node, context)
         recursive_table = context.compiler_metadata.get_table(schema_type).alias()
-    elif isinstance(edge, tuple):
-        traversal_edge, recursive_table, final_edge = edge
-        out_edge_name = final_edge.right.name
-        in_edge_name = traversal_edge.right.name
-        base_column_name = traversal_edge.left.name
+    elif isinstance(join_expression, ManyToManyJoin):
+        left_column_name = join_expression.join_from_junction_expression.left.name
+        right_column_name = join_expression.join_to_junction_expression.right.name
+        base_column_name = join_expression.join_to_junction_expression.left.name
+        recursive_table = join_expression.junction_table
     else:
         raise AssertionError()
     base_column = selectable.c[base_column_name]
     if _get_block_direction(node.block) == INBOUND_EDGE_DIRECTION:
-        out_edge_name, in_edge_name = in_edge_name, out_edge_name
+        left_column_name, right_column_name = right_column_name, left_column_name
 
     parent_cte_column = outer_cte.c[out_link_column.name]
     anchor_query = (
         select(
             [
-                selectable.c[base_column_name].label(out_edge_name),
-                selectable.c[base_column_name].label(in_edge_name),
+                selectable.c[base_column_name].label(left_column_name),
+                selectable.c[base_column_name].label(right_column_name),
                 literal_column('0').label(constants.DEPTH_INTERNAL_NAME),
                 cast(base_column, String()).concat(',').label(constants.PATH_INTERNAL_NAME),
             ],
@@ -168,12 +193,12 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
     recursive_query = (
         select(
             [
-                recursive_table.c[out_edge_name],
-                recursive_cte.c[in_edge_name],
+                recursive_table.c[left_column_name],
+                recursive_cte.c[right_column_name],
                 ((recursive_cte.c[constants.DEPTH_INTERNAL_NAME] + 1)
                  .label(constants.DEPTH_INTERNAL_NAME)),
                 (recursive_cte.c[constants.PATH_INTERNAL_NAME]
-                 .concat(cast(recursive_table.c[out_edge_name], String()))
+                 .concat(cast(recursive_table.c[left_column_name], String()))
                  .concat(',')
                  .label(constants.PATH_INTERNAL_NAME)),
             ]
@@ -181,13 +206,13 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
         .select_from(
             recursive_table.join(
                 recursive_cte,
-                recursive_table.c[in_edge_name] == recursive_cte.c[out_edge_name]
+                recursive_table.c[right_column_name] == recursive_cte.c[left_column_name]
             )
         ).where(and_(
             recursive_cte.c[constants.DEPTH_INTERNAL_NAME] < node.block.depth,
             case(
                 [(recursive_cte.c[constants.PATH_INTERNAL_NAME]
-                  .contains(cast(recursive_table.c[out_edge_name], String())), 1)],
+                  .contains(cast(recursive_table.c[left_column_name], String())), 1)],
                 else_=0
             ) == 0
         ))
@@ -200,16 +225,16 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
             )
         )
     recursive_query = getattr(recursive_cte, recursion_combinator)(recursive_query)
-    from_clause = context.query_path_to_from_clause[node.query_path]
+    from_clause = _get_node_from_clause(node, context)
     from_clause = from_clause.join(
         recursive_query,
-        selectable.c[base_column_name] == recursive_query.c[out_edge_name]
+        selectable.c[base_column_name] == recursive_query.c[left_column_name]
     )
     from_clause = from_clause.join(
-        outer_cte, recursive_query.c[in_edge_name] == parent_cte_column
+        outer_cte, recursive_query.c[right_column_name] == parent_cte_column
     )
     context.query_path_to_from_clause[node.query_path] = from_clause
-    out_link_column = recursive_query.c[in_edge_name].label(None)
+    out_link_column = recursive_query.c[right_column_name].label(None)
     (in_col, _) = context.query_path_to_recursion_columns[node.query_path]
     context.query_path_to_recursion_columns[node.query_path] = (in_col, out_link_column)
     return out_link_column
@@ -217,7 +242,7 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
 
 def _create_and_reference_table(node, context):
     """Create an aliased table for a node, and update the relevant context."""
-    schema_type = _get_schema_type(node, context)
+    schema_type = _get_schema_type_name(node, context)
     table = context.compiler_metadata.get_table(schema_type).alias()
     context.query_path_to_from_clause[node.query_path] = table
     context.query_path_to_selectable[node.query_path] = table
@@ -240,30 +265,39 @@ def _flatten_output_fields(parent_node, child_node, context):
     parent_output_fields = context.query_path_to_output_fields[parent_node.query_path]
     for field_alias, (field, field_type, is_renamed) in six.iteritems(child_output_fields):
         parent_output_fields[field_alias] = (field, field_type, is_renamed)
-    context.query_path_to_tag_fields[parent_node.query_path].extend(context.query_path_to_tag_fields[child_node.query_path])
+    context.query_path_to_tag_fields[parent_node.query_path].extend(
+        context.query_path_to_tag_fields[child_node.query_path])
     del context.query_path_to_output_fields[child_node.query_path]
 
 
-def _join_nodes(parent_node, child_node, onclause, context):
+def _join_nodes(parent_node, child_node, join_expression, context):
     """Join two nodes and update compilation context."""
     location_info = context.query_path_to_location_info[child_node.query_path]
     is_optional = location_info.optional_scopes_depth > 0
-    parent_from_clause = context.query_path_to_from_clause[parent_node.query_path]
-    child_from_clause = context.query_path_to_from_clause[child_node.query_path]
+    parent_from_clause = _get_node_from_clause(parent_node, context)
+    child_from_clause = _get_node_from_clause(child_node, context)
     if is_optional:
-        if isinstance(onclause, tuple):
-            parent_to_junction_onclause, junction_table, junction_to_child_onclause = onclause
-            parent_from_clause = parent_from_clause.outerjoin(junction_table, onclause=parent_to_junction_onclause)
-            parent_from_clause = parent_from_clause.outerjoin(child_from_clause, onclause=junction_to_child_onclause)
+        # use LEFT JOINs
+        if isinstance(join_expression, ManyToManyJoin):
+            parent_from_clause = parent_from_clause.outerjoin(
+                join_expression.junction_table,
+                onclause=join_expression.join_to_junction_expression)
+            parent_from_clause = parent_from_clause.outerjoin(
+                child_from_clause, onclause=join_expression.join_from_junction_expression)
         else:
-            parent_from_clause = parent_from_clause.outerjoin(child_from_clause, onclause=onclause)
+            parent_from_clause = parent_from_clause.outerjoin(
+                child_from_clause, onclause=join_expression)
     else:
-        if isinstance(onclause, tuple):
-            parent_to_junction_onclause, junction_table, junction_to_child_onclause = onclause
-            parent_from_clause = parent_from_clause.join(junction_table, onclause=parent_to_junction_onclause)
-            parent_from_clause = parent_from_clause.join(child_from_clause, onclause=junction_to_child_onclause)
+        # use INNER JOINs
+        if isinstance(join_expression, ManyToManyJoin):
+            parent_from_clause = parent_from_clause.join(
+                join_expression.junction_table,
+                onclause=join_expression.join_to_junction_expression)
+            parent_from_clause = parent_from_clause.join(
+                child_from_clause, onclause=join_expression.join_from_junction_expression)
         else:
-            parent_from_clause = parent_from_clause.join(child_from_clause, onclause=onclause)
+            parent_from_clause = parent_from_clause.join(
+                child_from_clause, onclause=join_expression)
     context.query_path_to_from_clause[parent_node.query_path] = parent_from_clause
     del context.query_path_to_from_clause[child_node.query_path]
 
@@ -273,14 +307,13 @@ def _create_link_for_recursion(node, recursion_node, context):
     selectable = _get_node_selectable(node, context)
     # pre-populate the recursive nodes selectable for the purpose of computing the join
     _create_and_reference_table(recursion_node, context)
-    edge = _get_join_condition(recursion_node.parent, recursion_node, context)
+    edge = _get_node_join_expression(recursion_node.parent, recursion_node, context)
     # the left side of the expression is the column from the node that is later needed to join to
     recursion_in_col = None
-    if isinstance(edge, tuple):
-        recursion_on_clause, _, _ = edge
-        recursion_in_col = selectable.c[recursion_on_clause.left.name]
+    if isinstance(edge, ManyToManyJoin):
+        recursion_in_col = selectable.c[edge.join_to_junction_expression.left.name]
     elif isinstance(edge, sql_expressions.BinaryExpression):
-        recursion_in_col = selectable.c[edge.left.name]
+        recursion_in_col = selectable.c[edge.right.name]
     else:
         raise AssertionError()
     return recursion_in_col
@@ -314,7 +347,8 @@ def _get_output_columns(node, is_final_query, context):
             field_name = tag_field.location.field
             column = selectable.c[field_name].label(None)
             columns.append(column)
-            context.query_path_field_renames[tag_field.location.query_path][field_name] = column.name
+            field_renames = context.query_path_field_renames[tag_field.location.query_path]
+            field_renames[field_name] = column.name
     return columns
 
 
@@ -345,7 +379,7 @@ def _create_query(node, is_final_query, context):
         _, out_col = context.query_path_to_recursion_columns[node.query_path]
         columns.append(out_col)
 
-    from_clause = context.query_path_to_from_clause[node.query_path]
+    from_clause = _get_node_from_clause(node, context)
     query = select(columns).select_from(from_clause)
     if is_final_query:
         return query
@@ -385,17 +419,17 @@ def _expression_to_sql(expression, selectable, location_info, context):
         sql_operator = constants.OPERATORS[expression.operator]
         left = _expression_to_sql(expression.left, selectable, location_info, context)
         right = _expression_to_sql(expression.right, selectable, location_info, context)
-        if sql_operator.cardinality == constants.Cardinality.SINGLE:
+        if sql_operator.cardinality == constants.Cardinality.UNARY:
             if right is None and left is None:
                 raise AssertionError()
             if left is None and right is not None:
                 left, right = right, left
             clause = getattr(left, sql_operator.name)(right)
             return clause
-        if sql_operator.cardinality == constants.Cardinality.DUAL:
+        if sql_operator.cardinality == constants.Cardinality.BINARY:
             clause = getattr(sql_expressions, sql_operator.name)(left, right)
             return clause
-        if sql_operator.cardinality == constants.Cardinality.MANY:
+        if sql_operator.cardinality == constants.Cardinality.LIST_VALUED:
             if not isinstance(left, BindParameter):
                 raise AssertionError()
             if not isinstance(right, Column):
@@ -408,89 +442,81 @@ def _expression_to_sql(expression, selectable, location_info, context):
     raise AssertionError()
 
 
-def _get_recursive_join_condition(node, recursive_node, in_column, out_column, context):
-    """Determine the join condition to join an outer table to a recursive clause.
+def _get_recursive_node_join_expression(node, recursive_node, in_column, out_column, context):
+    """Determine the join expression to join an outer table to a recursive clause.
 
-    In this case there is a constructed join between the two nodes, not a natural one
-    (one that exists via Foreign Keys in the database), so the general _get_join_condition logic
-    cannot be used.
+    In this case there is a constructed join between the two nodes with an aliased column that
+    breaks the naming convention expected by _get_node_join_expression.
     """
     selectable = _get_node_selectable(node, context)
     recursive_selectable = _get_node_selectable(recursive_node, context)
-    current_cte_column = selectable.c[in_column.name]
-    recursive_cte_column = recursive_selectable.c[out_column.name]
-    return current_cte_column == recursive_cte_column
+    return _get_selectable_join_expression(
+        selectable, in_column.name, recursive_selectable, out_column.name)
 
 
-def _get_join_condition(outer_node, inner_node, context):
-    """Determine the join condition to join the outer table to the inner table.
+def _get_node_join_expression(outer_node, inner_node, context):
+    """Determine the join expression to join the outer node to the inner node.
 
-    The process to determine this condition is as follows:
-    1. Attempt to resolve the join condition as a many-many edge. To do so, one the following must
+    For both cases below it is assumed that columns used for an edge correspond to that edge's
+    components, eg edge Animal_Eats is expected to be comprised of columns animal_id and eats_id.
+
+    The process to determine this join expression is as follows:
+    1. Attempt to resolve the join expression as a many-many edge. To do so, one the following must
        hold:
        - There is a table of the correct edge name, eg. for an edge out_Animal_FriendsWith,
          there is a table of name animal_friendswith.
        - there is a table of the correct edge name, with a type suffix. eg. for an edge
          out_Animal_Eats of union type [FoodOrSpecies] that is coerced to Food in the given
          context, there is a table of name animal_eats_food
-    2. If there are no results from (1), look for a direct join condition between the two tables.
-    3. If the direct join condition is ambiguous, filter raw onclauses to the onclause in the
-       correct direction. This onclause must use columns of the correct prefix, eg. for an edge
-       Animal_ParentOf, the columns must be animal_id and parentof_id if the direction is "out", or
-       parentof_id and animal_id if the direction is "in". This situation arises if there are
-       multiple Foreign Keys from a table back onto itself.
+       - If both of these tables exist, a GraphQLCompilationError is raised.
+    2. If there are no results from (1), look for a direct join expression between the two tables.
     """
+    # Attempt to resolve via case (1)
+    join_expression = _try_get_many_to_many_join_expression(outer_node, inner_node, context)
+    if join_expression is not None:
+        return join_expression
+    # No results, attempt to resolve via case (2)
+    return _get_direct_join_expression(outer_node, inner_node, context)
+
+
+def _get_direct_join_expression(outer_node, inner_node, context):
+    """Get a direct join expression between the selectables of two nodes."""
+    direction = _get_block_direction(inner_node.block)
+    edge_name = _get_block_edge_name(inner_node.block)
     outer_selectable = _get_node_selectable(outer_node, context)
     inner_selectable = _get_node_selectable(inner_node, context)
-    # Attempt to resolve via case (1)
-    onclause = _try_get_many_to_many_join_condition(outer_node, inner_node, context)
-    if onclause is not None:
-        return onclause
-    # No results, attempt to resolve via case (2)
-    onclause = _try_get_direct_join_condition(outer_selectable, inner_selectable)
-    if isinstance(onclause, sql_expressions.BinaryExpression):
-        return onclause
-    if isinstance(onclause, sql_expressions.BooleanClauseList):
-        # A BooleanClauseList is only expected when a table is joined directly to itself
-        if not _original_tables_equal(outer_selectable, inner_selectable):
-            raise AssertionError()
-        onclauses = onclause.clauses
-        return _filter_onclauses_by_direction(
-            onclauses, inner_node, inner_selectable, outer_selectable)
-    if onclause is not None:
-        raise AssertionError
-    edge_name = inner_node.block.edge_name
-    column_prefix = edge_name.split('_')[1].lower()
-    column_name = u'{column_prefix}_id'.format(column_prefix=column_prefix)
-    onclauses = _get_direct_onclauses(outer_selectable, inner_selectable)
-    onclauses = [onclause for onclause in onclauses if onclause.right.name == column_name]
-    if len(onclauses) == 0:
-        raise AssertionError()
-    if len(onclauses) == 1:
-        return onclauses[0]
-    return _filter_onclauses_by_direction(onclauses, inner_node, inner_selectable, outer_selectable)
+    outer_column_name, inner_column_name = _get_column_names_for_edge(edge_name)
+    if direction == INBOUND_EDGE_DIRECTION:
+        # Flip so that the inner -> outer relationship is considered first
+        # This is important for tables with foreign keys onto themselves
+        outer_selectable, inner_selectable = inner_selectable, outer_selectable
+    # The natural join direction is Table A -FK> Table B, with Table A holding the foreign key
+    natural_join_expression = _get_selectable_join_expression(
+        outer_selectable, outer_column_name, inner_selectable, inner_column_name)
+    if natural_join_expression is not None:
+        return natural_join_expression
+    # The inverse join direction is Table A <FK- Table B, with table B holding the foreign key
+    inverse_join_expression = _get_selectable_join_expression(
+        inner_selectable, outer_column_name, outer_selectable, inner_column_name)
+    if inverse_join_expression is not None:
+        return inverse_join_expression
+    raise exceptions.GraphQLCompilationError(
+        (u'Table "{}" is expected to have foreign key "{}" to column "{}" of table "{}" or '
+         u'table "{}" is expected to have foreign key "{}" to column "{}" of table "{}".').format(
+            outer_selectable.original, outer_column_name, inner_column_name,
+            inner_selectable.original, inner_selectable.original, outer_column_name,
+            inner_column_name, outer_selectable.original
+        )
+    )
 
 
-def _filter_onclauses_by_direction(onclauses, inner_node, inner_selectable, outer_selectable):
-    """Filter a list of onclauses to the single onclause that is in the correct direction."""
-    block_direction = _get_block_direction(inner_node.block)
-    if block_direction == INBOUND_EDGE_DIRECTION:
-        inner_selectable, outer_selectable = outer_selectable, inner_selectable
-    onclauses = [
-        onclause for onclause in onclauses
-        if onclause.right.table == inner_selectable and onclause.left.table == outer_selectable
-    ]
-    if len(onclauses) != 1:
-        raise AssertionError()
-    return onclauses[0]
-
-
-def _try_get_many_to_many_join_condition(outer_node, inner_node, context):
+def _try_get_many_to_many_join_expression(outer_node, inner_node, context):
     """Attempt to resolve a join condition that uses an underlying many-many junction table."""
     outer_selectable = _get_node_selectable(outer_node, context)
     inner_selectable = _get_node_selectable(inner_node, context)
-    edge_name = inner_node.block.edge_name
-    type_name = _get_schema_type(inner_node, context)
+    edge_name = _get_block_edge_name(inner_node.block)
+    outer_column_name, inner_column_name = _get_column_names_for_edge(edge_name)
+    type_name = _get_schema_type_name(inner_node, context)
     short_junction_table_name = u'{junction_table_name}'.format(junction_table_name=edge_name)
     has_short_table_name = context.compiler_metadata.has_table(short_junction_table_name)
     long_junction_table_name = u'{junction_table_name}_{type_name}'.format(
@@ -500,77 +526,51 @@ def _try_get_many_to_many_join_condition(outer_node, inner_node, context):
     if not has_long_table_name and not has_short_table_name:
         return None
     if has_long_table_name and has_short_table_name:
-        raise AssertionError()
+        raise exceptions.GraphQLCompilationError(
+            u'Ambiguous junction tables "{}" and "{}" found for edge "{}".'.format(
+                short_junction_table_name, long_junction_table_name, edge_name)
+        )
     junction_table_name = (long_junction_table_name
                            if has_long_table_name
                            else short_junction_table_name)
     junction_table = context.compiler_metadata.get_table(junction_table_name).alias()
-    outer_column_prefix, inner_column_prefix = edge_name.split('_')
-    outer_column_prefix = outer_column_prefix.lower()
-    inner_column_prefix = inner_column_prefix.lower()
+    junction_table = junction_table.alias()
+    if len(outer_selectable.primary_key) != 1:
+        raise exceptions.GraphQLCompilationError(
+            u'Table "{}" is expected to have exactly one primary key.'.format(
+                outer_selectable.original))
+    if len(inner_selectable.primary_key) != 1:
+        raise exceptions.GraphQLCompilationError(
+            u'Table "{}" is expected to have exactly one primary key.'.format(
+                inner_selectable.original))
+    outer_pk_name = outer_selectable.primary_key[0].name
+    inner_pk_name = inner_selectable.primary_key[0].name
     direction = _get_block_direction(inner_node.block)
     if direction == INBOUND_EDGE_DIRECTION:
-        outer_column_prefix, inner_column_prefix = inner_column_prefix, outer_column_prefix
-    junction_table = junction_table.alias()
-    outer_to_junction_onclause = _get_junction_join_condition(
-        outer_selectable, junction_table, outer_column_prefix)
-    junction_to_inner_onclause = _get_junction_join_condition(
-        junction_table, inner_selectable, inner_column_prefix)
-    return outer_to_junction_onclause, junction_table, junction_to_inner_onclause
+        inner_column_name, outer_column_name = outer_column_name, inner_column_name
+    join_to_junction_expression = _get_selectable_join_expression(
+        outer_selectable, outer_pk_name, junction_table, inner_column_name)
+    join_from_junction_expression = _get_selectable_join_expression(
+        junction_table, outer_column_name, inner_selectable, inner_pk_name)
+    return ManyToManyJoin(
+        join_to_junction_expression, junction_table, join_from_junction_expression)
 
 
-def _get_junction_join_condition(outer_selectable, inner_selectable, column_prefix):
-    """Get a join condition for joining to a junction table in a many-many edge."""
-    join_condition = _try_get_direct_join_condition(outer_selectable, inner_selectable)
-    if join_condition is not None:
-        return join_condition
-    onclauses = _get_direct_onclauses(outer_selectable, inner_selectable)
-    if len(onclauses) == 1:
-        onclauses = onclauses[0]
-        if not isinstance(onclauses, sql_expressions.BinaryExpression):
-            raise AssertionError()
-        return onclauses
-    if len(onclauses) == 2:
-        onclauses_in_correct_direction = [
-            onclause for onclause in onclauses
-            if onclause.right.name.startswith(column_prefix)
-        ]
-        if len(onclauses_in_correct_direction) != 1:
-            raise AssertionError()
-        return onclauses_in_correct_direction[0]
-    raise AssertionError()
+def _get_column_names_for_edge(edge_name):
+    """Return the expected column names for the given edge."""
+    inner_prefix, outer_prefix = edge_name.lower().split('_')
+    outer_column_name = u'{column_prefix}_id'.format(column_prefix=outer_prefix)
+    inner_column_name = u'{column_prefix}_id'.format(column_prefix=inner_prefix)
+    return outer_column_name, inner_column_name
 
 
-def _try_get_direct_join_condition(outer_selectable, inner_selectable):
-    """Attempt to find join condition for joining outer_table to inner_table
+def _get_selectable_join_expression(outer_selectable, outer_name, inner_selectable, inner_name):
+    """Get a join expression between two selectables with the designated column names.
 
-    Return None if this clause cannot be uniquely determined.
+    Return None if such an expression does not exist.
     """
-    try:
-        return join_condition(outer_selectable, inner_selectable)
-    except constants.UNRESOLVABLE_JOIN_EXCEPTIONS:
+    if not hasattr(outer_selectable.c, outer_name):
         return None
-
-
-def _get_direct_onclauses(outer_selectable, inner_selectable):
-    """Return all direct onclauses between two tables, for joins that cannot be resolved simply."""
-    constraints = Join._joincond_scan_left_right(outer_selectable, None, inner_selectable, None)
-    onclauses = []
-    for constraint_list in six.itervalues(constraints):
-        for left, right in constraint_list:
-            onclauses.append(left == right)
-    return onclauses
-
-
-def _original_tables_equal(right_table, left_table):
-    """Return true if the original tables of two tables are equal.
-
-    In the case of aliased tables, this method will ignore the alias when checking equality.
-    """
-    if hasattr(right_table, 'original'):
-        right_table = right_table.original
-    if hasattr(left_table, 'original'):
-        left_table = left_table.original
-    return right_table == left_table
-
-
+    if not hasattr(inner_selectable.c, inner_name):
+        return None
+    return outer_selectable.c[outer_name] == inner_selectable.c[inner_name]

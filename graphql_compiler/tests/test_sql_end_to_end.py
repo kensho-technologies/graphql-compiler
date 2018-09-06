@@ -2,6 +2,7 @@ import unittest
 
 import six
 
+from graphql_compiler import exceptions
 from graphql_compiler.compiler import compile_graphql_to_sql
 from graphql_compiler.compiler.ir_lowering_sql.metadata import CompilerMetadata
 from graphql_compiler.tests.test_helpers import (
@@ -19,6 +20,7 @@ class SqlQueryTests(unittest.TestCase):
         cls.engine = engine
         cls.metadata = metadata
         cls.schema = get_schema()
+        cls.maxDiff = None
 
     def assertQueryOutputEquals(self, graphql_string, params, expected_results):
         """Sort both query results and expected results deterministically before comparing."""
@@ -53,6 +55,17 @@ class SqlQueryTests(unittest.TestCase):
         ]
 
         self.assertQueryOutputEquals(graphql_string, {}, expected_results)
+
+    def test_query_no_table(self):
+        graphql_string = '''
+        {
+            Entity {
+                name @output(out_name: "name")
+            }
+        }
+        '''
+        with self.assertRaises(exceptions.GraphQLCompilationError):
+            compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
 
     def test_basic_filter(self):
         graphql_string = '''
@@ -127,7 +140,7 @@ class SqlQueryTests(unittest.TestCase):
         ]
         self.assertQueryOutputEquals(graphql_string, {}, expected_results)
 
-    def test_basic_out_edge(self):
+    def test_out_edge_equivalent_in_edge(self):
         expected_results = [
             {'name': 'Big Bear', 'location_name': 'Wisconsin'},
         ]
@@ -298,6 +311,24 @@ class SqlQueryTests(unittest.TestCase):
         ]
         self.assertQueryOutputEquals(graphql_string, {}, expected_results)
 
+    def test_basic_self_edge_in(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "child_name")
+                in_Animal_ParentOf {
+                    name @output(out_name: "parent_name")
+                }
+            }
+        }
+        '''
+        expected_results = [
+            {'parent_name': 'Big Bear', 'child_name': 'Medium Bear'},
+            {'parent_name': 'Biggest Bear', 'child_name': 'Big Bear'},
+            {'parent_name': 'Medium Bear', 'child_name': 'Little Bear'},
+        ]
+        self.assertQueryOutputEquals(graphql_string, {}, expected_results)
+
     def test_depth_two_self_edge_out(self):
         graphql_string = '''
         {
@@ -438,7 +469,7 @@ class SqlQueryTests(unittest.TestCase):
             Animal {
                 name @output(out_name: "name")
                      @filter(op_name: "=", value: ["$bear_name"])
-                out_Animal_ParentOf @recurse(depth: 3){
+                out_Animal_ParentOf @recurse(depth: 4){
                     name @output(out_name: "descendant")
                 }
             }
@@ -1065,23 +1096,29 @@ class SqlQueryTests(unittest.TestCase):
         {
             Species {
                 name @output(out_name: "name")
-                     @filter(op_name: "=", value: ["$name"])
-                out_Species_Eats {
+                out_Species_Eats @optional {
                     ... on Species {
-                        name @output(out_name: "eaten_species")
+                        name @output(out_name: "eats")
                     
                     }
+                }
+                in_Species_Eats @optional {
+                    name @output(out_name: "eaten_by")
+                }
+                out_Species_EatenBy @optional {
+                    name @output(out_name: "eaten_by_other_way")
                 }
             }
         }
         '''
         expected_results = [
-            {'name': 'Bear', 'eaten_species': 'Rabbit'},
+            {'name': 'Bear', 'eats': 'Rabbit', 'eaten_by': None, 'eaten_by_other_way': None},
+            {'name': 'Wolf', 'eats': 'Rabbit', 'eaten_by': None, 'eaten_by_other_way': None},
+            # The foreign key for the alternative eaten_by relationship is only defined for bear
+            {'name': 'Rabbit', 'eats': None, 'eaten_by': 'Bear', 'eaten_by_other_way': 'Bear'},
+            {'name': 'Rabbit', 'eats': None, 'eaten_by': 'Wolf', 'eaten_by_other_way': 'Bear'},
         ]
-        params = {
-            '$name': 'Bear',
-        }
-        self.assertQueryOutputEquals(graphql_string, params, expected_results)
+        self.assertQueryOutputEquals(graphql_string, {}, expected_results)
 
     def test_many_to_many_junction_recursive(self):
         # recursion is very high below to make sure cycle detection is working

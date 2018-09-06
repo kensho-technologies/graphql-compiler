@@ -4,22 +4,9 @@ from enum import Enum
 
 from sqlalchemy.sql import functions
 
-from sqlalchemy import func, String, exc as sqlalchemy_exceptions
+from sqlalchemy import func, String
 
 from graphql_compiler import exceptions
-
-
-UNRESOLVABLE_JOIN_EXCEPTIONS = (
-    sqlalchemy_exceptions.AmbiguousForeignKeysError,
-    sqlalchemy_exceptions.NoForeignKeysError
-)
-
-
-class Cardinality(Enum):
-    SINGLE = 1
-    DUAL = 2
-    MANY = 3
-
 
 # These columns are reserved for the construction of recursive queries
 DEPTH_INTERNAL_NAME = u'__depth_internal_name'
@@ -35,16 +22,23 @@ class Operator:
         self.cardinality = cardinality
 
 
+class Cardinality(Enum):
+    """Cardinality for SQLAlchemy operators."""
+    UNARY = 1
+    BINARY = 2
+    LIST_VALUED = 3
+
+
 OPERATORS = {
-    u'contains': Operator(u'in_', Cardinality.MANY),
-    u'&&': Operator(u'and_', Cardinality.DUAL),
-    u'||': Operator(u'or_', Cardinality.DUAL),
-    u'=': Operator(u'__eq__', Cardinality.SINGLE),
-    u'<': Operator(u'__lt__', Cardinality.SINGLE),
-    u'>': Operator(u'__gt__', Cardinality.SINGLE),
-    u'<=': Operator(u'__le__', Cardinality.SINGLE),
-    u'>=': Operator(u'__ge__', Cardinality.SINGLE),
-    u'has_substring': Operator(u'contains', Cardinality.SINGLE),
+    u'contains': Operator(u'in_', Cardinality.LIST_VALUED),
+    u'&&': Operator(u'and_', Cardinality.BINARY),
+    u'||': Operator(u'or_', Cardinality.BINARY),
+    u'=': Operator(u'__eq__', Cardinality.UNARY),
+    u'<': Operator(u'__lt__', Cardinality.UNARY),
+    u'>': Operator(u'__gt__', Cardinality.UNARY),
+    u'<=': Operator(u'__le__', Cardinality.UNARY),
+    u'>=': Operator(u'__ge__', Cardinality.UNARY),
+    u'has_substring': Operator(u'contains', Cardinality.UNARY),
 }
 
 
