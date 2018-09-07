@@ -2,6 +2,7 @@
 import unittest
 
 import six
+from sqlalchemy import text
 
 from .. import exceptions
 from ..compiler import compile_graphql_to_sql
@@ -42,6 +43,12 @@ class SqlQueryTests(unittest.TestCase):
         )
         query = compilation_result.query
         return query
+
+    def test_sqlite(self):
+        list(self.engine.execute(text('SELECT 1')))
+
+    def test_sqlite_cte(self):
+        list(self.engine.execute(text('WITH result AS (SELECT 1 as num) SELECT num FROM result')))
 
     def test_basic_query(self):
         graphql_string = '''
