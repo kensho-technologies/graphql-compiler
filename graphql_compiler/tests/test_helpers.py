@@ -6,7 +6,7 @@ import re
 from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey, DateTime
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 
@@ -171,6 +171,16 @@ def get_schema():
             in_Animal_Eats: [Animal]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
+            out_Food_OfCuisine: [Cuisine]
+        }
+        type Cuisine implements Entity {
+            name: String
+            description: String
+            alias: [String]
+            uuid: ID
+            in_Entity_Related: [Entity]
+            out_Entity_Related: [Entity]
+            in_Food_OfCuisine: [Food]
         }
 
         union FoodOrSpecies = Food | Species
@@ -237,9 +247,50 @@ def create_sqlite_db():
         metadata,
         Column('animal_id', Integer, primary_key=True),
         Column('name', String(10), nullable=False),
-        Column('description', String(50), nullable=False),
+        Column('alias', String(50), nullable=False),
         Column('parentof_id', Integer, ForeignKey("animal.animal_id"), nullable=True),
         Column('bestfriend_id', Integer, ForeignKey("animal.animal_id"), nullable=True),
+    )
+    Table(
+        'event',
+        metadata,
+        Column('event_id', Integer, primary_key=True),
+        Column('event_date', DateTime, primary_key=True),
+    )
+    # This table has two pk's, which is incorrect
+    Table(
+        'animal_fedat',
+        metadata,
+        Column('animal_fedat_id', Integer, primary_key=True),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('fedat_id', Integer, ForeignKey("event.event_id")),
+    )
+    Table(
+        'birthevent',
+        metadata,
+        Column('birthevent_id', Integer, primary_key=True),
+        Column('event_date', DateTime),
+    )
+    # the important_event tables have ambiguous names, one uses the short junction table name
+    # and the other uses the long form with the union types type appended
+    Table(
+        'animal_importantevent',
+        metadata,
+        Column('importantevent_id', Integer, primary_key=True),
+    )
+    Table(
+        'animal_importantevent_birthevent',
+        metadata,
+        Column('importantevent_id', Integer, primary_key=True),
+    )
+
+    Table(
+        'animal_bornat',
+        metadata,
+        Column('animal_bornat_id', Integer, primary_key=True),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        # this column is an incorrect name, it should be "bornat_id"
+        Column('born_id', Integer, ForeignKey("birthevent.birthevent_id")),
     )
     location = Table(
         'location',
@@ -248,10 +299,10 @@ def create_sqlite_db():
         Column('livesin_id', Integer, ForeignKey("animal.animal_id")),
         Column('name', String(10))
     )
-    food_type = Table(
-        'food_type',
+    cuisine = Table(
+        'cuisine',
         metadata,
-        Column('food_type_id', Integer, primary_key=True),
+        Column('cuisine_id', Integer, primary_key=True),
         Column('name', String(10)),
     )
     food = Table(
@@ -259,7 +310,8 @@ def create_sqlite_db():
         metadata,
         Column('food_id', Integer, primary_key=True),
         Column('name', String(10)),
-        Column('food_type_id', Integer, ForeignKey("food_type.food_type_id"))
+        # This column is incorrectly named, it should be ofcuisine_id
+        Column('food_type_id', Integer, ForeignKey("cuisine.cuisine_id"))
     )
 
     species = Table(
@@ -349,7 +401,7 @@ def create_sqlite_db():
     tables_values = [
         (animal, animals),
         (location, locations),
-        (food_type, food_types),
+        (cuisine, food_types),
         (food, foods),
         (species, species_data),
         (animal_eats, animals_to_foods),

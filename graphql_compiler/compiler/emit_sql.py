@@ -111,7 +111,7 @@ def _get_node_selectable(node, context):
     """Return the selectable (Table, CTE) of a node."""
     query_path = node.query_path
     if query_path not in context.query_path_to_selectable:
-        raise AssertionError()
+        raise AssertionError(u'Unable to find selectable for query path {}'.format(query_path))
     selectable = context.query_path_to_selectable[query_path]
     return selectable
 
@@ -120,7 +120,7 @@ def _get_node_from_clause(node, context):
     """Return the from clause of a node."""
     query_path = node.query_path
     if query_path not in context.query_path_to_from_clause:
-        raise AssertionError()
+        raise AssertionError(u'Unable to find from clause for query path {}'.format(query_path))
     from_clause = context.query_path_to_from_clause[query_path]
     return from_clause
 
@@ -129,20 +129,22 @@ def _get_schema_type_name(node, context):
     """Return the GraphQL type name of a node."""
     query_path = node.query_path
     if query_path not in context.query_path_to_location_info:
-        raise AssertionError()
+        raise AssertionError(u'Unable to find type name for query path {}'.format(query_path))
     location_info = context.query_path_to_location_info[query_path]
     return location_info.type.name
 
 
 def _get_block_direction(block):
     if not isinstance(block, (blocks.Traverse, blocks.Recurse)):
-        raise AssertionError()
+        raise AssertionError(u'Attempting to get direction of block of type "{}"'.format(
+            type(block)))
     return block.direction
 
 
 def _get_block_edge_name(block):
     if not isinstance(block, (blocks.Traverse, blocks.Recurse)):
-        raise AssertionError()
+        raise AssertionError(u'Attempting to get edge name of block of type "{}"'.format(
+            type(block)))
     return block.edge_name
 
 
@@ -166,19 +168,22 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
         base_column_name = join_expression.join_to_junction_expression.left.name
         recursive_table = join_expression.junction_table
     else:
-        raise AssertionError()
-    base_column = selectable.c[base_column_name]
+        raise AssertionError(
+            u'Unknown JOIN expression of type "{}" encountered for recursive clause.'.format(
+                type(join_expression)))
+    base_column = _get_column(selectable, base_column_name)
     if _get_block_direction(node.block) == INBOUND_EDGE_DIRECTION:
         left_column_name, right_column_name = right_column_name, left_column_name
 
-    parent_cte_column = outer_cte.c[out_link_column.name]
+    parent_cte_column = _get_column(outer_cte, out_link_column.name)
     anchor_query = (
         select(
             [
-                selectable.c[base_column_name].label(left_column_name),
-                selectable.c[base_column_name].label(right_column_name),
+                base_column.label(left_column_name),
+                base_column.label(right_column_name),
                 literal_column('0').label(constants.DEPTH_INTERNAL_NAME),
                 cast(base_column, String()).concat(',').label(constants.PATH_INTERNAL_NAME),
+                literal_column('0').label(constants.CYCLE_DETECTED_INTERNAL_NAME)
             ],
             distinct=True)
         .select_from(
@@ -192,48 +197,49 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
     recursive_query = (
         select(
             [
-                recursive_table.c[left_column_name],
-                recursive_cte.c[right_column_name],
-                ((recursive_cte.c[constants.DEPTH_INTERNAL_NAME] + 1)
+                _get_column(recursive_table, left_column_name),
+                _get_column(recursive_cte, right_column_name),
+                ((_get_column(recursive_cte, constants.DEPTH_INTERNAL_NAME) + 1)
                  .label(constants.DEPTH_INTERNAL_NAME)),
-                (recursive_cte.c[constants.PATH_INTERNAL_NAME]
-                 .concat(cast(recursive_table.c[left_column_name], String()))
+                (_get_column(recursive_cte, constants.PATH_INTERNAL_NAME)
+                 .concat(cast(_get_column(recursive_table, left_column_name), String()))
                  .concat(',')
                  .label(constants.PATH_INTERNAL_NAME)),
+                case(
+                    [((_get_column(recursive_cte, constants.CYCLE_DETECTED_INTERNAL_NAME) == 1), 1),
+                     (_get_column(recursive_cte, constants.PATH_INTERNAL_NAME).contains(
+                            cast(_get_column(recursive_table, left_column_name), String())), 1)],
+                    else_=0
+                )
             ]
         )
         .select_from(
             recursive_table.join(
                 recursive_cte,
-                recursive_table.c[right_column_name] == recursive_cte.c[left_column_name]
+                _get_column(recursive_table, right_column_name) ==
+                _get_column(recursive_cte, left_column_name)
             )
         ).where(and_(
-            recursive_cte.c[constants.DEPTH_INTERNAL_NAME] < node.block.depth,
-            case(
-                [(recursive_cte.c[constants.PATH_INTERNAL_NAME]
-                  .contains(cast(recursive_table.c[left_column_name], String())), 1)],
-                else_=0
-            ) == 0
+            _get_column(recursive_cte, constants.DEPTH_INTERNAL_NAME) < node.block.depth,
+            (_get_column(recursive_cte, constants.CYCLE_DETECTED_INTERNAL_NAME) == 0)
         ))
     )
     recursion_combinator = context.compiler_metadata.db_backend.recursion_combinator
     if not hasattr(recursive_cte, recursion_combinator):
         raise AssertionError(
             'Cannot combine anchor and recursive clauses with operation "{}"'.format(
-                recursion_combinator
-            )
-        )
+                recursion_combinator))
     recursive_query = getattr(recursive_cte, recursion_combinator)(recursive_query)
     from_clause = _get_node_from_clause(node, context)
     from_clause = from_clause.join(
         recursive_query,
-        selectable.c[base_column_name] == recursive_query.c[left_column_name]
+        _get_column(selectable, base_column_name) == _get_column(recursive_query, left_column_name)
     )
     from_clause = from_clause.join(
-        outer_cte, recursive_query.c[right_column_name] == parent_cte_column
+        outer_cte, _get_column(recursive_query, right_column_name) == parent_cte_column
     )
     context.query_path_to_from_clause[node.query_path] = from_clause
-    out_link_column = recursive_query.c[right_column_name].label(None)
+    out_link_column = _get_column(recursive_query, right_column_name).label(None)
     (in_col, _) = context.query_path_to_recursion_columns[node.query_path]
     context.query_path_to_recursion_columns[node.query_path] = (in_col, out_link_column)
     return out_link_column
@@ -306,15 +312,17 @@ def _create_link_for_recursion(node, recursion_node, context):
     selectable = _get_node_selectable(node, context)
     # pre-populate the recursive nodes selectable for the purpose of computing the join
     _create_and_reference_table(recursion_node, context)
-    edge = _get_node_join_expression(recursion_node.parent, recursion_node, context)
+    join_expression = _get_node_join_expression(recursion_node.parent, recursion_node, context)
     # the left side of the expression is the column from the node that is later needed to join to
     recursion_in_col = None
-    if isinstance(edge, ManyToManyJoin):
-        recursion_in_col = selectable.c[edge.join_to_junction_expression.left.name]
-    elif isinstance(edge, sql_expressions.BinaryExpression):
-        recursion_in_col = selectable.c[edge.right.name]
+    if isinstance(join_expression, ManyToManyJoin):
+        recursion_in_col = _get_column(selectable, join_expression.join_to_junction_expression.left.name)
+    elif isinstance(join_expression, sql_expressions.BinaryExpression):
+        recursion_in_col = _get_column(selectable, join_expression.right.name)
     else:
-        raise AssertionError()
+        raise AssertionError(
+            u'Unknown JOIN expression of type "{}" encountered for recursive link.'.format(
+                type(join_expression)))
     return recursion_in_col
 
 
@@ -332,10 +340,15 @@ def _get_output_columns(node, is_final_query, context):
     for field_alias, (field, field_type, is_renamed) in six.iteritems(output_fields):
         selectable = context.query_path_to_selectable[field.location.query_path]
         if is_renamed:
-            column = selectable.c[field_alias]
+            column = _get_column(selectable, field_alias)
         else:
             field_name = field.location.field
-            column = selectable.c[field_name].label(field_alias)
+            column = _try_get_column(selectable, field_name)
+            if column is None:
+                raise exceptions.GraphQLCompilationError(
+                    u'Field "{}" was not found on table "{}"'.format(
+                        field_name, selectable.original))
+            column = column.label(field_alias)
             output_fields[field_alias] = (field, field_type, True)
             context.query_path_field_renames[field.location.query_path][field_name] = field_alias
         columns.append(column)
@@ -344,7 +357,7 @@ def _get_output_columns(node, is_final_query, context):
         for tag_field in context.query_path_to_tag_fields[node.query_path]:
             selectable = context.query_path_to_selectable[tag_field.location.query_path]
             field_name = tag_field.location.field
-            column = selectable.c[field_name].label(None)
+            column = _get_column(selectable, field_name).label(None)
             columns.append(column)
             field_renames = context.query_path_field_renames[tag_field.location.query_path]
             field_renames[field_name] = column.name
@@ -397,7 +410,7 @@ def _expression_to_sql(expression, selectable, location_info, context):
     """Recursively convert a compiler predicate to it's SQLAlchemy expression representation."""
     if isinstance(expression, expressions.LocalField):
         column_name = expression.field_name
-        column = selectable.c[column_name]
+        column = _get_column(selectable, column_name)
         return column
     if isinstance(expression, expressions.Variable):
         variable_name = expression.variable_name
@@ -412,16 +425,19 @@ def _expression_to_sql(expression, selectable, location_info, context):
             if tag_field_name in context.query_path_field_renames[tag_query_path]:
                 tag_column_name = context.query_path_field_renames[tag_query_path][tag_field_name]
         tag_selectable = context.query_path_to_selectable[tag_query_path]
-        tag_column = tag_selectable.c[tag_column_name]
+        tag_column = _get_column(tag_selectable, tag_column_name)
         return tag_column
     if isinstance(expression, expressions.BinaryComposition):
+        if expression.operator in constants.UNSUPPORTED_OPERATOR_NAMES:
+            raise exceptions.GraphQLNotSupportedByBackendError(
+                u'Filter operation "{}" is not supported by the SQL backend.'.format(
+                    expression.operator))
         sql_operator = constants.OPERATORS[expression.operator]
         left = _expression_to_sql(expression.left, selectable, location_info, context)
         right = _expression_to_sql(expression.right, selectable, location_info, context)
         if sql_operator.cardinality == constants.Cardinality.UNARY:
-            if right is None and left is None:
-                raise AssertionError()
-            if left is None and right is not None:
+            # ensure the operator is grabbed from the Column object
+            if not isinstance(left, Column) and isinstance(right, Column):
                 left, right = right, left
             clause = getattr(left, sql_operator.name)(right)
             return clause
@@ -429,16 +445,39 @@ def _expression_to_sql(expression, selectable, location_info, context):
             clause = getattr(sql_expressions, sql_operator.name)(left, right)
             return clause
         if sql_operator.cardinality == constants.Cardinality.LIST_VALUED:
-            if not isinstance(left, BindParameter):
-                raise AssertionError()
-            if not isinstance(right, Column):
-                raise AssertionError()
-            # ensure that SQLAlchemy will accept a list/tuple valued parameter for the left side
-            left.expanding = True
-            clause = getattr(right, sql_operator.name)(left)
+            if isinstance(left, BindParameter) and isinstance(right, Column):
+                left, right = right, left
+            if not isinstance(right, BindParameter):
+                raise AssertionError(
+                    u'List valued operator expects column as left side of expression')
+            if not isinstance(left, Column):
+                raise AssertionError(
+                    u'List valued operator expects bind parameter as right side of expression')
+            # ensure that SQLAlchemy treats the left bind parameter as list valued
+            right.expanding = True
+            clause = getattr(left, sql_operator.name)(right)
             return clause
-        raise AssertionError()
-    raise AssertionError()
+        raise AssertionError(u'Unknown operator cardinality {}'.format(sql_operator.cardinality))
+    raise AssertionError(u'Unknown expression "{}" cannot be converted to SQL expression'.format(
+        type(expression)))
+
+
+def _get_column(selectable, column_name):
+    column = _try_get_column(selectable, column_name)
+    if column is None:
+        raise AssertionError(
+            u'Column "{}" not found in selectable "{}". Columns present are {}'.format(
+                column_name, selectable, [column.name for column in selectable.c]))
+    return column
+
+
+def _try_get_column(selectable, column_name):
+    if not hasattr(selectable, 'c'):
+        raise AssertionError(u'Selectable "{}" does not have a column collection.'.format(
+            selectable))
+    if column_name not in selectable.c:
+        return None
+    return selectable.c[column_name]
 
 
 def _get_recursive_node_join_expression(node, recursive_node, in_column, out_column, context):
@@ -551,6 +590,14 @@ def _try_get_many_to_many_join_expression(outer_node, inner_node, context):
         outer_selectable, outer_pk_name, junction_table, inner_column_name)
     join_from_junction_expression = _get_selectable_join_expression(
         junction_table, outer_column_name, inner_selectable, inner_pk_name)
+    if join_to_junction_expression is None or join_from_junction_expression is None:
+        raise exceptions.GraphQLCompilationError(
+            (u'Junction table "{}" is expected to have foreign key "{}" to column "{}" of table '
+             u'"{}" and foreign key "{}" to column "{}" of table "{}".').format(
+                junction_table.original, inner_column_name, outer_pk_name, outer_selectable.original,
+                outer_column_name, inner_pk_name, inner_selectable.original
+            )
+        )
     return ManyToManyJoin(
         join_to_junction_expression, junction_table, join_from_junction_expression)
 
@@ -562,14 +609,13 @@ def _get_column_names_for_edge(edge_name):
     inner_column_name = u'{column_prefix}_id'.format(column_prefix=inner_prefix)
     return outer_column_name, inner_column_name
 
-
 def _get_selectable_join_expression(outer_selectable, outer_name, inner_selectable, inner_name):
     """Get a join expression between two selectables with the designated column names.
 
     Return None if such an expression does not exist.
     """
-    if not hasattr(outer_selectable.c, outer_name):
+    outer_column = _try_get_column(outer_selectable, outer_name)
+    inner_column = _try_get_column(inner_selectable, inner_name)
+    if outer_column is None or inner_column is None:
         return None
-    if not hasattr(inner_selectable.c, inner_name):
-        return None
-    return outer_selectable.c[outer_name] == inner_selectable.c[inner_name]
+    return outer_column == inner_column

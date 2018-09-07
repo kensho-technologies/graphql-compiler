@@ -91,6 +91,7 @@ def compile_graphql_to_sql(schema, graphql_string, compiler_metadata, type_equiv
     Args:
         schema: GraphQL schema object describing the schema of the graph to be queried
         graphql_string: the GraphQL query to compile to SQL, as a string
+        compiler_metadata: SQLAlchemy metadata containing tables for use during compilation.
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
                                 Used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a

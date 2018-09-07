@@ -2,8 +2,9 @@
 import six
 from collections import defaultdict
 
+from ... import exceptions
 from ...compiler import blocks, expressions
-from .constants import RESERVED_COLUMN_NAMES
+from .constants import RESERVED_COLUMN_NAMES, UNSUPPORTED_META_FIELDS
 from .sql_tree import SqlNode, SqlQueryTree
 
 ##############
@@ -46,6 +47,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     construct_result = ir_blocks.pop()
     construct_result = lower_construct_result(construct_result)
     block_index_to_location = get_block_index_to_location_map(ir_blocks)
+    ir_blocks = lower_unary_transformations(ir_blocks)
     ir_blocks = lower_context_field_existence(ir_blocks)
     ir_blocks = lower_optional_fields(
         ir_blocks, block_index_to_location, query_path_to_location_info)
@@ -102,6 +104,10 @@ def assign_output_fields_to_nodes(construct_result, location_types):
     for field_alias, field in six.iteritems(construct_result.fields):
         if field_alias in RESERVED_COLUMN_NAMES:
             raise AssertionError
+        field_name = field.location.field
+        if field_name in UNSUPPORTED_META_FIELDS:
+            raise exceptions.GraphQLNotSupportedByBackendError(
+                u'"{}" is unsupported for output.'.format(UNSUPPORTED_META_FIELDS[field_name]))
         output_query_path = field.location.query_path
         output_field_info = (field, location_types[output_query_path], False)
         query_path_to_output_fields[output_query_path][field_alias] = output_field_info
@@ -135,75 +141,16 @@ def lower_construct_result(construct_result):
     return construct_result.visit_and_update_expressions(visitor_fn)
 
 
-def lower_context_field_existence(ir_blocks):
-    """Lower ContextFieldExistence blocks emerging from the use of tags in optional scopes."""
+def lower_unary_transformations(ir_blocks):
+    """Raise errors if any unary transformation block encountered."""
     def visitor_fn(expression):
-        """Rewrite predicates wrapping ContextFieldExistence expressions.
-
-        This applies to BinaryCompositions of the form:
-
-            BinaryComposition(
-                '||',
-                BinaryComposition(
-                    op,
-                    ContextFieldExistence(...),
-                    Literal(False),
-                ),
-                BinaryComposition(
-                    op,
-                    LocalField(...)
-                    ContextField(...),
-                )
-            )
-
-
-        Rewriting them to:
-
-            BinaryComposition(
-                '||',
-                BinaryComposition(
-                    '=',
-                    Literal(None)
-                    ContextField(..._
-                )
-                BinaryComposition(
-                    op,
-                    LocalField(...)
-                    ContextField(...),
-                )
-            )
-
-        so that a ContextFieldExistence is rewritten to checking if the ContextField is None
-        or if the right predicate involving the ContextField holds.
-        """
-        if not isinstance(expression, expressions.BinaryComposition):
+        """Raise error if current expression is a UnaryTransformation."""
+        if not isinstance(expression, expressions.UnaryTransformation):
             return expression
-        if not expression.operator == '||':
-            return expression
-        if not isinstance(expression.left, expressions.BinaryComposition):
-            return expression
-        if not isinstance(expression.left.left, expressions.ContextFieldExistence):
-            return expression
-        if not isinstance(expression.left.right, expressions.Literal):
-            return expression
-        if not expression.left.right.value == False:  # noqa: E712
-            return expression
-        if not isinstance(expression.right, expressions.BinaryComposition):
-            return expression
-        if not isinstance(expression.right.right, expressions.ContextField):
-            return expression
-        if not isinstance(expression.right.left, expressions.LocalField):
-            return expression
-
-        return expressions.BinaryComposition(
-            '||',
-            expressions.BinaryComposition(
-                '=',
-                expressions.Literal(None),
-                expression.right.right
-            ),
-            expression.right,
+        raise exceptions.GraphQLNotSupportedByBackendError(
+            u'has_edge_degree filter operation is unsupported by SQL backend.'
         )
+
     new_ir_blocks = [
         block.visit_and_update_expressions(visitor_fn)
         for block in ir_blocks
@@ -256,4 +203,60 @@ def lower_optional_fields(ir_blocks, block_index_to_location, query_path_to_loca
         new_ir_blocks.append(
             block.visit_and_update_expressions(visitor_fn)
         )
+    return new_ir_blocks
+
+
+def lower_context_field_existence(ir_blocks):
+    """Lower ContextFieldExistence blocks emerging from the use of tags in optional scopes."""
+    def visitor_fn(expression):
+        """Rewrite predicates wrapping ContextFieldExistence expressions.
+
+        This applies to BinaryCompositions of the form:
+
+            BinaryComposition(
+                '||',
+                BinaryComposition(
+                    op,
+                    ContextFieldExistence(...),
+                    Literal(False),
+                ),
+                BinaryComposition(
+                    op,
+                    LocalField(...)
+                    ContextField(...),
+                )
+            )
+        """
+        if not isinstance(expression, expressions.BinaryComposition):
+            return expression
+        if not expression.operator == '||':
+            return expression
+        if not isinstance(expression.left, expressions.BinaryComposition):
+            return expression
+        if not isinstance(expression.left.left, expressions.ContextFieldExistence):
+            return expression
+        if not isinstance(expression.left.right, expressions.Literal):
+            return expression
+        if not expression.left.right.value == False:  # noqa: E712
+            return expression
+        if not isinstance(expression.right, expressions.BinaryComposition):
+            return expression
+        if not isinstance(expression.right.right, expressions.ContextField):
+            return expression
+        if not isinstance(expression.right.left, expressions.LocalField):
+            return expression
+
+        return expressions.BinaryComposition(
+            '||',
+            expressions.BinaryComposition(
+                '=',
+                expressions.Literal(None),
+                expression.right.right
+            ),
+            expression.right,
+        )
+    new_ir_blocks = [
+        block.visit_and_update_expressions(visitor_fn)
+        for block in ir_blocks
+    ]
     return new_ir_blocks

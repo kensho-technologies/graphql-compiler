@@ -12,7 +12,17 @@ from ... import exceptions
 DEPTH_INTERNAL_NAME = u'__depth_internal_name'
 PATH_INTERNAL_NAME = u'__path_internal_name'
 LINK_INTERNAL_NAME = u'__link_internal_name'
-RESERVED_COLUMN_NAMES = {DEPTH_INTERNAL_NAME, PATH_INTERNAL_NAME, LINK_INTERNAL_NAME}
+CYCLE_DETECTED_INTERNAL_NAME = u'__cycle_detected_internal_name'
+RESERVED_COLUMN_NAMES = {
+    DEPTH_INTERNAL_NAME,
+    PATH_INTERNAL_NAME,
+    LINK_INTERNAL_NAME,
+    CYCLE_DETECTED_INTERNAL_NAME,
+}
+
+UNSUPPORTED_META_FIELDS = {
+    u'@class': u'__typename'
+}
 
 
 class Operator:
@@ -40,6 +50,11 @@ OPERATORS = {
     u'<=': Operator(u'__le__', Cardinality.UNARY),
     u'>=': Operator(u'__ge__', Cardinality.UNARY),
     u'has_substring': Operator(u'contains', Cardinality.UNARY),
+}
+
+UNSUPPORTED_OPERATOR_NAMES = {
+    u'intersects',
+    u'has_edge_degree',
 }
 
 
