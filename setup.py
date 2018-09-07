@@ -54,6 +54,7 @@ setup(name=find_name(),
           'graphql-core==1.1',
           'pytz>=2016.10',
           'six>=1.10.0',
+          'sqlalchemy>=1.2.1',
       ],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
