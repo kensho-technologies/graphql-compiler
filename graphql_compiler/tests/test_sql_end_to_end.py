@@ -85,6 +85,18 @@ class SqlQueryTests(unittest.TestCase):
         with self.assertRaises(exceptions.GraphQLCompilationError):
             self.compile_query(graphql_string)
 
+    def test_reserved_column_name_used_error(self):
+        # color is not a column on the animal table
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "__depth_internal_name")
+            }
+        }
+        '''
+        with self.assertRaises(exceptions.GraphQLCompilationError):
+            self.compile_query(graphql_string)
+
     def test_unsupported_filter(self):
         # color is not a column on the animal table
         graphql_string = '''

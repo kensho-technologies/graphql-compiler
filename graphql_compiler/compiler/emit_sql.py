@@ -609,6 +609,7 @@ def _get_column_names_for_edge(edge_name):
     inner_column_name = u'{column_prefix}_id'.format(column_prefix=inner_prefix)
     return outer_column_name, inner_column_name
 
+
 def _get_selectable_join_expression(outer_selectable, outer_name, inner_selectable, inner_name):
     """Get a join expression between two selectables with the designated column names.
 

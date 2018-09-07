@@ -6,7 +6,7 @@ import re
 from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, MetaData, String, Table, create_engine
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 

@@ -62,7 +62,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
             query_path = location.query_path
             if tree_root is None:
                 if not isinstance(block, blocks.QueryRoot):
-                    raise AssertionError
+                    raise AssertionError(u'Encountered QueryRoot but tree root is already set.')
                 tree_root = SqlNode(block=block, query_path=query_path)
                 query_path_to_node[query_path] = tree_root
             else:
@@ -103,7 +103,9 @@ def assign_output_fields_to_nodes(construct_result, location_types):
     query_path_to_output_fields = defaultdict(dict)
     for field_alias, field in six.iteritems(construct_result.fields):
         if field_alias in RESERVED_COLUMN_NAMES:
-            raise AssertionError
+            raise exceptions.GraphQLCompilationError(
+                u'Column name "{}" is reserved and cannot be used in output directive.'.format(
+                    field_alias))
         field_name = field.location.field
         if field_name in UNSUPPORTED_META_FIELDS:
             raise exceptions.GraphQLNotSupportedByBackendError(
