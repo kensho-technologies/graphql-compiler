@@ -6,9 +6,8 @@ from .. import graphql_to_gremlin, graphql_to_match
 from ..compiler import compile_graphql_to_gremlin, compile_graphql_to_match
 from ..exceptions import GraphQLInvalidArgumentError
 from ..query_formatting import insert_arguments_into_query
-from .test_helpers import (
-    compare_gremlin, compare_match, get_schema
-)
+from .test_helpers import compare_gremlin, compare_match, get_schema
+
 
 EXAMPLE_GRAPHQL_QUERY = '''{
     Animal @filter(op_name: "name_or_alias", value: ["$wanted_name"]) {
@@ -154,5 +153,3 @@ class QueryFormattingTests(unittest.TestCase):
 
             with self.assertRaises(GraphQLInvalidArgumentError):
                 graphql_to_gremlin(schema, EXAMPLE_GRAPHQL_QUERY, {})
-
-

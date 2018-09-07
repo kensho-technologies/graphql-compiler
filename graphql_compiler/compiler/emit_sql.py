@@ -316,7 +316,8 @@ def _create_link_for_recursion(node, recursion_node, context):
     # the left side of the expression is the column from the node that is later needed to join to
     recursion_in_col = None
     if isinstance(join_expression, ManyToManyJoin):
-        recursion_in_col = _get_column(selectable, join_expression.join_to_junction_expression.left.name)
+        recursion_in_col = _get_column(
+            selectable, join_expression.join_to_junction_expression.left.name)
     elif isinstance(join_expression, sql_expressions.BinaryExpression):
         recursion_in_col = _get_column(selectable, join_expression.right.name)
     else:
@@ -594,8 +595,9 @@ def _try_get_many_to_many_join_expression(outer_node, inner_node, context):
         raise exceptions.GraphQLCompilationError(
             (u'Junction table "{}" is expected to have foreign key "{}" to column "{}" of table '
              u'"{}" and foreign key "{}" to column "{}" of table "{}".').format(
-                junction_table.original, inner_column_name, outer_pk_name, outer_selectable.original,
-                outer_column_name, inner_pk_name, inner_selectable.original
+                junction_table.original, inner_column_name, outer_pk_name,
+                outer_selectable.original, outer_column_name, inner_pk_name,
+                inner_selectable.original
             )
         )
     return ManyToManyJoin(

@@ -1044,7 +1044,7 @@ class SqlQueryTests(unittest.TestCase):
                         out_Animal_Eats @optional {
                             ... on Food {
                                 name @output(out_name: "ancestor_or_ancestor_child_eats")
-                                     @filter(op_name: "has_substring", value: ["$eats_substring"]) 
+                                     @filter(op_name: "has_substring", value: ["$eats_substring"])
                             }
                         }
                     }

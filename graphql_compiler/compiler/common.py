@@ -1,8 +1,8 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from collections import namedtuple
 
-from . import ir_lowering_sql, emit_sql
-from . import emit_gremlin, emit_match, ir_lowering_gremlin, ir_lowering_match
+from . import (emit_gremlin, emit_match, emit_sql, ir_lowering_gremlin, ir_lowering_match,
+               ir_lowering_sql)
 from .compiler_frontend import graphql_to_ir
 
 
