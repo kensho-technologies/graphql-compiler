@@ -2,13 +2,10 @@ import unittest
 
 import six
 
-from graphql_compiler import exceptions
-from graphql_compiler.compiler import compile_graphql_to_sql
-from graphql_compiler.compiler.ir_lowering_sql.metadata import CompilerMetadata
-from graphql_compiler.tests.test_helpers import (
-    create_sqlite_db,
-    get_schema
-)
+from .. import exceptions
+from ..compiler import compile_graphql_to_sql
+from ..compiler.ir_lowering_sql.metadata import CompilerMetadata
+from ..tests.test_helpers import create_sqlite_db, get_schema
 
 
 class SqlQueryTests(unittest.TestCase):
@@ -33,10 +30,13 @@ class SqlQueryTests(unittest.TestCase):
         sort_order = []
         if len(expected_results) > 0:
             sort_order = sorted(six.iterkeys(expected_results[0]))
-        # sort by True/False for None/Not None to avoid comparisons to None to a non None type
-        key = lambda result: tuple((result[col] is not None, result[col]) for col in sort_order)
-        results = sorted(results, key=key)
-        expected_results = sorted(expected_results, key=key)
+
+        def sort_key(result):
+            """Convert None/Not None to avoid comparisons to None to a non None type"""
+            return tuple((result[col] is not None, result[col]) for col in sort_order)
+
+        results = sorted(results, key=sort_key)
+        expected_results = sorted(expected_results, key=sort_key)
         self.assertListEqual(expected_results, results)
 
     def test_basic_query(self):
@@ -615,6 +615,52 @@ class SqlQueryTests(unittest.TestCase):
         ]
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
+    def test_nested_optional(self):
+        graphql_string = '''{
+            Animal {
+                name @output(out_name: "animal_name")
+                in_Animal_ParentOf @optional {
+                    name @output(out_name: "parent_name")
+                    out_Animal_ParentOf @optional {
+                        name @output(out_name: "animal_name_again")
+                        out_Animal_OfSpecies @optional {
+                            name @output(out_name: "animal_species")
+                                 @filter(op_name: "has_substring", value: ["$species_substring"])
+                        }
+                    }
+                }
+            }
+        }'''
+        params = {'$species_substring': 'ear'}
+        expected_results = [
+            {
+                'animal_name': 'Biggest Bear',
+                'parent_name': None,
+                'animal_name_again': None,
+                'animal_species': None,
+            },
+            {
+                'animal_name': 'Big Bear',
+                'parent_name': 'Biggest Bear',
+                'animal_name_again': 'Big Bear',
+                'animal_species': 'Bear'
+            },
+            {
+                'animal_name': 'Medium Bear',
+                'parent_name': 'Big Bear',
+                'animal_name_again': 'Medium Bear',
+                'animal_species': 'Bear'
+            },
+            # little bear does not have a species recorded
+            {
+                'animal_name': 'Little Bear',
+                'parent_name': 'Medium Bear',
+                'animal_name_again': 'Little Bear',
+                'animal_species': None,
+            },
+        ]
+        self.assertQueryOutputEquals(graphql_string, params, expected_results)
+
     def test_nested_recurse_with_tag_junction(self):
         graphql_string = '''
         {
@@ -672,7 +718,6 @@ class SqlQueryTests(unittest.TestCase):
             {'name': 'Little Bear', 'descendant': 'Little Bear', 'ancestor': 'Medium Bear'},
         ]
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
-
 
     def test_basic_in_edge(self):
         graphql_string = '''
@@ -1099,7 +1144,6 @@ class SqlQueryTests(unittest.TestCase):
                 out_Species_Eats @optional {
                     ... on Species {
                         name @output(out_name: "eats")
-                    
                     }
                 }
                 in_Species_Eats @optional {
@@ -1193,7 +1237,6 @@ class SqlQueryTests(unittest.TestCase):
                                          @tag(tag_name: "friend_of_friend_of_friend_eats")
                                 }
                             }
-                        
                         }
                     }
                 }

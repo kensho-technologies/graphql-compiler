@@ -2,11 +2,11 @@
 from collections import namedtuple
 from enum import Enum
 
+from sqlalchemy import String, func
 from sqlalchemy.sql import functions
 
-from sqlalchemy import func, String
+from ... import exceptions
 
-from graphql_compiler import exceptions
 
 # These columns are reserved for the construction of recursive queries
 DEPTH_INTERNAL_NAME = u'__depth_internal_name'
@@ -24,6 +24,7 @@ class Operator:
 
 class Cardinality(Enum):
     """Cardinality for SQLAlchemy operators."""
+
     UNARY = 1
     BINARY = 2
     LIST_VALUED = 3

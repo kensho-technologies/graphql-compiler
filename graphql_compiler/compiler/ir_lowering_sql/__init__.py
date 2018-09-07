@@ -2,9 +2,9 @@
 import six
 from collections import defaultdict
 
-from graphql_compiler.compiler import blocks, expressions
-from graphql_compiler.compiler.ir_lowering_sql.constants import RESERVED_COLUMN_NAMES
-from graphql_compiler.compiler.ir_lowering_sql.sql_tree import SqlNode, SqlQueryTree
+from ...compiler import blocks, expressions
+from .constants import RESERVED_COLUMN_NAMES
+from .sql_tree import SqlNode, SqlQueryTree
 
 ##############
 # Public API #
@@ -136,6 +136,7 @@ def lower_construct_result(construct_result):
 
 
 def lower_context_field_existence(ir_blocks):
+    """Lower ContextFieldExistence blocks emerging from the use of tags in optional scopes."""
     def visitor_fn(expression):
         """Rewrite predicates wrapping ContextFieldExistence expressions.
 
@@ -185,7 +186,7 @@ def lower_context_field_existence(ir_blocks):
             return expression
         if not isinstance(expression.left.right, expressions.Literal):
             return expression
-        if not expression.left.right.value == False:
+        if not expression.left.right.value == False:  # noqa: E712
             return expression
         if not isinstance(expression.right, expressions.BinaryComposition):
             return expression
@@ -212,7 +213,6 @@ def lower_context_field_existence(ir_blocks):
 
 def lower_optional_fields(ir_blocks, block_index_to_location, query_path_to_location_info):
     """Lowering step for Filter blocks in an optional scope."""
-
     def rewrite_optional(expression):
         """Rewrite optional predicates to support the compiler's semantics.
 
@@ -257,8 +257,3 @@ def lower_optional_fields(ir_blocks, block_index_to_location, query_path_to_loca
             block.visit_and_update_expressions(visitor_fn)
         )
     return new_ir_blocks
-
-
-
-
-

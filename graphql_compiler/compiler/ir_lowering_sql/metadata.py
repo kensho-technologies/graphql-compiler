@@ -1,5 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
-from graphql_compiler import exceptions
+from ... import exceptions
 from .constants import SqlBackend
 
 

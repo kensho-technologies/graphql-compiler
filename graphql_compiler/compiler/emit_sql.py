@@ -1,14 +1,13 @@
 # Copyright 2018-present Kensho Technologies, LLC.
-from collections import namedtuple, defaultdict
+from collections import defaultdict, namedtuple
 
 import six
-from sqlalchemy import select, and_, literal_column, cast, String, case, bindparam, Column
+from sqlalchemy import Column, String, and_, bindparam, case, cast, literal_column, select
+from sqlalchemy.sql import expression as sql_expressions
 from sqlalchemy.sql.elements import BindParameter
 
 from graphql_compiler import exceptions
 from graphql_compiler.compiler import blocks, expressions
-from sqlalchemy.sql import expression as sql_expressions
-
 from graphql_compiler.compiler.helpers import INBOUND_EDGE_DIRECTION
 from graphql_compiler.compiler.ir_lowering_sql import constants
 

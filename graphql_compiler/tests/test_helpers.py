@@ -285,6 +285,13 @@ def create_sqlite_db():
         Column('animal_id', Integer, ForeignKey("animal.animal_id")),
         Column('friendswith_id', Integer, ForeignKey("animal.animal_id")),
     )
+    animal_to_species_table = Table(
+        'animal_ofspecies',
+        metadata,
+        Column('animal_ofspecies_id', Integer, primary_key=True),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('ofspecies_id', Integer, ForeignKey("animal.animal_id")),
+    )
     metadata.create_all(engine)
     animals = [
         (1, 'Big Bear', 'The second biggest bear.', 3),
@@ -333,6 +340,12 @@ def create_sqlite_db():
         (23, 'Wolf', 22, None),
         (22, 'Rabbit', None, 24)
     ]
+
+    animal_to_species = [
+        (25, 1, 24),
+        (27, 3, 24),
+        (28, 4, 24),
+    ]
     tables_values = [
         (animal, animals),
         (location, locations),
@@ -341,6 +354,7 @@ def create_sqlite_db():
         (species, species_data),
         (animal_eats, animals_to_foods),
         (animal_to_friend, animals_to_friends),
+        (animal_to_species_table, animal_to_species)
     ]
 
     for table, vals in tables_values:
