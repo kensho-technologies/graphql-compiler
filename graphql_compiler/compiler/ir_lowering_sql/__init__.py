@@ -231,7 +231,7 @@ def lower_context_field_existence(ir_blocks):
         """
         if not isinstance(expression, expressions.BinaryComposition):
             return expression
-        if not expression.operator == '||':
+        if not expression.operator == u'||':
             return expression
         if not isinstance(expression.left, expressions.BinaryComposition):
             return expression
@@ -249,9 +249,9 @@ def lower_context_field_existence(ir_blocks):
             return expression
 
         return expressions.BinaryComposition(
-            '||',
+            u'||',
             expressions.BinaryComposition(
-                '=',
+                u'=',
                 expressions.Literal(None),
                 expression.right.right
             ),
