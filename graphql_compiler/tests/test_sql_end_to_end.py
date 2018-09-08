@@ -53,7 +53,7 @@ class SqlQueryTests(unittest.TestCase):
 
     def test_sqlite_version(self):
         # this is the version of Sqlite that introduced CTEs
-        self.assertGreater(sqlite3.sqlite_version_info, (3, 8, 3))
+        self.assertGreaterEqual(sqlite3.sqlite_version_info, (3, 8, 3))
 
     def test_basic_query(self):
         graphql_string = '''
