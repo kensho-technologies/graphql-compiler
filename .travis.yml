@@ -4,6 +4,12 @@ cache: pip
 python:
   - "2.7"
   - "3.6"
+addons:
+  apt:
+    sources:
+      - travis-ci/sqlite3
+    packages:
+      - sqlite3
 services:
   - docker
 install:
