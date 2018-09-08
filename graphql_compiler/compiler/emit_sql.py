@@ -468,7 +468,7 @@ def _get_column(selectable, column_name):
     if column is None:
         raise AssertionError(
             u'Column "{}" not found in selectable "{}". Columns present are {}'.format(
-                column_name, selectable, [column.name for column in selectable.c]))
+                column_name, selectable, [col.name for col in selectable.c]))
     return column
 
 
