@@ -3184,6 +3184,45 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_no_op_coercion_with_eligible_subpath(self):
+        test_data = test_input_data.no_op_coercion_with_eligible_subpath()
+
+        expected_match = '''
+            SELECT Animal__out_Animal_ParentOf__out_Animal_ParentOf___1.name
+                AS `animal_name` FROM (MATCH {{
+                as: Animal___1
+            }}.out('Animal_ParentOf') {{
+                as: Animal__out_Animal_ParentOf___1
+            }}.out('Animal_ParentOf') {{
+                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
+            }} , {{
+                as: Animal__out_Animal_ParentOf___1
+            }}.out('Entity_Related') {{
+                class: Entity,
+                where: (({entity_names} CONTAINS name)),
+                as: Animal__out_Animal_ParentOf__out_Entity_Related___1
+            }} RETURN $matches)
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .out('Animal_ParentOf')
+                .as('Animal__out_Animal_ParentOf___1')
+                    .out('Animal_ParentOf')
+                    .as('Animal__out_Animal_ParentOf__out_Animal_ParentOf___1')
+                .back('Animal__out_Animal_ParentOf___1')
+                    .out('Entity_Related')
+                    .filter{it, m -> $entity_names.contains(it.name)}
+                    .as('Animal__out_Animal_ParentOf__out_Entity_Related___1')
+                .back('Animal__out_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal__out_Animal_ParentOf__out_Animal_ParentOf___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_filter_within_fold_scope(self):
         test_data = test_input_data.filter_within_fold_scope()
 
@@ -5279,45 +5318,6 @@ class CompilerTests(unittest.TestCase):
                     (m.Animal__out_Animal_ParentOf___1 != null) ?
                     m.Animal__out_Animal_ParentOf___1.name : null)
             ])}
-        '''
-
-        check_test_data(self, test_data, expected_match, expected_gremlin)
-
-    def test_no_op_coercion(self):
-        test_data = test_input_data.no_op_coercion()
-
-        expected_match = '''
-        SELECT Animal__out_Animal_ParentOf__out_Animal_ParentOf___1.name
-            AS `animal_name` FROM (MATCH {{
-            as: Animal___1
-        }}.out('Animal_ParentOf') {{
-            as: Animal__out_Animal_ParentOf___1
-        }}.out('Animal_ParentOf') {{
-            as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
-        }} , {{
-            as: Animal__out_Animal_ParentOf___1
-        }}.out('Entity_Related') {{
-            class: Entity,
-            where: (({entity_names} CONTAINS name)),
-            as: Animal__out_Animal_ParentOf__out_Entity_Related___1
-        }} RETURN $matches)
-        '''
-        expected_gremlin = '''
-        g.V('@class', 'Animal')
-        .as('Animal___1')
-            .out('Animal_ParentOf')
-            .as('Animal__out_Animal_ParentOf___1')
-                .out('Animal_ParentOf')
-                .as('Animal__out_Animal_ParentOf__out_Animal_ParentOf___1')
-            .back('Animal__out_Animal_ParentOf___1')
-                .out('Entity_Related')
-                .filter{it, m -> $entity_names.contains(it.name)}
-                .as('Animal__out_Animal_ParentOf__out_Entity_Related___1')
-            .back('Animal__out_Animal_ParentOf___1')
-        .back('Animal___1')
-        .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-            animal_name: m.Animal__out_Animal_ParentOf__out_Animal_ParentOf___1.name
-        ])}
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)

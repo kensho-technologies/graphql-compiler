@@ -389,6 +389,9 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         validate_context_for_visiting_vertex_field(location, field_name, context)
 
         field_schema_type = get_vertex_field_type(current_schema_type, field_name)
+        hinted_base = context['type_equivalence_hints_inverse'].get(field_schema_type, None)
+        if hinted_base:
+            field_schema_type = hinted_base
 
         inner_unique_directives = get_unique_directives(field_ast)
         validate_vertex_field_directive_interactions(location, field_name, inner_unique_directives)
@@ -578,12 +581,9 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
         current_schema_type.is_same_type(equivalent_union_type)
     )
 
-    if not is_same_type_as_scope:
-        # TODO(bojanserafimov): Only record coercion if there's actually a coerce block
-        query_metadata_table.record_coercion_at_location(location, coerces_to_type_obj)
-
     if not (is_same_type_as_scope or is_base_type_of_union):
         # Coercion is required.
+        query_metadata_table.record_coercion_at_location(location, coerces_to_type_obj)
         basic_blocks.append(blocks.CoerceType({coerces_to_type_name}))
 
     inner_basic_blocks = _compile_ast_node_to_ir(
@@ -703,6 +703,10 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     )
     query_metadata_table = QueryMetadataTable(location, base_location_info)
 
+    # Default argument value is empty dict
+    if not type_equivalence_hints:
+        type_equivalence_hints = dict()
+
     # Construct the starting context object.
     context = {
         # 'metadata' is the QueryMetadataTable describing all the metadata collected during query
@@ -724,7 +728,8 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         # types, as automatically inferred by inspecting the query structure
         'inputs': dict(),
         # 'type_equivalence_hints' is a dict mapping GraphQL types to equivalent GraphQL unions
-        'type_equivalence_hints': type_equivalence_hints or dict(),
+        'type_equivalence_hints': type_equivalence_hints,
+        'type_equivalence_hints_inverse': {v: k for k, v in six.iteritems(type_equivalence_hints)},
         # The marked_location_stack explicitly maintains a stack (implemented as list)
         # of namedtuples (each corresponding to a MarkLocation) containing:
         #  - location: the location within the corresponding MarkLocation object
