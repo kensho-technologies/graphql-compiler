@@ -1617,9 +1617,9 @@ def no_op_coercion_inside_fold():
 
 
 def no_op_coercion_with_eligible_subpath():
-    # This test case has a no-op coercion and an eligible location that is
-    # a subpath of a preferred location. The no-op must be optimized away,
-    # or it will cause problems when trying to expose only the preferred location.
+    # This test case has a no-op coercion and a preferred location inside an
+    # eligible location. The no-op must be optimized away, or it will cause
+    # problems when hiding the eligible non-preferred location.
     graphql_input = '''{
         Animal {
             out_Animal_ParentOf {
