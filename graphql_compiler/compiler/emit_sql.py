@@ -1,4 +1,127 @@
 # Copyright 2018-present Kensho Technologies, LLC.
+"""Recursively converts a SqlNode tree to an executable SQLAlchemy query.
+
+The complexity here comes from @recurse directives (Recurse blocks). To match the semantics of
+the GraphQL compiler, recursive common table expressions (CTEs) are required. SQL backends are good
+at pushing predicates down into subqueries and CTEs, however this does not generally extend to
+recursive CTEs. This means that it is very easy to write a recursive CTE that will scan an entire
+table, even if all but a few starting points of that recursion are eventually discarded later.
+
+
+Using the query
+
+{
+    Animal {
+        name @output(out_name: "animal_name")
+             @filter(op_name: "in_collection", value: ["$names"])
+        out_Animal_LivesIn @optional {
+            name @output(out_name: "location_name")
+        }
+        out_Animal_ParentOf @recurse(depth: 2) {
+            name @output(out_name: "animal_or_descendant_name")
+        }
+    }
+}
+as an example, this is addressed with the following algorithm:
+
+1. Recursively collapse the query, treating the recursive component as a black box. For this
+example, this results in the rough SQL:
+
+SELECT
+    animal.name AS animal_name,
+    location.name AS location_name
+FROM
+    animal
+LEFT JOIN animal_livesin ON animal_livesin.animal_id = animal.animal_id
+LEFT JOIN location ON location.location_id = animal_livesin.livesin_id
+WHERE
+    animal.name IN :names
+
+2. Wrap this query as a CTE, and include any link columns in the output. A link column is the column
+that the recursive clause will later be attached to.
+
+WITH base_cte AS ( -- the actual name of the CTE is an anonymous table name
+    SELECT
+        animal.name as animal_name,
+        location.name as location_name
+        animal.animal_id as link_column -- the actual name of the column an anonymous column name
+    FROM
+        animal
+    LEFT JOIN animal_livesin ON animal_livesin.animal_id = animal.animal_id
+    LEFT JOIN location ON location.location_id = animal_livesin.livesin_id
+    WHERE
+        animal.name IN :names
+)
+
+3. Construct the recursive clause. Here we only recurse on the columns necessary to JOIN before
+and after the recursion, output columns are not carried along. The recursion is joined to the
+CTE of the base query, ensuring that the recursion only starts at the required starting points,
+no more.
+
+Also worth noting with the recursive clause is the __depth_internal_name, which keeps track of
+recursion depth per the compiler's semantics, and __path_internal_name, which is used for cycle
+detection. Simply using UNION here to join the anchor query to the recursive query is insufficient
+to prevent cycles, because the depth column is unique to each row, even in a cycle.
+
+
+WITH RECURSIVE recursive_cte AS (
+    -- anchor query
+    SELECT DISTINCT
+        animal_parentof.animal_id AS animal_id,
+        animal_parentof.parentof_id AS parentof_id,
+        0 AS __depth_internal_name,
+        CAST(animal_2.animal_id AS VARCHAR) || ',' AS __path_internal_name,
+        0 AS __cycle_detected_internal_name
+    FROM
+        animal_parentof
+        JOIN base_cte ON base_cte.link_column == animal_parentof.animal_id
+    UNION ALL
+    -- recursive query
+    SELECT
+        recursive_cte.animal_id,
+        animal_parentof.parentof_id,
+        -- increment the depth
+        recursive_cte.__depth_internal_name + 1 AS __depth_internal_name,
+        -- append the next element to the path
+        recursive_cte.__path_internal_name || CAST(animal_parentof.parentof_id AS VARCHAR) ||
+            ',' AS __path_internal_name,
+        -- check if a cycle is already present, or if this creates a cycle
+        CASE WHEN (recursive_cte.__cycle_detected_internal_name = 1) THEN 1
+             WHEN (recursive_cte.__path_internal_name LIKE '%' ||
+                   CAST(animal_parentof.parentof_id AS VARCHAR) || '%') THEN 1
+             ELSE 0 END as __cycle_detected_internal_name
+    FROM
+        animal_parentof
+        JOIN recursive_cte ON recursive_cte.parentof_id = animal_parentof.animal_id
+    WHERE
+        recursive_cte.__depth_internal_name < :depth -- depth from recurse directive
+        -- only consider recursing if this is a new path
+        AND recursive_cte.__cycle_detected_internal_name = 0
+)
+
+4. JOIN the recursive clause to the recursive table (here animal_parentof) to create output columns,
+and join back to base cte to carry along tag columns.
+WITH recursive_cte_outputs AS (
+    SELECT
+        animal.name AS animal_or_descendant_name,
+        anon_3.animal_id AS recursive_link_column -- actually an aliased column
+    FROM
+        recursive_cte
+        JOIN animal on animal.animal_id = recursive_cte.parentof_id
+        JOIN base_cte ON recursive_cte.animal_id = base_cte.link_column
+)
+
+5. Create the final query
+
+SELECT
+    base_cte.animal_name,
+    base_cte.location_name,
+    recursive_cte_outputs.animal_or_descendant_name
+FROM
+    base_cte
+JOIN
+    recursive_cte_outputs ON base_cte.link_column = recursive_cte_outputs.recursive_link_column
+"""
 from collections import defaultdict, namedtuple
 
 import six
@@ -49,16 +172,16 @@ def emit_code_from_ir(sql_query_tree, compiler_metadata):
 
 
 def _query_tree_to_query(node, context, recursion_link_column, outer_cte):
-    """Recursively converts a SqlNode tree to a SQLAlchemy query."""
-    # step 1: Collapse query tree, ignoring recursive nodes
+    """Recursive entry point for converting a SqlNode tree to an executable SQLAlchemy query."""
+    # Collapse query tree, ignoring recursive nodes
     visited_nodes = _flatten_and_join_nonrecursive_nodes(node, context)
-    # step 2: Create the recursive element (only occurs on a recursive call of this function)
+    # Create the recursive element (only occurs on a recursive call of this function)
     recursion_out_column = _create_recursive_clause(node, context, recursion_link_column, outer_cte)
-    # step 3: Materialize query as a CTE.
+    # Materialize query as a CTE.
     cte = _create_query(node, is_final_query=False, context=context).cte()
     # Output fields from individual tables become output fields from the CTE
     _update_context_paths(node, visited_nodes, cte, context)
-    # step 4: collapse and return recursive node trees, passing the CTE to the recursive element
+    # collapse and return recursive node trees, passing the CTE to the recursive element
     _flatten_and_join_recursive_nodes(node, cte, context)
     if isinstance(node.block, blocks.QueryRoot):
         # filters have already been applied within the CTE, no need to reapply
