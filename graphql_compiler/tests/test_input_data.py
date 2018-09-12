@@ -1616,6 +1616,36 @@ def no_op_coercion_inside_fold():
         type_equivalence_hints=type_equivalence_hints)
 
 
+def no_op_coercion_noninvertible_hints():
+    # The type where the coercion is applied is already Entity, so the coercion is a no-op.
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Entity_Related @fold {
+                ... on Entity {
+                    name @output(out_name: "related_entities")
+                }
+            }
+        }
+    }'''
+    type_equivalence_hints = {
+        'Event': 'EventOrBirthEvent',
+        'BirthEvent': 'EventOrBirthEvent',
+    }
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'related_entities': OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=type_equivalence_hints)
+
+
 def no_op_coercion_with_eligible_subpath():
     # This test case has a no-op coercion and a preferred location inside an
     # eligible location. The no-op must be optimized away, or it will cause
