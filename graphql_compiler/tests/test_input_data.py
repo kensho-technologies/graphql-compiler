@@ -1616,6 +1616,40 @@ def no_op_coercion_inside_fold():
         type_equivalence_hints=type_equivalence_hints)
 
 
+def no_op_coercion_with_eligible_subpath():
+    # This test case has a no-op coercion and a preferred location inside an
+    # eligible location. The no-op must be optimized away, or it will cause
+    # problems when hiding the eligible non-preferred location.
+    graphql_input = '''{
+        Animal {
+            out_Animal_ParentOf {
+                ... on Animal {
+                    out_Animal_ParentOf {
+                        name @output(out_name: "animal_name")
+                    }
+                    out_Entity_Related {
+                        ... on Entity {
+                            name @filter(op_name: "in_collection", value: ["$entity_names"])
+                        }
+                    }
+                }
+            }
+        }
+    }'''
+    type_equivalence_hints = {}
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'entity_names': GraphQLList(GraphQLString)
+    }
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=type_equivalence_hints)
+
+
 def filter_within_fold_scope():
     graphql_input = '''{
         Animal {
