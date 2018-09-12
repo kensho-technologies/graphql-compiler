@@ -81,7 +81,7 @@ from .filters import process_filter_directive
 from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_edge_direction_and_name,
                       get_field_type_from_schema, get_uniquely_named_objects_by_name,
                       get_vertex_field_type, is_vertex_field_name, strip_non_null_from_type,
-                      validate_safe_string)
+                      validate_safe_string, invert_dict)
 from .metadata import LocationInfo, QueryMetadataTable
 
 
@@ -729,7 +729,9 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         'inputs': dict(),
         # 'type_equivalence_hints' is a dict mapping GraphQL types to equivalent GraphQL unions
         'type_equivalence_hints': type_equivalence_hints,
-        'type_equivalence_hints_inverse': {v: k for k, v in six.iteritems(type_equivalence_hints)},
+        # 'type_equivalence_hints_inverse' is the inverse of type_equivalence_hints,
+        # which is always invertible.
+        'type_equivalence_hints_inverse': invert_dict(type_equivalence_hints),
         # The marked_location_stack explicitly maintains a stack (implemented as list)
         # of namedtuples (each corresponding to a MarkLocation) containing:
         #  - location: the location within the corresponding MarkLocation object

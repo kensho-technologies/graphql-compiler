@@ -1,7 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Common helper objects, base classes and methods."""
 from abc import ABCMeta, abstractmethod
-from collections import namedtuple
+from collections import namedtuple, Hashable
 from functools import total_ordering
 import string
 
@@ -216,6 +216,21 @@ def validate_marked_location(location):
 def _create_fold_path_component(edge_direction, edge_name):
     """Return a tuple representing a fold_path component of a FoldScopeLocation."""
     return ((edge_direction, edge_name),)  # tuple containing a tuple of two elements
+
+
+def invert_dict(invertible_dict):
+    """Invert a dict. A dict is invertible if values are unique and hashable."""
+    inverted = {}
+    for k, v in six.iteritems(invertible_dict):
+        if not isinstance(v, Hashable):
+            raise TypeError(u'Expected an invertible dict, but value at key {} has type {}'.format(
+                k, type(v).__name__))
+        if v in inverted:
+            raise TypeError(u'Expected an invertible dict, but keys'
+                            u'{} and {} map to the same value'.format(
+                                inverted[v], k))
+        inverted[v] = k
+    return inverted
 
 
 @total_ordering
