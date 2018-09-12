@@ -80,8 +80,8 @@ from .directive_helpers import (get_local_filter_directives, get_unique_directiv
 from .filters import process_filter_directive
 from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_edge_direction_and_name,
                       get_field_type_from_schema, get_uniquely_named_objects_by_name,
-                      get_vertex_field_type, is_vertex_field_name, strip_non_null_from_type,
-                      validate_safe_string, invert_dict)
+                      get_vertex_field_type, invert_dict, is_vertex_field_name,
+                      strip_non_null_from_type, validate_safe_string)
 from .metadata import LocationInfo, QueryMetadataTable
 
 

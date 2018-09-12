@@ -1,7 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Common helper objects, base classes and methods."""
 from abc import ABCMeta, abstractmethod
-from collections import namedtuple, Hashable
+from collections import Hashable, namedtuple
 from functools import total_ordering
 import string
 

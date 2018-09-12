@@ -3184,12 +3184,6 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
-    def test_no_op_coercion_noninvertible_hints(self):
-        # The type where the coercion is applied is already Entity, so the coercion is a no-op.
-        test_data = test_input_data.no_op_coercion_noninvertible_hints()
-        with self.assertRaises(TypeError):
-            check_test_data(self, test_data, [], [])
-
     def test_no_op_coercion_with_eligible_subpath(self):
         test_data = test_input_data.no_op_coercion_with_eligible_subpath()
 
