@@ -2646,6 +2646,48 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_no_op_coercion_with_eligible_subpath(self):
+        # The type where the coercion is applied is already Entity, so the coercion is a no-op.
+        test_data = test_input_data.no_op_coercion_with_eligible_subpath()
+
+        base_location = helpers.Location(('Animal',))
+        kid_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+        grandkid_location = kid_location.navigate_to_subpath('out_Animal_ParentOf')
+        related_location = kid_location.navigate_to_subpath('out_Entity_Related')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.MarkLocation(kid_location),
+            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.MarkLocation(grandkid_location),
+            blocks.Backtrack(kid_location),
+            blocks.Traverse('out', 'Entity_Related'),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'contains',
+                    expressions.Variable('$entity_names', GraphQLList(GraphQLString)),
+                    expressions.LocalField('name'),
+                ),
+            ),
+            blocks.MarkLocation(related_location),
+            blocks.Backtrack(kid_location),
+            blocks.Backtrack(base_location),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    grandkid_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            kid_location: 'Animal',
+            grandkid_location: 'Animal',
+            related_location: 'Entity',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_filter_within_fold_scope(self):
         test_data = test_input_data.filter_within_fold_scope()
 

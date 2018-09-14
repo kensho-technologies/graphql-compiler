@@ -1223,3 +1223,23 @@ class IrGenerationErrorTests(unittest.TestCase):
         }'''
         with self.assertRaises(GraphQLValidationError):
             graphql_to_ir(parsed_incorrect_schema, query)
+
+    def test_with_noninvertible_hints(self):
+        """Ensure TypeError is raised when the hints are non-invertible."""
+        valid_graphql_input = '''{
+            Animal {
+                name @output(out_name: "animal_name")
+                out_Entity_Related @fold {
+                    ... on Entity {
+                        name @output(out_name: "related_entities")
+                    }
+                }
+            }
+        }'''
+        invalid_type_equivalence_hints = {
+            'Event': 'EventOrBirthEvent',
+            'BirthEvent': 'EventOrBirthEvent',
+        }
+        with self.assertRaises(TypeError):
+            graphql_to_ir(self.schema, valid_graphql_input,
+                          type_equivalence_hints=invalid_type_equivalence_hints)
