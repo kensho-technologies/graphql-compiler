@@ -441,22 +441,20 @@ class OutputContextField(Expression):
 class FoldedOutputContextField(Expression):
     """An expression used to output data captured in a @fold scope."""
 
-    def __init__(self, fold_scope_location, field_name, field_type):
+    def __init__(self, fold_scope_location, field_type):
         """Construct a new FoldedOutputContextField object for this folded field.
 
         Args:
-            fold_scope_location: FoldScopeLocation specifying the start of the @fold scope
-                                 where this output context field was captured.
-            field_name: string, the name of the field being output.
+            fold_scope_location: FoldScopeLocation specifying the location of
+                                 the context field being output.
             field_type: GraphQL type object, specifying the type of the field being output.
                         Since the field is folded, this must be a GraphQLList of some kind.
 
         Returns:
             new FoldedOutputContextField object
         """
-        super(FoldedOutputContextField, self).__init__(fold_scope_location, field_name, field_type)
+        super(FoldedOutputContextField, self).__init__(fold_scope_location, field_type)
         self.fold_scope_location = fold_scope_location
-        self.field_name = field_name
         self.field_type = field_type
         self.validate()
 
@@ -466,24 +464,22 @@ class FoldedOutputContextField(Expression):
             raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
                 type(self.fold_scope_location), self.fold_scope_location))
 
-        validate_safe_string(self.field_name)
-
         if not isinstance(self.field_type, GraphQLList):
             raise ValueError(u'Invalid value of "field_type", expected a list type but got: '
                              u'{}'.format(self.field_type))
 
         inner_type = strip_non_null_from_type(self.field_type.of_type)
         if isinstance(inner_type, GraphQLList):
-            raise GraphQLCompilationError(u'Outputting list-valued fields in a @fold context is '
-                                          u'currently not supported: {} '
-                                          u'{}'.format(self.field_name, self.field_type.of_type))
+            raise GraphQLCompilationError(
+                u'Outputting list-valued fields in a @fold context is currently '
+                u'not supported: {} {}'.format(self.fold_scope_location, self.field_type.of_type))
 
     def to_match(self):
         """Return a unicode object with the MATCH representation of this expression."""
         self.validate()
-        edge_direction, edge_name = self.fold_scope_location.relative_position
+        edge_direction, edge_name = self.fold_scope_location.get_first_folded_edge()
 
-        mark_name = self.fold_scope_location.get_location_name()
+        mark_name, field_name = self.fold_scope_location.get_location_name()
         validate_safe_string(mark_name)
 
         template = u'$%(mark_name)s.%(field_name)s'
@@ -502,7 +498,7 @@ class FoldedOutputContextField(Expression):
             'mark_name': mark_name,
             'direction': edge_direction,
             'edge_name': edge_name,
-            'field_name': self.field_name,
+            'field_name': field_name,
         }
         return template % template_data
 
@@ -516,7 +512,6 @@ class FoldedOutputContextField(Expression):
         # the equality operator, we have to override equality and call is_same_type() here.
         return (type(self) == type(other) and
                 self.fold_scope_location == other.fold_scope_location and
-                self.field_name == other.field_name and
                 self.field_type.is_same_type(other.field_type))
 
     def __ne__(self, other):

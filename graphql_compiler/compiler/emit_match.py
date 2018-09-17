@@ -4,7 +4,7 @@ from collections import deque
 
 import six
 
-from .blocks import Filter, QueryRoot, Recurse, Traverse
+from .blocks import Filter, MarkLocation, QueryRoot, Recurse, Traverse
 from .expressions import TrueLiteral
 from .helpers import get_only_element_from_collection, validate_safe_string
 
@@ -107,8 +107,8 @@ def _represent_fold(fold_location, fold_ir_blocks):
     start_let_template = u'$%(mark_name)s = %(base_location)s'
     traverse_edge_template = u'.%(direction)s("%(edge_name)s")'
     base_template = start_let_template + traverse_edge_template
-    edge_direction, edge_name = fold_location.relative_position
-    mark_name = fold_location.get_location_name()
+    edge_direction, edge_name = fold_location.get_first_folded_edge()
+    mark_name, _ = fold_location.get_location_name()
     base_location_name, _ = fold_location.base_location.get_location_name()
 
     validate_safe_string(mark_name)
@@ -133,8 +133,11 @@ def _represent_fold(fold_location, fold_ir_blocks):
                 'edge_name': block.edge_name,
             }
             final_string += traverse_edge_template % template_data
+        elif isinstance(block, MarkLocation):
+            # MarkLocation blocks inside a fold do not result in any MATCH output.
+            pass
         else:
-            raise AssertionError(u'Found a non-Filter/Traverse IR block in the folded IR blocks: '
+            raise AssertionError(u'Found an unexpected IR block in the folded IR blocks: '
                                  u'{} {} {}'.format(type(block), block, fold_ir_blocks))
 
     # Workaround for OrientDB's inconsistent return type when filtering a list.

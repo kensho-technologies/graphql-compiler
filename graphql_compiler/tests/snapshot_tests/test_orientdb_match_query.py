@@ -68,7 +68,7 @@ def execute_graphql(schema, test_data, client, sample_parameters):
 # pylint: disable=no-member
 
 
-class OrientDBMatchQueryTests(TestCase):
+class OrientDBUnparameterizedMatchQueryTests(TestCase):
 
     def setUp(self):
         """Initialize the test schema once for all tests, and disable max diff limits."""
@@ -123,6 +123,15 @@ class OrientDBMatchQueryTests(TestCase):
     @pytest.mark.usefixtures('graph_client')
     def test_filter_on_optional_variable_name_or_alias(self):
         test_data = test_input_data.filter_on_optional_variable_name_or_alias()
+        sample_parameters = {}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_complex_optional_variables(self):
+        test_data = test_input_data.complex_optional_variables()
         sample_parameters = {}
 
         rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
@@ -507,6 +516,32 @@ class OrientDBMatchQueryTests(TestCase):
 
         self.assertMatchSnapshot(rows)
 
+
+class OrientDBParameterizedMatchQueryTests(TestCase):
+
+    def setUp(self):
+        """Initialize the test schema once for all tests, and disable max diff limits."""
+        self.maxDiff = None
+        self.schema = get_schema()
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_immediate_output_with_custom_scalar_filter(self):
+        test_data = test_input_data.immediate_output_with_custom_scalar_filter()
+        sample_parameters = {'min_worth': 500}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_multiple_filters(self):
+        test_data = test_input_data.multiple_filters()
+        sample_parameters = {'lower_bound': 'Nazgul', 'upper_bound': 'Pteranodon'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
     @pytest.mark.usefixtures('graph_client')
     def test_traverse_filter_and_output(self):
         test_data = test_input_data.traverse_filter_and_output()
@@ -517,9 +552,244 @@ class OrientDBMatchQueryTests(TestCase):
         self.assertMatchSnapshot(rows)
 
     @pytest.mark.usefixtures('graph_client')
+    def test_name_or_alias_filter_on_interface_type(self):
+        test_data = test_input_data.name_or_alias_filter_on_interface_type()
+        sample_parameters = {'wanted': 'Nazgul_1'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_output_source_and_complex_output(self):
+        test_data = test_input_data.output_source_and_complex_output()
+        sample_name = 'Nazgul__((((18_19_2_6)_1_19_6)_15_16_2)_14_8_9)'
+        sample_parameters = {
+            'wanted': sample_name
+        }
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
     def test_filter_in_optional_block(self):
         test_data = test_input_data.filter_in_optional_block()
         sample_parameters = {'name': 'Nazgul__2'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_between_filter_on_simple_scalar(self):
+        test_data = test_input_data.between_filter_on_simple_scalar()
+        sample_parameters = {'lower': 'Nazgul', 'upper': 'Pteranodon'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_between_lowering_on_simple_scalar(self):
+        test_data = test_input_data.between_lowering_on_simple_scalar()
+        sample_parameters = {'lower': 'Nazgul', 'upper': 'Pteranodon'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_between_lowering_with_extra_filters(self):
+        test_data = test_input_data.between_lowering_with_extra_filters()
+        sample_fauna = [
+            'Nazgul__7',
+            'Nazgul__(((18_19_2_6)_1_19_6)_(1_12_14_19)_19_5)',
+            'Nazgul__10',
+            'Nazgul__(((((18_19_2_6)_1_19_6)_15_16_2)_11_14_6)_0_13_19)',
+            'Nazgul__(((((18_19_2_6)_1_19_6)_15_16_2)_14_8_9)_(11_12_14_16)_17_18)',
+            'Nazgul__(((((18_19_2_6)_1_19_6)_15_16_2)_11_14_6)_(11_5_7_8)_(1_12_14_19)_6)',
+            'Nazgul__((((18_19_2_6)_1_19_6)_15_16_2)_11_14_6)',
+            'Nazgul__6',
+            'Nazgul__5',
+            'Nazgul__(10_18_2_8)',
+            'Nazgul__(18_19_2_6)',
+            'Nazgul__1',
+            'Nazgul__(((18_19_2_6)_1_19_6)_15_16_2)',
+            'Nazgul__11',
+            'Nazgul__(1_12_14_19)',
+            'Nazgul__14',
+            'Nazgul__(((18_19_2_6)_1_19_6)_0_10_18)',
+            'Nazgul__2',
+            'Nazgul__((((18_19_2_6)_1_19_6)_15_16_2)_14_8_9)',
+            'Nazgul__17',
+            'Nazgul__((((18_19_2_6)_1_19_6)_(1_12_14_19)_19_5)_17_6_7)',
+            'Nazgul__12',
+            'Nazgul__(((18_19_2_6)_1_19_6)_1_19_3)',
+            'Nazgul__(((((18_19_2_6)_1_19_6)_15_16_2)_14_8_9)_(11_5_7_8)_16_19)',
+            'Nazgul__16',
+            'Nazgul__3',
+            'Nazgul__15',
+            'Nazgul__((((18_19_2_6)_1_19_6)_(1_12_14_19)_19_5)_0_19_4)',
+        ]
+        sample_parameters = {
+            'lower': 'Nazgul',
+            'upper': 'Pteranodon',
+            'substring': '1_12',
+            'fauna': sample_fauna,
+        }
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_no_between_lowering_on_simple_scalar(self):
+        test_data = test_input_data.no_between_lowering_on_simple_scalar()
+        sample_parameters = {'lower0': 'Nazgul', 'lower1': 'Nazgul_3', 'upper': 'Pteranodon'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_complex_optional_variables_with_starting_filter(self):
+        test_data = test_input_data.complex_optional_variables_with_starting_filter()
+        sample_parameters = {'animal_name': 'Nazgul__((((18_19_2_6)_1_19_6)_15_16_2)_11_14_6)'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_filter_on_fragment_in_union(self):
+        test_data = test_input_data.filter_on_fragment_in_union()
+        sample_parameters = {'wanted': 'Bacon'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_typename_filter(self):
+        test_data = test_input_data.typename_filter()
+        sample_parameters = {'base_cls': 'Food'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_filter_within_recurse(self):
+        test_data = test_input_data.filter_within_recurse()
+        sample_parameters = {'wanted': 'red'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_recurse_with_immediate_type_coercion_and_filter(self):
+        test_data = test_input_data.recurse_with_immediate_type_coercion_and_filter()
+        sample_parameters = {'color': 'red'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_in_collection_op_filter_with_variable(self):
+        test_data = test_input_data.in_collection_op_filter_with_variable()
+        sample_names = [
+            'Nazgul__7',
+            'Nazgul__(((18_19_2_6)_1_19_6)_(1_12_14_19)_19_5)',
+            'Nazgul__10',
+            'Nazgul__(((((18_19_2_6)_1_19_6)_15_16_2)_11_14_6)_0_13_19)',
+            'Nazgul__(((((18_19_2_6)_1_19_6)_15_16_2)_14_8_9)_(11_12_14_16)_17_18)',
+            'Nazgul__(((((18_19_2_6)_1_19_6)_15_16_2)_11_14_6)_(11_5_7_8)_(1_12_14_19)_6)',
+            'Nazgul__((((18_19_2_6)_1_19_6)_15_16_2)_11_14_6)',
+            'Nazgul__6',
+            'Nazgul__5',
+            'Nazgul__(10_18_2_8)',
+            'Nazgul__(18_19_2_6)',
+            'Nazgul__1',
+            'Nazgul__(((18_19_2_6)_1_19_6)_15_16_2)',
+            'Nazgul__11',
+            'Nazgul__(1_12_14_19)',
+            'Nazgul__14',
+            'Nazgul__(((18_19_2_6)_1_19_6)_0_10_18)',
+            'Nazgul__2',
+        ]
+        sample_parameters = {'wanted': sample_names}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_intersects_op_filter_with_variable(self):
+        test_data = test_input_data.intersects_op_filter_with_variable()
+        sample_names = [
+            'Nazgul_1',
+            'Nazgul_2',
+            'Nazgul_3',
+        ]
+        sample_parameters = {'wanted': sample_names}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_contains_op_filter_with_variable(self):
+        test_data = test_input_data.contains_op_filter_with_variable()
+        sample_parameters = {'wanted': 'Nazgul_1'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_has_substring_op_filter(self):
+        test_data = test_input_data.has_substring_op_filter()
+        sample_parameters = {'wanted': '6)_((1_12'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_has_edge_degree_op_filter(self):
+        test_data = test_input_data.has_edge_degree_op_filter()
+        sample_parameters = {'child_count': 9}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_has_edge_degree_op_filter_with_optional(self):
+        test_data = test_input_data.has_edge_degree_op_filter_with_optional()
+
+        sample_parameters = {'child_count': 1}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_has_edge_degree_op_filter_with_fold(self):
+        test_data = test_input_data.has_edge_degree_op_filter_with_fold()
+        sample_parameters = {'child_count': 9}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_filter_within_fold_scope(self):
+        test_data = test_input_data.filter_within_fold_scope()
+        sample_parameters = {'desired': 'Nazgul__2'}
 
         rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
 

@@ -153,7 +153,7 @@ def validate_root_vertex_directives(root_ast):
                                       u'{}'.format(disallowed_directives))
 
 
-def validate_vertex_field_directive_interactions(location, directives):
+def validate_vertex_field_directive_interactions(parent_location, vertex_field_name, directives):
     """Ensure that the specified vertex field directives are not mutually disallowed."""
     fold_directive = directives.get('fold', None)
     optional_directive = directives.get('optional', None)
@@ -162,26 +162,32 @@ def validate_vertex_field_directive_interactions(location, directives):
 
     if fold_directive and optional_directive:
         raise GraphQLCompilationError(u'@fold and @optional may not appear at the same '
-                                      u'vertex field! Location: {}'.format(location))
+                                      u'vertex field! Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))
 
     if fold_directive and output_source_directive:
         raise GraphQLCompilationError(u'@fold and @output_source may not appear at the same '
-                                      u'vertex field! Location: {}'.format(location))
+                                      u'vertex field! Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))
 
     if fold_directive and recurse_directive:
         raise GraphQLCompilationError(u'@fold and @recurse may not appear at the same '
-                                      u'vertex field! Location: {}'.format(location))
+                                      u'vertex field! Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))
 
     if optional_directive and output_source_directive:
         raise GraphQLCompilationError(u'@optional and @output_source may not appear at the same '
-                                      u'vertex field! Location: {}'.format(location))
+                                      u'vertex field! Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))
 
     if optional_directive and recurse_directive:
         raise GraphQLCompilationError(u'@optional and @recurse may not appear at the same '
-                                      u'vertex field! Location: {}'.format(location))
+                                      u'vertex field! Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))
 
 
-def validate_vertex_field_directive_in_context(location, directives, context):
+def validate_vertex_field_directive_in_context(parent_location, vertex_field_name,
+                                               directives, context):
     """Ensure that the specified vertex field directives are allowed in the current context."""
     fold_directive = directives.get('fold', None)
     optional_directive = directives.get('optional', None)
@@ -194,26 +200,34 @@ def validate_vertex_field_directive_in_context(location, directives, context):
 
     if fold_directive and fold_context:
         raise GraphQLCompilationError(u'@fold is not allowed within a @fold traversal! '
-                                      u'Location: {}'.format(location))
+                                      u'Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))
     if optional_directive and fold_context:
         raise GraphQLCompilationError(u'@optional is not allowed within a @fold traversal! '
-                                      u'Location: {}'.format(location))
+                                      u'Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))
     if output_source_directive and fold_context:
         raise GraphQLCompilationError(u'@output_source is not allowed within a @fold traversal! '
-                                      u'Location: {}'.format(location))
+                                      u'Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))
     if recurse_directive and fold_context:
         raise GraphQLCompilationError(u'@recurse is not allowed within a @fold traversal! '
-                                      u'Location: {}'.format(location))
+                                      u'Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))
 
     if output_source_context and not fold_directive:
         raise GraphQLCompilationError(u'Found non-fold vertex field after the vertex marked '
-                                      u'output source! Location: {}'.format(location))
+                                      u'output source! Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))
     if optional_context and optional_directive:
         raise GraphQLCompilationError(u'@optional is not allowed within a @optional traversal! '
-                                      u'Location: {}'.format(location))
+                                      u'Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))
     if optional_context and fold_directive:
         raise GraphQLCompilationError(u'@fold is not allowed within a @optional traversal! '
-                                      u'Location: {}'.format(location))
+                                      u'Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))
     if optional_context and output_source_directive:
         raise GraphQLCompilationError(u'@output_source is not allowed within a @optional '
-                                      u'traversal! Location: {}'.format(location))
+                                      u'traversal! Parent location: {}, vertex field name: {}'
+                                      .format(parent_location, vertex_field_name))

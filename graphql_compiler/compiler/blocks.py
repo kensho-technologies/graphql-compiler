@@ -227,7 +227,7 @@ class Traverse(BasicBlock):
         self.direction = direction
         self.edge_name = edge_name
         self.optional = optional
-        # Denotes whether the traversal is occuring after a prior @optional traversal
+        # Denotes whether the traversal is occurring after a prior @optional traversal
         self.within_optional_scope = within_optional_scope
         self.validate()
 
