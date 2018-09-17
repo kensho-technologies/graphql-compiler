@@ -15,8 +15,9 @@ from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
 from ..compiler.ir_lowering_match.utils import BetweenClause, CompoundMatchQuery
 from ..compiler.match_query import MatchQuery, convert_to_match_query
+from ..compiler.metadata import LocationInfo, QueryMetadataTable
 from ..schema import GraphQLDate
-from .test_helpers import compare_ir_blocks, construct_location_types
+from .test_helpers import compare_ir_blocks, construct_location_types, get_schema
 
 
 def check_test_data(test_case, expected_object, received_object):
@@ -83,10 +84,23 @@ class MatchIrLoweringTests(unittest.TestCase):
         self.maxDiff = None
 
     def test_context_field_existence_lowering_in_output(self):
+        schema = get_schema()
+
         base_location = Location(('Animal',))
         revisited_base_location = base_location.revisit()
         child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         child_name_location = child_location.navigate_to_field('name')
+
+        animal_graphql_type = schema.get_type('Animal')
+        base_location_info = LocationInfo(None, animal_graphql_type, None, 0, 0, False)
+        query_metadata_table = QueryMetadataTable(base_location, base_location_info)
+
+        query_metadata_table.register_location(
+            child_location,
+            LocationInfo(base_location, animal_graphql_type, None, 1, 0, False))
+        query_metadata_table.register_location(
+            revisited_base_location,
+            LocationInfo(None, animal_graphql_type, None, 0, 0, False))
 
         ir_blocks = [
             QueryRoot({'Animal'}),
@@ -103,7 +117,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 )
             }),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         # The expected final blocks just have a rewritten ConstructResult block,
         # where the ContextFieldExistence expression is replaced with a null check.
@@ -121,12 +135,28 @@ class MatchIrLoweringTests(unittest.TestCase):
         check_test_data(self, expected_final_blocks, final_blocks)
 
     def test_context_field_existence_lowering_in_filter(self):
+        schema = get_schema()
+
         base_location = Location(('Animal',))
         base_name_location = base_location.navigate_to_field('name')
         revisited_base_location = base_location.revisit()
         child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         child_name_location = child_location.navigate_to_field('name')
         second_child_location = revisited_base_location.navigate_to_subpath('in_Animal_ParentOf')
+
+        animal_graphql_type = schema.get_type('Animal')
+        base_location_info = LocationInfo(None, animal_graphql_type, None, 0, 0, False)
+        query_metadata_table = QueryMetadataTable(base_location, base_location_info)
+
+        query_metadata_table.register_location(
+            child_location,
+            LocationInfo(base_location, animal_graphql_type, None, 1, 0, False))
+        query_metadata_table.register_location(
+            revisited_base_location,
+            LocationInfo(None, animal_graphql_type, None, 0, 0, False))
+        query_metadata_table.register_location(
+            second_child_location,
+            LocationInfo(base_location, animal_graphql_type, None, 0, 0, False))
 
         ir_blocks = [
             QueryRoot({'Animal'}),
@@ -152,7 +182,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             })
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         # The expected final blocks have a rewritten ContextFieldExistence expression
         # inside the TernaryConditional expression of the Filter block.
@@ -189,9 +219,19 @@ class MatchIrLoweringTests(unittest.TestCase):
         check_test_data(self, expected_final_blocks, final_blocks)
 
     def test_backtrack_block_lowering_simple(self):
+        schema = get_schema()
+
         base_location = Location(('Animal',))
         base_name_location = base_location.navigate_to_field('name')
         child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+
+        animal_graphql_type = schema.get_type('Animal')
+        base_location_info = LocationInfo(None, animal_graphql_type, None, 0, 0, False)
+        query_metadata_table = QueryMetadataTable(base_location, base_location_info)
+
+        query_metadata_table.register_location(
+            child_location,
+            LocationInfo(base_location, animal_graphql_type, None, 0, 0, False))
 
         ir_blocks = [
             QueryRoot({'Animal'}),
@@ -203,7 +243,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             }),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         location_types = construct_location_types({
             base_location: 'Animal',
@@ -232,10 +272,23 @@ class MatchIrLoweringTests(unittest.TestCase):
         check_test_data(self, expected_final_query, final_query)
 
     def test_backtrack_block_lowering_revisiting_root(self):
+        schema = get_schema()
+
         base_location = Location(('Animal',))
         base_name_location = base_location.navigate_to_field('name')
         child_location_1 = base_location.navigate_to_subpath('out_Animal_ParentOf')
         child_location_2 = base_location.navigate_to_subpath('in_Animal_ParentOf')
+
+        animal_graphql_type = schema.get_type('Animal')
+        base_location_info = LocationInfo(None, animal_graphql_type, None, 0, 0, False)
+        query_metadata_table = QueryMetadataTable(base_location, base_location_info)
+
+        query_metadata_table.register_location(
+            child_location_1,
+            LocationInfo(base_location, animal_graphql_type, None, 0, 0, False))
+        query_metadata_table.register_location(
+            child_location_2,
+            LocationInfo(base_location, animal_graphql_type, None, 0, 0, False))
 
         ir_blocks = [
             QueryRoot({'Animal'}),
@@ -250,7 +303,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             }),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         location_types = construct_location_types({
             base_location: 'Animal',
@@ -285,10 +338,22 @@ class MatchIrLoweringTests(unittest.TestCase):
         check_test_data(self, expected_final_query, final_query)
 
     def test_optional_backtrack_block_lowering(self):
+        schema = get_schema()
+
         base_location = Location(('Animal',))
         base_location_revisited = base_location.revisit()
         base_name_location = base_location.navigate_to_field('name')
         child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+
+        animal_graphql_type = schema.get_type('Animal')
+        base_location_info = LocationInfo(None, animal_graphql_type, None, 0, 0, False)
+        query_metadata_table = QueryMetadataTable(base_location, base_location_info)
+
+        query_metadata_table.register_location(
+            child_location,
+            LocationInfo(base_location, animal_graphql_type, None, 1, 0, False))
+        query_metadata_table.register_location(
+            base_location_revisited, base_location_info)
 
         ir_blocks = [
             QueryRoot({'Animal'}),
@@ -301,7 +366,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             }),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         location_types = construct_location_types({
             base_location: 'Animal',
@@ -335,11 +400,29 @@ class MatchIrLoweringTests(unittest.TestCase):
         # This testcase caught a bug in the lowering of Backtrack blocks
         # using locations added after Backtrack with optional=False but before a
         # Traverse with optional=True.
+        schema = get_schema()
+
         base_location = Location(('Animal',))
         revisited_base_location = base_location.revisit()
         twice_revisited_base_location = revisited_base_location.revisit()
         species_location = base_location.navigate_to_subpath('out_Animal_OfSpecies')
         child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+
+        animal_graphql_type = schema.get_type('Animal')
+        species_graphql_type = schema.get_type('Species')
+        base_location_info = LocationInfo(None, animal_graphql_type, None, 0, 0, False)
+        query_metadata_table = QueryMetadataTable(base_location, base_location_info)
+
+        query_metadata_table.register_location(
+            revisited_base_location, base_location_info)
+        query_metadata_table.register_location(
+            twice_revisited_base_location, base_location_info)
+        query_metadata_table.register_location(
+            species_location,
+            LocationInfo(base_location, species_graphql_type, None, 0, 0, False))
+        query_metadata_table.register_location(
+            child_location,
+            LocationInfo(revisited_base_location, animal_graphql_type, None, 1, 0, False))
 
         ir_blocks = [
             QueryRoot({'Animal'}),
@@ -357,7 +440,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                     species_location.navigate_to_field('name'), GraphQLString),
             }),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         location_types = construct_location_types({
             base_location: 'Animal',
@@ -410,6 +493,8 @@ class MatchIrLoweringTests(unittest.TestCase):
         #
         # This test ensures that all N=3 of the QueryRoots are eliminated away, rather than just 2.
         # See the complementary end-to-end version of the test in test_compiler.py for more details.
+        schema = get_schema()
+
         base_location = Location(('Animal',))
         revisited_base_location = base_location.revisit()
         twice_revisited_base_location = revisited_base_location.revisit()
@@ -417,6 +502,28 @@ class MatchIrLoweringTests(unittest.TestCase):
         child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         species_location = base_location.navigate_to_subpath('out_Animal_OfSpecies')
         event_location = base_location.navigate_to_subpath('out_Animal_FedAt')
+
+        animal_graphql_type = schema.get_type('Animal')
+        species_graphql_type = schema.get_type('Species')
+        event_graphql_type = schema.get_type('Event')
+        base_location_info = LocationInfo(None, animal_graphql_type, None, 0, 0, False)
+        query_metadata_table = QueryMetadataTable(base_location, base_location_info)
+
+        query_metadata_table.register_location(
+            revisited_base_location, base_location_info)
+        query_metadata_table.register_location(
+            twice_revisited_base_location, base_location_info)
+        query_metadata_table.register_location(
+            thrice_revisited_base_location, base_location_info)
+        query_metadata_table.register_location(
+            child_location,
+            LocationInfo(base_location, animal_graphql_type, None, 1, 0, False))
+        query_metadata_table.register_location(
+            species_location,
+            LocationInfo(revisited_base_location, species_graphql_type, None, 1, 0, False))
+        query_metadata_table.register_location(
+            event_location,
+            LocationInfo(twice_revisited_base_location, event_graphql_type, None, 1, 0, False))
 
         ir_blocks = [
             QueryRoot({'Animal'}),
@@ -439,7 +546,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'species_uuid': ContextField(species_location.navigate_to_field('uuid')),
             }),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         location_types = construct_location_types({
             base_location: 'Animal',
@@ -484,8 +591,14 @@ class MatchIrLoweringTests(unittest.TestCase):
         check_test_data(self, expected_final_query, final_query)
 
     def test_merge_consecutive_filter_clauses(self):
+        schema = get_schema()
+
         base_location = Location(('Animal',))
         base_name_location = base_location.navigate_to_field('name')
+
+        animal_graphql_type = schema.get_type('Animal')
+        base_location_info = LocationInfo(None, animal_graphql_type, None, 0, 0, False)
+        query_metadata_table = QueryMetadataTable(base_location, base_location_info)
 
         ir_blocks = [
             QueryRoot({'Animal'}),
@@ -515,7 +628,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 'animal_name': ContextField(base_name_location),
             })
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         # The expected final blocks have one Filter block with the predicates joined by an AND.
         expected_final_blocks = [
@@ -721,10 +834,26 @@ class MatchIrLoweringTests(unittest.TestCase):
         #         }
         #     }
         # }'''
+        schema = get_schema()
+
         base_location = Location(('Animal',))
         child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         child_fed_at_location = child_location.navigate_to_subpath('out_Animal_FedAt')
         revisited_base_location = base_location.revisit()
+
+        animal_graphql_type = schema.get_type('Animal')
+        event_graphql_type = schema.get_type('Event')
+        base_location_info = LocationInfo(None, animal_graphql_type, None, 0, 0, False)
+        query_metadata_table = QueryMetadataTable(base_location, base_location_info)
+
+        query_metadata_table.register_location(
+            child_location,
+            LocationInfo(base_location, animal_graphql_type, None, 1, 0, False))
+        query_metadata_table.register_location(
+            child_fed_at_location,
+            LocationInfo(child_location, event_graphql_type, None, 1, 0, False))
+        query_metadata_table.register_location(
+            revisited_base_location, base_location_info)
 
         ir_blocks = [
             QueryRoot({'Animal'}),
@@ -750,15 +879,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 ),
             })
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
-
-        location_types = construct_location_types({
-            base_location: 'Animal',
-            child_location: 'Animal',
-            child_fed_at_location: 'Event',
-            revisited_base_location: 'Animal',
-        })
-        coerced_locations = set()
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         expected_final_blocks_without_optional_traverse = [
             QueryRoot({'Animal'}),
@@ -811,7 +932,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             ]
         )
 
-        final_query = ir_lowering_match.lower_ir(ir_blocks, location_types, coerced_locations)
+        final_query = ir_lowering_match.lower_ir(ir_blocks, query_metadata_table)
 
         self.assertEqual(
             expected_compound_match_query, final_query,
@@ -825,10 +946,22 @@ class GremlinIrLoweringTests(unittest.TestCase):
         self.maxDiff = None
 
     def test_context_field_existence_lowering(self):
+        schema = get_schema()
+
         base_location = Location(('Animal',))
         revisited_base_location = base_location.revisit()
         child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         child_name_location = child_location.navigate_to_field('name')
+
+        animal_graphql_type = schema.get_type('Animal')
+        base_location_info = LocationInfo(None, animal_graphql_type, None, 0, 0, False)
+        query_metadata_table = QueryMetadataTable(base_location, base_location_info)
+
+        query_metadata_table.register_location(
+            child_location,
+            LocationInfo(base_location, animal_graphql_type, None, 1, 0, False))
+        query_metadata_table.register_location(
+            revisited_base_location, base_location_info)
 
         ir_blocks = [
             QueryRoot({'Animal'}),
@@ -845,7 +978,7 @@ class GremlinIrLoweringTests(unittest.TestCase):
                 )
             })
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks)
+        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         # The expected final blocks just have a rewritten ConstructResult block,
         # where the ContextFieldExistence expression is replaced with a marked vertex null check.

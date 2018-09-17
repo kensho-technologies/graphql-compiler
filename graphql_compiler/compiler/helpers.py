@@ -1,7 +1,8 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Common helper objects, base classes and methods."""
 from abc import ABCMeta, abstractmethod
-from collections import namedtuple
+from collections import Hashable, namedtuple
+from functools import total_ordering
 import string
 
 import funcy
@@ -217,6 +218,22 @@ def _create_fold_path_component(edge_direction, edge_name):
     return ((edge_direction, edge_name),)  # tuple containing a tuple of two elements
 
 
+def invert_dict(invertible_dict):
+    """Invert a dict. A dict is invertible if values are unique and hashable."""
+    inverted = {}
+    for k, v in six.iteritems(invertible_dict):
+        if not isinstance(v, Hashable):
+            raise TypeError(u'Expected an invertible dict, but value at key {} has type {}'.format(
+                k, type(v).__name__))
+        if v in inverted:
+            raise TypeError(u'Expected an invertible dict, but keys'
+                            u'{} and {} map to the same value'.format(
+                                inverted[v], k))
+        inverted[v] = k
+    return inverted
+
+
+@total_ordering
 @six.add_metaclass(ABCMeta)
 class BaseLocation(object):
     """An abstract location object, describing a location in the GraphQL query."""
@@ -235,6 +252,33 @@ class BaseLocation(object):
     def get_location_name(self):
         """Return a tuple of a unique name of the location, and the current field name (or None)."""
         raise NotImplementedError()
+
+    @abstractmethod
+    def _check_if_object_of_same_type_is_smaller(self, other):
+        """Return True if the other object is smaller than self in the total ordering."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __eq__(self, other):
+        """Return True if the BaseLocations are equal, and False otherwise."""
+        raise NotImplementedError()
+
+    def __lt__(self, other):
+        """Return True if the other object is smaller than self in the total ordering."""
+        if isinstance(self, Location) and isinstance(other, Location):
+            return self._check_if_object_of_same_type_is_smaller(other)
+        elif isinstance(self, FoldScopeLocation) and isinstance(other, FoldScopeLocation):
+            return self._check_if_object_of_same_type_is_smaller(other)
+        elif isinstance(self, Location) and isinstance(other, FoldScopeLocation):
+            if self != other.base_location:
+                return self < other.base_location
+            return False
+        elif isinstance(self, FoldScopeLocation) and isinstance(other, Location):
+            return not other <= self
+        else:
+            raise AssertionError(u'Received objects of types {}, {} in BaseLocation comparison. '
+                                 u'Only Location and FoldScopeLocation are allowed: {} {}'
+                                 .format(type(self).__name__, type(other).__name__, self, other))
 
 
 @six.python_2_unicode_compatible
@@ -328,6 +372,13 @@ class Location(BaseLocation):
         mark_name = u'__'.join(self.query_path) + u'___' + six.text_type(self.visit_counter)
         return (mark_name, self.field)
 
+    def is_revisited_at(self, other_location):
+        """Return True if other_location is a revisit of this location, and False otherwise."""
+        # Note that FoldScopeLocation objects cannot revisit Location objects, or each other.
+        return (isinstance(other_location, Location) and
+                self.query_path == other_location.query_path and
+                self.visit_counter < other_location.visit_counter)
+
     def __str__(self):
         """Return a human-readable str representation of the Location object."""
         return u'Location({}, {}, {})'.format(self.query_path, self.field, self.visit_counter)
@@ -346,6 +397,29 @@ class Location(BaseLocation):
     def __ne__(self, other):
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
+
+    def _check_if_object_of_same_type_is_smaller(self, other):
+        """Return True if the other object is smaller than self in the total ordering."""
+        if not isinstance(other, Location):
+            raise AssertionError(u'Expected Location type for other. Received {}: {}'
+                                 .format(type(other).__name__, other))
+
+        if len(self.query_path) != len(other.query_path):
+            return len(self.query_path) < len(other.query_path)
+
+        if self.query_path != other.query_path:
+            return self.query_path < other.query_path
+
+        if self.visit_counter != other.visit_counter:
+            return self.visit_counter < other.visit_counter
+
+        if self.field is None:
+            return other.field is not None
+
+        if other.field is None:
+            return False
+
+        return self.field < other.field
 
     def __hash__(self):
         """Return the object's hash value."""
@@ -455,3 +529,26 @@ class FoldScopeLocation(BaseLocation):
     def __hash__(self):
         """Return the object's hash value."""
         return hash(self.base_location) ^ hash(self.fold_path) ^ hash(self.field)
+
+    def _check_if_object_of_same_type_is_smaller(self, other):
+        """Return True if the other object is smaller than self in the total ordering."""
+        if not isinstance(other, FoldScopeLocation):
+            raise AssertionError(u'Expected FoldScopeLocation type for other. Received {}: {}'
+                                 .format(type(other).__name__, other))
+
+        if self.base_location != other.base_location:
+            return self.base_location < other.base_location
+
+        if len(self.fold_path) != len(other.fold_path):
+            return len(self.fold_path) < len(other.fold_path)
+
+        if self.fold_path != other.fold_path:
+            return self.fold_path < other.fold_path
+
+        if self.field is None:
+            return other.field is not None
+
+        if other.field is None:
+            return False
+
+        return self.field < other.field

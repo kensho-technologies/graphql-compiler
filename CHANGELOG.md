@@ -2,6 +2,21 @@
 
 ## Current development version
 
+## v1.8.1
+
+- Fix a bug that arose when using certain type coercions that the compiler optimizes away to a no-op. [#127](https://github.com/kensho-technologies/graphql-compiler/pull/127)
+
+Thanks to `bojanserafimov` for the fix!
+
+## v1.8.0
+
+- Allow `@optional` vertex fields nested inside other `@optional` vertex fields. [#120](https://github.com/kensho-technologies/graphql-compiler/pull/120)
+- Fix a bug that accidentally disallowed having two `@recurse` directives within the same vertex field. [#115](https://github.com/kensho-technologies/graphql-compiler/pull/115)
+- Enforce that all required directives are present in the schema. [#114](https://github.com/kensho-technologies/graphql-compiler/pull/114)
+- Under the hood, made fairly major changes to how query metadata is tracked and processed.
+
+Thanks to `amartyashankha`, `cw6515`, and `yangsong97` for their contributions!
+
 ## v1.7.2
 
 - Fix possible incorrect query execution due to dropped type coercions. [#110](https://github.com/kensho-technologies/graphql-compiler/pull/110) [#113](https://github.com/kensho-technologies/graphql-compiler/pull/113)

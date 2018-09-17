@@ -215,73 +215,77 @@ def extract_optional_location_root_info(ir_blocks):
         ir_blocks: list of IR blocks to extract optional data from
 
     Returns:
-        tuple (complex_optional_roots, location_to_optional_root):
-        - complex_optional_roots: list of @optional locations (location immmediately preceding
-                                  an @optional Traverse) that expand vertex fields
-        - location_to_optional_root: dict mapping from location -> optional_location
-                                     where location is within @optional (not necessarily one that
-                                     expands vertex fields) and optional_location is the location
-                                     preceding the corresponding @optional scope
+        tuple (complex_optional_roots, location_to_optional_roots):
+        complex_optional_roots: list of @optional locations (location immmediately preceding
+                                an @optional Traverse) that expand vertex fields
+        location_to_optional_roots: dict mapping from location -> optional_roots where location is
+                                    within some number of @optionals and optional_roots is a list
+                                    of optional root locations preceding the successive @optional
+                                    scopes within which the location resides
     """
     complex_optional_roots = []
-    location_to_optional_root = dict()
-    in_optional_root_location = None
-    encountered_traverse_within_optional = False
+    location_to_optional_roots = dict()
+
+    # These are both stacks that perform depth-first search on the tree of @optional edges.
+    # At any given location they contain
+    # - in_optional_root_locations: all the optional root locations
+    # - encountered_traverse_within_optional: whether the optional is complex or not
+    # in order that they appear on the path from the root to that location.
+    in_optional_root_locations = []
+    encountered_traverse_within_optional = []
 
     # Blocks within folded scopes should not be taken into account in this function.
     _, non_folded_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
 
     preceding_location = None
     for current_block in non_folded_ir_blocks:
-        if isinstance(current_block, Traverse) and current_block.optional:
-            if in_optional_root_location is not None:
-                raise AssertionError(u'in_optional_root_location was not None at an optional '
-                                     u'Traverse: {} {}'.format(current_block, non_folded_ir_blocks))
+        if len(in_optional_root_locations) > 0 and isinstance(current_block, (Traverse, Recurse)):
+            encountered_traverse_within_optional[-1] = True
 
+        if isinstance(current_block, Traverse) and current_block.optional:
             if preceding_location is None:
                 raise AssertionError(u'No MarkLocation found before an optional Traverse: {} {}'
                                      .format(current_block, non_folded_ir_blocks))
 
-            in_optional_root_location = preceding_location
-        elif all((in_optional_root_location is not None,
-                  isinstance(current_block, (Traverse, Recurse)))):
-            encountered_traverse_within_optional = True
+            in_optional_root_locations.append(preceding_location)
+            encountered_traverse_within_optional.append(False)
         elif isinstance(current_block, EndOptional):
-            if in_optional_root_location is None:
-                raise AssertionError(u'in_optional_root_location was None at an EndOptional block: '
-                                     u'{}'.format(non_folded_ir_blocks))
+            if len(in_optional_root_locations) == 0:
+                raise AssertionError(u'in_optional_root_locations was empty at an EndOptional '
+                                     u'block: {}'.format(ir_blocks))
 
-            if encountered_traverse_within_optional:
-                complex_optional_roots.append(in_optional_root_location)
+            if encountered_traverse_within_optional[-1]:
+                complex_optional_roots.append(in_optional_root_locations[-1])
 
-            in_optional_root_location = None
-            encountered_traverse_within_optional = False
+            in_optional_root_locations.pop()
+            encountered_traverse_within_optional.pop()
         elif isinstance(current_block, MarkLocation):
-            if in_optional_root_location is None:
-                preceding_location = current_block.location
-            else:
-                # in_optional_root_location will not be None if and only if we are within an
-                # @optional scope. In this case, add the current location to the dictionary.
-                location_to_optional_root[current_block.location] = in_optional_root_location
+            preceding_location = current_block.location
+            if len(in_optional_root_locations) != 0:
+                # in_optional_root_locations will not be empty if and only if we are within an
+                # @optional scope. In this case, we add the current location to the dictionary
+                # mapping it to the sequence of optionals locations leading up to it.
+                optional_root_locations_stack = tuple(in_optional_root_locations)
+                location_to_optional_roots[current_block.location] = optional_root_locations_stack
         else:
             # No locations need to be marked, and no optional scopes begin or end here.
             pass
 
-    return complex_optional_roots, location_to_optional_root
+    return complex_optional_roots, location_to_optional_roots
 
 
 def extract_simple_optional_location_info(
-        ir_blocks, complex_optional_roots, location_to_optional_root):
+        ir_blocks, complex_optional_roots, location_to_optional_roots):
     """Construct a map from simple optional locations to their inner location and traversed edge.
 
     Args:
         ir_blocks: list of IR blocks to extract optional data from
         complex_optional_roots: list of @optional locations (location immmediately preceding
                                 an @optional traverse) that expand vertex fields
-        location_to_optional_root: dict mapping from location -> optional_root where location is
-                                   within @optional (not necessarily one that expands vertex fields)
-                                   and optional_root is the location preceding the corresponding
-                                   @optional scope
+        location_to_optional_roots: dict mapping from location -> optional_roots where location is
+                                    within some number of @optionals and optional_roots is a list
+                                    of optional root locations preceding the successive @optional
+                                    scopes within which the location resides
 
     Returns:
         dict mapping from simple_optional_root_location -> dict containing keys
@@ -291,11 +295,15 @@ def extract_simple_optional_location_info(
          - 'edge_field': string representing the optional edge being traversed
         where simple_optional_root_to_inner_location is the location preceding the @optional scope
     """
-    # Simple optional roots are a subset of location_to_optional_root.values() (all optional roots).
+    # Simple optional roots are a subset of location_to_optional_roots.values() (all optional roots)
     # We filter out the ones that are also present in complex_optional_roots.
+    location_to_preceding_optional_root_iteritems = six.iteritems({
+        location: optional_root_locations_stack[-1]
+        for location, optional_root_locations_stack in six.iteritems(location_to_optional_roots)
+    })
     simple_optional_root_to_inner_location = {
         optional_root_location: inner_location
-        for inner_location, optional_root_location in six.iteritems(location_to_optional_root)
+        for inner_location, optional_root_location in location_to_preceding_optional_root_iteritems
         if optional_root_location not in complex_optional_roots
     }
     simple_optional_root_locations = set(simple_optional_root_to_inner_location.keys())

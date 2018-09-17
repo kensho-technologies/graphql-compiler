@@ -69,6 +69,7 @@ import six
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
+from ..schema import DIRECTIVES
 from .context_helpers import (has_encountered_output_source, is_in_fold_scope, is_in_optional_scope,
                               validate_context_for_visiting_vertex_field)
 from .directive_helpers import (get_local_filter_directives, get_unique_directives,
@@ -79,8 +80,8 @@ from .directive_helpers import (get_local_filter_directives, get_unique_directiv
 from .filters import process_filter_directive
 from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_edge_direction_and_name,
                       get_field_type_from_schema, get_uniquely_named_objects_by_name,
-                      get_vertex_field_type, is_vertex_field_name, strip_non_null_from_type,
-                      validate_safe_string)
+                      get_vertex_field_type, invert_dict, is_vertex_field_name,
+                      strip_non_null_from_type, validate_safe_string)
 from .metadata import LocationInfo, QueryMetadataTable
 
 
@@ -125,8 +126,7 @@ IrAndMetadata = namedtuple(
         'ir_blocks',
         'input_metadata',
         'output_metadata',
-        'location_types',
-        'coerced_locations',
+        'query_metadata_table',
     )
 )
 
@@ -389,6 +389,9 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         validate_context_for_visiting_vertex_field(location, field_name, context)
 
         field_schema_type = get_vertex_field_type(current_schema_type, field_name)
+        hinted_base = context['type_equivalence_hints_inverse'].get(field_schema_type, None)
+        if hinted_base:
+            field_schema_type = hinted_base
 
         inner_unique_directives = get_unique_directives(field_ast)
         validate_vertex_field_directive_interactions(location, field_name, inner_unique_directives)
@@ -488,20 +491,18 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                      u'Location: {}'.format(location))
 
         if in_topmost_optional_block:
-            basic_blocks.append(blocks.EndOptional())
             del context['optional']
 
         # If we are currently evaluating a @fold vertex,
         # we didn't Traverse into it, so we don't need to backtrack out either.
-        # We also don't backtrack if we're currently inside a @fold scope, or
-        # if we've reached an @output_source.
+        # We also don't backtrack if we've reached an @output_source.
         backtracking_required = (
             (not fold_directive) and
-            (not isinstance(location, FoldScopeLocation)) and
             (not has_encountered_output_source(context))
         )
         if backtracking_required:
             if edge_traversal_is_optional:
+                basic_blocks.append(blocks.EndOptional())
                 basic_blocks.append(blocks.Backtrack(location, optional=True))
 
                 # Exiting optional block!
@@ -566,7 +567,6 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     #           then recurse into the fragment's selection.
     coerces_to_type_name = ast.type_condition.name.value
     coerces_to_type_obj = schema.get_type(coerces_to_type_name)
-    query_metadata_table.record_coercion_at_location(location, coerces_to_type_obj)
 
     basic_blocks = []
 
@@ -583,6 +583,7 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
 
     if not (is_same_type_as_scope or is_base_type_of_union):
         # Coercion is required.
+        query_metadata_table.record_coercion_at_location(location, coerces_to_type_obj)
         basic_blocks.append(blocks.CoerceType({coerces_to_type_name}))
 
     inner_basic_blocks = _compile_ast_node_to_ir(
@@ -702,8 +703,14 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     )
     query_metadata_table = QueryMetadataTable(location, base_location_info)
 
+    # Default argument value is empty dict
+    if not type_equivalence_hints:
+        type_equivalence_hints = dict()
+
     # Construct the starting context object.
     context = {
+        # 'metadata' is the QueryMetadataTable describing all the metadata collected during query
+        # processing, including location metadata (e.g. which locations are folded or optional).
         'metadata': query_metadata_table,
         # 'tags' is a dict containing
         #  - location: Location where the tag was defined
@@ -721,7 +728,10 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         # types, as automatically inferred by inspecting the query structure
         'inputs': dict(),
         # 'type_equivalence_hints' is a dict mapping GraphQL types to equivalent GraphQL unions
-        'type_equivalence_hints': type_equivalence_hints or dict(),
+        'type_equivalence_hints': type_equivalence_hints,
+        # 'type_equivalence_hints_inverse' is the inverse of type_equivalence_hints,
+        # which is always invertible.
+        'type_equivalence_hints_inverse': invert_dict(type_equivalence_hints),
         # The marked_location_stack explicitly maintains a stack (implemented as list)
         # of namedtuples (each corresponding to a MarkLocation) containing:
         #  - location: the location within the corresponding MarkLocation object
@@ -766,23 +776,11 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         for name, value in six.iteritems(outputs_context)
     }
 
-    location_types = {
-        location: location_info.type
-        for location, location_info in query_metadata_table.registered_locations
-    }
-
-    coerced_locations = {
-        location
-        for location, location_info in query_metadata_table.registered_locations
-        if location_info.coerced_from_type is not None
-    }
-
     return IrAndMetadata(
         ir_blocks=basic_blocks,
         input_metadata=context['inputs'],
         output_metadata=output_metadata,
-        location_types=location_types,
-        coerced_locations=coerced_locations)
+        query_metadata_table=context['metadata'])
 
 
 def _compile_output_step(outputs):
@@ -838,9 +836,86 @@ def _preprocess_graphql_string(graphql_string):
     return graphql_string + '\n'
 
 
+def _validate_schema_and_ast(schema, ast):
+    """Validate the supplied graphql schema and ast.
+
+    This method wraps around graphql-core's validation to enforce a stricter requirement of the
+    schema -- all directives supported by the compiler must be declared by the schema, regardless of
+    whether each directive is used in the query or not.
+
+    Args:
+        schema: GraphQL schema object, created using the GraphQL library
+        ast: abstract syntax tree representation of a graphql query
+
+    Returns:
+        list containing schema and/or query validation errors
+    """
+    core_graphql_errors = validate(schema, ast)
+
+    # The following directives appear in the core-graphql library, but are not supported by the
+    # graphql compiler.
+    unsupported_default_directives = frozenset([
+        frozenset([
+            'include',
+            frozenset(['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']),
+            frozenset(['if'])
+        ]),
+        frozenset([
+            'skip',
+            frozenset(['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']),
+            frozenset(['if'])
+        ]),
+        frozenset([
+            'deprecated',
+            frozenset(['ENUM_VALUE', 'FIELD_DEFINITION']),
+            frozenset(['reason'])
+        ])
+    ])
+
+    # Directives expected by the graphql compiler.
+    expected_directives = {
+        frozenset([
+            directive.name,
+            frozenset(directive.locations),
+            frozenset(six.viewkeys(directive.args))
+        ])
+        for directive in DIRECTIVES
+    }
+
+    # Directives provided in the parsed graphql schema.
+    actual_directives = {
+        frozenset([
+            directive.name,
+            frozenset(directive.locations),
+            frozenset(six.viewkeys(directive.args))
+        ])
+        for directive in schema.get_directives()
+    }
+
+    # Directives missing from the actual directives provided.
+    missing_directives = expected_directives - actual_directives
+    if missing_directives:
+        missing_message = (u'The following directives were missing from the '
+                           u'provided schema: {}'.format(missing_directives))
+        core_graphql_errors.append(missing_message)
+
+    # Directives that are not specified by the core graphql library. Note that Graphql-core
+    # automatically injects default directives into the schema, regardless of whether
+    # the schema supports said directives. Hence, while the directives contained in
+    # unsupported_default_directives are incompatible with the graphql-compiler, we allow them to
+    # be present in the parsed schema string.
+    extra_directives = actual_directives - expected_directives - unsupported_default_directives
+    if extra_directives:
+        extra_message = (u'The following directives were supplied in the given schema, but are not '
+                         u'not supported by the GraphQL compiler: {}'.format(extra_directives))
+        core_graphql_errors.append(extra_message)
+
+    return core_graphql_errors
+
 ##############
 # Public API #
 ##############
+
 
 def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
     """Convert the given GraphQL string into compiler IR, using the given schema object.
@@ -888,7 +963,7 @@ def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
     except GraphQLSyntaxError as e:
         raise GraphQLParsingError(e)
 
-    validation_errors = validate(schema, ast)
+    validation_errors = _validate_schema_and_ast(schema, ast)
 
     if validation_errors:
         raise GraphQLValidationError(u'String does not validate: {}'.format(validation_errors))

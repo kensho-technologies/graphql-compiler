@@ -1616,6 +1616,40 @@ def no_op_coercion_inside_fold():
         type_equivalence_hints=type_equivalence_hints)
 
 
+def no_op_coercion_with_eligible_subpath():
+    # This test case has a no-op coercion and a preferred location inside an
+    # eligible location. The no-op must be optimized away, or it will cause
+    # problems when hiding the eligible non-preferred location.
+    graphql_input = '''{
+        Animal {
+            out_Animal_ParentOf {
+                ... on Animal {
+                    out_Animal_ParentOf {
+                        name @output(out_name: "animal_name")
+                    }
+                    out_Entity_Related {
+                        ... on Entity {
+                            name @filter(op_name: "in_collection", value: ["$entity_names"])
+                        }
+                    }
+                }
+            }
+        }
+    }'''
+    type_equivalence_hints = {}
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'entity_names': GraphQLList(GraphQLString)
+    }
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=type_equivalence_hints)
+
+
 def filter_within_fold_scope():
     graphql_input = '''{
         Animal {
@@ -2341,6 +2375,88 @@ def coercion_and_filter_with_tag():
     expected_output_metadata = {
         'origin': OutputMetadata(type=GraphQLString, optional=False),
         'related_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def nested_optional_and_traverse():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf @optional {
+                name @output(out_name: "child_name")
+                out_Animal_ParentOf @optional {
+                    name @output(out_name: "spouse_and_self_name")
+                    out_Animal_OfSpecies {
+                        name @output(out_name: "spouse_species")
+                    }
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'child_name': OutputMetadata(type=GraphQLString, optional=True),
+        'spouse_and_self_name': OutputMetadata(type=GraphQLString, optional=True),
+        'spouse_species': OutputMetadata(type=GraphQLString, optional=True),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def complex_nested_optionals():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf @optional {
+                name @output(out_name: "child_name")
+                in_Animal_ParentOf @optional {
+                    name @output(out_name: "grandchild_name")
+                    out_Animal_OfSpecies {
+                        name @output(out_name: "grandchild_species")
+                    }
+                }
+                in_Entity_Related @optional {
+                    ... on Animal {
+                        name @output(out_name: "grandchild_relation_name")
+                        out_Animal_OfSpecies {
+                            name @output(out_name: "grandchild_relation_species")
+                        }
+                    }
+                }
+            }
+            out_Animal_ParentOf @optional {
+                name @output(out_name: "parent_name")
+                out_Animal_ParentOf @optional {
+                    name @output(out_name: "grandparent_name")
+                    out_Animal_OfSpecies {
+                        name @output(out_name: "grandparent_species")
+                    }
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'child_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandchild_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandchild_species': OutputMetadata(type=GraphQLString, optional=True),
+        'grandchild_relation_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandchild_relation_species': OutputMetadata(type=GraphQLString, optional=True),
+        'parent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandparent_name': OutputMetadata(type=GraphQLString, optional=True),
+        'grandparent_species': OutputMetadata(type=GraphQLString, optional=True),
     }
     expected_input_metadata = {}
 
