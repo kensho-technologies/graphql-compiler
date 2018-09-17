@@ -194,7 +194,7 @@ def validate_safe_string(value):
 
 
 def validate_output_name(value):
-    """Ensure that the provided string is valid for use an an output name."""
+    """Ensure that the provided string is valid for use as an output name."""
     internal_name_prefix = u'___'
     if value.startswith(internal_name_prefix):
         raise GraphQLCompilationError(

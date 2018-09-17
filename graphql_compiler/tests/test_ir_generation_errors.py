@@ -1250,14 +1250,3 @@ class IrGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             graphql_to_ir(self.schema, valid_graphql_input,
                           type_equivalence_hints=invalid_type_equivalence_hints)
-
-    def test_reserved_internal_name_output_error(self):
-        """Ensure TypeError is raised when the hints are non-invertible."""
-        valid_graphql_input = '''{
-            Animal {
-                name @output(out_name: "___animal_name")
-            }
-        }'''
-        with self.assertRaises(GraphQLCompilationError):
-            graphql_to_ir(self.schema, valid_graphql_input,
-                          type_equivalence_hints={})
