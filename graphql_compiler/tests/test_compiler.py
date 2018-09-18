@@ -5321,3 +5321,36 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_recursive_field_type_is_subtype_of_parent_field(self):
+        """Ensure recursion can occur on an edge assigned to a supertype of the current scope."""
+        test_data = test_input_data.recursive_field_type_is_subtype_of_parent_field()
+
+        expected_match = '''
+            SELECT BirthEvent__out_Event_RelatedEvent___1.name AS `related_event_name`
+            FROM (
+                MATCH {{
+                    class: BirthEvent,
+                    as: BirthEvent___1
+                }}.out('Event_RelatedEvent') {{
+                    while: ($depth < 2),
+                    as: BirthEvent__out_Event_RelatedEvent___1
+                }}
+                RETURN $matches
+            )
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'BirthEvent')
+            .as('BirthEvent___1')
+            .copySplit(_(),_()
+            .out('Event_RelatedEvent'),_()
+            .out('Event_RelatedEvent')
+            .out('Event_RelatedEvent'))
+            .exhaustMerge.as('BirthEvent__out_Event_RelatedEvent___1')
+            .back('BirthEvent___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                related_event_name: m.BirthEvent__out_Event_RelatedEvent___1.name ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)

@@ -2465,3 +2465,30 @@ def complex_nested_optionals():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
+
+
+def recursive_field_type_is_subtype_of_parent_field():
+    """Ensure that traversal is allowed along an edge linked to a supertype of the parent field."""
+    graphql_input = '''{
+        BirthEvent {
+            out_Event_RelatedEvent @recurse(depth:2) {
+                ... on Event {
+                    name @output(out_name: "related_event_name")
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'related_event_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {}
+
+    type_equivalence_hints = {
+        'Event': 'EventOrBirthEvent',
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=type_equivalence_hints)
