@@ -312,8 +312,7 @@ def _get_recurse_directive_depth(field_name, field_directives):
     return recurse_depth
 
 
-def _validate_recurse_directive_types(current_schema_type, field_schema_type, context,
-                                      outer_scope_possible_properties, inner_scope_used_properties):
+def _validate_recurse_directive_types(current_schema_type, field_schema_type, context):
     """Perform type checks on the enclosing type and the recursed type for a recurse directive.
 
     Args:
@@ -321,8 +320,6 @@ def _validate_recurse_directive_types(current_schema_type, field_schema_type, co
         field_schema_type: GraphQLType, the schema type at the inner scope
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        outer_scope_possible_properties: list of string properties allowed by the outer scope type
-        inner_scope_used_properties: list of properties used in the inner scope
     """
     # Get the set of all allowed types in the current scope.
     equivalent_types_to_field_scope = [
@@ -338,31 +335,19 @@ def _validate_recurse_directive_types(current_schema_type, field_schema_type, co
     # The current scope must be of the same type as the field scope, or an acceptable subtype.
     current_scope_is_allowed = current_schema_type in allowed_current_types
 
-    # Ensure that properties of fields being recursed on exist in both scopes. In other words,
-    # we need to disallow recursion that starts on a subtype, and then recurses on a supertype edge,
-    # picking up properties which the supertype has, but the subtype (recursion depth 0), does not.
-    inner_properties_in_outer_scope = all(
-        inner_property in outer_scope_possible_properties
-        for inner_property in inner_scope_used_properties
-    )
-
-    # If the current scope type differs from the field scope type, the current scope must be an
-    # acceptable subtype and only pluck common properties when recursing.
-    types_and_properties_satisfied = inner_properties_in_outer_scope and current_scope_is_allowed
-
     is_implemented_interface = (
         isinstance(field_schema_type, GraphQLInterfaceType) and
         isinstance(current_schema_type, GraphQLObjectType) and
         field_schema_type in current_schema_type.interfaces
     )
 
-    if not any((types_and_properties_satisfied, is_implemented_interface)):
+    if not any((current_scope_is_allowed, is_implemented_interface)):
         raise GraphQLCompilationError(u'Edges expanded with a @recurse directive must either '
                                       u'be of the same type as their enclosing scope, a supertype '
-                                      u'of the enclosing scope which only queries for properties '
-                                      u'common to both the supertype and subtype, or be of an '
-                                      u'interface type that is implemented by the type of their '
-                                      u'enclosing scope. Enclosing scope type: {}, edge type: '
+                                      u'of the enclosing scope which expands on a union of '
+                                      u'both scopes, or be of an interface type that is '
+                                      u'implemented by the type of their enclosing scope. '
+                                      u'Enclosing scope type: {}, edge type: '
                                       u'{}'.format(current_schema_type, field_schema_type))
 
 
@@ -491,18 +476,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             basic_blocks.append(fold_block)
             context['fold'] = inner_location
         elif recurse_directive:
-            # Get the valid fields of the outer scope, and the fields used in the inner scope.
-            outer_scope_type_map = schema.get_type_map().get(current_schema_type.name)
-            outer_scope_possible_properties = list(outer_scope_type_map.fields)
-            inner_scope_used_properties = [
-                prop.name.value
-                for prop in field_ast.selection_set.selections
-                if isinstance(prop, Field)
-            ]
-            _validate_recurse_directive_types(
-                current_schema_type, field_schema_type, context, outer_scope_possible_properties,
-                inner_scope_used_properties
-            )
+            _validate_recurse_directive_types(current_schema_type, field_schema_type, context)
             recurse_depth = _get_recurse_directive_depth(field_name, inner_unique_directives)
             basic_blocks.append(blocks.Recurse(edge_direction,
                                                edge_name,
