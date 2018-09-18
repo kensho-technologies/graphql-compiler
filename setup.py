@@ -40,33 +40,40 @@ def find_name():
     raise RuntimeError('Unable to find name string.')
 
 
-setup(name=find_name(),
-      version=find_version(),
-      description='Turn complex GraphQL queries into optimized database queries.',
-      url='https://github.com/kensho-technologies/graphql-compiler',
-      author='Kensho Technologies, LLC.',
-      author_email='graphql-compiler-maintainer@kensho.com',
-      license='Apache 2.0',
-      packages=find_packages(exclude=['tests*']),
-      install_requires=[
-          'arrow>=0.7.0',
-          'funcy>=1.6',
-          'graphql-core==1.1',
-          'pytz>=2016.10',
-          'six>=1.10.0',
-      ],
-      classifiers=[
-          'Development Status :: 5 - Production/Stable',
-          'Topic :: Database :: Front-Ends',
-          'Topic :: Software Development :: Compilers',
-          'Intended Audience :: Developers',
-          'License :: OSI Approved :: Apache Software License',
-          'Programming Language :: Python :: 2',
-          'Programming Language :: Python :: 2.7',
-          'Programming Language :: Python :: 3',
-          'Programming Language :: Python :: 3.5',
-          'Programming Language :: Python :: 3.6',
-      ],
-      keywords='graphql database compiler orientdb',
-      python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*',
-      )
+def find_long_description():
+    """Return the content of the README.md file."""
+    return read_file('../README.md')
+
+
+setup(
+    name=find_name(),
+    version=find_version(),
+    description='Turn complex GraphQL queries into optimized database queries.',
+    long_description=find_long_description(),
+    url='https://github.com/kensho-technologies/graphql-compiler',
+    author='Kensho Technologies, LLC.',
+    author_email='graphql-compiler-maintainer@kensho.com',
+    license='Apache 2.0',
+    packages=find_packages(exclude=['tests*']),
+    install_requires=[
+        'arrow>=0.7.0',
+        'funcy>=1.6',
+        'graphql-core==1.1',
+        'pytz>=2016.10',
+        'six>=1.10.0',
+    ],
+    classifiers=[
+        'Development Status :: 5 - Production/Stable',
+        'Topic :: Database :: Front-Ends',
+        'Topic :: Software Development :: Compilers',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: Apache Software License',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+    ],
+    keywords='graphql database compiler orientdb',
+    python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*',
+)
