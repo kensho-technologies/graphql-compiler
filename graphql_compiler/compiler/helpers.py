@@ -234,7 +234,7 @@ def invert_dict(invertible_dict):
             raise TypeError(u'Expected an invertible dict, but value at key {} has type {}'.format(
                 k, type(v).__name__))
         if v in inverted:
-            raise TypeError(u'Expected an invertible dict, but keys'
+            raise TypeError(u'Expected an invertible dict, but keys '
                             u'{} and {} map to the same value'.format(
                                 inverted[v], k))
         inverted[v] = k

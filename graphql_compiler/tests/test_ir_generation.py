@@ -4064,3 +4064,28 @@ class IrGenerationTests(unittest.TestCase):
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_recursive_field_type_is_subtype_of_parent_field(self):
+        """Ensure the query can recurse on an edge that links supertype of the parent's field."""
+        test_data = test_input_data.recursive_field_type_is_subtype_of_parent_field()
+
+        base_location = helpers.Location(('BirthEvent',))
+        related_event_location = base_location.navigate_to_subpath('out_Event_RelatedEvent')
+
+        expected_blocks = [
+            blocks.QueryRoot({'BirthEvent'}),
+            blocks.MarkLocation(base_location),
+            blocks.Recurse('out', 'Event_RelatedEvent', 2),
+            blocks.MarkLocation(related_event_location),
+            blocks.Backtrack(base_location),
+            blocks.ConstructResult({
+                'related_event_name': expressions.OutputContextField(
+                    related_event_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'BirthEvent',
+            related_event_location: 'Event',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)

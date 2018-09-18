@@ -136,7 +136,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         recurse_traversal_inside_optional_block = '''{
             Animal {
                 out_Animal_ParentOf @optional {
-                out_Animal_FedAt @recurse(depth: 3) {
+                    out_Animal_FedAt @recurse(depth: 3) {
                         uuid @output(out_name: "uuid")
                     }
                 }
@@ -476,6 +476,18 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }''')
 
+        # Note that out_Animal_ImportantEvent is a union of Event | BirthEvent, hence this query
+        # attempts to recurse on Animal at depth 0, and then on an Event for depth 1 and 2.
+        recurse_on_union_edge_without_parent_type = (GraphQLCompilationError, '''{
+            Animal {
+                out_Animal_ImportantEvent @recurse(depth: 2) {
+                    ... on Event {
+                        name @output(out_name: "event_name")
+                    }
+                }
+            }
+        }''')
+
         # Note that "color" is a property on Animal, but not on Species.
         # However, @recurse emits both the starting vertex (0-depth) as well as deeper vertices,
         # so this query is invalid. The "in_Animal_OfSpecies" vertex field is not of union type,
@@ -493,7 +505,8 @@ class IrGenerationErrorTests(unittest.TestCase):
                                         recurse_with_illegal_depth,
                                         recurse_at_fold_scope,
                                         recurse_within_fold_scope,
-                                        recurse_with_type_mismatch):
+                                        recurse_with_type_mismatch,
+                                        recurse_on_union_edge_without_parent_type):
             with self.assertRaises(expected_error):
                 graphql_to_ir(self.schema, graphql)
 

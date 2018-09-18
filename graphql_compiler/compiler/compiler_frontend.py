@@ -313,20 +313,39 @@ def _get_recurse_directive_depth(field_name, field_directives):
     return recurse_depth
 
 
-def _validate_recurse_directive_types(current_schema_type, field_schema_type):
-    """Perform type checks on the enclosing type and the recursed type for a recurse directive."""
-    has_union_type = isinstance(field_schema_type, GraphQLUnionType)
-    is_same_type = current_schema_type.is_same_type(field_schema_type)
+def _validate_recurse_directive_types(current_schema_type, field_schema_type, context):
+    """Perform type checks on the enclosing type and the recursed type for a recurse directive.
+
+    Args:
+        current_schema_type: GraphQLType, the schema type at the current location
+        field_schema_type: GraphQLType, the schema type at the inner scope
+        context: dict, various per-compilation data (e.g. declared tags, whether the current block
+                 is optional, etc.). May be mutated in-place in this function!
+    """
+    # Get the set of all allowed types in the current scope.
+    type_hints = context['type_equivalence_hints'].get(field_schema_type)
+    type_hints_inverse = context['type_equivalence_hints_inverse'].get(field_schema_type)
+    allowed_current_types = {field_schema_type}
+
+    if type_hints and isinstance(type_hints, GraphQLUnionType):
+        allowed_current_types.update(type_hints.types)
+
+    if type_hints_inverse and isinstance(type_hints_inverse, GraphQLUnionType):
+        allowed_current_types.update(type_hints_inverse.types)
+
+    # The current scope must be of the same type as the field scope, or an acceptable subtype.
+    current_scope_is_allowed = current_schema_type in allowed_current_types
+
     is_implemented_interface = (
         isinstance(field_schema_type, GraphQLInterfaceType) and
         isinstance(current_schema_type, GraphQLObjectType) and
         field_schema_type in current_schema_type.interfaces
     )
 
-    if not any((has_union_type, is_same_type, is_implemented_interface)):
+    if not any((current_scope_is_allowed, is_implemented_interface)):
         raise GraphQLCompilationError(u'Edges expanded with a @recurse directive must either '
-                                      u'be of union type, or be of the same type as their '
-                                      u'enclosing scope, or be of an interface type that is '
+                                      u'be of the same type as their enclosing scope, a supertype '
+                                      u'of the enclosing scope, or be of an interface type that is '
                                       u'implemented by the type of their enclosing scope. '
                                       u'Enclosing scope type: {}, edge type: '
                                       u'{}'.format(current_schema_type, field_schema_type))
@@ -457,8 +476,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             basic_blocks.append(fold_block)
             context['fold'] = inner_location
         elif recurse_directive:
+            _validate_recurse_directive_types(current_schema_type, field_schema_type, context)
             recurse_depth = _get_recurse_directive_depth(field_name, inner_unique_directives)
-            _validate_recurse_directive_types(current_schema_type, field_schema_type)
             basic_blocks.append(blocks.Recurse(edge_direction,
                                                edge_name,
                                                recurse_depth,
