@@ -81,7 +81,7 @@ from .filters import process_filter_directive
 from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_edge_direction_and_name,
                       get_field_type_from_schema, get_uniquely_named_objects_by_name,
                       get_vertex_field_type, invert_dict, is_vertex_field_name,
-                      strip_non_null_from_type, validate_safe_string, validate_output_name)
+                      strip_non_null_from_type, validate_output_name, validate_safe_string)
 from .metadata import LocationInfo, QueryMetadataTable
 
 
