@@ -322,15 +322,15 @@ def _validate_recurse_directive_types(current_schema_type, field_schema_type, co
                  is optional, etc.). May be mutated in-place in this function!
     """
     # Get the set of all allowed types in the current scope.
-    equivalent_types_to_field_scope = [
-        context['type_equivalence_hints'].get(field_schema_type),
-        context['type_equivalence_hints_inverse'].get(field_schema_type)
-    ]
+    type_hints = context['type_equivalence_hints'].get(field_schema_type)
+    type_hints_inverse = context['type_equivalence_hints_inverse'].get(field_schema_type)
+    allowed_current_types = {field_schema_type}
 
-    allowed_current_types = set([field_schema_type])
-    for unpacked_type in equivalent_types_to_field_scope:
-        if isinstance(unpacked_type, GraphQLUnionType):
-            allowed_current_types.update(unpacked_type.types)
+    if type_hints and isinstance(type_hints, GraphQLUnionType):
+        allowed_current_types.update(type_hints.types)
+
+    if type_hints_inverse and isinstance(type_hints_inverse, GraphQLUnionType):
+        allowed_current_types.update(type_hints_inverse.types)
 
     # The current scope must be of the same type as the field scope, or an acceptable subtype.
     current_scope_is_allowed = current_schema_type in allowed_current_types
@@ -344,8 +344,7 @@ def _validate_recurse_directive_types(current_schema_type, field_schema_type, co
     if not any((current_scope_is_allowed, is_implemented_interface)):
         raise GraphQLCompilationError(u'Edges expanded with a @recurse directive must either '
                                       u'be of the same type as their enclosing scope, a supertype '
-                                      u'of the enclosing scope which expands on a union of '
-                                      u'both scopes, or be of an interface type that is '
+                                      u'of the enclosing scope, or be of an interface type that is '
                                       u'implemented by the type of their enclosing scope. '
                                       u'Enclosing scope type: {}, edge type: '
                                       u'{}'.format(current_schema_type, field_schema_type))

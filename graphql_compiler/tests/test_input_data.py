@@ -2468,7 +2468,7 @@ def complex_nested_optionals():
 
 
 def recursive_field_type_is_subtype_of_parent_field():
-    """Ensure that traversal is allowed along an edge linked to a supertype of the parent field."""
+    """Ensure that recursion is allowed along an edge linked to a supertype of the parent field."""
     graphql_input = '''{
         BirthEvent {
             out_Event_RelatedEvent @recurse(depth:2) {
