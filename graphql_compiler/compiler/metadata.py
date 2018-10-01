@@ -41,16 +41,21 @@ class QueryMetadataTable(object):
 
         self._root_location = root_location  # Location, the root location of the entire query
         self._locations = dict()             # dict, Location/FoldScopeLocation -> LocationInfo
-        self._revisit_origins = dict()       # dict, revisiting Location -> revisit origin, i.e.
-                                             #       the first Location with that query path
-        self._revisits = dict()              # dict, revisit origin Location -> set of Locations
-                                             #       for which that Location is the revisit origin
-        self._child_locations = dict()       # dict, Location/FoldScopeLocation -> set of Location
-                                             #       and FoldScopeLocation objects that are directly
-                                             #       descended from it
         self._inputs = dict()                # dict, input name -> input info namedtuple
         self._outputs = dict()               # dict, output name -> output info namedtuple
         self._tags = dict()                  # dict, tag name -> tag info namedtuple
+
+        # dict, revisiting Location -> revisit origin, i.e. the first Location with that query path
+        self._revisit_origins = dict()
+
+        # dict, revisit origin Location -> set of Locations for which
+        #       that Location is the revisit origin
+        self._revisits = dict()
+
+        # dict, Location/FoldScopeLocation -> set of Location and FoldScopeLocation objects
+        #       that are directly descended from it
+        self._child_locations = dict()
+
         self.register_location(root_location, root_location_info)
 
     @property
