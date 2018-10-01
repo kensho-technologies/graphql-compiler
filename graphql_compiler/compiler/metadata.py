@@ -134,6 +134,27 @@ class QueryMetadataTable(object):
         for child_location in self._child_locations.get(location, []):
             yield child_location
 
+    def get_all_revisits(self, location):
+        """Yield an iterable of locations that revisit that location or another of its revisits."""
+        self.get_location_info(location)  # purely to check for location validity
+
+        for revisit_location in self._revisits.get(location, []):
+            yield revisit_location
+
+    def get_revisit_origin(self, location):
+        """Return the original location that this location revisits, or None if it isn't a revisit.
+
+        Args:
+            location: Location/FoldScopeLocation object whose revisit origin to get
+
+        Returns:
+            Location object representing the first location with the same query path as the given
+            location. Returns the given location itself if that location is the first one with
+            that query path. Guaranteed to return the input location if it is a FoldScopeLocation.
+        """
+        self.get_location_info(location)  # purely to check for location validity
+        return self._revisit_origins.get(location, location)
+
     @property
     def registered_locations(self):
         """Return an iterable of (location, location_info) tuples for all registered locations."""
