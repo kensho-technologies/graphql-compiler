@@ -35,6 +35,19 @@ def check_test_data(test_case, test_data, expected_blocks, expected_location_typ
         expected_location_types,
         get_comparable_location_types(compilation_results.query_metadata_table))
 
+    all_child_locations, revisits = compute_child_and_revisit_locations(expected_blocks)
+    for parent_location, child_locations in six.iteritems(all_child_locations):
+        for child_location in child_locations:
+            child_info = compilation_results.query_metadata_table.get_location_info(child_location)
+            test_case.assertEqual(parent_location, child_info.parent_location)
+
+    test_case.assertEqual(
+        all_child_locations,
+        get_comparable_child_locations(compilation_results.query_metadata_table))
+    test_case.assertEqual(
+        revisits,
+        get_comparable_revisits(compilation_results.query_metadata_table))
+
 
 def get_comparable_location_types(query_metadata_table):
     """Return the dict of location -> GraphQL type name for each location in the query."""
@@ -42,6 +55,131 @@ def get_comparable_location_types(query_metadata_table):
         location: location_info.type.name
         for location, location_info in query_metadata_table.registered_locations
     }
+
+
+def get_comparable_child_locations(query_metadata_table):
+    """Return the dict of location -> set of child locations for each location in the query."""
+    all_locations_with_possible_children = {
+        location: set(query_metadata_table.get_child_locations(location))
+        for location, _ in query_metadata_table.registered_locations
+    }
+    return {
+        location: child_locations
+        for location, child_locations in six.iteritems(all_locations_with_possible_children)
+        if child_locations
+    }
+
+
+def get_comparable_revisits(query_metadata_table):
+    """Return a dict location -> set of revisit locations for that starting location."""
+    revisit_origins = {
+        query_metadata_table.get_revisit_origin(location)
+        for location, _ in query_metadata_table.registered_locations
+    }
+
+    intermediate_result = {
+        location: set(query_metadata_table.get_all_revisits(location))
+        for location in revisit_origins
+    }
+
+    return {
+        location: revisits
+        for location, revisits in six.iteritems(intermediate_result)
+        if revisits
+    }
+
+
+def compute_child_and_revisit_locations(ir_blocks):
+    """Return dicts describing the parent-child and revisit relationships for all query locations.
+
+    Args:
+        ir_blocks: list of IR blocks describing the given query
+
+    Returns:
+        tuple of:
+            dict mapping parent location -> set of child locations (guaranteed to be non-empty)
+            dict mapping revisit origin -> set of revisits (possibly empty)
+    """
+    if not ir_blocks:
+        raise AssertionError(u'Unexpectedly received empty ir_blocks: {}'.format(ir_blocks))
+
+    first_block = ir_blocks[0]
+    if not isinstance(first_block, blocks.QueryRoot):
+        raise AssertionError(u'Unexpectedly, the first IR block was not a QueryRoot: {} {}'
+                             .format(first_block, ir_blocks))
+
+    # These block types do not affect the computed location structure.
+    no_op_block_types = (
+        blocks.Filter,
+        blocks.ConstructResult,
+        blocks.EndOptional,
+        blocks.OutputSource,
+        blocks.CoerceType,
+    )
+
+    current_location = None
+    traversed_or_recursed_or_folded = False
+    fold_started_at = None
+
+    top_level_locations = set()
+    parent_location = dict()  # location -> parent location
+    child_locations = dict()  # location -> set of child locations
+    revisits = dict()  # location -> set of revisit locations
+    query_path_to_revisit_origin = dict()  # location query path -> its revisit origin
+
+    # Walk the IR blocks and reconstruct the query's location structure.
+    for block in ir_blocks[1:]:
+        if isinstance(block, (blocks.Traverse, blocks.Fold, blocks.Recurse)):
+            traversed_or_recursed_or_folded = True
+            if isinstance(block, blocks.Fold):
+                fold_started_at = current_location
+        elif isinstance(block, blocks.Unfold):
+            current_location = fold_started_at
+        elif isinstance(block, blocks.MarkLocation):
+            # Handle optional traversals and backtracks, due to the fact that
+            # they might drop MarkLocations before and after themselves.
+            if traversed_or_recursed_or_folded:
+                block_parent_location = current_location
+            else:
+                block_parent_location = parent_location.get(current_location, None)
+
+            if block_parent_location is not None:
+                parent_location[block.location] = block_parent_location
+                child_locations.setdefault(block_parent_location, set()).add(block.location)
+            else:
+                top_level_locations.add(current_location)
+
+            current_location = block.location
+
+            if isinstance(current_location, helpers.FoldScopeLocation):
+                revisit_origin = None
+            elif isinstance(current_location, helpers.Location):
+                if current_location.query_path not in query_path_to_revisit_origin:
+                    query_path_to_revisit_origin[current_location.query_path] = current_location
+                    revisit_origin = None
+                else:
+                    revisit_origin = query_path_to_revisit_origin[current_location.query_path]
+            else:
+                raise AssertionError(u'Unreachable state reached: {} {}'
+                                     .format(current_location, ir_blocks))
+
+            if revisit_origin is not None:
+                revisits.setdefault(revisit_origin, set()).add(current_location)
+
+            traversed_or_recursed_or_folded = False
+        elif isinstance(block, blocks.Backtrack):
+            current_location = block.location
+        elif isinstance(block, no_op_block_types):
+            # These blocks do not affect the computed location structure.
+            pass
+        elif isinstance(block, blocks.QueryRoot):
+            raise AssertionError(u'Unexpectedly encountered a second QueryRoot after the first '
+                                 u'IR block: {} {}'.format(block, ir_blocks))
+        else:
+            raise AssertionError(u'Unexpected block type encountered: {} {}'
+                                 .format(block, ir_blocks))
+
+    return child_locations, revisits
 
 
 class IrGenerationTests(unittest.TestCase):

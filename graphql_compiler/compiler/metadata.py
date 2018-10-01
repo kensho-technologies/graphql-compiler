@@ -44,6 +44,18 @@ class QueryMetadataTable(object):
         self._inputs = dict()                # dict, input name -> input info namedtuple
         self._outputs = dict()               # dict, output name -> output info namedtuple
         self._tags = dict()                  # dict, tag name -> tag info namedtuple
+
+        # dict, revisiting Location -> revisit origin, i.e. the first Location with that query path
+        self._revisit_origins = dict()
+
+        # dict, revisit origin Location -> set of Locations for which
+        #       that Location is the revisit origin
+        self._revisits = dict()
+
+        # dict, Location/FoldScopeLocation -> set of Location and FoldScopeLocation objects
+        #       that are directly descended from it
+        self._child_locations = dict()
+
         self.register_location(root_location, root_location_info)
 
     @property
@@ -72,6 +84,8 @@ class QueryMetadataTable(object):
                 raise AssertionError(u'All locations other than the root location and its revisits '
                                      u'must have a parent location, but received a location with '
                                      u'no parent: {} {}'.format(location, location_info))
+        else:
+            self._child_locations.setdefault(location_info.parent_location, set()).add(location)
 
         self._locations[location] = location_info
 
@@ -84,6 +98,13 @@ class QueryMetadataTable(object):
         # might still be holding on to the original info object, therefore registering stale data.
         # This function ensures that the latest metadata on the location is always used instead.
         revisited_location = location.revisit()
+
+        # If "location" is itself a revisit, then we point "revisited_location" to "location"'s
+        # revisit origin. If "location" is not a revisit, then it itself is the revisit origin.
+        revisit_origin = self._revisit_origins.get(location, location)
+        self._revisit_origins[revisited_location] = revisit_origin
+        self._revisits.setdefault(revisit_origin, set()).add(revisited_location)
+
         self.register_location(revisited_location, self.get_location_info(location))
         return revisited_location
 
@@ -110,6 +131,34 @@ class QueryMetadataTable(object):
             raise AssertionError(u'Attempted to get the location info of an unregistered location: '
                                  u'{}'.format(location))
         return location_info
+
+    def get_child_locations(self, location):
+        """Yield an iterable of child locations for a given Location/FoldScopeLocation object."""
+        self.get_location_info(location)  # purely to check for location validity
+
+        for child_location in self._child_locations.get(location, []):
+            yield child_location
+
+    def get_all_revisits(self, location):
+        """Yield an iterable of locations that revisit that location or another of its revisits."""
+        self.get_location_info(location)  # purely to check for location validity
+
+        for revisit_location in self._revisits.get(location, []):
+            yield revisit_location
+
+    def get_revisit_origin(self, location):
+        """Return the original location that this location revisits, or None if it isn't a revisit.
+
+        Args:
+            location: Location/FoldScopeLocation object whose revisit origin to get
+
+        Returns:
+            Location object representing the first location with the same query path as the given
+            location. Returns the given location itself if that location is the first one with
+            that query path. Guaranteed to return the input location if it is a FoldScopeLocation.
+        """
+        self.get_location_info(location)  # purely to check for location validity
+        return self._revisit_origins.get(location, location)
 
     @property
     def registered_locations(self):
