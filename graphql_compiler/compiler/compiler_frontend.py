@@ -62,26 +62,31 @@ from collections import namedtuple
 from graphql.error import GraphQLSyntaxError
 from graphql.language.ast import Field, InlineFragment
 from graphql.language.parser import parse
-from graphql.type.definition import (GraphQLInterfaceType, GraphQLList, GraphQLObjectType,
-                                     GraphQLUnionType)
+from graphql.type.definition import (
+    GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLUnionType
+)
 from graphql.validation import validate
 import six
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
 from ..schema import DIRECTIVES
-from .context_helpers import (has_encountered_output_source, is_in_fold_scope, is_in_optional_scope,
-                              validate_context_for_visiting_vertex_field)
-from .directive_helpers import (get_local_filter_directives, get_unique_directives,
-                                validate_property_directives, validate_root_vertex_directives,
-                                validate_vertex_directives,
-                                validate_vertex_field_directive_in_context,
-                                validate_vertex_field_directive_interactions)
+from .context_helpers import (
+    has_encountered_output_source, is_in_fold_scope, is_in_optional_scope,
+    validate_context_for_visiting_vertex_field
+)
+from .directive_helpers import (
+    get_local_filter_directives, get_unique_directives, validate_property_directives,
+    validate_root_vertex_directives, validate_vertex_directives,
+    validate_vertex_field_directive_in_context, validate_vertex_field_directive_interactions
+)
 from .filters import process_filter_directive
-from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_edge_direction_and_name,
-                      get_field_type_from_schema, get_uniquely_named_objects_by_name,
-                      get_vertex_field_type, invert_dict, is_vertex_field_name,
-                      strip_non_null_from_type, validate_output_name, validate_safe_string)
+from .helpers import (
+    FoldScopeLocation, Location, get_ast_field_name, get_edge_direction_and_name,
+    get_field_type_from_schema, get_uniquely_named_objects_by_name, get_vertex_field_type,
+    invert_dict, is_vertex_field_name, strip_non_null_from_type, validate_output_name,
+    validate_safe_string
+)
 from .metadata import LocationInfo, QueryMetadataTable
 
 

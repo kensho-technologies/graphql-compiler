@@ -4,8 +4,10 @@
 import six
 
 from .compiler_entities import BasicBlock, Expression, MarkerBlock
-from .helpers import (FoldScopeLocation, ensure_unicode_string, safe_quoted_string,
-                      validate_edge_direction, validate_marked_location, validate_safe_string)
+from .helpers import (
+    FoldScopeLocation, ensure_unicode_string, safe_quoted_string, validate_edge_direction,
+    validate_marked_location, validate_safe_string
+)
 
 
 class QueryRoot(BasicBlock):

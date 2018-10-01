@@ -5,12 +5,14 @@ import unittest
 from graphql import GraphQLString
 
 from ..compiler import ir_lowering_common, ir_lowering_gremlin, ir_lowering_match, ir_sanity_checks
-from ..compiler.blocks import (Backtrack, CoerceType, ConstructResult, EndOptional, Filter,
-                               MarkLocation, QueryRoot, Traverse)
-from ..compiler.expressions import (BinaryComposition, ContextField, ContextFieldExistence,
-                                    FalseLiteral, Literal, LocalField, NullLiteral,
-                                    OutputContextField, TernaryConditional, TrueLiteral,
-                                    UnaryTransformation, Variable, ZeroLiteral)
+from ..compiler.blocks import (
+    Backtrack, CoerceType, ConstructResult, EndOptional, Filter, MarkLocation, QueryRoot, Traverse
+)
+from ..compiler.expressions import (
+    BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, Literal, LocalField,
+    NullLiteral, OutputContextField, TernaryConditional, TrueLiteral, UnaryTransformation, Variable,
+    ZeroLiteral
+)
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
 from ..compiler.ir_lowering_match.utils import BetweenClause, CompoundMatchQuery
