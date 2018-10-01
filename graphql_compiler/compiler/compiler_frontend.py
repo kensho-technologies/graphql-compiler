@@ -964,7 +964,7 @@ def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
         - ir_blocks: a list of IR basic block objects
         - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
         - output_metadata: a dict of output name (string) -> OutputMetadata object
-        - location_types: a dict of location objects -> GraphQL type objects at that location
+        - query_metadata_table: a QueryMetadataTable object containing location metadata
 
     Raises flavors of GraphQLError in the following cases:
         - if the query is invalid GraphQL (GraphQLParsingError);

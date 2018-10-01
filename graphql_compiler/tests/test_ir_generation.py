@@ -34,6 +34,9 @@ def check_test_data(test_case, test_data, expected_blocks, expected_location_typ
     test_case.assertEqual(
         expected_location_types,
         get_comparable_location_types(compilation_results.query_metadata_table))
+    test_case.assertEqual(
+        compute_child_locations(expected_blocks),
+        get_comparable_child_locations(compilation_results.query_metadata_table))
 
 
 def get_comparable_location_types(query_metadata_table):
@@ -42,6 +45,86 @@ def get_comparable_location_types(query_metadata_table):
         location: location_info.type.name
         for location, location_info in query_metadata_table.registered_locations
     }
+
+
+def get_comparable_child_locations(query_metadata_table):
+    """Return the dict of location -> set of child locations for each location in the query."""
+    all_locations = {
+        location: set(query_metadata_table.get_child_locations(location))
+        for location, _ in query_metadata_table.registered_locations
+    }
+    return {
+        location: child_locations
+        for location, child_locations in six.iteritems(all_locations)
+        if child_locations
+    }
+
+
+def compute_child_locations(ir_blocks):
+    """Return a dict mapping parent location -> set of child locations, based on the IR blocks."""
+    if not ir_blocks:
+        raise AssertionError(u'Unexpectedly received empty ir_blocks: {}'.format(ir_blocks))
+
+    first_block = ir_blocks[0]
+    if not isinstance(first_block, blocks.QueryRoot):
+        raise AssertionError(u'Unexpectedly, the first IR block was not a QueryRoot: {} {}'
+                             .format(first_block, ir_blocks))
+
+    # These block types do not affect the computed location structure.
+    no_op_block_types = (
+        blocks.Filter,
+        blocks.ConstructResult,
+        blocks.EndOptional,
+        blocks.OutputSource,
+        blocks.CoerceType,
+    )
+
+    current_location = None
+    traversed_or_recursed_or_folded = False
+    fold_started_at = None
+
+    top_level_locations = set()
+    parent_location = dict()  # location -> parent location
+    child_locations = dict()  # location -> set of child locations
+
+    # Walk the IR blocks and reconstruct the query's location structure.
+    for block in ir_blocks[1:]:
+        if isinstance(block, (blocks.Traverse, blocks.Fold, blocks.Recurse)):
+            traversed_or_recursed_or_folded = True
+            if isinstance(block, blocks.Fold):
+                fold_started_at = current_location
+        elif isinstance(block, blocks.Unfold):
+            current_location = fold_started_at
+        elif isinstance(block, blocks.MarkLocation):
+            # Handle optional traversals and backtracks, due to the fact that
+            # they might drop MarkLocations before and after themselves.
+            if traversed_or_recursed_or_folded:
+                block_parent_location = current_location
+            else:
+                block_parent_location = parent_location.get(current_location, None)
+
+            if block_parent_location is not None:
+                parent_location[block.location] = block_parent_location
+                child_locations.setdefault(block_parent_location, set()).add(block.location)
+            else:
+                top_level_locations.add(current_location)
+
+            current_location = block.location
+            traversed_or_recursed_or_folded = False
+        elif isinstance(block, blocks.Backtrack):
+            current_location = block.location
+            traversed_or_recursed_or_folded = False
+        elif isinstance(block, blocks.QueryRoot):
+            raise AssertionError(u'Unexpectedly encountered a second QueryRoot after the first '
+                                 u'IR block: {} {}'.format(block, ir_blocks))
+        elif isinstance(block, no_op_block_types):
+            # These blocks do not affect the computed location structure.
+            pass
+        else:
+            raise AssertionError(u'Unexpected block type encountered: {} {}'
+                                 .format(block, ir_blocks))
+
+    return child_locations
 
 
 class IrGenerationTests(unittest.TestCase):
