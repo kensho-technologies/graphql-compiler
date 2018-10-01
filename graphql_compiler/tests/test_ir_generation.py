@@ -34,8 +34,15 @@ def check_test_data(test_case, test_data, expected_blocks, expected_location_typ
     test_case.assertEqual(
         expected_location_types,
         get_comparable_location_types(compilation_results.query_metadata_table))
+
+    all_child_locations = compute_child_locations(expected_blocks)
+    for parent_location, child_locations in six.iteritems(all_child_locations):
+        for child_location in child_locations:
+            child_info = compilation_results.query_metadata_table.get_location_info(child_location)
+            test_case.assertEqual(parent_location, child_info.parent_location)
+
     test_case.assertEqual(
-        compute_child_locations(expected_blocks),
+        all_child_locations,
         get_comparable_child_locations(compilation_results.query_metadata_table))
 
 
@@ -49,13 +56,13 @@ def get_comparable_location_types(query_metadata_table):
 
 def get_comparable_child_locations(query_metadata_table):
     """Return the dict of location -> set of child locations for each location in the query."""
-    all_locations = {
+    all_locations_with_possible_children = {
         location: set(query_metadata_table.get_child_locations(location))
         for location, _ in query_metadata_table.registered_locations
     }
     return {
         location: child_locations
-        for location, child_locations in six.iteritems(all_locations)
+        for location, child_locations in six.iteritems(all_locations_with_possible_children)
         if child_locations
     }
 
