@@ -4,10 +4,13 @@ import unittest
 from graphql import GraphQLString
 
 from ..compiler import emit_gremlin, emit_match
-from ..compiler.blocks import (Backtrack, ConstructResult, Filter, GlobalOperationsStart,
-                               MarkLocation, QueryRoot, Traverse)
-from ..compiler.expressions import (BinaryComposition, ContextField, LocalField, NullLiteral,
-                                    OutputContextField, TernaryConditional, Variable)
+from ..compiler.blocks import (
+    Backtrack, ConstructResult, Filter, GlobalOperationsStart, MarkLocation, QueryRoot, Traverse
+)
+from ..compiler.expressions import (
+    BinaryComposition, ContextField, LocalField, NullLiteral, OutputContextField,
+    TernaryConditional, Variable
+)
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
 from ..compiler.ir_lowering_match.utils import CompoundMatchQuery, construct_where_filter_predicate

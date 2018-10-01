@@ -5,9 +5,11 @@ import six
 from ..exceptions import GraphQLCompilationError
 from ..schema import GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression
-from .helpers import (STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
-                      ensure_unicode_string, is_graphql_type, is_vertex_field_name,
-                      safe_quoted_string, strip_non_null_from_type, validate_safe_string)
+from .helpers import (
+    STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
+    ensure_unicode_string, is_graphql_type, is_vertex_field_name, safe_quoted_string,
+    strip_non_null_from_type, validate_safe_string
+)
 
 
 # Since MATCH uses $-prefixed keywords to indicate special values,

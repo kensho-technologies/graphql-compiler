@@ -4,12 +4,15 @@ from functools import partial
 import six
 
 from ..blocks import ConstructResult, Filter, Traverse
-from ..expressions import (BinaryComposition, ContextField, FoldedOutputContextField, Literal,
-                           LocalField, OutputContextField, TernaryConditional, TrueLiteral,
-                           UnaryTransformation, Variable)
+from ..expressions import (
+    BinaryComposition, ContextField, FoldedOutputContextField, Literal, LocalField,
+    OutputContextField, TernaryConditional, TrueLiteral, UnaryTransformation, Variable
+)
 from ..match_query import MatchQuery, MatchStep
-from .utils import (BetweenClause, CompoundMatchQuery, construct_optional_traversal_tree,
-                    expression_list_to_conjunction, filter_edge_field_non_existence)
+from .utils import (
+    BetweenClause, CompoundMatchQuery, construct_optional_traversal_tree,
+    expression_list_to_conjunction, filter_edge_field_non_existence
+)
 
 
 def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,

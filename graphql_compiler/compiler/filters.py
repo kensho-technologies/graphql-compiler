@@ -7,8 +7,10 @@ from graphql.type.definition import is_leaf_type
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
-from .helpers import (get_uniquely_named_objects_by_name, is_vertex_field_name,
-                      is_vertex_field_type, strip_non_null_from_type, validate_safe_string)
+from .helpers import (
+    get_uniquely_named_objects_by_name, is_vertex_field_name, is_vertex_field_type,
+    strip_non_null_from_type, validate_safe_string
+)
 
 
 def scalar_leaf_only(operator):
