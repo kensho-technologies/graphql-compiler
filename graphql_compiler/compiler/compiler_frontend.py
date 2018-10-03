@@ -429,12 +429,16 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         within_optional_scope = 'optional' in context
 
         if edge_traversal_is_optional:
-            # Entering an optional block!
-            # Make sure there's a marked location right before it for the optional Backtrack
-            # to jump back to. Otherwise, the traversal could rewind to an old marked location
-            # and might ignore entire stretches of applied filtering.
-            # The only way there might not be a marked location here is if the current location
-            # has existing child locations that are not folds.
+            # Invariant: There must always be a marked location corresponding to the query position
+            # immediately before any optional Traverse.
+            #
+            # This marked location is the one that the @optional directive's corresponding
+            # optional Backtrack will jump back to. If such a marked location isn't present,
+            # the backtrack could rewind to an old marked location and might ignore
+            # entire stretches of applied filtering.
+            #
+            # Assumption: The only way there might not be a marked location here is
+            # if the current location already traversed into child locations, not including folds.
             non_fold_child_locations = {
                 child_location
                 for child_location in query_metadata_table.get_child_locations(location)
