@@ -3026,7 +3026,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.NullLiteral
                 ),
                 'name': expressions.OutputContextField(
-                        base_location.navigate_to_field('name'), GraphQLString),
+                    base_location.navigate_to_field('name'), GraphQLString),
             }),
         ]
         expected_location_types = {
@@ -3076,7 +3076,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.NullLiteral
                 ),
                 'name': expressions.OutputContextField(
-                        base_location.navigate_to_field('name'), GraphQLString),
+                    base_location.navigate_to_field('name'), GraphQLString),
             }),
         ]
         expected_location_types = {
@@ -3119,7 +3119,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.NullLiteral
                 ),
                 'animal_name': expressions.OutputContextField(
-                        base_location.navigate_to_field('name'), GraphQLString
+                    base_location.navigate_to_field('name'), GraphQLString
                 ),
                 'spouse_species': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(spouse_species),
@@ -3176,7 +3176,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.NullLiteral
                 ),
                 'animal_name': expressions.OutputContextField(
-                        base_location.navigate_to_field('name'), GraphQLString
+                    base_location.navigate_to_field('name'), GraphQLString
                 ),
                 'spouse_and_self_species': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(spouse_species),
@@ -3242,7 +3242,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.NullLiteral
                 ),
                 'animal_name': expressions.OutputContextField(
-                        base_location.navigate_to_field('name'), GraphQLString
+                    base_location.navigate_to_field('name'), GraphQLString
                 ),
                 'parent_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(parent_location),
@@ -3309,7 +3309,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(re_revisited_base_location),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
-                        base_location.navigate_to_field('name'), GraphQLString
+                    base_location.navigate_to_field('name'), GraphQLString
                 ),
                 'parent_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(parent_location),
@@ -3733,7 +3733,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.NullLiteral
                 ),
                 'name': expressions.OutputContextField(
-                        base_location.navigate_to_field('name'), GraphQLString),
+                    base_location.navigate_to_field('name'), GraphQLString),
             }),
         ]
         expected_location_types = {
@@ -4042,7 +4042,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.NullLiteral
                 ),
                 'animal_name': expressions.OutputContextField(
-                        base_location.navigate_to_field('name'), GraphQLString
+                    base_location.navigate_to_field('name'), GraphQLString
                 ),
                 'spouse_species': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(spouse_species_location),
@@ -4133,7 +4133,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(re_revisited_base_location),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
-                        base_location.navigate_to_field('name'), GraphQLString),
+                    base_location.navigate_to_field('name'), GraphQLString),
                 'child_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(child_location),
                     expressions.OutputContextField(
