@@ -13,6 +13,8 @@ from .helpers import (
 class QueryRoot(BasicBlock):
     """The starting object of the query to be compiled."""
 
+    __slots__ = ('start_class',)
+
     def __init__(self, start_class):
         """Construct a QueryRoot object that starts querying at the specified class name.
 
@@ -56,6 +58,8 @@ class QueryRoot(BasicBlock):
 class CoerceType(BasicBlock):
     """A special type of filter that discards any data that is not of the specified set of types."""
 
+    __slots__ = ('target_class',)
+
     def __init__(self, target_class):
         """Construct a CoerceType object that filters out any data that is not of the given types.
 
@@ -90,6 +94,8 @@ class CoerceType(BasicBlock):
 
 class ConstructResult(BasicBlock):
     """A transformation of the data into a new form, for output."""
+
+    __slots__ = ('fields',)
 
     def __init__(self, fields):
         """Construct a ConstructResult object that maps the given field names to their expressions.
@@ -157,6 +163,8 @@ class ConstructResult(BasicBlock):
 class Filter(BasicBlock):
     """A filter that ensures data matches a predicate expression, and discards all other data."""
 
+    __slots__ = ('predicate',)
+
     def __init__(self, predicate):
         """Create a new Filter with the specified Expression as a predicate."""
         super(Filter, self).__init__(predicate)
@@ -186,6 +194,8 @@ class Filter(BasicBlock):
 class MarkLocation(BasicBlock):
     """A block that assigns a name to a given location in the query."""
 
+    __slots__ = ('location',)
+
     def __init__(self, location):
         """Create a new MarkLocation at the specified Location.
 
@@ -212,6 +222,8 @@ class MarkLocation(BasicBlock):
 
 class Traverse(BasicBlock):
     """A block that encodes a traversal across an edge, in either direction."""
+
+    __slots__ = ('direction', 'edge_name', 'optional', 'within_optional_scope')
 
     def __init__(self, direction, edge_name, optional=False, within_optional_scope=False):
         """Create a new Traverse block in the given direction and across the given edge.
@@ -296,6 +308,8 @@ class Traverse(BasicBlock):
 class Recurse(BasicBlock):
     """A block for recursive traversal of an edge, collecting all endpoints along the way."""
 
+    __slots__ = ('direction', 'edge_name', 'depth', 'within_optional_scope')
+
     def __init__(self, direction, edge_name, depth, within_optional_scope=False):
         """Create a new Recurse block which traverses the given edge up to "depth" times.
 
@@ -359,6 +373,8 @@ class Recurse(BasicBlock):
 class Backtrack(BasicBlock):
     """A block that specifies a return to a given Location in the query."""
 
+    __slots__ = ('location', 'optional')
+
     def __init__(self, location, optional=False):
         """Create a new Backtrack block, returning to the given location in the query.
 
@@ -408,6 +424,8 @@ class OutputSource(MarkerBlock):
     See the comment on the @output_source directive in schema.py on why this is necessary.
     """
 
+    __slots__ = ()
+
     def validate(self):
         """Validate the OutputSource block. An OutputSource block is always valid in isolation."""
         pass
@@ -415,6 +433,8 @@ class OutputSource(MarkerBlock):
 
 class Fold(MarkerBlock):
     """A marker for the start of a @fold context."""
+
+    __slots__ = ('fold_scope_location',)
 
     def __init__(self, fold_scope_location):
         """Create a new Fold block rooted at the given location."""
@@ -432,6 +452,8 @@ class Fold(MarkerBlock):
 class Unfold(MarkerBlock):
     """A marker for the end of a @fold context."""
 
+    __slots__ = ()
+
     def validate(self):
         """Unfold blocks are always valid in isolation."""
         pass
@@ -443,6 +465,8 @@ class EndOptional(MarkerBlock):
     Optional scope is entered through an optional Traverse Block.
     """
 
+    __slots__ = ()
+
     def validate(self):
         """In isolation, EndOptional blocks are always valid."""
         pass
@@ -450,6 +474,8 @@ class EndOptional(MarkerBlock):
 
 class GlobalOperationsStart(MarkerBlock):
     """Marker block for the end of MATCH traversals, and the beginning of global operations."""
+
+    __slots__ = ()
 
     def validate(self):
         """In isolation, GlobalOperationsStart blocks are always valid."""
