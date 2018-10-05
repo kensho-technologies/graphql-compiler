@@ -15,8 +15,6 @@ def check_explain_info(graphql_test, expected):
     for loc, eis in expected:
         if meta.get_explain_infos(loc) != eis:
             raise AssertionError
-    if len(expected) != len(meta._explain_infos):
-        raise AssertionError
 
 
 def test_filter():
