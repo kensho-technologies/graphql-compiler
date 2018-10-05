@@ -1,10 +1,10 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Utilities for recording, inspecting, and manipulating metadata collected during compilation."""
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 
 import six
 
-from .helpers import Location
+from .helpers import Location, FoldScopeLocation
 
 
 LocationInfo = namedtuple(
@@ -20,6 +20,23 @@ LocationInfo = namedtuple(
         'recursive_scopes_depth',  # int, how many nested recursion scopes this location is in
         'is_within_fold',          # bool, True if this location is within a fold scope;
                                    #       fold scopes are not allowed to nest within each other.
+    )
+)
+
+
+ExplainFilterInfo = namedtuple(
+    'FilterExplainInfo',
+    (
+        'field_name',
+        'op_name',
+        'args',
+    )
+)
+
+ExplainRecurseInfo = namedtuple(
+    'RecurseExplainInfo',
+    (
+        'depth',
     )
 )
 
@@ -44,6 +61,8 @@ class QueryMetadataTable(object):
         self._inputs = dict()                # dict, input name -> input info namedtuple
         self._outputs = dict()               # dict, output name -> output info namedtuple
         self._tags = dict()                  # dict, tag name -> tag info namedtuple
+
+        self._explain_infos = defaultdict(list)
 
         # dict, revisiting Location -> revisit origin, i.e. the first Location with that query path
         self._revisit_origins = dict()
@@ -131,6 +150,18 @@ class QueryMetadataTable(object):
             raise AssertionError(u'Attempted to get the location info of an unregistered location: '
                                  u'{}'.format(location))
         return location_info
+
+    def record_explain_info(self, location, explain_info):
+        """Record estimation information about the location."""
+        if isinstance(location, FoldScopeLocation):
+            # NOTE(gurer): ignore filters inside the fold for now
+            return
+        record_location = location.at_vertex()
+        self._explain_infos[record_location].append(explain_info)
+
+    def get_explain_infos(self, location):
+        """Get estimation information of the location."""
+        return self._explain_infos[location]
 
     def get_child_locations(self, location):
         """Yield an iterable of child locations for a given Location/FoldScopeLocation object."""
