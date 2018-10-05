@@ -9,13 +9,14 @@ from .test_helpers import get_schema
 
 def check_explain_info(graphql_test, expected):
     """Verify query produces expected explain infos."""
-    #pylint: disable=assert_used
     schema = get_schema()
     ir_and_metadata = graphql_to_ir(schema, graphql_test().graphql_input)
     meta = ir_and_metadata.query_metadata_table
     for loc, eis in expected:
-        assert meta.get_explain_infos(loc) == eis
-    assert len(expected) == len(meta._explain_infos)
+        if meta.get_explain_infos(loc) != eis:
+            raise AssertionError
+    if len(expected) != len(meta._explain_infos):
+        raise AssertionError
 
 
 def test_filter():
