@@ -433,9 +433,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         edge_traversal_is_recursive = recurse_directive is not None
 
         # This is true for any vertex expanded within an @optional scope.
-        # Currently @optional is not allowed within @optional.
-        # This will need to change if nested @optionals have to be supported.
-        within_optional_scope = 'optional' in context and not edge_traversal_is_optional
+        within_optional_scope = 'optional' in context
 
         if edge_traversal_is_optional:
             # Entering an optional block!
