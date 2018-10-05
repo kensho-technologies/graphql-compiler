@@ -4,7 +4,7 @@ from collections import defaultdict, namedtuple
 
 import six
 
-from .helpers import Location, FoldScopeLocation
+from .helpers import FoldScopeLocation, Location
 
 
 LocationInfo = namedtuple(
