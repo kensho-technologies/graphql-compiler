@@ -24,8 +24,8 @@ LocationInfo = namedtuple(
 )
 
 
-ExplainFilterInfo = namedtuple(
-    'FilterExplainInfo',
+FilterInfo = namedtuple(
+    'FilterInfo',
     (
         'field_name',
         'op_name',
@@ -33,8 +33,8 @@ ExplainFilterInfo = namedtuple(
     )
 )
 
-ExplainRecurseInfo = namedtuple(
-    'RecurseExplainInfo',
+RecurseInfo = namedtuple(
+    'RecurseInfo',
     (
         'depth',
     )

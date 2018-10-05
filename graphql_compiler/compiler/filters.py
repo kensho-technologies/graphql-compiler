@@ -11,7 +11,7 @@ from .helpers import (
     get_uniquely_named_objects_by_name, is_vertex_field_name, is_vertex_field_type,
     strip_non_null_from_type, validate_safe_string
 )
-from .metadata import ExplainFilterInfo
+from .metadata import FilterInfo
 
 
 def scalar_leaf_only(operator):
@@ -643,8 +643,8 @@ def process_filter_directive(filter_operation_info, location, context):
                                       u'It may not be applied on a type coercion.'.format(op_name))
 
     context['metadata'].record_explain_info(location,
-                                            ExplainFilterInfo(field_name=filter_operation_info.field_name,
-                                                              op_name=op_name,
-                                                              args=operator_params))
+                                            FilterInfo(field_name=filter_operation_info.field_name,
+                                                       op_name=op_name,
+                                                       args=operator_params))
 
     return process_func(filter_operation_info, context, operator_params)

@@ -87,7 +87,7 @@ from .helpers import (
     invert_dict, is_vertex_field_name, strip_non_null_from_type, validate_output_name,
     validate_safe_string
 )
-from .metadata import ExplainRecurseInfo, LocationInfo, QueryMetadataTable
+from .metadata import RecurseInfo, LocationInfo, QueryMetadataTable
 
 
 # LocationStackEntry contains the following:
@@ -488,7 +488,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                                recurse_depth,
                                                within_optional_scope=within_optional_scope))
             query_metadata_table.record_explain_info(location,
-                                                     ExplainRecurseInfo(depth=recurse_depth))
+                                                     RecurseInfo(depth=recurse_depth))
         else:
             basic_blocks.append(blocks.Traverse(edge_direction, edge_name,
                                                 optional=edge_traversal_is_optional,
