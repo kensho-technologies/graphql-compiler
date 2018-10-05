@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 
 from . import test_input_data
-from ..compiler.compiler_frontend import OutputMetadata, graphql_to_ir
+from ..compiler.compiler_frontend import graphql_to_ir
 from ..compiler.helpers import Location
 from ..compiler.metadata import FilterInfo, RecurseInfo
 from .test_helpers import get_schema
