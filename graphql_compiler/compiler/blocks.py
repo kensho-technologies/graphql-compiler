@@ -237,7 +237,8 @@ class Traverse(BasicBlock):
         Returns:
             new Traverse object
         """
-        super(Traverse, self).__init__(direction, edge_name, optional=optional)
+        super(Traverse, self).__init__(
+            direction, edge_name, optional=optional, within_optional_scope=within_optional_scope)
         self.direction = direction
         self.edge_name = edge_name
         self.optional = optional
@@ -247,22 +248,21 @@ class Traverse(BasicBlock):
 
     def validate(self):
         """Ensure that the Traverse block is valid."""
-        if not isinstance(self.within_optional_scope, bool):
-            raise TypeError(u'Expected bool within_optional_scope, got: {} '
-                            u'{}'.format(type(self.within_optional_scope).__name__,
-                                         self.within_optional_scope))
-
         if not isinstance(self.direction, six.string_types):
             raise TypeError(u'Expected string direction, got: {} {}'.format(
                 type(self.direction).__name__, self.direction))
 
         validate_edge_direction(self.direction)
+        validate_safe_string(self.edge_name)
 
         if not isinstance(self.optional, bool):
             raise TypeError(u'Expected bool optional, got: {} {}'.format(
                 type(self.optional).__name__, self.optional))
 
-        validate_safe_string(self.edge_name)
+        if not isinstance(self.within_optional_scope, bool):
+            raise TypeError(u'Expected bool within_optional_scope, got: {} '
+                            u'{}'.format(type(self.within_optional_scope).__name__,
+                                         self.within_optional_scope))
 
     def get_field_name(self):
         """Return the field name corresponding to the edge being traversed."""
@@ -321,7 +321,8 @@ class Recurse(BasicBlock):
         Returns:
             new Recurse object
         """
-        super(Recurse, self).__init__(direction, edge_name, depth)
+        super(Recurse, self).__init__(
+            direction, edge_name, depth, within_optional_scope=within_optional_scope)
         self.direction = direction
         self.edge_name = edge_name
         self.depth = depth
