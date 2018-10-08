@@ -432,6 +432,9 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             # Invariant: There must always be a marked location corresponding to the query position
             # immediately before any optional Traverse.
             #
+            # This invariant is verified in the IR sanity checks module (ir_sanity_checks.py),
+            # in the function named _sanity_check_mark_location_preceding_optional_traverse().
+            #
             # This marked location is the one that the @optional directive's corresponding
             # optional Backtrack will jump back to. If such a marked location isn't present,
             # the backtrack could rewind to an old marked location and might ignore
