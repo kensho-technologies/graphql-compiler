@@ -642,9 +642,9 @@ def process_filter_directive(filter_operation_info, location, context):
         raise GraphQLCompilationError(u'The filter with op_name "{}" must be applied on a field. '
                                       u'It may not be applied on a type coercion.'.format(op_name))
 
-    context['metadata'].record_explain_info(location,
-                                            FilterInfo(field_name=filter_operation_info.field_name,
-                                                       op_name=op_name,
-                                                       args=operator_params))
+    context['metadata'].record_filter_info(location,
+                                           FilterInfo(field_name=filter_operation_info.field_name,
+                                                      op_name=op_name,
+                                                      args=operator_params))
 
     return process_func(filter_operation_info, context, operator_params)

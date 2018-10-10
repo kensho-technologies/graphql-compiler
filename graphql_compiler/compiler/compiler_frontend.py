@@ -485,7 +485,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                                edge_name,
                                                recurse_depth,
                                                within_optional_scope=within_optional_scope))
-            query_metadata_table.record_explain_info(location,
+            query_metadata_table.record_recurse_info(location,
                                                      RecurseInfo(depth=recurse_depth))
         else:
             basic_blocks.append(blocks.Traverse(edge_direction, edge_name,
