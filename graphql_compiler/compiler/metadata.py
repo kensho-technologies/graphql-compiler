@@ -36,6 +36,8 @@ FilterInfo = namedtuple(
 RecurseInfo = namedtuple(
     'RecurseInfo',
     (
+        'edge_direction',
+        'edge_name',
         'depth',
     )
 )
@@ -62,8 +64,8 @@ class QueryMetadataTable(object):
         self._outputs = dict()               # dict, output name -> output info namedtuple
         self._tags = dict()                  # dict, tag name -> tag info namedtuple
 
-        self._filter_infos = dict()          # Location -> FilterInfo
-        self._recurse_infos = dict()         # Location -> RecurseInfo
+        self._filter_infos = dict()          # Location -> FilterInfo array
+        self._recurse_infos = dict()         # Location -> RecurseInfo array
 
         # dict, revisiting Location -> revisit origin, i.e. the first Location with that query path
         self._revisit_origins = dict()
@@ -166,14 +168,12 @@ class QueryMetadataTable(object):
 
     def record_recurse_info(self, location, recurse_info):
         """Record recursion information about the location."""
-        if location in self._recurse_infos:
-            raise AssertionError(u'Cannot register RecurseInfo twice at same location: '
-                                 u'{}'.format(location))
-        self._recurse_infos[location] = recurse_info
+        record_location = location.at_vertex()
+        self._recurse_infos.setdefault(record_location, []).append(recurse_info)
 
-    def get_recurse_info(self, location):
-        """Get information about recursion at the location."""
-        return self._recurse_infos.get(location, None)
+    def get_recurse_infos(self, location):
+        """Get information about recursions at the location."""
+        return self._recurse_infos.get(location, [])
 
     def get_child_locations(self, location):
         """Yield an iterable of child locations for a given Location/FoldScopeLocation object."""

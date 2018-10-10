@@ -29,8 +29,8 @@ class ExplainInfoTests(unittest.TestCase):
             if filters:
                 del expected_filters[location]
             # Do recurse match with expected for this location?
-            recurse = meta.get_recurse_info(location)
-            self.assertEqual(recurse, expected_recurses.get(location, None))
+            recurse = meta.get_recurse_infos(location)
+            self.assertEqual(recurse, expected_recurses.get(location, []))
             if recurse:
                 del expected_recurses[location]
         # Any expected infos missing?
@@ -77,5 +77,19 @@ class ExplainInfoTests(unittest.TestCase):
                    ],
                    [
                        (Location(('Animal',), None, 1),
-                        RecurseInfo(depth=1)),
+                        [RecurseInfo(edge_direction='out', edge_name='Animal_ParentOf', depth=1)]),
+                   ])
+
+    def test_two_recurses(self):
+        self.check(test_input_data.two_consecutive_recurses,
+                   [
+                       (Location(('Animal',), None, 1),
+                        [FilterInfo(field_name='Animal',
+                                    op_name='name_or_alias',
+                                    args=['$animal_name_or_alias'])]),
+                   ],
+                   [
+                       (Location(('Animal',), None, 1),
+                        [RecurseInfo(edge_direction='out', edge_name='Animal_ParentOf', depth=2),
+                         RecurseInfo(edge_direction='in', edge_name='Animal_ParentOf', depth=2)]),
                    ])
