@@ -37,59 +37,84 @@ class ExplainInfoTests(unittest.TestCase):
         self.assertEqual(0, len(expected_filters))
         self.assertEqual(0, len(expected_recurses))
 
-    def test_filter(self):
+    def test_traverse_filter_and_output(self):
+        loc = Location(('Animal', 'out_Animal_ParentOf'), None, 1)
+        filters = [FilterInfo(field_name='out_Animal_ParentOf',
+                              op_name='name_or_alias',
+                              args=['$wanted'])]
+
         self.check(test_input_data.traverse_filter_and_output,
-                   [
-                       (Location(('Animal', 'out_Animal_ParentOf'), None, 1),
-                        [FilterInfo(field_name='out_Animal_ParentOf',
-                                    op_name='name_or_alias',
-                                    args=['$wanted'])]),
-                   ],
-                   [
-                   ])
+                   [(loc, filters)],
+                   [])
 
-    def test_filters(self):
+    def test_complex_optional_traversal_variables(self):
+        loc1 = Location(('Animal',), None, 1)
+        filters1 = [FilterInfo(field_name='name',
+                               op_name='=',
+                               args=['$animal_name'])]
+
+        loc2 = Location(('Animal', 'in_Animal_ParentOf', 'out_Animal_FedAt'), None, 1)
+        filters2 = [FilterInfo(field_name='name',
+                               op_name='=',
+                               args=['%parent_fed_at_event']),
+                    FilterInfo(field_name='event_date',
+                               op_name='between',
+                               args=['%other_child_fed_at', '%parent_fed_at'])]
+
         self.check(test_input_data.complex_optional_traversal_variables,
-                   [
-                       (Location(('Animal',), None, 1),
-                        [FilterInfo(field_name='name',
-                                    op_name='=',
-                                    args=['$animal_name'])]),
-                       (Location(('Animal', 'in_Animal_ParentOf', 'out_Animal_FedAt'), None, 1),
-                        [FilterInfo(field_name='name',
-                                    op_name='=',
-                                    args=['%parent_fed_at_event']),
-                         FilterInfo(field_name='event_date',
-                                    op_name='between',
-                                    args=['%other_child_fed_at', '%parent_fed_at'])]),
-                   ],
-                   [
-                   ])
+                   [(loc1, filters1), (loc2, filters2)],
+                   [])
 
-    def test_fold(self):
+    def test_coercion_filters_and_multiple_outputs_within_fold_scope(self):
         self.check(test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope,
                    [],
                    [])
 
-    def test_recurse(self):
-        self.check(test_input_data.simple_recurse,
-                   [
-                   ],
-                   [
-                       (Location(('Animal',), None, 1),
-                        [RecurseInfo(edge_direction='out', edge_name='Animal_ParentOf', depth=1)]),
-                   ])
+    def test_multiple_filters(self):
+        loc = Location(('Animal',), None, 1)
+        filters = [FilterInfo(field_name='name',
+                              op_name='>=',
+                              args=['$lower_bound']),
+                   FilterInfo(field_name='name',
+                              op_name='<',
+                              args=['$upper_bound'])]
 
-    def test_two_recurses(self):
+        self.check(test_input_data.multiple_filters,
+                   [(loc, filters)],
+                   [])
+
+    def test_has_edge_degree_op_filter(self):
+        loc = Location(('Animal',), None, 1)
+        filters = [FilterInfo(field_name='in_Animal_ParentOf',
+                              op_name='has_edge_degree',
+                              args=['$child_count'])]
+
+        self.check(test_input_data.has_edge_degree_op_filter,
+                   [(loc, filters)],
+                   [])
+
+    def test_simple_recurse(self):
+        loc = Location(('Animal',), None, 1)
+        recurses =  [RecurseInfo(edge_direction='out',
+                                 edge_name='Animal_ParentOf',
+                                 depth=1)]
+
+        self.check(test_input_data.simple_recurse,
+                   [],
+                   [(loc, recurses)])
+
+    def test_two_consecutive_recurses(self):
+        loc = Location(('Animal',), None, 1)
+        filters = [FilterInfo(field_name='Animal',
+                              op_name='name_or_alias',
+                              args=['$animal_name_or_alias'])]
+        recurses = [RecurseInfo(edge_direction='out',
+                                edge_name='Animal_ParentOf',
+                                depth=2),
+                    RecurseInfo(edge_direction='in',
+                                edge_name='Animal_ParentOf',
+                                depth=2)]
+
         self.check(test_input_data.two_consecutive_recurses,
-                   [
-                       (Location(('Animal',), None, 1),
-                        [FilterInfo(field_name='Animal',
-                                    op_name='name_or_alias',
-                                    args=['$animal_name_or_alias'])]),
-                   ],
-                   [
-                       (Location(('Animal',), None, 1),
-                        [RecurseInfo(edge_direction='out', edge_name='Animal_ParentOf', depth=2),
-                         RecurseInfo(edge_direction='in', edge_name='Animal_ParentOf', depth=2)]),
-                   ])
+                   [(loc, filters)],
+                   [(loc, recurses)])
