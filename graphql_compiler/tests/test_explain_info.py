@@ -95,9 +95,9 @@ class ExplainInfoTests(unittest.TestCase):
 
     def test_simple_recurse(self):
         loc = Location(('Animal',), None, 1)
-        recurses =  [RecurseInfo(edge_direction='out',
-                                 edge_name='Animal_ParentOf',
-                                 depth=1)]
+        recurses = [RecurseInfo(edge_direction='out',
+                                edge_name='Animal_ParentOf',
+                                depth=1)]
 
         self.check(test_input_data.simple_recurse,
                    [],
