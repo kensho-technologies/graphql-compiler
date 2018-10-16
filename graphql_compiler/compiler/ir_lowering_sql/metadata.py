@@ -3,7 +3,7 @@ from ... import exceptions
 from .constants import SqlBackend
 
 
-class CompilerMetadata:
+class CompilerMetadata(object):
     """Configuration manager for compilation.
 
     In order to transform GraphQL to SQL, there needs to be

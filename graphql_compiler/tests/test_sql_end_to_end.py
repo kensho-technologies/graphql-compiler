@@ -5,6 +5,7 @@ import unittest
 import six
 from sqlalchemy import text
 
+from .. import graphql_to_sql
 from .. import exceptions
 from ..compiler import compile_graphql_to_sql
 from ..compiler.ir_lowering_sql.metadata import CompilerMetadata
@@ -24,8 +25,9 @@ class SqlQueryTests(unittest.TestCase):
 
     def assertQueryOutputEquals(self, graphql_string, params, expected_results):
         """Sort both query results and expected results deterministically before comparing."""
-        query = self.compile_query(graphql_string)
-        results = [dict(result) for result in self.engine.execute(query.params(**params))]
+        query = self.compile_query(graphql_string, params)
+
+        results = [dict(result) for result in self.engine.execute(query)]
         sort_order = []
         if len(expected_results) > 0:
             sort_order = sorted(six.iterkeys(expected_results[0]))
@@ -38,12 +40,10 @@ class SqlQueryTests(unittest.TestCase):
         expected_results = sorted(expected_results, key=sort_key)
         self.assertListEqual(expected_results, results)
 
-    def compile_query(self, graphql_string):
-        compilation_result = compile_graphql_to_sql(
-            self.schema, graphql_string, self.compiler_metadata
-        )
-        query = compilation_result.query
-        return query
+    def compile_query(self, graphql_string, query_params):
+        compilation_result = graphql_to_sql(
+            self.schema, graphql_string, query_params, self.compiler_metadata)
+        return compilation_result.query
 
     def test_sqlite(self):
         list(self.engine.execute(text('SELECT 1')))
@@ -83,7 +83,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         with self.assertRaises(exceptions.GraphQLNotSupportedByBackendError):
-            self.compile_query(graphql_string)
+            self.compile_query(graphql_string, {})
 
     def test_field_missing_from_table_error(self):
         # color is not a column on the animal table
@@ -95,19 +95,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         with self.assertRaises(exceptions.GraphQLCompilationError):
-            self.compile_query(graphql_string)
-
-    def test_reserved_column_name_used_error(self):
-        # color is not a column on the animal table
-        graphql_string = '''
-        {
-            Animal {
-                name @output(out_name: "__depth_internal_name")
-            }
-        }
-        '''
-        with self.assertRaises(exceptions.GraphQLCompilationError):
-            self.compile_query(graphql_string)
+            self.compile_query(graphql_string, {})
 
     def test_unsupported_filter(self):
         # color is not a column on the animal table
@@ -120,7 +108,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         with self.assertRaises(exceptions.GraphQLNotSupportedByBackendError):
-            self.compile_query(graphql_string)
+            self.compile_query(graphql_string, {})
 
     def test_unsupported_filter_on_edge(self):
         graphql_string = '''
@@ -205,20 +193,20 @@ class SqlQueryTests(unittest.TestCase):
         with self.assertRaises(exceptions.GraphQLCompilationError):
             compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
 
-    def test_ambiguous_junction_table_name(self):
-        graphql_string = '''
-        {
-            Animal {
-                out_Animal_ImportantEvent {
-                    ... on BirthEvent {
-                        event_date @output(out_name: "birthdate")
-                    }
-                }
-            }
-        }
-        '''
-        with self.assertRaises(exceptions.GraphQLCompilationError):
-            compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
+    # def test_ambiguous_junction_table_name(self):
+    #     graphql_string = '''
+    #     {
+    #         Animal {
+    #             out_Animal_ImportantEvent {
+    #                 ... on BirthEvent {
+    #                     event_date @output(out_name: "birthdate")
+    #                 }
+    #             }
+    #         }
+    #     }
+    #     '''
+    #     with self.assertRaises(exceptions.GraphQLCompilationError):
+    #         compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
 
     def test_basic_filter(self):
         graphql_string = '''
@@ -233,7 +221,7 @@ class SqlQueryTests(unittest.TestCase):
             {'name': 'Big Bear'},
         ]
         params = {
-            '$name': 'Big Bear'
+            'name': 'Big Bear'
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -251,8 +239,8 @@ class SqlQueryTests(unittest.TestCase):
             {'name': 'Biggest Bear'},
         ]
         params = {
-            '$lower': 'Big Bear',
-            '$upper': 'Biggest Bear',
+            'lower': 'Big Bear',
+            'upper': 'Biggest Bear',
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -298,7 +286,7 @@ class SqlQueryTests(unittest.TestCase):
             {'name': 'Big Bear', 'location_name': 'Wisconsin'},
         ]
         params = {
-            '$name': 'Big Bear'
+            'name': 'Big Bear'
         }
         graphql_string = '''
         {
@@ -343,7 +331,7 @@ class SqlQueryTests(unittest.TestCase):
             {'name': 'Biggest Bear', 'location_name': None},
         ]
         params = {
-            '$names': ['Biggest Bear', 'Big Bear']
+            'names': ['Biggest Bear', 'Big Bear']
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -365,9 +353,9 @@ class SqlQueryTests(unittest.TestCase):
             {'name': 'Biggest Bear', 'location_name': None},
         ]
         params = {
-            '$names': ['Biggest Bear', 'Big Bear'],
-            '$lower': 'Wisconsin',
-            '$upper': 'Wisconsin',
+            'names': ['Biggest Bear', 'Big Bear'],
+            'lower': 'Wisconsin',
+            'upper': 'Wisconsin',
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -391,7 +379,7 @@ class SqlQueryTests(unittest.TestCase):
             {'name': 'Biggest Bear', 'location_name': None, 'parent_name': None},
         ]
         params = {
-            '$names': ['Biggest Bear', 'Big Bear']
+            'names': ['Biggest Bear', 'Big Bear']
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -410,12 +398,12 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         expected_results = [
-            {'name': 'Big Bear', 'parent_location_name': None},
+            # Big Bear has parent Biggest Bear, who does not satisfy the out_Animal_LivesIn edge
             {'name': 'Biggest Bear', 'parent_location_name': None},
             {'name': 'Medium Bear', 'parent_location_name': 'Wisconsin'}
         ]
         params = {
-            '$names': ['Biggest Bear', 'Big Bear', 'Medium Bear']
+            'names': ['Biggest Bear', 'Big Bear', 'Medium Bear']
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -437,12 +425,12 @@ class SqlQueryTests(unittest.TestCase):
         # Medium Bear is discarded, because while it's parent Big Bear has a location, it's location
         # is not Michigan, thus the result is discarded.
         expected_results = [
-            {'name': 'Big Bear', 'parent_location_name': None},
+            # Medium bear has parent Big Bear, who lives in Wisconsin (not the filtered Michigan)
             {'name': 'Biggest Bear', 'parent_location_name': None},
         ]
         params = {
-            '$names': ['Biggest Bear', 'Big Bear', 'Medium Bear'],
-            '$location': 'Michigan'
+            'names': ['Biggest Bear', 'Big Bear', 'Medium Bear'],
+            'location': 'Michigan'
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -541,7 +529,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_name': 'Little Bear'
+            'bear_name': 'Little Bear'
         }
         expected_results = [
             {'name': 'Little Bear', 'ancestor': 'Big Bear'},
@@ -565,8 +553,8 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_name': 'Little Bear',
-            '$ancestor_name': 'Biggest Bear'
+            'bear_name': 'Little Bear',
+            'ancestor_name': 'Biggest Bear'
         }
         expected_results = [
             {'name': 'Little Bear', 'ancestor': 'Biggest Bear'},
@@ -588,7 +576,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_name': 'Little Bear',
+            'bear_name': 'Little Bear',
         }
         expected_results = [
             {'name': 'Little Bear', 'ancestor': 'Medium Bear'},
@@ -608,7 +596,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_name': 'Little Bear'
+            'bear_name': 'Little Bear'
         }
         expected_results = [
             {'name': 'Little Bear', 'ancestor': 'Little Bear'},
@@ -629,7 +617,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_name': 'Biggest Bear'
+            'bear_name': 'Biggest Bear'
         }
         expected_results = [
             {'name': 'Biggest Bear', 'descendant': 'Big Bear'},
@@ -655,7 +643,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_name': 'Big Bear'
+            'bear_name': 'Big Bear'
         }
         expected_results = [
             {'name': 'Big Bear', 'descendant': 'Big Bear', 'home': 'Wisconsin'},
@@ -680,7 +668,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_names': ['Biggest Bear', 'Big Bear']
+            'bear_names': ['Biggest Bear', 'Big Bear']
         }
         expected_results = [
             {'name': 'Big Bear', 'descendant': 'Big Bear', 'home': 'Wisconsin'},
@@ -709,7 +697,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_name': 'Biggest Bear'
+            'bear_name': 'Biggest Bear'
         }
         expected_results = [
             {'name': 'Biggest Bear', 'child': 'Big Bear', 'child_or_descendant': 'Big Bear'},
@@ -736,7 +724,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_names': ['Biggest Bear', 'Little Bear']
+            'bear_names': ['Biggest Bear', 'Little Bear']
         }
         expected_results = [
             {'name': 'Biggest Bear', 'child': 'Big Bear', 'child_or_descendant': 'Big Bear'},
@@ -760,7 +748,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_names': ['Biggest Bear', 'Little Bear']
+            'bear_names': ['Biggest Bear', 'Little Bear']
         }
         expected_results = [
             {'name': 'Biggest Bear', 'child_or_descendant': 'Big Bear'},
@@ -784,7 +772,7 @@ class SqlQueryTests(unittest.TestCase):
                 }
             }
         }'''
-        params = {'$species_substring': 'ear'}
+        params = {'species_substring': 'ear'}
         expected_results = [
             {
                 'animal_name': 'Biggest Bear',
@@ -826,7 +814,7 @@ class SqlQueryTests(unittest.TestCase):
                      }
                 out_Animal_FriendsWith {
                     name @output(out_name: "friend_name")
-                    out_Animal_FriendsWith @recurse(depth: 3){
+                    out_Animal_FriendsWith @recurse(depth: 1){
                         name @output(out_name: "friend_or_friend_of_friend")
                              @filter(op_name: "=", value: ["%species_name"])
                     }
@@ -835,7 +823,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_names': ['Biggest Bear', 'Little Bear']
+            'bear_names': ['Biggest Bear', 'Little Bear']
         }
         # only results starting with Little Bear are kept because Little Bear has no species
         # Biggest Bear has a species Bear which does not equal any animal names
@@ -854,22 +842,10 @@ class SqlQueryTests(unittest.TestCase):
             },
             {
                 'friend_name': 'Biggest Bear',
-                'friend_or_friend_of_friend': 'Medium Bear',
-                'name': 'Little Bear',
-                'species_name': None,
-            },
-            {
-                'friend_name': 'Biggest Bear',
                 'friend_or_friend_of_friend': 'Biggest Bear',
                 'name': 'Little Bear',
                 'species_name': None,
             },
-            {
-                'friend_name': 'Biggest Bear',
-                'friend_or_friend_of_friend': 'Biggest Bear',
-                'name': 'Little Bear',
-                'species_name': None,
-            }
         ]
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -889,7 +865,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_names': ['Biggest Bear', 'Little Bear']
+            'bear_names': ['Biggest Bear', 'Little Bear']
         }
         # note that Biggest Bears only recursive ancestor is himself
         # and that Little Bear's only recursive descendant is himself
@@ -939,7 +915,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_name': 'Biggest Bear'
+            'bear_name': 'Biggest Bear'
         }
         expected_results = [
             {
@@ -983,7 +959,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_name': 'Biggest Bear'
+            'bear_name': 'Biggest Bear'
         }
         expected_results = [
             {'name': 'Biggest Bear', 'descendant': 'Big Bear', 'descendant_child': 'Medium Bear'},
@@ -1013,7 +989,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_name': 'Biggest Bear',
+            'bear_name': 'Biggest Bear',
         }
         expected_results = [
             {
@@ -1053,9 +1029,9 @@ class SqlQueryTests(unittest.TestCase):
                     name @output(out_name: "ancestor")
                     out_Animal_ParentOf @recurse(depth: 1) {
                         name @output(out_name: "ancestor_or_ancestor_child")
-                        out_Animal_Eats @optional {
-                            ... on Food {
-                                name @output(out_name: "ancestor_or_ancestor_child_eats")
+                        out_Animal_ImportantEvent @optional {
+                            ... on Event {
+                                name @output(out_name: "ancestor_or_ancestor_child_event_name")
                                      @filter(op_name: "has_substring", value: ["$eats_substring"])
                             }
                         }
@@ -1065,27 +1041,27 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_name': 'Little Bear',
-            '$eats_substring': 'Bears',
+            'bear_name': 'Little Bear',
+            'eats_substring': 'Morn',
         }
         expected_results = [
             {
                 'name': 'Little Bear',
                 'ancestor': 'Little Bear',
                 'ancestor_or_ancestor_child': 'Little Bear',
-                'ancestor_or_ancestor_child_eats': None
+                'ancestor_or_ancestor_child_event_name': None
             },
             {
                 'name': 'Little Bear',
                 'ancestor': 'Medium Bear',
                 'ancestor_or_ancestor_child': 'Little Bear',
-                'ancestor_or_ancestor_child_eats': None
+                'ancestor_or_ancestor_child_event_name': None
             },
             {
                 'name': 'Little Bear',
                 'ancestor': 'Medium Bear',
                 'ancestor_or_ancestor_child': 'Medium Bear',
-                'ancestor_or_ancestor_child_eats': 'Gummy Bears'
+                'ancestor_or_ancestor_child_event_name': 'Morning Feed Event'
             },
         ]
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
@@ -1108,7 +1084,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_name': 'Little Bear'
+            'bear_name': 'Little Bear'
         }
         # with the recurse out and back, the query can either stay at little bear both times
         # or it can traverse out to little bear's parent, and then back to little bear
@@ -1150,7 +1126,7 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         params = {
-            '$bear_name': 'Little Bear'
+            'bear_name': 'Little Bear'
         }
         expected_results = [
             {
@@ -1168,21 +1144,21 @@ class SqlQueryTests(unittest.TestCase):
             Animal {
                 name @output(out_name: "name")
                      @filter(op_name: "=", value: ["$name"])
-                out_Animal_Eats {
-                    ... on Food {
-                        name @output(out_name: "food_name")
+                out_Animal_ImportantEvent {
+                    ... on Event {
+                        name @output(out_name: "event_name")
                     }
                 }
             }
         }
         '''
         expected_results = [
-            {'name': 'Big Bear', 'food_name': 'Apples'},
-            {'name': 'Big Bear', 'food_name': 'Caramel Apples'},
-            {'name': 'Big Bear', 'food_name': 'Gummy Bears'},
+            {'name': 'Big Bear', 'event_name': 'Morning Feed Event'},
+            {'name': 'Big Bear', 'event_name': 'Afternoon Feed Event'},
+            {'name': 'Big Bear', 'event_name': 'Night Feed Event'},
         ]
         params = {
-            '$name': 'Big Bear'
+            'name': 'Big Bear'
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -1205,7 +1181,7 @@ class SqlQueryTests(unittest.TestCase):
             },
         ]
         params = {
-            '$name': 'Big Bear'
+            'name': 'Big Bear'
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -1215,19 +1191,19 @@ class SqlQueryTests(unittest.TestCase):
             Animal {
                 name @output(out_name: "name")
                      @filter(op_name: "=", value: ["$name"])
-                out_Animal_Eats {
-                    ... on Food {
-                        name @output(out_name: "food_name")
+                out_Animal_ImportantEvent {
+                    ... on Event {
+                        name @output(out_name: "event_name")
                     }
                 }
             }
         }
         '''
         expected_results = [
-            {'name': 'Medium Bear', 'food_name': 'Gummy Bears'},
+            {'name': 'Medium Bear', 'event_name': 'Morning Feed Event'},
         ]
         params = {
-            '$name': 'Medium Bear'
+            'name': 'Medium Bear'
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -1237,20 +1213,20 @@ class SqlQueryTests(unittest.TestCase):
             Animal {
                 name @output(out_name: "name")
                      @filter(op_name: "in_collection", value: ["$names"])
-                out_Animal_Eats @optional {
-                    ... on Food {
-                        name @output(out_name: "food_name")
+                out_Animal_ImportantEvent @optional {
+                    ... on Event {
+                        name @output(out_name: "event_name")
                     }
                 }
             }
         }
         '''
         expected_results = [
-            {'name': 'Medium Bear', 'food_name': 'Gummy Bears'},
-            {'name': 'Biggest Bear', 'food_name': None},
+            {'name': 'Medium Bear', 'event_name': 'Morning Feed Event'},
+            {'name': 'Biggest Bear', 'event_name': None},
         ]
         params = {
-            '$names': ['Medium Bear', 'Biggest Bear']
+            'names': ['Medium Bear', 'Biggest Bear']
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -1260,22 +1236,22 @@ class SqlQueryTests(unittest.TestCase):
             Animal {
                 name @output(out_name: "name")
                      @filter(op_name: "in_collection", value: ["$names"])
-                out_Animal_Eats @optional {
-                    ... on Food {
-                        name @output(out_name: "food_name")
+                out_Animal_ImportantEvent @optional {
+                    ... on Event {
+                        name @output(out_name: "event_name")
                     }
                 }
             }
         }
         '''
         expected_results = [
-            {'name': 'Big Bear', 'food_name': 'Apples'},
-            {'name': 'Big Bear', 'food_name': 'Caramel Apples'},
-            {'name': 'Big Bear', 'food_name': 'Gummy Bears'},
-            {'name': 'Little Bear', 'food_name': None}
+            {'name': 'Big Bear', 'event_name': 'Morning Feed Event'},
+            {'name': 'Big Bear', 'event_name': 'Afternoon Feed Event'},
+            {'name': 'Big Bear', 'event_name': 'Night Feed Event'},
+            {'name': 'Little Bear', 'event_name': None}
         ]
         params = {
-            '$names': ['Big Bear', 'Little Bear']
+            'names': ['Big Bear', 'Little Bear']
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -1286,9 +1262,9 @@ class SqlQueryTests(unittest.TestCase):
                 name @output(out_name: "name")
                      @filter(op_name: "=", value: ["$name"])
                      @tag(tag_name: "animal_name")
-                out_Animal_Eats {
-                    ... on Food {
-                        name @output(out_name: "food_name")
+                out_Animal_ImportantEvent {
+                    ... on Event {
+                        name @output(out_name: "event_name")
                              @filter(op_name: "<", value: ["%animal_name"])
                     }
                 }
@@ -1296,10 +1272,10 @@ class SqlQueryTests(unittest.TestCase):
         }
         '''
         expected_results = [
-            {'name': 'Big Bear', 'food_name': 'Apples'},
+            {'name': 'Big Bear', 'event_name': 'Afternoon Feed Event'},
         ]
         params = {
-            '$name': 'Big Bear'
+            'name': 'Big Bear'
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -1320,7 +1296,7 @@ class SqlQueryTests(unittest.TestCase):
             {'name': 'Little Bear', 'friend_name': 'Biggest Bear'},
         ]
         params = {
-            '$name': 'Little Bear',
+            'name': 'Little Bear',
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -1345,51 +1321,50 @@ class SqlQueryTests(unittest.TestCase):
         '''
         expected_results = [
             {'name': 'Bear', 'eats': 'Rabbit', 'eaten_by': None, 'eaten_by_other_way': None},
-            {'name': 'Wolf', 'eats': 'Rabbit', 'eaten_by': None, 'eaten_by_other_way': None},
-            # The foreign key for the alternative eaten_by relationship is only defined for bear
             {'name': 'Rabbit', 'eats': None, 'eaten_by': 'Bear', 'eaten_by_other_way': 'Bear'},
-            {'name': 'Rabbit', 'eats': None, 'eaten_by': 'Wolf', 'eaten_by_other_way': 'Bear'},
         ]
         self.assertQueryOutputEquals(graphql_string, {}, expected_results)
 
     def test_many_to_many_junction_recursive_basic_cycle(self):
-        # recursion is very high below to make sure cycle detection is working
-        # if it is not, the query below will fail because it will exceed the DB's recurision limit
         graphql_string = '''
         {
             Animal {
                 name @output(out_name: "name")
                      @filter(op_name: "=", value: ["$name"])
-                out_Animal_FriendsWith @recurse(depth: 150) {
+                out_Animal_FriendsWith @recurse(depth: 3) {
                     name @output(out_name: "self_or_friend_name")
                 }
             }
         }
         '''
         expected_results = [
-            # Base case
-            {'name': 'Medium Bear', 'self_or_friend_name': 'Medium Bear'},
-            # Medium bear -> Medium bear
-            {'name': 'Medium Bear', 'self_or_friend_name': 'Medium Bear'},
-            # Medium bear -> Medium bear -> Biggest Bear
-            {'name': 'Medium Bear', 'self_or_friend_name': 'Biggest Bear'},
-            # Medium bear -> Medium bear -> Biggest Bear -> Medium Bear
-            {'name': 'Medium Bear', 'self_or_friend_name': 'Medium Bear'},
+            # Biggest bear
+            {'name': 'Biggest Bear', 'self_or_friend_name': 'Biggest Bear'},
+            # Biggest bear -> Medium bear
+            {'name': 'Biggest Bear', 'self_or_friend_name': 'Medium Bear'},
+            # Biggest bear -> Medium bear -> Medium bear
+            {'name': 'Biggest Bear', 'self_or_friend_name': 'Medium Bear'},
+            # Biggest bear -> Medium bear -> Biggest bear
+            {'name': 'Biggest Bear', 'self_or_friend_name': 'Biggest Bear'},
+            # Biggest bear -> Medium bear -> Medium bear -> Medium Bear
+            {'name': 'Biggest Bear', 'self_or_friend_name': 'Medium Bear'},
+            # Biggest bear -> Medium bear -> Medium bear -> Biggest Bear
+            {'name': 'Biggest Bear', 'self_or_friend_name': 'Biggest Bear'},
+            # Biggest bear -> Medium bear -> Biggest bear -> Medium Bear
+            {'name': 'Biggest Bear', 'self_or_friend_name': 'Medium Bear'},
         ]
         params = {
-            '$name': 'Medium Bear',
+            'name': 'Biggest Bear',
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
     def test_many_to_many_junction_recursive_multiple_cycles(self):
-        # recursion is very high below to make sure cycle detection is working
-        # if it is not, the query below will fail because it will exceed the DB's recurision limit
         graphql_string = '''
         {
             Animal {
                 name @output(out_name: "name")
                      @filter(op_name: "=", value: ["$name"])
-                out_Animal_FriendsWith @recurse(depth: 150) {
+                out_Animal_FriendsWith @recurse(depth: 3) {
                     name @output(out_name: "self_or_friend_name")
                 }
             }
@@ -1410,7 +1385,7 @@ class SqlQueryTests(unittest.TestCase):
             {'name': 'Little Bear', 'self_or_friend_name': 'Biggest Bear'},
         ]
         params = {
-            '$name': 'Little Bear',
+            'name': 'Little Bear',
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -1422,9 +1397,9 @@ class SqlQueryTests(unittest.TestCase):
                      @filter(op_name: "=", value: ["$name"])
                 in_Animal_FriendsWith @recurse(depth: 1) {
                     name @output(out_name: "self_or_friend_name")
-                    out_Animal_Eats {
-                        ... on Food {
-                            name @output(out_name: "self_or_friend_eats")
+                    out_Animal_ImportantEvent {
+                        ... on Event {
+                            name @output(out_name: "self_or_friend_event")
                         }
                     }
                 }
@@ -1435,11 +1410,11 @@ class SqlQueryTests(unittest.TestCase):
             {
                 'name': 'Biggest Bear',
                 'self_or_friend_name': 'Medium Bear',
-                'self_or_friend_eats': 'Gummy Bears',
+                'self_or_friend_event': 'Morning Feed Event',
             },
         ]
         params = {
-            '$name': 'Biggest Bear',
+            'name': 'Biggest Bear',
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
@@ -1450,21 +1425,21 @@ class SqlQueryTests(unittest.TestCase):
                 name @output(out_name: "name")
                      @filter(op_name: "=", value: ["$name"])
                 in_Animal_FriendsWith @optional {
-                    out_Animal_FriendsWith {
-                        out_Animal_FriendsWith {
+                    out_Animal_FriendsWith @optional {
+                        out_Animal_FriendsWith @optional {
                             name @output(out_name: "friend_of_friend_of_friend")
-                            out_Animal_Eats {
-                                ... on Food {
-                                    name @output(out_name: "friend_of_friend_of_friend_eats")
-                                         @tag(tag_name: "friend_of_friend_of_friend_eats")
+                            out_Animal_ImportantEvent @optional {
+                                ... on Event {
+                                    name @output(out_name: "friend_of_friend_of_friend_event")
+                                         @tag(tag_name: "friend_of_friend_of_friend_event")
                                 }
                             }
                         }
                     }
                 }
-                out_Animal_Eats @optional {
-                    ... on Food {
-                        name @filter(op_name: "=", value: ["%friend_of_friend_of_friend_eats"])
+                out_Animal_ImportantEvent @optional {
+                    ... on Event {
+                        name @filter(op_name: "=", value: ["%friend_of_friend_of_friend_event"])
                     }
                 }
             }
@@ -1474,25 +1449,194 @@ class SqlQueryTests(unittest.TestCase):
             {
                 'name': 'Big Bear',
                 'friend_of_friend_of_friend': None,
-                'friend_of_friend_of_friend_eats': None,
+                'friend_of_friend_of_friend_event': None,
             },
             {
                 'name': 'Big Bear',
                 'friend_of_friend_of_friend': None,
-                'friend_of_friend_of_friend_eats': None,
+                'friend_of_friend_of_friend_event': None,
             },
             {
                 'name': 'Big Bear',
                 'friend_of_friend_of_friend': None,
-                'friend_of_friend_of_friend_eats': None,
+                'friend_of_friend_of_friend_event': None,
             },
             {
                 'name': 'Big Bear',
                 'friend_of_friend_of_friend': 'Medium Bear',
-                'friend_of_friend_of_friend_eats': 'Gummy Bears'
+                'friend_of_friend_of_friend_event': 'Morning Feed Event'
             },
         ]
         params = {
-            '$name': 'Big Bear'
+            'name': 'Big Bear'
         }
+        self.assertQueryOutputEquals(graphql_string, params, expected_results)
+
+    def test_required_edges_after_optional_out(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_ParentOf @optional {
+                    name @output(out_name: "child_name")
+                    out_Animal_ParentOf {
+                        name @output(out_name: "grandchild_name")
+                        out_Animal_ParentOf {
+                            name @output(out_name: "great_grandchild_name")
+                        }
+                    }
+                }
+            }
+        }
+        '''
+        expected_results = [
+            {
+                'name': 'Biggest Bear',
+                'child_name': 'Big Bear',
+                'grandchild_name': 'Medium Bear',
+                'great_grandchild_name': 'Little Bear'
+            },
+            # Little Bear does not satisfy the first optional edge, so the result is not filtered
+            {
+                'name': 'Little Bear',
+                'child_name': None,
+                'grandchild_name': None,
+                'great_grandchild_name': None,
+            },
+            # All other bears are filtered because they satisfy the optional, but they do not have
+            # the required depth of descendants
+        ]
+        self.assertQueryOutputEquals(graphql_string, {}, expected_results)
+
+    def test_required_edges_after_optional_in(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                in_Animal_ParentOf @optional {
+                    name @output(out_name: "parent_name")
+                    in_Animal_ParentOf {
+                        name @output(out_name: "grandparent_name")
+                        in_Animal_ParentOf {
+                            name @output(out_name: "great_grandparent_name")
+                        }
+                    }
+                }
+            }
+        }
+        '''
+        expected_results = [
+            {
+                'great_grandparent_name': 'Biggest Bear',
+                'grandparent_name': 'Big Bear',
+                'parent_name': 'Medium Bear',
+                'name': 'Little Bear'
+            },
+            # Biggest Bear does not satisfy the first optional edge, so the result is not filtered
+            {
+                'name': 'Biggest Bear',
+                'grandparent_name': None,
+                'parent_name': None,
+                'great_grandparent_name': None,
+            },
+            # All other bears are filtered because they satisfy the optional, but they do not have
+            # the required depth of ancestors
+        ]
+        self.assertQueryOutputEquals(graphql_string, {}, expected_results)
+
+    def test_many_to_many_junction_required_edge_after_optional(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "in_collection", value: ["$animal_names"])
+                out_Animal_ParentOf @optional {
+                    name @output(out_name: "child_name")
+                    out_Animal_FriendsWith {
+                        name @output(out_name: "child_friend_name")
+                    }
+                }
+            }
+        }
+        '''
+        params = {
+            'animal_names': ['Little Bear', 'Biggest Bear']
+        }
+        expected_results = [
+            # Biggest Bear has child Big Bear, who has no friends, causing the result to be excluded
+            {'name': 'Little Bear', 'child_name': None, 'child_friend_name': None},
+        ]
+        self.assertQueryOutputEquals(graphql_string, params, expected_results)
+
+    def test_many_to_many_junction_required_edge_after_optional_in(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "in_collection", value: ["$animal_names"])
+                out_Animal_ParentOf @optional {
+                    name @output(out_name: "child_name")
+                    in_Animal_FriendsWith {
+                        name @output(out_name: "child_friend_name")
+                    }
+                }
+            }
+        }
+        '''
+        params = {
+            'animal_names': ['Little Bear', 'Medium Bear']
+        }
+        expected_results = [
+            # Medium Bear is the parent of Little Bear, but no one is friends with Little Bear
+            # This result is dropped
+            {'name': 'Little Bear', 'child_name': None, 'child_friend_name': None},
+        ]
+        self.assertQueryOutputEquals(graphql_string, params, expected_results)
+
+    def test_many_to_many_junction_required_edge_after_optional_deep(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "in_collection", value: ["$animal_names"])
+                out_Animal_ParentOf @optional {
+                    name @output(out_name: "child_name")
+                    out_Animal_FriendsWith @optional{
+                        name @output(out_name: "child_friend_name")
+                        in_Animal_ParentOf {
+                            name @output(out_name: "child_friend_parent")
+                        }
+                    }
+                }
+            }
+        }
+        '''
+        params = {
+            'animal_names': ['Big Bear', 'Little Bear', 'Biggest Bear']
+        }
+        expected_results = [
+            {
+                'name': 'Little Bear',
+                'child_name': None,
+                'child_friend_name': None,
+                'child_friend_parent': None
+            },
+            # Biggest Bear's child Big Bear has no friends
+            {
+                'name': 'Biggest Bear',
+                'child_name': 'Big Bear',
+                'child_friend_name': None,
+                'child_friend_parent': None
+            },
+            # Big Bear's child Medium Bear is friends with Biggest Bear and himself. Biggest bear
+            # doesn't have a parent so this result is excluded.
+            {
+                'name': 'Big Bear',
+                'child_name': 'Medium Bear',
+                'child_friend_name': 'Medium Bear',
+                'child_friend_parent': 'Big Bear'
+            },
+
+
+        ]
         self.assertQueryOutputEquals(graphql_string, params, expected_results)

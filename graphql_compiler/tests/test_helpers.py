@@ -131,7 +131,6 @@ def get_schema():
             out_Animal_FriendsWith: [Animal]
             in_Animal_FriendsWith: [Animal]
             out_Animal_OfSpecies: [Species]
-            out_Animal_Eats: [FoodOrSpecies]
             out_Animal_FedAt: [Event]
             out_Animal_BornAt: [BirthEvent]
             out_Animal_ImportantEvent: [EventOrBirthEvent]
@@ -154,6 +153,8 @@ def get_schema():
             uuid: ID
             out_Species_Eats: [FoodOrSpecies]
             in_Species_Eats: [Species]
+            # out_SpeciesEatenBy is the same as in_Species_Eats
+            # allowing backends to test equivalent edges
             out_Species_EatenBy: [Species]
             in_Animal_Eats: [Animal]
             in_Animal_OfSpecies: [Animal]
@@ -173,6 +174,7 @@ def get_schema():
             out_Entity_Related: [Entity]
             out_Food_OfCuisine: [Cuisine]
         }
+        
         type Cuisine implements Entity {
             name: String
             description: String
@@ -242,140 +244,32 @@ def construct_location_types(location_types_as_strings):
 def create_sqlite_db():
     engine = create_engine('sqlite:///:memory:')
     metadata = MetaData()
-    animal = Table(
+
+    animal_table = Table(
         'animal',
         metadata,
         Column('animal_id', Integer, primary_key=True),
         Column('name', String(10), nullable=False),
         Column('alias', String(50), nullable=False),
         Column('parentof_id', Integer, ForeignKey("animal.animal_id"), nullable=True),
-        Column('bestfriend_id', Integer, ForeignKey("animal.animal_id"), nullable=True),
-    )
-    Table(
-        'event',
-        metadata,
-        Column('event_id', Integer, primary_key=True),
-        Column('event_date', DateTime, primary_key=True),
-    )
-    # This table has two pk's, which is incorrect
-    Table(
-        'animal_fedat',
-        metadata,
-        Column('animal_fedat_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('fedat_id', Integer, ForeignKey("event.event_id")),
-    )
-    Table(
-        'birthevent',
-        metadata,
-        Column('birthevent_id', Integer, primary_key=True),
-        Column('event_date', DateTime),
-    )
-    # the important_event tables have ambiguous names, one uses the short junction table name
-    # and the other uses the long form with the union types type appended
-    Table(
-        'animal_importantevent',
-        metadata,
-        Column('importantevent_id', Integer, primary_key=True),
-    )
-    Table(
-        'animal_importantevent_birthevent',
-        metadata,
-        Column('importantevent_id', Integer, primary_key=True),
     )
 
-    Table(
-        'animal_bornat',
-        metadata,
-        Column('animal_bornat_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        # this column is an incorrect name, it should be "bornat_id"
-        Column('born_id', Integer, ForeignKey("birthevent.birthevent_id")),
-    )
-    location = Table(
-        'location',
-        metadata,
-        Column('location_id', Integer, primary_key=True),
-        Column('livesin_id', Integer, ForeignKey("animal.animal_id")),
-        Column('name', String(10))
-    )
-    cuisine = Table(
-        'cuisine',
-        metadata,
-        Column('cuisine_id', Integer, primary_key=True),
-        Column('name', String(10)),
-    )
-    food = Table(
-        'food',
-        metadata,
-        Column('food_id', Integer, primary_key=True),
-        Column('name', String(10)),
-        # This column is incorrectly named, it should be ofcuisine_id
-        Column('food_type_id', Integer, ForeignKey("cuisine.cuisine_id"))
-    )
+    animal_rows = [
+        (1, 'Big Bear', 'The second biggest bear.', 3),
+        (2, 'Little Bear', 'The smallest bear', None),
+        (3, 'Medium Bear', 'The midsize bear.', 2),
+        (4, 'Biggest Bear', 'The biggest bear.', 1),
+    ]
 
-    species = Table(
-        'species',
-        metadata,
-        Column('species_id', Integer, primary_key=True),
-        Column('name', String(10)),
-        Column('eats_id', Integer, ForeignKey('species.species_id'), nullable=True),
-        Column('eatenby_id', Integer, ForeignKey('species.species_id'), nullable=True),
-    )
-
-    animal_eats = Table(
-        'animal_eats_food',
-        metadata,
-        Column('animal_eats_food_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('eats_id', Integer, ForeignKey("food.food_id")),
-    )
-    animal_to_friend = Table(
+    animal_to_friend_table = Table(
         'animal_friendswith',
         metadata,
         Column('animal_friendswith_id', Integer, primary_key=True),
         Column('animal_id', Integer, ForeignKey("animal.animal_id")),
         Column('friendswith_id', Integer, ForeignKey("animal.animal_id")),
     )
-    animal_to_species_table = Table(
-        'animal_ofspecies',
-        metadata,
-        Column('animal_ofspecies_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('ofspecies_id', Integer, ForeignKey("animal.animal_id")),
-    )
-    metadata.create_all(engine)
-    animals = [
-        (1, 'Big Bear', 'The second biggest bear.', 3),
-        (2, 'Little Bear', 'The smallest bear', None),
-        (3, 'Medium Bear', 'The midsize bear.', 2),
-        (4, 'Biggest Bear', 'The biggest bear.', 1),
-    ]
-    locations = [
-        (4, 1, 'Wisconsin'),
-        (5, 2, 'Michigan'),
-        (6, 3, 'Florida'),
-        (7, 3, 'Miami'),
-        (8, 3, 'Miami Beach'),
-    ]
-    food_types = [
-        (22, 'sweets'),
-        (23, 'fruit'),
-    ]
-    foods = [
-        (9, 'Gummy Bears', 22),
-        (10, 'Apples', 23),
-        (11, 'Caramel Apples', 22),
-    ]
-    animals_to_foods = [
-        # big bear eats everything
-        (12, 1, 9),
-        (13, 1, 10),
-        (14, 1, 11),
-        # medium bear only eats Gummy Bears
-        (15, 3, 9),
-    ]
-    animals_to_friends = [
+
+    animal_to_friend_rows = [
         # little bear is friends with big bear
         (16, 2, 1),
         # little bear is best friends with biggest bear
@@ -387,26 +281,91 @@ def create_sqlite_db():
         # medium bear is friends with biggest bear
         (21, 3, 4),
     ]
-    species_data = [
+
+    animal_important_event_event_table = Table(
+        'animal_importantevent_event',
+        metadata,
+        Column('animal_importantevent_event_id', Integer, primary_key=True),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('importantevent_id', Integer, ForeignKey("event.event_id")),
+    )
+
+    animal_important_event_event_rows = [
+        # big bear gets fed a lot
+        (12, 1, 9),
+        (13, 1, 10),
+        (14, 1, 11),
+        # medium bear was only fed in the morning
+        (15, 3, 9),
+    ]
+
+    location_table = Table(
+        'location',
+        metadata,
+        Column('location_id', Integer, primary_key=True),
+        Column('livesin_id', Integer, ForeignKey("animal.animal_id")),
+        Column('name', String(10))
+    )
+
+    location_rows = [
+        (4, 1, 'Wisconsin'),
+        (5, 2, 'Florida'),
+        (6, 3, 'Florida'),
+        (7, 3, 'Miami'),
+        (8, 3, 'Miami Beach'),
+    ]
+
+    event_table = Table(
+        'event',
+        metadata,
+        Column('event_id', Integer, primary_key=True),
+        Column('name', String(10)),
+    )
+
+    event_rows = [
+        (9, 'Morning Feed Event'),
+        (10, 'Afternoon Feed Event'),
+        (11, 'Night Feed Event'),
+    ]
+
+    species_table = Table(
+        'species',
+        metadata,
+        Column('species_id', Integer, primary_key=True),
+        Column('name', String(10)),
+        Column('eats_id', Integer, ForeignKey('species.species_id'), nullable=True),
+        Column('eatenby_id', Integer, ForeignKey('species.species_id'), nullable=True),
+    )
+
+    species_rows = [
         (24, 'Bear', 22, None),
-        (23, 'Wolf', 22, None),
         (22, 'Rabbit', None, 24)
     ]
+
+    animal_to_species_table = Table(
+        'animal_ofspecies',
+        metadata,
+        Column('animal_ofspecies_id', Integer, primary_key=True),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('ofspecies_id', Integer, ForeignKey("animal.animal_id")),
+    )
 
     animal_to_species = [
         (25, 1, 24),
         (27, 3, 24),
         (28, 4, 24),
     ]
+
+    metadata.create_all(engine)
+
     tables_values = [
-        (animal, animals),
-        (location, locations),
-        (cuisine, food_types),
-        (food, foods),
-        (species, species_data),
-        (animal_eats, animals_to_foods),
-        (animal_to_friend, animals_to_friends),
-        (animal_to_species_table, animal_to_species)
+        (animal_table, animal_rows),
+        (location_table, location_rows),
+        (species_table, species_rows),
+        (animal_to_species_table, animal_to_species),
+        (animal_to_friend_table, animal_to_friend_rows),
+        (event_table, event_rows),
+        (animal_important_event_event_table, animal_important_event_event_rows),
     ]
 
     for table, vals in tables_values:

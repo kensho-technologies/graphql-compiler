@@ -5,5 +5,5 @@ from .common import (  # noqa
     compile_graphql_to_match,
     compile_graphql_to_sql,
 )
-from .common import GREMLIN_LANGUAGE, MATCH_LANGUAGE  # noqa
+from .common import GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LANGUAGE # noqa
 from .compiler_frontend import OutputMetadata  # noqa

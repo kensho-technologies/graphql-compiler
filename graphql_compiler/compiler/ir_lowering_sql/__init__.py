@@ -1,6 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import six
-from collections import defaultdict
 
 from ... import exceptions
 from ...compiler import blocks, expressions
@@ -39,6 +38,18 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     Returns:
         SqlTree object containing SqlNodes organized in a tree structure.
     """
+    skipped_blocks = (
+        # MarkLocation blocks are used in the first pass over the IR blocks to create a mapping
+        # IR block -> query path for all IR blocks and can therefore be skipped for this step
+        blocks.MarkLocation,
+        # BackTrack blocks do not affect the generated SQL
+        blocks.Backtrack,
+        # EndOptional blocks are not required, instead the LocationInfo.optional_scopes_depth
+        # property is used
+        blocks.EndOptional,
+        # CoerceType blocks are not required, instead the LocationInfo.type property is used
+        blocks.CoerceType,
+    )
     query_path_to_location_info = {
         location.query_path: location_info
         for location, location_info in query_metadata_table.registered_locations
@@ -52,8 +63,8 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     ir_blocks = lower_optional_fields(
         ir_blocks, block_index_to_location, query_path_to_location_info)
     query_path_to_node = {}
-    query_path_to_filter = defaultdict(list)
-    query_path_to_tag_fields = defaultdict(list)
+    query_path_to_filter = {}
+    query_path_to_tag_fields = {}
     tree_root = None
     for index, block in enumerate(ir_blocks):
         if isinstance(block, (blocks.Recurse, blocks.Traverse, blocks.QueryRoot)):
@@ -62,7 +73,11 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
             query_path = location.query_path
             if tree_root is None:
                 if not isinstance(block, blocks.QueryRoot):
-                    raise AssertionError(u'Encountered QueryRoot but tree root is already set.')
+                    raise AssertionError(
+                        u'Encountered QueryRoot {} but tree root is already set to {} during '
+                        u'construction of SQL query tree for IR blocks {} with query'
+                        u' metadata table {}'.format(
+                            block, tree_root, ir_blocks, query_metadata_table))
                 tree_root = SqlNode(block=block, query_path=query_path)
                 query_path_to_node[query_path] = tree_root
             else:
@@ -74,10 +89,17 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                 query_path_to_node[query_path] = child_node
         elif isinstance(block, blocks.Filter):
             for context_field in get_tag_fields(block.predicate):
-                query_path_to_tag_fields[context_field.location.query_path].append(context_field)
-            query_path_to_filter[query_path].append((block, query_path))
-        else:
+                context_field_query_path = context_field.location.query_path
+                query_path_to_tag_fields.setdefault(context_field_query_path, []).append(
+                    context_field)
+            query_path_to_filter.setdefault(query_path, []).append((block, query_path))
+        elif isinstance(block, skipped_blocks):
             continue
+        else:
+            raise AssertionError(
+                u'Encountered unsupported block {} during construction of SQL query tree for IR '
+                u'blocks {} with query metadata table {} .'.format(
+                    block, ir_blocks, query_metadata_table))
     location_types = {
         location.query_path: location_info.type
         for location, location_info in query_metadata_table.registered_locations
@@ -100,19 +122,16 @@ def get_tag_fields(expression):
 
 def assign_output_fields_to_nodes(construct_result, location_types):
     """Assign the output fields of a ConstructResult block to their respective SqlNodes."""
-    query_path_to_output_fields = defaultdict(dict)
+    query_path_to_output_fields = {}
     for field_alias, field in six.iteritems(construct_result.fields):
-        if field_alias in RESERVED_COLUMN_NAMES:
-            raise exceptions.GraphQLCompilationError(
-                u'Column name "{}" is reserved and cannot be used in output directive.'.format(
-                    field_alias))
         field_name = field.location.field
         if field_name in UNSUPPORTED_META_FIELDS:
             raise exceptions.GraphQLNotSupportedByBackendError(
                 u'"{}" is unsupported for output.'.format(UNSUPPORTED_META_FIELDS[field_name]))
         output_query_path = field.location.query_path
         output_field_info = (field, location_types[output_query_path], False)
-        query_path_to_output_fields[output_query_path][field_alias] = output_field_info
+        output_field_mapping = query_path_to_output_fields.setdefault(output_query_path, {})
+        output_field_mapping[field_alias] = output_field_info
     return query_path_to_output_fields
 
 

@@ -9,15 +9,10 @@ from ... import exceptions
 
 
 # These columns are reserved for the construction of recursive queries
-DEPTH_INTERNAL_NAME = u'__depth_internal_name'
-PATH_INTERNAL_NAME = u'__path_internal_name'
-LINK_INTERNAL_NAME = u'__link_internal_name'
-CYCLE_DETECTED_INTERNAL_NAME = u'__cycle_detected_internal_name'
+DEPTH_INTERNAL_NAME = u'___depth_internal_name'
+
 RESERVED_COLUMN_NAMES = {
     DEPTH_INTERNAL_NAME,
-    PATH_INTERNAL_NAME,
-    LINK_INTERNAL_NAME,
-    CYCLE_DETECTED_INTERNAL_NAME,
 }
 
 UNSUPPORTED_META_FIELDS = {
@@ -71,28 +66,11 @@ class SqlBackend(object):
 
     supported_backend_to_fold_aggregate = {
         u'postgresql': FoldAggregate(func=func.array_agg, args=[]),
-        u'sqlite': FoldAggregate(func.group_concat, args=[';;']),
-        u'mssql': FoldAggregate(func=func.string_agg, args=[';;']),
-    }
-    supported_backend_recursion_combinator = {
-        u'mssql': u'union_all',
-        u'sqlite': u'union',
-        u'postgresql': u'union',
     }
 
     def __init__(self, backend):
         """Create a new SqlBackend to manage backend specific properties for compilation."""
-        if backend not in self.supported_backend_to_fold_aggregate:
-            raise exceptions.GraphQLValidationError(
-                u'Backend "{}" is unsupported for folding, SQL cannot be compiled.'
-            )
-        if backend not in self.supported_backend_recursion_combinator:
-            raise exceptions.GraphQLValidationError(
-                u'Backend "{}" is unsupported for recursion, SQL cannot be compiled.'
-            )
         self._backend = backend
-        self._fold_aggregate = self.supported_backend_to_fold_aggregate[backend]
-        self._recursion_combinator = self.supported_backend_recursion_combinator[backend]
 
     @property
     def backend(self):
@@ -102,9 +80,8 @@ class SqlBackend(object):
     @property
     def fold_aggregate(self):
         """Return the method used as a fold aggregate."""
-        return self._fold_aggregate
-
-    @property
-    def recursion_combinator(self):
-        """Return the method used to combine the anchor and recursive clauses of a recursive CTE."""
-        return self._recursion_combinator
+        if self.backend not in self.supported_backend_to_fold_aggregate:
+            raise exceptions.GraphQLValidationError(
+                u'Backend "{}" is unsupported for folding, SQL cannot be compiled.'
+            )
+        return self.supported_backend_to_fold_aggregate[self.backend]

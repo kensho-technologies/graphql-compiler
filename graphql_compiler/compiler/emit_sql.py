@@ -59,9 +59,7 @@ CTE of the base query, ensuring that the recursion only starts at the required s
 no more.
 
 Also worth noting with the recursive clause is the __depth_internal_name, which keeps track of
-recursion depth per the compiler's semantics, and __path_internal_name, which is used for cycle
-detection. Simply using UNION here to join the anchor query to the recursive query is insufficient
-to prevent cycles, because the depth column is unique to each row, even in a cycle.
+recursion depth per the compiler's semantics.
 
 
 WITH RECURSIVE recursive_cte AS (
@@ -69,9 +67,7 @@ WITH RECURSIVE recursive_cte AS (
     SELECT DISTINCT
         animal_parentof.animal_id AS animal_id,
         animal_parentof.parentof_id AS parentof_id,
-        0 AS __depth_internal_name,
-        CAST(animal_2.animal_id AS VARCHAR) || ',' AS __path_internal_name,
-        0 AS __cycle_detected_internal_name
+        0 AS __depth_internal_name
     FROM
         animal_parentof
         JOIN base_cte ON base_cte.link_column == animal_parentof.animal_id
@@ -81,22 +77,12 @@ WITH RECURSIVE recursive_cte AS (
         recursive_cte.animal_id,
         animal_parentof.parentof_id,
         -- increment the depth
-        recursive_cte.__depth_internal_name + 1 AS __depth_internal_name,
-        -- append the next element to the path
-        recursive_cte.__path_internal_name || CAST(animal_parentof.parentof_id AS VARCHAR) ||
-            ',' AS __path_internal_name,
-        -- check if a cycle is already present, or if this creates a cycle
-        CASE WHEN (recursive_cte.__cycle_detected_internal_name = 1) THEN 1
-             WHEN (recursive_cte.__path_internal_name LIKE '%' ||
-                   CAST(animal_parentof.parentof_id AS VARCHAR) || '%') THEN 1
-             ELSE 0 END as __cycle_detected_internal_name
+        recursive_cte.__depth_internal_name + 1 AS __depth_internal_name
     FROM
         animal_parentof
         JOIN recursive_cte ON recursive_cte.parentof_id = animal_parentof.animal_id
     WHERE
         recursive_cte.__depth_internal_name < :depth -- depth from recurse directive
-        -- only consider recursing if this is a new path
-        AND recursive_cte.__cycle_detected_internal_name = 0
 )
 
 4. JOIN the recursive clause to the recursive table (here animal_parentof) to create output columns,
@@ -104,7 +90,7 @@ and join back to base cte to carry along tag columns.
 WITH recursive_cte_outputs AS (
     SELECT
         animal.name AS animal_or_descendant_name,
-        anon_3.animal_id AS recursive_link_column -- actually an aliased column
+        anon_3.animal_id AS recursive_link_column -- anonymously aliased column
     FROM
         recursive_cte
         JOIN animal on animal.animal_id = recursive_cte.parentof_id
@@ -145,6 +131,7 @@ CompilationContext = namedtuple('CompilationContext', [
     'query_path_to_output_fields',
     'query_path_field_renames',
     'query_path_to_tag_fields',
+    'join_filters',
     'compiler_metadata',
 ])
 
@@ -166,6 +153,7 @@ def emit_code_from_ir(sql_query_tree, compiler_metadata):
         query_path_to_location_info=sql_query_tree.query_path_to_location_info,
         query_path_to_filter=sql_query_tree.query_path_to_filter,
         query_path_to_output_fields=sql_query_tree.query_path_to_output_fields,
+        join_filters=[],
         compiler_metadata=compiler_metadata,
     )
     return _query_tree_to_query(sql_query_tree.root, context, None, None)
@@ -276,7 +264,8 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
     if not isinstance(node.block, blocks.Recurse):
         return None
     if out_link_column is None or outer_cte is None:
-        raise AssertionError()
+        raise AssertionError(
+            u'The recursive clause requires an on outer CTE and the column of this CTE to link to.')
     selectable = _get_node_selectable(node, context)
     join_expression = _get_node_join_expression(node, node, context)
     if isinstance(join_expression, sql_expressions.BinaryExpression):
@@ -305,8 +294,6 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
                 base_column.label(left_column_name),
                 base_column.label(right_column_name),
                 literal_column('0').label(constants.DEPTH_INTERNAL_NAME),
-                cast(base_column, String()).concat(',').label(constants.PATH_INTERNAL_NAME),
-                literal_column('0').label(constants.CYCLE_DETECTED_INTERNAL_NAME)
             ],
             distinct=True)
         .select_from(
@@ -324,16 +311,6 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
                 _get_column(recursive_cte, right_column_name),
                 ((_get_column(recursive_cte, constants.DEPTH_INTERNAL_NAME) + 1)
                  .label(constants.DEPTH_INTERNAL_NAME)),
-                (_get_column(recursive_cte, constants.PATH_INTERNAL_NAME)
-                 .concat(cast(_get_column(recursive_table, left_column_name), String()))
-                 .concat(',')
-                 .label(constants.PATH_INTERNAL_NAME)),
-                case(
-                    [((_get_column(recursive_cte, constants.CYCLE_DETECTED_INTERNAL_NAME) == 1), 1),
-                     (_get_column(recursive_cte, constants.PATH_INTERNAL_NAME).contains(
-                            cast(_get_column(recursive_table, left_column_name), String())), 1)],
-                    else_=0
-                )
             ]
         )
         .select_from(
@@ -342,17 +319,11 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
                 _get_column(recursive_table, right_column_name) ==
                 _get_column(recursive_cte, left_column_name)
             )
-        ).where(and_(
-            _get_column(recursive_cte, constants.DEPTH_INTERNAL_NAME) < node.block.depth,
-            (_get_column(recursive_cte, constants.CYCLE_DETECTED_INTERNAL_NAME) == 0)
-        ))
+        )
+        .where(_get_column(recursive_cte, constants.DEPTH_INTERNAL_NAME) < node.block.depth,)
     )
-    recursion_combinator = context.compiler_metadata.db_backend.recursion_combinator
-    if not hasattr(recursive_cte, recursion_combinator):
-        raise AssertionError(
-            'Cannot combine anchor and recursive clauses with operation "{}"'.format(
-                recursion_combinator))
-    recursive_query = getattr(recursive_cte, recursion_combinator)(recursive_query)
+    # Combine the anchor query with the recursive clause using the UNION ALL operation.
+    recursive_query = recursive_cte.union_all(recursive_query)
     from_clause = _get_node_from_clause(node, context)
     from_clause = from_clause.join(
         recursive_query,
@@ -377,34 +348,108 @@ def _create_and_reference_table(node, context):
     return table
 
 
-def _flatten_node(node, child_node, context):
-    """Flatten a child node's references onto it's parent."""
-    _flatten_output_fields(node, child_node, context)
-    context.query_path_to_filter[node.query_path].extend(
-        context.query_path_to_filter[child_node.query_path]
-    )
-    del context.query_path_to_filter[child_node.query_path]
-    node.recursions.extend(child_node.recursions)
+def _flatten_node(parent_node, child_node, context):
+    """Flatten a child node's outputs, filters, and recursions onto its parent."""
+    _flatten_output_fields(parent_node, child_node, context)
+    parent_node.recursions.extend(child_node.recursions)
+    del child_node.recursions[:]
+    if child_node.query_path in context.query_path_to_filter:
+        context.query_path_to_filter.setdefault(parent_node.query_path, []).extend(
+            context.query_path_to_filter[child_node.query_path]
+        )
+        del context.query_path_to_filter[child_node.query_path]
 
 
 def _flatten_output_fields(parent_node, child_node, context):
     """Flatten child node output fields onto parent node after join operation has been performed."""
+    if child_node.query_path in context.query_path_to_tag_fields:
+        context.query_path_to_tag_fields.setdefault(parent_node.query_path, []).extend(
+            context.query_path_to_tag_fields[child_node.query_path])
+    if child_node.query_path not in context.query_path_to_output_fields:
+        return
     child_output_fields = context.query_path_to_output_fields[child_node.query_path]
-    parent_output_fields = context.query_path_to_output_fields[parent_node.query_path]
+    parent_output_fields = context.query_path_to_output_fields.setdefault(parent_node.query_path, {})
     for field_alias, (field, field_type, is_renamed) in six.iteritems(child_output_fields):
         parent_output_fields[field_alias] = (field, field_type, is_renamed)
-    context.query_path_to_tag_fields[parent_node.query_path].extend(
-        context.query_path_to_tag_fields[child_node.query_path])
     del context.query_path_to_output_fields[child_node.query_path]
 
 
 def _join_nodes(parent_node, child_node, join_expression, context):
-    """Join two nodes and update compilation context."""
+    """Join two nodes and update compilation context.
+
+    The rule of thumb for mapping an edge to a JOIN statement is that if the edge is required,
+    an INNER JOIN should be used, and if the edge is optional a LEFT JOIN should be used. This
+    applies to all tables involved in both direct and many-to-many JOINs, with one notable
+    exception.
+
+    When an edge is required within an optional scope, the compiler semantics state that if the
+    outer optional edge is present, but the inner required edge is not, this result should be
+    excluded. For example with the GraphQL query:
+    {
+        Animal {
+            name @output(out_name: "name")
+            out_Animal_ParentOf @optional {
+                name @output(out_name: "child_name")
+                out_Animal_ParentOf {
+                    name @output(out_name: "grandchild_name")
+                }
+            }
+        }
+    }
+
+    An animal that has a child (satisfying the first optional ParentOf edge), but where that child
+    has no children (failing to satisfy the second required ParentOf edge) should produce no result.
+
+    Using nested INNER JOINs here from the outer LEFT JOIN, like
+
+    SELECT
+        animal.name as name,
+        child.name as child_name,
+        grandchild.name as grandchild_name
+    FROM animal
+    LEFT JOIN (
+        animal AS child
+        INNER JOIN (
+            animal as grandchild
+        ) ON child.parentof_id = grandchild.animal_id
+    ) ON animal AS child ON animal.parentof_id = child.animal_id
+
+    will have a NULL value returned for the grandchild.name property. The LEFT JOIN condition is
+    fulfilled but the INNER JOIN condition is not, which doesn't exclude the result but rather
+    includes it with a NULL value.
+
+    To get the correct semantics, the result when the INNER JOIN condition is not fulfilled needs to
+    be filtered out. This is done explicitly by replacing the INNER JOIN with a LEFT JOIN, and then
+    applying the JOIN condition in the WHERE clause to the rows that are non-null from the
+    LEFT JOIN. For this example this looks like:
+
+    SELECT
+        animal.name as name,
+        child.name as child_name,
+        grandchild.name as grandchild_name
+    FROM animal
+    LEFT JOIN (
+        animal AS child
+        INNER JOIN (
+            animal as grandchild
+        ) ON child.parentof_id = grandchild.animal_id
+    ) ON animal AS child ON animal.parentof_id = child.animal_id
+    WHERE
+        child.animal_id IS NULL
+        OR
+        child.parentof_id = grandchild.animal_id -- reapply JOIN condition in WHERE clause
+
+    The null check ensures that the filter is only applied iff the LEFT JOIN condition is actually
+    satisfied.
+    """
     location_info = context.query_path_to_location_info[child_node.query_path]
-    is_optional = location_info.optional_scopes_depth > 0
+    parent_location_info = context.query_path_to_location_info[parent_node.query_path]
+    within_optional_scope = location_info.optional_scopes_depth > 0
+    current_node_required = (
+            location_info.optional_scopes_depth == parent_location_info.optional_scopes_depth)
     parent_from_clause = _get_node_from_clause(parent_node, context)
     child_from_clause = _get_node_from_clause(child_node, context)
-    if is_optional:
+    if within_optional_scope:
         # use LEFT JOINs
         if isinstance(join_expression, ManyToManyJoin):
             parent_from_clause = parent_from_clause.outerjoin(
@@ -412,9 +457,47 @@ def _join_nodes(parent_node, child_node, join_expression, context):
                 onclause=join_expression.join_to_junction_expression)
             parent_from_clause = parent_from_clause.outerjoin(
                 child_from_clause, onclause=join_expression.join_from_junction_expression)
+
+            if current_node_required:
+                # special case (see docstring), capture the JOIN expressions in context to later be
+                # used in the WHERE clause
+                parent_selectable = _get_node_selectable(parent_node, context)
+                outer_primary_key = _get_selectable_primary_key(parent_selectable)
+                context.join_filters.append(
+                    sql_expressions.or_(
+                        outer_primary_key == None,
+                        join_expression.join_to_junction_expression
+                    )
+                )
+                junction_table_primary_key = join_expression.join_to_junction_expression.right
+                if not any(junction_table_primary_key is column for column in join_expression.junction_table.c):
+                    raise AssertionError(
+                        u'The right side of the join expression "{}" between parent "{}" and '
+                        u'junction table "{}" is expected to come from the junction table.'.format(
+                            join_expression.join_to_junction_expression, parent_selectable,
+                            join_expression.junction_table
+                        ))
+                context.join_filters.append(
+                    sql_expressions.or_(
+                        junction_table_primary_key == None,
+                        join_expression.join_from_junction_expression
+                    )
+                )
+
         else:
             parent_from_clause = parent_from_clause.outerjoin(
                 child_from_clause, onclause=join_expression)
+            if current_node_required:
+                # special case (see docstring), capture the JOIN expression in context to later be
+                # used in the WHERE clause
+                parent_selectable = _get_node_selectable(parent_node, context)
+                outer_primary_key = _get_selectable_primary_key(parent_selectable)
+                context.join_filters.append(
+                    sql_expressions.or_(
+                        outer_primary_key == None,
+                        join_expression
+                    )
+                )
     else:
         # use INNER JOINs
         if isinstance(join_expression, ManyToManyJoin):
@@ -477,7 +560,7 @@ def _get_output_columns(node, is_final_query, context):
             context.query_path_field_renames[field.location.query_path][field_name] = field_alias
         columns.append(column)
     # include tags only when we are not outputting the final result
-    if not is_final_query:
+    if not is_final_query and node.query_path in context.query_path_to_tag_fields:
         for tag_field in context.query_path_to_tag_fields[node.query_path]:
             selectable = context.query_path_to_selectable[tag_field.location.query_path]
             field_name = tag_field.location.field
@@ -496,12 +579,14 @@ def _create_query(node, is_final_query, context):
     """
     # filters are computed before output columns, so that tag columns can be resolved before any
     # renames occur for columns involved in output
-    filter_clauses = []
+    filter_clauses = [filter for filter in context.join_filters]
+    del context.join_filters[:]
     if not is_final_query:
-        filter_clauses = [
-            _convert_filter_to_sql(filter_block, filter_query_path, context)
-            for filter_block, filter_query_path in context.query_path_to_filter[node.query_path]
-        ]
+        if node.query_path in context.query_path_to_filter:
+            filter_clauses.extend(
+                _convert_filter_to_sql(filter_block, filter_query_path, context)
+                for filter_block, filter_query_path in context.query_path_to_filter[node.query_path]
+            )
 
     columns = _get_output_columns(node, is_final_query, context)
     if not is_final_query:
@@ -538,6 +623,8 @@ def _expression_to_sql(expression, selectable, location_info, context):
         return column
     if isinstance(expression, expressions.Variable):
         variable_name = expression.variable_name
+        if variable_name.startswith(u'$'):
+            variable_name = variable_name[1:]
         return bindparam(variable_name)
     if isinstance(expression, expressions.Literal):
         return expression.value
@@ -591,17 +678,16 @@ def _get_column(selectable, column_name):
     if column is None:
         raise AssertionError(
             u'Column "{}" not found in selectable "{}". Columns present are {}'.format(
-                column_name, selectable, [col.name for col in selectable.c]))
+                column_name, selectable.original, [col.name for col in selectable.c]))
     return column
 
 
 def _try_get_column(selectable, column_name):
+    """Attempt to get the column of the specified"""
     if not hasattr(selectable, 'c'):
         raise AssertionError(u'Selectable "{}" does not have a column collection.'.format(
             selectable))
-    if column_name not in selectable.c:
-        return None
-    return selectable.c[column_name]
+    return selectable.c.get(column_name, None)
 
 
 def _get_recursive_node_join_expression(node, recursive_node, in_column, out_column, context):
@@ -697,16 +783,10 @@ def _try_get_many_to_many_join_expression(outer_node, inner_node, context):
                            else short_junction_table_name)
     junction_table = context.compiler_metadata.get_table(junction_table_name).alias()
     junction_table = junction_table.alias()
-    if len(outer_selectable.primary_key) != 1:
-        raise exceptions.GraphQLCompilationError(
-            u'Table "{}" is expected to have exactly one primary key.'.format(
-                outer_selectable.original))
-    if len(inner_selectable.primary_key) != 1:
-        raise exceptions.GraphQLCompilationError(
-            u'Table "{}" is expected to have exactly one primary key.'.format(
-                inner_selectable.original))
-    outer_pk_name = outer_selectable.primary_key[0].name
-    inner_pk_name = inner_selectable.primary_key[0].name
+    outer_primary_key = _get_selectable_primary_key(outer_selectable)
+    inner_primary_key = _get_selectable_primary_key(inner_selectable)
+    outer_pk_name = outer_primary_key.name
+    inner_pk_name = inner_primary_key.name
     direction = _get_block_direction(inner_node.block)
     if direction == INBOUND_EDGE_DIRECTION:
         inner_column_name, outer_column_name = outer_column_name, inner_column_name
@@ -725,6 +805,19 @@ def _try_get_many_to_many_join_expression(outer_node, inner_node, context):
         )
     return ManyToManyJoin(
         join_to_junction_expression, junction_table, join_from_junction_expression)
+
+
+def _get_selectable_primary_key(selectable):
+    """Get a selectable's primary key.
+
+    The compiler requires that the primary key be non-composite, i.e. that the primary key is
+    comprised of only one column.
+    """
+    if len(selectable.primary_key) != 1:
+        raise exceptions.GraphQLCompilationError(
+            u'Selectable "{}" is expected to have exactly one primary key.'.format(
+                selectable.original))
+    return selectable.primary_key[0]
 
 
 def _get_column_names_for_edge(edge_name):
