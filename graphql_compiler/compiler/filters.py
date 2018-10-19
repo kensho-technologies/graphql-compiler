@@ -645,7 +645,8 @@ def process_filter_directive(filter_operation_info, location, context):
     context['metadata'].record_filter_info(
         location,
         FilterInfo(
-            fields=(filter_operation_info.field_name,) if op_name != 'name_or_alias' else ('name', 'alias'),
+            fields=(filter_operation_info.field_name,) if op_name != 'name_or_alias' else
+                   ('name', 'alias'),
             op_name=op_name,
             args=tuple(operator_params)
         )

@@ -59,7 +59,7 @@ class ExplainInfoTests(unittest.TestCase):
             FilterInfo(fields=('event_date',),
                        op_name='between',
                        args=('%other_child_fed_at', '%parent_fed_at')),
-       ]
+        ]
 
         self.check(test_input_data.complex_optional_traversal_variables,
                    [(loc1, filters1), (loc2, filters2)],
@@ -84,7 +84,9 @@ class ExplainInfoTests(unittest.TestCase):
     def test_has_edge_degree_op_filter(self):
         loc = Location(('Animal',), None, 1)
         filters = [
-            FilterInfo(fields=('in_Animal_ParentOf',), op_name='has_edge_degree', args=('$child_count',))
+            FilterInfo(fields=('in_Animal_ParentOf',),
+                       op_name='has_edge_degree',
+                       args=('$child_count',))
         ]
 
         self.check(test_input_data.has_edge_degree_op_filter,
@@ -104,7 +106,9 @@ class ExplainInfoTests(unittest.TestCase):
     def test_two_consecutive_recurses(self):
         loc = Location(('Animal',), None, 1)
         filters = [
-            FilterInfo(fields=('name', 'alias'), op_name='name_or_alias', args=('$animal_name_or_alias',))
+            FilterInfo(fields=('name', 'alias'),
+                       op_name='name_or_alias',
+                       args=('$animal_name_or_alias',))
         ]
         recurses = [
             RecurseInfo(edge_direction='out', edge_name='Animal_ParentOf', depth=2),
@@ -118,7 +122,9 @@ class ExplainInfoTests(unittest.TestCase):
     def test_filter_on_optional_traversal_name_or_alias(self):
         loc = Location(('Animal', 'out_Animal_ParentOf'), None, 1)
         filters = [
-            FilterInfo(fields=('name', 'alias'), op_name='name_or_alias', args=('%grandchild_name',))
+            FilterInfo(fields=('name', 'alias'),
+                       op_name='name_or_alias',
+                       args=('%grandchild_name',))
         ]
 
         self.check(test_input_data.filter_on_optional_traversal_name_or_alias,
