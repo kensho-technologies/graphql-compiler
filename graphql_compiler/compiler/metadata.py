@@ -27,7 +27,7 @@ LocationInfo = namedtuple(
 FilterInfo = namedtuple(
     'FilterInfo',
     (
-        'field_name',
+        'fields',
         'op_name',
         'args',
     )
