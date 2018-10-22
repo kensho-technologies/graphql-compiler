@@ -643,7 +643,7 @@ def process_filter_directive(filter_operation_info, location, context):
                                       u'It may not be applied on a type coercion.'.format(op_name))
 
     fields = ((filter_operation_info.field_name,) if op_name != 'name_or_alias'
-             else ('name', 'alias'))
+              else ('name', 'alias'))
 
     context['metadata'].record_filter_info(
         location,
