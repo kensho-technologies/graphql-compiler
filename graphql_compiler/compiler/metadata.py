@@ -4,7 +4,7 @@ from collections import namedtuple
 
 import six
 
-from .helpers import Location
+from .helpers import FoldScopeLocation, Location
 
 
 LocationInfo = namedtuple(
@@ -20,6 +20,25 @@ LocationInfo = namedtuple(
         'recursive_scopes_depth',  # int, how many nested recursion scopes this location is in
         'is_within_fold',          # bool, True if this location is within a fold scope;
                                    #       fold scopes are not allowed to nest within each other.
+    )
+)
+
+
+FilterInfo = namedtuple(
+    'FilterInfo',
+    (
+        'fields',
+        'op_name',
+        'args',
+    )
+)
+
+RecurseInfo = namedtuple(
+    'RecurseInfo',
+    (
+        'edge_direction',
+        'edge_name',
+        'depth',
     )
 )
 
@@ -44,6 +63,9 @@ class QueryMetadataTable(object):
         self._inputs = dict()                # dict, input name -> input info namedtuple
         self._outputs = dict()               # dict, output name -> output info namedtuple
         self._tags = dict()                  # dict, tag name -> tag info namedtuple
+
+        self._filter_infos = dict()          # Location -> FilterInfo array
+        self._recurse_infos = dict()         # Location -> RecurseInfo array
 
         # dict, revisiting Location -> revisit origin, i.e. the first Location with that query path
         self._revisit_origins = dict()
@@ -131,6 +153,27 @@ class QueryMetadataTable(object):
             raise AssertionError(u'Attempted to get the location info of an unregistered location: '
                                  u'{}'.format(location))
         return location_info
+
+    def record_filter_info(self, location, filter_info):
+        """Record filter information about the location."""
+        if isinstance(location, FoldScopeLocation):
+            # NOTE(gurer): ignore filters inside the fold for now
+            return
+        record_location = location.at_vertex()
+        self._filter_infos.setdefault(record_location, []).append(filter_info)
+
+    def get_filter_infos(self, location):
+        """Get information about filters at the location."""
+        return self._filter_infos.get(location, [])
+
+    def record_recurse_info(self, location, recurse_info):
+        """Record recursion information about the location."""
+        record_location = location.at_vertex()
+        self._recurse_infos.setdefault(record_location, []).append(recurse_info)
+
+    def get_recurse_infos(self, location):
+        """Get information about recursions at the location."""
+        return self._recurse_infos.get(location, [])
 
     def get_child_locations(self, location):
         """Yield an iterable of child locations for a given Location/FoldScopeLocation object."""

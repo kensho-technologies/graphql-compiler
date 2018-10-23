@@ -87,7 +87,7 @@ from .helpers import (
     invert_dict, is_vertex_field_name, strip_non_null_from_type, validate_output_name,
     validate_safe_string
 )
-from .metadata import LocationInfo, QueryMetadataTable
+from .metadata import LocationInfo, QueryMetadataTable, RecurseInfo
 
 
 # LocationStackEntry contains the following:
@@ -488,6 +488,10 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                                edge_name,
                                                recurse_depth,
                                                within_optional_scope=within_optional_scope))
+            query_metadata_table.record_recurse_info(location,
+                                                     RecurseInfo(edge_direction=edge_direction,
+                                                                 edge_name=edge_name,
+                                                                 depth=recurse_depth))
         else:
             basic_blocks.append(blocks.Traverse(edge_direction, edge_name,
                                                 optional=edge_traversal_is_optional,
@@ -642,7 +646,7 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     # step 1: apply local filter, if any
     for filter_operation_info in filter_operations:
         basic_blocks.append(
-            process_filter_directive(filter_operation_info, context))
+            process_filter_directive(filter_operation_info, location, context))
 
     if location.field is not None:
         # The location is at a property, compile the property data following P-steps.
