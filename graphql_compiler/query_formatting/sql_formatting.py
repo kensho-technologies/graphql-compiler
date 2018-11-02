@@ -1,7 +1,7 @@
 ######
 # Public API
 ######
-from graphql_compiler.compiler.common import SQL_LANGUAGE
+from ..compiler.common import SQL_LANGUAGE
 
 
 def insert_arguments_into_sql_query(compilation_result, arguments):

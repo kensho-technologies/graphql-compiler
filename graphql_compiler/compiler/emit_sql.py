@@ -674,6 +674,7 @@ def _expression_to_sql(expression, selectable, location_info, context):
 
 
 def _get_column(selectable, column_name):
+    """Get a column by name from the selectable, raise Assertion error if not found."""
     column = _try_get_column(selectable, column_name)
     if column is None:
         raise AssertionError(
@@ -683,7 +684,7 @@ def _get_column(selectable, column_name):
 
 
 def _try_get_column(selectable, column_name):
-    """Attempt to get the column of the specified"""
+    """Attempt to get a column by name from the selectable."""
     if not hasattr(selectable, 'c'):
         raise AssertionError(u'Selectable "{}" does not have a column collection.'.format(
             selectable))
@@ -764,11 +765,17 @@ def _try_get_many_to_many_join_expression(outer_node, inner_node, context):
     inner_selectable = _get_node_selectable(inner_node, context)
     edge_name = _get_block_edge_name(inner_node.block)
     outer_column_name, inner_column_name = _get_column_names_for_edge(edge_name)
-    type_name = _get_schema_type_name(inner_node, context)
+
+    target_type_name = None
+    if _get_block_direction(inner_node.block) == INBOUND_EDGE_DIRECTION:
+        target_type_name = _get_schema_type_name(outer_node, context)
+    else:
+        target_type_name = _get_schema_type_name(inner_node, context)
+
     short_junction_table_name = u'{junction_table_name}'.format(junction_table_name=edge_name)
     has_short_table_name = context.compiler_metadata.has_table(short_junction_table_name)
-    long_junction_table_name = u'{junction_table_name}_{type_name}'.format(
-            junction_table_name=edge_name, type_name=type_name
+    long_junction_table_name = u'{junction_table_name}_{target_type_name}'.format(
+            junction_table_name=edge_name, target_type_name=target_type_name
         )
     has_long_table_name = context.compiler_metadata.has_table(long_junction_table_name)
     if not has_long_table_name and not has_short_table_name:

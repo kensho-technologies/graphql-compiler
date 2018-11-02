@@ -1279,6 +1279,45 @@ class SqlQueryTests(unittest.TestCase):
         }
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
 
+        graphql_string = '''
+        {
+            Event {
+                name @output(out_name: "event_name")
+                     @tag(tag_name: "event_name")
+                in_Animal_ImportantEvent {
+                    name @output(out_name: "name")
+                         @filter(op_name: "=", value: ["$name"])
+                         @filter(op_name: ">", value: ["%event_name"])
+                }
+            }
+        }
+        '''
+        self.assertQueryOutputEquals(graphql_string, params, expected_results)
+
+    def test_many_to_many_junction_tag_flipped(self):
+        graphql_string = '''
+        {
+            Animal {
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["$name"])
+                     @tag(tag_name: "animal_name")
+                out_Animal_ImportantEvent {
+                    ... on Event {
+                        name @output(out_name: "event_name")
+                             @filter(op_name: "<", value: ["%animal_name"])
+                    }
+                }
+            }
+        }
+        '''
+        expected_results = [
+            {'name': 'Big Bear', 'event_name': 'Afternoon Feed Event'},
+        ]
+        params = {
+            'name': 'Big Bear'
+        }
+        self.assertQueryOutputEquals(graphql_string, params, expected_results)
+
     def test_many_to_many_junction_self(self):
         graphql_string = '''
         {

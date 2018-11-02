@@ -3,7 +3,7 @@ import six
 
 from ... import exceptions
 from ...compiler import blocks, expressions
-from .constants import RESERVED_COLUMN_NAMES, UNSUPPORTED_META_FIELDS
+from .constants import UNSUPPORTED_META_FIELDS
 from .sql_tree import SqlNode, SqlQueryTree
 
 ##############
@@ -38,18 +38,6 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     Returns:
         SqlTree object containing SqlNodes organized in a tree structure.
     """
-    skipped_blocks = (
-        # MarkLocation blocks are used in the first pass over the IR blocks to create a mapping
-        # IR block -> query path for all IR blocks and can therefore be skipped for this step
-        blocks.MarkLocation,
-        # BackTrack blocks do not affect the generated SQL
-        blocks.Backtrack,
-        # EndOptional blocks are not required, instead the LocationInfo.optional_scopes_depth
-        # property is used
-        blocks.EndOptional,
-        # CoerceType blocks are not required, instead the LocationInfo.type property is used
-        blocks.CoerceType,
-    )
     query_path_to_location_info = {
         location.query_path: location_info
         for location, location_info in query_metadata_table.registered_locations
@@ -66,6 +54,19 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     query_path_to_filter = {}
     query_path_to_tag_fields = {}
     tree_root = None
+    skippable_blocks = (
+        # MarkLocation blocks are used in the first pass over the IR blocks
+        # (get_block_index_to_location_map) to create a mapping of IR block -> query path for all
+        # IR blocks. They can safely be skipped during tree construction.
+        blocks.MarkLocation,
+        # BackTrack blocks do not affect the generated SQL tree
+        blocks.Backtrack,
+        # EndOptional blocks are not required, instead the LocationInfo.optional_scopes_depth
+        # property is used
+        blocks.EndOptional,
+        # CoerceType blocks are not required, instead the LocationInfo.type property is used
+        blocks.CoerceType,
+    )
     for index, block in enumerate(ir_blocks):
         if isinstance(block, (blocks.Recurse, blocks.Traverse, blocks.QueryRoot)):
             location = block_index_to_location[index]
@@ -93,7 +94,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                 query_path_to_tag_fields.setdefault(context_field_query_path, []).append(
                     context_field)
             query_path_to_filter.setdefault(query_path, []).append((block, query_path))
-        elif isinstance(block, skipped_blocks):
+        elif isinstance(block, skippable_blocks):
             continue
         else:
             raise AssertionError(
@@ -181,7 +182,7 @@ def lower_unary_transformations(ir_blocks):
 
 def lower_optional_fields(ir_blocks, block_index_to_location, query_path_to_location_info):
     """Lowering step for Filter blocks in an optional scope."""
-    def rewrite_optional(expression):
+    def rewrite_left_optional(expression):
         """Rewrite optional predicates to support the compiler's semantics.
 
         For comparison to a field that originates from an optional context, the field will
@@ -208,6 +209,37 @@ def lower_optional_fields(ir_blocks, block_index_to_location, query_path_to_loca
                 expression.left
             )
         )
+
+    def rewrite_right_optional(expression):
+        """Rewrite optional predicates to support the compiler's semantics.
+
+        For comparison to a field that originates from an optional context, the field will
+        be associated with a table that has been joined to the query with a LEFT JOIN.
+        The spec says that a predicate applied to this field should pass if this field doesn't
+        exist, which can be expressed in SQL as an (field IS NULL OR predicate) statement,
+        which can be constructed with this particular rewrite.
+        """
+        if not isinstance(expression, expressions.BinaryComposition):
+            return expression
+        if not isinstance(expression.right, expressions.LocalField):
+            return expression
+        if not isinstance(expression.left, (expressions.Variable, expressions.ContextField)):
+            return expression
+        # Either the expression is true, or
+        return expressions.BinaryComposition(
+            u'||',
+            # either the expression is true
+            expression,
+            # or the field referenced by the expression is NULL (doesn't exist)
+            expressions.BinaryComposition(
+                u'=',
+                expressions.Literal(None),
+                expression.right
+            )
+        )
+
+    def rewrite_optional(expression):
+        return rewrite_right_optional(rewrite_left_optional(expression))
 
     def visit_no_op(expression):
         """No-op visitor for blocks that are not Filter blocks or within an optional scope."""
