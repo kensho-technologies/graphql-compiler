@@ -53,7 +53,6 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     query_path_to_node = {}
     query_path_to_filter = {}
     query_path_to_tag_fields = {}
-    tree_root = None
     skippable_blocks = (
         # MarkLocation blocks are used in the first pass over the IR blocks
         # (get_block_index_to_location_map) to create a mapping of IR block -> query path for all
@@ -67,6 +66,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
         # CoerceType blocks are not required, instead the LocationInfo.type property is used
         blocks.CoerceType,
     )
+    tree_root = None
     for index, block in enumerate(ir_blocks):
         if isinstance(block, (blocks.Recurse, blocks.Traverse, blocks.QueryRoot)):
             location = block_index_to_location[index]

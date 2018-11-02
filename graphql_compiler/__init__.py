@@ -64,6 +64,7 @@ def graphql_to_sql(schema, graphql_query, parameters, compiler_metadata,
         parameters: dict, mapping argument name to its value, for every parameter the query expects.
         compiler_metadata, CompilerMetadata object, provides SQLAlchemy specific backend
                            information
+                           information
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
                                 Used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a
