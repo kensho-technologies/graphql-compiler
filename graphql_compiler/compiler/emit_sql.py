@@ -1,11 +1,12 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Recursively converts a SqlNode tree to an executable SQLAlchemy query.
 
-The complexity here comes from @recurse directives (Recurse blocks). To match the semantics of
-the GraphQL compiler, recursive common table expressions (CTEs) are required. SQL backends are good
-at pushing predicates down into subqueries and CTEs, however this does not generally extend to
-recursive CTEs. This means that it is very easy to write a recursive CTE that will scan an entire
-table, even if all but a few starting points of that recursion are eventually discarded later.
+The complexity here comes from @recurse directives, which become the Recurse blocks in the compiler
+IR. To match the semantics of the GraphQL compiler, recursive common table expressions (CTEs) are
+required. SQL backends are good at pushing predicates down into subqueries and CTEs, however this
+does not generally extend to recursive CTEs. This means that it is very easy to write a recursive
+CTE that will scan an entire table, even if all but a few starting points of that recursion are
+eventually discarded later.
 
 
 Using the query
@@ -108,10 +109,10 @@ FROM
 JOIN
     recursive_cte_outputs ON base_cte.link_column = recursive_cte_outputs.recursive_link_column
 """
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 
 import six
-from sqlalchemy import Column, String, and_, bindparam, case, cast, literal_column, select
+from sqlalchemy import Column, and_, bindparam, literal_column, select
 from sqlalchemy.sql import expression as sql_expressions
 from sqlalchemy.sql.elements import BindParameter
 
@@ -126,7 +127,8 @@ CompilationContext = namedtuple('CompilationContext', (
     'query_path_to_selectable',
     'query_path_to_from_clause',
     'query_path_to_location_info',
-    'query_path_to_recursion_columns',
+    'query_path_to_recursion_in_columns',
+    'query_path_to_recursion_out_columns',
     'query_path_to_filter',
     'query_path_to_output_fields',
     'query_path_field_renames',
@@ -135,10 +137,22 @@ CompilationContext = namedtuple('CompilationContext', (
     'compiler_metadata',
 ))
 
+# A many-to-many join is a SQL JOIN that requires an intermediate junction table to fully resolve
 ManyToManyJoin = namedtuple('JunctionJoinExpression', (
     'join_to_junction_expression',
     'junction_table',
     'join_from_junction_expression'
+))
+
+# The recursive clause requires a large collection of metadata for construction
+RecursiveClauseMetadata = namedtuple('RecursiveClauseMetadata', (
+    'base_column',
+    'base_column_name',
+    'left_column_name',
+    'right_column_name',
+    'recursive_table',
+    'parent_cte_column',
+    'recursive_selectable',
 ))
 
 
@@ -156,8 +170,9 @@ def emit_code_from_ir(sql_query_tree, compiler_metadata):
     context = CompilationContext(
         query_path_to_selectable={},
         query_path_to_from_clause={},
-        query_path_to_recursion_columns={},
-        query_path_field_renames=defaultdict(dict),
+        query_path_to_recursion_in_columns={},
+        query_path_to_recursion_out_columns={},
+        query_path_field_renames={},
         query_path_to_tag_fields=sql_query_tree.query_path_to_tag_fields,
         query_path_to_location_info=sql_query_tree.query_path_to_location_info,
         query_path_to_filter=sql_query_tree.query_path_to_filter,
@@ -228,15 +243,15 @@ def _flatten_and_join_recursive_nodes(node, cte, context):
 
     """
     for recursive_node in node.recursions:
-        # retrieve the column that will be attached to the recursive element
-        recursion_source_column, _ = context.query_path_to_recursion_columns[
+        # retrieve the column that will be used to attach the outer CTE to the recursive element
+        recursion_in_column = context.query_path_to_recursion_in_columns[
             recursive_node.query_path]
         recursion_sink_column = _query_tree_to_query(
-            recursive_node, context, recursion_link_column=recursion_source_column, outer_cte=cte
+            recursive_node, context, recursion_link_column=recursion_in_column, outer_cte=cte
         )
         _flatten_output_fields(node, recursive_node, context)
         join_expression = _get_recursive_node_join_expression(
-            node, recursive_node, recursion_source_column, recursion_sink_column, context)
+            node, recursive_node, recursion_in_column, recursion_sink_column, context)
         _join_nodes(node, recursive_node, join_expression, context)
 
 
@@ -278,7 +293,7 @@ def _flatten_and_join_nonrecursive_nodes(node, context):
     # create the current node's table
     _create_and_reference_table(node, context)
     # ensure that columns required to link recursion are present
-    _create_links_for_recursions(node, context)
+    _get_links_for_recursive_clauses(node, context)
     for child_node in node.children_nodes:
         _flatten_node(node, child_node, context)
         join_expression = _get_node_join_expression(node, child_node, context)
@@ -334,9 +349,7 @@ def _get_block_edge_name(block):
 
 
 def _create_recursive_clause(node, context, out_link_column, outer_cte):
-    """Ceate a recursive clause for a Recurse block.
-
-    For details on the approach, see steps 3 and 4 of the overall file docstring.
+    """Create a recursive clause for a Recurse block.
 
     Args:
         node: The root of the recursion
@@ -355,22 +368,46 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
     if out_link_column is None or outer_cte is None:
         raise AssertionError(
             u'The recursive clause requires an on outer CTE and the column of this CTE to link to.')
-    base_column, base_column_name, left_column_name, parent_cte_column, recursive_table, right_column_name, selectable = _get_recursive_clause_metadata(
-        context, node, out_link_column, outer_cte)
+    # setup the column names and selectables required to construct the recursive element
+    recursive_metadata = _get_recursive_element_metadata(context, node, out_link_column, outer_cte)
+    # create the recursive element
+    recursive_query = _create_recursive_element(node, recursive_metadata, outer_cte, context)
+    # grab the column necessary to link the recursive element to the outer_cte
+    recursive_link_column = _get_column(
+        recursive_query, recursive_metadata.right_column_name).label(None)
+    context.query_path_to_recursion_out_columns[node.query_path] = recursive_link_column
+    return recursive_link_column
+
+
+def _create_recursive_element(node, recursive_metadata, outer_cte, context):
+    """Generate the SQL for the recursive clause.
+
+    For details on the SQL generated here, see parts 3 and 4 of the file docstring.
+
+    Args:
+        node: The current recursive node.
+        recursive_metadata: The metadata to use in constructing this recursive clause.
+        outer_cte: The CTE containing the query of the parent node and its non-recursive children.
+        context: Global compilation state and metadata.
+
+    Returns: SQLAlchemy Column, the column required to link the created recursive clause back to the
+                                parent CTE.
+    """
     anchor_query = (
         select(
             [
-                base_column.label(left_column_name),
-                base_column.label(right_column_name),
+                recursive_metadata.base_column.label(recursive_metadata.left_column_name),
+                recursive_metadata.base_column.label(recursive_metadata.right_column_name),
                 literal_column('0').label(constants.DEPTH_INTERNAL_NAME),
             ],
             # take DISTINCT to ensure the anchor clause is as small as possible. This is allowable
             # because the recursive clause is later joined back to the original CTE.
             distinct=True)
         .select_from(
-            selectable.join(
+            recursive_metadata.recursive_selectable.join(
                 outer_cte,
-                base_column == parent_cte_column
+                recursive_metadata.base_column ==
+                recursive_metadata.parent_cte_column
             )
         )
     )
@@ -378,17 +415,22 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
     recursive_query = (
         select(
             [
-                _get_column(recursive_table, left_column_name),
-                _get_column(recursive_cte, right_column_name),
+                _get_column(
+                    recursive_metadata.recursive_table, recursive_metadata.left_column_name
+                ),
+                _get_column(
+                    recursive_cte, recursive_metadata.right_column_name
+                ),
                 ((_get_column(recursive_cte, constants.DEPTH_INTERNAL_NAME) + 1)
-                 .label(constants.DEPTH_INTERNAL_NAME)),
+                    .label(constants.DEPTH_INTERNAL_NAME)),
             ]
         )
         .select_from(
-            recursive_table.join(
+            recursive_metadata.recursive_table.join(
                 recursive_cte,
-                _get_column(recursive_table, right_column_name) ==
-                _get_column(recursive_cte, left_column_name)
+                _get_column(
+                    recursive_metadata.recursive_table, recursive_metadata.right_column_name) ==
+                _get_column(recursive_cte, recursive_metadata.left_column_name)
             )
         )
         .where(_get_column(recursive_cte, constants.DEPTH_INTERNAL_NAME) < node.block.depth)
@@ -398,34 +440,21 @@ def _create_recursive_clause(node, context, out_link_column, outer_cte):
     from_clause = _get_node_from_clause(node, context)
     from_clause = from_clause.join(
         recursive_query,
-        _get_column(selectable, base_column_name) ==
-        _get_column(recursive_query, left_column_name)
+        _get_column(recursive_metadata.recursive_selectable, recursive_metadata.base_column_name) ==
+        _get_column(recursive_query, recursive_metadata.left_column_name)
     )
     from_clause = from_clause.join(
         outer_cte,
-        _get_column(recursive_query, right_column_name) ==
-        parent_cte_column
+        _get_column(recursive_query, recursive_metadata.right_column_name) ==
+        recursive_metadata.parent_cte_column
     )
     context.query_path_to_from_clause[node.query_path] = from_clause
-    out_link_column = _get_column(recursive_query, right_column_name).label(None)
-    in_col, _ = context.query_path_to_recursion_columns[node.query_path]
-    context.query_path_to_recursion_columns[node.query_path] = (in_col, out_link_column)
-    return out_link_column
+    return recursive_query
 
 
-RecursiveClauseMetadata = namedtuple('RecursiveClauseMetadata', (
-    'base_column',
-    'base_column_name',
-    'left_column_name',
-    'right_column_name',
-    'recursive_table',
-    'parent_cte_column',
-    'selectable',
-))
-
-
-def _get_recursive_clause_metadata(context, node, out_link_column, outer_cte):
-    selectable = _get_node_selectable(node, context)
+def _get_recursive_element_metadata(context, node, out_link_column, outer_cte):
+    """Compute requisite metadata based on the JOIN type to construct a recursive clause."""
+    recursive_selectable = _get_node_selectable(node, context)
     join_expression = _get_node_join_expression(node, node, context)
     if isinstance(join_expression, sql_expressions.BinaryExpression):
         left_column_name = join_expression.left.name
@@ -442,15 +471,35 @@ def _get_recursive_clause_metadata(context, node, out_link_column, outer_cte):
         raise AssertionError(
             u'Unknown JOIN expression of type "{}" encountered for recursive clause.'.format(
                 type(join_expression)))
-    base_column = _get_column(selectable, base_column_name)
+    base_column = _get_column(recursive_selectable, base_column_name)
     if _get_block_direction(node.block) == INBOUND_EDGE_DIRECTION:
         left_column_name, right_column_name = right_column_name, left_column_name
     parent_cte_column = _get_column(outer_cte, out_link_column.name)
-    return base_column, base_column_name, left_column_name, parent_cte_column, recursive_table, right_column_name, selectable
+    return RecursiveClauseMetadata(
+        base_column=base_column,
+        base_column_name=base_column_name,
+        left_column_name=left_column_name,
+        right_column_name=right_column_name,
+        parent_cte_column=parent_cte_column,
+        # The recursive table differs from the recursive selectable when a many-to-many JOIN
+        # is involved, in which case the recursive_table is the table of the recursive node,
+        # and the recursive_selectable is the many-to-many junction table
+        recursive_table=recursive_table,
+        recursive_selectable=recursive_selectable,
+    )
 
 
 def _create_and_reference_table(node, context):
-    """Create an aliased table for a node, and update the relevant CompilationContext."""
+    """Create an aliased table for a node, and update the relevant Selectable and FromClause
+    global state.
+
+    Args:
+        node: The current SqlNode.
+        context: Global compilation state and metadata.
+
+    Returns: SqlAlchemy table, the newly aliased table.
+    """
+
     schema_type = _get_schema_type_name(node, context)
     table = context.compiler_metadata.get_table(schema_type).alias()
     context.query_path_to_from_clause[node.query_path] = table
@@ -459,7 +508,19 @@ def _create_and_reference_table(node, context):
 
 
 def _flatten_node(parent_node, child_node, context):
-    """Flatten a child node's outputs, filters, and recursions onto its parent."""
+    """Flatten a child node's outputs, filters, and recursions onto its parent.
+
+    Updates global context for children output and filter locations to be associated with the
+    parent location, and adds any child recursive nodes to the parent.
+
+    Args:
+        parent_node: The parent SqlNode to update with the child SqlNode.
+        child_node: The child SqlNode to pull filters, outputs and recursive nodes from.
+        context: Global compilation state and metadata.
+
+    Returns: None, CompilationContext is updated.
+
+    """
     _flatten_output_fields(parent_node, child_node, context)
     parent_node.recursions.extend(child_node.recursions)
     del child_node.recursions[:]
@@ -471,7 +532,18 @@ def _flatten_node(parent_node, child_node, context):
 
 
 def _flatten_output_fields(parent_node, child_node, context):
-    """Flatten child node output fields onto parent node after join operation has been performed."""
+    """Flatten child node output and tag fields onto parent node
+
+    This occurs after a JOIN operation has been performed.
+
+    Args:
+        parent_node: The parent SqlNode that will receive the output and tag fields.
+        child_node: The child SqlNode to pull output and tag fields from.
+        context: Global compilation state and metadata.
+
+    Returns: None, updates global CompilationContext.
+
+    """
     if child_node.query_path in context.query_path_to_tag_fields:
         context.query_path_to_tag_fields.setdefault(parent_node.query_path, []).extend(
             context.query_path_to_tag_fields[child_node.query_path])
@@ -623,19 +695,28 @@ def _join_nodes(parent_node, child_node, join_expression, context):
     del context.query_path_to_from_clause[child_node.query_path]
 
 
-def _create_link_for_recursion(node, recursion_node, context):
-    """Ensure that the column necessary to link to a recursion is present in the CTE columns."""
-    selectable = _get_node_selectable(node, context)
+def _get_links_for_recursive_clauses(node, context):
+    """Ensure that the columns to link to all children recursive clauses will be included in the
+    CTE's outputs.
+    """
+    for recursive_node in node.recursions:
+        link_column = _get_link_for_recursive_clause(recursive_node, context)
+        context.query_path_to_recursion_in_columns[recursive_node.query_path] = link_column
+
+
+def _get_link_for_recursive_clause(recursive_node, context):
+    """Get the column necessary to link a recursive clause to its parent CTE"""
+    parent_selectable = _get_node_selectable(recursive_node.parent, context)
     # pre-populate the recursive nodes selectable for the purpose of computing the join
-    _create_and_reference_table(recursion_node, context)
-    join_expression = _get_node_join_expression(recursion_node.parent, recursion_node, context)
+    _create_and_reference_table(recursive_node, context)
+    join_expression = _get_node_join_expression(recursive_node.parent, recursive_node, context)
     # the left side of the expression is the column from the node that is later needed to join to
     recursion_in_col = None
     if isinstance(join_expression, ManyToManyJoin):
         recursion_in_col = _get_column(
-            selectable, join_expression.join_to_junction_expression.left.name)
+            parent_selectable, join_expression.join_to_junction_expression.left.name)
     elif isinstance(join_expression, sql_expressions.BinaryExpression):
-        recursion_in_col = _get_column(selectable, join_expression.right.name)
+        recursion_in_col = _get_column(parent_selectable, join_expression.right.name)
     else:
         raise AssertionError(
             u'Unknown JOIN expression of type "{}" encountered for recursive link.'.format(
@@ -643,15 +724,15 @@ def _create_link_for_recursion(node, recursion_node, context):
     return recursion_in_col
 
 
-def _create_links_for_recursions(node, context):
-    """Ensure that the columns to link the CTE to the recursive clause are in the CTE's outputs."""
-    for recursive_node in node.recursions:
-        link_column = _create_link_for_recursion(node, recursive_node, context)
-        context.query_path_to_recursion_columns[recursive_node.query_path] = (link_column, None)
+def _get_output_columns(node, context):
+    """Get the output columns required by the query.
 
+    Args:
+        node: The current SqlNode.
+        context: Global compilation state and metadata.
 
-def _get_output_columns(node, is_final_query, context):
-    """Convert the output fields of a SqlNode to aliased Column objects."""
+    Returns: List[Column], list of SqlAlchemy columns to output for this query.
+    """
     output_fields = context.query_path_to_output_fields[node.query_path]
     columns = []
     for field_alias, (field, field_type, is_renamed) in six.iteritems(output_fields):
@@ -663,7 +744,7 @@ def _get_output_columns(node, is_final_query, context):
             column = _try_get_column(selectable, field_name)
             if column is None:
                 raise exceptions.GraphQLCompilationError(
-                    u'Field "{}" was not found on table "{}"'.format(
+                    u'Column with name "{}" was not found on table "{}"'.format(
                         field_name, selectable.original))
             column = column.label(field_alias)
             output_fields[field_alias] = (field, field_type, True)
@@ -671,59 +752,140 @@ def _get_output_columns(node, is_final_query, context):
                 field.location.query_path, {})
             field_renames[field_name] = field_alias
         columns.append(column)
-    # include tags only when we are not outputting the final result
-    if not is_final_query and node.query_path in context.query_path_to_tag_fields:
-        for tag_field in context.query_path_to_tag_fields[node.query_path]:
-            selectable = context.query_path_to_selectable[tag_field.location.query_path]
-            field_name = tag_field.location.field
-            column = _get_column(selectable, field_name).label(None)
-            columns.append(column)
-            field_renames = context.query_path_field_renames.setdefault(
-                tag_field.location.query_path, {})
-            field_renames[field_name] = column.name
     return columns
+
+
+def _get_tag_output_columns(node, context):
+    """Get columns required to for @tag directives.
+
+    Args:
+        node: The current SqlNode.
+        context: Global context containing compiler state and metadata.
+
+    Returns: List[Column], List of SQLAlchemy columns to output.
+    """
+
+    tag_output_columns = []
+    if node.query_path not in context.query_path_to_tag_fields:
+        return tag_output_columns
+    for tag_field in context.query_path_to_tag_fields[node.query_path]:
+        selectable = context.query_path_to_selectable[tag_field.location.query_path]
+        field_name = tag_field.location.field
+        column = _get_column(selectable, field_name).label(None)
+        tag_output_columns.append(column)
+        field_renames = context.query_path_field_renames.setdefault(
+            tag_field.location.query_path, {})
+        field_renames[field_name] = column.name
+    return tag_output_columns
 
 
 def _create_query(node, is_final_query, context):
     """Create a query from a SqlNode.
 
-    If this query is the final query, filters do not need to be applied, and intermediate link
-    columns and tag columns do not need to be included in output.
+    If this query is the final query, filters do not need to be applied, and intermediate recursive
+    link columns and tag columns do not need to be included in output.
     """
     # filters are computed before output columns, so that tag columns can be resolved before any
     # renames occur for columns involved in output
+    filter_clauses = []
+    if not is_final_query:
+        # filters do not need to be applied to the final query, they exist in the CTE
+        filter_clauses.extend(_get_filter_clauses(node, context))
+    output_columns = _get_output_columns(node, context)
+    if not is_final_query:
+        # tag output columns do not need to be applied to the final query, they exist in the CTE
+        tag_columns = _get_tag_output_columns(node, context)
+        output_columns.extend(tag_columns)
+    if not is_final_query:
+        # recursive link columns should not appear in the final query
+        recursive_output_columns = _get_recursive_output_columns(node, context)
+        output_columns.extend(recursive_output_columns)
+    from_clause = _get_node_from_clause(node, context)
+    query = select(output_columns).select_from(from_clause)
+    # an empty list of filters will result in no attached WHERE clause
+    return query.where(and_(*filter_clauses))
+
+
+def _get_filter_clauses(node, context):
+    """Get filters required by any JOIN expressions and return along with GraphQL filter predicates
+    converted to SQL.
+
+    Args:
+        node: The current SqlNode.
+        context: Global context containing compiler state and metadata.
+
+    Returns: List[Expression], list of SQLAlchemy expressions to include in the query's
+                               WHERE clause.
+
+    """
+    filter_clauses = _get_and_cleanup_join_filters(context)
+    if node.query_path in context.query_path_to_filter:
+        filter_clauses.extend(
+            _transform_filter_to_sql(filter_block, filter_query_path, context)
+            for filter_block, filter_query_path in context.query_path_to_filter[node.query_path]
+        )
+    return filter_clauses
+
+
+def _get_recursive_output_columns(node, context):
+    """Get columns into and out of recursions, and ensure they are included for output.
+
+    Args:
+        node: SqlNode, node that may be recursive itself or the root of one or more recursions.
+        context:
+
+    Returns: List[Column], list of SQLAlchemy columns required to correctly attach the recursive
+                           clause
+    """
+    recursive_output_columns = []
+    # for every recursion that is a child of this node, include the link column to the child
+    # recursion in this node's query's outputs
+    for recursive_node in node.recursions:
+        if recursive_node.query_path not in context.query_path_to_recursion_in_columns:
+            raise AssertionError(
+                u'Recursive node at query path {} is expected to have an inbound column to '
+                u'link from in {}.'.format(
+                    recursive_node.query_path, context.query_path_to_recursion_in_columns))
+
+        in_col = context.query_path_to_recursion_in_columns[recursive_node.query_path]
+        recursive_output_columns.append(in_col)
+    # If this node is completing a recursion, include the outward column in this node's outputs
+    if isinstance(node.block, blocks.Recurse):
+        if node.query_path not in context.query_path_to_recursion_out_columns:
+            raise AssertionError(
+                u'Recursive clause at query path {} is expected to have an outbound column to link '
+                u'to in {}.'.format(node.query_path, context.query_path_to_recursion_out_columns))
+        out_col = context.query_path_to_recursion_out_columns[node.query_path]
+        recursive_output_columns.append(out_col)
+    return recursive_output_columns
+
+
+def _get_and_cleanup_join_filters(context):
+    """Return a copy of the CompilationContext join filters and return them.
+
+    Clears all copied filters from the global CompilationContext.
+
+    Args:
+        context: Global compilation state and metadata.
+
+    Returns: List[Expression], list of SQLAlchemy expressions.
+
+    """
     filter_clauses = [filter for filter in context.join_filters]
     del context.join_filters[:]
-    if not is_final_query:
-        if node.query_path in context.query_path_to_filter:
-            filter_clauses.extend(
-                _convert_filter_to_sql(filter_block, filter_query_path, context)
-                for filter_block, filter_query_path in context.query_path_to_filter[node.query_path]
-            )
-
-    columns = _get_output_columns(node, is_final_query, context)
-    if not is_final_query:
-        # for every recursion that is a child of this node, include the link column to the child
-        # recursion in this node's query's outputs
-        for recursion in node.recursions:
-            in_col, _ = context.query_path_to_recursion_columns[recursion.query_path]
-            columns.append(in_col)
-    # If this node is completing a recursion, include the outward column in this node's outputs
-    if node.query_path in context.query_path_to_recursion_columns:
-        _, out_col = context.query_path_to_recursion_columns[node.query_path]
-        columns.append(out_col)
-
-    from_clause = _get_node_from_clause(node, context)
-    query = select(columns).select_from(from_clause)
-    if is_final_query:
-        # filters do not need to be applied to the final query, they exist in the CTE already
-        return query
-    else:
-        return query.where(and_(*filter_clauses))
+    return filter_clauses
 
 
-def _convert_filter_to_sql(filter_block, filter_query_path, context):
-    """Wrapper that sets up and returns the SQLAlchemy expression for a Filter predicate."""
+def _transform_filter_to_sql(filter_block, filter_query_path, context):
+    """Transform a Filter block to its corresponding SQLAlchemy expression.
+    Args:
+        filter_block: Filter, the Filter block to transform.
+        filter_query_path: The location the Filter block applies to.
+        context: Global compilation state and metadata.
+
+    Returns: SQLAlchemy expression, equivalent to the Filter.predicate expression.
+
+    """
     filter_location_info = context.query_path_to_location_info[filter_query_path]
     filter_selectable = context.query_path_to_selectable[filter_query_path]
     expression = filter_block.predicate
@@ -801,7 +963,7 @@ def _expression_to_sql(expression, selectable, location_info, context):
 
 
 def _get_column(selectable, column_name):
-    """Get a column by name from the selectable, raise Assertion error if not found."""
+    """Get a column by name from the selectable, raise an AssertionError if not found."""
     column = _try_get_column(selectable, column_name)
     if column is None:
         raise AssertionError(
@@ -837,15 +999,15 @@ def _get_node_join_expression(outer_node, inner_node, context):
     components, eg edge Animal_Eats is expected to be comprised of columns animal_id and eats_id.
 
     The process to determine this join expression is as follows:
-    1. Attempt to resolve the join expression as a many-many edge. To do so, one the following must
-       hold:
-       - There is a table of the correct edge name, eg. for an edge out_Animal_FriendsWith,
-         there is a table of name animal_friendswith.
-       - there is a table of the correct edge name, with a type suffix. eg. for an edge
-         out_Animal_Eats of union type [FoodOrSpecies] that is coerced to Food in the given
-         context, there is a table of name animal_eats_food
-       - If both of these tables exist, a GraphQLCompilationError is raised.
+    1. Attempt to resolve the join expression as a many-many edge.
     2. If there are no results from (1), look for a direct join expression between the two tables.
+
+    Args:
+        outer_node: The source SqlNode of the edge.
+        inner_node: The sink SqlNode of the edge.
+        context: Global compilation state and metadata.
+
+    Returns: SQLAlchemy expression corresponding to the onclause of the JOIN statement.
     """
     # Attempt to resolve via case (1)
     join_expression = _try_get_many_to_many_join_expression(outer_node, inner_node, context)
@@ -856,7 +1018,18 @@ def _get_node_join_expression(outer_node, inner_node, context):
 
 
 def _get_direct_join_expression(outer_node, inner_node, context):
-    """Get a direct join expression between the selectables of two nodes."""
+    """Get a direct join expression between the selectables of two nodes.
+
+    A direct JOIN expression is one that does not require an intermediate junction table to resolve.
+    The foreign key exists on one of the tables of the relationship and points to the other.
+    Args:
+        outer_node: The source SqlNode of the edge.
+        inner_node: The sink SqlNode of the edge.
+        context: Global compilation state and metadata.
+
+    Returns: JOIN expression, if found, raises GraphQLCompilationError otherwise.
+
+    """
     direction = _get_block_direction(inner_node.block)
     edge_name = _get_block_edge_name(inner_node.block)
     outer_selectable = _get_node_selectable(outer_node, context)
@@ -887,7 +1060,25 @@ def _get_direct_join_expression(outer_node, inner_node, context):
 
 
 def _try_get_many_to_many_join_expression(outer_node, inner_node, context):
-    """Attempt to resolve a join condition that uses an underlying many-many junction table."""
+    """Attempt to resolve a join condition that uses an underlying many-many junction table.
+
+    To do so, one the following must hold:
+        - There is a table of the correct edge name, eg. for an edge out_Animal_FriendsWith,
+        there is a table of name "animal_friendswith".
+        - there is a table of the correct edge name, with a type suffix. eg. for an edge
+        out_Animal_Eats of union type [FoodOrSpecies] that is coerced to Food in the given
+        query context, there is a table of name "animal_eats_food"
+        - If both of these tables exist, a GraphQLCompilationError is raised.
+        context:
+
+    Args:
+        outer_node: The source SqlNode of the edge.
+        inner_node: The sink SqlNode of the edge.
+        context: Global compilation state and metadata.
+
+    Returns: ManyToMany JOIN expression, if resolved, None otherwise.
+
+    """
     outer_selectable = _get_node_selectable(outer_node, context)
     inner_selectable = _get_node_selectable(inner_node, context)
     edge_name = _get_block_edge_name(inner_node.block)
@@ -938,7 +1129,10 @@ def _try_get_many_to_many_join_expression(outer_node, inner_node, context):
             )
         )
     return ManyToManyJoin(
-        join_to_junction_expression, junction_table, join_from_junction_expression)
+        join_to_junction_expression=join_to_junction_expression,
+        junction_table=junction_table,
+        join_from_junction_expression=join_from_junction_expression,
+    )
 
 
 def _get_selectable_primary_key(selectable):
