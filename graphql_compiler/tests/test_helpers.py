@@ -152,10 +152,12 @@ def get_schema():
             limbs: Int
             uuid: ID
             out_Species_Eats: [FoodOrSpecies]
-            in_Species_Eats: [Species]
+            
             # out_SpeciesEatenBy is the same as in_Species_Eats
             # allowing backends to test equivalent edges
+            in_Species_Eats: [Species]
             out_Species_EatenBy: [Species]
+            
             in_Animal_Eats: [Animal]
             in_Animal_OfSpecies: [Animal]
             in_Entity_Related: [Entity]

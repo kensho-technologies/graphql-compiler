@@ -38,10 +38,33 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     Returns:
         SqlTree object containing SqlNodes organized in a tree structure.
     """
-    query_path_to_location_info = {
-        location.query_path: location_info
-        for location, location_info in query_metadata_table.registered_locations
-    }
+    query_path_to_location_info = {}
+    for location, location_info in query_metadata_table.registered_locations:
+        if location.query_path in query_path_to_location_info:
+            # make sure the stored location information equals the new location information
+            # for the fields the SQL backend requires.
+            equivalent_location_info = query_path_to_location_info[location.query_path]
+            optional_scopes_depth_equal = (location_info.optional_scopes_depth ==
+                                           equivalent_location_info.optional_scopes_depth)
+            parent_query_paths_equal = (
+                    (location_info.parent_location is None and
+                     equivalent_location_info.parent_location is None) or
+                    (location_info.parent_location.query_path ==
+                     equivalent_location_info.parent_location.query_path))
+            recursive_scopes_depths_equal = (location_info.recursive_scopes_depth ==
+                                             equivalent_location_info.recursive_scopes_depth)
+            types_equal = location_info.type == equivalent_location_info.type
+            all_equal = (optional_scopes_depth_equal and parent_query_paths_equal and
+                         recursive_scopes_depths_equal and types_equal)
+            if not all_equal:
+                raise AssertionError(
+                    u'Differing LocationInfos at query_path {} between {} and {}. Expected '
+                    u'parent_location.query_path, optional_scopes_depth, recursive_scopes_depth '
+                    u'and types to be equal for LocationInfos sharing the same query path.'.format(
+                        location.query_path, location_info, equivalent_location_info))
+
+        query_path_to_location_info[location.query_path] = location_info
+
     # Perform lowering passes over IR blocks
     construct_result = ir_blocks.pop()
     construct_result = lower_construct_result(construct_result)
@@ -98,7 +121,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
             continue
         else:
             raise AssertionError(
-                u'Encountered unsupported block {} during construction of SQL query tree for IR '
+                u'Encountered unexpected block {} during construction of SQL query tree for IR '
                 u'blocks {} with query metadata table {} .'.format(
                     block, ir_blocks, query_metadata_table))
     location_types = {
@@ -111,7 +134,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
 
 
 def get_tag_fields(expression):
-    """Return an iterator over the tag fields of an expression."""
+    """Return an iterator over the ContextFields of an expression."""
     if isinstance(expression, expressions.ContextField):
         yield expression
     if isinstance(expression, expressions.BinaryComposition):
