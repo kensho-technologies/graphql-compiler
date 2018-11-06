@@ -374,3 +374,78 @@ def create_sqlite_db():
         for val in vals:
             engine.execute(table.insert(val))
     return engine, metadata
+
+
+def create_misconfigured_sqlite_db():
+    engine = create_engine('sqlite:///:memory:')
+    metadata = MetaData()
+
+    Table(
+        'animal',
+        metadata,
+        Column('animal_id', Integer, primary_key=True),
+        Column('name', String(10), nullable=False),
+        Column('alias', String(50), nullable=False),
+        Column('parentof_id', Integer, ForeignKey("animal.animal_id"), nullable=True),
+    )
+
+    Table(
+        'animal_friendswith',
+        metadata,
+        Column('animal_friendswith_id', Integer, primary_key=True),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        # the column below, following convention, should be friendswith_id (no initial underscore)
+        Column('friends_with_id', Integer, ForeignKey("animal.animal_id")),
+    )
+
+    Table(
+        'animal_importantevent_event',
+        metadata,
+        Column('animal_importantevent_event_id', Integer, primary_key=True),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('importantevent_id', Integer, ForeignKey("event.event_id")),
+    )
+
+    Table(
+        'animal_importantevent',
+        metadata,
+        Column('animal_importantevent_event_id', Integer, primary_key=True),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('importantevent_id', Integer, ForeignKey("event.event_id")),
+    )
+
+    Table(
+        'location',
+        metadata,
+        Column('location_id', Integer, primary_key=True),
+        Column('livesin_id', Integer, ForeignKey("animal.animal_id")),
+        Column('name', String(10))
+    )
+
+    Table(
+        'event',
+        metadata,
+        Column('event_id', Integer, primary_key=True),
+        # per the schema, this should be column "name"
+        Column('names', String(10)),
+    )
+
+    Table(
+        'species',
+        metadata,
+        Column('species_id', Integer, primary_key=True),
+        Column('name', String(10), primary_key=True),
+        Column('eats_id', Integer, ForeignKey('species.species_id'), nullable=True),
+        Column('eatenby_id', Integer, ForeignKey('species.species_id'), nullable=True),
+    )
+
+    Table(
+        'animal_ofspecies',
+        metadata,
+        Column('animal_ofspecies_id', Integer, primary_key=True),
+        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
+        Column('ofspecies_id', Integer, ForeignKey("animal.animal_id")),
+    )
+
+    metadata.create_all(engine)
+    return engine, metadata

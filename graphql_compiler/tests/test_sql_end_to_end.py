@@ -8,7 +8,7 @@ from sqlalchemy import text
 from .. import exceptions, graphql_to_sql
 from ..compiler import compile_graphql_to_sql
 from ..compiler.ir_lowering_sql.metadata import CompilerMetadata
-from ..tests.test_helpers import create_sqlite_db, get_schema
+from ..tests.test_helpers import create_sqlite_db, get_schema, create_misconfigured_sqlite_db
 
 
 class SqlQueryTests(unittest.TestCase):
@@ -84,20 +84,8 @@ class SqlQueryTests(unittest.TestCase):
         with self.assertRaises(exceptions.GraphQLNotSupportedByBackendError):
             self.compile_query(graphql_string, {})
 
-    def test_field_missing_from_table_error(self):
-        # color is not a column on the animal table
-        graphql_string = '''
-        {
-            Animal {
-                color @output(out_name: "color")
-            }
-        }
-        '''
-        with self.assertRaises(exceptions.GraphQLCompilationError):
-            self.compile_query(graphql_string, {})
-
     def test_unsupported_filter(self):
-        # color is not a column on the animal table
+        # intersects is not a supported filtering operation
         graphql_string = '''
         {
             Animal {
@@ -128,84 +116,6 @@ class SqlQueryTests(unittest.TestCase):
         '''
         with self.assertRaises(exceptions.GraphQLNotSupportedByBackendError):
             compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
-
-    def test_query_no_table(self):
-        graphql_string = '''
-        {
-            Entity {
-                name @output(out_name: "name")
-            }
-        }
-        '''
-        with self.assertRaises(exceptions.GraphQLCompilationError):
-            compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
-
-    def test_table_with_two_pks_out(self):
-        graphql_string = '''
-        {
-            Animal {
-                out_Animal_FedAt {
-                    event_date @output(out_name: "fed_at_date")
-                }
-            }
-        }
-        '''
-        with self.assertRaises(exceptions.GraphQLCompilationError):
-            compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
-
-    def test_table_with_two_pks_in(self):
-        graphql_string = '''
-        {
-            Event {
-                in_Animal_FedAt {
-                    name @output(out_name: "animal_name")
-                }
-            }
-        }
-        '''
-        with self.assertRaises(exceptions.GraphQLCompilationError):
-            compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
-
-    def test_junction_table_with_incorrect_column_name(self):
-        graphql_string = '''
-        {
-            Animal {
-                out_Animal_BornAt {
-                    event_date @output(out_name: "born_at_date")
-                }
-            }
-        }
-        '''
-        with self.assertRaises(exceptions.GraphQLCompilationError):
-            compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
-
-    def test_table_with_incorrect_column_name(self):
-        graphql_string = '''
-        {
-            Food {
-                out_Food_OfCuisine {
-                    name @output(out_name: "cuisine_name")
-                }
-            }
-        }
-        '''
-        with self.assertRaises(exceptions.GraphQLCompilationError):
-            compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
-
-    # def test_ambiguous_junction_table_name(self):
-    #     graphql_string = '''
-    #     {
-    #         Animal {
-    #             out_Animal_ImportantEvent {
-    #                 ... on BirthEvent {
-    #                     event_date @output(out_name: "birthdate")
-    #                 }
-    #             }
-    #         }
-    #     }
-    #     '''
-    #     with self.assertRaises(exceptions.GraphQLCompilationError):
-    #         compile_graphql_to_sql(self.schema, graphql_string, self.compiler_metadata)
 
     def test_basic_filter(self):
         graphql_string = '''
@@ -1678,3 +1588,124 @@ class SqlQueryTests(unittest.TestCase):
 
         ]
         self.assertQueryOutputEquals(graphql_string, params, expected_results)
+
+
+class SqlConfigurationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        engine, metadata = create_misconfigured_sqlite_db()
+        compiler_metadata = CompilerMetadata(engine.dialect.name, metadata)
+        cls.compiler_metadata = compiler_metadata
+        cls.engine = engine
+        cls.metadata = metadata
+        cls.schema = get_schema()
+        cls.maxDiff = None
+
+    def compile_query(self, graphql_string, query_params):
+        compilation_result = graphql_to_sql(
+            self.schema, graphql_string, query_params, self.compiler_metadata)
+        return compilation_result.query
+
+    def test_ambiguous_junction_table(self):
+        graphql_string = '''
+        {
+            Animal {
+                out_Animal_ImportantEvent {
+                    ... on Event {
+                        name @output(out_name: "event_name")
+                    }
+                }
+            }
+        }
+        '''
+        params = {}
+        with self.assertRaises(exceptions.GraphQLCompilationError):
+            self.compile_query(graphql_string, params)
+
+    def test_incorrect_junction_column_name(self):
+        graphql_string = '''
+        {
+            Animal {
+                out_Animal_FriendsWith {
+                    name @output(out_name: "event_name")
+                }
+            }
+        }
+        '''
+        params = {}
+        with self.assertRaises(exceptions.GraphQLCompilationError):
+            self.compile_query(graphql_string, params)
+
+    def test_table_with_composite_primary_key(self):
+        graphql_string = '''
+        {
+            Species {
+                in_Animal_OfSpecies {
+                    name @output(out_name: "animal_name")
+                }
+            }
+        }
+        '''
+        params = {}
+        with self.assertRaises(exceptions.GraphQLCompilationError):
+            self.compile_query(graphql_string, params)
+
+    def test_table_with_incorrect_column_name(self):
+        graphql_string = '''
+        {
+            Event {
+                name @output(out_name: "event_name")
+            }
+        }
+        '''
+        with self.assertRaises(exceptions.GraphQLCompilationError):
+            self.compile_query(graphql_string, {})
+
+    def test_field_missing_from_table_error(self):
+        # color is not a column on the animal table
+        graphql_string = '''
+        {
+            Animal {
+                color @output(out_name: "color")
+            }
+        }
+        '''
+        with self.assertRaises(exceptions.GraphQLCompilationError):
+            self.compile_query(graphql_string, {})
+
+    def test_query_no_table(self):
+        graphql_string = '''
+        {
+            Entity {
+                name @output(out_name: "name")
+            }
+        }
+        '''
+        with self.assertRaises(exceptions.GraphQLCompilationError):
+            self.compile_query(graphql_string, {})
+
+    def test_table_with_two_pks_out(self):
+        graphql_string = '''
+        {
+            Animal {
+                out_Animal_FedAt {
+                    event_date @output(out_name: "fed_at_date")
+                }
+            }
+        }
+        '''
+        with self.assertRaises(exceptions.GraphQLCompilationError):
+            self.compile_query(graphql_string, {})
+
+    def test_table_with_two_pks_in(self):
+        graphql_string = '''
+        {
+            Event {
+                in_Animal_FedAt {
+                    name @output(out_name: "animal_name")
+                }
+            }
+        }
+        '''
+        with self.assertRaises(exceptions.GraphQLCompilationError):
+            self.compile_query(graphql_string, {})
