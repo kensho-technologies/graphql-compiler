@@ -35,7 +35,7 @@ Additionally, any contributions must pass the following set of lint and style ch
 ```
 isort --check-only --verbose --recursive graphql_compiler/
 
-flake8 graphql_compiler/
+flake8  --config=setup.cfg graphql_compiler/
 
 pydocstyle graphql_compiler/
 
