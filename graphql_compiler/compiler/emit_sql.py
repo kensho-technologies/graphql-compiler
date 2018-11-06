@@ -160,7 +160,7 @@ CompilationContext = namedtuple('CompilationContext', (
     # changes due to collapsing into a CTE.
     'query_path_to_output_fields',
     # 'join_filters': List[expression], list of SQLAlchemy expressions required to correctly
-    # filter INNER JOINs that occur within an optional scope. 
+    # filter INNER JOINs that occur within an optional scope.
     'join_filters',
     # 'compiler_metadata': CompilerMetadata, SQLAlchemy metadata about Table objects, and
     # further backend specific configuration.
@@ -191,9 +191,8 @@ RecursiveClauseMetadata = namedtuple('RecursiveClauseMetadata', (
 
 
 def emit_code_from_ir(sql_query_tree, compiler_metadata):
-    """
-    Return a SQLAlchemy selectable from a passed SQLQueryTree based on the supplied compilation
-    metadata.
+    """Return a SQLAlchemy Query from a passed SqlQueryTree.
+
     Args:
         sql_query_tree: SqlQueryTree, tree representation of the query to emit.
         compiler_metadata: CompilerMetadata, SQLAlchemy specific metadata.
@@ -218,8 +217,7 @@ def emit_code_from_ir(sql_query_tree, compiler_metadata):
 
 
 def _query_tree_to_query(node, parent_cte, recursion_link_column, context):
-    """
-    Recursively convert this node into its corresponding SQL representation.
+    """Recursively convert this node into its corresponding SQL representation.
 
     The steps to do so are:
 
@@ -255,7 +253,8 @@ def _query_tree_to_query(node, parent_cte, recursion_link_column, context):
                 u'The recursive clause requires a parent CTE and the column of this CTE to link '
                 u'to. Received CTE {} and link column {} instead.'.format(
                     parent_cte, recursion_link_column))
-        recursion_out_column = _create_recursive_clause(node, parent_cte, recursion_link_column, context)
+        recursion_out_column = _create_recursive_clause(
+            node, parent_cte, recursion_link_column, context)
     # Step 2: Materialize query as a CTE.
     cte = _create_query(node, is_final_query=False, context=context).cte()
     # Output fields from individual tables become output fields from the CTE
@@ -303,7 +302,9 @@ def _flatten_and_join_recursive_nodes(node, cte, context):
 
 
 def _update_node_selectable_context(node, visited_nodes, cte, context):
-    """Update the visited node's paths to point to a constructed CTE. This ensures that things
+    """Update the visited node's paths to point to a constructed CTE.
+
+    This ensures that things
     like outputs pointing previously to the selectable of the visited node now point to the CTE
     with that output.
 
@@ -323,6 +324,7 @@ def _update_node_selectable_context(node, visited_nodes, cte, context):
 
 def _flatten_and_join_nonrecursive_nodes(node, context):
     """Join non-recursive child nodes to parent, flattening child's references.
+
     Args:
         node: The current node to flatten and join to.
         context: CompilationContext containing locations and metadata related to the ongoing
@@ -406,9 +408,9 @@ def _create_recursive_clause(node, parent_cte, recursion_link_column, context):
     Returns: None, if current block is not Recursive OR SQLAlchemy column, the column to join
                    the outer CTE back to the recursive clause.
     """
-
     # setup the column names and selectables required to construct the recursive element
-    recursive_metadata = _get_recursive_element_metadata(node, parent_cte, recursion_link_column, context)
+    recursive_metadata = _get_recursive_element_metadata(
+        node, parent_cte, recursion_link_column, context)
     # create the recursive element
     recursive_query = _create_recursive_element(node, recursive_metadata, context)
     # grab the column necessary to link the recursive element to the outer_cte
@@ -543,8 +545,9 @@ def _get_recursive_element_metadata(node, outer_cte, out_link_column, context):
 
 
 def _create_table_and_update_context(node, context):
-    """Create an aliased table for a node, and update the relevant Selectable and FromClause
-    global state.
+    """Create an aliased table for a SqlNode.
+
+    Updates the relevant Selectable and FromClause global context.
 
     Args:
         node: SqlNode, the current node.
@@ -552,7 +555,6 @@ def _create_table_and_update_context(node, context):
 
     Returns: Table, the newly aliased SQLAlchemy table.
     """
-
     schema_type = _get_schema_type_name(node, context)
     table = context.compiler_metadata.get_table(schema_type).alias()
     context.query_path_to_from_clause[node.query_path] = table
@@ -584,7 +586,7 @@ def _update_node_context_with_child_node(parent_node, child_node, context):
 
 
 def _update_node_context_with_child_outputs(parent_node, child_node, context):
-    """Flatten child node output and tag fields onto parent node
+    """Flatten child node output and tag fields onto parent node.
 
     This occurs after a JOIN operation has been performed.
 
@@ -602,15 +604,15 @@ def _update_node_context_with_child_outputs(parent_node, child_node, context):
     if child_node.query_path not in context.query_path_to_output_fields:
         return
     child_output_fields = context.query_path_to_output_fields[child_node.query_path]
-    parent_output_fields = context.query_path_to_output_fields.setdefault(parent_node.query_path, {})
+    parent_output_fields = context.query_path_to_output_fields.setdefault(
+        parent_node.query_path, {})
     for field_alias, (field, field_type, is_renamed) in six.iteritems(child_output_fields):
         parent_output_fields[field_alias] = (field, field_type, is_renamed)
     del context.query_path_to_output_fields[child_node.query_path]
 
 
 def _join_nodes(parent_node, child_node, join_expression, context):
-    """
-   Join two nodes and update compilation context.
+    """Join two nodes and update compilation context.
 
     The rule of thumb for mapping an edge to a JOIN statement is that if the edge is required,
     an INNER JOIN should be used, and if the edge is optional a LEFT JOIN should be used. This
@@ -710,12 +712,13 @@ def _join_nodes(parent_node, child_node, join_expression, context):
                 outer_primary_key = _get_selectable_primary_key(parent_selectable)
                 context.join_filters.append(
                     sql_expressions.or_(
-                        outer_primary_key == None,
+                        outer_primary_key == None,  # noqa: E711
                         join_expression.join_to_junction_expression
                     )
                 )
                 junction_table_primary_key = join_expression.join_to_junction_expression.right
-                if not any(junction_table_primary_key is column for column in join_expression.junction_table.c):
+                if not any(junction_table_primary_key is column for column in
+                           join_expression.junction_table.c):
                     raise AssertionError(
                         u'The right side of the join expression "{}" between parent "{}" and '
                         u'junction table "{}" is expected to come from the junction table.'.format(
@@ -724,7 +727,7 @@ def _join_nodes(parent_node, child_node, join_expression, context):
                         ))
                 context.join_filters.append(
                     sql_expressions.or_(
-                        junction_table_primary_key == None,
+                        junction_table_primary_key == None,  # noqa: E711
                         join_expression.join_from_junction_expression
                     )
                 )
@@ -739,7 +742,7 @@ def _join_nodes(parent_node, child_node, join_expression, context):
                 outer_primary_key = _get_selectable_primary_key(parent_selectable)
                 context.join_filters.append(
                     sql_expressions.or_(
-                        outer_primary_key == None,
+                        outer_primary_key == None,  # noqa: E711
                         join_expression
                     )
                 )
@@ -759,8 +762,7 @@ def _join_nodes(parent_node, child_node, join_expression, context):
 
 
 def _get_links_for_recursive_clauses(node, context):
-    """Ensure that the columns to link to all children recursive clauses will be included in the
-    current node's CTE's outputs.
+    """Ensure that the columns to link to all children recursive clauses will be output.
 
     Args:
         node: SqlNode, the current node.
@@ -839,7 +841,6 @@ def _get_tag_output_columns(node, context):
 
     Returns: List[column], List of SQLAlchemy columns to output.
     """
-
     tag_output_columns = []
     if node.query_path not in context.query_path_to_tag_fields:
         return tag_output_columns
@@ -894,7 +895,9 @@ def _create_query(node, is_final_query, context):
 
 
 def _get_filter_clauses(node, context):
-    """Get filters required by any JOIN expressions and return along with GraphQL filter predicates
+    """Get filters all filters for the current query.
+
+    This includes filters required by any JOIN expressionsalong with GraphQL filter predicates
     converted to SQL.
 
     Args:
@@ -903,7 +906,6 @@ def _get_filter_clauses(node, context):
 
     Returns: List[Expression], list of SQLAlchemy expressions to include in the query's
                                WHERE clause.
-
     """
     filter_clauses = _get_and_cleanup_join_filters(context)
     if node.query_path in context.query_path_to_filter:
@@ -981,8 +983,7 @@ def _transform_filter_to_sql(filter_block, filter_query_path, context):
 
 
 def _expression_to_sql(expression, selectable, location_info, context):
-    """Recursively transform a compiler expression corresponding to a Filter block predicate to its
-    SQLAlchemy expression representation.
+    """Recursively transform a Filter block predicate to its SQLAlchemy expression representation.
 
     Args:
         expression: expression, the compiler expression to transform.
@@ -1009,6 +1010,7 @@ def _expression_to_sql(expression, selectable, location_info, context):
 
 def _transform_context_field_to_expression(expression, selectable, location_info, context):
     """Transform a ContextField compiler expression into it's SQLAlchemy expression representation.
+
     Args:
         expression: expression, ContextField compiler expression.
         selectable: Selectable, selectable the expression applies to.
@@ -1030,8 +1032,9 @@ def _transform_context_field_to_expression(expression, selectable, location_info
 
 
 def _transform_binary_composition_to_expression(expression, selectable, location_info, context):
-    """Transform a BinaryComposition compiler expression into it's SQLAlchemy expression
-    representation. Recursively calls _expression_to_sql to convert its left and right components.
+    """Transform a BinaryComposition compiler expression into a SQLAlchemy expression.
+
+    Recursively calls _expression_to_sql to convert its left and right components.
 
     Args:
         expression: expression, BinaryComposition compiler expression.
@@ -1076,6 +1079,7 @@ def _transform_binary_composition_to_expression(expression, selectable, location
 
 def _transform_literal_to_expression(expression, selectable, location_info, context):
     """Transform a Literal compiler expression into it's SQLAlchemy expression representation.
+
     Args:
         expression: expression, Literal compiler expression.
         selectable: Selectable, selectable the expression applies to.
@@ -1089,6 +1093,7 @@ def _transform_literal_to_expression(expression, selectable, location_info, cont
 
 def _transform_variable_to_expression(expression, selectable, location_info, context):
     """Transform a Variable compiler expression into it's SQLAlchemy expression representation.
+
     Args:
         expression: expression, Variable compiler expression.
         selectable: Selectable, selectable the expression applies to.
@@ -1097,7 +1102,6 @@ def _transform_variable_to_expression(expression, selectable, location_info, con
 
     Returns: expression, SQLAlchemy expression.
     """
-
     variable_name = expression.variable_name
     if variable_name.startswith(u'$'):
         variable_name = variable_name[1:]
@@ -1106,6 +1110,7 @@ def _transform_variable_to_expression(expression, selectable, location_info, con
 
 def _transform_local_field_to_expression(expression, selectable, location_info, context):
     """Transform a LocalField compiler expression into it's SQLAlchemy expression representation.
+
     Args:
         expression: expression, LocalField compiler expression.
         selectable: Selectable, selectable the expression applies to.

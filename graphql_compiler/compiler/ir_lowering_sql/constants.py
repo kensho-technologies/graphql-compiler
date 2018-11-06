@@ -17,6 +17,7 @@ class Operator(object):
 
 class Cardinality(object):
     """Cardinality for SQLAlchemy operators."""
+
     UNARY = 1
     BINARY = 2
     LIST_VALUED = 3

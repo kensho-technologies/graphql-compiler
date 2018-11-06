@@ -6,7 +6,7 @@ import re
 from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, MetaData, String, Table, create_engine
+from sqlalchemy import Column, ForeignKey, Integer, MetaData, String, Table, create_engine
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 
@@ -152,12 +152,12 @@ def get_schema():
             limbs: Int
             uuid: ID
             out_Species_Eats: [FoodOrSpecies]
-            
+
             # out_SpeciesEatenBy is the same as in_Species_Eats
             # allowing backends to test equivalent edges
             in_Species_Eats: [Species]
             out_Species_EatenBy: [Species]
-            
+
             in_Animal_Eats: [Animal]
             in_Animal_OfSpecies: [Animal]
             in_Entity_Related: [Entity]
@@ -176,7 +176,7 @@ def get_schema():
             out_Entity_Related: [Entity]
             out_Food_OfCuisine: [Cuisine]
         }
-        
+
         type Cuisine implements Entity {
             name: String
             description: String

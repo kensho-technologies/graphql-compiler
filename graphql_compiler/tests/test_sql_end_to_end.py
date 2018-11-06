@@ -5,8 +5,7 @@ import unittest
 import six
 from sqlalchemy import text
 
-from .. import graphql_to_sql
-from .. import exceptions
+from .. import exceptions, graphql_to_sql
 from ..compiler import compile_graphql_to_sql
 from ..compiler.ir_lowering_sql.metadata import CompilerMetadata
 from ..tests.test_helpers import create_sqlite_db, get_schema
