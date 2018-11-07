@@ -960,7 +960,7 @@ def _get_and_cleanup_join_filters(context):
     Returns: List[expression], list of SQLAlchemy expressions.
 
     """
-    filter_clauses = [filter for filter in context.join_filters]
+    filter_clauses = [filter_expression for filter_expression in context.join_filters]
     del context.join_filters[:]
     return filter_clauses
 

@@ -8,7 +8,7 @@ from sqlalchemy import text
 from .. import exceptions, graphql_to_sql
 from ..compiler import compile_graphql_to_sql
 from ..compiler.ir_lowering_sql.metadata import CompilerMetadata
-from ..tests.test_helpers import create_sqlite_db, get_schema, create_misconfigured_sqlite_db
+from ..tests.test_helpers import create_misconfigured_sqlite_db, create_sqlite_db, get_schema
 
 
 class SqlQueryTests(unittest.TestCase):
