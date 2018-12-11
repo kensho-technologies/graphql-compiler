@@ -11,6 +11,8 @@ import six
 class CompilerEntity(object):
     """An abstract compiler entity. Can represent things like basic blocks and expressions."""
 
+    __slots__ = ('_print_args', '_print_kwargs')
+
     def __init__(self, *args, **kwargs):
         """Construct a new CompilerEntity."""
         self._print_args = args
@@ -60,6 +62,8 @@ class CompilerEntity(object):
 class Expression(CompilerEntity):
     """An expression that produces a value in the GraphQL compiler."""
 
+    __slots__ = ()
+
     def visit_and_update(self, visitor_fn):
         """Create an updated version (if needed) of the Expression via the visitor pattern.
 
@@ -85,6 +89,8 @@ class Expression(CompilerEntity):
 @six.add_metaclass(ABCMeta)
 class BasicBlock(CompilerEntity):
     """A basic operation block of the GraphQL compiler."""
+
+    __slots__ = ()
 
     def visit_and_update_expressions(self, visitor_fn):
         """Create an updated version (if needed) of the BasicBlock via the visitor pattern.
@@ -112,6 +118,8 @@ class BasicBlock(CompilerEntity):
 @six.add_metaclass(ABCMeta)
 class MarkerBlock(BasicBlock):
     """A block that is used to mark that a context-affecting operation with no output happened."""
+
+    __slots__ = ()
 
     def to_gremlin(self):
         """Return the Gremlin representation of the block, which should almost always be empty.

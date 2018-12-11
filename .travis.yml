@@ -1,9 +1,6 @@
 sudo: false
 language: python
 cache: pip
-python:
-  - "2.7"
-  - "3.6"
 dist: xenial
 services:
   - docker
@@ -12,14 +9,25 @@ install:
   - pip install -e .
 before_script:
   - docker-compose up -d
-script:
-  - ./scripts/copyright_line_check.sh
-  - isort --check-only --verbose --recursive graphql_compiler/
-  - flake8 --exclude **/snap_*.py graphql_compiler/
-  - pydocstyle graphql_compiler/
-  - pylint graphql_compiler/
-  - bandit -r graphql_compiler/
-  - py.test --cov=graphql_compiler graphql_compiler/tests
+matrix:
+  include:
+  - name: "Lint and static analysis"
+    python: "3.6"
+    script:
+      - ./scripts/copyright_line_check.sh
+      - isort --check-only --verbose --recursive graphql_compiler/
+      - flake8 --config=setup.cfg graphql_compiler/
+      - pydocstyle graphql_compiler/
+      - pylint graphql_compiler/
+      - bandit -r graphql_compiler/
+  - name: "Python 2.7 unit tests"
+    python: "2.7"
+    script:
+      - py.test --cov=graphql_compiler graphql_compiler/tests
+  - name: "Python 3.6 unit tests"
+    python: "3.6"
+    script:
+      - py.test --cov=graphql_compiler graphql_compiler/tests
 after_success:
   - docker-compose down
   - coveralls

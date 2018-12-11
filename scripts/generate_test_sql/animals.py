@@ -3,8 +3,10 @@ import random
 
 from .events import EVENT_NAMES_LIST
 from .species import FOOD_LIST, SPECIES_LIST
-from .utils import (create_edge_statement, create_name, create_vertex_statement,
-                    extract_base_name_and_label, get_random_date, get_random_net_worth, get_uuid)
+from .utils import (
+    create_edge_statement, create_name, create_vertex_statement, extract_base_name_and_label,
+    get_random_date, get_random_net_worth, get_uuid
+)
 
 
 NUM_INITIAL_ANIMALS = 20

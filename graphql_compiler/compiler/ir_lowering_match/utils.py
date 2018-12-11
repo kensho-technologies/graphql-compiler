@@ -5,8 +5,10 @@ import itertools
 import six
 
 from ..blocks import Filter
-from ..expressions import (BinaryComposition, Expression, Literal, LocalField, NullLiteral,
-                           SelectEdgeContextField, TrueLiteral, UnaryTransformation, ZeroLiteral)
+from ..expressions import (
+    BinaryComposition, Expression, Literal, LocalField, NullLiteral, SelectEdgeContextField,
+    TrueLiteral, UnaryTransformation, ZeroLiteral
+)
 from ..helpers import Location, get_only_element_from_collection, is_vertex_field_name
 
 

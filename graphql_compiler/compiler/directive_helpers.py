@@ -6,8 +6,10 @@ import six
 
 from ..exceptions import GraphQLCompilationError
 from .filters import is_filter_with_outer_scope_vertex_field_operator
-from .helpers import (FilterOperationInfo, get_ast_field_name, get_ast_field_name_or_none,
-                      get_vertex_field_type, is_vertex_field_type)
+from .helpers import (
+    FilterOperationInfo, get_ast_field_name, get_ast_field_name_or_none, get_vertex_field_type,
+    is_vertex_field_type
+)
 
 
 ALLOWED_DUPLICATED_DIRECTIVES = frozenset({'filter'})

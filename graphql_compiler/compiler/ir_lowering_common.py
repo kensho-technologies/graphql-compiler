@@ -2,10 +2,12 @@
 """Language-independent IR lowering and optimization functions."""
 import six
 
-from .blocks import (ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse,
-                     Unfold)
-from .expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
-                          NullLiteral, TrueLiteral)
+from .blocks import (
+    ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse, Unfold
+)
+from .expressions import (
+    BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, NullLiteral, TrueLiteral
+)
 from .helpers import validate_safe_string
 
 

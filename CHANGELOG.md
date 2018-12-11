@@ -2,6 +2,12 @@
 
 ## Current development version
 
+## v1.8.2
+
+- Fix overly strict type check on `@recurse` directives involving a union type. [#131](https://github.com/kensho-technologies/graphql-compiler/pull/131)
+
+Thanks to `cw6515` for the fix!
+
 ## v1.8.1
 
 - Fix a bug that arose when using certain type coercions that the compiler optimizes away to a no-op. [#127](https://github.com/kensho-technologies/graphql-compiler/pull/127)
