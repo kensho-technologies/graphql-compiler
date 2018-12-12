@@ -1,8 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from collections import namedtuple
 
-from . import (emit_gremlin, emit_match, emit_sql, ir_lowering_gremlin, ir_lowering_match,
-               ir_lowering_sql)
+from . import emit_gremlin, emit_match, ir_lowering_gremlin, ir_lowering_match
 from .compiler_frontend import graphql_to_ir
 
 
@@ -111,17 +110,26 @@ def compile_graphql_to_sql(schema, graphql_string, compiler_metadata, type_equiv
     Returns:
         a CompilationResult object
     """
-    lowering_func = ir_lowering_sql.lower_ir
-    query_emitter_func = emit_sql.emit_code_from_ir
-
-    return _compile_graphql_generic(
-        SQL_LANGUAGE, lowering_func, query_emitter_func,
-        schema, graphql_string, type_equivalence_hints, compiler_metadata)
+    raise NotImplementedError(u'Compiling GraphQL to SQL is not yet supported.')
 
 
 def _compile_graphql_generic(language, lowering_func, query_emitter_func,
                              schema, graphql_string, type_equivalence_hints, compiler_metadata):
-    """Compile the GraphQL input, lowering and emitting the query using the given functions."""
+    """Compile the GraphQL input, lowering and emitting the query using the given functions.
+
+    Args:
+        language: string indicating the target language to compile to.
+        lowering_func: Function to lower the compiler IR into a compatible form for the target
+                       language backend.
+        query_emitter_func: Function that emits a query in the target language from the lowered IR.
+        schema: GraphQL schema object describing the schema of the graph to be queried.
+        graphql_string: the GraphQL query to compile to the target language, as a string.
+        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
+        compiler_metadata: optional target specific metadata for usage by the query_emitter_func.
+
+    Returns:
+        a CompilationResult object
+    """
     ir_and_metadata = graphql_to_ir(
         schema, graphql_string, type_equivalence_hints=type_equivalence_hints)
 

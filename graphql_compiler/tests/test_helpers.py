@@ -6,7 +6,6 @@ import re
 from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
-from sqlalchemy import Column, ForeignKey, Integer, MetaData, String, Table, create_engine
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 
@@ -128,8 +127,6 @@ def get_schema():
             uuid: ID
             out_Animal_ParentOf: [Animal]
             in_Animal_ParentOf: [Animal]
-            out_Animal_FriendsWith: [Animal]
-            in_Animal_FriendsWith: [Animal]
             out_Animal_OfSpecies: [Species]
             out_Animal_FedAt: [Event]
             out_Animal_BornAt: [BirthEvent]
@@ -152,13 +149,7 @@ def get_schema():
             limbs: Int
             uuid: ID
             out_Species_Eats: [FoodOrSpecies]
-
-            # out_SpeciesEatenBy is the same as in_Species_Eats
-            # allowing backends to test equivalent edges
             in_Species_Eats: [Species]
-            out_Species_EatenBy: [Species]
-
-            in_Animal_Eats: [Animal]
             in_Animal_OfSpecies: [Animal]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
@@ -171,20 +162,8 @@ def get_schema():
             alias: [String]
             uuid: ID
             in_Species_Eats: [Species]
-            in_Animal_Eats: [Animal]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
-            out_Food_OfCuisine: [Cuisine]
-        }
-
-        type Cuisine implements Entity {
-            name: String
-            description: String
-            alias: [String]
-            uuid: ID
-            in_Entity_Related: [Entity]
-            out_Entity_Related: [Entity]
-            in_Food_OfCuisine: [Food]
         }
 
         union FoodOrSpecies = Food | Species
@@ -245,211 +224,3 @@ def construct_location_types(location_types_as_strings):
         location: schema.get_type(type_name)
         for location, type_name in six.iteritems(location_types_as_strings)
     }
-
-
-def create_sqlite_db():
-    engine = create_engine('sqlite:///:memory:')
-    metadata = MetaData()
-
-    animal_table = Table(
-        'animal',
-        metadata,
-        Column('animal_id', Integer, primary_key=True),
-        Column('name', String(10), nullable=False),
-        Column('alias', String(50), nullable=False),
-        Column('parentof_id', Integer, ForeignKey("animal.animal_id"), nullable=True),
-    )
-
-    animal_rows = [
-        (1, 'Big Bear', 'The second biggest bear.', 3),
-        (2, 'Little Bear', 'The smallest bear', None),
-        (3, 'Medium Bear', 'The midsize bear.', 2),
-        (4, 'Biggest Bear', 'The biggest bear.', 1),
-    ]
-
-    animal_to_friend_table = Table(
-        'animal_friendswith',
-        metadata,
-        Column('animal_friendswith_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('friendswith_id', Integer, ForeignKey("animal.animal_id")),
-    )
-
-    animal_to_friend_rows = [
-        # little bear is friends with big bear
-        (16, 2, 1),
-        # little bear is best friends with biggest bear
-        (17, 2, 4),
-        # biggest bear is friends with medium bear (cycle)
-        (18, 4, 3),
-        # medium bear is best friends with himself (cycle)
-        (19, 3, 3),
-        # medium bear is friends with biggest bear
-        (21, 3, 4),
-    ]
-
-    animal_important_event_event_table = Table(
-        'animal_importantevent_event',
-        metadata,
-        Column('animal_importantevent_event_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('importantevent_id', Integer, ForeignKey("event.event_id")),
-    )
-
-    animal_important_event_event_rows = [
-        # big bear gets fed a lot
-        (12, 1, 9),
-        (13, 1, 10),
-        (14, 1, 11),
-        # medium bear was only fed in the morning
-        (15, 3, 9),
-    ]
-
-    location_table = Table(
-        'location',
-        metadata,
-        Column('location_id', Integer, primary_key=True),
-        Column('livesin_id', Integer, ForeignKey("animal.animal_id")),
-        Column('name', String(10))
-    )
-
-    location_rows = [
-        (4, 1, 'Wisconsin'),
-        (5, 2, 'Florida'),
-        (6, 3, 'Florida'),
-        (7, 3, 'Miami'),
-        (8, 3, 'Miami Beach'),
-    ]
-
-    event_table = Table(
-        'event',
-        metadata,
-        Column('event_id', Integer, primary_key=True),
-        Column('name', String(10)),
-    )
-
-    event_rows = [
-        (9, 'Morning Feed Event'),
-        (10, 'Afternoon Feed Event'),
-        (11, 'Night Feed Event'),
-    ]
-
-    species_table = Table(
-        'species',
-        metadata,
-        Column('species_id', Integer, primary_key=True),
-        Column('name', String(10)),
-        Column('eats_id', Integer, ForeignKey('species.species_id'), nullable=True),
-        Column('eatenby_id', Integer, ForeignKey('species.species_id'), nullable=True),
-    )
-
-    species_rows = [
-        (24, 'Bear', 22, None),
-        (22, 'Rabbit', None, 24)
-    ]
-
-    animal_to_species_table = Table(
-        'animal_ofspecies',
-        metadata,
-        Column('animal_ofspecies_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('ofspecies_id', Integer, ForeignKey("animal.animal_id")),
-    )
-
-    animal_to_species = [
-        (25, 1, 24),
-        (27, 3, 24),
-        (28, 4, 24),
-    ]
-
-    metadata.create_all(engine)
-
-    tables_values = [
-        (animal_table, animal_rows),
-        (location_table, location_rows),
-        (species_table, species_rows),
-        (animal_to_species_table, animal_to_species),
-        (animal_to_friend_table, animal_to_friend_rows),
-        (event_table, event_rows),
-        (animal_important_event_event_table, animal_important_event_event_rows),
-    ]
-
-    for table, vals in tables_values:
-        for val in vals:
-            engine.execute(table.insert(val))
-    return engine, metadata
-
-
-def create_misconfigured_sqlite_db():
-    engine = create_engine('sqlite:///:memory:')
-    metadata = MetaData()
-
-    Table(
-        'animal',
-        metadata,
-        Column('animal_id', Integer, primary_key=True),
-        Column('name', String(10), nullable=False),
-        Column('alias', String(50), nullable=False),
-        Column('parentof_id', Integer, ForeignKey("animal.animal_id"), nullable=True),
-    )
-
-    Table(
-        'animal_friendswith',
-        metadata,
-        Column('animal_friendswith_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        # the column below, following convention, should be friendswith_id (no initial underscore)
-        Column('friends_with_id', Integer, ForeignKey("animal.animal_id")),
-    )
-
-    Table(
-        'animal_importantevent_event',
-        metadata,
-        Column('animal_importantevent_event_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('importantevent_id', Integer, ForeignKey("event.event_id")),
-    )
-
-    Table(
-        'animal_importantevent',
-        metadata,
-        Column('animal_importantevent_event_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('importantevent_id', Integer, ForeignKey("event.event_id")),
-    )
-
-    Table(
-        'location',
-        metadata,
-        Column('location_id', Integer, primary_key=True),
-        Column('livesin_id', Integer, ForeignKey("animal.animal_id")),
-        Column('name', String(10))
-    )
-
-    Table(
-        'event',
-        metadata,
-        Column('event_id', Integer, primary_key=True),
-        # per the schema, this should be column "name"
-        Column('names', String(10)),
-    )
-
-    Table(
-        'species',
-        metadata,
-        Column('species_id', Integer, primary_key=True),
-        Column('name', String(10), primary_key=True),
-        Column('eats_id', Integer, ForeignKey('species.species_id'), nullable=True),
-        Column('eatenby_id', Integer, ForeignKey('species.species_id'), nullable=True),
-    )
-
-    Table(
-        'animal_ofspecies',
-        metadata,
-        Column('animal_ofspecies_id', Integer, primary_key=True),
-        Column('animal_id', Integer, ForeignKey("animal.animal_id")),
-        Column('ofspecies_id', Integer, ForeignKey("animal.animal_id")),
-    )
-
-    metadata.create_all(engine)
-    return engine, metadata
