@@ -30,6 +30,6 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        Tree representation of IR blocks for recursive traversal by SQL backend.
+        tree representation of IR blocks for recursive traversal by SQL backend.
     """
     raise NotImplementedError(u'SQL IR lowering is not yet implemented.')
