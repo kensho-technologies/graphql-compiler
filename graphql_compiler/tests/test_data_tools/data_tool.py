@@ -3,10 +3,21 @@ from glob import glob
 from os import path
 
 
-def generate_data(client):
-    """Create test DB from the SQL commands file."""
+def generate_snapshot_data(client):
+    """Create test DB from the SQL commands file for snapshot testing."""
     project_root = path.dirname(path.abspath(__file__))
-    sql_files = glob(path.join(project_root, 'data/*.sql'))
+    sql_files = glob(path.join(project_root, 'snapshot_data/*.sql'))
+    _load_sql_files(client, sql_files)
+
+
+def generate_integration_data(client):
+    """Create test DB from the SQL commands file for snapshot testing."""
+    project_root = path.dirname(path.abspath(__file__))
+    sql_files = glob(path.join(project_root, 'integration_data/*.sql'))
+    _load_sql_files(client, sql_files)
+
+
+def _load_sql_files(client, sql_files):
     for filepath in sql_files:
         with open(filepath) as f:
             for command in f.readlines():

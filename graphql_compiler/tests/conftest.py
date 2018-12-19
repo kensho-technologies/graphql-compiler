@@ -4,7 +4,9 @@ import time
 
 import pytest
 
+from .test_data_tools.data_tool import generate_snapshot_data, generate_integration_data
 from .test_data_tools.graph import get_test_graph
+from .test_data_tools.schema import load_schema
 
 
 # Pytest fixtures depend on name redefinitions to work,
@@ -13,15 +15,25 @@ from .test_data_tools.graph import get_test_graph
 
 
 @pytest.fixture(scope='session')
-def init_graph():
+def init_snapshot_graph_client():
     """Return a client for an initialized db, with all test data imported."""
+    return _init_graph_client(load_schema, generate_snapshot_data)
+
+
+@pytest.fixture(scope='session')
+def init_integration_graph_client():
+    """Return a client for an initialized db, with all test data imported."""
+    return _init_graph_client(load_schema, generate_integration_data)
+
+
+def _init_graph_client(load_schema_func, generate_data_func):
     graph_name = 'animals'
 
     # Try to set up the database for the test up to 20 times before giving up.
     set_up_successfully = False
     for _ in range(20):
         try:
-            graph_client = get_test_graph(graph_name)
+            graph_client = get_test_graph(graph_name, load_schema_func, generate_data_func)
             set_up_successfully = True
             break
         except Exception as e:  # pylint: disable=broad-except
@@ -35,6 +47,14 @@ def init_graph():
 
 
 @pytest.fixture(scope='class')
-def graph_client(request, init_graph):
+def graph_client(request, init_snapshot_graph_client):
     """Get a client for an initialized db, with all test data imported."""
-    request.cls.graph_client = init_graph
+    request.cls.graph_client = init_snapshot_graph_client
+
+
+@pytest.fixture(scope='class')
+def integration_graph_client(request, init_integration_graph_client):
+    """Get a client for an initialized db, with all test data imported."""
+    request.cls.graph_client = init_integration_graph_client
+
+
