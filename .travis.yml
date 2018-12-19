@@ -4,6 +4,10 @@ cache: pip
 dist: xenial
 services:
   - docker
+addons:
+apt:
+  packages:
+    - python-mysqldb
 install:
   - pip install -r dev-requirements.txt
   - pip install -e .
