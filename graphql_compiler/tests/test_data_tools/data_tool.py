@@ -1,14 +1,13 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from glob import glob
 from os import path
-import six
-from funcy import retry
 
-from sqlalchemy import create_engine, text, MetaData, Table, Column, Integer, String
+from funcy import retry
+import six
+from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, text
 
 from ..integration_tests.integration_backend_config import (
-    SQL_BACKEND_TO_CONNECTION_STRING,
-    SqlTestBackend,
+    SQL_BACKEND_TO_CONNECTION_STRING, SqlTestBackend
 )
 from ..test_backend import TestBackend
 
@@ -28,7 +27,7 @@ def generate_orient_integration_data(client):
 
 
 def _load_sql_files_to_orient_client(client, sql_files):
-    """Load list of supplied SQL files into the supplied OrientDB client"""
+    """Load list of supplied SQL files into the supplied OrientDB client."""
     for filepath in sql_files:
         with open(filepath) as f:
             for command in f.readlines():
@@ -40,7 +39,7 @@ def _load_sql_files_to_orient_client(client, sql_files):
                 client.command(sanitized_command)
 
 
-@retry(20, timeout=1)
+@retry(tries=20, timeout=1)  # pylint: disable=no-value-for-parameter
 def init_sql_integration_test_backends():
     """Connect to and open transaction on each SQL DB under test."""
     sql_test_backends = {}
@@ -65,6 +64,7 @@ def init_sql_integration_test_backends():
 
 
 def tear_down_integration_test_backends(sql_test_backends):
+    """Rollback backends' transactions and close the active connections."""
     for sql_test_backend in six.itervalues(sql_test_backends):
         sql_test_backend.transaction.rollback()
         sql_test_backend.connection.close()

@@ -4,14 +4,16 @@ from unittest import TestCase
 import pytest
 import six
 
-from .integration_backend_config import SQL_BACKENDS, MATCH_BACKENDS
-from .integration_test_helpers import (
-    sort_db_results,
-    compile_and_run_match_query,
-    compile_and_run_sql_query,
-)
 from ..test_helpers import get_schema
+from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
+from .integration_test_helpers import (
+    compile_and_run_match_query, compile_and_run_sql_query, sort_db_results
+)
 
+
+# The following TestCase class uses the 'graph_client' fixture
+# which pylint does not recognize as a class member.
+# pylint: disable=no-member
 
 class IntegrationTests(TestCase):
 
@@ -28,7 +30,7 @@ class IntegrationTests(TestCase):
     def assertAllResultsEqual(self, graphql_query, parameters, expected_results):
         """Assert that all DB backends return the expected results, independent of order."""
         backend_results = self.compile_and_run_query(graphql_query, parameters)
-        for backend, results in six.iteritems(backend_results):
+        for results in six.itervalues(backend_results):
             self.assertResultsEqual(expected_results, results)
 
     @classmethod
@@ -67,7 +69,9 @@ class IntegrationTests(TestCase):
         expected_results = [
             {'animal_name': 'Animal 1'},
             {'animal_name': 'Animal 2'},
-            {'animal_name':  'Animal 3'},
-            {'animal_name':  'Animal 4'},
+            {'animal_name': 'Animal 3'},
+            {'animal_name': 'Animal 4'},
         ]
         self.assertAllResultsEqual(graphql_query, {}, expected_results)
+
+# pylint: enable=no-member

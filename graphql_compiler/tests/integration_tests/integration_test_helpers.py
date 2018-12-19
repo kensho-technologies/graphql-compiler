@@ -1,8 +1,8 @@
-import six
 from graphql import GraphQLString
+import six
 from sqlalchemy import text
 
-from ... import graphql_to_match, CompilationResult, OutputMetadata
+from ... import CompilationResult, OutputMetadata, graphql_to_match
 from ...compiler import SQL_LANGUAGE
 
 
@@ -20,7 +20,7 @@ def sort_db_results(results):
         sort_order = sorted(six.iterkeys(results[0]))
 
     def sort_key(result):
-        """Convert None/Not None to avoid comparisons of None to a non-None type"""
+        """Convert None/Not None to avoid comparisons of None to a non-None type."""
         return tuple((result[col] is not None, result[col]) for col in sort_order)
 
     return sorted(results, key=sort_key)

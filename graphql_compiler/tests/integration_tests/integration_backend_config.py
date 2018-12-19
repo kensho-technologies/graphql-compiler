@@ -2,6 +2,7 @@ from collections import namedtuple
 
 from graphql_compiler.tests.test_backend import TestBackend
 
+
 DEFAULT_ROOT_PASSWORD = u'root'
 MSSQL_ROOT_PASSWORD = u'Root-secure1'  # mssql has stricter root password restrictions
 
