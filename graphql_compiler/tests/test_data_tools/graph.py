@@ -3,9 +3,6 @@ from pyorient import OrientDB
 from pyorient.constants import DB_TYPE_GRAPH
 from pyorient.ogm import Config, Graph
 
-from .data_tool import generate_data
-from .schema import load_schema
-
 
 ORIENTDB_SERVER = "localhost"
 ORIENTDB_PORT = 2424
@@ -19,7 +16,7 @@ def get_orientdb_url(database_name):
     return template.format(ORIENTDB_SERVER, database_name)
 
 
-def get_test_graph(graph_name):
+def get_test_graph(graph_name, load_schema_func, generate_data_func):
     """Generate the test database and return the pyorient client."""
     url = get_orientdb_url(graph_name)
     config = Config.from_url(url, ORIENTDB_USER, ORIENTDB_PASSWORD, initial_drop=True)
@@ -29,7 +26,7 @@ def get_test_graph(graph_name):
     client.connect(ORIENTDB_USER, ORIENTDB_PASSWORD)
     client.db_open(graph_name, ORIENTDB_USER, ORIENTDB_PASSWORD, db_type=DB_TYPE_GRAPH)
 
-    load_schema(client)
-    generate_data(client)
+    load_schema_func(client)
+    generate_data_func(client)
 
     return client
