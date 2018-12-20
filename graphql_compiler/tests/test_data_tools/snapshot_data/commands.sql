@@ -1,3 +1,4 @@
+# Copyright 2018-present Kensho Technologies, LLC.
 # Auto-generated output from `generate_test_sql/__init__.py`.
 # Do not edit directly!
 # Generated on 2018-07-27T15:00:14.627230 from compiler version 1.7.0.
