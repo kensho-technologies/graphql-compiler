@@ -1,6 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
 
+
 UNSUPPORTED_META_FIELDS = {
     u'@class': u'__typename'
 }

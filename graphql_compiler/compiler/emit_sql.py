@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from . import sql_context_helpers as context_helpers
 
+
 # The compilation context holds state that changes during compilation as the tree is traversed
 CompilationContext = namedtuple('CompilationContext', (
     # 'query_path_to_selectable': Dict[Tuple[str, ...], Selectable], mapping from each
@@ -54,7 +55,7 @@ def _query_tree_to_query(node, context):
         context: CompilationContext, compilation specific metadata
 
     Returns:
-        Union[Query, Optional[column]], the compiled SQL query
+        Query, the compiled SQL query
     """
     _create_table_and_update_context(node, context)
     return _create_query(node, context=context)
@@ -63,7 +64,7 @@ def _query_tree_to_query(node, context):
 def _create_table_and_update_context(node, context):
     """Create an aliased table for a SqlNode.
 
-    Updates the relevant Selectable and FromClause global context.
+    Updates the relevant Selectable global context.
 
     Args:
         node: SqlNode, the current node.

@@ -2,12 +2,12 @@
 
 import six
 
-from graphql_compiler.compiler.ir_lowering_sql.constants import SqlOutput
-from graphql_compiler.compiler.metadata import LocationInfo
-from ... import exceptions
-from ...compiler import blocks
 from .constants import UNSUPPORTED_META_FIELDS
 from .sql_tree import SqlNode, SqlQueryTree
+from .. import blocks
+from ..ir_lowering_sql.constants import SqlOutput
+from ..metadata import LocationInfo
+from ... import exceptions
 
 ##############
 # Public API #
