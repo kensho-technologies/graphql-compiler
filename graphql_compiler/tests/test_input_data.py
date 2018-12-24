@@ -1253,6 +1253,38 @@ def has_edge_degree_op_filter_with_optional():
         type_equivalence_hints=None)
 
 
+def has_edge_degree_op_filter_with_optional_and_other_filter():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            uuid @filter(op_name: "between", value: ["$uuid_lower_bound","$uuid_upper_bound"])
+
+            in_Animal_ParentOf @optional
+                               @filter(op_name: "has_edge_degree", value: ["$number_of_edges"]) {
+                out_Entity_Related {
+                    ... on Event {
+                        name @output(out_name: "related_event")
+                    }
+                }
+            }
+        }
+    }
+    '''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'related_event': OutputMetadata(type=GraphQLString, optional=True),
+    }
+    expected_input_metadata = {
+        'number_of_edges': GraphQLInt,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def has_edge_degree_op_filter_with_fold():
     graphql_input = '''{
         Species {

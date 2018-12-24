@@ -2203,6 +2203,18 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_has_edge_degree_op_filter_with_optional_and_other_filter(self):
+        test_data = test_input_data.has_edge_degree_op_filter_with_optional_and_other_filter()
+
+        expected_match = '''
+
+        '''
+        expected_gremlin = '''
+
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_has_edge_degree_op_filter_with_fold(self):
         test_data = test_input_data.has_edge_degree_op_filter_with_fold()
 
