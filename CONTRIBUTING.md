@@ -2,10 +2,13 @@
 
 Thank you for taking the time to contribute to this project!
 
-To get started:
+To get started, make sure that you have `pipenv`, `docker` and `docker-compose` installed
+on your computer.
+
+Then, from the root of the repository, run:
 ```
-pip install -r dev-requirements.txt
-pip install -r requirements.txt
+pipenv sync --dev
+pipenv shell
 
 py.test graphql_compiler/tests
 ```
@@ -31,7 +34,8 @@ of both the contributors and the project.
 This project follows the
 [Google Python style guide](https://google.github.io/styleguide/pyguide.html).
 
-Additionally, any contributions must pass the following set of lint and style checks with no issues:
+Additionally, any contributions must pass the following set of lint and style checks with no issues
+when executed from a pipenv shell (i.e. after running `pipenv shell`):
 ```
 isort --check-only --verbose --recursive graphql_compiler/
 

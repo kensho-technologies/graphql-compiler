@@ -1,0 +1,27 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+bandit = "==1.4.0"
+coveralls = "==1.2.0"
+flake8 = "==3.5.0"
+isort = "==4.3.4"
+pydocstyle = "==2.1.1"
+pylint = "==1.8.2"
+pyorient = "==1.5.5"
+pytest = "==3.4.1"
+pytest-cov = "==2.5.1"
+snapshottest = "==0.5.0"
+
+[packages]
+arrow = "==0.10.0"
+funcy = "==1.7.3"
+graphql-core = "==1.1"
+pytz = "==2017.2"
+six = "==1.10.0"
+sqlalchemy = "==1.2.9"
+
+[requires]
+python_version = "3.6"
