@@ -5,8 +5,10 @@ dist: xenial
 services:
   - docker
 install:
-  - pip install -r dev-requirements.txt
-  - pip install -e .
+  - pip install --upgrade pip
+  - pip install setuptools pipenv
+  - pipenv sync --dev
+  - pipenv run pip install -e .
 before_script:
   - docker-compose up -d
 matrix:
@@ -14,20 +16,20 @@ matrix:
   - name: "Lint and static analysis"
     python: "3.6"
     script:
-      - ./scripts/copyright_line_check.sh
-      - isort --check-only --verbose --recursive graphql_compiler/
-      - flake8 --config=setup.cfg graphql_compiler/
-      - pydocstyle graphql_compiler/
-      - pylint graphql_compiler/
-      - bandit -r graphql_compiler/
+      - pipenv run ./scripts/copyright_line_check.sh
+      - pipenv run isort --check-only --verbose --recursive graphql_compiler/
+      - pipenv run flake8 --config=setup.cfg graphql_compiler/
+      - pipenv run pydocstyle graphql_compiler/
+      - pipenv run pylint graphql_compiler/
+      - pipenv run bandit -r graphql_compiler/
   - name: "Python 2.7 unit tests"
     python: "2.7"
     script:
-      - py.test --cov=graphql_compiler graphql_compiler/tests
+      - pipenv run py.test --cov=graphql_compiler graphql_compiler/tests
   - name: "Python 3.6 unit tests"
     python: "3.6"
     script:
-      - py.test --cov=graphql_compiler graphql_compiler/tests
+      - pipenv run py.test --cov=graphql_compiler graphql_compiler/tests
 after_success:
   - docker-compose down
   - coveralls
