@@ -6,9 +6,9 @@ services:
   - docker
 install:
   - pip install --upgrade pip
-  - pip install setuptools pipenv
-  - pipenv sync --dev
-  - pipenv run pip install -e .
+  - pip install --upgrade setuptools pipenv
+  - pipenv install --deploy --system
+  - pipenv install --system -e .
 before_script:
   - docker-compose up -d
 matrix:
