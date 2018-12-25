@@ -8,7 +8,7 @@ install:
   - pip install --upgrade pip
   - pip install --upgrade setuptools pipenv
   - pipenv install --dev --deploy --system
-  - pipenv install --system -e .
+  - pipenv install --system --skip-lock -e .
 before_script:
   - docker-compose up -d
 matrix:
@@ -16,7 +16,7 @@ matrix:
   - name: "Lint and static analysis"
     python: "3.6"
     script:
-      - pipenv run ./scripts/copyright_line_check.sh
+      - ./scripts/copyright_line_check.sh
       - pipenv run isort --check-only --verbose --recursive graphql_compiler/
       - pipenv run flake8 --config=setup.cfg graphql_compiler/
       - pipenv run pydocstyle graphql_compiler/
