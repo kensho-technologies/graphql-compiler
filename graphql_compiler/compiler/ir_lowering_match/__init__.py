@@ -117,8 +117,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
         match_query, complex_optional_roots, location_to_optional_roots)
     compound_match_query = prune_non_existent_outputs(compound_match_query)
     compound_match_query = collect_filters_to_first_location_occurrence(compound_match_query)
-    compound_match_query = lower_context_field_expressions(
-        compound_match_query)
+    compound_match_query = lower_context_field_expressions(compound_match_query)
 
     compound_match_query = truncate_repeated_single_step_traversals_in_sub_queries(
         compound_match_query)

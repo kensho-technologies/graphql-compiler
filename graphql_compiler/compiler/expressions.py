@@ -664,8 +664,8 @@ class BinaryComposition(Expression):
         _validate_operator_name(self.operator, BinaryComposition.SUPPORTED_OPERATORS)
 
         if not isinstance(self.left, Expression):
-            raise TypeError(u'Expected Expression left, got: {} {}'.format(
-                type(self.left).__name__, self.left))
+            raise TypeError(u'Expected Expression left, got: {} {} {}'.format(
+                type(self.left).__name__, self.left, self))
 
         if not isinstance(self.right, Expression):
             raise TypeError(u'Expected Expression right, got: {} {}'.format(

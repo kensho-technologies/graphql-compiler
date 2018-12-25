@@ -2238,8 +2238,8 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
-    def test_has_edge_degree_op_filter_with_optional_and_other_filter(self):
-        test_data = test_input_data.has_edge_degree_op_filter_with_optional_and_other_filter()
+    def test_has_edge_degree_op_filter_with_optional_and_between(self):
+        test_data = test_input_data.has_edge_degree_op_filter_with_optional_and_between()
 
         base_location = helpers.Location(('Animal',))
         parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')

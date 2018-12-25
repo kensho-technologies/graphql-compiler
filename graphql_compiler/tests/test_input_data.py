@@ -1253,7 +1253,7 @@ def has_edge_degree_op_filter_with_optional():
         type_equivalence_hints=None)
 
 
-def has_edge_degree_op_filter_with_optional_and_other_filter():
+def has_edge_degree_op_filter_with_optional_and_between():
     graphql_input = '''{
         Animal {
             name @output(out_name: "animal_name")
