@@ -11,6 +11,7 @@ from .helpers import (
     get_uniquely_named_objects_by_name, is_vertex_field_name, is_vertex_field_type,
     strip_non_null_from_type, validate_safe_string
 )
+from .metadata import FilterInfo
 
 
 def scalar_leaf_only(operator):
@@ -593,15 +594,15 @@ def is_filter_with_outer_scope_vertex_field_operator(directive):
     return op_name in OUTER_SCOPE_VERTEX_FIELD_OPERATORS
 
 
-def process_filter_directive(filter_operation_info, context):
+def process_filter_directive(filter_operation_info, location, context):
     """Return a Filter basic block that corresponds to the filter operation in the directive.
 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        directive: GraphQL @filter directive object, obtained from the AST node
 
     Returns:
         a Filter basic block that performs the requested filtering operation
@@ -640,5 +641,13 @@ def process_filter_directive(filter_operation_info, context):
             op_name not in INNER_SCOPE_VERTEX_FIELD_OPERATORS):
         raise GraphQLCompilationError(u'The filter with op_name "{}" must be applied on a field. '
                                       u'It may not be applied on a type coercion.'.format(op_name))
+
+    fields = ((filter_operation_info.field_name,) if op_name != 'name_or_alias'
+              else ('name', 'alias'))
+
+    context['metadata'].record_filter_info(
+        location,
+        FilterInfo(fields=fields, op_name=op_name, args=tuple(operator_params))
+    )
 
     return process_func(filter_operation_info, context, operator_params)
