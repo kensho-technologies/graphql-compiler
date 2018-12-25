@@ -2326,7 +2326,6 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
-
     def test_has_edge_degree_op_filter_with_fold(self):
         test_data = test_input_data.has_edge_degree_op_filter_with_fold()
 
