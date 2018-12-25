@@ -8,7 +8,7 @@ set -euo pipefail
 shopt -s globstar nullglob
 
 # Make sure the current working directory for this script is the root directory.
-pushd "$(git rev-parse --show-toplevel)" > /dev/null
+cd "$(git rev-parse --show-toplevel)"
 
 ensure_file_has_copyright_line() {
     filename="$1"
