@@ -16,7 +16,7 @@ matrix:
   - name: "Lint and static analysis"
     python: "3.6"
     script:
-      - ./scripts/copyright_line_check.sh
+      - pipenv run ./scripts/copyright_line_check.sh
       - pipenv run isort --check-only --verbose --recursive graphql_compiler/
       - pipenv run flake8 --config=setup.cfg graphql_compiler/
       - pipenv run pydocstyle graphql_compiler/

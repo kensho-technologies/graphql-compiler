@@ -11,6 +11,7 @@ shopt -s globstar nullglob
 if [ ! -f "./requirements.txt" ] || [ ! -f "./CHANGELOG.md" ]; then
     echo -e 'Please run this script from the root directory of the repo:\n'
     echo -e '    ./scripts/copyright_line_check.sh\n'
+    echo -e "The current working directory is: $(pwd)\n"
     exit 1
 fi
 
