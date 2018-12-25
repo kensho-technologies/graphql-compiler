@@ -2238,6 +2238,95 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_has_edge_degree_op_filter_with_optional_and_other_filter(self):
+        test_data = test_input_data.has_edge_degree_op_filter_with_optional_and_other_filter()
+
+        base_location = helpers.Location(('Animal',))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        related_location = parent_location.navigate_to_subpath('out_Entity_Related')
+        revisited_base_location = base_location.revisit()
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'||',
+                    expressions.BinaryComposition(
+                        u'&&',
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.Variable('$number_of_edges', GraphQLInt),
+                            expressions.ZeroLiteral
+                        ),
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.LocalField('in_Animal_ParentOf'),
+                            expressions.NullLiteral
+                        )
+                    ),
+                    expressions.BinaryComposition(
+                        u'&&',
+                        expressions.BinaryComposition(
+                            u'!=',
+                            expressions.LocalField('in_Animal_ParentOf'),
+                            expressions.NullLiteral
+                        ),
+                        expressions.BinaryComposition(
+                            u'=',
+                            expressions.UnaryTransformation(
+                                u'size',
+                                expressions.LocalField('in_Animal_ParentOf')
+                            ),
+                            expressions.Variable('$number_of_edges', GraphQLInt)
+                        )
+                    )
+                )
+            ),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'&&',
+                    expressions.BinaryComposition(
+                        u'>=',
+                        expressions.LocalField('uuid'),
+                        expressions.Variable('$uuid_lower_bound', GraphQLID)
+                    ),
+                    expressions.BinaryComposition(
+                        u'<=',
+                        expressions.LocalField('uuid'),
+                        expressions.Variable('$uuid_upper_bound', GraphQLID)
+                    )
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('in', 'Animal_ParentOf', optional=True),
+            blocks.MarkLocation(parent_location),
+            blocks.Traverse('out', 'Entity_Related', within_optional_scope=True),
+            blocks.CoerceType({'Event'}),
+            blocks.MarkLocation(related_location),
+            blocks.Backtrack(parent_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, optional=True),
+            blocks.MarkLocation(revisited_base_location),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'related_event': expressions.TernaryConditional(
+                    expressions.ContextFieldExistence(related_location),
+                    expressions.OutputContextField(
+                        related_location.navigate_to_field('name'), GraphQLString),
+                    expressions.NullLiteral),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_location: 'Animal',
+            related_location: 'Event',
+            revisited_base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+
     def test_has_edge_degree_op_filter_with_fold(self):
         test_data = test_input_data.has_edge_degree_op_filter_with_fold()
 

@@ -1275,6 +1275,8 @@ def has_edge_degree_op_filter_with_optional_and_other_filter():
         'related_event': OutputMetadata(type=GraphQLString, optional=True),
     }
     expected_input_metadata = {
+        'uuid_lower_bound': GraphQLID,
+        'uuid_upper_bound': GraphQLID,
         'number_of_edges': GraphQLInt,
     }
 
