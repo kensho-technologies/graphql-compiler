@@ -50,6 +50,7 @@ setup(
     version=find_version(),
     description='Turn complex GraphQL queries into optimized database queries.',
     long_description=find_long_description(),
+    long_description_content_type='text/markdown',
     url='https://github.com/kensho-technologies/graphql-compiler',
     author='Kensho Technologies, LLC.',
     author_email='graphql-compiler-maintainer@kensho.com',
