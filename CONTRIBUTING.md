@@ -7,6 +7,7 @@ on your computer.
 
 Then, from the root of the repository, run:
 ```
+docker-compose up -d
 pipenv sync --dev
 pipenv shell
 
