@@ -75,6 +75,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
     keywords='graphql database compiler orientdb',
     python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*',
