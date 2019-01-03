@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
 
-from graphql_compiler.tests.test_backend import TestBackend
+from ..test_backend import TestBackend
 
 
 DEFAULT_ROOT_PASSWORD = u'root'
