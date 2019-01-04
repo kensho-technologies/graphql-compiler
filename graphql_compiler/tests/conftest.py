@@ -3,6 +3,7 @@ import sys
 import time
 
 import pytest
+import six
 
 from .test_data_tools.data_tool import (
     generate_orient_integration_data, generate_orient_snapshot_data, generate_sql_integration_data,
@@ -61,13 +62,30 @@ def integration_graph_client(request, init_integration_graph_client):
     request.cls.graph_client = init_integration_graph_client
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope='class')
 def sql_integration_data(request):
     """Generate integration data for SQL backends."""
+    # initialize each SQL backend, and open a transaction on each one.
     sql_test_backends = init_sql_integration_test_backends()
+    # write fixture test data within the transaction
     generate_sql_integration_data(sql_test_backends)
+    # make sql backends accessible within the test class
     request.cls.sql_test_backends = sql_test_backends
     # yield the fixture to allow testing class to run
     yield
-    # tear down the fixture after the testing class runs all tests.
+    # tear down the fixture after the testing class runs all tests
+    # including rolling back transaction to ensure all fixture data removed.
     tear_down_integration_test_backends(sql_test_backends)
+
+
+@pytest.fixture(scope='function')
+def sql_integration_test(request):
+    """Open nested transaction before every test function, and rollback transaction afterwards."""
+    sql_test_backends = request.cls.sql_test_backends
+    test_transactions = []
+    for sql_test_backend in six.itervalues(sql_test_backends):
+        transaction = sql_test_backend.connection.begin_nested()
+        test_transactions.append(transaction)
+    yield
+    for transaction in test_transactions:
+        transaction.rollback()

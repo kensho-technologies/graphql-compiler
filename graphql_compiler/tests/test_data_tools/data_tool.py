@@ -6,10 +6,10 @@ from funcy import retry
 import six
 from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, text
 
+from .. import test_backend
 from ..integration_tests.integration_backend_config import (
     SQL_BACKEND_TO_CONNECTION_STRING, SqlTestBackend
 )
-from ..test_backend import TestBackend
 
 
 def generate_orient_snapshot_data(client):
@@ -46,7 +46,7 @@ def init_sql_integration_test_backends():
     for backend_name, connection_string in six.iteritems(SQL_BACKEND_TO_CONNECTION_STRING):
         engine = create_engine(connection_string)
         # MYSQL and MARIADB do not have a default DB so a DB must be created
-        if backend_name in {TestBackend.MYSQL, TestBackend.MARIADB}:
+        if backend_name in {test_backend.MYSQL, test_backend.MARIADB}:
             # safely create the DB
             engine.execute(text('DROP DATABASE IF EXISTS animals; CREATE DATABASE animals'))
             # update the connection string and engine to connect to this DB specifically
@@ -64,7 +64,7 @@ def init_sql_integration_test_backends():
 
 
 def tear_down_integration_test_backends(sql_test_backends):
-    """Rollback backends' transactions and close the active connections."""
+    """Rollback backends' transactions to wipe test data and to close the active connections."""
     for sql_test_backend in six.itervalues(sql_test_backends):
         sql_test_backend.transaction.rollback()
         sql_test_backend.connection.close()

@@ -37,4 +37,4 @@ services:
       - "127.0.0.1:1433:1433"
     environment:
       ACCEPT_EULA: "yes"
-      MSSQL_SA_PASSWORD: Root-secure1 # password requirements are more stringent for MSSQL image
+      MSSQL_SA_PASSWORD: Root-secure1  # password requirements are more stringent for MSSQL image

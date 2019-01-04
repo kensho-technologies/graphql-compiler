@@ -15,6 +15,16 @@ from .integration_test_helpers import (
 # does not recognize
 # pylint: disable=no-member
 
+
+# Store the typical fixtures required for an integration tests.
+# Individual tests can supply the full @pytest.mark.usefixtures to override if necessary.
+integration_fixture_decorator = pytest.mark.usefixtures(
+    'integration_graph_client',
+    'sql_integration_data',
+    'sql_integration_test',
+)
+
+
 class IntegrationTests(TestCase):
 
     @classmethod
@@ -39,7 +49,7 @@ class IntegrationTests(TestCase):
 
         Args:
             graphql_query: str, GraphQL query string to run against every backend.
-            parameters: Dict, input parameters to the query.
+            parameters: Dict[str, Any], input parameters to the query.
 
         Returns:
             Dict[str, Dict], dictionary mapping the TestBackend to the results fetched from that
@@ -57,7 +67,7 @@ class IntegrationTests(TestCase):
             backend_to_results[backend_name] = results
         return backend_to_results
 
-    @pytest.mark.usefixtures('integration_graph_client', 'sql_integration_data')
+    @integration_fixture_decorator
     def test_backends(self):
         graphql_query = '''
         {

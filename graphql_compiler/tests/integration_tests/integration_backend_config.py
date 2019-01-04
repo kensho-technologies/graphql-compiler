@@ -1,34 +1,34 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
 
-from ..test_backend import TestBackend
+from .. import test_backend
 
 
 DEFAULT_ROOT_PASSWORD = u'root'
 MSSQL_ROOT_PASSWORD = u'Root-secure1'  # mssql has stricter root password restrictions
 
 SQL_BACKENDS = {
-    TestBackend.POSTGRES,
-    TestBackend.MYSQL,
-    TestBackend.MARIADB,
-    TestBackend.MSSQL,
-    TestBackend.SQLITE,
+    test_backend.POSTGRES,
+    test_backend.MYSQL,
+    test_backend.MARIADB,
+    test_backend.MSSQL,
+    test_backend.SQLITE,
 }
 
 MATCH_BACKENDS = {
-    TestBackend.ORIENTDB,
+    test_backend.ORIENTDB,
 }
 
 SQL_BACKEND_TO_CONNECTION_STRING = {
-    TestBackend.POSTGRES:
+    test_backend.POSTGRES:
         u'postgresql://postgres:{password}@localhost:5432'.format(password=DEFAULT_ROOT_PASSWORD),
-    TestBackend.MYSQL:
+    test_backend.MYSQL:
         u'mysql://root:{password}@127.0.0.1:3306'.format(password=DEFAULT_ROOT_PASSWORD),
-    TestBackend.MARIADB:
+    test_backend.MARIADB:
         u'mysql://root:{password}@127.0.0.1:3307'.format(password=DEFAULT_ROOT_PASSWORD),
-    TestBackend.MSSQL:
+    test_backend.MSSQL:
         u'mssql+pymssql://SA:{password}@localhost:1433'.format(password=MSSQL_ROOT_PASSWORD),
-    TestBackend.SQLITE:
+    test_backend.SQLITE:
         u'sqlite:///:memory:',
 }
 

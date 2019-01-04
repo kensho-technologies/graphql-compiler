@@ -38,20 +38,19 @@ def compile_and_run_match_query(schema, graphql_query, parameters, graph_client)
 def compile_and_run_sql_query(schema, graphql_query, parameters, sql_test_backend):
     """Compiles and runs a SQL query against the supplied SQL backend."""
     # TODO: un-mock the SQL compilation once the SQL backend can run queries.
-    mock_compilation_result = CompilationResult(
-        query=text('SELECT name AS animal_name FROM animal'),
-        language=SQL_LANGUAGE,
-        input_metadata={},
-        output_metadata={'animal_name': OutputMetadata(GraphQLString, False)}
-    )
-
     def mock_sql_compilation(schema, graphql_query, parameters, compiler_metadata):
+        """Mock out SQL backend compilation for unimplemented SQL backend."""
+        mock_compilation_result = CompilationResult(
+            query=text('SELECT name AS animal_name FROM animal'),
+            language=SQL_LANGUAGE,
+            input_metadata={},
+            output_metadata={'animal_name': OutputMetadata(GraphQLString, False)}
+        )
         return mock_compilation_result
 
     compilation_result = mock_sql_compilation(schema, graphql_query, parameters, None)
     query = compilation_result.query
-    results = [
-        dict(result) for result
-        in sql_test_backend.connection.execute(query)
-    ]
+    results = []
+    for result in sql_test_backend.connection.execute(query):
+        results.append(dict(result))
     return results
