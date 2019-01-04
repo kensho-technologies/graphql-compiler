@@ -4,7 +4,7 @@ from os import path
 
 from funcy import retry
 import six
-from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, text
+from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, event, text
 
 from .. import test_backend
 from ..integration_tests.integration_backend_config import (
@@ -45,6 +45,21 @@ def init_sql_integration_test_backends():
     sql_test_backends = {}
     for backend_name, connection_string in six.iteritems(SQL_BACKEND_TO_CONNECTION_STRING):
         engine = create_engine(connection_string)
+        # sqlite has some non-standard transaction handling by default, notably that it will often
+        # not start or prematurely end transactions. This workaround with more background is
+        # detailed on https://docs.sqlalchemy.org/en/latest/dialects/sqlite.html
+        if backend_name == test_backend.SQLITE:
+            # pylint: disable=unused-variable
+            @event.listens_for(engine, "connect")
+            def do_connect(dbapi_connection, connection_record):
+                """Don't let sqlite emit BEGIN signals. We will emit BEGIN ourselves as needed."""
+                dbapi_connection.isolation_level = None
+
+            @event.listens_for(engine, "begin")
+            def do_begin(conn):
+                """Emit BEGIN at the start of a transaction."""
+                conn.execute("BEGIN")
+            # pylint: enable=unused-variable
         # MYSQL and MARIADB do not have a default DB so a DB must be created
         if backend_name in {test_backend.MYSQL, test_backend.MARIADB}:
             # safely create the DB
