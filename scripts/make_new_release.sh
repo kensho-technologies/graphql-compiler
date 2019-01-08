@@ -14,8 +14,8 @@ if [ ! -f "./requirements.txt" ] || [ ! -f "./CHANGELOG.md" ]; then
     exit 1
 fi
 
-# Clean up old release artifacts.
-rm -r build/ dist/
+# Clean up old release artifacts. Ignore errors since these directories might not exist.
+rm -r build/ dist/ || true
 
 # Build the source distribution.
 python setup.py sdist
