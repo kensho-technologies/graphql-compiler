@@ -7,12 +7,8 @@ set -euo pipefail
 # Enable recursive globbing, and make globs that do not match return null values.
 shopt -s globstar nullglob
 
-# Make sure the current working directory is the root directory.
-if [ ! -f "./requirements.txt" ] || [ ! -f "./CHANGELOG.md" ]; then
-    echo -e 'Please run this script from the root directory of the repo:\n'
-    echo -e '    ./scripts/make_new_release.sh\n'
-    exit 1
-fi
+# Make sure the current working directory for this script is the root directory.
+cd "$(git rev-parse --show-toplevel)"
 
 # Clean up old release artifacts. Ignore errors since these directories might not exist.
 rm -r build/ dist/ || true
