@@ -8,7 +8,7 @@ set -euo pipefail
 shopt -s globstar nullglob
 
 # Make sure the current working directory for this script is the root directory.
-cd "$(git rev-parse --show-toplevel)"
+cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
 # Clean up old release artifacts. Ignore errors since these directories might not exist.
 rm -r build/ dist/ || true
