@@ -142,7 +142,7 @@ class CompilerTests(unittest.TestCase):
                     }}
                     RETURN $matches
                 )
-            ''' % {'operator': match_operator}
+            ''' % {'operator': match_operator}  # nosec, the operators are hardcoded above
 
             # In Gremlin, equality comparisons use two equal signs instead of one, unlike in MATCH.
             gremlin_operator = u'==' if operator == u'=' else operator
