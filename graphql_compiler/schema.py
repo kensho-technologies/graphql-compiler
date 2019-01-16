@@ -5,9 +5,11 @@ from decimal import Decimal
 
 import arrow
 from graphql import (
-    DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLInt, GraphQLList, GraphQLNonNull,
-    GraphQLScalarType, GraphQLString
+    DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLField, GraphQLInt,
+    GraphQLInterfaceType, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLScalarType,
+    GraphQLString
 )
+import six
 
 
 # Constraints:
@@ -275,3 +277,48 @@ DIRECTIVES = (
     RecurseDirective,
     FoldDirective,
 )
+
+
+COUNT_META_FIELD_NAME = '__count'
+
+
+META_FIELDS = OrderedDict((
+    (COUNT_META_FIELD_NAME, GraphQLField(GraphQLInt)),
+))
+
+
+def insert_meta_fields_into_existing_schema(graphql_schema):
+    """Add compiler-specific meta-fields into all interfaces and types of the specified schema.
+
+    It is preferable to use the META_FIELDS constant above to directly inject the meta-fields
+    during the initial process of building the schema, as that approach is more robust.
+    This function does its best to not mutate unexpected definitions, but may break unexpectedly
+    as the GraphQL standard is extended and the underlying GraphQL library is updated.
+    Use this function at your own risk. Don't say you haven't been warned.
+
+    Properties added include:
+        - "__count", which allows filtering folds based on the number of elements they capture.
+
+    Args:
+        graphql_schema: GraphQLSchema object describing the schema that is going to be used with
+                        the compiler. N.B.: MUTATED IN-PLACE in this method.
+    """
+    root_type_name = graphql_schema.get_query_type().name
+
+    for type_name, type_obj in six.iteritems(graphql_schema.get_type_map()):
+        if type_name.startswith('__') or type_name == root_type_name:
+            # Ignore the types that are built into GraphQL itself, as well as the root query type.
+            continue
+
+        if not isinstance(type_obj, (GraphQLObjectType, GraphQLInterfaceType)):
+            # Ignore definitions that are not interfaces or types.
+            continue
+
+        for meta_field_name, meta_field in six.iteritems(META_FIELDS):
+            if meta_field_name in type_obj.fields:
+                raise AssertionError(u'Unexpectedly encountered an existing field named {} while '
+                                     u'attempting to add a meta-field of the same name. Make sure '
+                                     u'you are not attempting to add meta-fields twice.'
+                                     .format(meta_field_name))
+
+            type_obj.fields[meta_field_name] = meta_field
