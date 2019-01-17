@@ -26,6 +26,18 @@ RESERVED_MATCH_KEYWORDS = frozenset({
 })
 
 
+def make_replacement_visitor(find_expression, replace_expression):
+    """Return a visitor function that replaces every instance of one expression with another one."""
+    def visitor_fn(expression):
+        """Return the replacement if this expression matches the expression we're looking for."""
+        if expression == find_expression:
+            return replace_expression
+        else:
+            return expression
+
+    return visitor_fn
+
+
 class Literal(Expression):
     """A literal, such as a boolean value, null, or a fixed string value.
 
@@ -452,13 +464,13 @@ class OutputContextField(Expression):
         return not self.__eq__(other)
 
 
-class FoldedOutputContextField(Expression):
+class FoldedContextField(Expression):
     """An expression used to output data captured in a @fold scope."""
 
     __slots__ = ('fold_scope_location', 'field_type')
 
     def __init__(self, fold_scope_location, field_type):
-        """Construct a new FoldedOutputContextField object for this folded field.
+        """Construct a new FoldedContextField object for this folded field.
 
         Args:
             fold_scope_location: FoldScopeLocation specifying the location of
@@ -467,32 +479,39 @@ class FoldedOutputContextField(Expression):
                         Since the field is folded, this must be a GraphQLList of some kind.
 
         Returns:
-            new FoldedOutputContextField object
+            new FoldedContextField object
         """
-        super(FoldedOutputContextField, self).__init__(fold_scope_location, field_type)
+        super(FoldedContextField, self).__init__(fold_scope_location, field_type)
         self.fold_scope_location = fold_scope_location
         self.field_type = field_type
         self.validate()
 
     def validate(self):
-        """Validate that the FoldedOutputContextField is correctly representable."""
+        """Validate that the FoldedContextField is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
             raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
                 type(self.fold_scope_location), self.fold_scope_location))
 
+        if self.fold_scope_location.field is None:
+            raise ValueError(u'Expected FoldScopeLocation at a field, but got: {}'
+                             .format(self.fold_scope_location))
+
         if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
-            raise AssertionError(u'Received unexpected field name for FoldedOutputContextField: '
-                                 u'{} {}'.format(self.fold_scope_location, self))
+            if not GraphQLInt.is_same_type(self.field_type):
+                raise TypeError(u'Expected the __count meta-field to be of GraphQLInt type, but '
+                                u'encountered type {} instead: {}'
+                                .format(self.field_type, self.fold_scope_location))
+        else:
+            if not isinstance(self.field_type, GraphQLList):
+                raise ValueError(u'Invalid value of "field_type" for a field that is not a meta-field, '
+                                 u'expected a list type but got: {} {}'
+                                 .format(self.field_type, self.fold_scope_location))
 
-        if not isinstance(self.field_type, GraphQLList):
-            raise ValueError(u'Invalid value of "field_type", expected a list type but got: '
-                             u'{}'.format(self.field_type))
-
-        inner_type = strip_non_null_from_type(self.field_type.of_type)
-        if isinstance(inner_type, GraphQLList):
-            raise GraphQLCompilationError(
-                u'Outputting list-valued fields in a @fold context is currently '
-                u'not supported: {} {}'.format(self.fold_scope_location, self.field_type.of_type))
+            inner_type = strip_non_null_from_type(self.field_type.of_type)
+            if isinstance(inner_type, GraphQLList):
+                raise GraphQLCompilationError(
+                    u'Outputting list-valued fields in a @fold context is currently '
+                    u'not supported: {} {}'.format(self.fold_scope_location, self.field_type.of_type))
 
     def to_match(self):
         """Return a unicode object with the MATCH representation of this expression."""
@@ -503,21 +522,25 @@ class FoldedOutputContextField(Expression):
         validate_safe_string(mark_name)
 
         template = u'$%(mark_name)s.%(field_name)s'
-
-        inner_type = strip_non_null_from_type(self.field_type.of_type)
-        if GraphQLDate.is_same_type(inner_type):
-            # Known OrientDB bug may cause trouble here, and incorrect data may be returned:
-            # https://github.com/orientechnologies/orientdb/issues/7289
-            template += '.format("' + STANDARD_DATE_FORMAT + '")'
-        elif GraphQLDateTime.is_same_type(inner_type):
-            # Known OrientDB bug may cause trouble here, and incorrect data may be returned:
-            # https://github.com/orientechnologies/orientdb/issues/7289
-            template += '.format("' + STANDARD_DATETIME_FORMAT + '")'
-
         template_data = {
-            'mark_name': mark_name,
-            'field_name': field_name,
+            'mark_name': mark_name
         }
+
+        if field_name == COUNT_META_FIELD_NAME:
+            template_data['field_name'] = 'size()'
+        else:
+            inner_type = strip_non_null_from_type(self.field_type.of_type)
+            if GraphQLDate.is_same_type(inner_type):
+                # Known OrientDB bug may cause trouble here, and incorrect data may be returned:
+                # https://github.com/orientechnologies/orientdb/issues/7289
+                template += '.format("' + STANDARD_DATE_FORMAT + '")'
+            elif GraphQLDateTime.is_same_type(inner_type):
+                # Known OrientDB bug may cause trouble here, and incorrect data may be returned:
+                # https://github.com/orientechnologies/orientdb/issues/7289
+                template += '.format("' + STANDARD_DATETIME_FORMAT + '")'
+
+            template_data['field_name'] = field_name
+
         return template % template_data
 
     def to_gremlin(self):

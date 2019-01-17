@@ -227,7 +227,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
 
-        no_outputs_inside_fold_block = '''{
+        no_outputs_or_filters_inside_fold_block = '''{
             Animal {
                 uuid @output(out_name: "uuid")
                 out_Animal_ParentOf @fold {
@@ -327,7 +327,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             fold_on_root_vertex,
             multi_level_outputs_inside_fold_block,
             traversal_inside_fold_block_after_output,
-            no_outputs_inside_fold_block,
+            no_outputs_or_filters_inside_fold_block,
             list_output_inside_fold_block,
             fold_within_fold,
             optional_within_fold,

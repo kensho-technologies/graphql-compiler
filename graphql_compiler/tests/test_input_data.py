@@ -1987,6 +1987,33 @@ def filter_count_and_other_filters_in_fold_scope():
         type_equivalence_hints=None)
 
 
+def multiple_filters_on_count():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "name")
+            out_Animal_ParentOf @fold {
+                __count @filter(op_name: ">=", value: ["$min_children"])
+            }
+            out_Entity_Related @fold {
+                __count @filter(op_name: ">=", value: ["$min_related"])
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'min_children': GraphQLInt,
+        'min_related': GraphQLInt,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def optional_and_traverse():
     graphql_input = '''{
         Animal {

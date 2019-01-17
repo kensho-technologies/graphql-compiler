@@ -59,12 +59,10 @@ To get from GraphQL AST to IR, we follow the following pattern:
 """
 from collections import namedtuple
 
+from graphql import GraphQLInt, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLUnionType
 from graphql.error import GraphQLSyntaxError
 from graphql.language.ast import Field, InlineFragment
 from graphql.language.parser import parse
-from graphql.type.definition import (
-    GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLUnionType
-)
 from graphql.validation import validate
 import six
 
@@ -518,15 +516,14 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         basic_blocks.extend(inner_basic_blocks)
 
         if edge_traversal_is_folded:
-            _validate_fold_has_outputs(context['fold'], context['outputs'])
+            _validate_fold_has_outputs_or_count_filter(
+                context['fold'], 'fold_has_count_filter' in context, context['outputs'])
             basic_blocks.append(blocks.Unfold())
             del context['fold']
+            if 'fold_has_count_filter' in context:
+                del context['fold_has_count_filter']
             if 'fold_innermost_scope' in context:
                 del context['fold_innermost_scope']
-            else:
-                raise AssertionError(u'Output inside @fold scope did not add '
-                                     u'"fold_innermost_scope" to context! '
-                                     u'Location: {}'.format(location))
 
         if in_topmost_optional_block:
             del context['optional']
@@ -556,17 +553,24 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     return basic_blocks
 
 
-def _validate_fold_has_outputs(fold_scope_location, outputs):
-    """Ensure the @fold scope has at least one output."""
+def _validate_fold_has_outputs_or_count_filter(fold_scope_location, fold_has_count_filter, outputs):
+    """Ensure the @fold scope has at least one output, or filters on the size of the fold."""
+    # This function makes sure that the @fold scope has an effect.
+    # Folds either output data, or filter the data enclosing the fold based on the size of the fold.
+    if fold_has_count_filter:
+        # This fold has a filter on the "__count" property, so it is legal and has an effect.
+        return True
+
     # At least one output in the outputs list must point to the fold_scope_location,
     # or the scope corresponding to fold_scope_location had no @outputs and is illegal.
     for output in six.itervalues(outputs):
         if output['fold'] == fold_scope_location:
             return True
 
-    raise GraphQLCompilationError(u'Each @fold scope must contain at least one field '
-                                  u'marked @output. Encountered a @fold with no outputs: '
-                                  u'{}'.format(fold_scope_location))
+    raise GraphQLCompilationError(u'Found a @fold scope that has no effect on the query. '
+                                  u'Each @fold scope must either perform filtering, or contain at '
+                                  u'least one field marked for output. Fold location: {}'
+                                  .format(fold_scope_location))
 
 
 def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
@@ -661,8 +665,21 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
 
     # step 1: apply local filter, if any
     for filter_operation_info in filter_operations:
-        basic_blocks.append(
-            process_filter_directive(filter_operation_info, location, context))
+        filter_block = process_filter_directive(filter_operation_info, location, context)
+        if isinstance(location, FoldScopeLocation) and location.field == COUNT_META_FIELD_NAME:
+            # This Filter is going in the global operations section of the query, so it cannot
+            # use LocalField expressions since there is no "local" location to use.
+            # Rewrite it so that all references of data at a location instead use ContextFields.
+            expected_field = expressions.LocalField(COUNT_META_FIELD_NAME)
+            replacement_field = expressions.FoldedContextField(location, GraphQLInt)
+
+            visitor_fn = expressions.make_replacement_visitor(expected_field, replacement_field)
+            filter_block = filter_block.visit_and_update_expressions(visitor_fn)
+
+            context['fold_has_count_filter'] = True
+            context['global_filters'].append(filter_block)
+        else:
+            basic_blocks.append(filter_block)
 
     if location.field is not None:
         # The location is at a property, compile the property data following P-steps.
@@ -739,6 +756,10 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         #  - optional: boolean representing whether the tag was defined within an @optional scope
         #  - type: GraphQLType of the tagged value
         'tags': dict(),
+        # 'global_filters' is a list that may contain Filter blocks that are generated during
+        # query processing, but apply to the global query scope and should be appended to the
+        # IR blocks only after the GlobalOperationsStart block has been emitted.
+        'global_filters': [],
         # 'outputs' is a dict mapping each output name to another dict which contains
         #  - location: Location where to output from
         #  - optional: boolean representing whether the output was defined within an @optional scope
@@ -783,6 +804,13 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     new_basic_blocks = _compile_ast_node_to_ir(
         schema, current_schema_type, base_ast, location, context)
     basic_blocks.extend(new_basic_blocks)
+
+    # All operations after this point affect the global query scope, and are not related to
+    # the "current" location in the query produced by the sequence of Traverse/Backtrack blocks.
+    basic_blocks.append(blocks.GlobalOperationsStart())
+
+    # Add any filters that apply to the global query scope.
+    basic_blocks.extend(context['global_filters'])
 
     # Based on the outputs context data, add an output step and construct the output metadata.
     outputs_context = context['outputs']
@@ -830,7 +858,7 @@ def _compile_output_step(outputs):
             if location.field == COUNT_META_FIELD_NAME:
                 expression = expressions.FoldCountOutputContextField(location)
             else:
-                expression = expressions.FoldedOutputContextField(location, graphql_type)
+                expression = expressions.FoldedContextField(location, graphql_type)
         else:
             expression = expressions.OutputContextField(location, graphql_type)
 

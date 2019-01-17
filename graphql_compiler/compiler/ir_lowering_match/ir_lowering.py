@@ -12,7 +12,7 @@ import six
 
 from ..blocks import Backtrack, CoerceType, MarkLocation, QueryRoot
 from ..expressions import (
-    BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, FoldedOutputContextField,
+    BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, FoldedContextField,
     Literal, TernaryConditional, TrueLiteral
 )
 from ..helpers import FoldScopeLocation
@@ -265,8 +265,8 @@ def _translate_equivalent_locations(match_query, location_translations):
             # as the replacement expression.
             expression_cls = type(expression)
             return expression_cls(new_location)
-        elif isinstance(expression, FoldedOutputContextField):
-            # Update the Location within FoldedOutputContextField
+        elif isinstance(expression, FoldedContextField):
+            # Update the Location within FoldedContextField
             old_location = expression.fold_scope_location.base_location
             new_location = location_translations.get(old_location, old_location)
 
@@ -275,7 +275,7 @@ def _translate_equivalent_locations(match_query, location_translations):
             new_fold_scope_location = FoldScopeLocation(new_location, fold_path, field=fold_field)
             field_type = expression.field_type
 
-            return FoldedOutputContextField(new_fold_scope_location, field_type)
+            return FoldedContextField(new_fold_scope_location, field_type)
         else:
             return expression
 
