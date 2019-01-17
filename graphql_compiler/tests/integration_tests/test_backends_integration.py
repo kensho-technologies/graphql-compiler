@@ -14,7 +14,7 @@ from .integration_test_helpers import (
 
 
 # Store the test parametrization for running against all backends. Individual tests can customize
-# the list of backends to test against with the full @parametrized.expand([...]) decorator
+# the list of backends to test against with the full @parametrized.expand([...]) decorator.
 all_backends = parameterized.expand([
     test_backend.ORIENTDB,
     test_backend.POSTGRES,
@@ -51,8 +51,10 @@ class IntegrationTests(TestCase):
                                  sort_db_results(backend_results))
         except AssertionError as error:
             # intercept and modify error message to indicate which backend(s) failed
-            error.args = (u'Failure for backend {}: '.format(backend_name) + error.args[0],)
-            raise error
+            args = [u'Failure for backend "{}": {}'.format(backend_name, error.args[0])]
+            args.extend(error.args[1:])
+            error.args = tuple(args)
+            raise
 
     @classmethod
     def compile_and_run_query(cls, graphql_query, parameters, backend_name):
