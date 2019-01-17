@@ -47,10 +47,10 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
             optional_scopes_depth_equal = (location_info.optional_scopes_depth ==
                                            equivalent_location_info.optional_scopes_depth)
             parent_query_paths_equal = (
-                    (location_info.parent_location is None and
-                     equivalent_location_info.parent_location is None) or
-                    (location_info.parent_location.query_path ==
-                     equivalent_location_info.parent_location.query_path))
+                (location_info.parent_location is None and
+                 equivalent_location_info.parent_location is None) or
+                (location_info.parent_location.query_path ==
+                 equivalent_location_info.parent_location.query_path))
             recursive_scopes_depths_equal = (location_info.recursive_scopes_depth ==
                                              equivalent_location_info.recursive_scopes_depth)
             types_equal = location_info.type == equivalent_location_info.type

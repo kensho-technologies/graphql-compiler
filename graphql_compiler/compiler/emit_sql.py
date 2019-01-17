@@ -693,7 +693,7 @@ def _join_nodes(parent_node, child_node, join_expression, context):
     parent_location_info = context.query_path_to_location_info[parent_node.query_path]
     within_optional_scope = location_info.optional_scopes_depth > 0
     current_node_required = (
-            location_info.optional_scopes_depth == parent_location_info.optional_scopes_depth)
+        location_info.optional_scopes_depth == parent_location_info.optional_scopes_depth)
     parent_from_clause = _get_node_from_clause(parent_node, context)
     child_from_clause = _get_node_from_clause(child_node, context)
     if within_optional_scope:
@@ -1286,8 +1286,8 @@ def _try_get_many_to_many_join_expression(outer_node, inner_node, context):
     short_junction_table_name = u'{junction_table_name}'.format(junction_table_name=edge_name)
     has_short_table_name = context.compiler_metadata.has_table(short_junction_table_name)
     long_junction_table_name = u'{junction_table_name}_{target_type_name}'.format(
-            junction_table_name=edge_name, target_type_name=target_type_name
-        )
+        junction_table_name=edge_name, target_type_name=target_type_name
+    )
     has_long_table_name = context.compiler_metadata.has_table(long_junction_table_name)
     if not has_long_table_name and not has_short_table_name:
         return None
