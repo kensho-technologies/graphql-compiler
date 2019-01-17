@@ -11,6 +11,7 @@ from graphql.language.ast import InlineFragment
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 import six
 
+from ..schema import TYPENAME_META_FIELD_NAME
 from ..exceptions import GraphQLCompilationError
 
 
@@ -45,7 +46,7 @@ def get_ast_field_name(ast):
     """Return the normalized field name for the given AST node."""
     replacements = {
         # We always rewrite the following field names into their proper underlying counterparts.
-        '__typename': '@class'
+        TYPENAME_META_FIELD_NAME: '@class'
     }
     base_field_name = ast.name.value
     normalized_name = replacements.get(base_field_name, base_field_name)

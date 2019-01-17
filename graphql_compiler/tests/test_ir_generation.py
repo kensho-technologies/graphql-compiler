@@ -7,7 +7,7 @@ import six
 from . import test_input_data
 from ..compiler import blocks, expressions, helpers
 from ..compiler.compiler_frontend import OutputMetadata, graphql_to_ir
-from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .test_helpers import compare_input_metadata, compare_ir_blocks, get_schema
 
 
@@ -3077,6 +3077,145 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Animal',
             important_event_fold: 'BirthEvent',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_output_count_in_fold_scope(self):
+        test_data = test_input_data.output_count_in_fold_scope()
+
+        base_location = helpers.Location(('Animal',))
+        parent_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(parent_fold),
+            blocks.MarkLocation(parent_fold),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'child_names': expressions.FoldedOutputContextField(
+                    parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+                'number_of_children': expressions.FoldCountOutputContextField(
+                    parent_fold.navigate_to_field(COUNT_META_FIELD_NAME)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_fold: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_filter_count_with_runtime_parameter_in_fold_scope(self):
+        test_data = test_input_data.filter_count_with_runtime_parameter_in_fold_scope()
+
+        base_location = helpers.Location(('Animal',))
+        parent_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(parent_fold),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'>=',
+                    expressions.LocalField(COUNT_META_FIELD_NAME),
+                    expressions.Variable('$min_children', GraphQLInt)
+                )
+            ),
+            blocks.MarkLocation(parent_fold),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'child_names': expressions.FoldedOutputContextField(
+                    parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_fold: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_filter_count_with_tagged_parameter_in_fold_scope(self):
+        test_data = test_input_data.filter_count_with_tagged_parameter_in_fold_scope()
+
+        base_location = helpers.Location(('Animal',))
+        species_location = base_location.navigate_to_subpath('out_Animal_OfSpecies')
+        parent_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('out', 'Animal_OfSpecies'),
+            blocks.MarkLocation(species_location),
+            blocks.Backtrack(base_location),
+            blocks.Fold(parent_fold),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'>=',
+                    expressions.LocalField(COUNT_META_FIELD_NAME),
+                    expressions.ContextField(species_location.navigate_to_field('limbs'))
+                )
+            ),
+            blocks.MarkLocation(parent_fold),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'child_names': expressions.FoldedOutputContextField(
+                    parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            species_location: 'Species',
+            parent_fold: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_filter_count_and_other_filters_in_fold_scope(self):
+        test_data = test_input_data.filter_count_and_other_filters_in_fold_scope()
+
+        base_location = helpers.Location(('Animal',))
+        parent_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(parent_fold),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'>=',
+                    expressions.LocalField(COUNT_META_FIELD_NAME),
+                    expressions.Variable('$min_children', GraphQLInt)
+                )
+            ),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'contains',
+                    expressions.LocalField('alias'),
+                    expressions.Variable('$expected_alias', GraphQLString)
+                )
+            ),
+            blocks.MarkLocation(parent_fold),
+            blocks.Unfold(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'number_of_children': expressions.FoldCountOutputContextField(
+                    parent_fold.navigate_to_field(COUNT_META_FIELD_NAME)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)

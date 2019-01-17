@@ -279,21 +279,34 @@ DIRECTIVES = (
 )
 
 
+TYPENAME_META_FIELD_NAME = '__typename'  # This meta field is built-in.
 COUNT_META_FIELD_NAME = '__count'
 
 
-META_FIELDS = OrderedDict((
+ALL_SUPPORTED_META_FIELDS = frozenset((
+    TYPENAME_META_FIELD_NAME,
+    COUNT_META_FIELD_NAME,
+))
+
+
+EXTENDED_META_FIELD_DEFINITIONS = OrderedDict((
     (COUNT_META_FIELD_NAME, GraphQLField(GraphQLInt)),
 ))
+
+
+def is_meta_field(field_name):
+    """Return True if the field is considered a meta field in the schema, and False otherwise."""
 
 
 def insert_meta_fields_into_existing_schema(graphql_schema):
     """Add compiler-specific meta-fields into all interfaces and types of the specified schema.
 
-    It is preferable to use the META_FIELDS constant above to directly inject the meta-fields
-    during the initial process of building the schema, as that approach is more robust.
-    This function does its best to not mutate unexpected definitions, but may break unexpectedly
-    as the GraphQL standard is extended and the underlying GraphQL library is updated.
+    It is preferable to use the EXTENDED_META_FIELD_DEFINITIONS constant above to directly inject
+    the meta-fields during the initial process of building the schema, as that approach
+    is more robust. This function does its best to not mutate unexpected definitions, but
+    may break unexpectedly as the GraphQL standard is extended and the underlying
+    GraphQL library is updated.
+
     Use this function at your own risk. Don't say you haven't been warned.
 
     Properties added include:
@@ -314,7 +327,7 @@ def insert_meta_fields_into_existing_schema(graphql_schema):
             # Ignore definitions that are not interfaces or types.
             continue
 
-        for meta_field_name, meta_field in six.iteritems(META_FIELDS):
+        for meta_field_name, meta_field in six.iteritems(EXTENDED_META_FIELD_DEFINITIONS):
             if meta_field_name in type_obj.fields:
                 raise AssertionError(u'Unexpectedly encountered an existing field named {} while '
                                      u'attempting to add a meta-field of the same name. Make sure '

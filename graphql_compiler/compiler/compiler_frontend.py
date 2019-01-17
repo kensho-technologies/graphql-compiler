@@ -70,7 +70,7 @@ import six
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
-from ..schema import DIRECTIVES
+from ..schema import DIRECTIVES, COUNT_META_FIELD_NAME
 from .context_helpers import (
     has_encountered_output_source, is_in_fold_scope, is_in_optional_scope,
     validate_context_for_visiting_vertex_field
@@ -258,12 +258,26 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
     """
     validate_property_directives(unique_local_directives)
 
+    if location.field == COUNT_META_FIELD_NAME:
+        # Verify that uses of this field are within a @fold scope.
+        if not is_in_fold_scope(context):
+            raise GraphQLCompilationError(u'Cannot use the "{}" meta field when not within a @fold '
+                                          u'vertex field, as counting elements only makes sense '
+                                          u'in a fold. Location: {}'
+                                          .format(COUNT_META_FIELD_NAME, location))
+
     # step P-2: process property-only directives
     tag_directive = unique_local_directives.get('tag', None)
     if tag_directive:
         if is_in_fold_scope(context):
             raise GraphQLCompilationError(u'Tagging values within a @fold vertex field is '
                                           u'not allowed! Location: {}'.format(location))
+
+        if location.field == COUNT_META_FIELD_NAME:
+            raise AssertionError(u'Tags are prohibited within @fold, but unexpectedly found use of '
+                                 u'a tag on the {} meta field that is only allowed within a @fold!'
+                                 u'Location: {}'
+                                 .format(COUNT_META_FIELD_NAME, location))
 
         # Schema validation has ensured that the fields below exist.
         tag_name = tag_directive.arguments[0].value.value
@@ -288,9 +302,11 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
 
         graphql_type = strip_non_null_from_type(current_schema_type)
         if is_in_fold_scope(context):
-            graphql_type = GraphQLList(graphql_type)
             # Fold outputs are only allowed at the last level of traversal
             context['fold_innermost_scope'] = None
+
+            if location.field != COUNT_META_FIELD_NAME:
+                graphql_type = GraphQLList(graphql_type)
 
         context['outputs'][output_name] = {
             'location': location,
@@ -811,7 +827,10 @@ def _compile_output_step(outputs):
                 raise AssertionError(u'Unreachable state reached, optional in fold: '
                                      u'{}'.format(output_context))
 
-            expression = expressions.FoldedOutputContextField(location, graphql_type)
+            if location.field == COUNT_META_FIELD_NAME:
+                expression = expressions.FoldCountOutputContextField(location)
+            else:
+                expression = expressions.FoldedOutputContextField(location, graphql_type)
         else:
             expression = expressions.OutputContextField(location, graphql_type)
 

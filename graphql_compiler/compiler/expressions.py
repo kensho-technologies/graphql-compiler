@@ -1,9 +1,9 @@
 # Copyright 2017-present Kensho Technologies, LLC.
-from graphql import GraphQLList, GraphQLNonNull
+from graphql import GraphQLInt, GraphQLList, GraphQLNonNull
 import six
 
 from ..exceptions import GraphQLCompilationError
-from ..schema import GraphQLDate, GraphQLDateTime
+from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression
 from .helpers import (
     STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
@@ -480,6 +480,10 @@ class FoldedOutputContextField(Expression):
             raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
                 type(self.fold_scope_location), self.fold_scope_location))
 
+        if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
+            raise AssertionError(u'Received unexpected field name for FoldedOutputContextField: '
+                                 u'{} {}'.format(self.fold_scope_location, self))
+
         if not isinstance(self.field_type, GraphQLList):
             raise ValueError(u'Invalid value of "field_type", expected a list type but got: '
                              u'{}'.format(self.field_type))
@@ -512,8 +516,6 @@ class FoldedOutputContextField(Expression):
 
         template_data = {
             'mark_name': mark_name,
-            'direction': edge_direction,
-            'edge_name': edge_name,
             'field_name': field_name,
         }
         return template % template_data
@@ -533,6 +535,54 @@ class FoldedOutputContextField(Expression):
     def __ne__(self, other):
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
+
+
+class FoldCountOutputContextField(Expression):
+    """An expression used to output the number of elements captured in a @fold scope."""
+
+    __slots__ = ('fold_scope_location',)
+
+    def __init__(self, fold_scope_location):
+        """Construct a new FoldCountOutputContextField object for this fold.
+
+        Args:
+            fold_scope_location: FoldScopeLocation specifying the fold whose size is being output.
+
+        Returns:
+            new FoldCountOutputContextField object
+        """
+        super(FoldCountOutputContextField, self).__init__(fold_scope_location)
+        self.fold_scope_location = fold_scope_location
+        self.validate()
+
+    def validate(self):
+        """Validate that the FoldCountOutputContextField is correctly representable."""
+        if not isinstance(self.fold_scope_location, FoldScopeLocation):
+            raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
+                type(self.fold_scope_location), self.fold_scope_location))
+
+        if self.fold_scope_location.field != COUNT_META_FIELD_NAME:
+            raise AssertionError(u'Unexpected field in the FoldScopeLocation of this '
+                                 u'FoldCountOutputContextField object: {} {}'
+                                 .format(self.fold_scope_location, self))
+
+    def to_match(self):
+        """Return a unicode object with the MATCH representation of this expression."""
+        self.validate()
+        edge_direction, edge_name = self.fold_scope_location.get_first_folded_edge()
+
+        mark_name, field_name = self.fold_scope_location.get_location_name()
+        validate_safe_string(mark_name)
+
+        template = u'$%(mark_name)s.size()'
+        template_data = {
+            'mark_name': mark_name,
+        }
+        return template % template_data
+
+    def to_gremlin(self):
+        """Must never be called."""
+        raise NotImplementedError()
 
 
 class ContextFieldExistence(Expression):
