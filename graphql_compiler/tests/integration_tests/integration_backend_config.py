@@ -15,6 +15,14 @@ SQL_BACKENDS = {
     test_backend.SQLITE,
 }
 
+# sqlite does not require that a DB be created/dropped for testing
+EXPLICIT_DB_BACKENDS = {
+    test_backend.POSTGRES,
+    test_backend.MYSQL,
+    test_backend.MARIADB,
+    test_backend.MSSQL,
+}
+
 MATCH_BACKENDS = {
     test_backend.ORIENTDB,
 }
@@ -33,8 +41,6 @@ SQL_BACKEND_TO_CONNECTION_STRING = {
 }
 
 SqlTestBackend = namedtuple('SqlTestBackend', (
-    'connection_string',
     'engine',
-    'connection',
-    'transaction',
+    'base_connection_string',
 ))

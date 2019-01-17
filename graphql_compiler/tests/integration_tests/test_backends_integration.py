@@ -1,8 +1,10 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from unittest import TestCase
 
+from parameterized import parameterized
 import pytest
-import six
+
+from graphql_compiler.tests import test_backend
 
 from ..test_helpers import get_schema
 from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
@@ -11,20 +13,28 @@ from .integration_test_helpers import (
 )
 
 
-# The following test class uses several fixtures adding members that pylint
-# does not recognize
-# pylint: disable=no-member
-
+# Store the test parametrization for running against all backends. Individual tests can customize
+# the list of backends to test against with the full @parametrized.expand([...]) decorator
+all_backends = parameterized.expand([
+    test_backend.ORIENTDB,
+    test_backend.POSTGRES,
+    test_backend.MARIADB,
+    test_backend.MYSQL,
+    test_backend.SQLITE,
+    test_backend.MSSQL,
+])
 
 # Store the typical fixtures required for an integration tests.
 # Individual tests can supply the full @pytest.mark.usefixtures to override if necessary.
-integration_fixture_decorator = pytest.mark.usefixtures(
+integration_fixtures = pytest.mark.usefixtures(
     'integration_graph_client',
     'sql_integration_data',
-    'sql_integration_test',
 )
 
 
+# The following test class uses several fixtures adding members that pylint
+# does not recognize
+# pylint: disable=no-member
 class IntegrationTests(TestCase):
 
     @classmethod
@@ -33,42 +43,43 @@ class IntegrationTests(TestCase):
         cls.maxDiff = None
         cls.schema = get_schema()
 
-    def assertResultsEqual(self, expected_results, results):
+    def assertResultsEqual(self, graphql_query, parameters, backend_name, expected_results):
         """Assert that two lists of DB results are equal, independent of order."""
-        self.assertListEqual(sort_db_results(expected_results), sort_db_results(results))
-
-    def assertAllResultsEqual(self, graphql_query, parameters, expected_results):
-        """Assert that all DB backends return the expected results, independent of order."""
-        backend_results = self.compile_and_run_query(graphql_query, parameters)
-        for results in six.itervalues(backend_results):
-            self.assertResultsEqual(expected_results, results)
+        backend_results = self.compile_and_run_query(graphql_query, parameters, backend_name)
+        try:
+            self.assertListEqual(sort_db_results(expected_results),
+                                 sort_db_results(backend_results))
+        except AssertionError as error:
+            # intercept and modify error message to indicate which backend(s) failed
+            error.args = (u'Failure for backend {}: '.format(backend_name) + error.args[0],)
+            raise error
 
     @classmethod
-    def compile_and_run_query(cls, graphql_query, parameters):
+    def compile_and_run_query(cls, graphql_query, parameters, backend_name):
         """Compiles and runs the graphql query with the supplied parameters against all backends.
 
         Args:
             graphql_query: str, GraphQL query string to run against every backend.
             parameters: Dict[str, Any], input parameters to the query.
+            backend_name: str, the name of the test backend to get results from.
 
         Returns:
-            Dict[str, Dict], dictionary mapping the TestBackend to the results fetched from that
-                             backend.
+            List[Dict[str, Any]], backend results as a list of dictionaries.
         """
-        backend_to_results = {}
-        for backend_name in SQL_BACKENDS:
-            sql_test_backend = cls.sql_test_backends[backend_name]
+        if backend_name in SQL_BACKENDS:
+            engine = cls.sql_backend_name_to_engine[backend_name]
             results = compile_and_run_sql_query(
-                cls.schema, graphql_query, parameters, sql_test_backend)
-            backend_to_results[backend_name] = results
-        for backend_name in MATCH_BACKENDS:
+                cls.schema, graphql_query, parameters, engine)
+        elif backend_name in MATCH_BACKENDS:
             results = compile_and_run_match_query(
                 cls.schema, graphql_query, parameters, cls.graph_client)
-            backend_to_results[backend_name] = results
-        return backend_to_results
+        else:
+            raise AssertionError(u'Unknown test backend {}.'.format(backend_name))
+        return results
 
-    @integration_fixture_decorator
-    def test_backends(self):
+    @all_backends
+    @integration_fixtures
+    def test_backends(self, backend_name):
         graphql_query = '''
         {
             Animal {
@@ -82,6 +93,6 @@ class IntegrationTests(TestCase):
             {'animal_name': 'Animal 3'},
             {'animal_name': 'Animal 4'},
         ]
-        self.assertAllResultsEqual(graphql_query, {}, expected_results)
+        self.assertResultsEqual(graphql_query, {}, backend_name, expected_results)
 
 # pylint: enable=no-member

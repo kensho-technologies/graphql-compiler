@@ -4,11 +4,10 @@ from os import path
 
 from funcy import retry
 import six
-from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, event, text
+from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, text
 
-from .. import test_backend
 from ..integration_tests.integration_backend_config import (
-    SQL_BACKEND_TO_CONNECTION_STRING, SqlTestBackend
+    EXPLICIT_DB_BACKENDS, SQL_BACKEND_TO_CONNECTION_STRING, SqlTestBackend
 )
 
 
@@ -43,46 +42,39 @@ def _load_sql_files_to_orient_client(client, sql_files):
 def init_sql_integration_test_backends():
     """Connect to and open transaction on each SQL DB under test."""
     sql_test_backends = {}
-    for backend_name, connection_string in six.iteritems(SQL_BACKEND_TO_CONNECTION_STRING):
-        engine = create_engine(connection_string)
-        # sqlite has some non-standard transaction handling by default, notably that it will often
-        # not start or prematurely end transactions. This workaround with more background is
-        # detailed on https://docs.sqlalchemy.org/en/latest/dialects/sqlite.html
-        if backend_name == test_backend.SQLITE:
-            # pylint: disable=unused-variable
-            @event.listens_for(engine, "connect")
-            def do_connect(dbapi_connection, connection_record):
-                """Don't let sqlite emit BEGIN signals. We will emit BEGIN ourselves as needed."""
-                dbapi_connection.isolation_level = None
-
-            @event.listens_for(engine, "begin")
-            def do_begin(conn):
-                """Emit BEGIN at the start of a transaction."""
-                conn.execute("BEGIN")
-            # pylint: enable=unused-variable
-        # MYSQL and MARIADB do not have a default DB so a DB must be created
-        if backend_name in {test_backend.MYSQL, test_backend.MARIADB}:
-            # safely create the DB
-            engine.execute(text('DROP DATABASE IF EXISTS animals; CREATE DATABASE animals'))
-            # update the connection string and engine to connect to this DB specifically
-            connection_string = connection_string + u'/animals'
+    for backend_name, base_connection_string in six.iteritems(SQL_BACKEND_TO_CONNECTION_STRING):
+        engine = create_engine(base_connection_string)
+        # safely create the test DATABASE for all SQL backends except sqlite
+        # sqlite's in-memory database does not need to be explicitly created/dropped.
+        if backend_name in EXPLICIT_DB_BACKENDS:
+            # safely drop the test DB, outside of a transaction (autocommit)
+            safe_delete_command = text('DROP DATABASE IF EXISTS animals;')
+            engine.execution_options(isolation_level="AUTOCOMMIT").execute(safe_delete_command)
+            # create the test DB, outside of a transaction (autocommit)
+            create_command = text('CREATE DATABASE animals;')
+            engine.execution_options(isolation_level="AUTOCOMMIT").execute(create_command)
+            # update the connection string and engine to connect to this new DB specifically
+            connection_string = base_connection_string + u'/animals'
             engine = create_engine(connection_string)
-        connection = engine.connect()
-        transaction = connection.begin()
-        sql_test_backends[backend_name] = SqlTestBackend(
-            connection_string=connection_string,
-            engine=engine,
-            connection=connection,
-            transaction=transaction,
-        )
+        sql_test_backend = SqlTestBackend(engine, base_connection_string)
+        sql_test_backends[backend_name] = sql_test_backend
     return sql_test_backends
 
 
 def tear_down_integration_test_backends(sql_test_backends):
     """Rollback backends' transactions to wipe test data and to close the active connections."""
-    for sql_test_backend in six.itervalues(sql_test_backends):
-        sql_test_backend.transaction.rollback()
-        sql_test_backend.connection.close()
+    for backend_name, sql_test_backend in six.iteritems(sql_test_backends):
+        if backend_name not in EXPLICIT_DB_BACKENDS:
+            continue
+        # explicitly release engine resources, specifically to disconnect from active DB
+        # some backends including Postgres do no not allow an in use DB to be dropped
+        sql_test_backend.engine.dispose()
+        # connect to base server, not explicit DB, so DB can be dropped
+        engine = create_engine(sql_test_backend.base_connection_string)
+        # set execution options to AUTOCOMMIT so that the DB drop is not performed in a transaction
+        # as this is not allowed on some SQL backends
+        (engine.execution_options(isolation_level="AUTOCOMMIT")
+         .execute(text('DROP DATABASE IF EXISTS animals;')))
 
 
 def generate_sql_integration_data(sql_test_backends):
@@ -108,4 +100,4 @@ def generate_sql_integration_data(sql_test_backends):
         metadata.create_all(sql_test_backend.engine)
         for table, insert_values in table_values:
             for insert_value in insert_values:
-                sql_test_backend.connection.execute(table.insert(insert_value))
+                sql_test_backend.engine.execute(table.insert(insert_value))

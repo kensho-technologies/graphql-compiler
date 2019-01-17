@@ -35,7 +35,7 @@ def compile_and_run_match_query(schema, graphql_query, parameters, graph_client)
     return results
 
 
-def compile_and_run_sql_query(schema, graphql_query, parameters, sql_test_backend):
+def compile_and_run_sql_query(schema, graphql_query, parameters, engine):
     """Compiles and runs a SQL query against the supplied SQL backend."""
     # TODO: un-mock the SQL compilation once the SQL backend can run queries.
     def mock_sql_compilation(schema, graphql_query, parameters, compiler_metadata):
@@ -51,6 +51,9 @@ def compile_and_run_sql_query(schema, graphql_query, parameters, sql_test_backen
     compilation_result = mock_sql_compilation(schema, graphql_query, parameters, None)
     query = compilation_result.query
     results = []
-    for result in sql_test_backend.connection.execute(query):
-        results.append(dict(result))
+    connection = engine.connect()
+    with connection.begin() as trans:
+        for result in connection.execute(query):
+            results.append(dict(result))
+        trans.rollback()
     return results
