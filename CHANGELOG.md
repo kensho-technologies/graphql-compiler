@@ -2,6 +2,14 @@
 
 ## Current development version
 
+## v1.8.3
+
+- Explicit support for Python 3.7. Earlier compiler versions also worked on 3.7, but now we also run tests in 3.7 to confirm. [#148](https://github.com/kensho-technologies/graphql-compiler/pull/148)
+- Bug fix for compilation error when using `has_edge_degree` and `between` filtering in the same scope. [#146](https://github.com/kensho-technologies/graphql-compiler/pull/146)
+- Exposed additional query metadata that describes `@recurse` and `@filter` directives encountered in the query. [#141](https://github.com/kensho-technologies/graphql-compiler/pull/141/files)
+
+Thanks to `gurer-kensho` for the contribution.
+
 ## v1.8.2
 
 - Fix overly strict type check on `@recurse` directives involving a union type. [#131](https://github.com/kensho-technologies/graphql-compiler/pull/131)
