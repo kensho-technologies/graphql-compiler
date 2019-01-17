@@ -11,8 +11,9 @@ This workaround doesn't work in OrientDB <2.2.17 due to another bug.
 The workaround should fix the problem starting with OrientDB 2.2.18.
 """
 from ..blocks import Filter
-from ..expressions import (BinaryComposition, ContextField, ContextFieldExistence, NullLiteral,
-                           TernaryConditional)
+from ..expressions import (
+    BinaryComposition, ContextField, ContextFieldExistence, NullLiteral, TernaryConditional
+)
 
 
 def workaround_lowering_pass(ir_blocks):

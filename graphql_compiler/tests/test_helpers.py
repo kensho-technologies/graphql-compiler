@@ -199,6 +199,8 @@ def get_schema():
             in_Animal_ImportantEvent: [Animal]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
+            out_Event_RelatedEvent: [EventOrBirthEvent]
+            in_Event_RelatedEvent: [EventOrBirthEvent]
         }
 
         # Assume that in the database, the below type is actually a subclass of Event.
@@ -213,6 +215,8 @@ def get_schema():
             in_Animal_ImportantEvent: [Animal]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
+            out_Event_RelatedEvent: [EventOrBirthEvent]
+            in_Event_RelatedEvent: [EventOrBirthEvent]
         }
 
         # Because of the above, the base type for this union is Event.

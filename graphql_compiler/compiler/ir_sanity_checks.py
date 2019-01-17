@@ -3,8 +3,10 @@
 
 from funcy.py2 import pairwise
 
-from .blocks import (Backtrack, CoerceType, ConstructResult, Filter, Fold, MarkLocation,
-                     OutputSource, QueryRoot, Recurse, Traverse, Unfold)
+from .blocks import (
+    Backtrack, CoerceType, ConstructResult, Filter, Fold, MarkLocation, OutputSource, QueryRoot,
+    Recurse, Traverse, Unfold
+)
 from .ir_lowering_common import extract_folds_from_ir_blocks
 
 

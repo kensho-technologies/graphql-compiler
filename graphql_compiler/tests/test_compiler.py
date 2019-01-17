@@ -142,7 +142,7 @@ class CompilerTests(unittest.TestCase):
                     }}
                     RETURN $matches
                 )
-            ''' % {'operator': match_operator}
+            ''' % {'operator': match_operator}  # nosec, the operators are hardcoded above
 
             # In Gremlin, equality comparisons use two equal signs instead of one, unlike in MATCH.
             gremlin_operator = u'==' if operator == u'=' else operator
@@ -2198,6 +2198,106 @@ class CompilerTests(unittest.TestCase):
                     m.Species__in_Animal_OfSpecies__in_Animal_ParentOf___1.name : null),
                 parent_name: m.Species__in_Animal_OfSpecies___1.name,
                 species_name: m.Species___1.name
+            ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_has_edge_degree_op_filter_with_optional_and_between(self):
+        test_data = test_input_data.has_edge_degree_op_filter_with_optional_and_between()
+
+        expected_match = '''
+            SELECT EXPAND($result)
+            LET
+                $optional__0 = (
+                    SELECT
+                        Animal___1.name AS `animal_name`
+                    FROM (
+                        MATCH {{
+                            class: Animal,
+                            where: ((
+                                (
+                                    (uuid BETWEEN {uuid_lower_bound} AND {uuid_upper_bound}) AND
+                                    (
+                                        (
+                                            ({number_of_edges} = 0) AND
+                                            (in_Animal_ParentOf IS null)
+                                        ) OR (
+                                            (in_Animal_ParentOf IS NOT null) AND
+                                            (in_Animal_ParentOf.size() = {number_of_edges})
+                                        )
+                                    )
+                                ) AND (
+                                    (in_Animal_ParentOf IS null) OR
+                                    (in_Animal_ParentOf.size() = 0)
+                                )
+                            )),
+                            as: Animal___1
+                        }}
+                        RETURN $matches
+                    )
+                ),
+                $optional__1 = (
+                    SELECT
+                        Animal___1.name AS `animal_name`,
+                        Animal__in_Animal_ParentOf__out_Entity_Related___1.name AS `related_event`
+                    FROM (
+                        MATCH {{
+                            class: Animal,
+                            where: ((
+                                (uuid BETWEEN {uuid_lower_bound} AND {uuid_upper_bound}) AND
+                                (
+                                    (
+                                        ({number_of_edges} = 0) AND
+                                        (in_Animal_ParentOf IS null)
+                                    ) OR (
+                                        (in_Animal_ParentOf IS NOT null) AND
+                                        (in_Animal_ParentOf.size() = {number_of_edges})
+                                    )
+                                )
+                            )),
+                            as: Animal___1
+                        }}.in('Animal_ParentOf') {{
+                            as: Animal__in_Animal_ParentOf___1
+                        }}.out('Entity_Related') {{
+                            where: ((@this INSTANCEOF 'Event')),
+                            as: Animal__in_Animal_ParentOf__out_Entity_Related___1
+                        }} RETURN $matches
+                    )
+                ),
+                $result = UNIONALL($optional__0, $optional__1)
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (
+                (
+                    (
+                        ($number_of_edges == 0) &&
+                        (it.in_Animal_ParentOf == null)
+                    ) || (
+                        (it.in_Animal_ParentOf != null) &&
+                        (it.in_Animal_ParentOf.count() == $number_of_edges)
+                    )
+                ) && (
+                    (it.uuid >= $uuid_lower_bound) && (it.uuid <= $uuid_upper_bound)
+                )
+            )}
+            .as('Animal___1')
+                .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+                .as('Animal__in_Animal_ParentOf___1')
+                    .ifThenElse{it == null}{null}{it.out('Entity_Related')}
+                    .filter{it, m -> ((it == null) || ['Event'].contains(it['@class']))}
+                    .as('Animal__in_Animal_ParentOf__out_Entity_Related___1')
+                .back('Animal__in_Animal_ParentOf___1')
+            .optional('Animal___1')
+            .as('Animal___2')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                related_event: (
+                    (m.Animal__in_Animal_ParentOf__out_Entity_Related___1 != null) ?
+                    m.Animal__in_Animal_ParentOf__out_Entity_Related___1.name :
+                    null
+                )
             ])}
         '''
 
@@ -5318,6 +5418,39 @@ class CompilerTests(unittest.TestCase):
                     (m.Animal__out_Animal_ParentOf___1 != null) ?
                     m.Animal__out_Animal_ParentOf___1.name : null)
             ])}
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
+    def test_recursive_field_type_is_subtype_of_parent_field(self):
+        """Ensure recursion can occur on an edge assigned to a supertype of the current scope."""
+        test_data = test_input_data.recursive_field_type_is_subtype_of_parent_field()
+
+        expected_match = '''
+            SELECT BirthEvent__out_Event_RelatedEvent___1.name AS `related_event_name`
+            FROM (
+                MATCH {{
+                    class: BirthEvent,
+                    as: BirthEvent___1
+                }}.out('Event_RelatedEvent') {{
+                    while: ($depth < 2),
+                    as: BirthEvent__out_Event_RelatedEvent___1
+                }}
+                RETURN $matches
+            )
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'BirthEvent')
+            .as('BirthEvent___1')
+            .copySplit(_(),_()
+            .out('Event_RelatedEvent'),_()
+            .out('Event_RelatedEvent')
+            .out('Event_RelatedEvent'))
+            .exhaustMerge.as('BirthEvent__out_Event_RelatedEvent___1')
+            .back('BirthEvent___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                related_event_name: m.BirthEvent__out_Event_RelatedEvent___1.name ])}
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin)

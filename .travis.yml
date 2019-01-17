@@ -1,25 +1,39 @@
 sudo: false
 language: python
 cache: pip
-python:
-  - "2.7"
-  - "3.6"
 dist: xenial
 services:
   - docker
 install:
-  - pip install -r dev-requirements.txt
-  - pip install -e .
+  - pip install --upgrade pip
+  - pip install --upgrade setuptools pipenv
+  - pipenv install --dev --deploy --system
+  - pipenv install --system --skip-lock -e .
 before_script:
   - docker-compose up -d
-script:
-  - ./scripts/copyright_line_check.sh
-  - isort --check-only --verbose --recursive graphql_compiler/
-  - flake8 --exclude **/snap_*.py graphql_compiler/
-  - pydocstyle graphql_compiler/
-  - pylint graphql_compiler/
-  - bandit -r graphql_compiler/
-  - py.test --cov=graphql_compiler graphql_compiler/tests
+matrix:
+  include:
+  - name: "Lint and static analysis"
+    python: "3.6"
+    script:
+      - pipenv run ./scripts/copyright_line_check.sh
+      - pipenv run isort --check-only --verbose --recursive graphql_compiler/
+      - pipenv run flake8 --config=setup.cfg graphql_compiler/
+      - pipenv run pydocstyle graphql_compiler/
+      - pipenv run pylint graphql_compiler/
+      - pipenv run bandit -r graphql_compiler/
+  - name: "Python 2.7 unit tests"
+    python: "2.7"
+    script:
+      - pipenv run py.test --cov=graphql_compiler graphql_compiler/tests
+  - name: "Python 3.6 unit tests"
+    python: "3.6"
+    script:
+      - pipenv run py.test --cov=graphql_compiler graphql_compiler/tests
+  - name: "Python 3.7 unit tests"
+    python: "3.7"
+    script:
+      - pipenv run py.test --cov=graphql_compiler graphql_compiler/tests
 after_success:
   - docker-compose down
   - coveralls

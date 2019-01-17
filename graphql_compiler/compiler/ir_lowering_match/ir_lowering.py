@@ -11,8 +11,10 @@ to simplify the final code generation step.
 import six
 
 from ..blocks import Backtrack, CoerceType, MarkLocation, QueryRoot
-from ..expressions import (BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral,
-                           FoldedOutputContextField, Literal, TernaryConditional, TrueLiteral)
+from ..expressions import (
+    BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, FoldedOutputContextField,
+    Literal, TernaryConditional, TrueLiteral
+)
 from ..helpers import FoldScopeLocation
 from .utils import convert_coerce_type_to_instanceof_filter
 

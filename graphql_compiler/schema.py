@@ -4,8 +4,10 @@ from datetime import date, datetime
 from decimal import Decimal
 
 import arrow
-from graphql import (DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLInt, GraphQLList,
-                     GraphQLNonNull, GraphQLScalarType, GraphQLString)
+from graphql import (
+    DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLInt, GraphQLList, GraphQLNonNull,
+    GraphQLScalarType, GraphQLString
+)
 
 
 # Constraints:

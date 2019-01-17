@@ -4,12 +4,15 @@ from functools import partial
 import six
 
 from ..blocks import ConstructResult, Filter, Traverse
-from ..expressions import (BinaryComposition, ContextField, FoldedOutputContextField, Literal,
-                           LocalField, OutputContextField, TernaryConditional, TrueLiteral,
-                           UnaryTransformation, Variable)
+from ..expressions import (
+    BinaryComposition, ContextField, FoldedOutputContextField, Literal, LocalField,
+    OutputContextField, TernaryConditional, TrueLiteral, UnaryTransformation, Variable
+)
 from ..match_query import MatchQuery, MatchStep
-from .utils import (BetweenClause, CompoundMatchQuery, construct_optional_traversal_tree,
-                    expression_list_to_conjunction, filter_edge_field_non_existence)
+from .utils import (
+    BetweenClause, CompoundMatchQuery, construct_optional_traversal_tree,
+    expression_list_to_conjunction, filter_edge_field_non_existence
+)
 
 
 def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
@@ -494,14 +497,15 @@ def _update_context_field_expression(present_locations, expression):
         if isinstance(lower_bound, ContextField) or isinstance(upper_bound, ContextField):
             raise AssertionError(u'Found BetweenClause with ContextFields as lower/upper bounds. '
                                  u'This should never happen: {}'.format(expression))
+        return expression
     elif isinstance(expression, (OutputContextField, FoldedOutputContextField)):
         raise AssertionError(u'Found unexpected expression of type {}. This should never happen: '
                              u'{}'.format(type(expression).__name__, expression))
     elif isinstance(expression, no_op_blocks):
         return expression
-    else:
-        raise AssertionError(u'Found unexpected expression of type {}. This should never happen: '
-                             u'{}'.format(type(expression).__name__, expression))
+
+    raise AssertionError(u'Found unhandled expression of type {}. This should never happen: '
+                         u'{}'.format(type(expression).__name__, expression))
 
 
 def _lower_non_existent_context_field_filters(match_traversals, visitor_fn):

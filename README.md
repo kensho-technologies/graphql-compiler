@@ -207,6 +207,8 @@ This query returns the name of each `Animal` in the graph, in a column named `an
 - `@output` can only be applied to property fields.
 - The value provided for `out_name` may only consist of upper or lower case letters
   (`A-Z`, `a-z`), or underscores (`_`).
+- The value provided for `out_name` cannot be prefixed with `___` (three underscores). This
+namespace is reserved for compiler internal use.
 - For any given query, all `out_name` values must be unique. In other words, output columns must
   have unique names.
 

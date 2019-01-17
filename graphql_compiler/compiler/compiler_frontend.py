@@ -62,27 +62,32 @@ from collections import namedtuple
 from graphql.error import GraphQLSyntaxError
 from graphql.language.ast import Field, InlineFragment
 from graphql.language.parser import parse
-from graphql.type.definition import (GraphQLInterfaceType, GraphQLList, GraphQLObjectType,
-                                     GraphQLUnionType)
+from graphql.type.definition import (
+    GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLUnionType
+)
 from graphql.validation import validate
 import six
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
 from ..schema import DIRECTIVES
-from .context_helpers import (has_encountered_output_source, is_in_fold_scope, is_in_optional_scope,
-                              validate_context_for_visiting_vertex_field)
-from .directive_helpers import (get_local_filter_directives, get_unique_directives,
-                                validate_property_directives, validate_root_vertex_directives,
-                                validate_vertex_directives,
-                                validate_vertex_field_directive_in_context,
-                                validate_vertex_field_directive_interactions)
+from .context_helpers import (
+    has_encountered_output_source, is_in_fold_scope, is_in_optional_scope,
+    validate_context_for_visiting_vertex_field
+)
+from .directive_helpers import (
+    get_local_filter_directives, get_unique_directives, validate_property_directives,
+    validate_root_vertex_directives, validate_vertex_directives,
+    validate_vertex_field_directive_in_context, validate_vertex_field_directive_interactions
+)
 from .filters import process_filter_directive
-from .helpers import (FoldScopeLocation, Location, get_ast_field_name, get_edge_direction_and_name,
-                      get_field_type_from_schema, get_uniquely_named_objects_by_name,
-                      get_vertex_field_type, invert_dict, is_vertex_field_name,
-                      strip_non_null_from_type, validate_safe_string)
-from .metadata import LocationInfo, QueryMetadataTable
+from .helpers import (
+    FoldScopeLocation, Location, get_ast_field_name, get_edge_direction_and_name,
+    get_field_type_from_schema, get_uniquely_named_objects_by_name, get_vertex_field_type,
+    invert_dict, is_vertex_field_name, strip_non_null_from_type, validate_output_name,
+    validate_safe_string
+)
+from .metadata import LocationInfo, QueryMetadataTable, RecurseInfo
 
 
 # LocationStackEntry contains the following:
@@ -279,6 +284,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
             raise GraphQLCompilationError(u'Cannot reuse output name: '
                                           u'{}, {}'.format(output_name, context))
         validate_safe_string(output_name)
+        validate_output_name(output_name)
 
         graphql_type = strip_non_null_from_type(current_schema_type)
         if is_in_fold_scope(context):
@@ -312,20 +318,39 @@ def _get_recurse_directive_depth(field_name, field_directives):
     return recurse_depth
 
 
-def _validate_recurse_directive_types(current_schema_type, field_schema_type):
-    """Perform type checks on the enclosing type and the recursed type for a recurse directive."""
-    has_union_type = isinstance(field_schema_type, GraphQLUnionType)
-    is_same_type = current_schema_type.is_same_type(field_schema_type)
+def _validate_recurse_directive_types(current_schema_type, field_schema_type, context):
+    """Perform type checks on the enclosing type and the recursed type for a recurse directive.
+
+    Args:
+        current_schema_type: GraphQLType, the schema type at the current location
+        field_schema_type: GraphQLType, the schema type at the inner scope
+        context: dict, various per-compilation data (e.g. declared tags, whether the current block
+                 is optional, etc.). May be mutated in-place in this function!
+    """
+    # Get the set of all allowed types in the current scope.
+    type_hints = context['type_equivalence_hints'].get(field_schema_type)
+    type_hints_inverse = context['type_equivalence_hints_inverse'].get(field_schema_type)
+    allowed_current_types = {field_schema_type}
+
+    if type_hints and isinstance(type_hints, GraphQLUnionType):
+        allowed_current_types.update(type_hints.types)
+
+    if type_hints_inverse and isinstance(type_hints_inverse, GraphQLUnionType):
+        allowed_current_types.update(type_hints_inverse.types)
+
+    # The current scope must be of the same type as the field scope, or an acceptable subtype.
+    current_scope_is_allowed = current_schema_type in allowed_current_types
+
     is_implemented_interface = (
         isinstance(field_schema_type, GraphQLInterfaceType) and
         isinstance(current_schema_type, GraphQLObjectType) and
         field_schema_type in current_schema_type.interfaces
     )
 
-    if not any((has_union_type, is_same_type, is_implemented_interface)):
+    if not any((current_scope_is_allowed, is_implemented_interface)):
         raise GraphQLCompilationError(u'Edges expanded with a @recurse directive must either '
-                                      u'be of union type, or be of the same type as their '
-                                      u'enclosing scope, or be of an interface type that is '
+                                      u'be of the same type as their enclosing scope, a supertype '
+                                      u'of the enclosing scope, or be of an interface type that is '
                                       u'implemented by the type of their enclosing scope. '
                                       u'Enclosing scope type: {}, edge type: '
                                       u'{}'.format(current_schema_type, field_schema_type))
@@ -368,15 +393,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                                      inner_location, context)
         basic_blocks.extend(inner_basic_blocks)
 
-    # The length of the stack should be the same before exiting this function
-    initial_marked_location_stack_size = len(context['marked_location_stack'])
-
     # step V-3: mark the graph position, and process output_source directive
     basic_blocks.append(_mark_location(location))
-    if not is_in_fold_scope(context):
-        # The following append is the Location corresponding to the initial MarkLocation
-        # for the current vertex and the `num_traverses` counter set to 0.
-        context['marked_location_stack'].append(_construct_location_stack_entry(location, 0))
 
     output_source = _process_output_source_directive(schema, current_schema_type, ast,
                                                      location, context, unique_local_directives)
@@ -408,22 +426,30 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         edge_traversal_is_recursive = recurse_directive is not None
 
         # This is true for any vertex expanded within an @optional scope.
-        # Currently @optional is not allowed within @optional.
-        # This will need to change if nested @optionals have to be supported.
-        within_optional_scope = 'optional' in context and not edge_traversal_is_optional
+        within_optional_scope = 'optional' in context
 
         if edge_traversal_is_optional:
-            # Entering an optional block!
-            # Make sure there's a marked location right before it for the optional Backtrack
-            # to jump back to. Otherwise, the traversal could rewind to an old marked location
-            # and might ignore entire stretches of applied filtering.
-            if context['marked_location_stack'][-1].num_traverses > 0:
+            # Invariant: There must always be a marked location corresponding to the query position
+            # immediately before any optional Traverse.
+            #
+            # This invariant is verified in the IR sanity checks module (ir_sanity_checks.py),
+            # in the function named _sanity_check_mark_location_preceding_optional_traverse().
+            #
+            # This marked location is the one that the @optional directive's corresponding
+            # optional Backtrack will jump back to. If such a marked location isn't present,
+            # the backtrack could rewind to an old marked location and might ignore
+            # entire stretches of applied filtering.
+            #
+            # Assumption: The only way there might not be a marked location here is
+            # if the current location already traversed into child locations, not including folds.
+            non_fold_child_locations = {
+                child_location
+                for child_location in query_metadata_table.get_child_locations(location)
+                if not isinstance(child_location, FoldScopeLocation)
+            }
+            if non_fold_child_locations:
                 location = query_metadata_table.revisit_location(location)
-
                 basic_blocks.append(_mark_location(location))
-                context['marked_location_stack'].pop()
-                new_stack_entry = _construct_location_stack_entry(location, 0)
-                context['marked_location_stack'].append(new_stack_entry)
 
         if fold_directive:
             inner_location = location.navigate_to_fold(field_name)
@@ -456,24 +482,20 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             basic_blocks.append(fold_block)
             context['fold'] = inner_location
         elif recurse_directive:
+            _validate_recurse_directive_types(current_schema_type, field_schema_type, context)
             recurse_depth = _get_recurse_directive_depth(field_name, inner_unique_directives)
-            _validate_recurse_directive_types(current_schema_type, field_schema_type)
             basic_blocks.append(blocks.Recurse(edge_direction,
                                                edge_name,
                                                recurse_depth,
                                                within_optional_scope=within_optional_scope))
+            query_metadata_table.record_recurse_info(location,
+                                                     RecurseInfo(edge_direction=edge_direction,
+                                                                 edge_name=edge_name,
+                                                                 depth=recurse_depth))
         else:
             basic_blocks.append(blocks.Traverse(edge_direction, edge_name,
                                                 optional=edge_traversal_is_optional,
                                                 within_optional_scope=within_optional_scope))
-
-        if not edge_traversal_is_folded and not is_in_fold_scope(context):
-            # Current block is either a Traverse or a Recurse that is not within any fold context.
-            # Increment the `num_traverses` counter.
-            old_location_stack_entry = context['marked_location_stack'][-1]
-            new_location_stack_entry = _construct_location_stack_entry(
-                old_location_stack_entry.location, old_location_stack_entry.num_traverses + 1)
-            context['marked_location_stack'][-1] = new_location_stack_entry
 
         inner_basic_blocks = _compile_ast_node_to_ir(schema, field_schema_type, field_ast,
                                                      inner_location, context)
@@ -512,24 +534,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                 location = query_metadata_table.revisit_location(location)
 
                 basic_blocks.append(_mark_location(location))
-                context['marked_location_stack'].pop()
-                new_stack_entry = _construct_location_stack_entry(location, 0)
-                context['marked_location_stack'].append(new_stack_entry)
             else:
                 basic_blocks.append(blocks.Backtrack(location))
-
-    # Pop off the initial Location for the current vertex.
-    if not is_in_fold_scope(context):
-        context['marked_location_stack'].pop()
-
-    # Check that the length of the stack remains the same as when control entered this function.
-    final_marked_location_stack_size = len(context['marked_location_stack'])
-    if initial_marked_location_stack_size != final_marked_location_stack_size:
-        raise AssertionError(u'Size of stack changed from {} to {} after executing this function.'
-                             u'This should never happen : {}'
-                             .format(initial_marked_location_stack_size,
-                                     final_marked_location_stack_size,
-                                     context['marked_location_stack']))
 
     return basic_blocks
 
@@ -640,7 +646,7 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     # step 1: apply local filter, if any
     for filter_operation_info in filter_operations:
         basic_blocks.append(
-            process_filter_directive(filter_operation_info, context))
+            process_filter_directive(filter_operation_info, location, context))
 
     if location.field is not None:
         # The location is at a property, compile the property data following P-steps.
@@ -732,12 +738,6 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         # 'type_equivalence_hints_inverse' is the inverse of type_equivalence_hints,
         # which is always invertible.
         'type_equivalence_hints_inverse': invert_dict(type_equivalence_hints),
-        # The marked_location_stack explicitly maintains a stack (implemented as list)
-        # of namedtuples (each corresponding to a MarkLocation) containing:
-        #  - location: the location within the corresponding MarkLocation object
-        #  - num_traverses: the number of Recurse and Traverse blocks created
-        #                   after the corresponding MarkLocation
-        'marked_location_stack': []
     }
 
     # Add the query root basic block to the output.
@@ -944,7 +944,7 @@ def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
         - ir_blocks: a list of IR basic block objects
         - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
         - output_metadata: a dict of output name (string) -> OutputMetadata object
-        - location_types: a dict of location objects -> GraphQL type objects at that location
+        - query_metadata_table: a QueryMetadataTable object containing location metadata
 
     Raises flavors of GraphQLError in the following cases:
         - if the query is invalid GraphQL (GraphQLParsingError);

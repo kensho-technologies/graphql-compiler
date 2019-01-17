@@ -193,6 +193,14 @@ def validate_safe_string(value):
         raise GraphQLCompilationError(u'Encountered illegal characters in string: {}'.format(value))
 
 
+def validate_output_name(value):
+    """Ensure that the provided string is valid for use as an output name."""
+    internal_name_prefix = u'___'
+    if value.startswith(internal_name_prefix):
+        raise GraphQLCompilationError(
+            u'The prefix "___" (three underscores) for output names is reserved by the compiler.')
+
+
 def validate_edge_direction(edge_direction):
     """Ensure the provided edge direction is either "in" or "out"."""
     if not isinstance(edge_direction, six.string_types):
@@ -226,7 +234,7 @@ def invert_dict(invertible_dict):
             raise TypeError(u'Expected an invertible dict, but value at key {} has type {}'.format(
                 k, type(v).__name__))
         if v in inverted:
-            raise TypeError(u'Expected an invertible dict, but keys'
+            raise TypeError(u'Expected an invertible dict, but keys '
                             u'{} and {} map to the same value'.format(
                                 inverted[v], k))
         inverted[v] = k

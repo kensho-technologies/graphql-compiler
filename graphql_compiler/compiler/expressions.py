@@ -5,9 +5,11 @@ import six
 from ..exceptions import GraphQLCompilationError
 from ..schema import GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression
-from .helpers import (STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
-                      ensure_unicode_string, is_graphql_type, is_vertex_field_name,
-                      safe_quoted_string, strip_non_null_from_type, validate_safe_string)
+from .helpers import (
+    STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
+    ensure_unicode_string, is_graphql_type, is_vertex_field_name, safe_quoted_string,
+    strip_non_null_from_type, validate_safe_string
+)
 
 
 # Since MATCH uses $-prefixed keywords to indicate special values,
@@ -34,6 +36,8 @@ class Literal(Expression):
 
     Think long and hard about the above before allowing literals in user-supplied GraphQL!
     """
+
+    __slots__ = ('value',)
 
     def __init__(self, value):
         """Construct a new Literal object with the given value."""
@@ -103,6 +107,8 @@ ZeroLiteral = Literal(0)
 
 class Variable(Expression):
     """A variable for a parameterized query, to be filled in at runtime."""
+
+    __slots__ = ('variable_name', 'inferred_type')
 
     def __init__(self, variable_name, inferred_type):
         """Construct a new Variable object for the given variable name.
@@ -201,6 +207,8 @@ class Variable(Expression):
 class LocalField(Expression):
     """A field at the current position in the query."""
 
+    __slots__ = ('field_name',)
+
     def __init__(self, field_name):
         """Construct a new LocalField object that references a field at the current position."""
         super(LocalField, self).__init__(field_name)
@@ -237,6 +245,8 @@ class LocalField(Expression):
 
 class SelectEdgeContextField(Expression):
     """An edge field drawn from the global context, for use in a SELECT WHERE statement."""
+
+    __slots__ = ('location',)
 
     def __init__(self, location):
         """Construct a new SelectEdgeContextField object that references an edge field.
@@ -284,6 +294,8 @@ class SelectEdgeContextField(Expression):
 
 class ContextField(Expression):
     """A field drawn from the global context, e.g. if selected earlier in the query."""
+
+    __slots__ = ('location',)
 
     def __init__(self, location):
         """Construct a new ContextField object that references a field from the global context.
@@ -342,6 +354,8 @@ class ContextField(Expression):
 
 class OutputContextField(Expression):
     """A field used in ConstructResult blocks to output data from the global context."""
+
+    __slots__ = ('location', 'field_type')
 
     def __init__(self, location, field_type):
         """Construct a new OutputContextField object for the field at the given location.
@@ -441,6 +455,8 @@ class OutputContextField(Expression):
 class FoldedOutputContextField(Expression):
     """An expression used to output data captured in a @fold scope."""
 
+    __slots__ = ('fold_scope_location', 'field_type')
+
     def __init__(self, fold_scope_location, field_type):
         """Construct a new FoldedOutputContextField object for this folded field.
 
@@ -525,6 +541,8 @@ class ContextFieldExistence(Expression):
     Useful to determine whether e.g. a field at the end of an optional edge is defined or not.
     """
 
+    __slots__ = ('location',)
+
     def __init__(self, location):
         """Construct a new ContextFieldExistence object for a vertex field from the global context.
 
@@ -570,8 +588,9 @@ def _validate_operator_name(operator, supported_operators):
 class UnaryTransformation(Expression):
     """An expression that modifies an underlying expression with a unary operator."""
 
-    SUPPORTED_OPERATORS = frozenset(
-        {u'size'})
+    SUPPORTED_OPERATORS = frozenset({u'size'})
+
+    __slots__ = ('operator', 'inner_expression')
 
     def __init__(self, operator, inner_expression):
         """Construct a UnaryExpression that modifies the given inner expression."""
@@ -636,9 +655,12 @@ class UnaryTransformation(Expression):
 class BinaryComposition(Expression):
     """An expression created by composing two expressions together."""
 
-    SUPPORTED_OPERATORS = frozenset(
-        {u'=', u'!=', u'>=', u'<=', u'>', u'<', u'+', u'||', u'&&', u'contains', u'intersects',
-         u'has_substring', u'LIKE', u'INSTANCEOF'})
+    SUPPORTED_OPERATORS = frozenset({
+        u'=', u'!=', u'>=', u'<=', u'>', u'<', u'+', u'||', u'&&',
+        u'contains', u'intersects', u'has_substring', u'LIKE', u'INSTANCEOF',
+    })
+
+    __slots__ = ('operator', 'left', 'right')
 
     def __init__(self, operator, left, right):
         """Construct an expression that connects two expressions with an operator.
@@ -662,8 +684,8 @@ class BinaryComposition(Expression):
         _validate_operator_name(self.operator, BinaryComposition.SUPPORTED_OPERATORS)
 
         if not isinstance(self.left, Expression):
-            raise TypeError(u'Expected Expression left, got: {} {}'.format(
-                type(self.left).__name__, self.left))
+            raise TypeError(u'Expected Expression left, got: {} {} {}'.format(
+                type(self.left).__name__, self.left, self))
 
         if not isinstance(self.right, Expression):
             raise TypeError(u'Expected Expression right, got: {} {}'.format(
@@ -761,6 +783,8 @@ class BinaryComposition(Expression):
 
 class TernaryConditional(Expression):
     """A ternary conditional expression, returning one of two expressions depending on a third."""
+
+    __slots__ = ('predicate', 'if_true', 'if_false')
 
     def __init__(self, predicate, if_true, if_false):
         """Construct an expression that evaluates a predicate and returns one of two results.

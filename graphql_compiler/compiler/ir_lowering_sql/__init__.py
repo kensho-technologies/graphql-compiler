@@ -36,7 +36,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        SqlTree object containing SqlNodes organized in a tree structure.
+        tree representation of IR blocks for recursive traversal by SQL backend.
     """
     query_path_to_location_info = {}
     for location, location_info in query_metadata_table.registered_locations:
