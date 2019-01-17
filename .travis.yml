@@ -4,6 +4,10 @@ cache: pip
 dist: xenial
 services:
   - docker
+addons:
+apt:
+  packages:
+    - python-mysqldb
 install:
   - pip install --upgrade pip
   - pip install --upgrade setuptools pipenv

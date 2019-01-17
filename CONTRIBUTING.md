@@ -5,7 +5,21 @@ Thank you for taking the time to contribute to this project!
 To get started, make sure that you have `pipenv`, `docker` and `docker-compose` installed
 on your computer.
 
-Then, from the root of the repository, run:
+Integration tests are run against multiple SQL databases, some of which require dialect specific
+installations to be available in the development environment.
+Currently this affects MySQL. A compatible driver can be installed on OSX with:
+```bash
+brew install mysql
+```
+or on Ubuntu with:
+```bash
+apt-get install python-mysqldb
+```
+
+For more details on other systems please refer to
+[MySQL dialect information](https://docs.sqlalchemy.org/en/latest/dialects/mysql.html).
+
+Once the dev environment is prepared, from the root of the repository, run:
 ```
 docker-compose up -d
 pipenv sync --dev
