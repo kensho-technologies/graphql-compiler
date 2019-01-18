@@ -2,10 +2,28 @@
 
 Thank you for taking the time to contribute to this project!
 
-To get started:
+To get started, make sure that you have `pipenv`, `docker` and `docker-compose` installed
+on your computer.
+
+Integration tests are run against multiple SQL databases, some of which require dialect specific
+installations to be available in the development environment.
+Currently this affects MySQL. A compatible driver can be installed on OSX with:
+```bash
+brew install mysql
 ```
-pip install -r dev-requirements.txt
-pip install -r requirements.txt
+or on Ubuntu with:
+```bash
+apt-get install python-mysqldb
+```
+
+For more details on other systems please refer to
+[MySQL dialect information](https://docs.sqlalchemy.org/en/latest/dialects/mysql.html).
+
+Once the dev environment is prepared, from the root of the repository, run:
+```
+docker-compose up -d
+pipenv sync --dev
+pipenv shell
 
 py.test graphql_compiler/tests
 ```
@@ -31,7 +49,8 @@ of both the contributors and the project.
 This project follows the
 [Google Python style guide](https://google.github.io/styleguide/pyguide.html).
 
-Additionally, any contributions must pass the following set of lint and style checks with no issues:
+Additionally, any contributions must pass the following set of lint and style checks with no issues
+when executed from a pipenv shell (i.e. after running `pipenv shell`):
 ```
 isort --check-only --verbose --recursive graphql_compiler/
 

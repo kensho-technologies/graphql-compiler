@@ -7,12 +7,8 @@ set -euo pipefail
 # Enable recursive globbing, and make globs that do not match return null values.
 shopt -s globstar nullglob
 
-# Make sure the current working directory is the root directory.
-if [ ! -f "./requirements.txt" ] || [ ! -f "./CHANGELOG.md" ]; then
-    echo -e 'Please run this script from the root directory of the repo:\n'
-    echo -e '    ./scripts/copyright_line_check.sh\n'
-    exit 1
-fi
+# Make sure the current working directory for this script is the root directory.
+cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
 ensure_file_has_copyright_line() {
     filename="$1"
