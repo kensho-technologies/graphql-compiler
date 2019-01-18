@@ -4,6 +4,7 @@ from unittest import TestCase
 from parameterized import parameterized
 import pytest
 
+from graphql_compiler.compiler import metadata
 from graphql_compiler.tests import test_backend
 
 from ..test_helpers import get_schema
@@ -71,7 +72,7 @@ class IntegrationTests(TestCase):
         if backend_name in SQL_BACKENDS:
             engine = cls.sql_backend_name_to_engine[backend_name]
             results = compile_and_run_sql_query(
-                cls.schema, graphql_query, parameters, engine)
+                cls.schema, graphql_query, parameters, engine, cls.sql_metadata)
         elif backend_name in MATCH_BACKENDS:
             results = compile_and_run_match_query(
                 cls.schema, graphql_query, parameters, cls.graph_client)

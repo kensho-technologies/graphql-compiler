@@ -356,3 +356,7 @@ class EmitGremlinTests(unittest.TestCase):
 
         received_match = emit_gremlin.emit_code_from_ir(ir_blocks, None)
         compare_gremlin(self, expected_gremlin, received_match)
+
+
+class EmitSqlTests(unittest.TestCase):
+    pass

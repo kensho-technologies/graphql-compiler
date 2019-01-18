@@ -3,7 +3,8 @@ from graphql import GraphQLString
 import six
 from sqlalchemy import text
 
-from ... import CompilationResult, OutputMetadata, graphql_to_match
+from ...compiler.ir_lowering_sql.metadata import CompilerMetadata
+from ... import CompilationResult, OutputMetadata, graphql_to_match, graphql_to_sql
 from ...compiler import SQL_LANGUAGE
 
 
@@ -35,20 +36,11 @@ def compile_and_run_match_query(schema, graphql_query, parameters, graph_client)
     return results
 
 
-def compile_and_run_sql_query(schema, graphql_query, parameters, engine):
+def compile_and_run_sql_query(schema, graphql_query, parameters, engine, metadata):
     """Compiles and runs a SQL query against the supplied SQL backend."""
-    # TODO: un-mock the SQL compilation once the SQL backend can run queries.
-    def mock_sql_compilation(schema, graphql_query, parameters, compiler_metadata):
-        """Mock out SQL backend compilation for unimplemented SQL backend."""
-        mock_compilation_result = CompilationResult(
-            query=text('SELECT name AS animal_name FROM animal'),
-            language=SQL_LANGUAGE,
-            input_metadata={},
-            output_metadata={'animal_name': OutputMetadata(GraphQLString, False)}
-        )
-        return mock_compilation_result
-
-    compilation_result = mock_sql_compilation(schema, graphql_query, parameters, None)
+    dialect_name = engine.dialect.name
+    sql_metadata = CompilerMetadata(dialect_name, metadata)
+    compilation_result = graphql_to_sql(schema, graphql_query, parameters, sql_metadata, None)
     query = compilation_result.query
     results = []
     connection = engine.connect()

@@ -97,7 +97,7 @@ def _map_query_path_to_location_info(query_metadata_table):
 
 
 def _location_infos_equal(left, right):
-    """Return True if two LocationInfo objects are equivalent for usage, False otherwise."""
+    """True if two LocationInfo objects are equivalent for the SQL backend, False otherwise."""
     if not isinstance(left, LocationInfo) or not isinstance(right, LocationInfo):
         raise AssertionError(
             (u'Unsupported LocationInfo comparison between types {} and {} '

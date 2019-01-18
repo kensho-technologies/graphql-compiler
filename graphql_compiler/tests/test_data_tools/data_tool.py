@@ -101,3 +101,4 @@ def generate_sql_integration_data(sql_test_backends):
         for table, insert_values in table_values:
             for insert_value in insert_values:
                 sql_test_backend.engine.execute(table.insert(insert_value))
+    return metadata

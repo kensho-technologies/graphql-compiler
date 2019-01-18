@@ -2,6 +2,7 @@
 """Safely insert runtime arguments into compiled GraphQL queries."""
 import six
 
+from graphql_compiler.compiler import SQL_LANGUAGE
 from ..compiler import GREMLIN_LANGUAGE, MATCH_LANGUAGE
 from ..exceptions import GraphQLInvalidArgumentError
 from .gremlin_formatting import insert_arguments_into_gremlin_query
@@ -43,6 +44,8 @@ def insert_arguments_into_query(compilation_result, arguments):
         return insert_arguments_into_match_query(compilation_result, arguments)
     elif compilation_result.language == GREMLIN_LANGUAGE:
         return insert_arguments_into_gremlin_query(compilation_result, arguments)
+    elif compilation_result.language == SQL_LANGUAGE:
+        return insert_arguments_into_sql_query(compilation_result, arguments)
     else:
         raise AssertionError(u'Unrecognized language in compilation result: '
                              u'{}'.format(compilation_result))
