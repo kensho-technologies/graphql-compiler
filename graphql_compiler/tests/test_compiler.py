@@ -3767,6 +3767,29 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin)
 
+    def test_filter_on_count_with_nested_filter(self):
+        test_data = test_input_data.filter_on_count_with_nested_filter()
+
+        expected_match = '''
+            SELECT
+                Species___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Species,
+                    as: Species___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Species___1___in_Animal_OfSpecies = Species___1.in("Animal_OfSpecies")\
+.out("Animal_LivesIn")[(name = {location})].asList()
+            WHERE
+                ($Species___1___in_Animal_OfSpecies.size() = {num_animals})
+        '''
+        expected_gremlin = NotImplementedError
+
+        check_test_data(self, test_data, expected_match, expected_gremlin)
+
     def test_optional_and_traverse(self):
         test_data = test_input_data.optional_and_traverse()
 

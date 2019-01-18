@@ -2014,6 +2014,33 @@ def multiple_filters_on_count():
         type_equivalence_hints=None)
 
 
+def filter_on_count_with_nested_filter():
+    graphql_input = '''{
+        Species {
+            name @output(out_name: "name")
+            in_Animal_OfSpecies @fold {
+                out_Animal_LivesIn {
+                    __count @filter(op_name: "=", value: ["$num_animals"])
+                    name @filter(op_name: "=", value: ["$location"])
+                }
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'num_animals': GraphQLInt,
+        'location': GraphQLString,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def optional_and_traverse():
     graphql_input = '''{
         Animal {

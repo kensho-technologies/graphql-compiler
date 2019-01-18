@@ -2,6 +2,7 @@
 """Helper functions for dealing with the frontend "context" object."""
 
 from ..exceptions import GraphQLCompilationError
+from ..schema import COUNT_META_FIELD_NAME
 
 
 CONTEXT_FOLD_INNERMOST_SCOPE = 'fold_innermost_scope'
@@ -94,6 +95,7 @@ def has_encountered_output_source(context):
 def validate_context_for_visiting_vertex_field(parent_location, vertex_field_name, context):
     """Ensure that the current context allows for visiting a vertex field."""
     if is_in_fold_innermost_scope(context):
-        raise GraphQLCompilationError(u'Traversing inside a @fold block after output is '
-                                      u'not supported! Parent location: {}, vertex field name: {}'
-                                      .format(parent_location, vertex_field_name))
+        raise GraphQLCompilationError(
+            u'Traversing inside a @fold block after filtering on {} or outputting fields '
+            u'is not supported! Parent location: {}, vertex field name: {}'
+            .format(COUNT_META_FIELD_NAME, parent_location, vertex_field_name))

@@ -322,6 +322,42 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
 
+        use_of_count_before_innermost_scope = '''{
+            Species {
+                name @output(out_name: "name")
+                in_Animal_OfSpecies @fold {
+                    __count @output(out_name: "fold_size")
+                    out_Animal_LivesIn {
+                        name @filter(op_name: "=", value: ["$location"])
+                    }
+                }
+            }
+        }'''
+
+        multiple_uses_of_count_in_one_fold_1 = '''{
+            Species {
+                name @output(out_name: "name")
+                in_Animal_OfSpecies @fold {
+                    __count @output(out_name: "fold_size")
+                    out_Animal_LivesIn {
+                        __count @filter(op_name: "=", value: ["$num_animals"])
+                    }
+                }
+            }
+        }'''
+
+        multiple_uses_of_count_in_one_fold_2 = '''{
+            Species {
+                name @output(out_name: "name")
+                in_Animal_OfSpecies @fold {
+                    __count @filter(op_name: "=", value: ["$num_animals"])
+                    out_Animal_LivesIn {
+                        __count @output(out_name: "fold_size")
+                    }
+                }
+            }
+        }'''
+
         all_test_cases = (
             fold_on_property_field,
             fold_on_root_vertex,
@@ -336,6 +372,9 @@ class IrGenerationErrorTests(unittest.TestCase):
             multiple_vertex_fields_within_fold,
             multiple_vertex_fields_within_fold_after_traverse,
             use_of_count_outside_of_fold,
+            use_of_count_before_innermost_scope,
+            multiple_uses_of_count_in_one_fold_1,
+            multiple_uses_of_count_in_one_fold_2,
         )
 
         for graphql in all_test_cases:

@@ -305,7 +305,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
 
         graphql_type = strip_non_null_from_type(current_schema_type)
         if is_in_fold_scope(context):
-            # Fold outputs are only allowed at the last level of traversal
+            # Fold outputs are only allowed at the last level of traversal.
             set_fold_innermost_scope(context)
 
             if location.field != COUNT_META_FIELD_NAME:
@@ -673,6 +673,9 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     for filter_operation_info in filter_operations:
         filter_block = process_filter_directive(filter_operation_info, location, context)
         if isinstance(location, FoldScopeLocation) and location.field == COUNT_META_FIELD_NAME:
+            # Filtering on the fold count field is only allowed at the innermost scope of a fold.
+            set_fold_innermost_scope(context)
+
             # This Filter is going in the global operations section of the query, so it cannot
             # use LocalField expressions since there is no "local" location to use.
             # Rewrite it so that all references of data at a location instead use ContextFields.

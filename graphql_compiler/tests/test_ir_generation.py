@@ -3358,6 +3358,53 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_filter_on_count_with_nested_filter(self):
+        test_data = test_input_data.filter_on_count_with_nested_filter()
+
+        base_location = helpers.Location(('Species',))
+        animal_fold = base_location.navigate_to_fold('in_Animal_OfSpecies')
+        location_fold = animal_fold.navigate_to_subpath('out_Animal_LivesIn')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Species'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(animal_fold),
+            blocks.MarkLocation(animal_fold),
+            blocks.Traverse('out', 'Animal_LivesIn'),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'=',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$location', GraphQLString)
+                )
+            ),
+            blocks.MarkLocation(location_fold),
+            blocks.Backtrack(animal_fold),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'=',
+                    expressions.FoldedContextField(
+                        location_fold.navigate_to_field(COUNT_META_FIELD_NAME),
+                        GraphQLInt
+                    ),
+                    expressions.Variable('$num_animals', GraphQLInt)
+                )
+            ),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Species',
+            animal_fold: 'Animal',
+            location_fold: 'Location',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_optional_and_traverse(self):
         test_data = test_input_data.optional_and_traverse()
 
