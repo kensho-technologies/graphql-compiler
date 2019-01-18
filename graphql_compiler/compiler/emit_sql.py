@@ -10,8 +10,7 @@ from . import sql_context_helpers as context_helpers
 # The compilation context holds state that changes during compilation as the tree is traversed
 CompilationContext = namedtuple('CompilationContext', (
     # 'query_path_to_selectable': Dict[Tuple[str, ...], Selectable], mapping from each
-    # query_path to the Selectable located at that query_path. This will be updated when a query
-    # is wrapped as a CTE.
+    # query_path to the Selectable located at that query_path.
     'query_path_to_selectable',
     # 'query_path_to_location_info': Dict[Tuple[str, ...], LocationInfo], inverse mapping from
     # each query_path to the LocationInfo located at that query_path

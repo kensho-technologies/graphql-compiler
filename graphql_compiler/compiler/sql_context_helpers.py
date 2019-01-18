@@ -24,8 +24,9 @@ def try_get_column(column_name, node, context):
     """Attempt to get a column by name from the selectable.
 
     Args:
-        selectable: Selectable, selectable to attempt to retrieve the named column from.
         column_name: str, name of the column to retrieve.
+        node: SqlNode, the node the column is being retrieved for.
+        context: CompilationContext, compilation specific metadata.
 
     Returns:
         Optional[column], the SQLAlchemy column if found, None otherwise.
@@ -41,8 +42,9 @@ def get_column(column_name, node, context):
     """Get a column by name from the selectable.
 
     Args:
-        selectable: Selectable, selectable to attempt to retrieve the named column from.
         column_name: str, name of the column to retrieve.
+        node: SqlNode, the node the column is being retrieved for.
+        context: CompilationContext, compilation specific metadata.
 
     Returns:
         column, the SQLAlchemy column if found. Raises an AssertionError otherwise.

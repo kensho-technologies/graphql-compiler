@@ -17,8 +17,6 @@ class SqlNode(object):
         """Create a new SqlNode wrapping a Traverse/Recurse/QueryRoot block at a query_path."""
         self.query_path = query_path
         self.block = block
-        self.children_nodes = []
-        self.recursions = []
         self._parent = None
 
     @property

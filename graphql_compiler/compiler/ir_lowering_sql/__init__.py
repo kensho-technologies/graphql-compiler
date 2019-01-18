@@ -7,7 +7,6 @@ from .sql_tree import SqlNode, SqlQueryTree
 from .. import blocks
 from ..ir_lowering_sql.constants import SqlOutput
 from ..metadata import LocationInfo
-from ... import exceptions
 
 ##############
 # Public API #
@@ -19,20 +18,52 @@ _SKIPPABLE_BLOCKS = (
     blocks.MarkLocation,
 )
 
+_SUPPORTED_BLOCKS = (
+    blocks.QueryRoot,
+    blocks.ConstructResult,
+)
+
+
+def _validate_supported_blocks(ir_blocks, query_metadata_table):
+    unsupported_blocks = []
+    for block in ir_blocks:
+        if not isinstance(block, _SUPPORTED_BLOCKS) and not isinstance(block, _SKIPPABLE_BLOCKS):
+            unsupported_blocks.append(block)
+    if len(unsupported_blocks) > 0:
+        raise NotImplementedError(
+            u'Encountered unsupported blocks {} during construction of SQL query tree for IR '
+            u'blocks {} with query metadata table {} .'.format(
+                unsupported_blocks, ir_blocks, query_metadata_table))
+
 
 def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     """Lower the IR into a form that can be represented by a SQL query.
 
     Args:
-        ir_blocks: list of IR blocks to lower into the SQL tree structure.
+        ir_blocks: list of IR blocks to lower into SQL-compatible form
         query_metadata_table: QueryMetadataTable object containing all metadata collected during
                               query processing, including location metadata (e.g. which locations
                               are folded or optional).
-        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union. Unused.
+        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
+                                Used as a workaround for GraphQL's lack of support for
+                                inheritance across "types" (i.e. non-interfaces), as well as a
+                                workaround for Gremlin's total lack of inheritance-awareness.
+                                The key-value pairs in the dict specify that the "key" type
+                                is equivalent to the "value" type, i.e. that the GraphQL type or
+                                interface in the key is the most-derived common supertype
+                                of every GraphQL type in the "value" GraphQL union.
+                                Recursive expansion of type equivalence hints is not performed,
+                                and only type-level correctness of this argument is enforced.
+                                See README.md for more details on everything this parameter does.
+                                *****
+                                Be very careful with this option, as bad input here will
+                                lead to incorrect output queries being generated.
+                                *****
 
     Returns:
         tree representation of IR blocks for recursive traversal by SQL backend.
     """
+    _validate_supported_blocks(ir_blocks, query_metadata_table)
     construct_result = ir_blocks.pop()
     query_path_to_location_info = _map_query_path_to_location_info(query_metadata_table)
     query_path_to_output_fields = _map_query_path_to_outputs(
@@ -57,10 +88,9 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
         elif isinstance(block, _SKIPPABLE_BLOCKS):
             continue
         else:
-            raise exceptions.GraphQLNotSupportedByBackendError(
-                u'Encountered unsupported block {} during construction of SQL query tree for IR '
-                u'blocks {} with query metadata table {} .'.format(
-                    block, ir_blocks, query_metadata_table))
+            raise AssertionError(
+                u'Unsupported block {} unexpectedly passed validation for IR blocks '
+                u'{} with query metadata table {} .'.format(block, ir_blocks, query_metadata_table))
 
     return SqlQueryTree(tree_root, query_path_to_location_info, query_path_to_output_fields)
 
@@ -123,7 +153,7 @@ def _map_query_path_to_outputs(construct_result, query_path_to_location_info):
     for output_name, field in six.iteritems(construct_result.fields):
         field_name = field.location.field
         if field_name in UNSUPPORTED_META_FIELDS:
-            raise exceptions.GraphQLNotSupportedByBackendError(
+            raise NotImplementedError(
                 u'"{}" is unsupported for output.'.format(UNSUPPORTED_META_FIELDS[field_name]))
         output_query_path = field.location.query_path
         output_field_info = SqlOutput(

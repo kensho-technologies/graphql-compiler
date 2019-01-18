@@ -29,7 +29,3 @@ class GraphQLInvalidArgumentError(GraphQLError):
     - expected arguments may be missing;
     - an argument may be of incorrect type (e.g. expected an int but received a string).
     """
-
-
-class GraphQLNotSupportedByBackendError(GraphQLError):
-    """Exception raised when a compiler feature is not supported by a particular backend."""
