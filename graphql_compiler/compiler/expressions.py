@@ -38,6 +38,18 @@ def make_replacement_visitor(find_expression, replace_expression):
     return visitor_fn
 
 
+def make_type_replacement_visitor(find_types, replacement_func):
+    """Return a visitor function that replaces expressions of a given type with new expressions."""
+    def visitor_fn(expression):
+        """Return a replacement expression if the original expression is of the correct type."""
+        if isinstance(expression, find_types):
+            return replacement_func(expression)
+        else:
+            return expression
+
+    return visitor_fn
+
+
 class Literal(Expression):
     """A literal, such as a boolean value, null, or a fixed string value.
 
@@ -255,27 +267,26 @@ class LocalField(Expression):
             return u'{}.{}'.format(local_object_name, self.field_name)
 
 
-class SelectEdgeContextField(Expression):
-    """An edge field drawn from the global context, for use in a SELECT WHERE statement."""
+class GlobalContextField(Expression):
+    """A field drawn from the global context, for use in a global operations WHERE statement."""
 
     __slots__ = ('location',)
 
     def __init__(self, location):
-        """Construct a new SelectEdgeContextField object that references an edge field.
+        """Construct a new GlobalContextField object that references a field at a given location.
 
         Args:
             location: Location, specifying where the field was declared.
-                      The Location object must contain an edge field.
 
         Returns:
-            new SelectEdgeContextField object
+            new GlobalContextField object
         """
-        super(SelectEdgeContextField, self).__init__(location)
+        super(GlobalContextField, self).__init__(location)
         self.location = location
         self.validate()
 
     def validate(self):
-        """Validate that the SelectEdgeContextField is correctly representable."""
+        """Validate that the GlobalContextField is correctly representable."""
         if not isinstance(self.location, Location):
             raise TypeError(u'Expected Location location, got: {} {}'
                             .format(type(self.location).__name__, self.location))
@@ -284,12 +295,8 @@ class SelectEdgeContextField(Expression):
             raise AssertionError(u'Received Location without a field: {}'
                                  .format(self.location))
 
-        if not is_vertex_field_name(self.location.field):
-            raise AssertionError(u'Received Location with a non-edge field: {}'
-                                 .format(self.location))
-
     def to_match(self):
-        """Return a unicode object with the MATCH representation of this SelectEdgeContextField."""
+        """Return a unicode object with the MATCH representation of this GlobalContextField."""
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
@@ -300,7 +307,7 @@ class SelectEdgeContextField(Expression):
 
     def to_gremlin(self):
         """Not implemented, should not be used."""
-        raise AssertionError(u'SelectEdgeContextField is only used for the WHERE statement in '
+        raise AssertionError(u'GlobalContextField is only used for the WHERE statement in '
                              u'MATCH. This function should not be called.')
 
 
@@ -560,33 +567,33 @@ class FoldedContextField(Expression):
         return not self.__eq__(other)
 
 
-class FoldCountOutputContextField(Expression):
+class FoldCountContextField(Expression):
     """An expression used to output the number of elements captured in a @fold scope."""
 
     __slots__ = ('fold_scope_location',)
 
     def __init__(self, fold_scope_location):
-        """Construct a new FoldCountOutputContextField object for this fold.
+        """Construct a new FoldCountContextField object for this fold.
 
         Args:
             fold_scope_location: FoldScopeLocation specifying the fold whose size is being output.
 
         Returns:
-            new FoldCountOutputContextField object
+            new FoldCountContextField object
         """
-        super(FoldCountOutputContextField, self).__init__(fold_scope_location)
+        super(FoldCountContextField, self).__init__(fold_scope_location)
         self.fold_scope_location = fold_scope_location
         self.validate()
 
     def validate(self):
-        """Validate that the FoldCountOutputContextField is correctly representable."""
+        """Validate that the FoldCountContextField is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
             raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
                 type(self.fold_scope_location), self.fold_scope_location))
 
         if self.fold_scope_location.field != COUNT_META_FIELD_NAME:
             raise AssertionError(u'Unexpected field in the FoldScopeLocation of this '
-                                 u'FoldCountOutputContextField object: {} {}'
+                                 u'FoldCountContextField object: {} {}'
                                  .format(self.fold_scope_location, self))
 
     def to_match(self):

@@ -3174,7 +3174,7 @@ class IrGenerationTests(unittest.TestCase):
                     base_location.navigate_to_field('name'), GraphQLString),
                 'child_names': expressions.FoldedContextField(
                     parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
-                'number_of_children': expressions.FoldCountOutputContextField(
+                'number_of_children': expressions.FoldCountContextField(
                     parent_fold.navigate_to_field(COUNT_META_FIELD_NAME)),
             }),
         ]
@@ -3246,7 +3246,7 @@ class IrGenerationTests(unittest.TestCase):
                         parent_fold.navigate_to_field(COUNT_META_FIELD_NAME),
                         GraphQLInt
                     ),
-                    expressions.ContextField(species_location.navigate_to_field('limbs'))
+                    expressions.GlobalContextField(species_location.navigate_to_field('limbs'))
                 )
             ),
             blocks.ConstructResult({
@@ -3297,7 +3297,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'number_of_children': expressions.FoldCountOutputContextField(
+                'number_of_children': expressions.FoldCountContextField(
                     parent_fold.navigate_to_field(COUNT_META_FIELD_NAME)),
             }),
         ]

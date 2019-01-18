@@ -676,6 +676,11 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
             visitor_fn = expressions.make_replacement_visitor(expected_field, replacement_field)
             filter_block = filter_block.visit_and_update_expressions(visitor_fn)
 
+            visitor_fn = expressions.make_type_replacement_visitor(
+                expressions.ContextField,
+                lambda context_field: expressions.GlobalContextField(context_field.location))
+            filter_block = filter_block.visit_and_update_expressions(visitor_fn)
+
             context['fold_has_count_filter'] = True
             context['global_filters'].append(filter_block)
         else:
@@ -856,7 +861,7 @@ def _compile_output_step(outputs):
                                      u'{}'.format(output_context))
 
             if location.field == COUNT_META_FIELD_NAME:
-                expression = expressions.FoldCountOutputContextField(location)
+                expression = expressions.FoldCountContextField(location)
             else:
                 expression = expressions.FoldedContextField(location, graphql_type)
         else:
