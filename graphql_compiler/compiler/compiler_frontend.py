@@ -70,8 +70,11 @@ from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
 from ..schema import DIRECTIVES, COUNT_META_FIELD_NAME
 from .context_helpers import (
-    has_encountered_output_source, is_in_fold_scope, is_in_optional_scope,
-    validate_context_for_visiting_vertex_field
+    get_context_fold_info, get_optional_scope_or_none, has_encountered_output_source,
+    has_fold_count_filter, is_in_fold_innermost_scope, is_in_fold_scope, is_in_optional_scope,
+    set_fold_count_filter, set_fold_innermost_scope, set_fold_scope_data, set_optional_scope_data,
+    set_output_source_data, unmark_context_fold_scope, unmark_fold_count_filter,
+    unmark_fold_innermost_scope, unmark_optional_scope, validate_context_for_visiting_vertex_field
 )
 from .directive_helpers import (
     get_local_filter_directives, get_unique_directives, validate_property_directives,
@@ -233,7 +236,7 @@ def _process_output_source_directive(schema, current_schema_type, ast,
             raise GraphQLCompilationError(u'Cannot have more than one output source!')
         if is_in_optional_scope(context):
             raise GraphQLCompilationError(u'Cannot have the output source in an optional block!')
-        context['output_source'] = location
+        set_output_source_data(context, location)
         return blocks.OutputSource()
     else:
         return None
@@ -301,7 +304,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
         graphql_type = strip_non_null_from_type(current_schema_type)
         if is_in_fold_scope(context):
             # Fold outputs are only allowed at the last level of traversal
-            context['fold_innermost_scope'] = None
+            set_fold_innermost_scope(context)
 
             if location.field != COUNT_META_FIELD_NAME:
                 graphql_type = GraphQLList(graphql_type)
@@ -440,7 +443,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         edge_traversal_is_recursive = recurse_directive is not None
 
         # This is true for any vertex expanded within an @optional scope.
-        within_optional_scope = 'optional' in context
+        within_optional_scope = is_in_optional_scope(context)
 
         if edge_traversal_is_optional:
             # Invariant: There must always be a marked location corresponding to the query position
@@ -484,9 +487,9 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         if edge_traversal_is_optional:
             # Remember where the topmost optional context started.
-            topmost_optional = context.get('optional', None)
+            topmost_optional = get_optional_scope_or_none(context)
             if topmost_optional is None:
-                context['optional'] = inner_location
+                set_optional_scope_data(context, inner_location)
                 in_topmost_optional_block = True
 
         edge_direction, edge_name = get_edge_direction_and_name(field_name)
@@ -494,7 +497,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         if fold_directive:
             fold_block = blocks.Fold(inner_location)
             basic_blocks.append(fold_block)
-            context['fold'] = inner_location
+            set_fold_scope_data(context, inner_location)
         elif recurse_directive:
             _validate_recurse_directive_types(current_schema_type, field_schema_type, context)
             recurse_depth = _get_recurse_directive_depth(field_name, inner_unique_directives)
@@ -516,17 +519,18 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         basic_blocks.extend(inner_basic_blocks)
 
         if edge_traversal_is_folded:
+            has_count_filter = has_fold_count_filter(context)
             _validate_fold_has_outputs_or_count_filter(
-                context['fold'], 'fold_has_count_filter' in context, context['outputs'])
+                get_context_fold_info(context), has_count_filter, context['outputs'])
             basic_blocks.append(blocks.Unfold())
-            del context['fold']
-            if 'fold_has_count_filter' in context:
-                del context['fold_has_count_filter']
-            if 'fold_innermost_scope' in context:
-                del context['fold_innermost_scope']
+            unmark_context_fold_scope(context)
+            if has_count_filter:
+                unmark_fold_count_filter(context)
+            if is_in_fold_innermost_scope(context):
+                unmark_fold_innermost_scope(context)
 
         if in_topmost_optional_block:
-            del context['optional']
+            unmark_optional_scope(context)
 
         # If we are currently evaluating a @fold vertex,
         # we didn't Traverse into it, so we don't need to backtrack out either.
@@ -681,7 +685,7 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
                 lambda context_field: expressions.GlobalContextField(context_field.location))
             filter_block = filter_block.visit_and_update_expressions(visitor_fn)
 
-            context['fold_has_count_filter'] = True
+            set_fold_count_filter(context)
             context['global_filters'].append(filter_block)
         else:
             basic_blocks.append(filter_block)
