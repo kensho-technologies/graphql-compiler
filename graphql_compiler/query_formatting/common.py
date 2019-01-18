@@ -2,11 +2,11 @@
 """Safely insert runtime arguments into compiled GraphQL queries."""
 import six
 
-from graphql_compiler.compiler import SQL_LANGUAGE
-from ..compiler import GREMLIN_LANGUAGE, MATCH_LANGUAGE
+from ..compiler import GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LANGUAGE
 from ..exceptions import GraphQLInvalidArgumentError
 from .gremlin_formatting import insert_arguments_into_gremlin_query
 from .match_formatting import insert_arguments_into_match_query
+from .sql_formatting import insert_arguments_into_sql_query
 
 
 def _ensure_arguments_are_provided(expected_types, arguments):
