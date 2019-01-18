@@ -3,16 +3,18 @@ from ... import exceptions
 from .constants import SqlBackend
 
 
-class CompilerMetadata(object):
-    """Configuration manager for compilation.
+class SqlMetadata(object):
+    """Metadata wrapper for use during compilation.
 
-    In order to transform GraphQL to SQL, there needs to be
-    additional configuration specified surrounding GraphQL type -> SQL table, GraphQL field -> SQL,
-    and GraphQL Edge -> SQL JOIN.
+    In order to transform GraphQL to SQL, there needs to be additional configuration specified
+    for mapping:
+        - GraphQL types -> SQL tables
+        - GraphQL fields -> SQL columns
+        - GraphQL Edges -> SQL JOINs
     """
 
     def __init__(self, dialect, sqlalchemy_metadata):
-        """Initialize a new compiler metadata manager."""
+        """Initialize a new sql metadata manager."""
         self.sqlalchemy_metadata = sqlalchemy_metadata
         self._db_backend = SqlBackend(dialect)
         self.table_name_to_table = {

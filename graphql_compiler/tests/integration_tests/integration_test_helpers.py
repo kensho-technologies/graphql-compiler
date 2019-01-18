@@ -1,11 +1,8 @@
 # Copyright 2018-present Kensho Technologies, LLC.
-from graphql import GraphQLString
 import six
-from sqlalchemy import text
 
-from ...compiler.ir_lowering_sql.metadata import CompilerMetadata
-from ... import CompilationResult, OutputMetadata, graphql_to_match, graphql_to_sql
-from ...compiler import SQL_LANGUAGE
+from ... import graphql_to_match, graphql_to_sql
+from ...compiler.ir_lowering_sql.metadata import SqlMetadata
 
 
 def sort_db_results(results):
@@ -39,7 +36,7 @@ def compile_and_run_match_query(schema, graphql_query, parameters, graph_client)
 def compile_and_run_sql_query(schema, graphql_query, parameters, engine, metadata):
     """Compiles and runs a SQL query against the supplied SQL backend."""
     dialect_name = engine.dialect.name
-    sql_metadata = CompilerMetadata(dialect_name, metadata)
+    sql_metadata = SqlMetadata(dialect_name, metadata)
     compilation_result = graphql_to_sql(schema, graphql_query, parameters, sql_metadata, None)
     query = compilation_result.query
     results = []

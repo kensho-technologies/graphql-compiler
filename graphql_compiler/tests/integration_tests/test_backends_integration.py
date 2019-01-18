@@ -4,7 +4,6 @@ from unittest import TestCase
 from parameterized import parameterized
 import pytest
 
-from graphql_compiler.compiler import metadata
 from graphql_compiler.tests import test_backend
 
 from ..test_helpers import get_schema

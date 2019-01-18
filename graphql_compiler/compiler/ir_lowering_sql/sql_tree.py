@@ -25,15 +25,13 @@ class SqlNode(object):
     def parent(self):
         """Return parent node of this SQLNode."""
         if self._parent is None:
-            raise AssertionError()
+            raise AssertionError(u'Unexpectedly asked for parent of SqlNode with no parent set.')
         return self._parent
 
     @parent.setter
     def parent(self, value):
         if self._parent is not None:
-            raise AssertionError()
-        if not isinstance(value, SqlNode):
-            raise AssertionError()
+            raise AssertionError(u'Unexpectedly attempting to overwrite existing parent.')
         self._parent = value
 
     def add_child_node(self, child_node):
