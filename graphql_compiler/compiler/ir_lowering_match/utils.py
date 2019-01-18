@@ -6,7 +6,7 @@ import six
 
 from ..blocks import Filter
 from ..expressions import (
-    BinaryComposition, Expression, Literal, LocalField, NullLiteral, GlobalContextField,
+    BinaryComposition, Expression, GlobalContextField, Literal, LocalField, NullLiteral,
     TrueLiteral, UnaryTransformation, ZeroLiteral
 )
 from ..helpers import Location, get_only_element_from_collection, is_vertex_field_name

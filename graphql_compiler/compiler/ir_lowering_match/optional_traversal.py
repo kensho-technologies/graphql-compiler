@@ -5,8 +5,8 @@ import six
 
 from ..blocks import ConstructResult, Filter, Traverse
 from ..expressions import (
-    BinaryComposition, ContextField, FoldedContextField, Literal, LocalField,
-    OutputContextField, TernaryConditional, TrueLiteral, UnaryTransformation, Variable
+    BinaryComposition, ContextField, FoldedContextField, Literal, LocalField, OutputContextField,
+    TernaryConditional, TrueLiteral, UnaryTransformation, Variable
 )
 from ..match_query import MatchQuery, MatchStep
 from .utils import (

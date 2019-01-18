@@ -7,8 +7,8 @@ from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression
 from .helpers import (
     STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
-    ensure_unicode_string, is_graphql_type, is_vertex_field_name, safe_quoted_string,
-    strip_non_null_from_type, validate_safe_string
+    ensure_unicode_string, is_graphql_type, safe_quoted_string, strip_non_null_from_type,
+    validate_safe_string
 )
 
 
@@ -510,20 +510,19 @@ class FoldedContextField(Expression):
                                 .format(self.field_type, self.fold_scope_location))
         else:
             if not isinstance(self.field_type, GraphQLList):
-                raise ValueError(u'Invalid value of "field_type" for a field that is not a meta-field, '
-                                 u'expected a list type but got: {} {}'
+                raise ValueError(u'Invalid value of "field_type" for a field that is not '
+                                 u'a meta-field, expected a list type but got: {} {}'
                                  .format(self.field_type, self.fold_scope_location))
 
             inner_type = strip_non_null_from_type(self.field_type.of_type)
             if isinstance(inner_type, GraphQLList):
                 raise GraphQLCompilationError(
-                    u'Outputting list-valued fields in a @fold context is currently '
-                    u'not supported: {} {}'.format(self.fold_scope_location, self.field_type.of_type))
+                    u'Outputting list-valued fields in a @fold context is currently not supported: '
+                    u'{} {}'.format(self.fold_scope_location, self.field_type.of_type))
 
     def to_match(self):
         """Return a unicode object with the MATCH representation of this expression."""
         self.validate()
-        edge_direction, edge_name = self.fold_scope_location.get_first_folded_edge()
 
         mark_name, field_name = self.fold_scope_location.get_location_name()
         validate_safe_string(mark_name)
@@ -599,9 +598,8 @@ class FoldCountContextField(Expression):
     def to_match(self):
         """Return a unicode object with the MATCH representation of this expression."""
         self.validate()
-        edge_direction, edge_name = self.fold_scope_location.get_first_folded_edge()
 
-        mark_name, field_name = self.fold_scope_location.get_location_name()
+        mark_name, _ = self.fold_scope_location.get_location_name()
         validate_safe_string(mark_name)
 
         template = u'$%(mark_name)s.size()'

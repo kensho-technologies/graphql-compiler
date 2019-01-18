@@ -11,8 +11,8 @@ from graphql.language.ast import InlineFragment
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 import six
 
-from ..schema import TYPENAME_META_FIELD_NAME
 from ..exceptions import GraphQLCompilationError
+from ..schema import TYPENAME_META_FIELD_NAME
 
 
 # These are the Java (OrientDB) representations of the ISO-8601 standard date and datetime formats.

@@ -59,7 +59,9 @@ To get from GraphQL AST to IR, we follow the following pattern:
 """
 from collections import namedtuple
 
-from graphql import GraphQLInt, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLUnionType
+from graphql import (
+    GraphQLInt, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLUnionType
+)
 from graphql.error import GraphQLSyntaxError
 from graphql.language.ast import Field, InlineFragment
 from graphql.language.parser import parse
@@ -68,7 +70,7 @@ import six
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
-from ..schema import DIRECTIVES, COUNT_META_FIELD_NAME
+from ..schema import COUNT_META_FIELD_NAME, DIRECTIVES
 from .context_helpers import (
     get_context_fold_info, get_optional_scope_or_none, has_encountered_output_source,
     has_fold_count_filter, is_in_fold_innermost_scope, is_in_fold_scope, is_in_optional_scope,
@@ -859,6 +861,7 @@ def _compile_output_step(outputs):
 
         expression = None
         existence_check = None
+        # pylint: disable=redefined-variable-type
         if isinstance(location, FoldScopeLocation):
             if optional:
                 raise AssertionError(u'Unreachable state reached, optional in fold: '
@@ -874,7 +877,6 @@ def _compile_output_step(outputs):
             if optional:
                 existence_check = expressions.ContextFieldExistence(location.at_vertex())
 
-        # pylint: disable=redefined-variable-type
         if existence_check:
             expression = expressions.TernaryConditional(
                 existence_check, expression, expressions.NullLiteral)
