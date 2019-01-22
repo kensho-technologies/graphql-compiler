@@ -5,7 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 import unittest
 
-from graphql.type import GraphQLInt, GraphQLField, GraphQLObjectType, GraphQLSchema, GraphQLString
+from graphql.type import GraphQLField, GraphQLInt, GraphQLObjectType, GraphQLSchema, GraphQLString
 from graphql.utils.schema_printer import print_schema
 import pytz
 import six
