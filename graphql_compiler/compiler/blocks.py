@@ -474,7 +474,12 @@ class EndOptional(MarkerBlock):
 
 
 class GlobalOperationsStart(MarkerBlock):
-    """Marker block for the end of MATCH traversals, and the beginning of global operations."""
+    """Marker block for the beginning of global operations.
+
+    Global operations include, for example, various kinds of filters that affect more than one
+    location in the query. Such filters are produced, e.g., as part of nested-optional processing,
+    or when filters are applied to the "__count" meta property.
+    """
 
     __slots__ = ()
 

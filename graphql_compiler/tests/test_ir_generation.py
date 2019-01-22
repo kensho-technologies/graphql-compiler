@@ -7,7 +7,7 @@ import six
 from . import test_input_data
 from ..compiler import blocks, expressions, helpers
 from ..compiler.compiler_frontend import OutputMetadata, graphql_to_ir
-from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .test_helpers import compare_input_metadata, compare_ir_blocks, get_schema
 
 
@@ -169,6 +169,9 @@ def compute_child_and_revisit_locations(ir_blocks):
             traversed_or_recursed_or_folded = False
         elif isinstance(block, blocks.Backtrack):
             current_location = block.location
+        elif isinstance(block, blocks.GlobalOperationsStart):
+            # In the global operations section, there is no "current" location.
+            current_location = None
         elif isinstance(block, no_op_block_types):
             # These blocks do not affect the computed location structure.
             pass
@@ -198,6 +201,7 @@ class IrGenerationTests(unittest.TestCase):
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString)
@@ -217,6 +221,7 @@ class IrGenerationTests(unittest.TestCase):
         expected_blocks = [
             blocks.QueryRoot({'Animal'}),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'birthday': expressions.OutputContextField(
                     base_location.navigate_to_field('birthday'), GraphQLDate),
@@ -249,6 +254,7 @@ class IrGenerationTests(unittest.TestCase):
                     operator, expressions.LocalField('name'),
                     expressions.Variable('$wanted', GraphQLString))),
                 blocks.MarkLocation(base_location),
+                blocks.GlobalOperationsStart(),
                 blocks.ConstructResult({
                     'animal_name': expressions.OutputContextField(
                         base_location.navigate_to_field('name'), GraphQLString)
@@ -286,6 +292,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString)
@@ -311,6 +318,7 @@ class IrGenerationTests(unittest.TestCase):
                 u'<', expressions.LocalField('name'),
                 expressions.Variable('$upper_bound', GraphQLString))),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString)
@@ -334,6 +342,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Traverse('out', 'Animal_ParentOf'),
             blocks.MarkLocation(child_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'parent_name': expressions.OutputContextField(
                     child_location.navigate_to_field('name'), GraphQLString)
@@ -367,6 +376,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(revisited_base_location, optional=True),
             blocks.MarkLocation(twice_revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'species_name': expressions.OutputContextField(
                     species_location.navigate_to_field('name'), GraphQLString),
@@ -413,6 +423,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(child_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'parent_name': expressions.OutputContextField(
                     child_location.navigate_to_field('name'), GraphQLString),
@@ -451,6 +462,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(child_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'related_entity': expressions.OutputContextField(
                     child_location.navigate_to_field('name'), GraphQLString),
@@ -482,6 +494,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Traverse('out', 'Animal_ParentOf'),
             blocks.MarkLocation(child_location),
             blocks.OutputSource(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -535,6 +548,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(animal_fed_at_location),
             blocks.OutputSource(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -593,6 +607,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(child_location),
             blocks.OutputSource(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     child_location.navigate_to_field('name'), GraphQLString),
@@ -629,6 +644,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString
@@ -680,6 +696,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString)
@@ -716,6 +733,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'birthday': expressions.OutputContextField(
                     base_location.navigate_to_field('birthday'), GraphQLDate)
@@ -752,6 +770,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'event_date': expressions.OutputContextField(
                     base_location.navigate_to_field('event_date'), GraphQLDateTime)
@@ -785,6 +804,7 @@ class IrGenerationTests(unittest.TestCase):
                 ),
             ),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString)
@@ -832,6 +852,7 @@ class IrGenerationTests(unittest.TestCase):
                 ),
             ),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString)
@@ -872,6 +893,7 @@ class IrGenerationTests(unittest.TestCase):
                 ),
             ),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString)
@@ -984,6 +1006,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Backtrack(grandparent_location),
             blocks.Backtrack(base_location),
 
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'child_fed_at': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(child_fed_at_location),
@@ -1121,6 +1144,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Backtrack(grandparent_location),
             blocks.Backtrack(base_location),
 
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'child_fed_at': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(child_fed_at_location),
@@ -1167,6 +1191,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(related_species_location),
             blocks.Backtrack(related_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1197,6 +1222,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.CoerceType({'Food'}),
             blocks.MarkLocation(food_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'species_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1231,6 +1257,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.CoerceType({'Food'}),
             blocks.MarkLocation(food_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'species_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1273,6 +1300,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(food_related_location),
             blocks.Backtrack(food_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'species_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1318,6 +1346,7 @@ class IrGenerationTests(unittest.TestCase):
             )),
             blocks.MarkLocation(food_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'species_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1348,6 +1377,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'species_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1379,6 +1409,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Traverse('out', 'Animal_OfSpecies'),
             blocks.MarkLocation(species_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'base_cls': expressions.OutputContextField(
                     base_location.navigate_to_field('@class'), GraphQLString),
@@ -1408,6 +1439,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'entity_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1431,6 +1463,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Recurse('out', 'Animal_ParentOf', 1),
             blocks.MarkLocation(child_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'relation_name': expressions.OutputContextField(
                     child_location.navigate_to_field('name'), GraphQLString),
@@ -1460,6 +1493,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Recurse('out', 'Animal_ParentOf', 2),
             blocks.MarkLocation(ancestor_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1510,6 +1544,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Recurse('out', 'Animal_ParentOf', 2),
             blocks.MarkLocation(ancestor_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1564,6 +1599,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Recurse('in', 'Animal_ParentOf', 2),
             blocks.MarkLocation(descendent_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1602,6 +1638,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(child_location),
             blocks.Backtrack(related_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'food_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1638,6 +1675,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(child_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'relation_name': expressions.OutputContextField(
                     child_location.navigate_to_field('name'), GraphQLString),
@@ -1663,6 +1701,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.CoerceType({'Animal'}),
             blocks.MarkLocation(related_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     related_location.navigate_to_field('name'), GraphQLString),
@@ -1695,6 +1734,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(related_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     related_location.navigate_to_field('name'), GraphQLString),
@@ -1722,6 +1762,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1752,6 +1793,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(child_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1800,6 +1842,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(child_location),
             blocks.Backtrack(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1829,6 +1872,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1859,6 +1903,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(child_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1907,6 +1952,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(child_location),
             blocks.Backtrack(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1936,6 +1982,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -1966,6 +2013,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(parent_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -2014,6 +2062,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(child_location),
             blocks.Backtrack(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -2043,6 +2092,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -2090,6 +2140,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(child_location),
             blocks.Backtrack(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -2150,6 +2201,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Traverse('in', 'Animal_ParentOf'),
             blocks.MarkLocation(child_location),
             blocks.OutputSource(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -2217,6 +2269,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Backtrack(animal_location, optional=True),
             blocks.MarkLocation(revisited_animal_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'species_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -2307,6 +2360,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -2376,12 +2430,13 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(animal_fold),
             blocks.Unfold(),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'species_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
                 'parent_name': expressions.OutputContextField(
                     animal_location.navigate_to_field('name'), GraphQLString),
-                'child_names': expressions.FoldedOutputContextField(
+                'child_names': expressions.FoldedContextField(
                     animal_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -2405,10 +2460,11 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Fold(base_fold),
             blocks.MarkLocation(base_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'child_names_list': expressions.FoldedOutputContextField(
+                'child_names_list': expressions.FoldedContextField(
                     base_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -2435,10 +2491,11 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(parent_fold),
             blocks.Unfold(),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'sibling_and_self_names_list': expressions.FoldedOutputContextField(
+                'sibling_and_self_names_list': expressions.FoldedContextField(
                     parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -2466,10 +2523,11 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(first_traversed_fold),
             blocks.Backtrack(parent_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'sibling_and_self_names_list': expressions.FoldedOutputContextField(
+                'sibling_and_self_names_list': expressions.FoldedContextField(
                     first_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -2501,10 +2559,11 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Backtrack(first_traversed_fold),
             blocks.Backtrack(parent_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'sibling_and_self_species_list': expressions.FoldedOutputContextField(
+                'sibling_and_self_species_list': expressions.FoldedContextField(
                     second_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -2537,10 +2596,11 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Backtrack(sibling_fold),
             blocks.Unfold(),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'sibling_and_self_species_list': expressions.FoldedOutputContextField(
+                'sibling_and_self_species_list': expressions.FoldedContextField(
                     sibling_species_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -2565,12 +2625,13 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Fold(base_fold),
             blocks.MarkLocation(base_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'child_names_list': expressions.FoldedOutputContextField(
+                'child_names_list': expressions.FoldedContextField(
                     base_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
-                'child_uuids_list': expressions.FoldedOutputContextField(
+                'child_uuids_list': expressions.FoldedContextField(
                     base_fold.navigate_to_field('uuid'), GraphQLList(GraphQLID)),
             }),
         ]
@@ -2597,12 +2658,13 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(first_traversed_fold),
             blocks.Backtrack(base_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'sibling_and_self_names_list': expressions.FoldedOutputContextField(
+                'sibling_and_self_names_list': expressions.FoldedContextField(
                     first_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
-                'sibling_and_self_uuids_list': expressions.FoldedOutputContextField(
+                'sibling_and_self_uuids_list': expressions.FoldedContextField(
                     first_traversed_fold.navigate_to_field('uuid'), GraphQLList(GraphQLID)),
             }),
         ]
@@ -2630,16 +2692,17 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Fold(base_in_fold),
             blocks.MarkLocation(base_in_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'child_names_list': expressions.FoldedOutputContextField(
+                'child_names_list': expressions.FoldedContextField(
                     base_out_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
-                'child_uuids_list': expressions.FoldedOutputContextField(
+                'child_uuids_list': expressions.FoldedContextField(
                     base_out_fold.navigate_to_field('uuid'), GraphQLList(GraphQLID)),
-                'parent_names_list': expressions.FoldedOutputContextField(
+                'parent_names_list': expressions.FoldedContextField(
                     base_in_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
-                'parent_uuids_list': expressions.FoldedOutputContextField(
+                'parent_uuids_list': expressions.FoldedContextField(
                     base_in_fold.navigate_to_field('uuid'), GraphQLList(GraphQLID)),
             }),
         ]
@@ -2674,16 +2737,17 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(base_in_traversed_fold),
             blocks.Backtrack(base_in_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'spouse_and_self_names_list': expressions.FoldedOutputContextField(
+                'spouse_and_self_names_list': expressions.FoldedContextField(
                     base_out_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
-                'spouse_and_self_uuids_list': expressions.FoldedOutputContextField(
+                'spouse_and_self_uuids_list': expressions.FoldedContextField(
                     base_out_traversed_fold.navigate_to_field('uuid'), GraphQLList(GraphQLID)),
-                'sibling_and_self_names_list': expressions.FoldedOutputContextField(
+                'sibling_and_self_names_list': expressions.FoldedContextField(
                     base_in_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
-                'sibling_and_self_uuids_list': expressions.FoldedOutputContextField(
+                'sibling_and_self_uuids_list': expressions.FoldedContextField(
                     base_in_traversed_fold.navigate_to_field('uuid'), GraphQLList(GraphQLID)),
             }),
         ]
@@ -2713,12 +2777,13 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Fold(base_fed_at_fold),
             blocks.MarkLocation(base_fed_at_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'child_birthdays_list': expressions.FoldedOutputContextField(
+                'child_birthdays_list': expressions.FoldedContextField(
                     base_parent_fold.navigate_to_field('birthday'), GraphQLList(GraphQLDate)),
-                'fed_at_datetimes_list': expressions.FoldedOutputContextField(
+                'fed_at_datetimes_list': expressions.FoldedContextField(
                     base_fed_at_fold.navigate_to_field('event_date'), GraphQLList(GraphQLDateTime)),
             }),
         ]
@@ -2744,10 +2809,11 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Fold(important_event_fold),
             blocks.MarkLocation(important_event_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'important_events': expressions.FoldedOutputContextField(
+                'important_events': expressions.FoldedContextField(
                     important_event_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -2783,12 +2849,13 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(related_entity_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
-                'related_animals': expressions.FoldedOutputContextField(
+                'related_animals': expressions.FoldedContextField(
                     related_entity_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'related_birthdays': expressions.FoldedOutputContextField(
+                'related_birthdays': expressions.FoldedContextField(
                     related_entity_fold.navigate_to_field('birthday'), GraphQLList(GraphQLDate)),
             }),
         ]
@@ -2828,12 +2895,13 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(inner_fold),
             blocks.Backtrack(parent_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'related_animals': expressions.FoldedOutputContextField(
+                'related_animals': expressions.FoldedContextField(
                     inner_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
-                'related_birthdays': expressions.FoldedOutputContextField(
+                'related_birthdays': expressions.FoldedContextField(
                     inner_fold.navigate_to_field('birthday'), GraphQLList(GraphQLDate)),
             }),
         ]
@@ -2858,10 +2926,11 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Fold(related_entity_fold),
             blocks.MarkLocation(related_entity_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'related_entities': expressions.FoldedOutputContextField(
+                'related_entities': expressions.FoldedContextField(
                     related_entity_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -2900,6 +2969,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(related_location),
             blocks.Backtrack(kid_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     grandkid_location.navigate_to_field('name'), GraphQLString),
@@ -2933,12 +3003,13 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(base_parent_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'child_list': expressions.FoldedOutputContextField(
+                'child_list': expressions.FoldedContextField(
                     base_parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
-                'child_descriptions': expressions.FoldedOutputContextField(
+                'child_descriptions': expressions.FoldedContextField(
                     base_parent_fold.navigate_to_field('description'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -2976,10 +3047,11 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(base_parent_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'child_list': expressions.FoldedOutputContextField(
+                'child_list': expressions.FoldedContextField(
                     base_parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -3003,10 +3075,11 @@ class IrGenerationTests(unittest.TestCase):
             blocks.CoerceType({'Animal'}),
             blocks.MarkLocation(related_entity_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'related_animals': expressions.FoldedOutputContextField(
+                'related_animals': expressions.FoldedContextField(
                     related_entity_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -3038,10 +3111,11 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Backtrack(first_traversed_fold),
             blocks.Backtrack(base_parent_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'related_animal_species': expressions.FoldedOutputContextField(
+                'related_animal_species': expressions.FoldedContextField(
                     second_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -3067,16 +3141,266 @@ class IrGenerationTests(unittest.TestCase):
             blocks.CoerceType({'BirthEvent'}),
             blocks.MarkLocation(important_event_fold),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'birth_events': expressions.FoldedOutputContextField(
+                'birth_events': expressions.FoldedContextField(
                     important_event_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
         expected_location_types = {
             base_location: 'Animal',
             important_event_fold: 'BirthEvent',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_output_count_in_fold_scope(self):
+        test_data = test_input_data.output_count_in_fold_scope()
+
+        base_location = helpers.Location(('Animal',))
+        parent_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(parent_fold),
+            blocks.MarkLocation(parent_fold),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'child_names': expressions.FoldedContextField(
+                    parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+                'number_of_children': expressions.FoldCountContextField(
+                    parent_fold.navigate_to_field(COUNT_META_FIELD_NAME)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_fold: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_filter_count_with_runtime_parameter_in_fold_scope(self):
+        test_data = test_input_data.filter_count_with_runtime_parameter_in_fold_scope()
+
+        base_location = helpers.Location(('Animal',))
+        parent_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(parent_fold),
+            blocks.MarkLocation(parent_fold),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'>=',
+                    expressions.FoldedContextField(
+                        parent_fold.navigate_to_field(COUNT_META_FIELD_NAME),
+                        GraphQLInt
+                    ),
+                    expressions.Variable('$min_children', GraphQLInt)
+                )
+            ),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'child_names': expressions.FoldedContextField(
+                    parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_fold: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_filter_count_with_tagged_parameter_in_fold_scope(self):
+        test_data = test_input_data.filter_count_with_tagged_parameter_in_fold_scope()
+
+        base_location = helpers.Location(('Animal',))
+        species_location = base_location.navigate_to_subpath('out_Animal_OfSpecies')
+        parent_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('out', 'Animal_OfSpecies'),
+            blocks.MarkLocation(species_location),
+            blocks.Backtrack(base_location),
+            blocks.Fold(parent_fold),
+            blocks.MarkLocation(parent_fold),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'>=',
+                    expressions.FoldedContextField(
+                        parent_fold.navigate_to_field(COUNT_META_FIELD_NAME),
+                        GraphQLInt
+                    ),
+                    expressions.GlobalContextField(species_location.navigate_to_field('limbs'))
+                )
+            ),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'child_names': expressions.FoldedContextField(
+                    parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            species_location: 'Species',
+            parent_fold: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_filter_count_and_other_filters_in_fold_scope(self):
+        test_data = test_input_data.filter_count_and_other_filters_in_fold_scope()
+
+        base_location = helpers.Location(('Animal',))
+        parent_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(parent_fold),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'contains',
+                    expressions.LocalField('alias'),
+                    expressions.Variable('$expected_alias', GraphQLString)
+                )
+            ),
+            blocks.MarkLocation(parent_fold),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'>=',
+                    expressions.FoldedContextField(
+                        parent_fold.navigate_to_field(COUNT_META_FIELD_NAME),
+                        GraphQLInt
+                    ),
+                    expressions.Variable('$min_children', GraphQLInt)
+                )
+            ),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'number_of_children': expressions.FoldCountContextField(
+                    parent_fold.navigate_to_field(COUNT_META_FIELD_NAME)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_fold: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_multiple_filters_on_count(self):
+        test_data = test_input_data.multiple_filters_on_count()
+
+        base_location = helpers.Location(('Animal',))
+        parent_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+        related_fold = base_location.navigate_to_fold('out_Entity_Related')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(parent_fold),
+            blocks.MarkLocation(parent_fold),
+            blocks.Unfold(),
+            blocks.Fold(related_fold),
+            blocks.MarkLocation(related_fold),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'>=',
+                    expressions.FoldedContextField(
+                        parent_fold.navigate_to_field(COUNT_META_FIELD_NAME),
+                        GraphQLInt
+                    ),
+                    expressions.Variable('$min_children', GraphQLInt)
+                )
+            ),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'>=',
+                    expressions.FoldedContextField(
+                        related_fold.navigate_to_field(COUNT_META_FIELD_NAME),
+                        GraphQLInt
+                    ),
+                    expressions.Variable('$min_related', GraphQLInt)
+                )
+            ),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_fold: 'Animal',
+            related_fold: 'Entity',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_filter_on_count_with_nested_filter(self):
+        test_data = test_input_data.filter_on_count_with_nested_filter()
+
+        base_location = helpers.Location(('Species',))
+        animal_fold = base_location.navigate_to_fold('in_Animal_OfSpecies')
+        location_fold = animal_fold.navigate_to_subpath('out_Animal_LivesIn')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Species'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(animal_fold),
+            blocks.MarkLocation(animal_fold),
+            blocks.Traverse('out', 'Animal_LivesIn'),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'=',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$location', GraphQLString)
+                )
+            ),
+            blocks.MarkLocation(location_fold),
+            blocks.Backtrack(animal_fold),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'=',
+                    expressions.FoldedContextField(
+                        location_fold.navigate_to_field(COUNT_META_FIELD_NAME),
+                        GraphQLInt
+                    ),
+                    expressions.Variable('$num_animals', GraphQLInt)
+                )
+            ),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Species',
+            animal_fold: 'Animal',
+            location_fold: 'Location',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -3100,6 +3424,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'grandchild_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(grandchild_location),
@@ -3150,6 +3475,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'grandchild_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(grandchild_location),
@@ -3199,6 +3525,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'spouse_and_self_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(spouse_location),
@@ -3256,6 +3583,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Backtrack(child_location, optional=True),
             blocks.MarkLocation(revisited_child_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'spouse_and_self_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(spouse_location),
@@ -3322,6 +3650,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(revisited_base_location, optional=True),
             blocks.MarkLocation(re_revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'spouse_and_self_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(spouse_location),
@@ -3395,6 +3724,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(revisited_base_location, optional=True),
             blocks.MarkLocation(re_revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString
@@ -3454,6 +3784,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -3518,6 +3849,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(animal_fed_at_location),
             blocks.OutputSource(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -3581,6 +3913,7 @@ class IrGenerationTests(unittest.TestCase):
             ),
             blocks.MarkLocation(parent_location),
             blocks.OutputSource(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'parent_name': expressions.OutputContextField(
                     parent_location.navigate_to_field('name'), GraphQLString),
@@ -3704,6 +4037,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Backtrack(grandchild_location),
             blocks.Backtrack(base_location),
 
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'parent_fed_at': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(parent_fed_at_location),
@@ -3752,6 +4086,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'child_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(child_location),
@@ -3801,6 +4136,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'grandchild_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(grandchild_location),
@@ -3853,6 +4189,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Fold(fold_scope),
             blocks.MarkLocation(fold_scope),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -3862,7 +4199,7 @@ class IrGenerationTests(unittest.TestCase):
                         parent_location.navigate_to_field('name'), GraphQLString),
                     expressions.NullLiteral
                 ),
-                'child_names_list': expressions.FoldedOutputContextField(
+                'child_names_list': expressions.FoldedContextField(
                     fold_scope.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -3894,6 +4231,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -3903,7 +4241,7 @@ class IrGenerationTests(unittest.TestCase):
                         parent_location.navigate_to_field('name'), GraphQLString),
                     expressions.NullLiteral
                 ),
-                'child_names_list': expressions.FoldedOutputContextField(
+                'child_names_list': expressions.FoldedContextField(
                     base_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -3943,6 +4281,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(first_traversed_fold),
             blocks.Backtrack(fold_scope),
             blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'grandparent_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(grandparent_location),
@@ -3952,7 +4291,7 @@ class IrGenerationTests(unittest.TestCase):
                 ),
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'grandchild_names_list': expressions.FoldedOutputContextField(
+                'grandchild_names_list': expressions.FoldedContextField(
                     first_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -3994,6 +4333,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'grandparent_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(grandparent_location),
@@ -4003,7 +4343,7 @@ class IrGenerationTests(unittest.TestCase):
                 ),
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
-                'grandchild_names_list': expressions.FoldedOutputContextField(
+                'grandchild_names_list': expressions.FoldedContextField(
                     first_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
             }),
         ]
@@ -4048,6 +4388,7 @@ class IrGenerationTests(unittest.TestCase):
                 )
             ),
             blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString)
@@ -4082,6 +4423,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.MarkLocation(related_location),
 
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'origin': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -4122,6 +4464,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(base_location, optional=True),
             blocks.MarkLocation(revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'spouse_and_self_name': expressions.TernaryConditional(
                     expressions.ContextFieldExistence(spouse_location),
@@ -4219,6 +4562,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.EndOptional(),
             blocks.Backtrack(revisited_base_location, optional=True),
             blocks.MarkLocation(re_revisited_base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'animal_name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString),
@@ -4304,6 +4648,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Recurse('out', 'Event_RelatedEvent', 2),
             blocks.MarkLocation(related_event_location),
             blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'related_event_name': expressions.OutputContextField(
                     related_event_location.navigate_to_field('name'), GraphQLString),

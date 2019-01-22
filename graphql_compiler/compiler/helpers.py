@@ -12,6 +12,7 @@ from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, Gra
 import six
 
 from ..exceptions import GraphQLCompilationError
+from ..schema import TYPENAME_META_FIELD_NAME
 
 
 # These are the Java (OrientDB) representations of the ISO-8601 standard date and datetime formats.
@@ -45,7 +46,7 @@ def get_ast_field_name(ast):
     """Return the normalized field name for the given AST node."""
     replacements = {
         # We always rewrite the following field names into their proper underlying counterparts.
-        '__typename': '@class'
+        TYPENAME_META_FIELD_NAME: '@class'
     }
     base_field_name = ast.name.value
     normalized_name = replacements.get(base_field_name, base_field_name)

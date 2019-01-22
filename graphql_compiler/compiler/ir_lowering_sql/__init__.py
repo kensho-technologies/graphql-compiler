@@ -16,6 +16,8 @@ _SKIPPABLE_BLOCKS = (
     # MarkLocation blocks are used in the first pass over the IR blocks to create a mapping of
     # IR block -> query path for all IR blocks. They can safely be skipped during tree construction.
     blocks.MarkLocation,
+    # Global operations are currently not used by the SQL backend, they can be safely skipped.
+    blocks.GlobalOperationsStart,
 )
 
 _SUPPORTED_BLOCKS = (
@@ -74,6 +76,8 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     block_index_to_location = _map_block_index_to_location(ir_blocks)
     tree_root = None
     for index, block in enumerate(ir_blocks):
+        if isinstance(block, _SKIPPABLE_BLOCKS):
+            continue
         location = block_index_to_location[index]
         if isinstance(block, (blocks.QueryRoot,)):
             query_path = location.query_path
@@ -85,8 +89,6 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                         block, tree_root, ir_blocks, query_metadata_table))
             tree_root = SqlNode(block=block, query_path=query_path)
             query_path_to_node[query_path] = tree_root
-        elif isinstance(block, _SKIPPABLE_BLOCKS):
-            continue
         else:
             raise AssertionError(
                 u'Unsupported block {} unexpectedly passed validation for IR blocks '

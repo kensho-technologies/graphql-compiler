@@ -1,10 +1,11 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Tests that vet the test schema against the schema data in the package."""
+from collections import OrderedDict
 from datetime import date, datetime
 from decimal import Decimal
 import unittest
 
-from graphql.type import GraphQLField, GraphQLObjectType, GraphQLSchema, GraphQLString
+from graphql.type import GraphQLField, GraphQLInt, GraphQLObjectType, GraphQLSchema, GraphQLString
 from graphql.utils.schema_printer import print_schema
 import pytz
 import six
@@ -91,3 +92,22 @@ class SchemaTests(unittest.TestCase):
         for iso_datetime, datetime_obj in six.iteritems(test_data):
             self.assertEqual(iso_datetime, schema.GraphQLDateTime.serialize(datetime_obj))
             self.assertEqual(datetime_obj, schema.GraphQLDateTime.parse_value(iso_datetime))
+
+    def test_meta_fields_from_constant(self):
+        fields = schema.EXTENDED_META_FIELD_DEFINITIONS.copy()
+        fields.update(OrderedDict((
+            ('foo', GraphQLField(GraphQLString)),
+            ('bar', GraphQLField(GraphQLInt)),
+        )))
+        graphql_type = GraphQLObjectType('MyType', fields)
+        custom_schema = GraphQLSchema(graphql_type, directives=schema.DIRECTIVES)
+
+        # Ensure that stringifying and parsing this schema works just fine.
+        printed_schema = print_schema(custom_schema)
+        expected_type_definition = '''\
+type MyType {
+    __count: Int
+    foo: String
+    bar: Int
+}'''.replace('    ', '  ')  # 2 space indentation instead of 4 spaces
+        self.assertIn(expected_type_definition, printed_schema)

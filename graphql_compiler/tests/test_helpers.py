@@ -8,6 +8,7 @@ from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
+from ..schema import insert_meta_fields_into_existing_schema
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
@@ -219,7 +220,9 @@ def get_schema():
     '''
 
     ast = parse(schema_text)
-    return build_ast_schema(ast)
+    schema = build_ast_schema(ast)
+    insert_meta_fields_into_existing_schema(schema)
+    return schema
 
 
 def construct_location_types(location_types_as_strings):

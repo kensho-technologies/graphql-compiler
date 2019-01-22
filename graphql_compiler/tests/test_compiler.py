@@ -46,12 +46,20 @@ class CompilerTests(unittest.TestCase):
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
-        result = compile_graphql_to_gremlin(
-            test_case.schema, test_data.graphql_input,
-            type_equivalence_hints=schema_based_type_equivalence_hints)
-        compare_gremlin(test_case, expected_gremlin, result.query)
-        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+        # Allow features to not be implemented in Gremlin, and instead raise compilation errors.
+        if expected_gremlin == NotImplementedError:
+            with test_case.assertRaises(NotImplementedError):
+                compile_graphql_to_gremlin(
+                    test_case.schema, test_data.graphql_input,
+                    type_equivalence_hints=schema_based_type_equivalence_hints)
+        else:
+            result = compile_graphql_to_gremlin(
+                test_case.schema, test_data.graphql_input,
+                type_equivalence_hints=schema_based_type_equivalence_hints)
+            compare_gremlin(test_case, expected_gremlin, result.query)
+            test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+            compare_input_metadata(test_case, test_data.expected_input_metadata,
+                                   result.input_metadata)
         if expected_sql == NotImplementedError:
             with self.assertRaises(NotImplementedError):
                 compile_graphql_to_sql(
@@ -3676,6 +3684,152 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
+
+        self.check_test_data(self, test_data, expected_match, expected_gremlin, NotImplementedError)
+
+    def test_output_count_in_fold_scope(self):
+        test_data = test_input_data.output_count_in_fold_scope()
+
+        expected_match = '''
+            SELECT
+                $Animal___1___out_Animal_ParentOf.name AS `child_names`,
+                Animal___1.name AS `name`,
+                $Animal___1___out_Animal_ParentOf.size() AS `number_of_children`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
+        '''
+        expected_gremlin = NotImplementedError
+
+        self.check_test_data(self, test_data, expected_match, expected_gremlin, NotImplementedError)
+
+    def test_filter_count_with_runtime_parameter_in_fold_scope(self):
+        test_data = test_input_data.filter_count_with_runtime_parameter_in_fold_scope()
+
+        expected_match = '''
+            SELECT
+                $Animal___1___out_Animal_ParentOf.name AS `child_names`,
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
+            WHERE
+                ($Animal___1___out_Animal_ParentOf.size() >= {min_children})
+        '''
+        expected_gremlin = NotImplementedError
+
+        self.check_test_data(self, test_data, expected_match, expected_gremlin, NotImplementedError)
+
+    def test_filter_count_with_tagged_parameter_in_fold_scope(self):
+        test_data = test_input_data.filter_count_with_tagged_parameter_in_fold_scope()
+
+        expected_match = '''
+            SELECT
+                $Animal___1___out_Animal_ParentOf.name AS `child_names`,
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_OfSpecies') {{
+                    class: Species,
+                    as: Animal__out_Animal_OfSpecies___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
+            WHERE
+                ($Animal___1___out_Animal_ParentOf.size() >= Animal__out_Animal_OfSpecies___1.limbs)
+        '''
+        expected_gremlin = NotImplementedError
+
+        self.check_test_data(self, test_data, expected_match, expected_gremlin, NotImplementedError)
+
+    def test_filter_count_and_other_filters_in_fold_scope(self):
+        test_data = test_input_data.filter_count_and_other_filters_in_fold_scope()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`,
+                $Animal___1___out_Animal_ParentOf.size() AS `number_of_children`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Animal___1___out_Animal_ParentOf =
+                    Animal___1.out("Animal_ParentOf")[(alias CONTAINS {expected_alias})].asList()
+            WHERE
+                ($Animal___1___out_Animal_ParentOf.size() >= {min_children})
+        '''
+        expected_gremlin = NotImplementedError
+
+        self.check_test_data(self, test_data, expected_match, expected_gremlin, NotImplementedError)
+
+    def test_multiple_filters_on_count(self):
+        test_data = test_input_data.multiple_filters_on_count()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Animal___1___out_Animal_ParentOf =
+                    Animal___1.out("Animal_ParentOf").asList() ,
+                $Animal___1___out_Entity_Related =
+                    Animal___1.out("Entity_Related").asList()
+            WHERE
+                (
+                    ($Animal___1___out_Animal_ParentOf.size() >= {min_children}) AND
+                    ($Animal___1___out_Entity_Related.size() >= {min_related})
+                )
+        '''
+        expected_gremlin = NotImplementedError
+
+        self.check_test_data(self, test_data, expected_match, expected_gremlin, NotImplementedError)
+
+    def test_filter_on_count_with_nested_filter(self):
+        test_data = test_input_data.filter_on_count_with_nested_filter()
+
+        expected_match = '''
+            SELECT
+                Species___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Species,
+                    as: Species___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Species___1___in_Animal_OfSpecies = Species___1.in("Animal_OfSpecies")\
+.out("Animal_LivesIn")[(name = {location})].asList()
+            WHERE
+                ($Species___1___in_Animal_OfSpecies.size() = {num_animals})
+        '''
+        expected_gremlin = NotImplementedError
 
         self.check_test_data(self, test_data, expected_match, expected_gremlin, NotImplementedError)
 
