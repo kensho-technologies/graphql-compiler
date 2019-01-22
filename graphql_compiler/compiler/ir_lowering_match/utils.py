@@ -6,7 +6,7 @@ import six
 
 from ..blocks import Filter
 from ..expressions import (
-    BinaryComposition, Expression, Literal, LocalField, NullLiteral, SelectEdgeContextField,
+    BinaryComposition, Expression, GlobalContextField, Literal, LocalField, NullLiteral,
     TrueLiteral, UnaryTransformation, ZeroLiteral
 )
 from ..helpers import Location, get_only_element_from_collection, is_vertex_field_name
@@ -117,9 +117,9 @@ def filter_edge_field_non_existence(edge_expression):
     #   - the edge's field does not exist (is null) on the vertex document, or
     #   - the edge's field does exist, but is an empty list.
     # We check both of these possibilities.
-    if not isinstance(edge_expression, (LocalField, SelectEdgeContextField)):
+    if not isinstance(edge_expression, (LocalField, GlobalContextField)):
         raise AssertionError(u'Received invalid edge_expression {} of type {}.'
-                             u'Expected LocalField or SelectEdgeContextField.'
+                             u'Expected LocalField or GlobalContextField.'
                              .format(edge_expression, type(edge_expression).__name__))
     if isinstance(edge_expression, LocalField):
         if not is_vertex_field_name(edge_expression.field_name):
@@ -171,8 +171,8 @@ def _filter_orientdb_simple_optional_edge(optional_edge_location, inner_location
     inner_local_field = LocalField(inner_location_name)
     inner_location_existence = BinaryComposition(u'!=', inner_local_field, NullLiteral)
 
-    select_edge_context_field = SelectEdgeContextField(optional_edge_location)
-    edge_field_non_existence = filter_edge_field_non_existence(select_edge_context_field)
+    edge_context_field = GlobalContextField(optional_edge_location)
+    edge_field_non_existence = filter_edge_field_non_existence(edge_context_field)
 
     return BinaryComposition(u'||', edge_field_non_existence, inner_location_existence)
 

@@ -5,8 +5,8 @@ import six
 
 from ..blocks import ConstructResult, Filter, Traverse
 from ..expressions import (
-    BinaryComposition, ContextField, FoldedOutputContextField, Literal, LocalField,
-    OutputContextField, TernaryConditional, TrueLiteral, UnaryTransformation, Variable
+    BinaryComposition, ContextField, FoldedContextField, Literal, LocalField, OutputContextField,
+    TernaryConditional, TrueLiteral, UnaryTransformation, Variable
 )
 from ..match_query import MatchQuery, MatchStep
 from .utils import (
@@ -230,8 +230,8 @@ def prune_non_existent_outputs(compound_match_query):
                                              u'present_locations: {}'
                                              .format(expression.location, present_locations))
                     new_output_fields[output_name] = expression
-                elif isinstance(expression, FoldedOutputContextField):
-                    # A FoldedOutputContextField as an output Expression indicates that we are not
+                elif isinstance(expression, FoldedContextField):
+                    # A FoldedContextField as an output Expression indicates that we are not
                     # within an @optional scope. Therefore, the location this output uses must
                     # be in present_locations, and the output is never pruned.
                     base_location = expression.fold_scope_location.base_location
@@ -498,7 +498,7 @@ def _update_context_field_expression(present_locations, expression):
             raise AssertionError(u'Found BetweenClause with ContextFields as lower/upper bounds. '
                                  u'This should never happen: {}'.format(expression))
         return expression
-    elif isinstance(expression, (OutputContextField, FoldedOutputContextField)):
+    elif isinstance(expression, (OutputContextField, FoldedContextField)):
         raise AssertionError(u'Found unexpected expression of type {}. This should never happen: '
                              u'{}'.format(type(expression).__name__, expression))
     elif isinstance(expression, no_op_blocks):

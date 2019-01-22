@@ -1,14 +1,14 @@
 # Copyright 2017-present Kensho Technologies, LLC.
-from graphql import GraphQLList, GraphQLNonNull
+from graphql import GraphQLInt, GraphQLList, GraphQLNonNull
 import six
 
 from ..exceptions import GraphQLCompilationError
-from ..schema import GraphQLDate, GraphQLDateTime
+from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression
 from .helpers import (
     STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
-    ensure_unicode_string, is_graphql_type, is_vertex_field_name, safe_quoted_string,
-    strip_non_null_from_type, validate_safe_string
+    ensure_unicode_string, is_graphql_type, safe_quoted_string, strip_non_null_from_type,
+    validate_safe_string
 )
 
 
@@ -22,8 +22,32 @@ RESERVED_MATCH_KEYWORDS = frozenset({
     u'$elements',
     u'$pathElements',
     u'$depth',
-    u'$currentMatch'
+    u'$currentMatch',
 })
+
+
+def make_replacement_visitor(find_expression, replace_expression):
+    """Return a visitor function that replaces every instance of one expression with another one."""
+    def visitor_fn(expression):
+        """Return the replacement if this expression matches the expression we're looking for."""
+        if expression == find_expression:
+            return replace_expression
+        else:
+            return expression
+
+    return visitor_fn
+
+
+def make_type_replacement_visitor(find_types, replacement_func):
+    """Return a visitor function that replaces expressions of a given type with new expressions."""
+    def visitor_fn(expression):
+        """Return a replacement expression if the original expression is of the correct type."""
+        if isinstance(expression, find_types):
+            return replacement_func(expression)
+        else:
+            return expression
+
+    return visitor_fn
 
 
 class Literal(Expression):
@@ -243,27 +267,26 @@ class LocalField(Expression):
             return u'{}.{}'.format(local_object_name, self.field_name)
 
 
-class SelectEdgeContextField(Expression):
-    """An edge field drawn from the global context, for use in a SELECT WHERE statement."""
+class GlobalContextField(Expression):
+    """A field drawn from the global context, for use in a global operations WHERE statement."""
 
     __slots__ = ('location',)
 
     def __init__(self, location):
-        """Construct a new SelectEdgeContextField object that references an edge field.
+        """Construct a new GlobalContextField object that references a field at a given location.
 
         Args:
             location: Location, specifying where the field was declared.
-                      The Location object must contain an edge field.
 
         Returns:
-            new SelectEdgeContextField object
+            new GlobalContextField object
         """
-        super(SelectEdgeContextField, self).__init__(location)
+        super(GlobalContextField, self).__init__(location)
         self.location = location
         self.validate()
 
     def validate(self):
-        """Validate that the SelectEdgeContextField is correctly representable."""
+        """Validate that the GlobalContextField is correctly representable."""
         if not isinstance(self.location, Location):
             raise TypeError(u'Expected Location location, got: {} {}'
                             .format(type(self.location).__name__, self.location))
@@ -272,12 +295,8 @@ class SelectEdgeContextField(Expression):
             raise AssertionError(u'Received Location without a field: {}'
                                  .format(self.location))
 
-        if not is_vertex_field_name(self.location.field):
-            raise AssertionError(u'Received Location with a non-edge field: {}'
-                                 .format(self.location))
-
     def to_match(self):
-        """Return a unicode object with the MATCH representation of this SelectEdgeContextField."""
+        """Return a unicode object with the MATCH representation of this GlobalContextField."""
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
@@ -288,7 +307,7 @@ class SelectEdgeContextField(Expression):
 
     def to_gremlin(self):
         """Not implemented, should not be used."""
-        raise AssertionError(u'SelectEdgeContextField is only used for the WHERE statement in '
+        raise AssertionError(u'GlobalContextField is only used for the WHERE statement in '
                              u'MATCH. This function should not be called.')
 
 
@@ -452,13 +471,13 @@ class OutputContextField(Expression):
         return not self.__eq__(other)
 
 
-class FoldedOutputContextField(Expression):
+class FoldedContextField(Expression):
     """An expression used to output data captured in a @fold scope."""
 
     __slots__ = ('fold_scope_location', 'field_type')
 
     def __init__(self, fold_scope_location, field_type):
-        """Construct a new FoldedOutputContextField object for this folded field.
+        """Construct a new FoldedContextField object for this folded field.
 
         Args:
             fold_scope_location: FoldScopeLocation specifying the location of
@@ -467,55 +486,67 @@ class FoldedOutputContextField(Expression):
                         Since the field is folded, this must be a GraphQLList of some kind.
 
         Returns:
-            new FoldedOutputContextField object
+            new FoldedContextField object
         """
-        super(FoldedOutputContextField, self).__init__(fold_scope_location, field_type)
+        super(FoldedContextField, self).__init__(fold_scope_location, field_type)
         self.fold_scope_location = fold_scope_location
         self.field_type = field_type
         self.validate()
 
     def validate(self):
-        """Validate that the FoldedOutputContextField is correctly representable."""
+        """Validate that the FoldedContextField is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
             raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
                 type(self.fold_scope_location), self.fold_scope_location))
 
-        if not isinstance(self.field_type, GraphQLList):
-            raise ValueError(u'Invalid value of "field_type", expected a list type but got: '
-                             u'{}'.format(self.field_type))
+        if self.fold_scope_location.field is None:
+            raise ValueError(u'Expected FoldScopeLocation at a field, but got: {}'
+                             .format(self.fold_scope_location))
 
-        inner_type = strip_non_null_from_type(self.field_type.of_type)
-        if isinstance(inner_type, GraphQLList):
-            raise GraphQLCompilationError(
-                u'Outputting list-valued fields in a @fold context is currently '
-                u'not supported: {} {}'.format(self.fold_scope_location, self.field_type.of_type))
+        if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
+            if not GraphQLInt.is_same_type(self.field_type):
+                raise TypeError(u'Expected the __count meta-field to be of GraphQLInt type, but '
+                                u'encountered type {} instead: {}'
+                                .format(self.field_type, self.fold_scope_location))
+        else:
+            if not isinstance(self.field_type, GraphQLList):
+                raise ValueError(u'Invalid value of "field_type" for a field that is not '
+                                 u'a meta-field, expected a list type but got: {} {}'
+                                 .format(self.field_type, self.fold_scope_location))
+
+            inner_type = strip_non_null_from_type(self.field_type.of_type)
+            if isinstance(inner_type, GraphQLList):
+                raise GraphQLCompilationError(
+                    u'Outputting list-valued fields in a @fold context is currently not supported: '
+                    u'{} {}'.format(self.fold_scope_location, self.field_type.of_type))
 
     def to_match(self):
         """Return a unicode object with the MATCH representation of this expression."""
         self.validate()
-        edge_direction, edge_name = self.fold_scope_location.get_first_folded_edge()
 
         mark_name, field_name = self.fold_scope_location.get_location_name()
         validate_safe_string(mark_name)
 
         template = u'$%(mark_name)s.%(field_name)s'
-
-        inner_type = strip_non_null_from_type(self.field_type.of_type)
-        if GraphQLDate.is_same_type(inner_type):
-            # Known OrientDB bug may cause trouble here, and incorrect data may be returned:
-            # https://github.com/orientechnologies/orientdb/issues/7289
-            template += '.format("' + STANDARD_DATE_FORMAT + '")'
-        elif GraphQLDateTime.is_same_type(inner_type):
-            # Known OrientDB bug may cause trouble here, and incorrect data may be returned:
-            # https://github.com/orientechnologies/orientdb/issues/7289
-            template += '.format("' + STANDARD_DATETIME_FORMAT + '")'
-
         template_data = {
             'mark_name': mark_name,
-            'direction': edge_direction,
-            'edge_name': edge_name,
-            'field_name': field_name,
         }
+
+        if field_name == COUNT_META_FIELD_NAME:
+            template_data['field_name'] = 'size()'
+        else:
+            inner_type = strip_non_null_from_type(self.field_type.of_type)
+            if GraphQLDate.is_same_type(inner_type):
+                # Known OrientDB bug may cause trouble here, and incorrect data may be returned:
+                # https://github.com/orientechnologies/orientdb/issues/7289
+                template += '.format("' + STANDARD_DATE_FORMAT + '")'
+            elif GraphQLDateTime.is_same_type(inner_type):
+                # Known OrientDB bug may cause trouble here, and incorrect data may be returned:
+                # https://github.com/orientechnologies/orientdb/issues/7289
+                template += '.format("' + STANDARD_DATETIME_FORMAT + '")'
+
+            template_data['field_name'] = field_name
+
         return template % template_data
 
     def to_gremlin(self):
@@ -533,6 +564,53 @@ class FoldedOutputContextField(Expression):
     def __ne__(self, other):
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
+
+
+class FoldCountContextField(Expression):
+    """An expression used to output the number of elements captured in a @fold scope."""
+
+    __slots__ = ('fold_scope_location',)
+
+    def __init__(self, fold_scope_location):
+        """Construct a new FoldCountContextField object for this fold.
+
+        Args:
+            fold_scope_location: FoldScopeLocation specifying the fold whose size is being output.
+
+        Returns:
+            new FoldCountContextField object
+        """
+        super(FoldCountContextField, self).__init__(fold_scope_location)
+        self.fold_scope_location = fold_scope_location
+        self.validate()
+
+    def validate(self):
+        """Validate that the FoldCountContextField is correctly representable."""
+        if not isinstance(self.fold_scope_location, FoldScopeLocation):
+            raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
+                type(self.fold_scope_location), self.fold_scope_location))
+
+        if self.fold_scope_location.field != COUNT_META_FIELD_NAME:
+            raise AssertionError(u'Unexpected field in the FoldScopeLocation of this '
+                                 u'FoldCountContextField object: {} {}'
+                                 .format(self.fold_scope_location, self))
+
+    def to_match(self):
+        """Return a unicode object with the MATCH representation of this expression."""
+        self.validate()
+
+        mark_name, _ = self.fold_scope_location.get_location_name()
+        validate_safe_string(mark_name)
+
+        template = u'$%(mark_name)s.size()'
+        template_data = {
+            'mark_name': mark_name,
+        }
+        return template % template_data
+
+    def to_gremlin(self):
+        """Must never be called."""
+        raise NotImplementedError()
 
 
 class ContextFieldExistence(Expression):
