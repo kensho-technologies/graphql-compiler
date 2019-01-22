@@ -22,7 +22,7 @@ RESERVED_MATCH_KEYWORDS = frozenset({
     u'$elements',
     u'$pathElements',
     u'$depth',
-    u'$currentMatch'
+    u'$currentMatch',
 })
 
 
@@ -529,7 +529,7 @@ class FoldedContextField(Expression):
 
         template = u'$%(mark_name)s.%(field_name)s'
         template_data = {
-            'mark_name': mark_name
+            'mark_name': mark_name,
         }
 
         if field_name == COUNT_META_FIELD_NAME:

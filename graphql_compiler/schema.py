@@ -296,6 +296,7 @@ EXTENDED_META_FIELD_DEFINITIONS = OrderedDict((
 
 def is_meta_field(field_name):
     """Return True if the field is considered a meta field in the schema, and False otherwise."""
+    return field_name in ALL_SUPPORTED_META_FIELDS
 
 
 def insert_meta_fields_into_existing_schema(graphql_schema):

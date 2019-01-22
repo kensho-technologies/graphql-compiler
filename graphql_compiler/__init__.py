@@ -1,21 +1,22 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Commonly-used functions and data types from this package."""
-from .compiler import (  # noqa
+from .compiler import (
     CompilationResult,
     OutputMetadata,
     compile_graphql_to_gremlin,
     compile_graphql_to_match,
     compile_graphql_to_sql,
-)
+)  # noqa
 from .query_formatting import insert_arguments_into_query  # noqa
 from .query_formatting.graphql_formatting import pretty_print_graphql  # noqa
-
-from .exceptions import GraphQLError  # noqa
-from .exceptions import GraphQLParsingError, GraphQLCompilationError  # noqa
-from .exceptions import GraphQLValidationError, GraphQLInvalidArgumentError  # noqa
-
-from .schema import DIRECTIVES  # noqa
-from .schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal  # noqa
+from .exceptions import (
+    GraphQLCompilationError, GraphQLError, GraphQLInvalidArgumentError, GraphQLParsingError,
+    GraphQLValidationError
+)  # noqa
+from .schema import (
+    DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal,
+    insert_meta_fields_into_existing_schema, is_meta_field
+)  # noqa
 
 
 __package_name__ = 'graphql-compiler'
