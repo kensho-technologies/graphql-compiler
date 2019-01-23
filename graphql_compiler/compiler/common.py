@@ -1,7 +1,9 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from collections import namedtuple
 
-from . import emit_gremlin, emit_match, ir_lowering_gremlin, ir_lowering_match
+from . import (
+    emit_gremlin, emit_match, emit_sql, ir_lowering_gremlin, ir_lowering_match, ir_lowering_sql
+)
 from .compiler_frontend import graphql_to_ir
 
 
@@ -110,7 +112,11 @@ def compile_graphql_to_sql(schema, graphql_string, compiler_metadata, type_equiv
     Returns:
         a CompilationResult object
     """
-    raise NotImplementedError(u'Compiling GraphQL to SQL is not yet supported.')
+    lowering_func = ir_lowering_sql.lower_ir
+    query_emitter_func = emit_sql.emit_code_from_ir
+    return _compile_graphql_generic(
+        SQL_LANGUAGE, lowering_func, query_emitter_func,
+        schema, graphql_string, type_equivalence_hints, compiler_metadata)
 
 
 def _compile_graphql_generic(language, lowering_func, query_emitter_func,

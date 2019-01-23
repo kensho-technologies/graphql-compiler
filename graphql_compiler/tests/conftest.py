@@ -67,12 +67,13 @@ def sql_integration_data(request):
     """Generate integration data for SQL backends."""
     # initialize each SQL backend
     sql_test_backends = init_sql_integration_test_backends()
-    generate_sql_integration_data(sql_test_backends)
+    sql_metadata = generate_sql_integration_data(sql_test_backends)
     # make sql engines accessible within the test class
     request.cls.sql_backend_name_to_engine = {
         backend_name: sql_test_backend.engine
         for backend_name, sql_test_backend in six.iteritems(sql_test_backends)
     }
+    request.cls.sql_metadata = sql_metadata
     # yield the fixture to allow testing class to run
     yield
     # tear down the fixture after the testing class runs all tests

@@ -92,7 +92,10 @@ def graphql_to_sql(schema, graphql_query, parameters, compiler_metadata,
             - output_metadata: dict, output name -> OutputMetadata namedtuple object
             - input_metadata: dict, name of input variables -> inferred GraphQL type, based on use
     """
-    raise NotImplementedError(u'Compiling GraphQL to SQL is not yet supported.')
+    compilation_result = compile_graphql_to_sql(
+        schema, graphql_query, compiler_metadata, type_equivalence_hints=type_equivalence_hints)
+    return compilation_result._replace(
+        query=insert_arguments_into_query(compilation_result, parameters))
 
 
 def graphql_to_gremlin(schema, graphql_query, parameters, type_equivalence_hints=None):
