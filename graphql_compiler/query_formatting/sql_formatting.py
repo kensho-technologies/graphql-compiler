@@ -1,5 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from ..compiler.common import SQL_LANGUAGE
+
+
 ######
 # Public API
 ######
