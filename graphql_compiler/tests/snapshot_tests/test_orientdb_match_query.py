@@ -67,7 +67,7 @@ def execute_graphql(schema, test_data, client, sample_parameters):
 # which pylint does not recognize as a class member.
 # pylint: disable=no-member
 
-
+@pytest.mark.slow
 class OrientDBUnparameterizedMatchQueryTests(TestCase):
 
     def setUp(self):
@@ -517,6 +517,7 @@ class OrientDBUnparameterizedMatchQueryTests(TestCase):
         self.assertMatchSnapshot(rows)
 
 
+@pytest.mark.slow
 class OrientDBParameterizedMatchQueryTests(TestCase):
 
     def setUp(self):

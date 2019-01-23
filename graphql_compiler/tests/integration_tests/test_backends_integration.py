@@ -35,6 +35,7 @@ integration_fixtures = pytest.mark.usefixtures(
 # The following test class uses several fixtures adding members that pylint
 # does not recognize
 # pylint: disable=no-member
+@pytest.mark.slow
 class IntegrationTests(TestCase):
 
     @classmethod

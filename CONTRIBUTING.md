@@ -28,6 +28,15 @@ pipenv shell
 py.test graphql_compiler/tests
 ```
 
+Some snapshot and integration tests take longer to setup, run, and teardown. These can be optionally
+skipped during development by running the tests with the `--skip-slow` flag:
+```bash
+py.test graphql_compiler/tests --skip-slow
+```
+
+A test method or class can be marked as slow to be skipped in this fashion by decorating with the
+`@pytest.mark.slow` flag.
+
 ## Code of Conduct
 
 This project adheres to the Contributor Covenant [code of conduct](CODE_OF_CONDUCT.md).

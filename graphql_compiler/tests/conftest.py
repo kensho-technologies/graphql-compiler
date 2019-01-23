@@ -78,3 +78,20 @@ def sql_integration_data(request):
     # tear down the fixture after the testing class runs all tests
     # including rolling back transaction to ensure all fixture data removed.
     tear_down_integration_test_backends(sql_test_backends)
+
+
+def pytest_addoption(parser):
+    """Add command line options to py.test to allow for slow tests to be skipped."""
+    parser.addoption('--skip-slow', action='store_true', default=False, help='Skip slow tests.')
+
+
+def pytest_collection_modifyitems(config, items):
+    """Modify py.test behavior based on command line options."""
+    if not config.getoption('--skip-slow'):
+        return
+
+    # skip tests market with the @pytest.mark.slow decorator
+    skip_slow = pytest.mark.skip(reason='--skip-slow command line argument supplied')
+    for item in items:
+        if 'slow' in item.keywords:
+            item.add_marker(skip_slow)
