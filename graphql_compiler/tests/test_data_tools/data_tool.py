@@ -1,11 +1,10 @@
 # Copyright 2018-present Kensho Technologies, LLC.
-import datetime
 from glob import glob
 from os import path
 
 from funcy import retry
 import six
-from sqlalchemy import Column, Date, Float, Integer, MetaData, String, Table, create_engine, text
+from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, text
 
 from ..integration_tests.integration_backend_config import (
     EXPLICIT_DB_BACKENDS, SQL_BACKEND_TO_CONNECTION_STRING, SqlTestBackend
@@ -80,15 +79,21 @@ def tear_down_integration_test_backends(sql_test_backends):
 
 def generate_sql_integration_data(sql_test_backends):
     """Populate test data for SQL backends for integration testing."""
-    table_name_to_table, metadata = get_animal_schema_sql_metadata()
+    metadata = MetaData()
+    animal_table = Table(
+        'animal',
+        metadata,
+        Column('animal_id', Integer, primary_key=True),
+        Column('name', String(length=12), nullable=False),
+    )
     animal_rows = (
-        (1, 'Animal 1', 100, datetime.datetime(1900, 1, 1)),
-        (2, 'Animal 2', 200, datetime.datetime(1925, 2, 2)),
-        (3, 'Animal 3', 300, datetime.datetime(1950, 3, 3)),
-        (4, 'Animal 4', 400, datetime.datetime(1975, 4, 4)),
+        (1, 'Animal 1'),
+        (2, 'Animal 2'),
+        (3, 'Animal 3'),
+        (4, 'Animal 4'),
     )
     table_values = [
-        (table_name_to_table['animal'], animal_rows),
+        (animal_table, animal_rows),
     ]
     for sql_test_backend in six.itervalues(sql_test_backends):
         metadata.drop_all(sql_test_backend.engine)
@@ -96,21 +101,5 @@ def generate_sql_integration_data(sql_test_backends):
         for table, insert_values in table_values:
             for insert_value in insert_values:
                 sql_test_backend.engine.execute(table.insert(insert_value))
+
     return metadata
-
-
-def get_animal_schema_sql_metadata():
-    """Get tables and SQLAlchemy metadata related to the Animal test schema."""
-    metadata = MetaData()
-    animal_table = Table(
-        'animal',
-        metadata,
-        Column('animal_id', Integer, primary_key=True),
-        Column('name', String(length=12), nullable=False),
-        Column('net_worth', Float, nullable=False),
-        Column('birthday', Date, nullable=False),
-    )
-    table_name_to_table = {
-        'animal': animal_table,
-    }
-    return table_name_to_table, metadata
