@@ -60,12 +60,6 @@ def compare_gremlin(test_case, expected, received):
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
-def compare_sql(test_case, expected, received):
-    """Compare the expected and received SQL query, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(expected, received)
-    compare_ignoring_whitespace(test_case, expected, received, msg)
-
-
 def compare_input_metadata(test_case, expected, received):
     """Compare two dicts of input metadata, using proper GraphQL type comparison operators."""
     # First, assert that the sets of keys in both dicts are equal.
