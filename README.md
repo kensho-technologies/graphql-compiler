@@ -45,6 +45,8 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
      * [has_edge_degree](#has_edge_degree)
   * [Type coercions](#type-coercions)
   * [Meta fields](#meta-fields)
+     * [\__typename](#__typename)
+     * [\__count](#__count)
   * [The GraphQL schema](#the-graphql-schema)
   * [Execution model](#execution-model)
   * [Miscellaneous](#miscellaneous)
@@ -761,6 +763,8 @@ return results where the related entity is a `Species`, which `... on Species` e
 
 ## Meta fields
 
+### \_\_typename
+
 The compiler supports the standard GraphQL meta field `__typename`, which returns the runtime type
 of the scope where the field is found. Assuming the GraphQL schema matches the database's schema,
 the runtime type will always be a subtype of (or exactly equal to) the static type of the scope
@@ -785,6 +789,158 @@ of static type `Entity`. However, `Animal` is a type of `Entity`, as are `Specie
 and others. Vertices of all subtypes of `Entity` will therefore be returned, and the `entity_type`
 column that outputs the `__typename` field will show their runtime type: `Animal`, `Species`,
 `Food`, etc.
+
+### \_\_count
+
+The `__count` meta field is a non-standard meta field defined by the GraphQL compiler that makes it
+possible to interact with the _number_ of elements in a scope marked `@fold`. By applying directives
+like `@output` and `@filter` to this meta field, queries can output the number of elements captured
+in the `@fold` and filter down results to select only those with the desired fold sizes.
+
+#### Adding the `__count` meta field to your schema
+
+Since the `__count` meta field is not currently part of the GraphQL standard, it has to be
+explicitly added to all interfaces and types in your schema. There are two ways to do this.
+
+The preferred way to do this is to use the `EXTENDED_META_FIELD_DEFINITIONS` constant as
+a starting point for building your interfaces' and types' field descriptions:
+```
+from graphql import GraphQLInt, GraphQLField, GraphQLObjectType, GraphQLString
+from graphql_compiler import EXTENDED_META_FIELD_DEFINITIONS
+
+fields = EXTENDED_META_FIELD_DEFINITIONS.copy()
+fields.update({
+    'foo': GraphQLField(GraphQLString),
+    'bar': GraphQLField(GraphQLInt),
+    # etc.
+})
+graphql_type = GraphQLObjectType('MyType', fields)
+# etc.
+```
+
+If you are not able to programmatically define the schema, and instead simply have a pre-made
+GraphQL schema object that you are able to mutate, the alternative approach is via the
+`insert_meta_fields_into_existing_schema()` helper function defined by the compiler:
+```
+# assuming that existing_schema is your GraphQL schema object
+insert_meta_fields_into_existing_schema(existing_schema)
+# existing_schema was mutated in-place and all custom meta-fields were added
+```
+
+#### Example Use
+
+```
+{
+    Animal {
+        name @output(out_name: "name")
+        out_Animal_ParentOf @fold {
+            __count @output(out_name: "number_of_children")
+            name @output(out_name: "child_names")
+        }
+    }
+}
+```
+This query returns one row for each `Animal` vertex, containing its name, and the number and names
+of its children. While the output type of the `child_names` selection is a list of strings,
+the output type of the `number_of_children` selection is an integer.
+
+```
+{
+    Animal {
+        name @output(out_name: "name")
+        out_Animal_ParentOf @fold {
+            __count @filter(op_name: ">=", value: ["$min_children"])
+                    @output(out_name: "number_of_children")
+            name @filter(op_name: "has_substring", value: ["$substr"])
+                 @output(out_name: "child_names")
+        }
+    }
+}
+```
+Here, we've modified the above query to add two more filtering constraints to the returned rows:
+- child `Animal` vertices must contain the value of `$substr` as a substring in their name, and
+- `Animal` vertices must have at least `$min_children` children that satisfy the above filter.
+
+Importantly, any filtering on `__count` is applied *after* any other filters and type coercions
+that are present in the `@fold` in question. This order of operations matters a lot: selecting
+`Animal` vertices with 3+ children, then filtering the children based on their names is not the same
+as filtering the children first, and then selecting `Animal` vertices that have 3+ children that
+matched the earlier filter.
+
+#### Constraints and Rules
+- The `__count` field is only allowed to appear within a vertex field marked `@fold`.
+- Filtering on `__count` is always applied *after* any other filters and type coercions present
+  in that `@fold`.
+- Filtering or outputting the value of the `__count` field must always be done at the innermost
+  scope of the `@fold`. It is invalid to expand vertex fields within a `@fold` after filtering
+  or outputting the value of the `__count` meta field.
+
+#### How is filtering on `__count` different from `@filter` with `has_edge_degree`?
+
+The `has_edge_degree` filter allows filtering based on the number of edges of a particular type.
+There are situations in which filtering with `has_edge_degree` and filtering using `=` on `__count`
+produce equivalent queries. Here is one such pair of queries:
+```
+{
+    Species {
+        name @output(out_name: "name")
+        in_Animal_OfSpecies @filter(op_name: "has_edge_degree", value: ["$num_animals"]) {
+            uuid
+        }
+    }
+}
+```
+and
+```
+{
+    Species {
+        name @output(out_name: "name")
+        in_Animal_OfSpecies @fold {
+            __count @filter(op_name: "=", value: ["$num_animals"])
+        }
+    }
+}
+```
+In both of these queries, we ask for the names of the `Species` vertices that have precisely
+`$num_animals` members. However, we have expressed this question in two different ways: once
+as a property of the `Species` vertex ("the degree of the `in_Animal_OfSpecies` is `$num_animals`"),
+and once as a property of the list of `Animal` vertices produced by the `@fold` ("the number of
+elements in the `@fold` is `$num_animals`").
+
+When we add additional filtering within the `Animal` vertices of the `in_Animal_OfSpecies` vertex
+field, this distinction becomes very important. Compare the following two queries:
+```
+{
+    Species {
+        name @output(out_name: "name")
+        in_Animal_OfSpecies @filter(op_name: "has_edge_degree", value: ["$num_animals"]) {
+            out_Animal_LivesIn {
+                name @filter(op_name: "=", value: ["$location"])
+            }
+        }
+    }
+}
+```
+versus
+```
+{
+    Species {
+        name @output(out_name: "name")
+        in_Animal_OfSpecies @fold {
+            out_Animal_LivesIn {
+                __count @filter(op_name: "=", value: ["$num_animals"])
+                name @filter(op_name: "=", value: ["$location"])
+            }
+        }
+    }
+}
+```
+In the first, for the purposes of the `has_edge_degree` filtering, the location where the animals
+live is irrelevant: the `has_edge_degree` only makes sure that the `Species` vertex has the
+correct number of edges of type `in_Animal_OfSpecies`, and that's it. In contrast, the second query
+ensures that only `Species` vertices that have `$num_animals` animals that live in the selected
+location are returned -- the location matters since the `@filter` on the `__count` field applies
+to the number of elements in the `@fold` scope.
 
 ## The GraphQL schema
 

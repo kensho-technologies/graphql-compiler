@@ -59,21 +59,24 @@ To get from GraphQL AST to IR, we follow the following pattern:
 """
 from collections import namedtuple
 
+from graphql import (
+    GraphQLInt, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLUnionType
+)
 from graphql.error import GraphQLSyntaxError
 from graphql.language.ast import Field, InlineFragment
 from graphql.language.parser import parse
-from graphql.type.definition import (
-    GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLUnionType
-)
 from graphql.validation import validate
 import six
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
-from ..schema import DIRECTIVES
+from ..schema import COUNT_META_FIELD_NAME, DIRECTIVES
 from .context_helpers import (
-    has_encountered_output_source, is_in_fold_scope, is_in_optional_scope,
-    validate_context_for_visiting_vertex_field
+    get_context_fold_info, get_optional_scope_or_none, has_encountered_output_source,
+    has_fold_count_filter, is_in_fold_innermost_scope, is_in_fold_scope, is_in_optional_scope,
+    set_fold_count_filter, set_fold_innermost_scope, set_fold_scope_data, set_optional_scope_data,
+    set_output_source_data, unmark_context_fold_scope, unmark_fold_count_filter,
+    unmark_fold_innermost_scope, unmark_optional_scope, validate_context_for_visiting_vertex_field
 )
 from .directive_helpers import (
     get_local_filter_directives, get_unique_directives, validate_property_directives,
@@ -235,7 +238,7 @@ def _process_output_source_directive(schema, current_schema_type, ast,
             raise GraphQLCompilationError(u'Cannot have more than one output source!')
         if is_in_optional_scope(context):
             raise GraphQLCompilationError(u'Cannot have the output source in an optional block!')
-        context['output_source'] = location
+        set_output_source_data(context, location)
         return blocks.OutputSource()
     else:
         return None
@@ -258,12 +261,26 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
     """
     validate_property_directives(unique_local_directives)
 
+    if location.field == COUNT_META_FIELD_NAME:
+        # Verify that uses of this field are within a @fold scope.
+        if not is_in_fold_scope(context):
+            raise GraphQLCompilationError(u'Cannot use the "{}" meta field when not within a @fold '
+                                          u'vertex field, as counting elements only makes sense '
+                                          u'in a fold. Location: {}'
+                                          .format(COUNT_META_FIELD_NAME, location))
+
     # step P-2: process property-only directives
     tag_directive = unique_local_directives.get('tag', None)
     if tag_directive:
         if is_in_fold_scope(context):
             raise GraphQLCompilationError(u'Tagging values within a @fold vertex field is '
                                           u'not allowed! Location: {}'.format(location))
+
+        if location.field == COUNT_META_FIELD_NAME:
+            raise AssertionError(u'Tags are prohibited within @fold, but unexpectedly found use of '
+                                 u'a tag on the {} meta field that is only allowed within a @fold!'
+                                 u'Location: {}'
+                                 .format(COUNT_META_FIELD_NAME, location))
 
         # Schema validation has ensured that the fields below exist.
         tag_name = tag_directive.arguments[0].value.value
@@ -288,9 +305,11 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
 
         graphql_type = strip_non_null_from_type(current_schema_type)
         if is_in_fold_scope(context):
-            graphql_type = GraphQLList(graphql_type)
-            # Fold outputs are only allowed at the last level of traversal
-            context['fold_innermost_scope'] = None
+            # Fold outputs are only allowed at the last level of traversal.
+            set_fold_innermost_scope(context)
+
+            if location.field != COUNT_META_FIELD_NAME:
+                graphql_type = GraphQLList(graphql_type)
 
         context['outputs'][output_name] = {
             'location': location,
@@ -426,7 +445,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         edge_traversal_is_recursive = recurse_directive is not None
 
         # This is true for any vertex expanded within an @optional scope.
-        within_optional_scope = 'optional' in context
+        within_optional_scope = is_in_optional_scope(context)
 
         if edge_traversal_is_optional:
             # Invariant: There must always be a marked location corresponding to the query position
@@ -470,9 +489,9 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
         if edge_traversal_is_optional:
             # Remember where the topmost optional context started.
-            topmost_optional = context.get('optional', None)
+            topmost_optional = get_optional_scope_or_none(context)
             if topmost_optional is None:
-                context['optional'] = inner_location
+                set_optional_scope_data(context, inner_location)
                 in_topmost_optional_block = True
 
         edge_direction, edge_name = get_edge_direction_and_name(field_name)
@@ -480,7 +499,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         if fold_directive:
             fold_block = blocks.Fold(inner_location)
             basic_blocks.append(fold_block)
-            context['fold'] = inner_location
+            set_fold_scope_data(context, inner_location)
         elif recurse_directive:
             _validate_recurse_directive_types(current_schema_type, field_schema_type, context)
             recurse_depth = _get_recurse_directive_depth(field_name, inner_unique_directives)
@@ -502,18 +521,18 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         basic_blocks.extend(inner_basic_blocks)
 
         if edge_traversal_is_folded:
-            _validate_fold_has_outputs(context['fold'], context['outputs'])
+            has_count_filter = has_fold_count_filter(context)
+            _validate_fold_has_outputs_or_count_filter(
+                get_context_fold_info(context), has_count_filter, context['outputs'])
             basic_blocks.append(blocks.Unfold())
-            del context['fold']
-            if 'fold_innermost_scope' in context:
-                del context['fold_innermost_scope']
-            else:
-                raise AssertionError(u'Output inside @fold scope did not add '
-                                     u'"fold_innermost_scope" to context! '
-                                     u'Location: {}'.format(location))
+            unmark_context_fold_scope(context)
+            if has_count_filter:
+                unmark_fold_count_filter(context)
+            if is_in_fold_innermost_scope(context):
+                unmark_fold_innermost_scope(context)
 
         if in_topmost_optional_block:
-            del context['optional']
+            unmark_optional_scope(context)
 
         # If we are currently evaluating a @fold vertex,
         # we didn't Traverse into it, so we don't need to backtrack out either.
@@ -540,17 +559,24 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     return basic_blocks
 
 
-def _validate_fold_has_outputs(fold_scope_location, outputs):
-    """Ensure the @fold scope has at least one output."""
+def _validate_fold_has_outputs_or_count_filter(fold_scope_location, fold_has_count_filter, outputs):
+    """Ensure the @fold scope has at least one output, or filters on the size of the fold."""
+    # This function makes sure that the @fold scope has an effect.
+    # Folds either output data, or filter the data enclosing the fold based on the size of the fold.
+    if fold_has_count_filter:
+        # This fold has a filter on the "__count" property, so it is legal and has an effect.
+        return True
+
     # At least one output in the outputs list must point to the fold_scope_location,
     # or the scope corresponding to fold_scope_location had no @outputs and is illegal.
     for output in six.itervalues(outputs):
         if output['fold'] == fold_scope_location:
             return True
 
-    raise GraphQLCompilationError(u'Each @fold scope must contain at least one field '
-                                  u'marked @output. Encountered a @fold with no outputs: '
-                                  u'{}'.format(fold_scope_location))
+    raise GraphQLCompilationError(u'Found a @fold scope that has no effect on the query. '
+                                  u'Each @fold scope must either perform filtering, or contain at '
+                                  u'least one field marked for output. Fold location: {}'
+                                  .format(fold_scope_location))
 
 
 def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
@@ -645,8 +671,29 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
 
     # step 1: apply local filter, if any
     for filter_operation_info in filter_operations:
-        basic_blocks.append(
-            process_filter_directive(filter_operation_info, location, context))
+        filter_block = process_filter_directive(filter_operation_info, location, context)
+        if isinstance(location, FoldScopeLocation) and location.field == COUNT_META_FIELD_NAME:
+            # Filtering on the fold count field is only allowed at the innermost scope of a fold.
+            set_fold_innermost_scope(context)
+
+            # This Filter is going in the global operations section of the query, so it cannot
+            # use LocalField expressions since there is no "local" location to use.
+            # Rewrite it so that all references of data at a location instead use ContextFields.
+            expected_field = expressions.LocalField(COUNT_META_FIELD_NAME)
+            replacement_field = expressions.FoldedContextField(location, GraphQLInt)
+
+            visitor_fn = expressions.make_replacement_visitor(expected_field, replacement_field)
+            filter_block = filter_block.visit_and_update_expressions(visitor_fn)
+
+            visitor_fn = expressions.make_type_replacement_visitor(
+                expressions.ContextField,
+                lambda context_field: expressions.GlobalContextField(context_field.location))
+            filter_block = filter_block.visit_and_update_expressions(visitor_fn)
+
+            set_fold_count_filter(context)
+            context['global_filters'].append(filter_block)
+        else:
+            basic_blocks.append(filter_block)
 
     if location.field is not None:
         # The location is at a property, compile the property data following P-steps.
@@ -723,6 +770,10 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         #  - optional: boolean representing whether the tag was defined within an @optional scope
         #  - type: GraphQLType of the tagged value
         'tags': dict(),
+        # 'global_filters' is a list that may contain Filter blocks that are generated during
+        # query processing, but apply to the global query scope and should be appended to the
+        # IR blocks only after the GlobalOperationsStart block has been emitted.
+        'global_filters': [],
         # 'outputs' is a dict mapping each output name to another dict which contains
         #  - location: Location where to output from
         #  - optional: boolean representing whether the output was defined within an @optional scope
@@ -768,6 +819,13 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         schema, current_schema_type, base_ast, location, context)
     basic_blocks.extend(new_basic_blocks)
 
+    # All operations after this point affect the global query scope, and are not related to
+    # the "current" location in the query produced by the sequence of Traverse/Backtrack blocks.
+    basic_blocks.append(blocks.GlobalOperationsStart())
+
+    # Add any filters that apply to the global query scope.
+    basic_blocks.extend(context['global_filters'])
+
     # Based on the outputs context data, add an output step and construct the output metadata.
     outputs_context = context['outputs']
     basic_blocks.append(_compile_output_step(outputs_context))
@@ -806,19 +864,22 @@ def _compile_output_step(outputs):
 
         expression = None
         existence_check = None
+        # pylint: disable=redefined-variable-type
         if isinstance(location, FoldScopeLocation):
             if optional:
                 raise AssertionError(u'Unreachable state reached, optional in fold: '
                                      u'{}'.format(output_context))
 
-            expression = expressions.FoldedOutputContextField(location, graphql_type)
+            if location.field == COUNT_META_FIELD_NAME:
+                expression = expressions.FoldCountContextField(location)
+            else:
+                expression = expressions.FoldedContextField(location, graphql_type)
         else:
             expression = expressions.OutputContextField(location, graphql_type)
 
             if optional:
                 existence_check = expressions.ContextFieldExistence(location.at_vertex())
 
-        # pylint: disable=redefined-variable-type
         if existence_check:
             expression = expressions.TernaryConditional(
                 existence_check, expression, expressions.NullLiteral)

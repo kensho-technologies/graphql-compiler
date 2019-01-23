@@ -16,9 +16,7 @@ from ...exceptions import GraphQLCompilationError
 from ...schema import GraphQLDate, GraphQLDateTime
 from ..blocks import Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, Traverse
 from ..compiler_entities import Expression
-from ..expressions import (
-    BinaryComposition, FoldedOutputContextField, Literal, LocalField, NullLiteral
-)
+from ..expressions import BinaryComposition, FoldedContextField, Literal, LocalField, NullLiteral
 from ..helpers import (
     STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation,
     get_only_element_from_collection, strip_non_null_from_type, validate_safe_string
@@ -124,12 +122,12 @@ def rewrite_filters_in_optional_blocks(ir_blocks):
     return new_ir_blocks
 
 
-class GremlinFoldedOutputContextField(Expression):
-    """A Gremlin-specific FoldedOutputContextField that knows how to output itself as Gremlin."""
+class GremlinFoldedContextField(Expression):
+    """A Gremlin-specific FoldedContextField that knows how to output itself as Gremlin."""
 
     def __init__(self, fold_scope_location, folded_ir_blocks, field_type):
-        """Create a new GremlinFoldedOutputContextField."""
-        super(GremlinFoldedOutputContextField, self).__init__(
+        """Create a new GremlinFoldedContextField."""
+        super(GremlinFoldedContextField, self).__init__(
             fold_scope_location, folded_ir_blocks, field_type)
         self.fold_scope_location = fold_scope_location
         self.folded_ir_blocks = folded_ir_blocks
@@ -137,7 +135,7 @@ class GremlinFoldedOutputContextField(Expression):
         self.validate()
 
     def validate(self):
-        """Validate that the GremlinFoldedOutputContextField is correctly representable."""
+        """Validate that the GremlinFoldedContextField is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
             raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
                 type(self.fold_scope_location), self.fold_scope_location))
@@ -319,7 +317,7 @@ def _convert_folded_blocks(folded_ir_blocks):
 
 
 def lower_folded_outputs(ir_blocks):
-    """Lower standard folded output fields into GremlinFoldedOutputContextField objects."""
+    """Lower standard folded output fields into GremlinFoldedContextField objects."""
     folds, remaining_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
 
     if not remaining_ir_blocks:
@@ -341,12 +339,12 @@ def lower_folded_outputs(ir_blocks):
     for output_name, output_expression in six.iteritems(output_block.fields):
         new_output_expression = output_expression
 
-        # Turn FoldedOutputContextField expressions into GremlinFoldedOutputContextField ones.
-        if isinstance(output_expression, FoldedOutputContextField):
+        # Turn FoldedContextField expressions into GremlinFoldedContextField ones.
+        if isinstance(output_expression, FoldedContextField):
             # Get the matching folded IR blocks and put them in the new context field.
             base_fold_location_name = output_expression.fold_scope_location.get_location_name()[0]
             folded_ir_blocks = converted_folds[base_fold_location_name]
-            new_output_expression = GremlinFoldedOutputContextField(
+            new_output_expression = GremlinFoldedContextField(
                 output_expression.fold_scope_location, folded_ir_blocks,
                 output_expression.field_type)
 

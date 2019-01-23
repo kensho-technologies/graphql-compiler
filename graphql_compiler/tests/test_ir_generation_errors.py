@@ -227,7 +227,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
 
-        no_outputs_inside_fold_block = '''{
+        no_outputs_or_filters_inside_fold_block = '''{
             Animal {
                 uuid @output(out_name: "uuid")
                 out_Animal_ParentOf @fold {
@@ -313,18 +313,71 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
 
-        for graphql in (fold_on_property_field,
-                        fold_on_root_vertex,
-                        multi_level_outputs_inside_fold_block,
-                        traversal_inside_fold_block_after_output,
-                        no_outputs_inside_fold_block,
-                        list_output_inside_fold_block,
-                        fold_within_fold,
-                        optional_within_fold,
-                        recurse_within_fold,
-                        output_source_within_fold,
-                        multiple_vertex_fields_within_fold,
-                        multiple_vertex_fields_within_fold_after_traverse):
+        use_of_count_outside_of_fold = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_ParentOf {
+                    __count @output(out_name: "child_count")
+                }
+            }
+        }'''
+
+        use_of_count_before_innermost_scope = '''{
+            Species {
+                name @output(out_name: "name")
+                in_Animal_OfSpecies @fold {
+                    __count @output(out_name: "fold_size")
+                    out_Animal_LivesIn {
+                        name @filter(op_name: "=", value: ["$location"])
+                    }
+                }
+            }
+        }'''
+
+        multiple_uses_of_count_in_one_fold_1 = '''{
+            Species {
+                name @output(out_name: "name")
+                in_Animal_OfSpecies @fold {
+                    __count @output(out_name: "fold_size")
+                    out_Animal_LivesIn {
+                        __count @filter(op_name: "=", value: ["$num_animals"])
+                    }
+                }
+            }
+        }'''
+
+        multiple_uses_of_count_in_one_fold_2 = '''{
+            Species {
+                name @output(out_name: "name")
+                in_Animal_OfSpecies @fold {
+                    __count @filter(op_name: "=", value: ["$num_animals"])
+                    out_Animal_LivesIn {
+                        __count @output(out_name: "fold_size")
+                    }
+                }
+            }
+        }'''
+
+        all_test_cases = (
+            fold_on_property_field,
+            fold_on_root_vertex,
+            multi_level_outputs_inside_fold_block,
+            traversal_inside_fold_block_after_output,
+            no_outputs_or_filters_inside_fold_block,
+            list_output_inside_fold_block,
+            fold_within_fold,
+            optional_within_fold,
+            recurse_within_fold,
+            output_source_within_fold,
+            multiple_vertex_fields_within_fold,
+            multiple_vertex_fields_within_fold_after_traverse,
+            use_of_count_outside_of_fold,
+            use_of_count_before_innermost_scope,
+            multiple_uses_of_count_in_one_fold_1,
+            multiple_uses_of_count_in_one_fold_2,
+        )
+
+        for graphql in all_test_cases:
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, graphql)
 
@@ -428,11 +481,25 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }''')
 
-        for expected_error, graphql in (tag_on_vertex_field,
-                                        tag_without_name,
-                                        tag_with_duplicated_name,
-                                        tag_with_illegal_name,
-                                        tag_within_fold_scope):
+        tag_on_count_field = (GraphQLCompilationError, '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_ParentOf {
+                    __count @tag(tag_name: "count")
+                }
+            }
+        }''')
+
+        errors_and_inputs = (
+            tag_on_vertex_field,
+            tag_without_name,
+            tag_with_duplicated_name,
+            tag_with_illegal_name,
+            tag_within_fold_scope,
+            tag_on_count_field,
+        )
+
+        for expected_error, graphql in errors_and_inputs:
             with self.assertRaises(expected_error):
                 graphql_to_ir(self.schema, graphql)
 

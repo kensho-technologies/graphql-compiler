@@ -9,17 +9,18 @@ from .compiler import (  # noqa
 )
 from .query_formatting import insert_arguments_into_query  # noqa
 from .query_formatting.graphql_formatting import pretty_print_graphql  # noqa
-
-from .exceptions import GraphQLError  # noqa
-from .exceptions import GraphQLParsingError, GraphQLCompilationError  # noqa
-from .exceptions import GraphQLValidationError, GraphQLInvalidArgumentError  # noqa
-
-from .schema import DIRECTIVES  # noqa
-from .schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal  # noqa
+from .exceptions import (  # noqa
+    GraphQLCompilationError, GraphQLError, GraphQLInvalidArgumentError, GraphQLParsingError,
+    GraphQLValidationError
+)
+from .schema import (  # noqa
+    DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal,
+    insert_meta_fields_into_existing_schema, is_meta_field
+)
 
 
 __package_name__ = 'graphql-compiler'
-__version__ = '1.8.3'
+__version__ = '1.9.0'
 
 
 def graphql_to_match(schema, graphql_query, parameters, type_equivalence_hints=None):
