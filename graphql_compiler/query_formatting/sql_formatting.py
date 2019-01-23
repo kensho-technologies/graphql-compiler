@@ -1,8 +1,8 @@
 # Copyright 2018-present Kensho Technologies, LLC.
+from ..compiler.common import SQL_LANGUAGE
 ######
 # Public API
 ######
-from ..compiler.common import SQL_LANGUAGE
 
 
 def insert_arguments_into_sql_query(compilation_result, arguments):

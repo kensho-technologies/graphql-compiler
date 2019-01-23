@@ -35,7 +35,6 @@ def emit_code_from_ir(sql_query_tree, compiler_metadata):
 
     Returns:
         SQLAlchemy Query
-
     """
     context = CompilationContext(
         query_path_to_selectable=dict(),

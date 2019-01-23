@@ -81,9 +81,6 @@ def _validate_all_blocks_supported(ir_blocks, query_metadata_table):
                               query processing, including location metadata (e.g. which locations
                               are folded or optional).
 
-    Returns:
-        None
-
     Raises:
         NotImplementedError, if any block or ConstructResult field is unsupported.
     """
@@ -92,7 +89,7 @@ def _validate_all_blocks_supported(ir_blocks, query_metadata_table):
             u'Unexpectedly attempting to validate IR blocks with fewer than 3 blocks. A minimal '
             u'query is expected to have at least a QueryRoot, GlobalOperationsStart, and '
             u'ConstructResult block. The query metadata table is {}.'.format(query_metadata_table))
-    construct_result = ir_blocks[-1]
+    last_block = ir_blocks[-1]
     unsupported_blocks = []
     unsupported_fields = []
     for block in ir_blocks[:-1]:
@@ -102,12 +99,12 @@ def _validate_all_blocks_supported(ir_blocks, query_metadata_table):
             continue
         unsupported_blocks.append(block)
 
-    if not isinstance(construct_result, blocks.ConstructResult):
+    if not isinstance(last_block, blocks.ConstructResult):
         raise AssertionError(
             u'The last IR block {} for IR blocks {} was unexpectedly not '
-            u'a ConstructResult block.'.format(construct_result, ir_blocks))
+            u'a ConstructResult block.'.format(last_block, ir_blocks))
 
-    for field_name, field in six.iteritems(construct_result.fields):
+    for field_name, field in six.iteritems(last_block.fields):
         if not isinstance(field, constants.SUPPORTED_OUTPUT_EXPRESSION_TYPES):
             unsupported_fields.append((field_name, field))
         elif field_name in constants.UNSUPPORTED_META_FIELDS:
@@ -207,17 +204,14 @@ def _map_block_index_to_location(ir_blocks):
     # The core approach here is to buffer blocks until their MarkLocation is encountered
     # after which all buffered blocks can be associated with the encountered MarkLocation.location.
     current_block_ixs = []
-    global_operations_started = False
     for num, ir_block in enumerate(ir_blocks):
-        if global_operations_started:
-            continue
         if isinstance(ir_block, blocks.GlobalOperationsStart):
-            global_operations_started = True
             if len(current_block_ixs) > 0:
                 unassociated_blocks = [ir_blocks[ix] for ix in current_block_ixs]
                 raise AssertionError(
                     u'Unexpectedly encountered global operations before mapping blocks '
                     u'{} to their respective locations.'.format(unassociated_blocks))
+            break
         current_block_ixs.append(num)
         if isinstance(ir_block, blocks.MarkLocation):
             for ix in current_block_ixs:
