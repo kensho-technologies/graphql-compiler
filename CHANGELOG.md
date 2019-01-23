@@ -2,6 +2,13 @@
 
 ## Current development version
 
+## v1.9.0
+
+- Add a `__count` meta field that supports outputting and filtering on the size of a `@fold` scope. [#158](https://github.com/kensho-technologies/graphql-compiler/pull/158)
+- Add scaffolding for development and testing of SQL compiler backend, and a variety of development quality-of-life improvements.
+
+Thanks to `jmeulemans` for his contributions.
+
 ## v1.8.3
 
 - Explicit support for Python 3.7. Earlier compiler versions also worked on 3.7, but now we also run tests in 3.7 to confirm. [#148](https://github.com/kensho-technologies/graphql-compiler/pull/148)
