@@ -20,11 +20,45 @@ SKIPPABLE_BLOCK_TYPES = (
 
 SUPPORTED_BLOCK_TYPES = (
     blocks.QueryRoot,
+    blocks.Filter,
 )
 
 SUPPORTED_OUTPUT_EXPRESSION_TYPES = (
     expressions.OutputContextField,
 )
+
+
+class Operator(object):
+    def __init__(self, name, cardinality):
+        """Represent an operator and it's underlying method."""
+        self.name = name
+        self.cardinality = cardinality
+
+
+class Cardinality(object):
+    """Cardinality for SQLAlchemy operators."""
+
+    UNARY = 1
+    BINARY = 2
+    LIST_VALUED = 3
+
+
+SUPPORTED_OPERATORS = {
+    u'contains': Operator(u'in_', Cardinality.LIST_VALUED),
+    u'&&': Operator(u'and_', Cardinality.BINARY),
+    u'||': Operator(u'or_', Cardinality.BINARY),
+    u'=': Operator(u'__eq__', Cardinality.UNARY),
+    u'<': Operator(u'__lt__', Cardinality.UNARY),
+    u'>': Operator(u'__gt__', Cardinality.UNARY),
+    u'<=': Operator(u'__le__', Cardinality.UNARY),
+    u'>=': Operator(u'__ge__', Cardinality.UNARY),
+    u'has_substring': Operator(u'contains', Cardinality.UNARY),
+}
+
+UNSUPPORTED_OPERATOR_NAMES = {
+    u'intersects',
+    u'has_edge_degree',
+}
 
 
 class SqlBackend(object):

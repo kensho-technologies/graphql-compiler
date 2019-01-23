@@ -20,6 +20,14 @@ def get_node_selectable(node, context):
     return selectable
 
 
+def get_node_at_path(query_path, context):
+    """Return the SqlNode associated with the query path."""
+    if query_path not in context.query_path_to_node:
+        raise AssertionError(u'Unable to find SqlNode for query path {}'.format(query_path))
+    node = context.query_path_to_node[query_path]
+    return node
+
+
 def try_get_column(column_name, node, context):
     """Attempt to get a column by name from the selectable.
 
@@ -56,3 +64,8 @@ def get_column(column_name, node, context):
             u'Column "{}" not found in selectable "{}". Columns present are {}'.format(
                 column_name, selectable.original, [col.name for col in selectable.c]))
     return column
+
+
+def get_filters(node, context):
+    """Return the filters applied to a SqlNode."""
+    return context.query_path_to_filters.get(node.query_path, [])

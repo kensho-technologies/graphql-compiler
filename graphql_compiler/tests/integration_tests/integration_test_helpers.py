@@ -1,4 +1,6 @@
 # Copyright 2018-present Kensho Technologies, LLC.
+from decimal import Decimal
+
 import six
 
 from ... import graphql_to_match, graphql_to_sql
@@ -25,9 +27,24 @@ def sort_db_results(results):
     return sorted(results, key=sort_key)
 
 
+def try_convert_decimal_to_string(value):
+    """Return Decimals as string if value is a Decimal, return value otherwise."""
+    if isinstance(value, list):
+        return [try_convert_decimal_to_string(subvalue) for subvalue in value]
+    if not isinstance(value, Decimal):
+        return value
+    return str(value)
+
+
 def compile_and_run_match_query(schema, graphql_query, parameters, graph_client):
     """Compiles and runs a MATCH query against the supplied graph client."""
-    compilation_result = graphql_to_match(schema, graphql_query, parameters)
+    # OrientDB expects decimals to be passed as their string representation
+    converted_parameters = {
+        name: try_convert_decimal_to_string(value)
+        for name, value in six.iteritems(parameters)
+    }
+    compilation_result = graphql_to_match(schema, graphql_query, converted_parameters)
+
     query = compilation_result.query
     results = [row.oRecordData for row in graph_client.command(query)]
     return results

@@ -4,7 +4,7 @@ from os import path
 
 from funcy import retry
 import six
-from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, text
+from sqlalchemy import Column, Float, Integer, MetaData, String, Table, create_engine, text
 
 from ..integration_tests.integration_backend_config import (
     EXPLICIT_DB_BACKENDS, SQL_BACKEND_TO_CONNECTION_STRING, SqlTestBackend
@@ -85,12 +85,13 @@ def generate_sql_integration_data(sql_test_backends):
         metadata,
         Column('animal_id', Integer, primary_key=True),
         Column('name', String(length=12), nullable=False),
+        Column('net_worth', Float, nullable=False),
     )
     animal_rows = (
-        (1, 'Animal 1'),
-        (2, 'Animal 2'),
-        (3, 'Animal 3'),
-        (4, 'Animal 4'),
+        (1, 'Animal 1', 100.0),
+        (2, 'Animal 2', 200.0),
+        (3, 'Animal 3', 300.0),
+        (4, 'Animal 4', 400.0),
     )
     table_values = [
         (animal_table, animal_rows),
