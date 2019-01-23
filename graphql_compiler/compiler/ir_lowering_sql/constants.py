@@ -14,6 +14,8 @@ SKIPPABLE_BLOCK_TYPES = (
     blocks.MarkLocation,
     # Global operations are used as a marker, but do not require other handling by the SQL backend.
     blocks.GlobalOperationsStart,
+    # ConstructResult blocks are given special handling, they can otherwise be disregarded.
+    blocks.ConstructResult,
 )
 
 SUPPORTED_BLOCK_TYPES = (

@@ -41,7 +41,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
         tree representation of IR blocks for recursive traversal by SQL backend.
     """
     _validate_all_blocks_supported(ir_blocks, query_metadata_table)
-    construct_result = ir_blocks.pop()
+    construct_result = _get_construct_result(ir_blocks)
     query_path_to_location_info = _map_query_path_to_location_info(query_metadata_table)
     query_path_to_output_fields = _map_query_path_to_outputs(
         construct_result, query_path_to_location_info)
@@ -73,7 +73,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
 
 
 def _validate_all_blocks_supported(ir_blocks, query_metadata_table):
-    """Validate that all IR blocks and ConstructResult fields passed to the are supported.
+    """Validate that all IR blocks and ConstructResult fields passed to the backend are supported.
 
     Args:
         ir_blocks: List[BasicBlock], IR blocks to validate.
@@ -89,7 +89,7 @@ def _validate_all_blocks_supported(ir_blocks, query_metadata_table):
             u'Unexpectedly attempting to validate IR blocks with fewer than 3 blocks. A minimal '
             u'query is expected to have at least a QueryRoot, GlobalOperationsStart, and '
             u'ConstructResult block. The query metadata table is {}.'.format(query_metadata_table))
-    last_block = ir_blocks[-1]
+    construct_result = _get_construct_result(ir_blocks)
     unsupported_blocks = []
     unsupported_fields = []
     for block in ir_blocks[:-1]:
@@ -99,12 +99,7 @@ def _validate_all_blocks_supported(ir_blocks, query_metadata_table):
             continue
         unsupported_blocks.append(block)
 
-    if not isinstance(last_block, blocks.ConstructResult):
-        raise AssertionError(
-            u'The last IR block {} for IR blocks {} was unexpectedly not '
-            u'a ConstructResult block.'.format(last_block, ir_blocks))
-
-    for field_name, field in six.iteritems(last_block.fields):
+    for field_name, field in six.iteritems(construct_result.fields):
         if not isinstance(field, constants.SUPPORTED_OUTPUT_EXPRESSION_TYPES):
             unsupported_fields.append((field_name, field))
         elif field_name in constants.UNSUPPORTED_META_FIELDS:
@@ -115,6 +110,16 @@ def _validate_all_blocks_supported(ir_blocks, query_metadata_table):
             u'Encountered unsupported blocks {} and unsupported fields {} during construction of '
             u'SQL query tree for IR blocks {} with query metadata table {}.'.format(
                 unsupported_blocks, unsupported_fields, ir_blocks, query_metadata_table))
+
+
+def _get_construct_result(ir_blocks):
+    """Return the ConstructResult block from a list of IR blocks."""
+    last_block = ir_blocks[-1]
+    if not isinstance(last_block, blocks.ConstructResult):
+        raise AssertionError(
+            u'The last IR block {} for IR blocks {} was unexpectedly not '
+            u'a ConstructResult block.'.format(last_block, ir_blocks))
+    return last_block
 
 
 def _map_query_path_to_location_info(query_metadata_table):
