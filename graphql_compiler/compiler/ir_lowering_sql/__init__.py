@@ -2,44 +2,19 @@
 
 import six
 
-from .constants import UNSUPPORTED_META_FIELDS
 from .sql_tree import SqlNode, SqlQueryTree
 from .. import blocks
-from ..ir_lowering_sql.constants import SqlOutput
+from ...compiler.helpers import Location
+from ..ir_lowering_sql import constants
 from ..metadata import LocationInfo
 
 ##############
 # Public API #
 ##############
 
-_SKIPPABLE_BLOCKS = (
-    # MarkLocation blocks are used in the first pass over the IR blocks to create a mapping of
-    # IR block -> query path for all IR blocks. They can safely be skipped during tree construction.
-    blocks.MarkLocation,
-    # Global operations are currently not used by the SQL backend, they can be safely skipped.
-    blocks.GlobalOperationsStart,
-)
-
-_SUPPORTED_BLOCKS = (
-    blocks.QueryRoot,
-    blocks.ConstructResult,
-)
-
-
-def _validate_supported_blocks(ir_blocks, query_metadata_table):
-    unsupported_blocks = []
-    for block in ir_blocks:
-        if not isinstance(block, _SUPPORTED_BLOCKS) and not isinstance(block, _SKIPPABLE_BLOCKS):
-            unsupported_blocks.append(block)
-    if len(unsupported_blocks) > 0:
-        raise NotImplementedError(
-            u'Encountered unsupported blocks {} during construction of SQL query tree for IR '
-            u'blocks {} with query metadata table {} .'.format(
-                unsupported_blocks, ir_blocks, query_metadata_table))
-
 
 def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
-    """Lower the IR into a form that can be represented by a SQL query.
+    """Lower the IR blocks into a form that can be represented by a SQL query.
 
     Args:
         ir_blocks: list of IR blocks to lower into SQL-compatible form
@@ -65,7 +40,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     Returns:
         tree representation of IR blocks for recursive traversal by SQL backend.
     """
-    _validate_supported_blocks(ir_blocks, query_metadata_table)
+    _validate_all_blocks_supported(ir_blocks, query_metadata_table)
     construct_result = ir_blocks.pop()
     query_path_to_location_info = _map_query_path_to_location_info(query_metadata_table)
     query_path_to_output_fields = _map_query_path_to_outputs(
@@ -76,7 +51,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     block_index_to_location = _map_block_index_to_location(ir_blocks)
     tree_root = None
     for index, block in enumerate(ir_blocks):
-        if isinstance(block, _SKIPPABLE_BLOCKS):
+        if isinstance(block, constants.SKIPPABLE_BLOCK_TYPES):
             continue
         location = block_index_to_location[index]
         if isinstance(block, (blocks.QueryRoot,)):
@@ -84,8 +59,8 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
             if tree_root is not None:
                 raise AssertionError(
                     u'Encountered QueryRoot {} but tree root is already set to {} during '
-                    u'construction of SQL query tree for IR blocks {} with query'
-                    u' metadata table {}'.format(
+                    u'construction of SQL query tree for IR blocks {} with query '
+                    u'metadata table {}'.format(
                         block, tree_root, ir_blocks, query_metadata_table))
             tree_root = SqlNode(block=block, query_path=query_path)
             query_path_to_node[query_path] = tree_root
@@ -97,14 +72,59 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     return SqlQueryTree(tree_root, query_path_to_location_info, query_path_to_output_fields)
 
 
-def _map_query_path_to_location_info(query_metadata_table):
-    """Create a map from a query path to a LocationInfo at that path.
-
-    Verifies that LocationInfos at the same query path are equivalent in type, parent,
-    recursive_depth and optional_scopes_depth.
+def _validate_all_blocks_supported(ir_blocks, query_metadata_table):
+    """Validate that all IR blocks and ConstructResult fields passed to the are supported.
 
     Args:
-        query_metadata_table: QueryMetadataTable object containing all metadata collected during
+        ir_blocks: List[BasicBlock], IR blocks to validate.
+        query_metadata_table: QueryMetadataTable, object containing all metadata collected during
+                              query processing, including location metadata (e.g. which locations
+                              are folded or optional).
+
+    Returns:
+        None
+
+    Raises:
+        NotImplementedError, if any block or ConstructResult field is unsupported.
+    """
+    if len(ir_blocks) < 3:
+        raise AssertionError(
+            u'Unexpectedly attempting to validate IR blocks with fewer than 3 blocks. A minimal '
+            u'query is expected to have at least a QueryRoot, GlobalOperationsStart, and '
+            u'ConstructResult block. The query metadata table is {}.'.format(query_metadata_table))
+    construct_result = ir_blocks[-1]
+    unsupported_blocks = []
+    unsupported_fields = []
+    for block in ir_blocks[:-1]:
+        if isinstance(block, constants.SUPPORTED_BLOCK_TYPES):
+            continue
+        if isinstance(block, constants.SKIPPABLE_BLOCK_TYPES):
+            continue
+        unsupported_blocks.append(block)
+
+    if not isinstance(construct_result, blocks.ConstructResult):
+        raise AssertionError(
+            u'The last IR block {} for IR blocks {} was unexpectedly not '
+            u'a ConstructResult block.'.format(construct_result, ir_blocks))
+
+    for field_name, field in six.iteritems(construct_result.fields):
+        if not isinstance(field, constants.SUPPORTED_OUTPUT_EXPRESSION_TYPES):
+            unsupported_fields.append((field_name, field))
+        elif field_name in constants.UNSUPPORTED_META_FIELDS:
+            unsupported_fields.append((field_name, field))
+
+    if len(unsupported_blocks) > 0 or len(unsupported_fields) > 0:
+        raise NotImplementedError(
+            u'Encountered unsupported blocks {} and unsupported fields {} during construction of '
+            u'SQL query tree for IR blocks {} with query metadata table {}.'.format(
+                unsupported_blocks, unsupported_fields, ir_blocks, query_metadata_table))
+
+
+def _map_query_path_to_location_info(query_metadata_table):
+    """Create a map from each query path to a LocationInfo at that path.
+
+    Args:
+        query_metadata_table: QueryMetadataTable, object containing all metadata collected during
                               query processing, including location metadata (e.g. which locations
                               are folded or optional).
 
@@ -113,6 +133,8 @@ def _map_query_path_to_location_info(query_metadata_table):
     """
     query_path_to_location_info = {}
     for location, location_info in query_metadata_table.registered_locations:
+        if not isinstance(location, Location):
+            continue
         if location.query_path in query_path_to_location_info:
             # make sure the stored location information equals the new location information
             # for the fields the SQL backend requires.
@@ -129,11 +151,22 @@ def _map_query_path_to_location_info(query_metadata_table):
 
 
 def _location_infos_equal(left, right):
-    """Return True if LocationInfo objects are equivalent for the SQL backend, False otherwise."""
+    """Return True if LocationInfo objects are equivalent for the SQL backend, False otherwise.
+
+    LocationInfo objects are considered equal for the SQL backend iff the optional scopes depth,
+    recursive scopes depth, types and parent query paths are equal.
+
+    Args:
+        left: LocationInfo, left location info object to compare.
+        right: LocationInfo, right location info object to compare.
+
+    Returns:
+        bool, True if LocationInfo objects equivalent, False otherwise.
+    """
     if not isinstance(left, LocationInfo) or not isinstance(right, LocationInfo):
         raise AssertionError(
-            (u'Unsupported LocationInfo comparison between types {} and {} '
-             u'with values {}, {}').format(type(left), type(right), left, right))
+            u'Unsupported LocationInfo comparison between types {} and {} '
+            u'with values {}, {}'.format(type(left), type(right), left, right))
     optional_scopes_depth_equal = (left.optional_scopes_depth == right.optional_scopes_depth)
 
     parent_query_paths_equal = (
@@ -144,9 +177,12 @@ def _location_infos_equal(left, right):
 
     types_equal = left.type == right.type
 
-    all_equal = (optional_scopes_depth_equal and parent_query_paths_equal and
-                 recursive_scopes_depths_equal and types_equal)
-    return all_equal
+    return all([
+        optional_scopes_depth_equal,
+        parent_query_paths_equal,
+        recursive_scopes_depths_equal,
+        types_equal,
+    ])
 
 
 def _map_query_path_to_outputs(construct_result, query_path_to_location_info):
@@ -154,11 +190,8 @@ def _map_query_path_to_outputs(construct_result, query_path_to_location_info):
     query_path_to_output_fields = {}
     for output_name, field in six.iteritems(construct_result.fields):
         field_name = field.location.field
-        if field_name in UNSUPPORTED_META_FIELDS:
-            raise NotImplementedError(
-                u'"{}" is unsupported for output.'.format(UNSUPPORTED_META_FIELDS[field_name]))
         output_query_path = field.location.query_path
-        output_field_info = SqlOutput(
+        output_field_info = constants.SqlOutput(
             field_name=field_name,
             output_name=output_name,
             graphql_type=query_path_to_location_info[output_query_path].type)
@@ -168,10 +201,23 @@ def _map_query_path_to_outputs(construct_result, query_path_to_location_info):
 
 
 def _map_block_index_to_location(ir_blocks):
-    """Associate each IR block with it's corresponding location, by index."""
+    """Associate each IR block with its corresponding location, by index."""
     block_index_to_location = {}
+    # MarkLocation blocks occur after the blocks related to that location.
+    # The core approach here is to buffer blocks until their MarkLocation is encountered
+    # after which all buffered blocks can be associated with the encountered MarkLocation.location.
     current_block_ixs = []
+    global_operations_started = False
     for num, ir_block in enumerate(ir_blocks):
+        if global_operations_started:
+            continue
+        if isinstance(ir_block, blocks.GlobalOperationsStart):
+            global_operations_started = True
+            if len(current_block_ixs) > 0:
+                unassociated_blocks = [ir_blocks[ix] for ix in current_block_ixs]
+                raise AssertionError(
+                    u'Unexpectedly encountered global operations before mapping blocks '
+                    u'{} to their respective locations.'.format(unassociated_blocks))
         current_block_ixs.append(num)
         if isinstance(ir_block, blocks.MarkLocation):
             for ix in current_block_ixs:

@@ -4,7 +4,7 @@ from collections import namedtuple
 
 from sqlalchemy import select
 
-from . import sql_context_helpers as context_helpers
+from . import sql_context_helpers
 
 
 # The compilation context holds state that changes during compilation as the tree is traversed
@@ -33,7 +33,8 @@ def emit_code_from_ir(sql_query_tree, compiler_metadata):
         sql_query_tree: SqlQueryTree, tree representation of the query to emit.
         compiler_metadata: CompilerMetadata, SQLAlchemy specific metadata.
 
-    Returns: SQLAlchemy Query
+    Returns:
+        SQLAlchemy Query
 
     """
     context = CompilationContext(
@@ -50,14 +51,14 @@ def _query_tree_to_query(node, context):
     """Convert this node into its corresponding SQL representation.
 
     Args:
-        node: The node to convert to SQL.
+        node: SqlNode, the node to convert to SQL.
         context: CompilationContext, compilation specific metadata
 
     Returns:
         Query, the compiled SQL query
     """
     _create_table_and_update_context(node, context)
-    return _create_query(node, context=context)
+    return _create_query(node, context)
 
 
 def _create_table_and_update_context(node, context):
@@ -72,7 +73,7 @@ def _create_table_and_update_context(node, context):
     Returns:
         Table, the newly aliased SQLAlchemy table.
     """
-    schema_type_name = context_helpers.get_schema_type_name(node, context)
+    schema_type_name = sql_context_helpers.get_schema_type_name(node, context)
     table = context.compiler_metadata.get_table(schema_type_name).alias()
     context.query_path_to_selectable[node.query_path] = table
     return table
@@ -89,7 +90,7 @@ def _create_query(node, context):
         Selectable, selectable of the generated query.
     """
     output_columns = _get_output_columns(node, context)
-    selectable = context_helpers.get_node_selectable(node, context)
+    selectable = sql_context_helpers.get_node_selectable(node, context)
     query = select(output_columns).select_from(selectable)
     return query
 
@@ -102,13 +103,13 @@ def _get_output_columns(node, context):
         context: CompilationContext, global compilation state and metadata.
 
     Returns:
-        List[column], list of SqlAlchemy columns to output for this query.
+        List[Column], list of SqlAlchemy Columns to output for this query.
     """
     sql_outputs = context.query_path_to_output_fields[node.query_path]
     columns = []
     for sql_output in sql_outputs:
         field_name = sql_output.field_name
-        column = context_helpers.get_column(field_name, node, context)
+        column = sql_context_helpers.get_column(field_name, node, context)
         column = column.label(sql_output.output_name)
         columns.append(column)
     return columns

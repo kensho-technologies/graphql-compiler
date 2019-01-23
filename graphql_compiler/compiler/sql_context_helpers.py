@@ -48,7 +48,6 @@ def get_column(column_name, node, context):
 
     Returns:
         column, the SQLAlchemy column if found. Raises an AssertionError otherwise.
-
     """
     column = try_get_column(column_name, node, context)
     if column is None:
