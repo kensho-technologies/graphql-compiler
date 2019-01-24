@@ -70,7 +70,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
             tree_root = SqlNode(block=block, query_path=query_path)
             query_path_to_node[query_path] = tree_root
         elif isinstance(block, blocks.Filter):
-            query_path_to_filters.setdefault(query_path, []).append((block, query_path))
+            query_path_to_filters.setdefault(query_path, []).append(block)
         else:
             raise AssertionError(
                 u'Unsupported block {} unexpectedly passed validation for IR blocks '
@@ -240,7 +240,7 @@ def lower_unary_transformations(ir_blocks):
         if not isinstance(expression, expressions.UnaryTransformation):
             return expression
         raise NotImplementedError(
-            u'"has_edge_degree" filter operation is unsupported by SQL backend.'
+            u'UnaryTransformation expression "{}" is unsupported by SQL backend.'.format(expression)
         )
 
     new_ir_blocks = [

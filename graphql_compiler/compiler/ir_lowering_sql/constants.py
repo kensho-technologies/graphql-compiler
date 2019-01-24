@@ -28,36 +28,31 @@ SUPPORTED_OUTPUT_EXPRESSION_TYPES = (
 )
 
 
-class Operator(object):
-    def __init__(self, name, cardinality):
-        """Represent an operator and it's underlying method."""
-        self.name = name
-        self.cardinality = cardinality
+Operator = namedtuple('Operator', ('name', 'cardinality'))
 
 
-class Cardinality(object):
-    """Cardinality for SQLAlchemy operators."""
-
-    UNARY = 1
-    BINARY = 2
-    LIST_VALUED = 3
+CARDINALITY_UNARY = 'UNARY'
+CARDINALITY_BINARY = 'BINARY'
+CARDINALITY_LIST_VALUED = 'LIST_VALUED'
 
 
+# The mapping supplied for SUPPORTED_OPERATORS allows for programmatic resolution of expressions
+# to their SQLAlchemy equivalents. As a concrete example, when converting the GraphQL filter
+# column_name @filter(op_name: "=", value: ["$variable"])
+# the corresponding python uses SQLAlchemy operation `__eq__` in a call like
+# getattr(Column(column_name), '__eq__')(BindParameter('variable_name')
+# which programattically generates the equivalent of the desired SQLAlchemy expression
+# Column('column_name') == BindParameter('variable_name')
 SUPPORTED_OPERATORS = {
-    u'contains': Operator(u'in_', Cardinality.LIST_VALUED),
-    u'&&': Operator(u'and_', Cardinality.BINARY),
-    u'||': Operator(u'or_', Cardinality.BINARY),
-    u'=': Operator(u'__eq__', Cardinality.UNARY),
-    u'<': Operator(u'__lt__', Cardinality.UNARY),
-    u'>': Operator(u'__gt__', Cardinality.UNARY),
-    u'<=': Operator(u'__le__', Cardinality.UNARY),
-    u'>=': Operator(u'__ge__', Cardinality.UNARY),
-    u'has_substring': Operator(u'contains', Cardinality.UNARY),
-}
-
-UNSUPPORTED_OPERATOR_NAMES = {
-    u'intersects',
-    u'has_edge_degree',
+    u'contains': Operator(u'in_', CARDINALITY_LIST_VALUED),
+    u'&&': Operator(u'and_', CARDINALITY_BINARY),
+    u'||': Operator(u'or_', CARDINALITY_BINARY),
+    u'=': Operator(u'__eq__', CARDINALITY_UNARY),
+    u'<': Operator(u'__lt__', CARDINALITY_UNARY),
+    u'>': Operator(u'__gt__', CARDINALITY_UNARY),
+    u'<=': Operator(u'__le__', CARDINALITY_UNARY),
+    u'>=': Operator(u'__ge__', CARDINALITY_UNARY),
+    u'has_substring': Operator(u'contains', CARDINALITY_UNARY),
 }
 
 
