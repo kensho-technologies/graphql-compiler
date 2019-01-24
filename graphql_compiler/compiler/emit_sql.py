@@ -265,8 +265,8 @@ def _transform_variable_to_expression(expression, node, context):
     """
     variable_name = expression.variable_name
     if not variable_name.startswith(u'$'):
-        raise AssertionError('Unexpectedly received variable name {} that is not '
-                             'prefixed with "$"'.format(variable_name))
+        raise AssertionError(u'Unexpectedly received variable name {} that is not '
+                             u'prefixed with "$"'.format(variable_name))
     return bindparam(variable_name[1:])
 
 
