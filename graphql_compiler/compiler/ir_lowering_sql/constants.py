@@ -38,7 +38,7 @@ CARDINALITY_LIST_VALUED = 'LIST_VALUED'
 
 # The mapping supplied for SUPPORTED_OPERATORS allows for programmatic resolution of expressions
 # to their SQLAlchemy equivalents. As a concrete example, when converting the GraphQL filter
-# column_name @filter(op_name: "=", value: ["$variable"])
+# column_name @filter(op_name: "=", value: ["$variable_name"])
 # the corresponding python uses SQLAlchemy operation `__eq__` in a call like
 # getattr(Column(column_name), '__eq__')(BindParameter('variable_name')
 # which programattically generates the equivalent of the desired SQLAlchemy expression

@@ -7,7 +7,7 @@ def get_schema_type_name(node, context):
     query_path = node.query_path
     if query_path not in context.query_path_to_location_info:
         raise AssertionError(
-            u'Unable to find type name for query path {} with context {}'.format(
+            u'Unable to find type name for query path {} with context {}.'.format(
                 query_path, context))
     location_info = context.query_path_to_location_info[query_path]
     return location_info.type.name
