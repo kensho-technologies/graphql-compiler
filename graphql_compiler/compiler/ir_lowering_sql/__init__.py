@@ -4,6 +4,7 @@ import six
 
 from .sql_tree import SqlNode, SqlQueryTree
 from .. import blocks
+from ...compiler import expressions
 from ...compiler.helpers import Location
 from ..ir_lowering_sql import constants
 from ..metadata import LocationInfo
@@ -45,10 +46,14 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     query_path_to_location_info = _map_query_path_to_location_info(query_metadata_table)
     query_path_to_output_fields = _map_query_path_to_outputs(
         construct_result, query_path_to_location_info)
+    block_index_to_location = _map_block_index_to_location(ir_blocks)
+
+    # perform lowering steps
+    ir_blocks = lower_unary_transformations(ir_blocks)
 
     # iteratively construct SqlTree
     query_path_to_node = {}
-    block_index_to_location = _map_block_index_to_location(ir_blocks)
+    query_path_to_filters = {}
     tree_root = None
     for index, block in enumerate(ir_blocks):
         if isinstance(block, constants.SKIPPABLE_BLOCK_TYPES):
@@ -64,12 +69,15 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                         block, tree_root, ir_blocks, query_metadata_table))
             tree_root = SqlNode(block=block, query_path=query_path)
             query_path_to_node[query_path] = tree_root
+        elif isinstance(block, blocks.Filter):
+            query_path_to_filters.setdefault(query_path, []).append(block)
         else:
             raise AssertionError(
                 u'Unsupported block {} unexpectedly passed validation for IR blocks '
                 u'{} with query metadata table {} .'.format(block, ir_blocks, query_metadata_table))
 
-    return SqlQueryTree(tree_root, query_path_to_location_info, query_path_to_output_fields)
+    return SqlQueryTree(tree_root, query_path_to_location_info, query_path_to_output_fields,
+                        query_path_to_filters, query_path_to_node)
 
 
 def _validate_all_blocks_supported(ir_blocks, query_metadata_table):
@@ -223,3 +231,21 @@ def _map_block_index_to_location(ir_blocks):
                 block_index_to_location[ix] = ir_block.location
             current_block_ixs = []
     return block_index_to_location
+
+
+def lower_unary_transformations(ir_blocks):
+    """Raise exception if any unary transformation block encountered."""
+    def visitor_fn(expression):
+        """Raise error if current expression is a UnaryTransformation."""
+        if not isinstance(expression, expressions.UnaryTransformation):
+            return expression
+        raise NotImplementedError(
+            u'UnaryTransformation expression "{}" encountered with IR blocks {} is unsupported by '
+            u'the SQL backend.'.format(expression, ir_blocks)
+        )
+
+    new_ir_blocks = [
+        block.visit_and_update_expressions(visitor_fn)
+        for block in ir_blocks
+    ]
+    return new_ir_blocks

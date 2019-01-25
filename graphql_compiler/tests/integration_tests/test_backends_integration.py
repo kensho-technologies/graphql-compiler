@@ -1,4 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
+from decimal import Decimal
 from unittest import TestCase
 
 from parameterized import parameterized
@@ -82,7 +83,7 @@ class IntegrationTests(TestCase):
 
     @all_backends
     @integration_fixtures
-    def test_backends(self, backend_name):
+    def test_simple_output(self, backend_name):
         graphql_query = '''
         {
             Animal {
@@ -97,5 +98,50 @@ class IntegrationTests(TestCase):
             {'animal_name': 'Animal 4'},
         ]
         self.assertResultsEqual(graphql_query, {}, backend_name, expected_results)
+
+    @all_backends
+    @integration_fixtures
+    def test_simple_filter(self, backend_name):
+        graphql_query = '''
+        {
+            Animal {
+                name @output(out_name: "animal_name")
+                net_worth @output(out_name: "animal_net_worth")
+                          @filter(op_name: "=", value: ["$net_worth"])
+            }
+        }
+        '''
+        parameters = {
+            'net_worth': Decimal('100'),
+        }
+        expected_results = [
+            {'animal_name': 'Animal 1', 'animal_net_worth': Decimal('100')},
+        ]
+
+        self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
+
+    @all_backends
+    @integration_fixtures
+    def test_two_filters(self, backend_name):
+        graphql_query = '''
+            {
+                Animal {
+                    name @output(out_name: "animal_name")
+                    net_worth @output(out_name: "animal_net_worth")
+                              @filter(op_name: ">=", value: ["$lower_bound_exclusive"])
+                              @filter(op_name: "in_collection", value: ["$net_worths"])
+                }
+            }
+            '''
+        parameters = {
+            'lower_bound_exclusive': Decimal('200'),
+            'net_worths': [Decimal('300'), Decimal('400')],
+        }
+        expected_results = [
+            {'animal_name': 'Animal 3', 'animal_net_worth': Decimal('300')},
+            {'animal_name': 'Animal 4', 'animal_net_worth': Decimal('400')},
+        ]
+
+        self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
 # pylint: enable=no-member
