@@ -220,7 +220,7 @@ class CompilerTests(unittest.TestCase):
                     animal AS animal_1
                 WHERE
                     animal_1.name %s :wanted
-            ''' % (operator,)
+            ''' % (operator,) # nosec, the operators are hardcoded above
 
             expected_output_metadata = {
                 'animal_name': OutputMetadata(type=GraphQLString, optional=False),
