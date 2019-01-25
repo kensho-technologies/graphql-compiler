@@ -52,6 +52,12 @@ def compare_match(test_case, expected, received, parameterized=True):
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
+def compare_sql(test_case, expected, received):
+    """Compare the expected and received SQL query, ignoring whitespace."""
+    msg = '\n{}\n\n!=\n\n{}'.format(expected, received)
+    compare_ignoring_whitespace(test_case, expected, received, msg)
+
+
 def compare_gremlin(test_case, expected, received):
     """Compare the expected and received Gremlin code, ignoring whitespace."""
     msg = '\n{}\n\n!=\n\n{}'.format(
