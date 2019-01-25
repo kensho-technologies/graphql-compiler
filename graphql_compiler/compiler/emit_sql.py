@@ -219,8 +219,8 @@ def _transform_binary_composition_to_expression(expression, node, context):
         right.expanding = True
         clause = getattr(left, sql_operator.name)(right)
         return clause
-    else:
-        raise AssertionError(u'Unknown operator cardinality {}'.format(sql_operator.cardinality))
+    raise AssertionError(u'Unreachable, operator cardinality {} for compiler expression {} is '
+                         u'unknown'.format(sql_operator.cardinality, expression))
 
 
 def _get_column_and_bindparam(left, right, operator):
@@ -230,11 +230,11 @@ def _get_column_and_bindparam(left, right, operator):
     if not isinstance(left, Column):
         raise AssertionError(
             u'SQLAlchemy operator {} expects Column as left side the of expression, got {} '
-            u'of type {}'.format(operator, left, type(left)))
+            u'of type {} instead.'.format(operator, left, type(left)))
     if not isinstance(right, BindParameter):
         raise AssertionError(
-            u'SQLAlchemy operator {} expects BindParameter as the right side of the expression, got'
-            u' {} of type {}'.format(operator, right, type(right)))
+            u'SQLAlchemy operator {} expects BindParameter as the right side of the expression, '
+            u'got {} of type {} instead.'.format(operator, right, type(right)))
     return left, right
 
 

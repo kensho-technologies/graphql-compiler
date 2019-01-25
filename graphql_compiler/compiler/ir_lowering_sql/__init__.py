@@ -240,7 +240,8 @@ def lower_unary_transformations(ir_blocks):
         if not isinstance(expression, expressions.UnaryTransformation):
             return expression
         raise NotImplementedError(
-            u'UnaryTransformation expression "{}" is unsupported by SQL backend.'.format(expression)
+            u'UnaryTransformation expression "{}" encountered with IR blocks {} is unsupported by '
+            u'the SQL backend.'.format(expression, ir_blocks)
         )
 
     new_ir_blocks = [

@@ -31,14 +31,14 @@ def try_convert_decimal_to_string(value):
     """Return Decimals as string if value is a Decimal, return value otherwise."""
     if isinstance(value, list):
         return [try_convert_decimal_to_string(subvalue) for subvalue in value]
-    if not isinstance(value, Decimal):
-        return value
-    return str(value)
+    if isinstance(value, Decimal):
+        return str(value)
+    return value
 
 
 def compile_and_run_match_query(schema, graphql_query, parameters, graph_client):
     """Compiles and runs a MATCH query against the supplied graph client."""
-    # OrientDB expects decimals to be passed as their string representation
+    # MATCH code emitted by the compiler expects Decimals to be passed in as strings
     converted_parameters = {
         name: try_convert_decimal_to_string(value)
         for name, value in six.iteritems(parameters)
