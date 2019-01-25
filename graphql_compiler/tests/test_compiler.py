@@ -8,6 +8,7 @@ import six
 from sqlalchemy.dialects import sqlite
 
 from . import test_input_data
+from .. import exceptions
 from ..compiler import (
     OutputMetadata, compile_graphql_to_gremlin, compile_graphql_to_match, compile_graphql_to_sql
 )
@@ -50,8 +51,8 @@ def check_test_data(test_case, test_data, expected_match, expected_gremlin, expe
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
-    if expected_sql == NotImplementedError:
-        with test_case.assertRaises(NotImplementedError):
+    if expected_sql in (NotImplementedError, exceptions.GraphQLCompilationError):
+        with test_case.assertRaises(expected_sql):
             compile_graphql_to_sql(
                 test_case.schema,
                 test_data.graphql_input,
@@ -164,7 +165,14 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                animal_1.name AS animal_name
+            FROM
+                animal AS animal_1
+            WHERE
+                animal_1.net_worth >= :min_worth
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -204,6 +212,16 @@ class CompilerTests(unittest.TestCase):
                     animal_name: m.Animal___1.name
                 ])}
             ''' % {'operator': gremlin_operator}
+
+            expected_sql = '''
+                SELECT
+                    animal_1.name AS animal_name
+                FROM
+                    animal AS animal_1
+                WHERE
+                    animal_1.name %s :wanted
+            ''' % (operator,)
+
             expected_output_metadata = {
                 'animal_name': OutputMetadata(type=GraphQLString, optional=False),
             }
@@ -216,8 +234,6 @@ class CompilerTests(unittest.TestCase):
                 expected_output_metadata=expected_output_metadata,
                 expected_input_metadata=expected_input_metadata,
                 type_equivalence_hints=None)
-
-            expected_sql = NotImplementedError
 
             check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -245,7 +261,15 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                animal_1.name AS animal_name
+            FROM
+                animal AS animal_1
+            WHERE
+                animal_1.name >= :lower_bound
+                AND animal_1.name < :upper_bound
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -633,7 +657,15 @@ class CompilerTests(unittest.TestCase):
                 name: m.Animal___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                animal_1.name AS name
+            FROM
+                animal AS animal_1
+            WHERE
+                animal_1.name >= :lower
+                AND animal_1.name <= :upper
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -668,7 +700,15 @@ class CompilerTests(unittest.TestCase):
                 birthday: m.Animal___1.birthday.format("yyyy-MM-dd")
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                animal_1.birthday AS birthday
+            FROM
+                animal AS animal_1
+            WHERE
+                animal_1.birthday >= :lower
+                AND animal_1.birthday <= :upper
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -704,7 +744,15 @@ class CompilerTests(unittest.TestCase):
                 event_date: m.Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                event_1.event_date AS event_date
+            FROM
+                event AS event_1
+            WHERE
+                event_1.event_date >= :lower
+                AND event_1.event_date <= :upper
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -733,7 +781,15 @@ class CompilerTests(unittest.TestCase):
                 name: m.Animal___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                animal_1.name AS name
+            FROM
+                animal AS animal_1
+            WHERE
+                animal_1.name <= :upper
+                AND animal_1.name >= :lower
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -776,7 +832,17 @@ class CompilerTests(unittest.TestCase):
                 name: m.Animal___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                animal_1.name AS name
+            FROM
+                animal AS animal_1
+            WHERE
+                animal_1.name <= :upper
+                AND (animal_1.name LIKE '%' || :substring || '%')
+                AND animal_1.name IN ([EXPANDING_fauna])
+                AND animal_1.name >= :lower
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -803,7 +869,16 @@ class CompilerTests(unittest.TestCase):
                name: m.Animal___1.name
            ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                animal_1.name AS name
+            FROM
+                animal AS animal_1
+            WHERE
+                animal_1.name <= :upper
+                AND animal_1.name >= :lower0
+                AND animal_1.name >= :lower1
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -1664,7 +1739,14 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                animal_1.name AS animal_name
+            FROM
+                animal AS animal_1
+            WHERE
+                animal_1.name IN ([EXPANDING_wanted])
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -1899,7 +1981,8 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        # the alias list valued column is not yet supported by the SQL backend
+        expected_sql = exceptions.GraphQLCompilationError
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -2018,7 +2101,14 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                animal_1.name AS animal_name
+            FROM
+                animal AS animal_1
+            WHERE
+                (animal_1.name LIKE '%' || :wanted || '%')
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -2050,6 +2140,14 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal___1.name
             ])}
         '''
+        expected_sql = '''
+            SELECT
+                animal_1.name AS animal_name
+            FROM
+                animal AS animal_1
+            WHERE
+                (animal_1.name LIKE '%' || :wanted || '%')
+        '''
         expected_output_metadata = {
             'animal_name': OutputMetadata(type=GraphQLString, optional=False),
         }
@@ -2062,8 +2160,6 @@ class CompilerTests(unittest.TestCase):
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
             type_equivalence_hints=None)
-
-        expected_sql = NotImplementedError
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -5489,7 +5585,8 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        # the UUID column type is not yet supported by the SQL backend
+        expected_sql = exceptions.GraphQLCompilationError
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 

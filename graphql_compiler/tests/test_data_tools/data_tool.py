@@ -6,7 +6,9 @@ from os import path
 
 from funcy import retry
 import six
-from sqlalchemy import Column, Date, Integer, MetaData, Numeric, String, Table, create_engine, text
+from sqlalchemy import (
+    Column, Date, DateTime, Integer, MetaData, Numeric, String, Table, create_engine, text
+)
 
 from ..integration_tests.integration_backend_config import (
     EXPLICIT_DB_BACKENDS, SQL_BACKEND_TO_CONNECTION_STRING, SqlTestBackend
@@ -112,7 +114,21 @@ def get_animal_schema_sql_metadata():
         Column('net_worth', Numeric, nullable=False),
         Column('birthday', Date, nullable=False),
     )
+    event_table = Table(
+        'event',
+        metadata,
+        Column('event_id', Integer, primary_key=True),
+        Column('event_date', DateTime, nullable=False),
+    )
+    entity_table = Table(
+        'entity',
+        metadata,
+        Column('entity_id', Integer, primary_key=True),
+        Column('name', String(length=12), nullable=False),
+    )
     table_name_to_table = {
         animal_table.name: animal_table,
+        event_table.name: event_table,
+        entity_table.name: entity_table,
     }
     return table_name_to_table, metadata

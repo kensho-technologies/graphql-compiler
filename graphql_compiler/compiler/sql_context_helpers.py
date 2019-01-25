@@ -1,5 +1,6 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Collection of helpers for accessing SQL CompilationContext state."""
+from .. import exceptions
 
 
 def get_schema_type_name(node, context):
@@ -67,7 +68,7 @@ def get_column(column_name, node, context):
     column = try_get_column(column_name, node, context)
     if column is None:
         selectable = get_node_selectable(node, context)
-        raise AssertionError(
+        raise exceptions.GraphQLCompilationError(
             u'Column "{}" not found in selectable "{}". Columns present are {}. '
             u'Context is {}.'.format(column_name, selectable.original,
                                      [col.name for col in selectable.c], context))
