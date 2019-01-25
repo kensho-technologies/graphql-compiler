@@ -8,6 +8,7 @@ from funcy import retry
 import six
 from sqlalchemy import Column, Date, Integer, MetaData, Numeric, String, Table, create_engine, text
 
+
 from ..integration_tests.integration_backend_config import (
     EXPLICIT_DB_BACKENDS, SQL_BACKEND_TO_CONNECTION_STRING, SqlTestBackend
 )
