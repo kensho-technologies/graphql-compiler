@@ -253,7 +253,7 @@ def lower_unary_transformations(ir_blocks):
 
 
 def lower_unsupported_metafield_expressions(ir_blocks):
-    """Raise exception if any unsupported metafield encountered in any LocalField expression."""
+    """Raise exception if an unsupported metafield is encountered in any LocalField expression."""
     def visitor_fn(expression):
         """Visitor function raising exception for any unsupported metafield."""
         if not isinstance(expression, expressions.LocalField):
