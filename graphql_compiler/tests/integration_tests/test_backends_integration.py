@@ -88,14 +88,15 @@ class IntegrationTests(TestCase):
         {
             Animal {
                 name @output(out_name: "animal_name")
+                uuid @output(out_name: "animal_uuid")
             }
         }
         '''
         expected_results = [
-            {'animal_name': 'Animal 1'},
-            {'animal_name': 'Animal 2'},
-            {'animal_name': 'Animal 3'},
-            {'animal_name': 'Animal 4'},
+            {'animal_name': 'Animal 1', 'animal_uuid': 'cfc6e625-8594-0927-468f-f53d864a7a51'},
+            {'animal_name': 'Animal 2', 'animal_uuid': 'cfc6e625-8594-0927-468f-f53d864a7a52'},
+            {'animal_name': 'Animal 3', 'animal_uuid': 'cfc6e625-8594-0927-468f-f53d864a7a53'},
+            {'animal_name': 'Animal 4', 'animal_uuid': 'cfc6e625-8594-0927-468f-f53d864a7a54'},
         ]
         self.assertResultsEqual(graphql_query, {}, backend_name, expected_results)
 
@@ -142,6 +143,29 @@ class IntegrationTests(TestCase):
             {'animal_name': 'Animal 4', 'animal_net_worth': Decimal('400')},
         ]
 
+        self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
+
+    @all_backends
+    @integration_fixtures
+    def test_has_substring_precedence(self, backend_name):
+        graphql_query = '''
+        {
+            Animal {
+                name @output(out_name: "animal_name")
+                     @filter(op_name: "has_substring", value: ["$wide_substring"])
+                     @filter(op_name: "has_substring", value: ["$narrow_substring"])
+            }
+        }
+        '''
+        parameters = {
+            # matches all animal names
+            'wide_substring': 'Animal',
+            # narrows set to just ['Animal 3']
+            'narrow_substring': '3',
+        }
+        expected_results = [
+            {'animal_name': 'Animal 3'},
+        ]
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
 # pylint: enable=no-member

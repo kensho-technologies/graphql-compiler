@@ -48,6 +48,7 @@ SUPPORTED_OPERATORS = {
     u'&&': Operator(u'and_', CARDINALITY_BINARY),
     u'||': Operator(u'or_', CARDINALITY_BINARY),
     u'=': Operator(u'__eq__', CARDINALITY_UNARY),
+    u'!=': Operator(u'__ne__', CARDINALITY_UNARY),
     u'<': Operator(u'__lt__', CARDINALITY_UNARY),
     u'>': Operator(u'__gt__', CARDINALITY_UNARY),
     u'<=': Operator(u'__le__', CARDINALITY_UNARY),

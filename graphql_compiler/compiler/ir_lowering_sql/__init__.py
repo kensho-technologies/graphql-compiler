@@ -50,6 +50,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
 
     # perform lowering steps
     ir_blocks = lower_unary_transformations(ir_blocks)
+    ir_blocks = lower_unsupported_metafield_expressions(ir_blocks)
 
     # iteratively construct SqlTree
     query_path_to_node = {}
@@ -110,7 +111,7 @@ def _validate_all_blocks_supported(ir_blocks, query_metadata_table):
     for field_name, field in six.iteritems(construct_result.fields):
         if not isinstance(field, constants.SUPPORTED_OUTPUT_EXPRESSION_TYPES):
             unsupported_fields.append((field_name, field))
-        elif field_name in constants.UNSUPPORTED_META_FIELDS:
+        elif field.location.field in constants.UNSUPPORTED_META_FIELDS:
             unsupported_fields.append((field_name, field))
 
     if len(unsupported_blocks) > 0 or len(unsupported_fields) > 0:
@@ -243,6 +244,26 @@ def lower_unary_transformations(ir_blocks):
             u'UnaryTransformation expression "{}" encountered with IR blocks {} is unsupported by '
             u'the SQL backend.'.format(expression, ir_blocks)
         )
+
+    new_ir_blocks = [
+        block.visit_and_update_expressions(visitor_fn)
+        for block in ir_blocks
+    ]
+    return new_ir_blocks
+
+
+def lower_unsupported_metafield_expressions(ir_blocks):
+    """Raise exception if an unsupported metafield is encountered in any LocalField expression."""
+    def visitor_fn(expression):
+        """Visitor function raising exception for any unsupported metafield."""
+        if not isinstance(expression, expressions.LocalField):
+            return expression
+        if expression.field_name not in constants.UNSUPPORTED_META_FIELDS:
+            return expression
+        raise NotImplementedError(
+            u'Encountered unsupported metafield {} in LocalField {} during construction of '
+            u'SQL query tree for IR blocks {}.'.format(
+                constants.UNSUPPORTED_META_FIELDS[expression.field_name], expression, ir_blocks))
 
     new_ir_blocks = [
         block.visit_and_update_expressions(visitor_fn)

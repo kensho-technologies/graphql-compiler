@@ -1,11 +1,12 @@
 # Copyright 2018-present Kensho Technologies, LLC.
+import datetime
 from decimal import Decimal
 from glob import glob
 from os import path
 
 from funcy import retry
 import six
-from sqlalchemy import Column, Integer, MetaData, Numeric, String, Table, create_engine, text
+from sqlalchemy import Column, Date, DateTime, MetaData, Numeric, String, Table, create_engine, text
 
 from ..integration_tests.integration_backend_config import (
     EXPLICIT_DB_BACKENDS, SQL_BACKEND_TO_CONNECTION_STRING, SqlTestBackend
@@ -80,22 +81,35 @@ def tear_down_integration_test_backends(sql_test_backends):
 
 def generate_sql_integration_data(sql_test_backends):
     """Populate test data for SQL backends for integration testing."""
-    metadata = MetaData()
-    animal_table = Table(
-        'animal',
-        metadata,
-        Column('animal_id', Integer, primary_key=True),
-        Column('name', String(length=12), nullable=False),
-        Column('net_worth', Numeric, nullable=False),
-    )
+    table_name_to_table, metadata = get_animal_schema_sql_metadata()
     animal_rows = (
-        (1, 'Animal 1', Decimal('100')),
-        (2, 'Animal 2', Decimal('200')),
-        (3, 'Animal 3', Decimal('300')),
-        (4, 'Animal 4', Decimal('400')),
+        (
+            'cfc6e625-8594-0927-468f-f53d864a7a51',
+            'Animal 1',
+            Decimal('100'),
+            datetime.date(1900, 1, 1),
+        ),
+        (
+            'cfc6e625-8594-0927-468f-f53d864a7a52',
+            'Animal 2',
+            Decimal('200'),
+            datetime.date(1950, 2, 2),
+        ),
+        (
+            'cfc6e625-8594-0927-468f-f53d864a7a53',
+            'Animal 3',
+            Decimal('300'),
+            datetime.date(1975, 3, 3),
+        ),
+        (
+            'cfc6e625-8594-0927-468f-f53d864a7a54',
+            'Animal 4',
+            Decimal('400'),
+            datetime.date(2000, 4, 4),
+        ),
     )
     table_values = [
-        (animal_table, animal_rows),
+        (table_name_to_table['animal'], animal_rows),
     ]
     for sql_test_backend in six.itervalues(sql_test_backends):
         metadata.drop_all(sql_test_backend.engine)
@@ -105,3 +119,34 @@ def generate_sql_integration_data(sql_test_backends):
                 sql_test_backend.engine.execute(table.insert(insert_value))
 
     return metadata
+
+
+def get_animal_schema_sql_metadata():
+    """Return Dict[str, Table] table lookup, and associated metadata, for the Animal test schema."""
+    metadata = MetaData()
+    animal_table = Table(
+        'animal',
+        metadata,
+        Column('uuid', String(36), primary_key=True),
+        Column('name', String(length=12), nullable=False),
+        Column('net_worth', Numeric, nullable=False),
+        Column('birthday', Date, nullable=False),
+    )
+    event_table = Table(
+        'event',
+        metadata,
+        Column('uuid', String(36), primary_key=True),
+        Column('event_date', DateTime, nullable=False),
+    )
+    entity_table = Table(
+        'entity',
+        metadata,
+        Column('uuid', String(36), primary_key=True),
+        Column('name', String(length=12), nullable=False),
+    )
+    table_name_to_table = {
+        animal_table.name: animal_table,
+        event_table.name: event_table,
+        entity_table.name: entity_table,
+    }
+    return table_name_to_table, metadata

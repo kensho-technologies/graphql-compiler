@@ -15,6 +15,9 @@ from ..schema import insert_meta_fields_into_existing_schema
 # so we can compare expected and produced emitted code irrespective of whitespace.
 WHITESPACE_PATTERN = re.compile(u'[\t\n ]*', flags=re.UNICODE)
 
+# flag to indicate a test component should be skipped
+SKIP_TEST = 'SKIP'
+
 
 def transform(emitted_output):
     """Transform emitted_output into a unique representation, regardless of lines / indentation."""
@@ -49,6 +52,12 @@ def compare_match(test_case, expected, received, parameterized=True):
     msg = '\n{}\n\n!=\n\n{}'.format(
         pretty_print_match(expected, parameterized=parameterized),
         pretty_print_match(received, parameterized=parameterized))
+    compare_ignoring_whitespace(test_case, expected, received, msg)
+
+
+def compare_sql(test_case, expected, received):
+    """Compare the expected and received SQL query, ignoring whitespace."""
+    msg = '\n{}\n\n!=\n\n{}'.format(expected, received)
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
