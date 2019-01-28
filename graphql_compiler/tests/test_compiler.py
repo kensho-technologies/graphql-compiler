@@ -8,7 +8,6 @@ import six
 from sqlalchemy.dialects import sqlite
 
 from . import test_input_data
-from .. import exceptions
 from ..compiler import (
     OutputMetadata, compile_graphql_to_gremlin, compile_graphql_to_match, compile_graphql_to_sql
 )
@@ -51,7 +50,7 @@ def check_test_data(test_case, test_data, expected_match, expected_gremlin, expe
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
-    if expected_sql in (NotImplementedError, exceptions.GraphQLCompilationError):
+    if expected_sql in {NotImplementedError, AssertionError}:
         with test_case.assertRaises(expected_sql):
             compile_graphql_to_sql(
                 test_case.schema,
@@ -1982,7 +1981,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         # the alias list valued column is not yet supported by the SQL backend
-        expected_sql = exceptions.GraphQLCompilationError
+        expected_sql = AssertionError
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -5586,7 +5585,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         # the UUID column type is not yet supported by the SQL backend
-        expected_sql = exceptions.GraphQLCompilationError
+        expected_sql = AssertionError
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 

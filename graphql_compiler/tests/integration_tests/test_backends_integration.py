@@ -144,4 +144,27 @@ class IntegrationTests(TestCase):
 
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
+    @all_backends
+    @integration_fixtures
+    def test_has_substring_precedence(self, backend_name):
+        graphql_query = '''
+        {
+            Animal {
+                name @output(out_name: "animal_name")
+                     @filter(op_name: "has_substring", value: ["$wide_substring"])
+                     @filter(op_name: "has_substring", value: ["$narrow_substring"])
+            }
+        }
+        '''
+        parameters = {
+            # matches all animal names
+            'wide_substring': 'Animal',
+            # narrows set to just ['Animal 3']
+            'narrow_substring': '3',
+        }
+        expected_results = [
+            {'animal_name': 'Animal 3'},
+        ]
+        self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
+
 # pylint: enable=no-member
