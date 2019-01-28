@@ -86,25 +86,25 @@ def generate_sql_integration_data(sql_test_backends):
     table_name_to_table, metadata = get_animal_schema_sql_metadata()
     animal_rows = (
         (
-            'cfc6e625-8594-0927-468f-f53d864a7a50',
+            'cfc6e625-8594-0927-468f-f53d864a7a51',
             'Animal 1',
             Decimal('100'),
             datetime.date(1900, 1, 1),
         ),
         (
-            'cfc6e625-8594-0927-468f-f53d864a7a51',
+            'cfc6e625-8594-0927-468f-f53d864a7a52',
             'Animal 2',
             Decimal('200'),
             datetime.date(1950, 2, 2),
         ),
         (
-            'cfc6e625-8594-0927-468f-f53d864a7a52',
+            'cfc6e625-8594-0927-468f-f53d864a7a53',
             'Animal 3',
             Decimal('300'),
             datetime.date(1975, 3, 3),
         ),
         (
-            'cfc6e625-8594-0927-468f-f53d864a7a53',
+            'cfc6e625-8594-0927-468f-f53d864a7a54',
             'Animal 4',
             Decimal('400'),
             datetime.date(2000, 4, 4),

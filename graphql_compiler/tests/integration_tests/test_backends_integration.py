@@ -88,14 +88,15 @@ class IntegrationTests(TestCase):
         {
             Animal {
                 name @output(out_name: "animal_name")
+                uuid @output(out_name: "animal_uuid")
             }
         }
         '''
         expected_results = [
-            {'animal_name': 'Animal 1'},
-            {'animal_name': 'Animal 2'},
-            {'animal_name': 'Animal 3'},
-            {'animal_name': 'Animal 4'},
+            {'animal_name': 'Animal 1', 'animal_uuid': 'cfc6e625-8594-0927-468f-f53d864a7a51'},
+            {'animal_name': 'Animal 2', 'animal_uuid': 'cfc6e625-8594-0927-468f-f53d864a7a52'},
+            {'animal_name': 'Animal 3', 'animal_uuid': 'cfc6e625-8594-0927-468f-f53d864a7a53'},
+            {'animal_name': 'Animal 4', 'animal_uuid': 'cfc6e625-8594-0927-468f-f53d864a7a54'},
         ]
         self.assertResultsEqual(graphql_query, {}, backend_name, expected_results)
 
