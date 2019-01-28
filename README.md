@@ -88,8 +88,8 @@ A: We currently support a single graph database, OrientDB version 2.2.28+, and t
    faster than `gremlin`, and has other desirable properties. See the
    [Execution model](#execution-model) section for more details.
    
-   Several relational databases including PostgreSQL, MySQL, Sqlite,
-   and Sql Server are also supported in a limited fashion, see the [SQL Support](#sql-support)
+   Several relational databases including PostgreSQL, MySQL, SSQLite,
+   and Sql Server are also supported in a more limited fashion, see the [SQL Support](#sql-support)
    section for more details.
 
 **Q: Do you plan to support other databases / more GraphQL features in the future?**
@@ -1151,7 +1151,7 @@ supported for various relational database flavor:
 | Sql Server | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
 | MySQL      | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
 | MariaDB    | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
-| Sqlite     | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
+| SQLite     | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
 
 
 ## Miscellaneous
