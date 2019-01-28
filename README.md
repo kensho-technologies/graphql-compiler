@@ -1147,11 +1147,11 @@ supported for various relational database flavor:
      
 |  Dialect   | Supported Directives                   | Caveats                                          |
 | ---------  | -------------------------------------- | -----------------------------------------------  |
-| PostgreSQL | [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
-| Sql Server | [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
-| MySQL      | [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
-| MariaDB    | [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
-| Sqlite     | [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
+| PostgreSQL | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
+| Sql Server | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
+| MySQL      | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
+| MariaDB    | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
+| Sqlite     | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
 
 
 ## Miscellaneous
