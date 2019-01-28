@@ -49,6 +49,7 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
      * [\__count](#__count)
   * [The GraphQL schema](#the-graphql-schema)
   * [Execution model](#execution-model)
+  * [SQL Support](#sql-support)
   * [Miscellaneous](#miscellaneous)
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
@@ -80,12 +81,16 @@ A: No -- there are many existing frameworks for running a web server. We simply 
 
 **Q: What databases and query languages does the compiler support?**
 
-A: We currently support a single database, OrientDB version 2.2.28+, and two query languages
+A: We currently support a single graph database, OrientDB version 2.2.28+, and two query languages
    that OrientDB supports: the OrientDB dialect of `gremlin`, and OrientDB's own custom SQL-like
    query language that we refer to as `MATCH`, after the name of its graph traversal operator.
    With OrientDB, `MATCH` should be the preferred choice for most users, since it tends to run
    faster than `gremlin`, and has other desirable properties. See the
    [Execution model](#execution-model) section for more details.
+   
+   Several relational databases including PostgreSQL, MySQL, Sqlite,
+   and Sql Server are also supported in a limited fashion, see the [SQL Support](#sql-support)
+   section for more details.
 
 **Q: Do you plan to support other databases / more GraphQL features in the future?**
 
@@ -1134,6 +1139,20 @@ the opposite order:
     }
 }
 ```
+
+## SQL Support
+The following table outlines the subset of the GraphQL compiler features that are tested and
+supported for various relational database flavor:
+
+     
+|  Dialect   | Supported Directives                   | Caveats                                          |
+| ---------  | -------------------------------------- | -----------------------------------------------  |
+| PostgreSQL | [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
+| Sql Server | [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
+| MySQL      | [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
+| MariaDB    | [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
+| Sqlite     | [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
+
 
 ## Miscellaneous
 
