@@ -1142,7 +1142,7 @@ the opposite order:
 
 ## SQL Support
 The following table outlines the subset of the GraphQL compiler features that are tested and
-supported for various relational database flavor:
+supported for various relational database flavors:
 
      
 |  Dialect   | Supported Directives                   | Caveats                                          |
