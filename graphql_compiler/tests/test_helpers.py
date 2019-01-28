@@ -15,6 +15,9 @@ from ..schema import insert_meta_fields_into_existing_schema
 # so we can compare expected and produced emitted code irrespective of whitespace.
 WHITESPACE_PATTERN = re.compile(u'[\t\n ]*', flags=re.UNICODE)
 
+# flag to indicate a test component should be skipped
+SKIP_TEST = 'SKIP'
+
 
 def transform(emitted_output):
     """Transform emitted_output into a unique representation, regardless of lines / indentation."""

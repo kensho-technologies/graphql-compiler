@@ -14,7 +14,7 @@ from ..compiler import (
 from ..compiler.ir_lowering_sql.metadata import SqlMetadata
 from .test_data_tools.data_tool import get_animal_schema_sql_metadata
 from .test_helpers import (
-    compare_gremlin, compare_input_metadata, compare_match, compare_sql, get_schema
+    SKIP_TEST, compare_gremlin, compare_input_metadata, compare_match, compare_sql, get_schema
 )
 
 
@@ -50,7 +50,9 @@ def check_test_data(test_case, test_data, expected_match, expected_gremlin, expe
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
-    if expected_sql in {NotImplementedError, AssertionError}:
+    if expected_sql == SKIP_TEST:
+        pass
+    elif expected_sql == NotImplementedError:
         with test_case.assertRaises(expected_sql):
             compile_graphql_to_sql(
                 test_case.schema,
@@ -1981,7 +1983,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         # the alias list valued column is not yet supported by the SQL backend
-        expected_sql = AssertionError
+        expected_sql = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -5584,8 +5586,16 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal___1.name
             ])}
         '''
-        # the UUID column type is not yet supported by the SQL backend
-        expected_sql = AssertionError
+        expected_sql = '''
+            SELECT
+                animal_1.name AS animal_name
+            FROM
+                animal AS animal_1
+            WHERE
+                animal_1.uuid >= :uuid_lower
+                AND animal_1.uuid <= :uuid_upper
+                AND animal_1.birthday >= :earliest_modified_date
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 

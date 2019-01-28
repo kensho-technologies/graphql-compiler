@@ -7,7 +7,7 @@ from os import path
 from funcy import retry
 import six
 from sqlalchemy import (
-    Column, Date, DateTime, Integer, MetaData, Numeric, String, Table, create_engine, text
+    Column, Date, DateTime, MetaData, Numeric, String, Table, create_engine, text
 )
 
 from ..integration_tests.integration_backend_config import (
@@ -85,10 +85,30 @@ def generate_sql_integration_data(sql_test_backends):
     """Populate test data for SQL backends for integration testing."""
     table_name_to_table, metadata = get_animal_schema_sql_metadata()
     animal_rows = (
-        (1, 'Animal 1', Decimal('100'), datetime.date(1900, 1, 1)),
-        (2, 'Animal 2', Decimal('200'), datetime.date(1950, 2, 2)),
-        (3, 'Animal 3', Decimal('300'), datetime.date(1975, 3, 3)),
-        (4, 'Animal 4', Decimal('400'), datetime.date(2000, 4, 4)),
+        (
+            'cfc6e625-8594-0927-468f-f53d864a7a50',
+            'Animal 1',
+            Decimal('100'),
+            datetime.date(1900, 1, 1),
+        ),
+        (
+            'cfc6e625-8594-0927-468f-f53d864a7a51',
+            'Animal 2',
+            Decimal('200'),
+            datetime.date(1950, 2, 2),
+        ),
+        (
+            'cfc6e625-8594-0927-468f-f53d864a7a52',
+            'Animal 3',
+            Decimal('300'),
+            datetime.date(1975, 3, 3),
+        ),
+        (
+            'cfc6e625-8594-0927-468f-f53d864a7a53',
+            'Animal 4',
+            Decimal('400'),
+            datetime.date(2000, 4, 4),
+        ),
     )
     table_values = [
         (table_name_to_table['animal'], animal_rows),
@@ -109,7 +129,7 @@ def get_animal_schema_sql_metadata():
     animal_table = Table(
         'animal',
         metadata,
-        Column('animal_id', Integer, primary_key=True),
+        Column('uuid', String(36), primary_key=True),
         Column('name', String(length=12), nullable=False),
         Column('net_worth', Numeric, nullable=False),
         Column('birthday', Date, nullable=False),
@@ -117,13 +137,13 @@ def get_animal_schema_sql_metadata():
     event_table = Table(
         'event',
         metadata,
-        Column('event_id', Integer, primary_key=True),
+        Column('uuid', String(36), primary_key=True),
         Column('event_date', DateTime, nullable=False),
     )
     entity_table = Table(
         'entity',
         metadata,
-        Column('entity_id', Integer, primary_key=True),
+        Column('uuid', String(36), primary_key=True),
         Column('name', String(length=12), nullable=False),
     )
     table_name_to_table = {
