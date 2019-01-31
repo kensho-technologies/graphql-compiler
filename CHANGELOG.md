@@ -2,6 +2,10 @@
 
 ## Current development version
 
+## v1.10.0
+
+- **BREAKING**: Rename the `__count` meta field to `_x_count`, to avoid GraphQL schema parsing issues with other GraphQL libraries. [#176](https://github.com/kensho-technologies/graphql-compiler/pull/176)
+
 ## v1.9.0
 
 - Add a `__count` meta field that supports outputting and filtering on the size of a `@fold` scope. [#158](https://github.com/kensho-technologies/graphql-compiler/pull/158)

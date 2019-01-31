@@ -478,7 +478,7 @@ class GlobalOperationsStart(MarkerBlock):
 
     Global operations include, for example, various kinds of filters that affect more than one
     location in the query. Such filters are produced, e.g., as part of nested-optional processing,
-    or when filters are applied to the "__count" meta property.
+    or when filters are applied to the "_x_count" meta property.
     """
 
     __slots__ = ()

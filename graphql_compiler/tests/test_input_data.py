@@ -1890,7 +1890,7 @@ def output_count_in_fold_scope():
         Animal {
             name @output(out_name: "name")
             out_Animal_ParentOf @fold {
-                __count @output(out_name: "number_of_children")
+                _x_count @output(out_name: "number_of_children")
                 name @output(out_name: "child_names")
             }
         }
@@ -1914,7 +1914,7 @@ def filter_count_with_runtime_parameter_in_fold_scope():
         Animal {
             name @output(out_name: "name")
             out_Animal_ParentOf @fold {
-                __count @filter(op_name: ">=", value: ["$min_children"])
+                _x_count @filter(op_name: ">=", value: ["$min_children"])
                 name @output(out_name: "child_names")
             }
         }
@@ -1942,7 +1942,7 @@ def filter_count_with_tagged_parameter_in_fold_scope():
                 limbs @tag(tag_name: "limbs")
             }
             out_Animal_ParentOf @fold {
-                __count @filter(op_name: ">=", value: ["%limbs"])
+                _x_count @filter(op_name: ">=", value: ["%limbs"])
                 name @output(out_name: "child_names")
             }
         }
@@ -1965,7 +1965,7 @@ def filter_count_and_other_filters_in_fold_scope():
         Animal {
             name @output(out_name: "name")
             out_Animal_ParentOf @fold {
-                __count @filter(op_name: ">=", value: ["$min_children"])
+                _x_count @filter(op_name: ">=", value: ["$min_children"])
                         @output(out_name: "number_of_children")
                 alias @filter(op_name: "contains", value: ["$expected_alias"])
             }
@@ -1992,10 +1992,10 @@ def multiple_filters_on_count():
         Animal {
             name @output(out_name: "name")
             out_Animal_ParentOf @fold {
-                __count @filter(op_name: ">=", value: ["$min_children"])
+                _x_count @filter(op_name: ">=", value: ["$min_children"])
             }
             out_Entity_Related @fold {
-                __count @filter(op_name: ">=", value: ["$min_related"])
+                _x_count @filter(op_name: ">=", value: ["$min_related"])
             }
         }
     }'''
@@ -2020,7 +2020,7 @@ def filter_on_count_with_nested_filter():
             name @output(out_name: "name")
             in_Animal_OfSpecies @fold {
                 out_Animal_LivesIn {
-                    __count @filter(op_name: "=", value: ["$num_animals"])
+                    _x_count @filter(op_name: "=", value: ["$num_animals"])
                     name @filter(op_name: "=", value: ["$location"])
                 }
             }

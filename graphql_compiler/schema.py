@@ -280,7 +280,7 @@ DIRECTIVES = (
 
 
 TYPENAME_META_FIELD_NAME = '__typename'  # This meta field is built-in.
-COUNT_META_FIELD_NAME = '__count'
+COUNT_META_FIELD_NAME = '_x_count'
 
 
 ALL_SUPPORTED_META_FIELDS = frozenset((
@@ -311,7 +311,7 @@ def insert_meta_fields_into_existing_schema(graphql_schema):
     Use this function at your own risk. Don't say you haven't been warned.
 
     Properties added include:
-        - "__count", which allows filtering folds based on the number of elements they capture.
+        - "_x_count", which allows filtering folds based on the number of elements they capture.
 
     Args:
         graphql_schema: GraphQLSchema object describing the schema that is going to be used with
