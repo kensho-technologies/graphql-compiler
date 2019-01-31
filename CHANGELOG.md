@@ -4,7 +4,7 @@
 
 ## v1.10.0
 
-- **BREAKING**: Rename the `__count` meta field to `_x_count`, to avoid GraphQL schema parsing issues with other GraphQL libraries. [#178](https://github.com/kensho-technologies/graphql-compiler/pull/178)
+- **BREAKING**: Rename the `__count` meta field to `_x_count`, to avoid GraphQL schema parsing issues with other GraphQL libraries. [#176](https://github.com/kensho-technologies/graphql-compiler/pull/176)
 
 ## v1.9.0
 
