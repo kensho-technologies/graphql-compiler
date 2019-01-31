@@ -799,6 +799,10 @@ in the `@fold` and filter down results to select only those with the desired fol
 
 We use the `_x_` prefix to signify that this is an extension meta field introduced by the compiler,
 and not part of the canonical set of GraphQL meta fields defined by the GraphQL specification.
+We do not use the GraphQL standard double-underscore (`__`) prefix for meta fields,
+since all names with that prefix are
+[explicitly reserved and prohibited from being used](https://facebook.github.io/graphql/draft/#sec-Reserved-Names)
+in directives, fields, or any other artifacts.
 
 #### Adding the `_x_count` meta field to your schema
 
