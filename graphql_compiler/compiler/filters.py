@@ -134,23 +134,33 @@ def _represent_argument(context, argument, inferred_type):
             raise AssertionError(u'Argument declared without location: {}'.format(argument_name))
 
         if location.field is None:
-            raise AssertionError(u'Argument location is not a property field: {}'.format(location))
+            raise AssertionErroprp(u'Argument location is not a property field: {}'.format(location))
 
         if not inferred_type.is_same_type(tag_inferred_type):
             raise GraphQLCompilationError(u'The inferred type of the matching @tag directive does '
                                           u'not match the inferred required type for this filter: '
                                           u'{} vs {}'.format(tag_inferred_type, inferred_type))
 
+        # See if the argument is colocated with the directive
+        directive_location_without_field = context['directive_location'].remove_field()
+        argument_location_without_field = argument_context['location'].remove_field()
+        colocated = directive_location_without_field == argument_location_without_field
+
         non_existence_expression = None
         if optional:
-            non_existence_expression = expressions.BinaryComposition(
-                u'=',
-                # XXX maybe None?
-                expressions.ContextFieldExistence(location.at_vertex()),
-                expressions.FalseLiteral)
+            if colocated:
+                non_existence_expression = expressions.FalseLiteral
+            else:
+                non_existence_expression = expressions.BinaryComposition(
+                    u'=',
+                    expressions.ContextFieldExistence(location.at_vertex()),
+                    expressions.FalseLiteral)
 
-        # XXX maybe LocalField?
-        representation = expressions.ContextField(location)
+        if colocated:
+            representation = expressions.LocalField(argument_name)
+        else:
+            representation = expressions.ContextField(location)
+
         return (representation, non_existence_expression)
     else:
         # If we want to support literal arguments, add them here.
@@ -652,4 +662,5 @@ def process_filter_directive(filter_operation_info, location, context):
         FilterInfo(fields=fields, op_name=op_name, args=tuple(operator_params))
     )
 
+    context['directive_location'] = location
     return process_func(filter_operation_info, context, operator_params)
