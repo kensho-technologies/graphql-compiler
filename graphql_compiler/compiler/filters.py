@@ -145,9 +145,11 @@ def _represent_argument(context, argument, inferred_type):
         if optional:
             non_existence_expression = expressions.BinaryComposition(
                 u'=',
+                # XXX maybe None?
                 expressions.ContextFieldExistence(location.at_vertex()),
                 expressions.FalseLiteral)
 
+        # XXX maybe LocalField?
         representation = expressions.ContextField(location)
         return (representation, non_existence_expression)
     else:

@@ -304,6 +304,29 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_colocated_filter_and_tag(self):
+        test_data = test_input_data.colocated_filter_and_tag()
+
+        base_location = helpers.Location(('Animal',))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'contains', expressions.LocalField('alias'), expressions.LocalField('name'))),
+            blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString)
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_multiple_filters(self):
         test_data = test_input_data.multiple_filters()
 

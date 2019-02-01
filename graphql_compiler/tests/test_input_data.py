@@ -78,6 +78,26 @@ def immediate_output_with_custom_scalar_filter():
         type_equivalence_hints=None)
 
 
+def colocated_filter_and_tag():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+                 @tag(tag_name: "name")
+            alias @filter(op_name: "contains", value: ["%name"])
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def multiple_filters():
     graphql_input = '''{
         Animal {

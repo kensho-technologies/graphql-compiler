@@ -177,6 +177,19 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
+    def test_colocated_filter_and_tag(self):
+        test_data = test_input_data.colocated_filter_and_tag()
+
+        expected_match = '''
+        '''
+        expected_gremlin = '''
+        '''
+        expected_sql = '''
+        '''
+
+        # TODO
+        # check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
+
     def test_immediate_filter_and_output(self):
         # Ensure that all basic comparison operators output correct code in this simple case.
         comparison_operators = {u'=', u'!=', u'>', u'<', u'>=', u'<='}
