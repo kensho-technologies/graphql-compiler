@@ -81,13 +81,15 @@ def immediate_output_with_custom_scalar_filter():
 def colocated_filter_and_tag():
     graphql_input = '''{
         Animal {
-            name @output(out_name: "animal_name")
-                 @tag(tag_name: "name")
-            alias @filter(op_name: "contains", value: ["%name"])
+            out_Entity_Related {
+                name @output(out_name: "related_name")
+                     @tag(tag_name: "name")
+                alias @filter(op_name: "contains", value: ["%name"])
+            }
         }
     }'''
     expected_output_metadata = {
-        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'related_name': OutputMetadata(type=GraphQLString, optional=False),
     }
     expected_input_metadata = {}
 

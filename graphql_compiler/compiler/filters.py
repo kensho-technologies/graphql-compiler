@@ -134,7 +134,7 @@ def _represent_argument(context, argument, inferred_type):
             raise AssertionError(u'Argument declared without location: {}'.format(argument_name))
 
         if location.field is None:
-            raise AssertionErroprp(u'Argument location is not a property field: {}'.format(location))
+            raise AssertionError(u'Argument location is not a property field: {}'.format(location))
 
         if not inferred_type.is_same_type(tag_inferred_type):
             raise GraphQLCompilationError(u'The inferred type of the matching @tag directive does '
