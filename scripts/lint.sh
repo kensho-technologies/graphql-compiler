@@ -33,7 +33,7 @@ lintable_locations="graphql_compiler/"
 pylint_lintable_locations="graphql_compiler/**/*.py"
 if [ "$diff_only" -eq 1 ] ; then
     # Quotes don't need to be escaped because they nest with $( ).
-    lintable_locations="$(git diff --name-only master... | grep "*\.py$")"
+    lintable_locations="$(git diff --name-only master... | grep "\.*\.py$")"
     pylint_lintable_locations="$lintable_locations"
 fi
 
@@ -47,29 +47,41 @@ isort_exit_code=$?
 echo -e "\n*** End of isort run; exit: $isort_exit_code ***\n"
 
 echo -e '*** Running flake8... ***\n'
-flake8 graphql_compiler/
+flake8 $lintable_locations
 flake_exit_code=$?
 echo -e "\n*** End of flake8 run, exit: $flake_exit_code ***\n"
 
 echo -e '\n*** Running pydocstyle... ***\n'
-pydocstyle graphql_compiler/
+pydocstyle --config=.pydocstyle $lintable_locations
 pydocstyle_exit_code=$?
+pydocstyle --config=.pydocstyle_test $lintable_locations
+pydocstyle_test_exit_code=$?
 echo -e "\n*** End of pydocstyle run, exit: $pydocstyle_exit_code ***\n"
 
 echo -e '\n*** Running pylint... ***\n'
-pylint graphql_compiler/
+pylint $pylint_lintable_locations
 pylint_exit_code=$?
 echo -e "\n*** End of pylint run, exit: $pylint_exit_code ***\n"
 
 echo -e '\n*** Running bandit... ***\n'
-bandit -r graphql_compiler/
+bandit -r $lintable_locations
 bandit_exit_code=$?
 echo -e "\n*** End of bandit run, exit: $bandit_exit_code ***\n"
 
 if [[ ("$flake_exit_code" != "0") ||
       ("$pydocstyle_exit_code" != "0") ||
+      ("$pydocstyle_test_exit_code" != "0") ||
       ("$pylint_exit_code" != "0") ||
       ("$bandit_exit_code" != "0") ||
       ("$isort_exit_code" != "0") ]]; then
+    echo -e "\n*** Lint failed. ***\n"
+    echo -e "isort exit: $isort_exit_code"
+    echo -e "flake8 exit: $flake_exit_code"
+    echo -e "pydocstyle exit: $pydocstyle_exit_code"
+    echo -e "pydocstyle test exit: $pydocstyle_test_exit_code"
+    echo -e "pylint exit: $pylint_exit_code"
+    echo -e "bandit exit: $bandit_exit_code"
     exit 1
 fi
+
+echo -e "\n*** Lint successful. ***\n"
