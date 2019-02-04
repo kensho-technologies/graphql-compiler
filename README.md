@@ -328,6 +328,8 @@ the name of its parent.
   (`A-Z`, `a-z`), or underscores (`_`).
 - For any given query, all `tag_name` values must be unique.
 - Cannot be applied to property fields within a scope marked `@fold`.
+- Using a `@tag` and a `@filter` that references the tag within the same vertex is allowed,
+  so long as the two not appear on the exact same property field.
 
 ### @filter
 
@@ -427,6 +429,9 @@ as `@filter` parameters, for several reasons:
       having the filter at all;
     - using `@filter(op_name: "between", value: ["$lower", "%from_optional"])` is equivalent to
       `@filter(op_name: ">=", value: ["$lower"])`.
+- Using a `@tag` and a `@filter` that references the tag within the same vertex is allowed,
+  so long as the two not appear on the exact same property field.
+
 
 ### @recurse
 
