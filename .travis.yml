@@ -21,11 +21,7 @@ matrix:
     python: "3.6"
     script:
       - pipenv run ./scripts/copyright_line_check.sh
-      - pipenv run isort --check-only --verbose --recursive graphql_compiler/
-      - pipenv run flake8 --config=setup.cfg graphql_compiler/
-      - pipenv run pydocstyle graphql_compiler/
-      - pipenv run pylint graphql_compiler/
-      - pipenv run bandit -r graphql_compiler/
+      - pipenv run ./scripts/lint.sh
   - name: "Python 2.7 unit tests"
     python: "2.7"
     script:
