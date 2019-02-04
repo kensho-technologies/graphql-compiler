@@ -329,7 +329,7 @@ the name of its parent.
 - For any given query, all `tag_name` values must be unique.
 - Cannot be applied to property fields within a scope marked `@fold`.
 - Using a `@tag` and a `@filter` that references the tag within the same vertex is allowed,
-  so long as the two not appear on the exact same property field.
+  so long as the two do not appear on the exact same property field.
 
 ### @filter
 
@@ -345,7 +345,7 @@ Multiple `@filter` directives may be applied to the same field at once. Conceptu
 it is as if the different `@filter` directives were joined by SQL `AND` keywords.
 
 Using a `@tag` and a `@filter` that references the tag within the same vertex is allowed,
-so long as the two not appear on the exact same property field.
+so long as the two do not appear on the exact same property field.
 
 #### Passing Parameters
 
@@ -430,7 +430,7 @@ as `@filter` parameters, for several reasons:
     - using `@filter(op_name: "between", value: ["$lower", "%from_optional"])` is equivalent to
       `@filter(op_name: ">=", value: ["$lower"])`.
 - Using a `@tag` and a `@filter` that references the tag within the same vertex is allowed,
-  so long as the two not appear on the exact same property field.
+  so long as the two do not appear on the exact same property field.
 
 
 ### @recurse
