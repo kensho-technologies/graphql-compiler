@@ -93,6 +93,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
     """Return a two-element tuple that represents the argument to the directive being processed.
 
     Args:
+        directive_location: Location where this directive is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         argument: string, the name of the argument to the directive
@@ -174,6 +175,7 @@ def _process_comparison_filter_directive(filter_operation_info, location,
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, containing the value to perform the comparison against;
@@ -220,6 +222,7 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, containing the value to check the edge degree against;
@@ -294,6 +297,7 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, containing the value to check the name or alias against;
@@ -360,6 +364,7 @@ def _process_between_filter_directive(filter_operation_info, location, context, 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 2 elements, specifying the time range in which the data must lie;
@@ -405,6 +410,7 @@ def _process_in_collection_filter_directive(filter_operation_info, location, con
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
@@ -439,6 +445,7 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
@@ -476,6 +483,7 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
@@ -514,6 +522,7 @@ def _process_intersects_filter_directive(filter_operation_info, location, contex
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
