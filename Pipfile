@@ -25,7 +25,7 @@ snapshottest = "==0.5.0"
 [packages]
 arrow = "==0.10.0"
 funcy = "==1.7.3"
-graphql-core = "==1.1"
+graphql-core = "==2.1"
 pytz = "==2017.2"
 six = "==1.10.0"
 sqlalchemy = "==1.2.9"
