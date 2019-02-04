@@ -181,6 +181,8 @@ class CompilerTests(unittest.TestCase):
         # Ensure that all basic comparison operators output correct code in this simple case.
         comparison_operators = {u'=', u'!=', u'>', u'<', u'>=', u'<='}
 
+        # TODO test
+
         for operator in comparison_operators:
             graphql_input = '''{
                 Animal {
