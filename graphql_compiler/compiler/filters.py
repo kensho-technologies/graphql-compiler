@@ -66,13 +66,13 @@ def takes_parameters(count):
     def decorator(f):
         """Decorate the supplied function with the "takes_parameters" logic."""
         @wraps(f)
-        def wrapper(filter_operation_info, context, parameters, *args, **kwargs):
+        def wrapper(filter_operation_info, location, context, parameters, *args, **kwargs):
             """Check that the supplied number of parameters equals the expected number."""
             if len(parameters) != count:
                 raise GraphQLCompilationError(u'Incorrect number of parameters, expected {} got '
                                               u'{}: {}'.format(count, len(parameters), parameters))
 
-            return f(filter_operation_info, context, parameters, *args, **kwargs)
+            return f(filter_operation_info, location, context, parameters, *args, **kwargs)
 
         return wrapper
 
@@ -89,10 +89,11 @@ def _is_tag_argument(argument_name):
     return argument_name.startswith('%')
 
 
-def _represent_argument(context, argument, inferred_type):
+def _represent_argument(directive_location, context, argument, inferred_type):
     """Return a two-element tuple that represents the argument to the directive being processed.
 
     Args:
+        directive_location: Location where the directive is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         argument: string, the name of the argument to the directive
@@ -141,14 +142,24 @@ def _represent_argument(context, argument, inferred_type):
                                           u'not match the inferred required type for this filter: '
                                           u'{} vs {}'.format(tag_inferred_type, inferred_type))
 
+        # Check whether the argument is a field on the vertex on which the directive is applied.
+        field_is_local = directive_location.at_vertex() == location.at_vertex()
+
         non_existence_expression = None
         if optional:
-            non_existence_expression = expressions.BinaryComposition(
-                u'=',
-                expressions.ContextFieldExistence(location.at_vertex()),
-                expressions.FalseLiteral)
+            if field_is_local:
+                non_existence_expression = expressions.FalseLiteral
+            else:
+                non_existence_expression = expressions.BinaryComposition(
+                    u'=',
+                    expressions.ContextFieldExistence(location.at_vertex()),
+                    expressions.FalseLiteral)
 
-        representation = expressions.ContextField(location)
+        if field_is_local:
+            representation = expressions.LocalField(argument_name)
+        else:
+            representation = expressions.ContextField(location)
+
         return (representation, non_existence_expression)
     else:
         # If we want to support literal arguments, add them here.
@@ -157,12 +168,14 @@ def _represent_argument(context, argument, inferred_type):
 
 @scalar_leaf_only(u'comparison operator')
 @takes_parameters(1)
-def _process_comparison_filter_directive(filter_operation_info, context, parameters, operator=None):
+def _process_comparison_filter_directive(filter_operation_info, location,
+                                         context, parameters, operator=None):
     """Return a Filter basic block that performs the given comparison against the property field.
 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, containing the value to perform the comparison against;
@@ -184,7 +197,7 @@ def _process_comparison_filter_directive(filter_operation_info, context, paramet
 
     argument_inferred_type = strip_non_null_from_type(filtered_field_type)
     argument_expression, non_existence_expression = _represent_argument(
-        context, parameters[0], argument_inferred_type)
+        location, context, parameters[0], argument_inferred_type)
 
     comparison_expression = expressions.BinaryComposition(
         operator, expressions.LocalField(filtered_field_name), argument_expression)
@@ -203,12 +216,13 @@ def _process_comparison_filter_directive(filter_operation_info, context, paramet
 
 @vertex_field_only(u'has_edge_degree')
 @takes_parameters(1)
-def _process_has_edge_degree_filter_directive(filter_operation_info, context, parameters):
+def _process_has_edge_degree_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks the degree of the edge to the given vertex field.
 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, containing the value to check the edge degree against;
@@ -239,7 +253,7 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, context, pa
 
     argument_inferred_type = GraphQLInt
     argument_expression, non_existence_expression = _represent_argument(
-        context, argument, argument_inferred_type)
+        location, context, argument, argument_inferred_type)
 
     if non_existence_expression is not None:
         raise AssertionError(u'Since we do not support tagged values, non_existence_expression '
@@ -277,12 +291,13 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, context, pa
 
 @vertex_field_only(u'name_or_alias')
 @takes_parameters(1)
-def _process_name_or_alias_filter_directive(filter_operation_info, context, parameters):
+def _process_name_or_alias_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks for a match against an Entity's name or alias.
 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, containing the value to check the name or alias against;
@@ -323,7 +338,7 @@ def _process_name_or_alias_filter_directive(filter_operation_info, context, para
 
     argument_inferred_type = name_field_type
     argument_expression, non_existence_expression = _represent_argument(
-        context, parameters[0], argument_inferred_type)
+        location, context, parameters[0], argument_inferred_type)
 
     check_against_name = expressions.BinaryComposition(
         u'=', expressions.LocalField('name'), argument_expression)
@@ -343,12 +358,13 @@ def _process_name_or_alias_filter_directive(filter_operation_info, context, para
 
 @scalar_leaf_only(u'between')
 @takes_parameters(2)
-def _process_between_filter_directive(filter_operation_info, context, parameters):
+def _process_between_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks that a field is between two values, inclusive.
 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 2 elements, specifying the time range in which the data must lie;
@@ -363,9 +379,9 @@ def _process_between_filter_directive(filter_operation_info, context, parameters
 
     argument_inferred_type = strip_non_null_from_type(filtered_field_type)
     arg1_expression, arg1_non_existence = _represent_argument(
-        context, parameters[0], argument_inferred_type)
+        location, context, parameters[0], argument_inferred_type)
     arg2_expression, arg2_non_existence = _represent_argument(
-        context, parameters[1], argument_inferred_type)
+        location, context, parameters[1], argument_inferred_type)
 
     lower_bound_clause = expressions.BinaryComposition(
         u'>=', expressions.LocalField(filtered_field_name), arg1_expression)
@@ -388,12 +404,13 @@ def _process_between_filter_directive(filter_operation_info, context, parameters
 
 @scalar_leaf_only(u'in_collection')
 @takes_parameters(1)
-def _process_in_collection_filter_directive(filter_operation_info, context, parameters):
+def _process_in_collection_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks for a value's existence in a collection.
 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
@@ -407,7 +424,7 @@ def _process_in_collection_filter_directive(filter_operation_info, context, para
 
     argument_inferred_type = GraphQLList(strip_non_null_from_type(filtered_field_type))
     argument_expression, non_existence_expression = _represent_argument(
-        context, parameters[0], argument_inferred_type)
+        location, context, parameters[0], argument_inferred_type)
 
     filter_predicate = expressions.BinaryComposition(
         u'contains', argument_expression, expressions.LocalField(filtered_field_name))
@@ -422,12 +439,13 @@ def _process_in_collection_filter_directive(filter_operation_info, context, para
 
 @scalar_leaf_only(u'has_substring')
 @takes_parameters(1)
-def _process_has_substring_filter_directive(filter_operation_info, context, parameters):
+def _process_has_substring_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks if the directive arg is a substring of the field.
 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
@@ -445,7 +463,7 @@ def _process_has_substring_filter_directive(filter_operation_info, context, para
     argument_inferred_type = GraphQLString
 
     argument_expression, non_existence_expression = _represent_argument(
-        context, parameters[0], argument_inferred_type)
+        location, context, parameters[0], argument_inferred_type)
 
     filter_predicate = expressions.BinaryComposition(
         u'has_substring', expressions.LocalField(filtered_field_name), argument_expression)
@@ -459,12 +477,13 @@ def _process_has_substring_filter_directive(filter_operation_info, context, para
 
 
 @takes_parameters(1)
-def _process_contains_filter_directive(filter_operation_info, context, parameters):
+def _process_contains_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks if the directive arg is contained in the field.
 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
@@ -483,7 +502,7 @@ def _process_contains_filter_directive(filter_operation_info, context, parameter
 
     argument_inferred_type = strip_non_null_from_type(base_field_type.of_type)
     argument_expression, non_existence_expression = _represent_argument(
-        context, parameters[0], argument_inferred_type)
+        location, context, parameters[0], argument_inferred_type)
 
     filter_predicate = expressions.BinaryComposition(
         u'contains', expressions.LocalField(filtered_field_name), argument_expression)
@@ -497,12 +516,13 @@ def _process_contains_filter_directive(filter_operation_info, context, parameter
 
 
 @takes_parameters(1)
-def _process_intersects_filter_directive(filter_operation_info, context, parameters):
+def _process_intersects_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks if the directive arg and the field intersect.
 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
+        location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
@@ -520,7 +540,7 @@ def _process_intersects_filter_directive(filter_operation_info, context, paramet
                                       u'type {}'.format(filtered_field_type))
 
     argument_expression, non_existence_expression = _represent_argument(
-        context, parameters[0], argument_inferred_type)
+        location, context, parameters[0], argument_inferred_type)
 
     filter_predicate = expressions.BinaryComposition(
         u'intersects', expressions.LocalField(filtered_field_name), argument_expression)
@@ -650,4 +670,4 @@ def process_filter_directive(filter_operation_info, location, context):
         FilterInfo(fields=fields, op_name=op_name, args=tuple(operator_params))
     )
 
-    return process_func(filter_operation_info, context, operator_params)
+    return process_func(filter_operation_info, location, context, operator_params)
