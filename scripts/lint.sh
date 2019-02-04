@@ -23,7 +23,8 @@ for i in "$@"; do
     esac
 done
 
-cd "$(git rev-parse --show-toplevel)"
+# Make sure the current working directory for this script is the root directory.
+cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
 # Get all python files or directories that need to be linted.
 lintable_locations="graphql_compiler/"
