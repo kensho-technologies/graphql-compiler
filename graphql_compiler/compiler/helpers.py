@@ -336,10 +336,6 @@ class Location(BaseLocation):
         # visit 'Y' in two different ways to generate colliding 'X__Y___1' identifiers.
         self.visit_counter = visit_counter
 
-    def remove_field(self):
-        """Return a new location object with field set to none."""
-        return Location(self.query_path, field=None, visit_counter=self.visit_counter)
-
     def navigate_to_field(self, field):
         """Return a new Location object at the specified field of the current Location's vertex."""
         if self.field:
@@ -502,8 +498,11 @@ class FoldScopeLocation(BaseLocation):
         first_folded_edge_direction, first_folded_edge_name = self.fold_path[0]
         return first_folded_edge_direction, first_folded_edge_name
 
-    def remove_field(self):
-        """Return a new location object with field set to none."""
+    def at_vertex(self):
+        """Get the Location ignoring its field component."""
+        if not self.field:
+            return self
+
         return FoldScopeLocation(self.base_location, self.fold_path, field=None)
 
     def navigate_to_field(self, field):
