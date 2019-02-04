@@ -1,3 +1,4 @@
+# Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
 from .macro_edge import make_macro_edge_definition
