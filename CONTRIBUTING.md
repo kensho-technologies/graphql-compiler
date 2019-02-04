@@ -58,19 +58,7 @@ of both the contributors and the project.
 This project follows the
 [Google Python style guide](https://google.github.io/styleguide/pyguide.html).
 
-Additionally, any contributions must pass the following set of lint and style checks with no issues
-when executed from a pipenv shell (i.e. after running `pipenv shell`):
-```
-isort --check-only --verbose --recursive graphql_compiler/
-
-flake8 graphql_compiler/
-
-pydocstyle graphql_compiler/
-
-pylint graphql_compiler/
-
-bandit -r graphql_compiler/
-```
+Additionally, any contributions must pass the linter `scripts/lint.sh` when executed from a pipenv shell (i.e. after running `pipenv shell`). To run the linter on changed files only, commit your changes and run `scripts/lint.sh --diff`.
 
 Finally, all python files in the repository must display the copyright of the project,
 to protect the terms of the license. Please make sure that your files start with a line like:
