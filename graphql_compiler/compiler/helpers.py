@@ -499,7 +499,7 @@ class FoldScopeLocation(BaseLocation):
         return first_folded_edge_direction, first_folded_edge_name
 
     def at_vertex(self):
-        """Get the Location ignoring its field component."""
+        """Get the FoldScopeLocation ignoring its field component."""
         if not self.field:
             return self
 

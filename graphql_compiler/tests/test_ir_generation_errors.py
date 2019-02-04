@@ -1330,3 +1330,17 @@ class IrGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             graphql_to_ir(self.schema, valid_graphql_input,
                           type_equivalence_hints=invalid_type_equivalence_hints)
+
+    def test_filter_and_tag_on_same_field(self):
+        invalid_graphql_input = '''{
+            Animal {
+                out_Entity_Related {
+                    name @output(out_name: "related_name")
+                         @tag(tag_name: "name")
+                         @filter(op_name: "has_substring", value: ["%name"])
+                }
+            }
+        }'''
+
+        with self.assertRaises(GraphQLCompilationError):
+            graphql_to_ir(self.schema, invalid_graphql_input, type_equivalence_hints=None)

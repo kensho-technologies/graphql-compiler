@@ -93,7 +93,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
     """Return a two-element tuple that represents the argument to the directive being processed.
 
     Args:
-        directive_location: Location where this directive is used.
+        directive_location: Location where the directive is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         argument: string, the name of the argument to the directive
@@ -142,12 +142,12 @@ def _represent_argument(directive_location, context, argument, inferred_type):
                                           u'not match the inferred required type for this filter: '
                                           u'{} vs {}'.format(tag_inferred_type, inferred_type))
 
-        # See if the argument is colocated with the directive
-        colocated = directive_location.at_vertex() == location.at_vertex()
+        # Check whether the argument is a field on the vertex on which the directive is applied.
+        field_is_local = directive_location.at_vertex() == location.at_vertex()
 
         non_existence_expression = None
         if optional:
-            if colocated:
+            if field_is_local:
                 non_existence_expression = expressions.FalseLiteral
             else:
                 non_existence_expression = expressions.BinaryComposition(
@@ -155,7 +155,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
                     expressions.ContextFieldExistence(location.at_vertex()),
                     expressions.FalseLiteral)
 
-        if colocated:
+        if field_is_local:
             representation = expressions.LocalField(argument_name)
         else:
             representation = expressions.ContextField(location)
