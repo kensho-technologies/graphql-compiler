@@ -43,21 +43,24 @@ fi
 set +e
 
 echo -e '*** Running isort... ***\n'
-isort --check-only --recursive graphql_compiler/
+isort --check-only --settings-path=setup.cfg --diff --recursive graphql_compiler/
 isort_exit_code=$?
 echo -e "\n*** End of isort run; exit: $isort_exit_code ***\n"
 
 echo -e '*** Running flake8... ***\n'
-flake8 $lintable_locations
+flake8 --config=setup.cfg $lintable_locations
 flake_exit_code=$?
 echo -e "\n*** End of flake8 run, exit: $flake_exit_code ***\n"
 
 echo -e '\n*** Running pydocstyle... ***\n'
 pydocstyle --config=.pydocstyle $lintable_locations
 pydocstyle_exit_code=$?
+echo -e "\n*** End of pydocstyle run, exit: $pydocstyle_exit_code ***\n"
+
+echo -e '\n*** Running pydocstyle on tests... ***\n'
 pydocstyle --config=.pydocstyle_test $lintable_locations
 pydocstyle_test_exit_code=$?
-echo -e "\n*** End of pydocstyle run, exit: $pydocstyle_exit_code ***\n"
+echo -e "\n*** End of pydocstyle on tests run, exit: $pydocstyle_test_exit_code ***\n"
 
 echo -e '\n*** Running pylint... ***\n'
 pylint $pylint_lintable_locations
@@ -79,7 +82,7 @@ if [[ ("$flake_exit_code" != "0") ||
     echo -e "isort exit: $isort_exit_code"
     echo -e "flake8 exit: $flake_exit_code"
     echo -e "pydocstyle exit: $pydocstyle_exit_code"
-    echo -e "pydocstyle test exit: $pydocstyle_test_exit_code"
+    echo -e "pydocstyle on tests exit: $pydocstyle_test_exit_code"
     echo -e "pylint exit: $pylint_exit_code"
     echo -e "bandit exit: $bandit_exit_code"
     exit 1
