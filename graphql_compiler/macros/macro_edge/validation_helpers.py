@@ -1,3 +1,4 @@
+# Copyright 2019-present Kensho Technologies, LLC.
 from graphql.language.ast import Field, InlineFragment, OperationDefinition
 
 from ...ast_manipulation import get_human_friendly_ast_field_name

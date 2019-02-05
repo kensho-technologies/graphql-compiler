@@ -1,3 +1,4 @@
+# Copyright 2019-present Kensho Technologies, LLC.
 from graphql.language.ast import InlineFragment
 
 from .schema import TYPENAME_META_FIELD_NAME
