@@ -7,12 +7,10 @@ import string
 
 import funcy
 from graphql import GraphQLList, GraphQLNonNull, GraphQLString, is_type
-from graphql.language.ast import InlineFragment
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 import six
 
 from ..exceptions import GraphQLCompilationError
-from ..schema import TYPENAME_META_FIELD_NAME
 
 
 # These are the Java (OrientDB) representations of the ISO-8601 standard date and datetime formats.
@@ -40,24 +38,6 @@ def get_only_element_from_collection(one_element_collection):
         raise AssertionError(u'Expected a collection with exactly one element, but got: {}'
                              .format(one_element_collection))
     return funcy.first(one_element_collection)
-
-
-def get_ast_field_name(ast):
-    """Return the normalized field name for the given AST node."""
-    replacements = {
-        # We always rewrite the following field names into their proper underlying counterparts.
-        TYPENAME_META_FIELD_NAME: '@class'
-    }
-    base_field_name = ast.name.value
-    normalized_name = replacements.get(base_field_name, base_field_name)
-    return normalized_name
-
-
-def get_ast_field_name_or_none(ast):
-    """Return the field name for the AST node, or None if the AST is an InlineFragment."""
-    if isinstance(ast, InlineFragment):
-        return None
-    return get_ast_field_name(ast)
 
 
 def get_field_type_from_schema(schema_type, field_name):
