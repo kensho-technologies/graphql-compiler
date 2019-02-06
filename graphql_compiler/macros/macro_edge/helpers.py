@@ -68,8 +68,8 @@ def get_only_selection_from_ast(ast):
                                            .format(len(selection_names), selection_names, ast_name))
         else:
             ast_name = get_human_friendly_ast_field_name(ast)
-            raise GraphQLInvalidMacroError(u'Expected an AST with exactly one selection, but got one '
-                                           u'with no selections. Error near AST node named: {}'
+            raise GraphQLInvalidMacroError(u'Expected an AST with exactly one selection, but got '
+                                           u'one with no selections. Error near AST node named: {}'
                                            .format(ast_name))
 
     return selections[0]
