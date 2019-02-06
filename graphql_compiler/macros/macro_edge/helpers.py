@@ -1,9 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 
-from graphql.language.ast import (
-    Argument, Directive, Field, InlineFragment, Name, OperationDefinition, SelectionSet, StringValue
-)
+from graphql.language.ast import Field, InlineFragment, OperationDefinition, SelectionSet
 
 from ...ast_manipulation import get_human_friendly_ast_field_name
 from ...exceptions import GraphQLInvalidMacroError
