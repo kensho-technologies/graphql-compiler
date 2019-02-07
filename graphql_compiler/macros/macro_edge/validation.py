@@ -89,7 +89,7 @@ def get_and_validate_macro_edge_info(schema, ast, macro_directives, macro_edge_a
         macro_edge_sub_asts[directive_definition.name] = macro_ast
 
     # TODO(predrag): Required further validation:
-    # - the target directive AST is within the definition directive AST;
+    # - the target directive AST is either the same as, or within the definition directive AST;
     # - the macro edge directive AST is not within the definition directive AST;
     # - the macro edge directive and the definition directive ASTs are directly within the
     #   top-level selection, and that selection contains no ASTs other than these two;
