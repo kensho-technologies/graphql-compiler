@@ -1,4 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
+from graphql.type.definition import GraphQLObjectType, GraphQLUnionType
+import six
 
 
 def _transitive_closure(graph):
@@ -36,7 +38,8 @@ def compute_subclass_sets(schema, type_equivalence_hints):
             for subclass in equivalent_type.types:
                 subclass_set.setdefault(typ.name, set()).add(subclass.name)
         else:
-            print 'nonunion', equivalent_type
+            raise AssertionError(u'Unexpected type {}'.format(type(equivalent_type)))
+
 
     # NOTE(bojanserafimov): Taking the transitive closure has no effect on the current schema.
     # If B subclasses A, and C subclasses B, then C subclasses A
