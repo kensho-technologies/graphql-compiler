@@ -1,9 +1,8 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import unittest
 
-
-from .test_helpers import get_schema
 from ..compiler.subclass import compute_subclass_sets
+from .test_helpers import get_schema
 
 
 class SubclassTests(unittest.TestCase):
