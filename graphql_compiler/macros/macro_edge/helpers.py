@@ -76,7 +76,7 @@ def get_only_selection_from_ast(ast):
 
 
 def remove_directives_from_ast(ast, directive_names_to_omit):
-    """Return a copy of the AST but with instances of the named directives omitted.
+    """Return an equivalent AST to the input, but with instances of the named directives omitted.
 
     Args:
         ast: GraphQL library AST object, such as a Field, InlineFragment, or OperationDefinition
@@ -120,4 +120,49 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
     new_ast = copy(ast)
     new_ast.selection_set = SelectionSet(new_selections)
     new_ast.directives = directives_to_keep
+    return new_ast
+
+
+def omit_ast_from_ast_selections(ast, ast_to_omit):
+    """Return an equivalent AST to the input, but with the specified AST omitted if it appears.
+
+    Args:
+        ast: GraphQL library AST object, such as a Field, InlineFragment, or OperationDefinition
+        ast_to_omit: GraphQL library AST object, the *exact same* object that should be omitted.
+                     This function uses reference equality, since deep equality can get expensive.
+
+    Returns:
+        GraphQL library AST object, equivalent to the input one, with all instances of
+        the named directives omitted. If the specified AST does not appear in the input AST,
+        the returned object is the exact same object as the input.
+    """
+    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+        return ast
+
+    if ast.selection_set is None:
+        return ast
+
+    made_changes = False
+
+    selections_to_keep = []
+    for selection_ast in ast.selection_set.selections:
+        if selection_ast is ast_to_omit:
+            # Drop the current selection.
+            made_changes = True
+        else:
+            new_selection_ast = omit_ast_from_ast_selections(selection_ast, ast_to_omit)
+            if new_selection_ast is not selection_ast:
+                # The current selection contained the AST to omit, and was altered as a result.
+                made_changes = True
+            selections_to_keep.append(new_selection_ast)
+
+    if not made_changes:
+        return ast
+
+    new_ast = copy(ast)
+    if not selections_to_keep:
+        new_ast.selection_set = None
+    else:
+        new_ast.selection_set = SelectionSet(selections_to_keep)
+
     return new_ast

@@ -6,8 +6,8 @@ from .macro_edge import make_macro_edge_definition
 
 MacroRegistry = namedtuple(
     'MacroRegistry', (
-        'macro_edges',  # Dict[str, Dict[str, MacroEdgeDefinition]] mapping:
-                        # class name -> (macro edge name -> MacroEdgeDefinition)
+        'macro_edges',  # Dict[str, Dict[str, MacroEdgeDescriptor]] mapping:
+                        # class name -> (macro edge name -> MacroEdgeDescriptor)
         # Any other macro types we may add in the future go here.
     )
 )

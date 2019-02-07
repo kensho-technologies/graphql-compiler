@@ -1,13 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import namedtuple
+from graphql.language.parser import parse
 
-
-MacroEdgeDefinition = namedtuple(
-    'MacroEdgeDefinition', (
-        'expansion_ast',  # GraphQL AST object defining how the macro edge should be expanded
-        'macro_args',     # Dict[str, Any] containing any arguments that the macro requires
-    )
-)
+from ...exceptions import GraphQLInvalidMacroError
+from .helpers import get_directives_for_ast
+from .validation import get_and_validate_macro_edge_components
 
 
 def make_macro_edge_definition(schema, macro_edge_graphql, macro_edge_args,
@@ -36,7 +32,22 @@ def make_macro_edge_definition(schema, macro_edge_graphql, macro_edge_args,
                                 *****
 
     Returns:
-        tuple (class name, macro edge name, MacroEdgeDefinition) suitable for inclusion into the
+        tuple (class name, macro edge name, MacroEdgeDescriptor) suitable for inclusion into the
         GraphQL macro registry
     """
-    raise NotImplementedError()
+    root_ast = parse(macro_edge_graphql)
+
+    if len(root_ast.definitions) != 1:
+        raise GraphQLInvalidMacroError(
+            u'Encountered multiple definitions within GraphQL edge macro. This is not supported.'
+            u'{}'.format(root_ast.definitions))
+
+    definition_ast = root_ast.definitions[0]
+
+    macro_directives = get_directives_for_ast(definition_ast)
+
+    class_name, macro_edge_name, macro_edge_descriptor = get_and_validate_macro_edge_components(
+        schema, definition_ast, macro_directives, macro_edge_args,
+        type_equivalence_hints=type_equivalence_hints)
+
+    return class_name, macro_edge_name, macro_edge_descriptor
