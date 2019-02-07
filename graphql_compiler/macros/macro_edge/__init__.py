@@ -3,7 +3,7 @@ from graphql.language.parser import parse
 
 from ...exceptions import GraphQLInvalidMacroError
 from .helpers import get_directives_for_ast
-from .validation import get_and_validate_macro_edge_components
+from .validation import get_and_validate_macro_edge_info
 
 
 def make_macro_edge_definition(schema, macro_edge_graphql, macro_edge_args,
@@ -46,7 +46,7 @@ def make_macro_edge_definition(schema, macro_edge_graphql, macro_edge_args,
 
     macro_directives = get_directives_for_ast(definition_ast)
 
-    class_name, macro_edge_name, macro_edge_descriptor = get_and_validate_macro_edge_components(
+    class_name, macro_edge_name, macro_edge_descriptor = get_and_validate_macro_edge_info(
         schema, definition_ast, macro_directives, macro_edge_args,
         type_equivalence_hints=type_equivalence_hints)
 

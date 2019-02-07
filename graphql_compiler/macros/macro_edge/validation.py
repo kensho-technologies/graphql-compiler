@@ -1,7 +1,8 @@
+# Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
 from ...exceptions import GraphQLInvalidMacroError
-from .directives import MacroEdgeDirective, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
+from .directives import MacroEdgeDefinitionDirective, MacroEdgeDirective, MacroEdgeTargetDirective
 from .helpers import get_only_selection_from_ast
 
 
@@ -82,7 +83,7 @@ def get_and_validate_macro_edge_info(schema, ast, macro_directives, macro_edge_a
         if macro_directive.arguments is not None:
             raise GraphQLInvalidMacroError(
                 u'Required macro edge directive "@{}" unexpectedly contained arguments even though '
-                u'it is not supposed to contain any. Unexpected arguments:'
+                u'it is not supposed to contain any. Unexpected arguments: {}'
                 .format(directive_definition.name, macro_directive.arguments))
 
         macro_edge_sub_asts[directive_definition.name] = macro_ast
