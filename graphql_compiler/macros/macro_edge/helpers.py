@@ -133,7 +133,7 @@ def omit_ast_from_ast_selections(ast, ast_to_omit):
 
     Returns:
         GraphQL library AST object, equivalent to the input one, with all instances of
-        the named directives omitted. If the specified AST does not appear in the input AST,
+        the specified AST omitted. If the specified AST does not appear in the input AST,
         the returned object is the exact same object as the input.
     """
     if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):

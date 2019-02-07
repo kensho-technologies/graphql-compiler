@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
-from .macro_edge import make_macro_edge_definition
+from .macro_edge import make_macro_edge_descriptor
 
 
 MacroRegistry = namedtuple(
@@ -20,11 +20,11 @@ def create_macro_registry():
 
 def register_macro_edge(macro_registry, schema, macro_edge_graphql, macro_edge_args,
                         type_equivalence_hints=None):
-    """Add the new macro edge definition to the provided MacroRegistry object, mutating it.
+    """Add the new macro edge descriptor to the provided MacroRegistry object, mutating it.
 
     Args:
-        macro_registry: MacroRegistry object containing macro definitions, where the new macro edge
-                        definition should be added.
+        macro_registry: MacroRegistry object containing macro descriptors, where the new
+                        macro edge descriptor should be added.
         schema: GraphQL schema object, created using the GraphQL library
         macro_edge_graphql: string, GraphQL defining how the new macro edge should be expanded
         macro_edge_args: dict mapping strings to any type, containing any arguments the macro edge
@@ -45,27 +45,27 @@ def register_macro_edge(macro_registry, schema, macro_edge_graphql, macro_edge_a
                                 lead to incorrect output queries being generated.
                                 *****
     """
-    class_name, macro_edge_name, macro_definition = make_macro_edge_definition(
+    class_name, macro_edge_name, macro_descriptor = make_macro_edge_descriptor(
         schema, macro_edge_graphql, macro_edge_args,
         type_equivalence_hints=type_equivalence_hints)
 
-    # Ensure this new macro edge does not conflict with any previous definition.
+    # Ensure this new macro edge does not conflict with any previous descriptor.
     macro_edges_for_class = macro_registry.macro_edges.get(class_name, dict())
-    existing_definition = macro_edges_for_class.get(macro_edge_name, None)
+    existing_descriptor = macro_edges_for_class.get(macro_edge_name, None)
 
-    if existing_definition is not None:
+    if existing_descriptor is not None:
         raise AssertionError(
             u'Attempting to redefine an already registered macro edge: '
-            u'class {}, macro edge {}, new GraphQL definition {}, new args {}.'
+            u'class {}, macro edge {}, new GraphQL descriptor {}, new args {}.'
             .format(class_name, macro_edge_name, macro_edge_graphql, macro_edge_args))
 
     # TODO(predrag): Write a more stringent check that makes sure that two types A and B,
     #                where A is a superclass of B, cannot define the same macro edge.
     #                Right now, both A and B can independently define a macro edge out_Foo,
     #                which would result in an illegal schema as B would be required to have
-    #                two different definitions of the same out_Foo edge.
+    #                two different descriptors for the same out_Foo edge.
 
-    macro_registry.macro_edges.setdefault(class_name, dict())[macro_edge_name] = macro_definition
+    macro_registry.macro_edges.setdefault(class_name, dict())[macro_edge_name] = macro_descriptor
 
 
 def perform_macro_expansion(schema, macro_registry, graphql_with_macro, graphql_args):
@@ -73,7 +73,7 @@ def perform_macro_expansion(schema, macro_registry, graphql_with_macro, graphql_
 
     Args:
         schema: GraphQL schema object, created using the GraphQL library
-        macro_registry: MacroRegistry, the registry of macro definitions used for expansion
+        macro_registry: MacroRegistry, the registry of macro descriptors used for expansion
         graphql_with_macro: string, GraphQL query that potentially requires macro expansion
         graphql_args: dict mapping strings to any type, containing the arguments for the query
 

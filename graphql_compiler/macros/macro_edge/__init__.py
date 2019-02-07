@@ -6,7 +6,7 @@ from .helpers import get_directives_for_ast
 from .validation import get_and_validate_macro_edge_info
 
 
-def make_macro_edge_definition(schema, macro_edge_graphql, macro_edge_args,
+def make_macro_edge_descriptor(schema, macro_edge_graphql, macro_edge_args,
                                type_equivalence_hints=None):
     """Validate the GraphQL macro edge definition, and return it in a form suitable for storage.
 
