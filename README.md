@@ -49,10 +49,10 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
      * [\__count](#__count)
   * [The GraphQL schema](#the-graphql-schema)
   * [Execution model](#execution-model)
-  * [SQL Support](#sql-support)
+  * [SQL](#sql)
      * [Configuring SQLAlchemy](#configuring-sqlalchemy)
      * [End-To-End SQL Example](#end-to-end-sql-example)
-     * [Configuring SQL Database to Match Schema](#configuring-sql-database-to-match-schema)
+     * [Configuring the SQL Database to Match the GraphQL Schema](#configuring-the-sql-database-to-match-the-graphql-schema)
   * [Miscellaneous](#miscellaneous)
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
@@ -91,9 +91,9 @@ A: We currently support a single graph database, OrientDB version 2.2.28+, and t
    faster than `gremlin`, and has other desirable properties. See the
    [Execution model](#execution-model) section for more details.
    
-   Several relational databases including PostgreSQL, MySQL, SSQLite,
-   and Sql Server are also supported in a more limited fashion, see the [SQL Support](#sql-support)
-   section for more details.
+   Support for relational databases including PostgreSQL, MySQL, SQLite,
+   and Microsft Sql Server is a work in progress. A subset of compiler features are available for
+   these databases. See the [SQL](#sql) section for more details.
 
 **Q: Do you plan to support other databases / more GraphQL features in the future?**
 
@@ -1034,7 +1034,7 @@ The compiler abides by the following principles:
 - When the database is queried with a compiled query string, its response must always be in the
   form of a list of results.
 - The precise format of each such result is defined by each compilation target separately.
-  - Both `gremlin` and `MATCH` return data in a tabular format, where each result is
+  - `gremlin`, `MATCH` and `SQL` return data in a tabular format, where each result is
     a row of the table, and fields marked for output are columns.
   - However, future compilation targets may have a different format. For example, each result
     may appear in the nested tree format used by the standard GraphQL specification.
@@ -1143,22 +1143,21 @@ the opposite order:
 }
 ```
 
-## SQL Support
-The following table outlines the subset of the GraphQL compiler features that are tested and
-supported for various relational database flavors:
+## SQL
+The following table outlines GraphQL compiler features, and their support (if any) by various 
+relational database flavors:
 
      
-|  Dialect   | Supported Directives                   | Caveats                                          |
-| ---------  | -------------------------------------- | -----------------------------------------------  |
-| PostgreSQL | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
-| Sql Server | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
-| MySQL      | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
-| MariaDB    | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
-| SQLite     | Root-only queries (no edges), [@output](#output), [@filter](#filter) | [\__typename](#__typename) output metafield, [intersects](#intersects) filter,  [has_edge_degree](#has_edge_degree) filter and [name_or_alias](#name_or_alias) filter unsupported|
-
+| Feature/Dialect      | Required Edges | @filter                                                                                                                         | @output                                                          | @recurse | @fold | @optional | @output_source |
+|----------------------|----------------|---------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|----------|-------|-----------|----------------|
+| PostgreSQL           | No             | Limited, [intersects](#intersects), [has_edge_degree](#has_edge_degree), and [name_or_alias](#name_or_alias) filter unsupported | Limited, [\__typename](#__typename) output metafield unsupported | No       | No    | No        | No             |
+| SQLite               | No             | Limited, [intersects](#intersects), [has_edge_degree](#has_edge_degree), and [name_or_alias](#name_or_alias) filter unsupported | Limited, [\__typename](#__typename) output metafield unsupported | No       | No    | No        | No             |
+| Microsoft SQL Server | No             | Limited, [intersects](#intersects), [has_edge_degree](#has_edge_degree), and [name_or_alias](#name_or_alias) filter unsupported | Limited, [\__typename](#__typename) output metafield unsupported | No       | No    | No        | No             |
+| MySQL                | No             | Limited, [intersects](#intersects), [has_edge_degree](#has_edge_degree), and [name_or_alias](#name_or_alias) filter unsupported | Limited, [\__typename](#__typename) output metafield unsupported | No       | No    | No        | No             |
+| MariaDB              | No             | Limited, [intersects](#intersects), [has_edge_degree](#has_edge_degree), and [name_or_alias](#name_or_alias) filter unsupported | Limited, [\__typename](#__typename) output metafield unsupported | No       | No    | No        | No             |
 
 ### Configuring SQLAlchemy
-Support for relational databases is accomplished by compiling to SQLAlchemy core as an intermediate
+Relational databases are supported by compiling to SQLAlchemy core as an intermediate
 language, and then relying on SQLAlchemy's compilation of the dialect specific SQL string to query
 the target database.
 
@@ -1169,7 +1168,8 @@ type Animal {
     name: String
 }
 ```
-is expected to correspond to a SQLAlchemy table object of the same name (case-insensitive) like
+is expected to correspond to a SQLAlchemy table object of the same name, case insensitive. For this
+schema type this could look like:
 
 ```python
 from sqlalchemy import MetaData, Table, Column, String
@@ -1178,17 +1178,20 @@ metadata = MetaData()
 animal_table = Table(
     'animal', # name of table matches type name from schema
     metadata,
-    Column('name', String(length=12)), # Animal.name field has corresponding 'name' column
+    Column('name', String(length=12)), # Animal.name GraphQL field has corresponding 'name' column
 )
 ```
+
+If a table of the schema type name does not exist, an exception will be raised at compile time. See
+[Configuring the SQL Database to Match the GraphQL Schema](#configuring-the-sql-database-to-match-the-graphql-schema)
+for a possible option to resolve such naming discrepancies.
 
 
 ### End-To-End SQL Example
 An end-to-end example including relevant GraphQL schema and SQLAlchemy engine preparation follows.
 
-Note this is intended to show the setup steps for the SQL backend of the Graphql compiler, and does
-not represent best practices for configuring and running SQLAlchemy in a production system. Where
-possible links to relevant SQLAlchemy documentation are included.
+This is intended to show the setup steps for the SQL backend of the GraphQL compiler, and
+does not represent best practices for configuring and running SQLAlchemy in a production system. 
 
 ```python
 from graphql import parse
@@ -1206,6 +1209,8 @@ schema {
 
 directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
 
+# < ... more directives here ... >
+
 directive @output(out_name: String!) on FIELD
 
 type Animal {
@@ -1214,8 +1219,8 @@ type Animal {
 '''
 schema = build_ast_schema(parse(schema_text))
 
-# Step 2: For all GraphQL types, bind the corresponding SQLAlchemy Table to a SQLAlchemy metadata
-# instance, using the expected naming detailed above.
+# Step 2: For all GraphQL types, bind all corresponding SQLAlchemy Tables to a single SQLAlchemy
+# metadata instance, using the expected naming detailed above.
 # See https://docs.sqlalchemy.org/en/latest/core/metadata.html for more details on this step.
 metadata = MetaData()
 animal_table = Table(
@@ -1237,7 +1242,7 @@ graphql_query = '''
 {
     Animal {
         name @output(out_name: "animal_name")
-             @filter(op_name: "in_collection", value:["$names"])
+             @filter(op_name: "in_collection", value: ["$names"])
     }
 }
 '''
@@ -1248,19 +1253,18 @@ parameters = {
 compilation_result = compile_graphql_to_sql(schema, graphql_query, sql_metadata)
 compilation_result = insert_arguments_into_query(compilation_result, parameters)
 
-
 # Step 6: Execute compiled query against a SQLAlchemy engine/connection. 
 # See https://docs.sqlalchemy.org/en/latest/core/connections.html for more details.
 query = compilation_result.query
 query_results = [dict(result_proxy) for result_proxy in engine.execute(query)]
 ```
 
-### Configuring SQL Database to Match Schema
+### Configuring the SQL Database to Match the GraphQL Schema
 For simplicity, the SQL backend expects an exact match between SQLAlchemy Tables and GraphQL types, 
 and between SQLAlchemy Columns and GraphQL fields. What if the table name or column name in the
 database doesn't conform to these rules? Eventually the plan is to make this aspect of the
 SQL backend more configurable. In the near-term, a possible way to address this is by using
-SQL view.
+SQL views.
 
 For example, suppose there is a table in the database called `animal_table` and it has a column
 called `animal_name`. If the desired schema has type

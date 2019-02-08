@@ -20,7 +20,7 @@ CompilationContext = namedtuple('CompilationContext', (
     # renamed status. This tuple is used to construct the query outputs, and track when a name
     # changes due to collapsing into a CTE.
     'query_path_to_output_fields',
-    # 'compiler_metadata': CompilerMetadata, SQLAlchemy metadata about Table objects, and
+    # 'compiler_metadata': SqlMetadata, SQLAlchemy metadata about Table objects, and
     # further backend specific configuration.
     'compiler_metadata',
 ))
@@ -31,7 +31,7 @@ def emit_code_from_ir(sql_query_tree, compiler_metadata):
 
     Args:
         sql_query_tree: SqlQueryTree, tree representation of the query to emit.
-        compiler_metadata: CompilerMetadata, SQLAlchemy specific metadata.
+        compiler_metadata: SqlMetadata, SQLAlchemy specific metadata.
 
     Returns:
         SQLAlchemy Query
