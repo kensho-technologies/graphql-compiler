@@ -5,9 +5,9 @@ from itertools import chain
 
 from graphql.validation import validate
 
+from ...ast_manipulation import get_ast_field_name, get_human_friendly_ast_field_name
 from ...exceptions import GraphQLInvalidMacroError
 from ...schema import VERTEX_FIELD_PREFIXES, is_vertex_field_name
-from ...ast_manipulation import get_ast_field_name, get_human_friendly_ast_field_name
 from .directives import MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
 from .helpers import get_only_selection_from_ast
 
@@ -26,9 +26,12 @@ def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
             u'This is not supported. Variable definitions: {}'.format(ast.variable_definitions))
 
     required_macro_directives = (MacroEdgeDefinitionDirective, MacroEdgeTargetDirective)
+
+    # pylint: disable=protected-access
     schema_with_macro_directives = copy(schema)
     schema_with_macro_directives._directives = list(chain(
         schema_with_macro_directives._directives, required_macro_directives))
+    # pylint: enable=protected-access
 
     validation_errors = validate(schema, ast)
     if validation_errors:
@@ -107,7 +110,7 @@ MacroEdgeDescriptor = namedtuple(
 
 def get_and_validate_macro_edge_info(schema, ast, macro_directives, macro_edge_args,
                                      type_equivalence_hints=None):
-    """Return a tuple of ASTs with the three parts of a macro edge given the directive mapping.
+    """Return a tuple with the three parts of information that uniquely describe a macro edge.
 
     Args:
         schema: GraphQL schema object, created using the GraphQL library
@@ -142,7 +145,7 @@ def get_and_validate_macro_edge_info(schema, ast, macro_directives, macro_edge_a
     _validate_macro_ast_with_macro_directives(schema, ast, macro_directives)
 
     macro_defn_ast, macro_defn_directive = macro_directives[MacroEdgeDefinitionDirective.name][0]
-    macro_target_ast, _ = macro_directives[MacroEdgeTargetDirective.name][0]
+    # macro_target_ast, _ = macro_directives[MacroEdgeTargetDirective.name][0]
 
     # TODO(predrag): Required further validation:
     # - the macro definition directive AST contains only @filter/@fold directives together with
