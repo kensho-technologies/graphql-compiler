@@ -3,7 +3,7 @@ from graphql.type.definition import GraphQLObjectType, GraphQLUnionType
 import six
 
 
-def _transitive_closure(graph):
+def _add_transitive_closure(graph):
     """Compute the transitive closure of a graph represented as dict inplace."""
     # Floyd-Warshall O(N^3)
     for k, k_out in six.iteritems(graph):
@@ -11,10 +11,9 @@ def _transitive_closure(graph):
             for j, _ in six.iteritems(graph):
                 if k in i_out and j in k_out:
                     graph.setdefault(i, set()).add(j)
-    return graph
 
 
-def compute_subclass_sets(schema, type_equivalence_hints):
+def compute_subclass_sets(schema, type_equivalence_hints=None):
     """Return a dict mapping class names to the set of its subclass names.
 
     B is a subclass of A if any of the following conditions hold:
@@ -31,30 +30,35 @@ def compute_subclass_sets(schema, type_equivalence_hints):
     Returns:
         dict mapping class names to the set of its subclass names.
     """
-    subclass_set = dict()
+    if type_equivalence_hints is None:
+        type_equivalence_hints = {}
 
-    for classname, cls in six.iteritems(schema.get_type_map()):
-        # A class is a subclass of itself
-        subclass_set.setdefault(classname, set()).add(classname)
+    # A class is a subclass of itself
+    subclass_set = {
+        classname: {classname}
+        for classname in six.iterkeys(schema.get_type_map())
+    }
 
+    for classname, graphql_type in six.iteritems(schema.get_type_map()):
         # A class is a subclass of interfaces it implements
-        if isinstance(cls, GraphQLObjectType):
-            for interface in cls.interfaces:
-                subclass_set.setdefault(interface.name, set()).add(classname)
+        if isinstance(graphql_type, GraphQLObjectType):
+            for interface in graphql_type.interfaces:
+                subclass_set[interface.name].add(classname)
 
         # Members of a union subclass it
-        if isinstance(cls, GraphQLUnionType):
-            for subclass in cls.types:
-                subclass_set.setdefault(classname, set()).add(subclass.name)
+        if isinstance(graphql_type, GraphQLUnionType):
+            for subclass in graphql_type.types:
+                subclass_set[classname].add(subclass.name)
 
     # The base of the union is a superclass of other members
-    for typ, equivalent_type in six.iteritems(type_equivalence_hints):
+    for graphql_type, equivalent_type in six.iteritems(type_equivalence_hints):
         if isinstance(equivalent_type, GraphQLUnionType):
             for subclass in equivalent_type.types:
-                subclass_set.setdefault(typ.name, set()).add(subclass.name)
+                subclass_set[graphql_type.name].add(subclass.name)
         else:
             raise AssertionError(u'Unexpected type {}'.format(type(equivalent_type)))
 
     # NOTE(bojanserafimov): Taking the transitive closure has no effect on the current schema.
     # If B subclasses A, and C subclasses B, then C subclasses A
-    return _transitive_closure(subclass_set)
+    _add_transitive_closure(subclass_set)
+    return subclass_set
