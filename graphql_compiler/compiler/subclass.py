@@ -4,13 +4,13 @@ import six
 
 
 def _add_transitive_closure(graph):
-    """Compute the transitive closure of a graph represented as dict inplace."""
+    """Compute in-place the transitive closure of a reflexive graph represented as dict."""
     # Floyd-Warshall O(N^3)
     for k, k_out in six.iteritems(graph):
         for i, i_out in six.iteritems(graph):
             for j, _ in six.iteritems(graph):
                 if k in i_out and j in k_out:
-                    graph.setdefault(i, set()).add(j)
+                    graph[i].add(j)
 
 
 def compute_subclass_sets(schema, type_equivalence_hints=None):

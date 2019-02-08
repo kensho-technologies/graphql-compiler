@@ -33,6 +33,6 @@ class SubclassTests(unittest.TestCase):
         ]
         for cls1, cls2, expected in cases:
             is_subclass = cls1 in subclass_sets[cls2]
-            if expected != is_subclass:
-                raise AssertionError(u'{} is subclass of {} evaluates to {}. Expected: {}'
-                                     .format(cls1, cls2, is_subclass, expected))
+            self.assertEqual(expected, is_subclass,
+                             u'{} is subclass of {} evaluates to {}. Expected: {}'
+                             .format(cls1, cls2, is_subclass, expected))
