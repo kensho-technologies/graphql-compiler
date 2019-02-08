@@ -5,9 +5,9 @@ from itertools import chain
 
 from graphql.validation import validate
 
+from ...ast_manipulation import get_ast_field_name, get_human_friendly_ast_field_name
 from ...exceptions import GraphQLInvalidMacroError
 from ...schema import VERTEX_FIELD_PREFIXES, is_vertex_field_name
-from ...ast_manipulation import get_ast_field_name, get_human_friendly_ast_field_name
 from .directives import MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
 from .helpers import get_only_selection_from_ast
 
