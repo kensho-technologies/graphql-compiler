@@ -3,6 +3,7 @@ from collections import namedtuple
 from copy import copy
 from itertools import chain
 
+from graphql.language.ast import OperationDefinition
 from graphql.validation import validate
 
 from ...ast_manipulation import get_ast_field_name, get_human_friendly_ast_field_name
@@ -14,7 +15,16 @@ from .helpers import get_only_selection_from_ast
 
 def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
     """Raise errors if the macro uses the macro directives incorrectly or is otherwise invalid."""
-    if ast.directives is not None:
+    if not isinstance(ast, OperationDefinition):
+        raise AssertionError(u'Unexpectedly got an AST that was not an OperationDefinition: {}'
+                             .format(ast))
+
+    if ast.operation != 'query':
+        raise GraphQLInvalidMacroError(
+            u'Unexpectedly got an AST operation that was not parsed as a "query", '
+            u'but instead was a "{}": {}'.format(ast.operation, ast))
+
+    if ast.directives:
         directive_names = [directive.name.value for directive in ast.directives]
         raise GraphQLInvalidMacroError(
             u'Unexpectedly found directives at the top level of the GraphQL input. '
