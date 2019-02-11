@@ -17,7 +17,8 @@ class SubclassTests(unittest.TestCase):
             self.schema.get_type('Event'): self.schema.get_type('EventOrBirthEvent'),
         }
 
-        subclass_sets = compute_subclass_sets(self.schema, type_equivalence_hints)
+        subclass_sets = compute_subclass_sets(
+            self.schema, type_equivalence_hints=type_equivalence_hints)
         cases = [
             ('Entity', 'Entity', True),
             ('Animal', 'Animal', True),
