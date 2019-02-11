@@ -8,6 +8,7 @@ from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
+from ..query_formatting.graphql_formatting import pretty_print_graphql
 from ..schema import insert_meta_fields_into_existing_schema
 
 
@@ -45,6 +46,14 @@ def compare_ir_blocks(test_case, expected_blocks, received_blocks):
         test_case.assertEqual(expected, received,
                               msg=u'Blocks at position {} were different: {} vs {}\n\n'
                                   u'{}'.format(i, expected, received, mismatch_message))
+
+
+def compare_graphql(test_case, expected, received):
+    """Compare the expected and received GraphQL code, ignoring whitespace."""
+    msg = '\n{}\n\n!=\n\n{}'.format(
+        pretty_print_graphql(expected),
+        pretty_print_graphql(received))
+    compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
 def compare_match(test_case, expected, received, parameterized=True):
