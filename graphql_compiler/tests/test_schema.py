@@ -106,7 +106,7 @@ class SchemaTests(unittest.TestCase):
         printed_schema = print_schema(custom_schema)
         expected_type_definition = '''\
 type MyType {
-    __count: Int
+    _x_count: Int
     foo: String
     bar: Int
 }'''.replace('    ', '  ')  # 2 space indentation instead of 4 spaces

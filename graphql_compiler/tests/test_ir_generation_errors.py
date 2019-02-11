@@ -317,7 +317,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             Animal {
                 name @output(out_name: "name")
                 out_Animal_ParentOf {
-                    __count @output(out_name: "child_count")
+                    _x_count @output(out_name: "child_count")
                 }
             }
         }'''
@@ -326,7 +326,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             Species {
                 name @output(out_name: "name")
                 in_Animal_OfSpecies @fold {
-                    __count @output(out_name: "fold_size")
+                    _x_count @output(out_name: "fold_size")
                     out_Animal_LivesIn {
                         name @filter(op_name: "=", value: ["$location"])
                     }
@@ -338,9 +338,9 @@ class IrGenerationErrorTests(unittest.TestCase):
             Species {
                 name @output(out_name: "name")
                 in_Animal_OfSpecies @fold {
-                    __count @output(out_name: "fold_size")
+                    _x_count @output(out_name: "fold_size")
                     out_Animal_LivesIn {
-                        __count @filter(op_name: "=", value: ["$num_animals"])
+                        _x_count @filter(op_name: "=", value: ["$num_animals"])
                     }
                 }
             }
@@ -350,9 +350,9 @@ class IrGenerationErrorTests(unittest.TestCase):
             Species {
                 name @output(out_name: "name")
                 in_Animal_OfSpecies @fold {
-                    __count @filter(op_name: "=", value: ["$num_animals"])
+                    _x_count @filter(op_name: "=", value: ["$num_animals"])
                     out_Animal_LivesIn {
-                        __count @output(out_name: "fold_size")
+                        _x_count @output(out_name: "fold_size")
                     }
                 }
             }
@@ -485,7 +485,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             Animal {
                 name @output(out_name: "name")
                 out_Animal_ParentOf {
-                    __count @tag(tag_name: "count")
+                    _x_count @tag(tag_name: "count")
                 }
             }
         }''')
@@ -1330,3 +1330,17 @@ class IrGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             graphql_to_ir(self.schema, valid_graphql_input,
                           type_equivalence_hints=invalid_type_equivalence_hints)
+
+    def test_filter_and_tag_on_same_field(self):
+        invalid_graphql_input = '''{
+            Animal {
+                out_Entity_Related {
+                    name @output(out_name: "related_name")
+                         @tag(tag_name: "name")
+                         @filter(op_name: "has_substring", value: ["%name"])
+                }
+            }
+        }'''
+
+        with self.assertRaises(GraphQLCompilationError):
+            graphql_to_ir(self.schema, invalid_graphql_input, type_equivalence_hints=None)

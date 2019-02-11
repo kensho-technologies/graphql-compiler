@@ -505,7 +505,7 @@ class FoldedContextField(Expression):
 
         if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
             if not GraphQLInt.is_same_type(self.field_type):
-                raise TypeError(u'Expected the __count meta-field to be of GraphQLInt type, but '
+                raise TypeError(u'Expected the _x_count meta-field to be of GraphQLInt type, but '
                                 u'encountered type {} instead: {}'
                                 .format(self.field_type, self.fold_scope_location))
         else:

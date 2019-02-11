@@ -48,7 +48,7 @@ def set_fold_scope_data(context, data):
 
 
 def has_fold_count_filter(context):
-    """Return True if the current context contains a filter on the __count field."""
+    """Return True if the current context contains a filter on the _x_count field."""
     return CONTEXT_FOLD_HAS_COUNT_FILTER in context
 
 
@@ -58,7 +58,7 @@ def unmark_fold_count_filter(context):
 
 
 def set_fold_count_filter(context):
-    """Set a mark indicating the presence of a filter on a fold __count field."""
+    """Set a mark indicating the presence of a filter on a fold _x_count field."""
     context[CONTEXT_FOLD_HAS_COUNT_FILTER] = True
 
 

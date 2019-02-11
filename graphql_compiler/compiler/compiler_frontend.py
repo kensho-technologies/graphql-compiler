@@ -564,7 +564,7 @@ def _validate_fold_has_outputs_or_count_filter(fold_scope_location, fold_has_cou
     # This function makes sure that the @fold scope has an effect.
     # Folds either output data, or filter the data enclosing the fold based on the size of the fold.
     if fold_has_count_filter:
-        # This fold has a filter on the "__count" property, so it is legal and has an effect.
+        # This fold has a filter on the "_x_count" property, so it is legal and has an effect.
         return True
 
     # At least one output in the outputs list must point to the fold_scope_location,
