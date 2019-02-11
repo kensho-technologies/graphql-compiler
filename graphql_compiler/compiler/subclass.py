@@ -16,14 +16,13 @@ def _add_transitive_closure(graph):
 def compute_subclass_sets(schema, type_equivalence_hints=None):
     """Return a dict mapping class names to the set of its subclass names.
 
+    A class here means an object type or interface.
+
     B is a subclass of A if any of the following conditions hold:
      - B is the same class as A
      - A is an interface and B implements it
      - A is equivalent to a union type (see type_equivalence_hints) and B is a member of it
      - B is a subclass of C and C is a subclass of A
-
-    Additionally, B is a subclass of A if A is a union type and B is a member of it. This
-    is not transitive.
 
     Args:
         schema: GraphQL schema object, obtained from the graphql library
@@ -41,19 +40,11 @@ def compute_subclass_sets(schema, type_equivalence_hints=None):
         for classname in six.iterkeys(schema.get_type_map())
     }
 
+    # A class is a subclass of interfaces it implements
     for classname, graphql_type in six.iteritems(schema.get_type_map()):
-        # A class is a subclass of interfaces it implements
         if isinstance(graphql_type, GraphQLObjectType):
             for interface in graphql_type.interfaces:
                 subclass_set[interface.name].add(classname)
-
-        # Members of a union subclass it
-        if isinstance(graphql_type, GraphQLUnionType):
-            for subclass in graphql_type.types:
-                subclass_set[classname].add(subclass.name)
-
-    # If B subclasses A, and C subclasses B, then C subclasses A
-    _add_transitive_closure(subclass_set)
 
     # The base of the union is a superclass of other members
     for graphql_type, equivalent_type in six.iteritems(type_equivalence_hints):
@@ -63,4 +54,6 @@ def compute_subclass_sets(schema, type_equivalence_hints=None):
         else:
             raise AssertionError(u'Unexpected type {}'.format(type(equivalent_type)))
 
+    # If B subclasses A, and C subclasses B, then C subclasses A
+    _add_transitive_closure(subclass_set)
     return subclass_set

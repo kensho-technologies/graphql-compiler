@@ -24,11 +24,6 @@ class SubclassTests(unittest.TestCase):
             ('Animal', 'Entity', True),
             ('Entity', 'Animal', False),
             ('Species', 'Entity', True),
-            ('Food', 'FoodOrSpecies', True),
-            ('Species', 'FoodOrSpecies', True),
-            ('Animal', 'FoodOrSpecies', False),
-            ('Entity', 'FoodOrSpecies', False),
-            ('Event', 'EventOrBirthEvent', True),
             ('BirthEvent', 'Event', True),  # Derived from the type_equivalence_hints
         ]
         for cls1, cls2, expected in cases:
