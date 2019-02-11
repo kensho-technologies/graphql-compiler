@@ -1,4 +1,4 @@
-# Copyright 2017-present Kensho Technologies, LLC.
+# Copyright 2019-present Kensho Technologies, LLC.
 import unittest
 
 from ..exceptions import GraphQLInvalidMacroError
