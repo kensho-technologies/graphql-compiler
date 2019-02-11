@@ -6,7 +6,7 @@ from ..macros import create_macro_registry, register_macro_edge
 from .test_helpers import get_schema
 
 
-class MacroExpansionErrorsTests(unittest.TestCase):
+class MacroValidationTests(unittest.TestCase):
     def setUp(self):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
