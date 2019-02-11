@@ -16,7 +16,22 @@ class MacroExpansionErrorsTests(unittest.TestCase):
             self.schema.get_type('Event'): self.schema.get_type('EventOrBirthEvent'),
         }
 
-    def test_edge_macro_missing_target(self):
+    def test_bad_operation_type(self):
+        query = '''mutation {
+            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf {
+                        uuid
+                    }
+                }
+            }
+        }'''
+        args = {}
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(self.macro_registry, self.schema, query,
+                                args, self.type_equivalence_hints)
+
+    def test_macro_edge_missing_target(self):
         query = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
                 out_Animal_ParentOf {
@@ -31,7 +46,7 @@ class MacroExpansionErrorsTests(unittest.TestCase):
             register_macro_edge(self.macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
-    def test_edge_macro_multiple_targets(self):
+    def test_macro_edge_multiple_targets(self):
         query = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
                 out_Animal_ParentOf @macro_edge_target {
@@ -46,7 +61,7 @@ class MacroExpansionErrorsTests(unittest.TestCase):
             register_macro_edge(self.macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
-    def test_edge_macro_multiple_targets_2(self):
+    def test_macro_edge_multiple_targets_2(self):
         query = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
                 out_Animal_ParentOf {
@@ -61,7 +76,7 @@ class MacroExpansionErrorsTests(unittest.TestCase):
             register_macro_edge(self.macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
-    def test_edge_macro_missing_definition(self):
+    def test_macro_edge_missing_definition(self):
         query = '''{
             Animal {
                 out_Animal_ParentOf {
@@ -76,7 +91,7 @@ class MacroExpansionErrorsTests(unittest.TestCase):
             register_macro_edge(self.macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
-    def test_edge_macro_invalid_definition(self):
+    def test_macro_edge_invalid_definition(self):
         query = '''{
             Animal @macro_edge_definition {
                 out_Animal_ParentOf {
@@ -91,7 +106,7 @@ class MacroExpansionErrorsTests(unittest.TestCase):
             register_macro_edge(self.macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
-    def test_edge_macro_invalid_target_directive(self):
+    def test_macro_edge_invalid_target_directive(self):
         query = '''{
             Animal @macro_edge_definition(name: "out_Animal_AvailableFood_Invalid") {
                 out_Animal_LivesIn {
@@ -108,7 +123,7 @@ class MacroExpansionErrorsTests(unittest.TestCase):
             register_macro_edge(self.macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
-    def test_edge_macro_invalid_no_op_1(self):
+    def test_macro_edge_invalid_no_op_1(self):
         query = '''{
             Animal @macro_edge_definition(name: "out_Animal_Self") @macro_edge_target {
                 uuid
@@ -119,7 +134,7 @@ class MacroExpansionErrorsTests(unittest.TestCase):
             register_macro_edge(self.macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
-    def test_edge_macro_invalid_no_op_2(self):
+    def test_macro_edge_invalid_no_op_2(self):
         query = '''{
             Animal @macro_edge_definition(name: "out_Animal_Filter") @macro_edge_target {
                 net_worth @filter(op_name: "=", value: ["$net_worth"])
@@ -134,7 +149,7 @@ class MacroExpansionErrorsTests(unittest.TestCase):
             register_macro_edge(self.macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
-    def test_edge_macro_missing_args(self):
+    def test_macro_edge_missing_args(self):
         query = '''{
             Animal @macro_edge_definition {
                 net_worth @filter(op_name: "=", value: ["$net_worth"])
@@ -153,7 +168,7 @@ class MacroExpansionErrorsTests(unittest.TestCase):
             register_macro_edge(self.macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
-    def test_edge_macro_extra_args(self):
+    def test_macro_edge_extra_args(self):
         query = '''{
             Animal @macro_edge_definition {
                 net_worth @filter(op_name: "=", value: ["$net_worth"])
