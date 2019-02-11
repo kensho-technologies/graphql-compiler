@@ -71,7 +71,7 @@ import six
 from . import blocks, expressions
 from ..ast_manipulation import get_ast_field_name
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
-from ..schema import COUNT_META_FIELD_NAME, DIRECTIVES
+from ..schema import COUNT_META_FIELD_NAME, DIRECTIVES, is_vertex_field_name
 from .context_helpers import (
     get_context_fold_info, get_optional_scope_or_none, has_encountered_output_source,
     has_fold_count_filter, is_in_fold_innermost_scope, is_in_fold_scope, is_in_optional_scope,
@@ -87,7 +87,7 @@ from .directive_helpers import (
 from .filters import process_filter_directive
 from .helpers import (
     FoldScopeLocation, Location, get_edge_direction_and_name, get_field_type_from_schema,
-    get_uniquely_named_objects_by_name, get_vertex_field_type, invert_dict, is_vertex_field_name,
+    get_uniquely_named_objects_by_name, get_vertex_field_type, invert_dict,
     strip_non_null_from_type, validate_output_name, validate_safe_string
 )
 from .metadata import LocationInfo, QueryMetadataTable, RecurseInfo

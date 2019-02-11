@@ -1,9 +1,103 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
+from copy import copy
+from itertools import chain
 
+from graphql.validation import validate
+
+from ...ast_manipulation import get_ast_field_name, get_human_friendly_ast_field_name
 from ...exceptions import GraphQLInvalidMacroError
-from .directives import MacroEdgeDefinitionDirective, MacroEdgeDirective, MacroEdgeTargetDirective
+from ...schema import VERTEX_FIELD_PREFIXES, is_vertex_field_name
+from .directives import MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
 from .helpers import get_only_selection_from_ast
+
+
+def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
+    """Raise errors if the macro uses the macro directives incorrectly or is otherwise invalid."""
+    if ast.directives is not None:
+        directive_names = [directive.name.value for directive in ast.directives]
+        raise GraphQLInvalidMacroError(
+            u'Unexpectedly found directives at the top level of the GraphQL input. '
+            u'This is not supported. Directives: {}'.format(directive_names))
+
+    if ast.variable_definitions is not None:
+        raise GraphQLInvalidMacroError(
+            u'Unexpectedly found variable definitions at the top level of the GraphQL input. '
+            u'This is not supported. Variable definitions: {}'.format(ast.variable_definitions))
+
+    required_macro_directives = (MacroEdgeDefinitionDirective, MacroEdgeTargetDirective)
+
+    # pylint: disable=protected-access
+    schema_with_macro_directives = copy(schema)
+    schema_with_macro_directives._directives = list(chain(
+        schema_with_macro_directives._directives, required_macro_directives))
+    # pylint: enable=protected-access
+
+    validation_errors = validate(schema, ast)
+    if validation_errors:
+        raise GraphQLInvalidMacroError(
+            u'Macro edge failed validation: {}'.format(validation_errors))
+
+    for directive_definition in required_macro_directives:
+        macro_data = macro_directives.get(directive_definition.name, None)
+        if not macro_data:
+            raise GraphQLInvalidMacroError(
+                u'Required macro edge directive "@{}" was not found anywhere within the supplied '
+                u'macro edge definition GraphQL.'.format(directive_definition.name))
+
+        if len(macro_data) > 1:
+            raise GraphQLInvalidMacroError(
+                u'Required macro edge directive "@{}" was unexpectedly present more than once in '
+                u'the supplied macro edge definition GraphQL. It was found {} times.'
+                .format(directive_definition.name, len(macro_data)))
+
+
+def _validate_class_selection_ast(ast, macro_defn_ast):
+    """Ensure that the macro's top-level selection AST adheres to our expectations."""
+    directive_names = [
+        directive.name.value
+        for directive in ast.directives
+    ]
+    unexpected_directives = [
+        directive_name
+        for directive_name in directive_names
+        if directive_name != MacroEdgeDefinitionDirective.name
+    ]
+    if unexpected_directives:
+        raise GraphQLInvalidMacroError(
+            u'Found unexpected directives at the top level of the macro definition GraphQL: '
+            u'{}'.format(unexpected_directives))
+
+    if ast is not macro_defn_ast:
+        raise GraphQLInvalidMacroError(
+            u'Expected to find the "@{}" directive at the top level of the macro definition '
+            u'GraphQL (on the "{}" field), but instead found it on the "{}" field. This is '
+            u'not allowed.'.format(MacroEdgeDefinitionDirective.name,
+                                   get_human_friendly_ast_field_name(ast),
+                                   get_human_friendly_ast_field_name(macro_defn_ast)))
+
+
+def _validate_macro_edge_name_for_class_name(schema, class_name, macro_edge_name):
+    """Ensure that the provided macro edge name is valid for the given class name."""
+    # The macro edge must be a valid edge name.
+    if not is_vertex_field_name(macro_edge_name):
+        raise GraphQLInvalidMacroError(
+            u'The provided macro edge name "{}" is not valid, since it does not start with '
+            u'the expected prefixes for vertex fields: {}'
+            .format(macro_edge_name, list(VERTEX_FIELD_PREFIXES)))
+
+    # The macro edge must not have the same name as an existing edge on the class where it exists.
+    class_object = schema.get_type(class_name)
+    if macro_edge_name in class_object.fields:
+        raise GraphQLInvalidMacroError(
+            u'The provided macro edge name "{}" has the same name as an existing field on the '
+            u'"{}" GraphQL type or interface. This is not allowed, please choose a different name.'
+            .format(macro_edge_name, class_name))
+
+
+# ############
+# Public API #
+# ############
 
 
 MacroEdgeDescriptor = namedtuple(
@@ -16,7 +110,7 @@ MacroEdgeDescriptor = namedtuple(
 
 def get_and_validate_macro_edge_info(schema, ast, macro_directives, macro_edge_args,
                                      type_equivalence_hints=None):
-    """Return a tuple of ASTs with the three parts of a macro edge given the directive mapping.
+    """Return a tuple with the three parts of information that uniquely describe a macro edge.
 
     Args:
         schema: GraphQL schema object, created using the GraphQL library
@@ -48,61 +142,26 @@ def get_and_validate_macro_edge_info(schema, ast, macro_directives, macro_edge_a
         tuple (class name for macro, name of macro edge, MacroEdgeDescriptor),
         where the first two values are strings and the last one is a MacroEdgeDescriptor object
     """
-    if ast.directives is not None:
-        directive_names = [directive.name.value for directive in ast.directives]
-        raise GraphQLInvalidMacroError(
-            u'Unexpectedly found directives at the top level of the GraphQL input. '
-            u'This is not supported. Directives: {}'.format(directive_names))
+    _validate_macro_ast_with_macro_directives(schema, ast, macro_directives)
 
-    if ast.variable_definitions is not None:
-        raise GraphQLInvalidMacroError(
-            u'Unexpectedly found variable definitions at the top level of the GraphQL input. '
-            u'This is not supported. Variable definitions: {}'.format(ast.variable_definitions))
-
-    unique_and_parameterless_directives_to_check = (
-        MacroEdgeDirective,
-        MacroEdgeDefinitionDirective,
-        MacroEdgeTargetDirective,
-    )
-    macro_edge_sub_asts = {}
-
-    for directive_definition in unique_and_parameterless_directives_to_check:
-        macro_data = macro_directives.get(directive_definition.name, None)
-        if not macro_data:
-            raise GraphQLInvalidMacroError(
-                u'Required macro edge directive "@{}" was not found anywhere within the supplied '
-                u'macro edge definition GraphQL.'.format(directive_definition.name))
-
-        if len(macro_data) > 1:
-            raise GraphQLInvalidMacroError(
-                u'Required macro edge directive "@{}" was unexpectedly present more than once in '
-                u'the supplied macro edge definition GraphQL. It was found {} times.'
-                .format(directive_definition.name, len(macro_data)))
-
-        macro_ast, macro_directive = macro_data[0]
-        if macro_directive.arguments is not None:
-            raise GraphQLInvalidMacroError(
-                u'Required macro edge directive "@{}" unexpectedly contained arguments even though '
-                u'it is not supposed to contain any. Unexpected arguments: {}'
-                .format(directive_definition.name, macro_directive.arguments))
-
-        macro_edge_sub_asts[directive_definition.name] = macro_ast
+    macro_defn_ast, macro_defn_directive = macro_directives[MacroEdgeDefinitionDirective.name][0]
+    # macro_target_ast, _ = macro_directives[MacroEdgeTargetDirective.name][0]
 
     # TODO(predrag): Required further validation:
-    # - the target directive AST is either the same as, or within the definition directive AST;
-    # - the macro edge directive AST is not within the definition directive AST;
-    # - the macro edge directive and the definition directive ASTs are directly within the
-    #   top-level selection, and that selection contains no ASTs other than these two;
-    # - the macro edge directive AST contains no other directives;
     # - the macro definition directive AST contains only @filter/@fold directives together with
     #   the target directive;
-    # - the macro edge does not shadow an existing edge;
     # - after adding an output, the macro compiles successfully, the macro args and necessary and
     #   sufficient for the macro, and the macro args' types match the inferred types of the
     #   runtime parameters in the macro.
 
-    class_name = get_only_selection_from_ast(ast).name.value
-    macro_edge_name = macro_edge_sub_asts[MacroEdgeDirective.name].name.value
+    class_ast = get_only_selection_from_ast(ast)
+    class_name = get_ast_field_name(class_ast)
+
+    _validate_class_selection_ast(class_ast, macro_defn_ast)
+
+    macro_edge_name = macro_defn_directive.arguments['name'].value
+
+    _validate_macro_edge_name_for_class_name(schema, class_name, macro_edge_name)
 
     _make_macro_edge_descriptor()
 

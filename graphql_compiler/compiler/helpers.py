@@ -11,6 +11,7 @@ from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, Gra
 import six
 
 from ..exceptions import GraphQLCompilationError
+from ..schema import INBOUND_EDGE_FIELD_PREFIX, OUTBOUND_EDGE_FIELD_PREFIX, is_vertex_field_name
 
 
 # These are the Java (OrientDB) representations of the ISO-8601 standard date and datetime formats.
@@ -18,9 +19,6 @@ STANDARD_DATE_FORMAT = 'yyyy-MM-dd'
 STANDARD_DATETIME_FORMAT = 'yyyy-MM-dd\'T\'HH:mm:ssX'
 
 VARIABLE_ALLOWED_CHARS = frozenset(six.text_type(string.ascii_letters + string.digits + '_'))
-
-OUTBOUND_EDGE_FIELD_PREFIX = 'out_'
-INBOUND_EDGE_FIELD_PREFIX = 'in_'
 
 OUTBOUND_EDGE_DIRECTION = 'out'
 INBOUND_EDGE_DIRECTION = 'in'
@@ -94,14 +92,6 @@ def get_edge_direction_and_name(vertex_field_name):
     validate_safe_string(edge_name)
 
     return edge_direction, edge_name
-
-
-def is_vertex_field_name(field_name):
-    """Return True if the field's name indicates it is a non-root vertex field."""
-    return (
-        field_name.startswith(OUTBOUND_EDGE_FIELD_PREFIX) or
-        field_name.startswith(INBOUND_EDGE_FIELD_PREFIX)
-    )
 
 
 def is_vertex_field_type(graphql_type):
