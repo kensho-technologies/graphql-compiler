@@ -58,7 +58,6 @@ def compute_subclass_sets(schema, type_equivalence_hints=None):
         else:
             raise AssertionError(u'Unexpected type {}'.format(type(equivalent_type)))
 
-    # NOTE(bojanserafimov): Taking the transitive closure has no effect on the current schema.
     # If B subclasses A, and C subclasses B, then C subclasses A
     _add_transitive_closure(subclass_set)
     return subclass_set
