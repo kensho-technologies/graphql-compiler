@@ -61,7 +61,7 @@ class MacroExpansionTests(unittest.TestCase):
         expected_query = '''{
             TODO(bojanserafimov): Add correct answer
         }'''
-        expected_args = {} # TODO(bojanserafimov): Add correct answer
+        expected_args = {}  # TODO(bojanserafimov): Add correct answer
 
         expanded_query, new_args = perform_macro_expansion(
             self.schema, self.macro_registry, query, args)
@@ -86,7 +86,7 @@ class MacroExpansionTests(unittest.TestCase):
         expected_query = '''{
             TODO(bojanserafimov): Add correct answer
         }'''
-        expected_args = {} # TODO(bojanserafimov): Add correct answer
+        expected_args = {}  # TODO(bojanserafimov): Add correct answer
 
         expanded_query, new_args = perform_macro_expansion(
             self.schema, self.macro_registry, query, args)
