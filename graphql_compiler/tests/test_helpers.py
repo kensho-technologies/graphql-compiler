@@ -249,6 +249,7 @@ def construct_location_types(location_types_as_strings):
 
 
 def get_test_macro_registry():
+    """Return a MacroRegistry object containing macros used in tests."""
     schema = get_schema()
     macro_registry = create_macro_registry()
     type_equivalence_hints = {
