@@ -3,8 +3,8 @@ from graphql.error import GraphQLSyntaxError
 from graphql.language.ast import Document, InlineFragment
 from graphql.language.parser import parse
 
+from .exceptions import GraphQLParsingError
 from .schema import TYPENAME_META_FIELD_NAME
-from .exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
 
 
 def get_ast_field_name(ast):

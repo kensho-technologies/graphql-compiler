@@ -148,7 +148,7 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     _validate_macro_ast_with_macro_directives(schema, ast, macro_directives)
 
     macro_defn_ast, macro_defn_directive = macro_directives[MacroEdgeDefinitionDirective.name][0]
-    macro_target_ast, _ = macro_directives[MacroEdgeTargetDirective.name][0]
+    # macro_target_ast, _ = macro_directives[MacroEdgeTargetDirective.name][0]
 
     # TODO(predrag): Required further validation:
     # - the macro definition directive AST contains only @filter/@fold directives together with
