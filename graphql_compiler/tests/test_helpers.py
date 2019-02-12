@@ -7,8 +7,8 @@ from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
-from ..macros import create_macro_registry, register_macro_edge
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
+from ..macros import create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
 from ..schema import insert_meta_fields_into_existing_schema
 
@@ -355,4 +355,3 @@ def get_test_macro_registry():
     for graphql, args in valid_macros:
         register_macro_edge(macro_registry, schema, graphql, args, type_equivalence_hints)
     return macro_registry
-

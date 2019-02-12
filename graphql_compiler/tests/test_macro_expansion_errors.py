@@ -41,7 +41,7 @@ class MacroExpansionTests(unittest.TestCase):
             Animal {
                 out_Animal_AvailableFood {
                    ... on Species {
-                       @output(out_name: "species")
+                       name @output(out_name: "species")
                    }
                 }
             }
@@ -57,7 +57,7 @@ class MacroExpansionTests(unittest.TestCase):
             Animal {
                 out_Animal_NearbyEvents {
                    ... on Entity {
-                       @output(out_name: "event")
+                       name @output(out_name: "event")
                    }
                 }
             }
@@ -72,7 +72,7 @@ class MacroExpansionTests(unittest.TestCase):
         query = '''{
             Animal {
                 out_Animal_GrandparentOf {
-                    @output(out_name: "grandkid")
+                    name @output(out_name: "grandkid")
                 }
             }
         }'''
