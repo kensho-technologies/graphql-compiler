@@ -319,17 +319,6 @@ def get_test_macro_registry():
             }
         }''', {}),
         ('''{
-            Animal @macro_edge_definition(name: "invalid_out_Animal_AvailableFood") {
-                out_Animal_LivesIn {
-                    in_Entity_Related @macro_edge_target {
-                        ... on Food {
-                            uuid
-                        }
-                    }
-                }
-            }
-        }''', {}),
-        ('''{
             Animal @macro_edge_definition(name: "out_Animal_NearbyEvents") {
                 out_Animal_LivesIn {
                     in_Entity_Related @macro_edge_target {

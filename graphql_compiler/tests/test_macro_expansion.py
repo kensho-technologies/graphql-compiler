@@ -59,9 +59,26 @@ class MacroExpansionTests(unittest.TestCase):
         }
 
         expected_query = '''{
-            TODO(bojanserafimov): Add correct answer
+            Animal {
+                net_worth @tag(tag_name: "net_worth")
+                out_Animal_BornAt {
+                    event_date @tag(tag_name: "birthday")
+                }
+                in_Animal_ParentOf {
+                    out_Animal_ParentOf {
+                        net_worth @filter(op_name: "<", value: ["$net_worth_upper_bound"])
+                                  @filter(op_name: ">", value: ["%net_worth"])
+                                  @output(out_name: "sibling_net_worth")
+                        out_Animal_BornAt {
+                            event_date @filter(op_name: "<", value: ["%birthday"])
+                        }
+                    }
+                }
+            }
         }'''
-        expected_args = {}  # TODO(bojanserafimov): Add correct answer
+        expected_args = {
+            'net_worth_upper_bound': 5,
+        }
 
         expanded_query, new_args = perform_macro_expansion(
             self.schema, self.macro_registry, query, args)
@@ -84,9 +101,26 @@ class MacroExpansionTests(unittest.TestCase):
         }
 
         expected_query = '''{
-            TODO(bojanserafimov): Add correct answer
+            Animal {
+                net_worth @filter(op_name: "<", value: ["$net_worth_upper_bound"])
+                          @output(out_name: "net_worth")
+                          @tag(tag_name: "net_worth")
+                out_Animal_BornAt {
+                    event_date @tag(tag_name: "birthday")
+                }
+                in_Animal_ParentOf {
+                    out_Animal_ParentOf {
+                        net_worth @filter(op_name: ">", value: ["%net_worth"])
+                        out_Animal_BornAt {
+                            event_date @filter(op_name: "<", value: ["%birthday"])
+                        }
+                    }
+                }
+            }
         }'''
-        expected_args = {}  # TODO(bojanserafimov): Add correct answer
+        expected_args = {
+            'net_worth_upper_bound': 5,
+        }
 
         expanded_query, new_args = perform_macro_expansion(
             self.schema, self.macro_registry, query, args)
@@ -107,7 +141,16 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         expected_query = '''{
-            TODO(bojanserafimov): Add correct answer
+            Animal {
+                out_Animal_LivesIn {
+                    in_Entity_Related {
+                        ... on Food {
+                            @output(out_name: "food")
+                        }
+                    }
+                }
+            }
+            }
         }'''
         expected_args = {}
 
@@ -130,7 +173,15 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         expected_query = '''{
-            TODO(bojanserafimov): Add correct answer
+            Animal {
+                out_Animal_LivesIn {
+                    in_Entity_Related {
+                        ... on Event {
+                            @output(out_name: "event")
+                        }
+                    }
+                }
+            }
         }'''
         expected_args = {}
 
@@ -153,7 +204,15 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         expected_query = '''{
-            TODO(bojanserafimov): Add correct answer
+            Animal {
+                out_Animal_LivesIn {
+                    in_Entity_Related {
+                        ... on BirthEvent {
+                            @output(out_name: "event")
+                        }
+                    }
+                }
+            }
         }'''
         expected_args = {}
 
@@ -176,7 +235,15 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         expected_query = '''{
-            TODO(bojanserafimov): Add correct answer
+            Animal {
+                out_Animal_LivesIn {
+                    in_Entity_Related {
+                        ... on Event {
+                            @output(out_name: "event")
+                        }
+                    }
+                }
+            }
         }'''
         expected_args = {}
 
@@ -199,7 +266,15 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         expected_query = '''{
-            TODO(bojanserafimov): Add correct answer
+            Animal {
+                out_Animal_LivesIn {
+                    in_Entity_Related {
+                        ... on Animal {
+                            @output(out_name: "animal")
+                        }
+                    }
+                }
+            }
         }'''
         expected_args = {}
 
@@ -212,7 +287,7 @@ class MacroExpansionTests(unittest.TestCase):
     def test_macro_edge_arguments(self):
         query = '''{
             Location {
-                @filter(op_name: "=", value: ["$location"])
+                name @filter(op_name: "=", value: ["$location"])
                 out_Location_Orpans {
                     @output(out_name: "name")
                 }
@@ -223,9 +298,20 @@ class MacroExpansionTests(unittest.TestCase):
         }
 
         expected_query = '''{
-            TODO(bojanserafimov): Add correct answer
+            Location {
+                name @filter(op_name: "=", value: ["$location"])
+                in_Animal_LivesIn {
+                    in_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$num_parents"])
+                                       @optional {
+                        uuid
+                    }
+                }
+            }
         }'''
-        expected_args = {}  # TODO(bojanserafimov): Add correct answer
+        expected_args = {
+            'location': 'Europe',
+            'num_parents': 0,
+        }
 
         expanded_query, new_args = perform_macro_expansion(
             self.schema, self.macro_registry, query, args)
@@ -246,9 +332,20 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         expected_query = '''{
-            TODO(bojanserafimov): Add correct answer
+            Animal {
+                net_worth @tag(tag_name: "parent_net_worth")
+                in_Animal_ParentOf {
+                    net_worth @tag(tag_name: "parent_net_worth_1")
+                    out_Animal_ParentOf @macro_edge_target {
+                        net_worth @filter(op_name: ">", value: ["%parent_net_worth_1"])
+                        out_Animal_BornAt {
+                            event_date @filter(op_name: "<", value: ["%birthday"])
+                        }
+                    }
+                }
+            }
         }'''
-        expected_args = {}  # TODO(bojanserafimov): Add correct answer
+        expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
             self.schema, self.macro_registry, query, args)
@@ -269,7 +366,20 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         expected_query = '''{
-            TODO(bojanserafimov): Add correct answer
+            Animal {
+                net_worth @tag(tag_name: "animal_net_worth")
+                out_Animal_BornAt {
+                    event_date @tag(tag_name: "birthday")
+                }
+                in_Animal_ParentOf {
+                    out_Animal_ParentOf @macro_edge_target {
+                        net_worth @filter(op_name: ">", value: ["%animal_net_worth"])
+                        out_Animal_BornAt {
+                            event_date @filter(op_name: "<", value: ["%birthday"])
+                        }
+                    }
+                }
+            }
         }'''
         expected_args = {}
 
@@ -328,7 +438,20 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         expected_query = '''{
-            # TODO(bojanserafimov): Add correct answer
+            Animal {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf {
+                        name @output(out_name: "grandkid")
+                    }
+                }
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf {
+                        out_Animal_ParentOf {
+                            name @output(out_name: "grandgrandkid")
+                        }
+                    }
+                }
+            }
         }'''
         expected_args = {}
 
