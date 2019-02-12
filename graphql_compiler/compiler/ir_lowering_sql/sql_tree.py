@@ -19,10 +19,21 @@ class SqlNode(object):
         """Create a new SqlNode wrapping a QueryRoot block at a query_path."""
         self.query_path = query_path
         self.block = block
+        self._children = []
+
+    def add_child_node(self, value):
+        if not isinstance(value, SqlNode):
+            raise AssertionError(u'Cannot non-SqlNode child "{}" of type "{}" to SqlNode.'.format(
+                value, type(value)))
+        self._children.append(value)
+
+    @property
+    def children(self):
+        return tuple(self._children)
 
     def __str__(self):
         """Return a string representation of a SqlNode."""
-        return u'SqlNode({})'.format(self.query_path)
+        return u'SqlNode({}, children={})'.format(self.query_path, self.children)
 
     def __repr__(self):
         """Return the repr of a SqlNode."""

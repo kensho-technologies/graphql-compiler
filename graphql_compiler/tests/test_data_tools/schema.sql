@@ -100,3 +100,7 @@ CREATE INDEX Species_Eats ON Species_Eats (in, out) UNIQUE_HASH_INDEX
 ### Food ###
 CREATE CLASS Food EXTENDS FoodOrSpecies
 ###############
+
+### Location ###
+CREATE CLASS Location EXTENDS Entity
+###############

@@ -168,4 +168,48 @@ class IntegrationTests(TestCase):
         ]
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
+    @all_backends
+    @integration_fixtures
+    def test_simple_edge_out(self, backend_name):
+        graphql_query = '''
+        {
+            Animal {
+                name @output(out_name: "animal_name")
+                out_Animal_LivesIn {
+                    name @output(out_name: "location_name")
+                }
+            }
+        }
+        '''
+        expected_results = [
+            {'animal_name': 'Animal 1', 'location_name': 'Location 1'},
+            {'animal_name': 'Animal 2', 'location_name': 'Location 2'},
+            {'animal_name': 'Animal 3', 'location_name': 'Location 3'},
+            {'animal_name': 'Animal 4', 'location_name': 'Location 4'},
+        ]
+
+        self.assertResultsEqual(graphql_query, {}, backend_name, expected_results)
+
+    @all_backends
+    @integration_fixtures
+    def test_simple_edge_in(self, backend_name):
+        graphql_query = '''
+        {
+            Location {
+                name @output(out_name: "location_name")
+                in_Animal_LivesIn {
+                    name @output(out_name: "animal_name")
+                }
+            }
+        }
+        '''
+        expected_results = [
+            {'animal_name': 'Animal 1', 'location_name': 'Location 1'},
+            {'animal_name': 'Animal 2', 'location_name': 'Location 2'},
+            {'animal_name': 'Animal 3', 'location_name': 'Location 3'},
+            {'animal_name': 'Animal 4', 'location_name': 'Location 4'},
+        ]
+
+        self.assertResultsEqual(graphql_query, {}, backend_name, expected_results)
+
 # pylint: enable=no-member

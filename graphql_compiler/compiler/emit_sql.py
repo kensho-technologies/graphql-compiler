@@ -6,7 +6,7 @@ from sqlalchemy import Column, bindparam, select
 from sqlalchemy.sql import expression as sql_expressions
 from sqlalchemy.sql.elements import BindParameter, and_
 
-from . import sql_context_helpers
+from . import sql_context_helpers, sql_join_helpers
 from ..compiler import expressions
 from ..compiler.ir_lowering_sql import constants
 
@@ -16,6 +16,10 @@ CompilationContext = namedtuple('CompilationContext', (
     # 'query_path_to_selectable': Dict[Tuple[str, ...], Selectable], mapping from each
     # query_path to the Selectable located at that query_path.
     'query_path_to_selectable',
+    # 'query_path_to_from_clause': Dict[Tuple[str, ...], FromClause] mapping from each query
+    # path to the FromClause at that query path, where the FromClause is a collection of joined
+    # Selectables.
+    'query_path_to_from_clause',
     # 'query_path_to_location_info': Dict[Tuple[str, ...], LocationInfo], inverse mapping from
     # each query_path to the LocationInfo located at that query_path
     'query_path_to_location_info',
@@ -48,6 +52,7 @@ def emit_code_from_ir(sql_query_tree, compiler_metadata):
     """
     context = CompilationContext(
         query_path_to_selectable=dict(),
+        query_path_to_from_clause=dict(),
         query_path_to_location_info=sql_query_tree.query_path_to_location_info,
         query_path_to_output_fields=sql_query_tree.query_path_to_output_fields,
         query_path_to_filters=sql_query_tree.query_path_to_filters,
@@ -68,26 +73,7 @@ def _query_tree_to_query(node, context):
     Returns:
         Query, the compiled SQL query
     """
-    _create_table_and_update_context(node, context)
     return _create_query(node, context)
-
-
-def _create_table_and_update_context(node, context):
-    """Create an aliased table for a SqlNode.
-
-    Updates the relevant Selectable global context.
-
-    Args:
-        node: SqlNode, the current node.
-        context: CompilationContext, global compilation state and metadata.
-
-    Returns:
-        Table, the newly aliased SQLAlchemy table.
-    """
-    schema_type_name = sql_context_helpers.get_schema_type_name(node, context)
-    table = context.compiler_metadata.get_table(schema_type_name).alias()
-    context.query_path_to_selectable[node.query_path] = table
-    return table
 
 
 def _create_query(node, context):
@@ -100,12 +86,50 @@ def _create_query(node, context):
     Returns:
         Selectable, selectable of the generated query.
     """
-    visited_nodes = [node]
+    visited_nodes = []
+    _recursively_join_tree_nodes(node, visited_nodes, context)
     output_columns = _get_output_columns(visited_nodes, context)
     filters = _get_filters(visited_nodes, context)
-    selectable = sql_context_helpers.get_node_selectable(node, context)
-    query = select(output_columns).select_from(selectable).where(and_(*filters))
+    from_clause = sql_context_helpers.get_node_from_clause(node, context)
+    query = select(output_columns).select_from(from_clause).where(and_(*filters))
     return query
+
+
+def _recursively_join_tree_nodes(node, visited_nodes, context):
+    """Join non-recursive child nodes to parent, flattening child's references.
+
+    Args:
+        node: The current node to flatten and join to.
+        context: CompilationContext containing locations and metadata related to the ongoing
+                 compilation.
+
+    Returns: List[SqlNode], list of non-recursive nodes visited from this node.
+    """
+    # recursively collapse the children's trees
+    for child_node in node.children:
+        _recursively_join_tree_nodes(child_node, visited_nodes, context)
+    # create the current node's table
+    sql_context_helpers.create_table(node, context)
+    for child_node in node.children:
+        join_expression = _get_direct_join_expression(node, child_node, context)
+        _join_nodes(node, child_node, join_expression, context)
+    visited_nodes.append(node)
+
+
+def _join_nodes(parent_node, child_node, join_expression, context):
+    """Join two nodes and update compilation context.
+
+    Returns:
+        None, performs JOIN and updates relevant FromClause context.
+    """
+    parent_from_clause = sql_context_helpers.get_node_from_clause(parent_node, context)
+    child_from_clause = sql_context_helpers.get_node_from_clause(child_node, context)
+    # JOIN parent to child
+    parent_from_clause = parent_from_clause.join(child_from_clause, onclause=join_expression)
+    # Update parent to hold joined FromClause
+    sql_context_helpers.update_node_from_clause(parent_node, parent_from_clause, context)
+    # Cleanup child FromClause
+    sql_context_helpers.remove_node_from_clause(child_node, context)
 
 
 def _get_output_columns(nodes, context):
@@ -256,7 +280,7 @@ def _transform_variable_to_expression(expression, node, context):
     """Transform a Variable compiler expression into its SQLAlchemy expression representation.
 
     Args:
-        expression: expression, Variable compiler expression.
+        expression: expressian, Variable compiler expression.
         node: SqlNode, the SqlNode the expression applies to.
         context: CompilationContext, global compilation state and metadata.
 
@@ -284,3 +308,42 @@ def _transform_local_field_to_expression(expression, node, context):
     column_name = expression.field_name
     column = sql_context_helpers.get_column(column_name, node, context)
     return column
+
+
+def _get_direct_join_expression(outer_node, inner_node, context):
+    """Get a direct JOIN expression between the Selectables of two nodes.
+
+    A direct JOIN expression is one that does not require an intermediate junction table to resolve.
+    The foreign key exists on one of the tables of the relationship and points to the other.
+    Args:
+        outer_node: SqlNode, the source node of the edge.
+        inner_node: SqlNode, the sink node of the edge.
+        context: CompilationContext, global compilation state and metadata.
+
+    Returns:
+        Expression, SQLAlchemy expression representing JOIN onclause, if found.
+    """
+    edge_name = sql_join_helpers.get_block_edge_name(inner_node.block)
+    outer_column_name, inner_column_name = sql_join_helpers.get_column_names_for_edge(edge_name)
+    # The natural JOIN direction is when outer table -FK> inner table, with the outer table holding
+    # the foreign key
+    natural_join_expression = sql_join_helpers.try_get_join_expression(
+        outer_node, outer_column_name, inner_node, inner_column_name, context)
+    if natural_join_expression is not None:
+        return natural_join_expression
+    # The inverse JOIN direction is when inner table -FK> outer table, with the inner table holding
+    # the foreign key
+    inverse_join_expression = sql_join_helpers.try_get_join_expression(
+        outer_node, inner_column_name, inner_node, outer_column_name, context)
+    if inverse_join_expression is not None:
+        return inverse_join_expression
+    outer_selectable = sql_context_helpers.get_node_selectable(outer_node, context)
+    inner_selectable = sql_context_helpers.get_node_selectable(inner_node, context)
+    raise AssertionError(
+        u'Table "{}" is expected to have foreign key "{}" to column "{}" of table "{}" or '
+        u'Table "{}" is expected to have foreign key "{}" to column "{}" of table "{}".'.format(
+            outer_selectable.original, outer_column_name, inner_column_name,
+            inner_selectable.original, inner_selectable.original, outer_column_name,
+            inner_column_name, outer_selectable.original,
+        )
+    )

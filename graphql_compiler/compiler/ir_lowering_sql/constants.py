@@ -1,12 +1,18 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
 
+from graphql import GraphQLList
+
 from graphql_compiler.compiler import blocks, expressions
 
 
 UNSUPPORTED_META_FIELDS = {
     u'@class': u'__typename'
 }
+
+UNSUPPORTED_GRAPHQL_OUTPUT_TYPES = (
+    GraphQLList,
+)
 
 SKIPPABLE_BLOCK_TYPES = (
     # MarkLocation blocks are used in the first pass over the IR blocks to create a mapping of
@@ -16,11 +22,14 @@ SKIPPABLE_BLOCK_TYPES = (
     blocks.GlobalOperationsStart,
     # ConstructResult blocks are given special handling, they can otherwise be disregarded.
     blocks.ConstructResult,
+    # BackTrack blocks are not needed by the SQL backend currently.
+    blocks.Backtrack,
 )
 
 SUPPORTED_BLOCK_TYPES = (
     blocks.QueryRoot,
     blocks.Filter,
+    blocks.Traverse,
 )
 
 SUPPORTED_OUTPUT_EXPRESSION_TYPES = (

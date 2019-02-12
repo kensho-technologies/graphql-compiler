@@ -1,6 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 
 import six
+from graphql import GraphQLList
 
 from .sql_tree import SqlNode, SqlQueryTree
 from .. import blocks
@@ -52,6 +53,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     ir_blocks = lower_unary_transformations(ir_blocks)
     ir_blocks = lower_unsupported_metafield_expressions(ir_blocks)
 
+
     # iteratively construct SqlTree
     query_path_to_node = {}
     query_path_to_filters = {}
@@ -60,6 +62,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
         if isinstance(block, constants.SKIPPABLE_BLOCK_TYPES):
             continue
         location = block_index_to_location[index]
+        location_info = query_metadata_table.get_location_info(location)
         if isinstance(block, (blocks.QueryRoot,)):
             query_path = location.query_path
             if tree_root is not None:
@@ -69,8 +72,33 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                     u'metadata table {}'.format(
                         block, tree_root, ir_blocks, query_metadata_table))
             tree_root = SqlNode(block=block, query_path=query_path)
+            if query_path in query_path_to_node:
+                raise AssertionError(
+                    u'Encountered duplicate SqlNodes {} and {} for query path {} with '
+                    u'IR blocks {}.'.format(
+                        tree_root, query_path_to_node[query_path], query_path, ir_blocks))
             query_path_to_node[query_path] = tree_root
+        elif isinstance(block, (blocks.Traverse,)):
+            query_path = location.query_path
+            parent_location = location_info.parent_location
+            parent_location_info = query_metadata_table.get_location_info(parent_location)
+            if parent_location_info.type.name == location_info.type.name:
+                raise NotImplementedError(
+                    u'Unsupported edge encountered with same source and sink type "{}" with ir'
+                    u' blocks {} and query_metadata_table {}'.format(
+                        location_info.type.name, ir_blocks, query_metadata_table))
+            parent_query_path = parent_location.query_path
+            parent_node = query_path_to_node[parent_query_path]
+            child_node = SqlNode(block=block, query_path=query_path)
+            parent_node.add_child_node(child_node)
+            if query_path in query_path_to_node:
+                raise AssertionError(
+                    u'Encountered duplicate SqlNodes {} and {} for query path {} with '
+                    u'IR blocks {}.'.format(
+                        tree_root, query_path_to_node[query_path], query_path, ir_blocks))
+            query_path_to_node[query_path] = child_node
         elif isinstance(block, blocks.Filter):
+            query_path = location.query_path
             query_path_to_filters.setdefault(query_path, []).append(block)
         else:
             raise AssertionError(
@@ -113,6 +141,8 @@ def _validate_all_blocks_supported(ir_blocks, query_metadata_table):
             unsupported_fields.append((field_name, field))
         elif field.location.field in constants.UNSUPPORTED_META_FIELDS:
             unsupported_fields.append((field_name, field))
+        elif isinstance(field.field_type, constants.UNSUPPORTED_GRAPHQL_OUTPUT_TYPES):
+            unsupported_fields.append((field_name, field, field.field_type))
 
     if len(unsupported_blocks) > 0 or len(unsupported_fields) > 0:
         raise NotImplementedError(
@@ -219,6 +249,8 @@ def _map_block_index_to_location(ir_blocks):
     # after which all buffered blocks can be associated with the encountered MarkLocation.location.
     current_block_ixs = []
     for num, ir_block in enumerate(ir_blocks):
+        if isinstance(ir_block, blocks.Backtrack):
+            continue
         if isinstance(ir_block, blocks.GlobalOperationsStart):
             if len(current_block_ixs) > 0:
                 unassociated_blocks = [ir_blocks[ix] for ix in current_block_ixs]
