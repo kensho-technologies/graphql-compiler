@@ -88,4 +88,6 @@ def perform_macro_expansion(schema, macro_registry, graphql_with_macro, graphql_
 
     definition_ast = get_only_query_definition(query_ast, GraphQLInvalidMacroError)
 
-    raise NotImplementedError(definition_ast)
+    if definition_ast:
+        raise NotImplementedError()
+    return None, None  # Return a pair so linters won't complain about the usage of the function
