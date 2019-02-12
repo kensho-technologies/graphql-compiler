@@ -267,6 +267,18 @@ def get_test_macro_registry():
             }
         }''', {}),
         ('''{
+            Animal @macro_edge_definition(name: "out_Animal_GrandchildrenCalledNate") {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"])
+                                        @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }''', {
+            'name': 'Nate',
+        }),
+        ('''{
             Animal @macro_edge_definition(name: "out_Animal_RichSiblings") {
                 in_Animal_ParentOf {
                     net_worth @tag(tag_name: "parent_net_worth")
