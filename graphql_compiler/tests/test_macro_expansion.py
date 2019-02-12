@@ -49,17 +49,19 @@ class MacroExpansionTests(unittest.TestCase):
         query = '''{
             Animal {
                 out_Animal_RichYoungerSiblings {
-                    net_worth @filter(op_name: "<", value ["net_worth_upper_bound"])
+                    net_worth @filter(op_name: "<", value: ["$net_worth_upper_bound"])
                               @output(out_name: "sibling_net_worth")
                 }
             }
         }'''
-        args = {}
+        args = {
+            'net_worth_upper_bound': 5,
+        }
 
         expected_query = '''{
             TODO(bojanserafimov): Add correct answer
         }'''
-        expected_args = {}
+        expected_args = {} # TODO(bojanserafimov): Add correct answer
 
         expanded_query, new_args = perform_macro_expansion(
             self.schema, self.macro_registry, query, args)
@@ -70,19 +72,21 @@ class MacroExpansionTests(unittest.TestCase):
     def test_macro_edge_source_merging(self):
         query = '''{
             Animal {
-                net_worth @filter(op_name: "<", value ["net_worth_upper_bound"])
+                net_worth @filter(op_name: "<", value: ["$net_worth_upper_bound"])
                           @output(out_name: "net_worth")
                 out_Animal_RichYoungerSiblings {
                     uuid
                 }
             }
         }'''
-        args = {}
+        args = {
+            'net_worth_upper_bound': 5,
+        }
 
         expected_query = '''{
             TODO(bojanserafimov): Add correct answer
         }'''
-        expected_args = {}
+        expected_args = {} # TODO(bojanserafimov): Add correct answer
 
         expanded_query, new_args = perform_macro_expansion(
             self.schema, self.macro_registry, query, args)
@@ -222,6 +226,52 @@ class MacroExpansionTests(unittest.TestCase):
             TODO(bojanserafimov): Add correct answer
         }'''
         expected_args = {}  # TODO(bojanserafimov): Add correct answer
+
+        expanded_query, new_args = perform_macro_expansion(
+            self.schema, self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
+    @pytest.mark.skip(reason='not implemented')
+    def test_macro_edge_tag_collision(self):
+        query = '''{
+            Animal {
+                net_worth @tag(tag_name: "parent_net_worth")
+                out_Animal_RichSiblings {
+                    @filter(op_name: ">", value: ["%parent_net_worth"])
+                    name @output(out_name: "sibling")
+                }
+            }
+        }'''
+        args = {}
+
+        expected_query = '''{
+            TODO(bojanserafimov): Add correct answer
+        }'''
+        expected_args = {}  # TODO(bojanserafimov): Add correct answer
+
+        expanded_query, new_args = perform_macro_expansion(
+            self.schema, self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
+    @pytest.mark.skip(reason='not implemented')
+    def test_macro_edge_colocated_tags(self):
+        query = '''{
+            Animal {
+                net_worth @tag(tag_name: "animal_net_worth")
+                out_Animal_RichYoungerSiblings {
+                    net_worth @filter(op_name: "<", value: ["%animal_net_worth"])
+                              @output(out_name: "sibling_net_worth")
+                }
+            }
+        }'''
+        args = {}
+
+        expected_query = '''{
+            TODO(bojanserafimov): Add correct answer
+        }'''
+        expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
             self.schema, self.macro_registry, query, args)

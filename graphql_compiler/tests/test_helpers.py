@@ -271,7 +271,7 @@ def get_test_macro_registry():
                 in_Animal_ParentOf {
                     net_worth @tag(tag_name: "parent_net_worth")
                     out_Animal_ParentOf @macro_edge_target {
-                        net_worth @filter(op_name: ">", value: ["parent_net_worth"])
+                        net_worth @filter(op_name: ">", value: ["%parent_net_worth"])
                         out_Animal_BornAt {
                             event_date @filter(op_name: "<", value: ["%birthday"])
                         }
@@ -299,7 +299,7 @@ def get_test_macro_registry():
                 }
                 in_Animal_ParentOf {
                     out_Animal_ParentOf @macro_edge_target {
-                        net_worth @filter(op_name: ">", value: ["net_worth"])
+                        net_worth @filter(op_name: ">", value: ["%net_worth"])
                         out_Animal_BornAt {
                             event_date @filter(op_name: "<", value: ["%birthday"])
                         }
