@@ -284,6 +284,76 @@ class MacroExpansionTests(unittest.TestCase):
         self.assertEqual(expected_args, new_args)
 
     @pytest.mark.skip(reason='not implemented')
+    def test_macro_edge_target_coercion_with_filter_1(self):
+        query = '''{
+            Animal {
+                out_Animal_NearbyEntities {
+                   ... on Food @filter(op_name: "name_or_alias", value: "$wanted") {
+                       @output(out_name: "animal")
+                   }
+                }
+            }
+        }'''
+        args = {
+            'wanted': 'croissant'
+        }
+
+        expected_query = '''{
+            Animal {
+                out_Animal_LivesIn {
+                    in_Entity_Related {
+                        ... on Food @filter(op_name: "name_or_alias", value: "$wanted"){
+                            @output(out_name: "animal")
+                        }
+                    }
+                }
+            }
+        }'''
+        expected_args = {
+            'wanted': 'croissant'
+        }
+
+        expanded_query, new_args = perform_macro_expansion(
+            self.schema, self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
+    @pytest.mark.skip(reason='not implemented')
+    def test_macro_edge_target_coercion_with_filter_2(self):
+        query = '''{
+            Animal {
+                out_Animal_NearbyEvents {
+                   ... on BirthEvent @filter(op_name: "name_or_alias", value: ["$wanted"]){
+                       @output(out_name: "event")
+                   }
+                }
+            }
+        }'''
+        args = {
+            'wanted': 'superbowl',
+        }
+
+        expected_query = '''{
+            Animal {
+                out_Animal_LivesIn {
+                    in_Entity_Related {
+                        ... on BirthEvent @filter(op_name: "name_or_alias", value: ["$wanted"]){
+                            @output(out_name: "event")
+                        }
+                    }
+                }
+            }
+        }'''
+        expected_args = {
+            'wanted': 'superbowl',
+        }
+
+        expanded_query, new_args = perform_macro_expansion(
+            self.schema, self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
+    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_arguments(self):
         query = '''{
             Location {
