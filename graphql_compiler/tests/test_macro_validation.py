@@ -257,6 +257,7 @@ class MacroValidationTests(unittest.TestCase):
 
     @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_duplicate_definition_on_target(self):
+        # Future-proofing, so that we can reverse macro edges
         query = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
                 out_Animal_ParentOf {
