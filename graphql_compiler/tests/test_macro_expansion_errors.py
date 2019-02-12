@@ -71,7 +71,7 @@ class MacroExpansionTests(unittest.TestCase):
     def test_macro_edge_nonexistent(self):
         query = '''{
             Animal {
-                out_Animal_GrandparentOf {
+                out_Garbage_ThisMacroIsNotInTheRegistry {
                     name @output(out_name: "grandkid")
                 }
             }
