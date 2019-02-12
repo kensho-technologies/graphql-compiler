@@ -92,7 +92,7 @@ A: We currently support a single graph database, OrientDB version 2.2.28+, and t
    [Execution model](#execution-model) section for more details.
    
    Support for relational databases including PostgreSQL, MySQL, SQLite,
-   and Microsoft Sql Server is a work in progress. A subset of compiler features are available for
+   and Microsoft SQL Server is a work in progress. A subset of compiler features are available for
    these databases. See the [SQL](#sql) section for more details.
 
 **Q: Do you plan to support other databases / more GraphQL features in the future?**
