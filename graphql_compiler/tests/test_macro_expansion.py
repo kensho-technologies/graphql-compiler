@@ -277,3 +277,62 @@ class MacroExpansionTests(unittest.TestCase):
             self.schema, self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
+
+    @pytest.mark.skip(reason='not implemented')
+    def test_macro_nested_use(self):
+        query = '''{
+            Animal {
+                out_Animal_GrandparentOf {
+                    out_Animal_GrandparentOf {
+                        name @output(out_name: "grandgrandkid")
+                    }
+                }
+            }
+        }'''
+        args = {}
+
+        expected_query = '''{
+            Animal {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf {
+                        out_Animal_ParentOf {
+                            out_Animal_ParentOf {
+                                name @output(out_name: "grandgrandkid")
+                            }
+                        }
+                    }
+                }
+            }
+        }'''
+        expected_args = {}
+
+        expanded_query, new_args = perform_macro_expansion(
+            self.schema, self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
+    @pytest.mark.skip(reason='not implemented')
+    def test_macro_parallel_use(self):
+        query = '''{
+            Animal {
+                out_Animal_GrandparentOf {
+                   name @output(out_name: "grandkid")
+                }
+                out_Animal_ParentOf {
+                    out_Animal_GrandparentOf {
+                       name @output(out_name: "grandgrandkid")
+                    }
+                }
+            }
+        }'''
+        args = {}
+
+        expected_query = '''{
+            # TODO(bojanserafimov): Add correct answer
+        }'''
+        expected_args = {}
+
+        expanded_query, new_args = perform_macro_expansion(
+            self.schema, self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)

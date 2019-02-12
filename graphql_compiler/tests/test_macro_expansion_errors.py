@@ -23,7 +23,24 @@ class MacroExpansionTests(unittest.TestCase):
         query = '''{
             Animal {
                 out_Animal_BornAt {
+                    name @output(out_name: "name")
+                }
+                out_Animal_RichYoungerSiblings {
                     uuid
+                }
+            }
+        }'''
+        args = {}
+
+        with self.assertRaises(GraphQLCompilationError):
+            perform_macro_expansion(self.schema, self.macro_registry, query, args)
+
+    @pytest.mark.skip(reason='not implemented')
+    def test_macro_edge_duplicate_macro_traversal(self):
+        query = '''{
+            Animal {
+                out_Animal_RichYoungerSiblings {
+                    name @output(out_name: "name")
                 }
                 out_Animal_RichYoungerSiblings {
                     uuid
