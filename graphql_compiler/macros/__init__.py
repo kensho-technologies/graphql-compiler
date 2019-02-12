@@ -1,6 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
+from ..ast_manipulation import get_only_query_definition, safe_parse_graphql
+from ..exceptions import GraphQLInvalidMacroError
 from .macro_edge import make_macro_edge_descriptor
 
 
@@ -82,4 +84,8 @@ def perform_macro_expansion(schema, macro_registry, graphql_with_macro, graphql_
         its new args, after macro expansion. If the input GraphQL query contained no macros,
         the returned values are guaranteed to be identical to the input query and args.
     """
-    raise NotImplementedError()
+    query_ast = safe_parse_graphql(graphql_with_macro)
+
+    definition_ast = get_only_query_definition(query_ast, GraphQLInvalidMacroError)
+
+    raise NotImplementedError(definition_ast)

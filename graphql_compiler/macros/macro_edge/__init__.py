@@ -1,8 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from graphql.language.parser import parse
-
+from ...ast_manipulation import get_only_query_definition, safe_parse_graphql
 from ...exceptions import GraphQLInvalidMacroError
-from .helpers import get_directives_for_ast
 from .validation import get_and_validate_macro_edge_info
 
 
@@ -35,19 +33,12 @@ def make_macro_edge_descriptor(schema, macro_edge_graphql, macro_edge_args,
         tuple (class name, macro edge name, MacroEdgeDescriptor) suitable for inclusion into the
         GraphQL macro registry
     """
-    root_ast = parse(macro_edge_graphql)
+    root_ast = safe_parse_graphql(macro_edge_graphql)
 
-    if len(root_ast.definitions) != 1:
-        raise GraphQLInvalidMacroError(
-            u'Encountered multiple definitions within GraphQL edge macro. This is not supported.'
-            u'{}'.format(root_ast.definitions))
-
-    definition_ast = root_ast.definitions[0]
-
-    macro_directives = get_directives_for_ast(definition_ast)
+    definition_ast = get_only_query_definition(root_ast, GraphQLInvalidMacroError)
 
     class_name, macro_edge_name, macro_edge_descriptor = get_and_validate_macro_edge_info(
-        schema, definition_ast, macro_directives, macro_edge_args,
+        schema, definition_ast, macro_edge_args,
         type_equivalence_hints=type_equivalence_hints)
 
     return class_name, macro_edge_name, macro_edge_descriptor

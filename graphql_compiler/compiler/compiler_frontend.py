@@ -62,15 +62,13 @@ from collections import namedtuple
 from graphql import (
     GraphQLInt, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLUnionType
 )
-from graphql.error import GraphQLSyntaxError
 from graphql.language.ast import Field, InlineFragment
-from graphql.language.parser import parse
 from graphql.validation import validate
 import six
 
 from . import blocks, expressions
-from ..ast_manipulation import get_ast_field_name
-from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
+from ..ast_manipulation import get_ast_field_name, get_only_query_definition, safe_parse_graphql
+from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from ..schema import COUNT_META_FIELD_NAME, DIRECTIVES, is_vertex_field_name
 from .context_helpers import (
     get_context_fold_info, get_optional_scope_or_none, has_encountered_output_source,
@@ -894,13 +892,6 @@ def _compile_output_step(outputs):
     return blocks.ConstructResult(output_fields)
 
 
-def _preprocess_graphql_string(graphql_string):
-    """Apply any necessary preprocessing to the input GraphQL string, returning the new version."""
-    # HACK(predrag): Workaround for graphql-core issue, to avoid needless errors:
-    #                https://github.com/graphql-python/graphql-core/issues/98
-    return graphql_string + '\n'
-
-
 def _validate_schema_and_ast(schema, ast):
     """Validate the supplied graphql schema and ast.
 
@@ -1022,20 +1013,13 @@ def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
 
     In the case of implementation bugs, could also raise ValueError, TypeError, or AssertionError.
     """
-    graphql_string = _preprocess_graphql_string(graphql_string)
-    try:
-        ast = parse(graphql_string)
-    except GraphQLSyntaxError as e:
-        raise GraphQLParsingError(e)
+    ast = safe_parse_graphql(graphql_string)
 
     validation_errors = _validate_schema_and_ast(schema, ast)
 
     if validation_errors:
         raise GraphQLValidationError(u'String does not validate: {}'.format(validation_errors))
 
-    if len(ast.definitions) != 1:
-        raise AssertionError(u'Unsupported graphql string with multiple definitions, should have '
-                             u'been caught in validation: \n{}\n{}'.format(graphql_string, ast))
-    base_ast = ast.definitions[0]
+    base_ast = get_only_query_definition(ast, GraphQLValidationError)
 
     return _compile_root_ast_to_ir(schema, base_ast, type_equivalence_hints=type_equivalence_hints)

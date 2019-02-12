@@ -3,27 +3,19 @@ from collections import namedtuple
 from copy import copy
 from itertools import chain
 
-from graphql.language.ast import OperationDefinition
 from graphql.validation import validate
 
 from ...ast_manipulation import get_ast_field_name, get_human_friendly_ast_field_name
 from ...exceptions import GraphQLInvalidMacroError
 from ...schema import VERTEX_FIELD_PREFIXES, is_vertex_field_name
-from .directives import MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
-from .helpers import get_only_selection_from_ast
+from .directives import (
+    MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
+)
+from .helpers import get_directives_for_ast, get_only_selection_from_ast, remove_directives_from_ast
 
 
 def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
     """Raise errors if the macro uses the macro directives incorrectly or is otherwise invalid."""
-    if not isinstance(ast, OperationDefinition):
-        raise AssertionError(u'Unexpectedly got an AST that was not an OperationDefinition: {}'
-                             .format(ast))
-
-    if ast.operation != 'query':
-        raise GraphQLInvalidMacroError(
-            u'Unexpectedly got an AST operation that was not parsed as a "query", '
-            u'but instead was a "{}": {}'.format(ast.operation, ast))
-
     if ast.directives:
         directive_names = [directive.name.value for directive in ast.directives]
         raise GraphQLInvalidMacroError(
@@ -43,7 +35,7 @@ def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
         schema_with_macro_directives._directives, required_macro_directives))
     # pylint: enable=protected-access
 
-    validation_errors = validate(schema, ast)
+    validation_errors = validate(schema_with_macro_directives, ast)
     if validation_errors:
         raise GraphQLInvalidMacroError(
             u'Macro edge failed validation: {}'.format(validation_errors))
@@ -112,13 +104,16 @@ def _validate_macro_edge_name_for_class_name(schema, class_name, macro_edge_name
 
 MacroEdgeDescriptor = namedtuple(
     'MacroEdgeDescriptor', (
-        'expansion_ast',  # GraphQL AST object defining how the macro edge should be expanded
-        'macro_args',     # Dict[str, Any] containing any arguments that the macro requires
+        'expansion_selection_set',  # GraphQL SelectionSet object defining how the macro edge
+                                    # should be expanded starting from its base type. These
+                                    # selections must be merged (on both endpoints of the
+                                    # macro edge) with the user-supplied GraphQL input.
+        'macro_args',               # Dict[str, Any] containing any arguments required by the macro
     )
 )
 
 
-def get_and_validate_macro_edge_info(schema, ast, macro_directives, macro_edge_args,
+def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
                                      type_equivalence_hints=None):
     """Return a tuple with the three parts of information that uniquely describe a macro edge.
 
@@ -126,10 +121,6 @@ def get_and_validate_macro_edge_info(schema, ast, macro_directives, macro_edge_a
         schema: GraphQL schema object, created using the GraphQL library
         ast: GraphQL library AST OperationDefinition object, describing the GraphQL that is defining
              the macro edge.
-        macro_directives: Dict[str, List[Tuple[AST object, Directive]]], mapping the name of an
-                          encountered directive to a list of its appearances, each described by
-                          a tuple containing the AST with that directive and the directive object
-                          itself.
         macro_edge_args: dict mapping strings to any type, containing any arguments the macro edge
                          requires in order to function.
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
@@ -152,6 +143,8 @@ def get_and_validate_macro_edge_info(schema, ast, macro_directives, macro_edge_a
         tuple (class name for macro, name of macro edge, MacroEdgeDescriptor),
         where the first two values are strings and the last one is a MacroEdgeDescriptor object
     """
+    macro_directives = get_directives_for_ast(ast)
+
     _validate_macro_ast_with_macro_directives(schema, ast, macro_directives)
 
     macro_defn_ast, macro_defn_directive = macro_directives[MacroEdgeDefinitionDirective.name][0]
@@ -160,24 +153,28 @@ def get_and_validate_macro_edge_info(schema, ast, macro_directives, macro_edge_a
     # TODO(predrag): Required further validation:
     # - the macro definition directive AST contains only @filter/@fold directives together with
     #   the target directive;
+    # - the macro target is not within a @fold;
     # - after adding an output, the macro compiles successfully, the macro args and necessary and
     #   sufficient for the macro, and the macro args' types match the inferred types of the
     #   runtime parameters in the macro.
 
-    class_ast = get_only_selection_from_ast(ast)
-    class_name = get_ast_field_name(class_ast)
-
-    _validate_class_selection_ast(class_ast, macro_defn_ast)
-
+    _validate_class_selection_ast(get_only_selection_from_ast(ast), macro_defn_ast)
+    class_name = get_ast_field_name(macro_defn_ast)
     macro_edge_name = macro_defn_directive.arguments['name'].value
 
     _validate_macro_edge_name_for_class_name(schema, class_name, macro_edge_name)
 
-    _make_macro_edge_descriptor()
+    descriptor = _make_macro_edge_descriptor(macro_defn_ast, macro_edge_args)
 
-    return class_name, macro_edge_name
+    return class_name, macro_edge_name, descriptor
 
 
-def _make_macro_edge_descriptor():
-    """Not implemented yet."""
-    raise NotImplementedError()
+def _make_macro_edge_descriptor(macro_definition_ast, macro_edge_args):
+    """Remove all macro edge directives from the AST, and return a MacroEdgeDescriptor."""
+    directives_to_remove = {
+        directive.name
+        for directive in MACRO_EDGE_DIRECTIVES
+    }
+    new_ast = remove_directives_from_ast(macro_definition_ast, directives_to_remove)
+
+    return MacroEdgeDescriptor(new_ast.selection_set, macro_edge_args)
