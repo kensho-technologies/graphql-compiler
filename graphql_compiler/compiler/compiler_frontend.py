@@ -68,7 +68,7 @@ import six
 
 from . import blocks, expressions
 from ..ast_manipulation import (
-    get_ast_field_name, get_only_selection_from_ast, get_only_query_definition, safe_parse_graphql
+    get_ast_field_name, get_only_query_definition, get_only_selection_from_ast, safe_parse_graphql
 )
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from ..schema import COUNT_META_FIELD_NAME, DIRECTIVES, is_vertex_field_name

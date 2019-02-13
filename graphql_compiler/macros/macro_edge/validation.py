@@ -160,7 +160,8 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     #   sufficient for the macro, and the macro args' types match the inferred types of the
     #   runtime parameters in the macro.
 
-    _validate_class_selection_ast(get_only_selection_from_ast(ast), macro_defn_ast)
+    _validate_class_selection_ast(
+        get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast)
     class_name = get_ast_field_name(macro_defn_ast)
     macro_edge_name = macro_defn_directive.arguments['name'].value
 

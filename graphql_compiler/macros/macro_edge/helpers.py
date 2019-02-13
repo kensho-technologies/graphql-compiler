@@ -3,9 +3,6 @@ from copy import copy
 
 from graphql.language.ast import Field, InlineFragment, OperationDefinition, SelectionSet
 
-from ...ast_manipulation import get_human_friendly_ast_field_name
-from ...exceptions import GraphQLInvalidMacroError
-
 
 def _yield_ast_nodes_with_directives(ast):
     """Get the AST objects where directives appear, anywhere in the given AST.

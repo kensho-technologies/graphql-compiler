@@ -6,11 +6,11 @@ from graphql.language.ast import InlineFragment, SelectionSet
 import six
 
 from ..ast_manipulation import (
-    get_ast_field_name, get_only_selection_from_ast, get_only_query_definition
+    get_ast_field_name, get_only_query_definition, get_only_selection_from_ast
 )
+from ..compiler.helpers import get_vertex_field_type
 from ..exceptions import GraphQLInvalidMacroError
 from ..schema import is_vertex_field_name
-from ..compiler.helpers import get_vertex_field_type
 
 
 def _merge_non_overlapping_dicts(merge_target, new_data):
@@ -85,7 +85,6 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
                 if field_name in macro_edges_at_this_type:
                     macro_edge_descriptor = macro_edges_at_this_type[field_name]
 
-                    macro_definition_ast, macro_args = macro_edges_at_this_type[field_name]
                     new_selection_ast, extra_selections = _expand_specific_macro_edge(
                         macro_edge_descriptor.expansion_selection_set, selection_ast)
                     extra_selections_list.append(extra_selections)

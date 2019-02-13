@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from graphql.error import GraphQLSyntaxError
-from graphql.language.ast import Document, InlineFragment
+from graphql.language.ast import Document, InlineFragment, OperationDefinition
 from graphql.language.parser import parse
 
 from .exceptions import GraphQLParsingError
@@ -29,6 +29,9 @@ def get_human_friendly_ast_field_name(ast):
     """Return a human-friendly name for the AST node, suitable for error messages."""
     if isinstance(ast, InlineFragment):
         return 'type coercion to {}'.format(ast.type_condition)
+    elif isinstance(ast, OperationDefinition):
+        return '{} operation definition'.format(ast.operation)
+
     return get_ast_field_name(ast)
 
 
