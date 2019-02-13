@@ -17,7 +17,6 @@ class MacroExpansionTests(unittest.TestCase):
             self.schema.get_type('Event'): self.schema.get_type('EventOrBirthEvent'),
         }
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_basic(self):
         query = '''{
             Animal {
@@ -131,7 +130,7 @@ class MacroExpansionTests(unittest.TestCase):
     def test_macro_edge_target_coercion_1(self):
         query = '''{
             Animal {
-                out_Animal_AvailableFood {
+                out_Animal_RelatedFood {
                    ... on Food {
                        @output(out_name: "food")
                    }
@@ -142,14 +141,11 @@ class MacroExpansionTests(unittest.TestCase):
 
         expected_query = '''{
             Animal {
-                out_Animal_LivesIn {
-                    in_Entity_Related {
-                        ... on Food {
-                            @output(out_name: "food")
-                        }
+                in_Entity_Related {
+                    ... on Food {
+                        @output(out_name: "food")
                     }
                 }
-            }
             }
         }'''
         expected_args = {}
@@ -163,7 +159,7 @@ class MacroExpansionTests(unittest.TestCase):
     def test_macro_edge_target_coercion_2(self):
         query = '''{
             Animal {
-                out_Animal_NearbyEvents {
+                out_Animal_RelatedEvent {
                    ... on Event {
                        @output(out_name: "event")
                    }
@@ -174,11 +170,9 @@ class MacroExpansionTests(unittest.TestCase):
 
         expected_query = '''{
             Animal {
-                out_Animal_LivesIn {
-                    in_Entity_Related {
-                        ... on Event {
-                            @output(out_name: "event")
-                        }
+                in_Entity_Related {
+                    ... on Event {
+                        @output(out_name: "event")
                     }
                 }
             }
@@ -194,7 +188,7 @@ class MacroExpansionTests(unittest.TestCase):
     def test_macro_edge_target_coercion_3(self):
         query = '''{
             Animal {
-                out_Animal_NearbyEvents {
+                out_Animal_RelatedEvent {
                    ... on BirthEvent {
                        @output(out_name: "event")
                    }
@@ -205,11 +199,9 @@ class MacroExpansionTests(unittest.TestCase):
 
         expected_query = '''{
             Animal {
-                out_Animal_LivesIn {
-                    in_Entity_Related {
-                        ... on BirthEvent {
-                            @output(out_name: "event")
-                        }
+                in_Entity_Related {
+                    ... on BirthEvent {
+                        @output(out_name: "event")
                     }
                 }
             }
@@ -225,7 +217,7 @@ class MacroExpansionTests(unittest.TestCase):
     def test_macro_edge_target_coercion_4(self):
         query = '''{
             Animal {
-                out_Animal_NearbyEntities {
+                out_Animal_RelatedEntity {
                    ... on Event {
                        @output(out_name: "event")
                    }
@@ -236,11 +228,9 @@ class MacroExpansionTests(unittest.TestCase):
 
         expected_query = '''{
             Animal {
-                out_Animal_LivesIn {
-                    in_Entity_Related {
-                        ... on Event {
-                            @output(out_name: "event")
-                        }
+                in_Entity_Related {
+                    ... on Event {
+                        @output(out_name: "event")
                     }
                 }
             }
@@ -254,6 +244,7 @@ class MacroExpansionTests(unittest.TestCase):
 
     @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_5(self):
+        # TODO fix
         query = '''{
             Animal {
                 out_Animal_NearbyEntities {
@@ -285,6 +276,7 @@ class MacroExpansionTests(unittest.TestCase):
 
     @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_with_filter_1(self):
+        # TODO fix
         query = '''{
             Animal {
                 out_Animal_NearbyEntities {
@@ -320,6 +312,7 @@ class MacroExpansionTests(unittest.TestCase):
 
     @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_with_filter_2(self):
+        # TODO fix
         query = '''{
             Animal {
                 out_Animal_NearbyEvents {

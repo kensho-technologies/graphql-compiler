@@ -320,34 +320,28 @@ def get_test_macro_registry():
             }
         }''', {}),
         ('''{
-            Animal @macro_edge_definition(name: "out_Animal_AvailableFood") {
-                out_Animal_LivesIn {
-                    in_Entity_Related {
-                        ... on Food @macro_edge_target {
-                            uuid
-                        }
+            Animal @macro_edge_definition(name: "out_Animal_RelatedFood") {
+                in_Entity_Related {
+                    ... on Food @macro_edge_target {
+                        uuid
                     }
                 }
             }
         }''', {}),
         ('''{
-            Animal @macro_edge_definition(name: "out_Animal_NearbyEvents") {
-                out_Animal_LivesIn {
-                    in_Entity_Related @macro_edge_target {
-                        ... on Event {
-                            uuid
-                        }
+            Animal @macro_edge_definition(name: "out_Animal_RelatedEvent") {
+                in_Entity_Related @macro_edge_target {
+                    ... on Event {
+                        uuid
                     }
                 }
             }
         }''', {}),
         ('''{
-            Animal @macro_edge_definition(name: "out_Animal_NearbyEntities") {
-                out_Animal_LivesIn {
-                    in_Entity_Related {
-                        ... on Entity @macro_edge_target {
-                            uuid
-                        }
+            Animal @macro_edge_definition(name: "out_Animal_RelatedEntity") {
+                in_Entity_Related {
+                    ... on Entity @macro_edge_target {
+                        uuid
                     }
                 }
             }
