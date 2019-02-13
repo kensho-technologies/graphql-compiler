@@ -8,6 +8,8 @@ from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
+from ..macros import create_macro_registry, register_macro_edge
+from ..query_formatting.graphql_formatting import pretty_print_graphql
 from ..schema import insert_meta_fields_into_existing_schema
 
 
@@ -45,6 +47,14 @@ def compare_ir_blocks(test_case, expected_blocks, received_blocks):
         test_case.assertEqual(expected, received,
                               msg=u'Blocks at position {} were different: {} vs {}\n\n'
                                   u'{}'.format(i, expected, received, mismatch_message))
+
+
+def compare_graphql(test_case, expected, received):
+    """Compare the expected and received GraphQL code, ignoring whitespace."""
+    msg = '\n{}\n\n!=\n\n{}'.format(
+        pretty_print_graphql(expected),
+        pretty_print_graphql(received))
+    compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
 def compare_match(test_case, expected, received, parameterized=True):
@@ -236,3 +246,114 @@ def construct_location_types(location_types_as_strings):
         location: schema.get_type(type_name)
         for location, type_name in six.iteritems(location_types_as_strings)
     }
+
+
+def get_test_macro_registry():
+    """Return a MacroRegistry object containing macros used in tests."""
+    schema = get_schema()
+    macro_registry = create_macro_registry()
+    type_equivalence_hints = {
+        schema.get_type('Event'): schema.get_type('EventOrBirthEvent'),
+    }
+
+    valid_macros = [
+        ('''{
+            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }''', {}),
+        ('''{
+            Animal @macro_edge_definition(name: "out_Animal_GrandchildrenCalledNate") {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"])
+                                        @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }''', {
+            'name': 'Nate',
+        }),
+        ('''{
+            Animal @macro_edge_definition(name: "out_Animal_RichSiblings") {
+                in_Animal_ParentOf {
+                    net_worth @tag(tag_name: "parent_net_worth")
+                    out_Animal_ParentOf @macro_edge_target {
+                        net_worth @filter(op_name: ">", value: ["%parent_net_worth"])
+                        out_Animal_BornAt {
+                            event_date @filter(op_name: "<", value: ["%birthday"])
+                        }
+                    }
+                }
+            }
+        }''', {}),
+        ('''{
+            Location @macro_edge_definition(name: "out_Location_Orphans") {
+                in_Animal_LivesIn @macro_edge_target {
+                    in_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$num_parents"])
+                                       @optional {
+                        uuid
+                    }
+                }
+            }
+        }''', {
+            'num_parents': 0,
+        }),
+        ('''{
+            Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings") {
+                net_worth @tag(tag_name: "net_worth")
+                out_Animal_BornAt {
+                    event_date @tag(tag_name: "birthday")
+                }
+                in_Animal_ParentOf {
+                    out_Animal_ParentOf @macro_edge_target {
+                        net_worth @filter(op_name: ">", value: ["%net_worth"])
+                        out_Animal_BornAt {
+                            event_date @filter(op_name: "<", value: ["%birthday"])
+                        }
+                    }
+                }
+            }
+        }''', {}),
+        ('''{
+            Animal @macro_edge_definition(name: "out_Animal_AvailableFood") {
+                out_Animal_LivesIn {
+                    in_Entity_Related {
+                        ... on Food @macro_edge_target {
+                            uuid
+                        }
+                    }
+                }
+            }
+        }''', {}),
+        ('''{
+            Animal @macro_edge_definition(name: "out_Animal_NearbyEvents") {
+                out_Animal_LivesIn {
+                    in_Entity_Related @macro_edge_target {
+                        ... on Event {
+                            uuid
+                        }
+                    }
+                }
+            }
+        }''', {}),
+        ('''{
+            Animal @macro_edge_definition(name: "out_Animal_NearbyEntities") {
+                out_Animal_LivesIn {
+                    in_Entity_Related {
+                        ... on Entity @macro_edge_target {
+                            uuid
+                        }
+                    }
+                }
+            }
+        }''', {}),
+    ]
+
+    for graphql, args in valid_macros:
+        register_macro_edge(macro_registry, schema, graphql, args, type_equivalence_hints)
+    return macro_registry

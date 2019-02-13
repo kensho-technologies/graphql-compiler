@@ -163,7 +163,7 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     _validate_class_selection_ast(
         get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast)
     class_name = get_ast_field_name(macro_defn_ast)
-    macro_edge_name = macro_defn_directive.arguments['name'].value
+    macro_edge_name = macro_defn_directive.arguments[0].value.value
 
     _validate_macro_edge_name_for_class_name(schema, class_name, macro_edge_name)
 
