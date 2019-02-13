@@ -177,6 +177,7 @@ def _make_macro_edge_descriptor(macro_definition_ast, macro_edge_args):
     directives_to_remove = {
         directive.name
         for directive in MACRO_EDGE_DIRECTIVES
+        if directive.name != MacroEdgeTargetDirective.name
     }
     new_ast = remove_directives_from_ast(macro_definition_ast, directives_to_remove)
 

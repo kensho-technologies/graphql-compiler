@@ -1,16 +1,19 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from copy import copy
+from copy import copy, deepcopy
 from itertools import chain
 
 from graphql.language.ast import InlineFragment, SelectionSet
+from graphql.language.printer import print_ast
 import six
 
 from ..ast_manipulation import (
     get_ast_field_name, get_only_query_definition, get_only_selection_from_ast
 )
-from ..compiler.helpers import get_vertex_field_type
+from ..compiler.helpers import get_vertex_field_type, get_uniquely_named_objects_by_name
 from ..exceptions import GraphQLInvalidMacroError
 from ..schema import is_vertex_field_name
+from .macro_edge.helpers import get_directives_for_ast
+from .macro_edge.directives import MacroEdgeTargetDirective
 
 
 def _merge_non_overlapping_dicts(merge_target, new_data):
@@ -28,20 +31,73 @@ def _merge_non_overlapping_dicts(merge_target, new_data):
     return result
 
 
-def _expand_specific_macro_edge(macro_definition_selection_set, selection_ast):
+def _merge_selection_sets(selection_set_a, selection_set_b):
+    selection_dict_a = get_uniquely_named_objects_by_name(selection_set_a.selections)
+    selection_dict_b = get_uniquely_named_objects_by_name(selection_set_b.selections)
+
+    # TODO copy logic from notebook
+
+    merged_selection_dict = copy(selection_dict_a)
+    merged_selection_dict.update(selection_dict_b)  # TODO handle collisions
+
+    # Remove pro-forma fields if allowed
+    if len(merged_selection_dict) > 1:
+        merged_selection_dict = {
+            name: ast
+            for name, ast in six.iteritems(merged_selection_dict)
+            if ast.selection_set is not None or len(ast.directives) > 0
+        }
+
+    # Make sure that all property fields come before all vertex fields.
+    return SelectionSet([
+        ast
+        for name, ast in six.iteritems(merged_selection_dict)
+        if ast.selection_set is None
+    ] + [
+        ast
+        for name, ast in six.iteritems(merged_selection_dict)
+        if ast.selection_set is not None
+    ])
+
+
+def _expand_specific_macro_edge(macro_selection_set, selection_ast):
     """Produce a tuple containing the new replacement selection AST, and a list of extra selections.
 
     Args:
-        macro_definition_selection_set: SelectionSet GraphQL object containing the selections
-                                        defining the macro edge. Can be retrieved as the
-                                        "expansion_selection_set" key from a MacroEdgeDescriptor.
+        macro_selection_set: SelectionSet GraphQL object containing the selections defining the macro
+                             edge. Can be retrieved as the "expansion_selection_set" key from a
+                             MacroEdgeDescriptor.
         selection_ast: GraphQL AST object containing the selection that is relying on a macro edge.
 
     Returns:
         (replacement selection AST, list of extra selections that need to be added and merged)
         The first value of the tuple is a replacement
     """
-    raise NotImplementedError()
+    replacement_selection_ast = None
+    extra_selections = []
+
+    for macro_ast in deepcopy(macro_selection_set).selections:
+        directives = get_directives_for_ast(macro_ast)
+        if MacroEdgeTargetDirective.name in directives:
+            target_ast, _ = directives[MacroEdgeTargetDirective.name][0]
+
+            # TODO(bojanserafimov): Handle type coercions
+
+            if replacement_selection_ast is not None:
+                raise AssertionError('TODO')
+
+            target_ast.selection_set = _merge_selection_sets(
+                target_ast.selection_set, selection_ast.selection_set)
+            target_ast.directives = []  # TODO wrong
+            replacement_selection_ast = macro_ast
+        else:
+            extra_selections.append(macro_ast)
+
+    if replacement_selection_ast is None:
+        raise AssertionError('TODO')
+
+
+    return replacement_selection_ast, extra_selections
 
 
 def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast, query_args):
@@ -96,14 +152,14 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
 
                     # There is now a new AST field name for the selection, after macro expansion.
                     field_name = get_ast_field_name(new_selection_ast)
-
-                # Then, recurse on the new_selection_ast, to expand any macros
-                # that exist at a deeper level.
-                # TODO(predrag): Move get_vertex_field_type() to the top-level schema.py file,
-                #                instead of reaching into the compiler.helpers module.
-                vertex_field_type = get_vertex_field_type(current_schema_type, field_name)
-                new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
-                    schema, macro_registry, vertex_field_type, new_selection_ast, new_query_args)
+                else:
+                    # Recurse on the new_selection_ast, to expand any macros
+                    # that exist at a deeper level.
+                    # TODO(predrag): Move get_vertex_field_type() to the top-level schema.py file,
+                    #                instead of reaching into the compiler.helpers module.
+                    vertex_field_type = get_vertex_field_type(current_schema_type, field_name)
+                    new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
+                        schema, macro_registry, vertex_field_type, new_selection_ast, new_query_args)
 
         if new_selection_ast is not selection_ast:
             made_changes = True
