@@ -5,6 +5,7 @@ from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
 from .macro_edge import make_macro_edge_descriptor
+from .macro_expansion import expand_macros_in_query_ast
 
 
 MacroRegistry = namedtuple(

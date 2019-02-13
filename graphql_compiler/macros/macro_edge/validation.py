@@ -5,13 +5,15 @@ from itertools import chain
 
 from graphql.validation import validate
 
-from ...ast_manipulation import get_ast_field_name, get_human_friendly_ast_field_name
+from ...ast_manipulation import (
+    get_ast_field_name, get_human_friendly_ast_field_name, get_only_selection_from_ast
+)
 from ...exceptions import GraphQLInvalidMacroError
 from ...schema import VERTEX_FIELD_PREFIXES, is_vertex_field_name
 from .directives import (
     MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
 )
-from .helpers import get_directives_for_ast, get_only_selection_from_ast, remove_directives_from_ast
+from .helpers import get_directives_for_ast, remove_directives_from_ast
 
 
 def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):

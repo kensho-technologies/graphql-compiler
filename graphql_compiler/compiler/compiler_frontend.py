@@ -91,6 +91,7 @@ from .helpers import (
     strip_non_null_from_type, validate_output_name, validate_safe_string
 )
 from .metadata import LocationInfo, QueryMetadataTable, RecurseInfo
+from .subclass import compute_subclass_sets
 
 
 # LocationStackEntry contains the following:
@@ -786,6 +787,9 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         # 'type_equivalence_hints_inverse' is the inverse of type_equivalence_hints,
         # which is always invertible.
         'type_equivalence_hints_inverse': invert_dict(type_equivalence_hints),
+        # 'subclass_sets' is a dict mapping class names to the set of its subclass names
+        'subclass_sets': compute_subclass_sets(
+            schema, type_equivalence_hints=type_equivalence_hints),
     }
 
     # Add the query root basic block to the output.
