@@ -154,11 +154,12 @@ class MacroExpansionTests(unittest.TestCase):
 
     @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_2(self):
+        # TODO(bojanserafimov) is target on union type allowed?
         query = '''{
             Animal {
                 out_Animal_RelatedEvent {
                    ... on Event {
-                       @output(out_name: "event")
+                       name @output(out_name: "event")
                    }
                 }
             }
@@ -169,7 +170,7 @@ class MacroExpansionTests(unittest.TestCase):
             Animal {
                 in_Entity_Related {
                     ... on Event {
-                        @output(out_name: "event")
+                        name @output(out_name: "event")
                     }
                 }
             }
@@ -183,11 +184,12 @@ class MacroExpansionTests(unittest.TestCase):
 
     @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_3(self):
+        # TODO(bojanserafimov) is target on union type allowed?
         query = '''{
             Animal {
                 out_Animal_RelatedEvent {
                    ... on BirthEvent {
-                       @output(out_name: "event")
+                       name @output(out_name: "event")
                    }
                 }
             }
@@ -198,7 +200,7 @@ class MacroExpansionTests(unittest.TestCase):
             Animal {
                 in_Entity_Related {
                     ... on BirthEvent {
-                        @output(out_name: "event")
+                        name @output(out_name: "event")
                     }
                 }
             }
@@ -210,13 +212,12 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_4(self):
         query = '''{
             Animal {
                 out_Animal_RelatedEntity {
                    ... on Event {
-                       @output(out_name: "event")
+                       name @output(out_name: "event")
                    }
                 }
             }
@@ -227,7 +228,7 @@ class MacroExpansionTests(unittest.TestCase):
             Animal {
                 in_Entity_Related {
                     ... on Event {
-                        @output(out_name: "event")
+                        name @output(out_name: "event")
                     }
                 }
             }
@@ -239,14 +240,12 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_5(self):
-        # TODO fix
         query = '''{
             Animal {
-                out_Animal_NearbyEntities {
+                out_Animal_RelatedEntity {
                    ... on Animal {
-                       @output(out_name: "animal")
+                       name @output(out_name: "animal")
                    }
                 }
             }
@@ -255,11 +254,9 @@ class MacroExpansionTests(unittest.TestCase):
 
         expected_query = '''{
             Animal {
-                out_Animal_LivesIn {
-                    in_Entity_Related {
-                        ... on Animal {
-                            @output(out_name: "animal")
-                        }
+                in_Entity_Related {
+                    ... on Animal {
+                        name @output(out_name: "animal")
                     }
                 }
             }
@@ -273,12 +270,11 @@ class MacroExpansionTests(unittest.TestCase):
 
     @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_with_filter_1(self):
-        # TODO fix
         query = '''{
             Animal {
-                out_Animal_NearbyEntities {
+                out_Animal_RelatedEntity {
                    ... on Food @filter(op_name: "name_or_alias", value: "$wanted") {
-                       @output(out_name: "animal")
+                       name @output(out_name: "animal")
                    }
                 }
             }
@@ -289,11 +285,9 @@ class MacroExpansionTests(unittest.TestCase):
 
         expected_query = '''{
             Animal {
-                out_Animal_LivesIn {
-                    in_Entity_Related {
-                        ... on Food @filter(op_name: "name_or_alias", value: "$wanted"){
-                            @output(out_name: "animal")
-                        }
+                in_Entity_Related {
+                    ... on Food @filter(op_name: "name_or_alias", value: "$wanted"){
+                        name @output(out_name: "animal")
                     }
                 }
             }
@@ -406,13 +400,12 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_arguments(self):
         query = '''{
             Location {
                 name @filter(op_name: "=", value: ["$location"])
-                out_Location_Orpans {
-                    @output(out_name: "name")
+                out_Location_Orphans {
+                    name @output(out_name: "name")
                 }
             }
         }'''
@@ -424,6 +417,7 @@ class MacroExpansionTests(unittest.TestCase):
             Location {
                 name @filter(op_name: "=", value: ["$location"])
                 in_Animal_LivesIn {
+                    name @output(out_name: "name")
                     in_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$num_parents"])
                                        @optional {
                         uuid
@@ -511,7 +505,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_nested_use(self):
         query = '''{
             Animal {

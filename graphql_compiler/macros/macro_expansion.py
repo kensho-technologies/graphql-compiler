@@ -184,14 +184,14 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
 
                     # There is now a new AST field name for the selection, after macro expansion.
                     field_name = get_ast_field_name(new_selection_ast)
-                else:
-                    # Recurse on the new_selection_ast, to expand any macros
-                    # that exist at a deeper level.
-                    # TODO(predrag): Move get_vertex_field_type() to the top-level schema.py file,
-                    #                instead of reaching into the compiler.helpers module.
-                    vertex_field_type = get_vertex_field_type(current_schema_type, field_name)
-                    new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
-                        schema, macro_registry, vertex_field_type, new_selection_ast, new_query_args)
+
+                # Recurse on the new_selection_ast, to expand any macros
+                # that exist at a deeper level.
+                # TODO(predrag): Move get_vertex_field_type() to the top-level schema.py file,
+                #                instead of reaching into the compiler.helpers module.
+                vertex_field_type = get_vertex_field_type(current_schema_type, field_name)
+                new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
+                    schema, macro_registry, vertex_field_type, new_selection_ast, new_query_args)
 
         if new_selection_ast is not selection_ast:
             made_changes = True
