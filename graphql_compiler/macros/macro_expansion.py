@@ -78,6 +78,10 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
     ])
 
 
+def _is_subclass(a, b):
+    return True  # TODO implement
+
+
 def _expand_specific_macro_edge(macro_selection_set, selection_ast):
     """Produce a tuple containing the new replacement selection AST, and a list of extra selections.
 
@@ -98,14 +102,23 @@ def _expand_specific_macro_edge(macro_selection_set, selection_ast):
         directives = get_directives_for_ast(macro_ast)
         if MacroEdgeTargetDirective.name in directives:
             target_ast, _ = directives[MacroEdgeTargetDirective.name][0]
+            continuation_selection_set = selection_ast.selection_set
 
-            # TODO(bojanserafimov): Handle type coercions
+            first_selection = selection_ast.selection_set.selections[0]
+            if isinstance(first_selection, InlineFragment) and isinstance(target_ast, InlineFragment):
+                target_class = target_ast.type_condition.name.value
+                coercion_class = first_selection.type_condition.name.value
+                if _is_subclass(coercion_class, target_class):
+                    continuation_selection_set = first_selection.selection_set
+                    target_ast.type_condition = first_selection.type_condition
+                else:
+                    raise AssertionError(u'Cannot coerce to non-subclass.')
 
             if replacement_selection_ast is not None:
                 raise AssertionError('TODO')
 
             target_ast.selection_set = _merge_selection_sets(
-                target_ast.selection_set, selection_ast.selection_set)
+                target_ast.selection_set, continuation_selection_set)
             target_ast.directives = []  # TODO wrong
             replacement_selection_ast = macro_ast
         else:

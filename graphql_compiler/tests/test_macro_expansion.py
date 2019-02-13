@@ -124,13 +124,12 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_1(self):
         query = '''{
             Animal {
                 out_Animal_RelatedFood {
                    ... on Food {
-                       @output(out_name: "food")
+                       name @output(out_name: "food")
                    }
                 }
             }
@@ -141,7 +140,7 @@ class MacroExpansionTests(unittest.TestCase):
             Animal {
                 in_Entity_Related {
                     ... on Food {
-                        @output(out_name: "food")
+                        name @output(out_name: "food")
                     }
                 }
             }
