@@ -37,8 +37,24 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
 
     # TODO copy logic from notebook
 
+    # TODO handle collisions properly
+
+    common_selection_dict = dict()
+    common_fields = set(selection_dict_a.keys()) & set(selection_dict_b.keys())
+    for field_name in common_fields:
+        field_a = selection_dict_a[field_name]
+        field_b = selection_dict_b[field_name]
+        if field_a.selection_set is not None or field_b.selection_set is not None:
+            raise AssertionError('TODO')
+
+        # import pdb; pdb.set_trace()
+        merged_field = deepcopy(field_a)
+        merged_field.directives += field_b.directives
+        common_selection_dict[field_name] = merged_field
+
     merged_selection_dict = copy(selection_dict_a)
-    merged_selection_dict.update(selection_dict_b)  # TODO handle collisions
+    merged_selection_dict.update(selection_dict_b)
+    merged_selection_dict.update(common_selection_dict)
 
     # Remove pro-forma fields if allowed
     if len(merged_selection_dict) > 1:
@@ -173,6 +189,7 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
     # TODO(predrag): Merge the extra_top_level_selections together with the selections from the
     #                ast.selection_set.selections list, producing a list with no duplicates
     #                and in the appropriate order.
+    new_selections = extra_top_level_selections + new_selections
 
     if made_changes:
         result_ast = copy(ast)

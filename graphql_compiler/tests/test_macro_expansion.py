@@ -43,7 +43,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_non_leaf_target_and_field_merging(self):
         query = '''{
             Animal {
@@ -65,8 +64,8 @@ class MacroExpansionTests(unittest.TestCase):
                 }
                 in_Animal_ParentOf {
                     out_Animal_ParentOf {
-                        net_worth @filter(op_name: "<", value: ["$net_worth_upper_bound"])
-                                  @filter(op_name: ">", value: ["%net_worth"])
+                        net_worth @filter(op_name: ">", value: ["%net_worth"])
+                                  @filter(op_name: "<", value: ["$net_worth_upper_bound"])
                                   @output(out_name: "sibling_net_worth")
                         out_Animal_BornAt {
                             event_date @filter(op_name: "<", value: ["%birthday"])
