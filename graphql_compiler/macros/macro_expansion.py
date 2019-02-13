@@ -32,6 +32,9 @@ def _merge_non_overlapping_dicts(merge_target, new_data):
 
 
 def _merge_selection_sets(selection_set_a, selection_set_b):
+    if selection_set_a is None:
+        return selection_set_b
+
     selection_dict_a = get_uniquely_named_objects_by_name(selection_set_a.selections)
     selection_dict_b = get_uniquely_named_objects_by_name(selection_set_b.selections)
 
@@ -47,7 +50,6 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
         if field_a.selection_set is not None or field_b.selection_set is not None:
             raise AssertionError('TODO')
 
-        # import pdb; pdb.set_trace()
         merged_field = deepcopy(field_a)
         merged_field.directives += field_b.directives
         common_selection_dict[field_name] = merged_field
@@ -141,7 +143,7 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
     new_selections = []
     new_query_args = query_args
 
-    extra_selections_list = []
+    extra_selection_set = None
 
     for selection_ast in ast.selection_set.selections:
         new_selection_ast = selection_ast
@@ -159,7 +161,8 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
 
                     new_selection_ast, extra_selections = _expand_specific_macro_edge(
                         macro_edge_descriptor.expansion_selection_set, selection_ast)
-                    extra_selections_list.append(extra_selections)
+                    extra_selection_set = _merge_selection_sets(
+                        extra_selection_set, SelectionSet(extra_selections))
 
                     # TODO(predrag): This is where using the same macro twice in one query
                     #                will blow up.
@@ -182,18 +185,19 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
 
         new_selections.append(new_selection_ast)
 
-    extra_top_level_selections = list(chain.from_iterable(extra_selections_list))
-    if extra_top_level_selections:
+    if extra_selection_set is not None:
         made_changes = True
 
+    # import pdb; pdb.set_trace()
     # TODO(predrag): Merge the extra_top_level_selections together with the selections from the
     #                ast.selection_set.selections list, producing a list with no duplicates
     #                and in the appropriate order.
-    new_selections = extra_top_level_selections + new_selections
+    # TODO(bojanserafimov): Remove the concept of extra selections
 
     if made_changes:
         result_ast = copy(ast)
-        result_ast.selection_set = SelectionSet(new_selections)
+        result_ast.selection_set = _merge_selection_sets(
+            extra_selection_set, SelectionSet(new_selections))
     else:
         result_ast = ast
 

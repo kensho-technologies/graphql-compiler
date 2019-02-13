@@ -83,7 +83,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_source_merging(self):
         query = '''{
             Animal {
@@ -100,9 +99,9 @@ class MacroExpansionTests(unittest.TestCase):
 
         expected_query = '''{
             Animal {
-                net_worth @filter(op_name: "<", value: ["$net_worth_upper_bound"])
+                net_worth @tag(tag_name: "net_worth")
+                          @filter(op_name: "<", value: ["$net_worth_upper_bound"])
                           @output(out_name: "net_worth")
-                          @tag(tag_name: "net_worth")
                 out_Animal_BornAt {
                     event_date @tag(tag_name: "birthday")
                 }
