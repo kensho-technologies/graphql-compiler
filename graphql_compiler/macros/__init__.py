@@ -1,8 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
-from ..ast_manipulation import get_only_query_definition, safe_parse_graphql
-from ..exceptions import GraphQLInvalidMacroError
+from graphql.language.printer import print_ast
+
+from ..ast_manipulation import safe_parse_graphql
 from .macro_edge import make_macro_edge_descriptor
 
 
@@ -86,6 +87,8 @@ def perform_macro_expansion(schema, macro_registry, graphql_with_macro, graphql_
     """
     query_ast = safe_parse_graphql(graphql_with_macro)
 
-    definition_ast = get_only_query_definition(query_ast, GraphQLInvalidMacroError)
+    new_query_ast, new_args = expand_macros_in_query_ast(
+        schema, macro_registry, query_ast, graphql_args)
+    new_graphql_string = print_ast(new_query_ast)
 
-    raise NotImplementedError(definition_ast)
+    return new_graphql_string, new_args

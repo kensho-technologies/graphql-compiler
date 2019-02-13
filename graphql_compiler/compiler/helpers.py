@@ -51,24 +51,6 @@ def get_field_type_from_schema(schema_type, field_name):
         return schema_type.fields[field_name].type
 
 
-def get_vertex_field_type(current_schema_type, vertex_field_name):
-    """Return the type of the vertex within the specified vertex field name of the given type."""
-    # According to the schema, the vertex field itself is of type GraphQLList, and this is
-    # what get_field_type_from_schema returns. We care about what the type *inside* the list is,
-    # i.e., the type on the other side of the edge (hence .of_type).
-    # Validation guarantees that the field must exist in the schema.
-    if not is_vertex_field_name(vertex_field_name):
-        raise AssertionError(u'Trying to load the vertex field type of a non-vertex field: '
-                             u'{} {}'.format(current_schema_type, vertex_field_name))
-
-    raw_field_type = get_field_type_from_schema(current_schema_type, vertex_field_name)
-    if not isinstance(strip_non_null_from_type(raw_field_type), GraphQLList):
-        raise AssertionError(u'Found an edge whose schema type was not GraphQLList: '
-                             u'{} {} {}'.format(current_schema_type, vertex_field_name,
-                                                raw_field_type))
-    return raw_field_type.of_type
-
-
 def strip_non_null_from_type(graphql_type):
     """Return the GraphQL type stripped of its GraphQLNonNull annotations."""
     while isinstance(graphql_type, GraphQLNonNull):

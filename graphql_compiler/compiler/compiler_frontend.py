@@ -67,7 +67,9 @@ from graphql.validation import validate
 import six
 
 from . import blocks, expressions
-from ..ast_manipulation import get_ast_field_name, get_only_query_definition, safe_parse_graphql
+from ..ast_manipulation import (
+    get_ast_field_name, get_only_selection_from_ast, get_only_query_definition, safe_parse_graphql
+)
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from ..schema import COUNT_META_FIELD_NAME, DIRECTIVES, is_vertex_field_name
 from .context_helpers import (
@@ -733,10 +735,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         - location_types: a dict of location objects -> GraphQL type objects at that location
         - coerced_locations: a set of location objects indicating where type coercions have happened
     """
-    if len(ast.selection_set.selections) != 1:
-        raise GraphQLCompilationError(u'Cannot process AST with more than one root selection!')
-
-    base_ast = ast.selection_set.selections[0]
+    base_ast = get_only_selection_from_ast(ast, GraphQLCompilationError)
     base_start_type = get_ast_field_name(base_ast)  # This is the type at which querying starts.
 
     # Validation passed, so the base_start_type must exist as a field of the root query.
