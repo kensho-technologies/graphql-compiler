@@ -5,13 +5,15 @@ from itertools import chain
 
 from graphql.validation import validate
 
-from ...ast_manipulation import get_ast_field_name, get_human_friendly_ast_field_name
+from ...ast_manipulation import (
+    get_ast_field_name, get_human_friendly_ast_field_name, get_only_selection_from_ast
+)
 from ...exceptions import GraphQLInvalidMacroError
 from ...schema import VERTEX_FIELD_PREFIXES, is_vertex_field_name
 from .directives import (
     MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
 )
-from .helpers import get_directives_for_ast, get_only_selection_from_ast, remove_directives_from_ast
+from .helpers import get_directives_for_ast, remove_directives_from_ast
 
 
 def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
@@ -158,7 +160,8 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     #   sufficient for the macro, and the macro args' types match the inferred types of the
     #   runtime parameters in the macro.
 
-    _validate_class_selection_ast(get_only_selection_from_ast(ast), macro_defn_ast)
+    _validate_class_selection_ast(
+        get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast)
     class_name = get_ast_field_name(macro_defn_ast)
     macro_edge_name = macro_defn_directive.arguments['name'].value
 

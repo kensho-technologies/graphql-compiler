@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from graphql.error import GraphQLSyntaxError
-from graphql.language.ast import Document, InlineFragment
+from graphql.language.ast import Document, InlineFragment, OperationDefinition
 from graphql.language.parser import parse
 
 from .exceptions import GraphQLParsingError
@@ -29,6 +29,9 @@ def get_human_friendly_ast_field_name(ast):
     """Return a human-friendly name for the AST node, suitable for error messages."""
     if isinstance(ast, InlineFragment):
         return 'type coercion to {}'.format(ast.type_condition)
+    elif isinstance(ast, OperationDefinition):
+        return '{} operation definition'.format(ast.operation)
+
     return get_ast_field_name(ast)
 
 
@@ -69,3 +72,26 @@ def get_only_query_definition(document_ast, desired_error_type):
             .format(definition_ast.operation))
 
     return definition_ast
+
+
+def get_only_selection_from_ast(ast, desired_error_type):
+    """Return the selected sub-ast, ensuring that there is precisely one."""
+    selections = [] if ast.selection_set is None else ast.selection_set.selections
+
+    if len(selections) != 1:
+        ast_name = get_human_friendly_ast_field_name(ast)
+        if selections:
+            selection_names = [
+                get_human_friendly_ast_field_name(selection_ast)
+                for selection_ast in selections
+            ]
+            raise desired_error_type(u'Expected an AST with exactly one selection, but found '
+                                     u'{} selections at AST node named {}: {}'
+                                     .format(len(selection_names), selection_names, ast_name))
+        else:
+            ast_name = get_human_friendly_ast_field_name(ast)
+            raise desired_error_type(u'Expected an AST with exactly one selection, but got '
+                                     u'one with no selections. Error near AST node named: {}'
+                                     .format(ast_name))
+
+    return selections[0]
