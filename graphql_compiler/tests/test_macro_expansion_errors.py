@@ -18,7 +18,6 @@ class MacroExpansionTests(unittest.TestCase):
             self.schema.get_type('Event'): self.schema.get_type('EventOrBirthEvent'),
         }
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_duplicate_edge_traversal(self):
         query = '''{
             Animal {
@@ -35,7 +34,6 @@ class MacroExpansionTests(unittest.TestCase):
         with self.assertRaises(GraphQLCompilationError):
             perform_macro_expansion(self.schema, self.macro_registry, query, args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_duplicate_macro_traversal(self):
         query = '''{
             Animal {
@@ -56,7 +54,7 @@ class MacroExpansionTests(unittest.TestCase):
     def test_macro_edge_target_coercion_invalid_1(self):
         query = '''{
             Animal {
-                out_Animal_AvailableFood {
+                out_Animal_RelatedFood {
                    ... on Species {
                        name @output(out_name: "species")
                    }

@@ -10,7 +10,7 @@ from ..ast_manipulation import (
     get_ast_field_name, get_only_query_definition, get_only_selection_from_ast
 )
 from ..compiler.helpers import get_vertex_field_type, get_uniquely_named_objects_by_name
-from ..exceptions import GraphQLInvalidMacroError
+from ..exceptions import GraphQLInvalidMacroError, GraphQLCompilationError
 from ..schema import is_vertex_field_name
 from .macro_edge.helpers import get_directives_for_ast
 from .macro_edge.directives import MacroEdgeTargetDirective
@@ -48,7 +48,7 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
         field_a = selection_dict_a[field_name]
         field_b = selection_dict_b[field_name]
         if field_a.selection_set is not None or field_b.selection_set is not None:
-            raise AssertionError('TODO')
+            raise GraphQLCompilationError('TODO')
 
         merged_field = deepcopy(field_a)
         merged_field.directives += field_b.directives
@@ -82,7 +82,7 @@ def _is_subclass(a, b):
     return True  # TODO implement
 
 
-def _expand_specific_macro_edge(macro_selection_set, selection_ast):
+def _expand_specific_macro_edge(schema, macro_selection_set, selection_ast):
     """Produce a tuple containing the new replacement selection AST, and a list of extra selections.
 
     Args:
@@ -104,15 +104,23 @@ def _expand_specific_macro_edge(macro_selection_set, selection_ast):
             target_ast, _ = directives[MacroEdgeTargetDirective.name][0]
             continuation_selection_set = selection_ast.selection_set
 
+            # Deal with coercions at the target
             first_selection = selection_ast.selection_set.selections[0]
-            if isinstance(first_selection, InlineFragment) and isinstance(target_ast, InlineFragment):
-                target_class = target_ast.type_condition.name.value
+            if isinstance(first_selection, InlineFragment):
                 coercion_class = first_selection.type_condition.name.value
-                if _is_subclass(coercion_class, target_class):
-                    continuation_selection_set = first_selection.selection_set
-                    target_ast.type_condition = first_selection.type_condition
+                if isinstance(target_ast, InlineFragment):
+                    target_class = target_ast.type_condition.name.value
+                    if _is_subclass(coercion_class, target_class):
+                        continuation_selection_set = first_selection.selection_set
+                        target_ast.type_condition = first_selection.type_condition
+                        # TODO(bojanserafimov): Merge directives on fragment
+                    else:
+                        raise AssertionError(u'Cannot coerce to non-subclass.')
                 else:
-                    raise AssertionError(u'Cannot coerce to non-subclass.')
+                    # TODO(bojanserafimov): When compiling the macro, compute the type at the
+                    #                       target and record that in the macro descriptor.
+                    raise NotImplementedError(u'Cannot coerce from macro that does not end'
+                                              u'in a coercion.')
 
             if replacement_selection_ast is not None:
                 raise AssertionError('TODO')
@@ -173,12 +181,10 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
                     macro_edge_descriptor = macro_edges_at_this_type[field_name]
 
                     new_selection_ast, extra_selections = _expand_specific_macro_edge(
-                        macro_edge_descriptor.expansion_selection_set, selection_ast)
+                        schema, macro_edge_descriptor.expansion_selection_set, selection_ast)
                     extra_selection_set = _merge_selection_sets(
                         extra_selection_set, SelectionSet(extra_selections))
 
-                    # TODO(predrag): This is where using the same macro twice in one query
-                    #                will blow up.
                     new_query_args = _merge_non_overlapping_dicts(
                         new_query_args, macro_edge_descriptor.macro_args)
 
@@ -200,12 +206,6 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
 
     if extra_selection_set is not None:
         made_changes = True
-
-    # import pdb; pdb.set_trace()
-    # TODO(predrag): Merge the extra_top_level_selections together with the selections from the
-    #                ast.selection_set.selections list, producing a list with no duplicates
-    #                and in the appropriate order.
-    # TODO(bojanserafimov): Remove the concept of extra selections
 
     if made_changes:
         result_ast = copy(ast)

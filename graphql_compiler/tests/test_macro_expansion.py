@@ -124,6 +124,37 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
+    @pytest.mark.skip(reason='not implemented')
+    def test_macro_edge_target_coercion_0(self):
+        query = '''{
+            Animal {
+                out_Animal_GrandparentOf {
+                    ... on Animal {
+                        name @output(out_name: "grandkid")
+                    }
+                }
+            }
+        }'''
+        args = {}
+
+        expected_query = '''{
+            Animal {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf {
+                        ... on Animal {
+                            name @output(out_name: "grandkid")
+                        }
+                    }
+                }
+            }
+        }'''
+        expected_args = {}
+
+        expanded_query, new_args = perform_macro_expansion(
+            self.schema, self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
     def test_macro_edge_target_coercion_1(self):
         query = '''{
             Animal {
@@ -267,6 +298,42 @@ class MacroExpansionTests(unittest.TestCase):
             self.schema, self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
+
+    @pytest.mark.skip(reason='not implemented')
+    def test_macro_edge_target_coercion_with_filter_0(self):
+        query = '''{
+            Animal {
+                out_Animal_GrandparentOf {
+                    ... on Animal @filter(op_name: "name_or_alias", value: "$wanted") {
+                        name @output(out_name: "grandkid")
+                    }
+                }
+            }
+        }'''
+        args = {
+            'wanted': 'croissant'
+        }
+
+        expected_query = '''{
+            Animal {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf {
+                        ... on Animal @filter(op_name: "name_or_alias", value: "$wanted") {
+                            name @output(out_name: "grandkid")
+                        }
+                    }
+                }
+            }
+        }'''
+        expected_args = {
+            'wanted': 'croissant'
+        }
+
+        expanded_query, new_args = perform_macro_expansion(
+            self.schema, self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
 
     @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_with_filter_1(self):
