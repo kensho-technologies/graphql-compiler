@@ -3,11 +3,13 @@ from collections import namedtuple
 from copy import copy
 from itertools import chain
 
+from graphql.language.ast import Argument, Document, Directive, Field, Name, StringValue
 from graphql.validation import validate
 
 from ...ast_manipulation import (
     get_ast_field_name, get_human_friendly_ast_field_name, get_only_selection_from_ast
 )
+from ...compiler.compiler_frontend import ast_to_ir
 from ...exceptions import GraphQLInvalidMacroError
 from ...schema import VERTEX_FIELD_PREFIXES, is_vertex_field_name
 from .directives import (
@@ -99,10 +101,40 @@ def _validate_macro_edge_name_for_class_name(schema, class_name, macro_edge_name
             .format(macro_edge_name, class_name))
 
 
+def _get_minimal_query_ast_from_macro_ast(macro_ast):
+    """Get a query that should successfully compile to IR if the macro is valid."""
+    macro_directives = get_directives_for_ast(macro_ast)
+    query_ast = remove_directives_from_ast(macro_ast, {
+        directive.name
+        for directive in MACRO_EDGE_DIRECTIVES
+    })
+
+    # Add an output directive to make the ast a valid query
+    if 'output' not in macro_directives:
+        output_directive = Directive(Name('output'), arguments=[
+            Argument(Name('out_name'), StringValue('dummy_output_name'))
+        ])
+
+        # Add an output to a uuid field at the beginning of the query
+        # HACK(bojanserafimov): It's possible that the type at the top doesn't have a uuid field.
+        #                       It's also possible that none of the types in the macro have a field
+        #                       that we can output. The proper solution is to bypass the rule that
+        #                       a query has an output.
+        field = None
+        top_level_selections = query_ast.selection_set.selections[0].selection_set.selections
+        for selection in top_level_selections:
+            if isinstance(selection, Field):
+                if selection.name.value == 'uuid':
+                    field = selection
+        if field is None:
+            top_level_selections.insert(0, Field(Name('uuid'), directives=[]))
+            field = top_level_selections[0]
+        field.directives.append(output_directive)
+    return Document([query_ast])
+
 # ############
 # Public API #
 # ############
-
 
 MacroEdgeDescriptor = namedtuple(
     'MacroEdgeDescriptor', (
@@ -160,8 +192,9 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     #   sufficient for the macro, and the macro args' types match the inferred types of the
     #   runtime parameters in the macro.
 
-    # TODO(bojanserafimov): After compiling the macro, read the type at the target from the location
-    #                       info in the metadata table, and record it in the macro descriptor.
+    # Check that the macro successfully compiles to IR
+    ast_to_ir(schema, _get_minimal_query_ast_from_macro_ast(ast),
+              type_equivalence_hints=type_equivalence_hints)
 
     _validate_class_selection_ast(
         get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast)
