@@ -3,7 +3,7 @@ from collections import namedtuple
 from copy import copy
 from itertools import chain
 
-from graphql.language.ast import Argument, Document, Directive, Field, Name, StringValue
+from graphql.language.ast import Argument, Directive, Document, Field, Name, StringValue
 from graphql.validation import validate
 
 from ...ast_manipulation import (
@@ -135,6 +135,7 @@ def _get_minimal_query_ast_from_macro_ast(macro_ast):
 # ############
 # Public API #
 # ############
+
 
 MacroEdgeDescriptor = namedtuple(
     'MacroEdgeDescriptor', (
