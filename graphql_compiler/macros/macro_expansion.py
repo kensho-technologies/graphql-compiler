@@ -135,6 +135,9 @@ def _expand_specific_macro_edge(macro_selection_set, selection_ast, subclass_set
     replacement_selection_ast = None
     extra_selections = []
 
+    # TODO(bojanserafimov): Rename macro tags if conflicting with user-defined tag names.
+    # TODO(bojanserafimov): Remove macro tags if the user has tagged the same field.
+
     for macro_ast in deepcopy(macro_selection_set).selections:
         directives = get_directives_for_ast(macro_ast)
         if MacroEdgeTargetDirective.name in directives:
