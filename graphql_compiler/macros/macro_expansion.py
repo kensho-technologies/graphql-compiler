@@ -1,19 +1,17 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy, deepcopy
-from itertools import chain
 
 from graphql.language.ast import InlineFragment, SelectionSet
-from graphql.language.printer import print_ast
 import six
 
 from ..ast_manipulation import (
     get_ast_field_name, get_only_query_definition, get_only_selection_from_ast
 )
-from ..compiler.helpers import get_vertex_field_type, get_uniquely_named_objects_by_name
-from ..exceptions import GraphQLInvalidMacroError, GraphQLCompilationError
+from ..compiler.helpers import get_uniquely_named_objects_by_name, get_vertex_field_type
+from ..exceptions import GraphQLCompilationError, GraphQLInvalidMacroError
 from ..schema import is_vertex_field_name
-from .macro_edge.helpers import get_directives_for_ast
 from .macro_edge.directives import MacroEdgeTargetDirective
+from .macro_edge.helpers import get_directives_for_ast
 
 
 def _merge_non_overlapping_dicts(merge_target, new_data):
@@ -124,9 +122,9 @@ def _expand_specific_macro_edge(macro_selection_set, selection_ast, subclass_set
     """Produce a tuple containing the new replacement selection AST, and a list of extra selections.
 
     Args:
-        macro_selection_set: SelectionSet GraphQL object containing the selections defining the macro
-                             edge. Can be retrieved as the "expansion_selection_set" key from a
-                             MacroEdgeDescriptor.
+        macro_selection_set: SelectionSet GraphQL object containing the selections defining the
+                             macro edge. Can be retrieved as the "expansion_selection_set" key from
+                             a MacroEdgeDescriptor.
         selection_ast: GraphQL AST object containing the selection that is relying on a macro edge.
         subclass_sets: optional dict mapping class names to the set of its subclass names
 
