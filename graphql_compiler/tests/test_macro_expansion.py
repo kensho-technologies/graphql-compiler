@@ -504,7 +504,7 @@ class MacroExpansionTests(unittest.TestCase):
             Animal {
                 net_worth @tag(tag_name: "parent_net_worth")
                 out_Animal_RichSiblings {
-                    @filter(op_name: ">", value: ["%parent_net_worth"])
+                    net_worth @filter(op_name: ">", value: ["%parent_net_worth"])
                     name @output(out_name: "sibling")
                 }
             }
@@ -518,6 +518,7 @@ class MacroExpansionTests(unittest.TestCase):
                     net_worth @tag(tag_name: "parent_net_worth_1")
                     out_Animal_ParentOf @macro_edge_target {
                         net_worth @filter(op_name: ">", value: ["%parent_net_worth_1"])
+                                  @filter(op_name: ">", value: ["%parent_net_worth"])
                         out_Animal_BornAt {
                             event_date @filter(op_name: "<", value: ["%birthday"])
                         }
@@ -600,16 +601,15 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_parallel_use(self):
         query = '''{
             Animal {
                 out_Animal_GrandparentOf {
                    name @output(out_name: "grandkid")
                 }
-                out_Animal_ParentOf {
+                in_Animal_ParentOf {
                     out_Animal_GrandparentOf {
-                       name @output(out_name: "grandgrandkid")
+                       name @output(out_name: "nephew")
                     }
                 }
             }
@@ -623,10 +623,10 @@ class MacroExpansionTests(unittest.TestCase):
                         name @output(out_name: "grandkid")
                     }
                 }
-                out_Animal_ParentOf {
+                in_Animal_ParentOf {
                     out_Animal_ParentOf {
                         out_Animal_ParentOf {
-                            name @output(out_name: "grandgrandkid")
+                            name @output(out_name: "nephew")
                         }
                     }
                 }
