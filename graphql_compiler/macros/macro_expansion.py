@@ -32,16 +32,15 @@ def _merge_non_overlapping_dicts(merge_target, new_data):
 
 
 def _merge_selection_sets(selection_set_a, selection_set_b):
+    """Merge selection sets, merging directives on name conflict."""
     if selection_set_a is None:
         return selection_set_b
 
+    # Convert to dict
     selection_dict_a = get_uniquely_named_objects_by_name(selection_set_a.selections)
     selection_dict_b = get_uniquely_named_objects_by_name(selection_set_b.selections)
 
-    # TODO copy logic from notebook
-
-    # TODO handle collisions properly
-
+    # Compute intersection by name
     common_selection_dict = dict()
     common_fields = set(selection_dict_a.keys()) & set(selection_dict_b.keys())
     for field_name in common_fields:
@@ -54,6 +53,7 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
         merged_field.directives += field_b.directives
         common_selection_dict[field_name] = merged_field
 
+    # Merge dicts
     merged_selection_dict = copy(selection_dict_a)
     merged_selection_dict.update(selection_dict_b)
     merged_selection_dict.update(common_selection_dict)
@@ -78,11 +78,49 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
     ])
 
 
-def _is_subclass(a, b):
-    return True  # TODO implement
+def _merge_selection_into_target(target_ast, selection_ast, subclass_sets=None):
+    """Add the selections, directives, and coercions from the selection_ast to the target_ast."""
+    # Deal with coercions at the target
+    continuation_ast = selection_ast
+    first_selection = selection_ast.selection_set.selections[0]
+    if isinstance(first_selection, InlineFragment):
+        coercion_class = first_selection.type_condition.name.value
+        if isinstance(target_ast, InlineFragment):
+            target_class = target_ast.type_condition.name.value
+            continuation_ast = first_selection
+            target_ast.type_condition = first_selection.type_condition
+
+            # coercion_class is required to subclass target_class so we can merge the type coercions
+            if coercion_class != target_class:
+                if subclass_sets is None:
+                    raise AssertionError(u'Cannot prove type coercion at macro target is valid.'
+                                         u'Please provide a proof that {} subclasses {} using the '
+                                         u'subclass_sets argument.'
+                                         .format(coercion_class, target_class))
+                else:
+                    if (target_class not in subclass_sets or
+                            coercion_class not in subclass_sets[target_class]):
+                        raise AssertionError(u'Invalid type coercion at macro target. {} '
+                                             u'is expected to subclass {}.'
+                                             .format(coercion_class, target_class))
+        else:
+            # TODO(bojanserafimov): When compiling the macro, compute the type at the
+            #                       target and record that in the macro descriptor.
+            raise NotImplementedError(u'Cannot coerce from macro that does not end '
+                                      u'in a coercion.')
+
+    # Merge the continuation into the target
+    target_ast.directives += continuation_ast.directives
+    target_ast.selection_set = _merge_selection_sets(
+        target_ast.selection_set, continuation_ast.selection_set)
+    target_ast.directives = [
+        directive
+        for directive in target_ast.directives
+        if directive.name.value != MacroEdgeTargetDirective.name
+    ]
 
 
-def _expand_specific_macro_edge(schema, macro_selection_set, selection_ast):
+def _expand_specific_macro_edge(macro_selection_set, selection_ast, subclass_sets=None):
     """Produce a tuple containing the new replacement selection AST, and a list of extra selections.
 
     Args:
@@ -90,6 +128,7 @@ def _expand_specific_macro_edge(schema, macro_selection_set, selection_ast):
                              edge. Can be retrieved as the "expansion_selection_set" key from a
                              MacroEdgeDescriptor.
         selection_ast: GraphQL AST object containing the selection that is relying on a macro edge.
+        subclass_sets: optional dict mapping class names to the set of its subclass names
 
     Returns:
         (replacement selection AST, list of extra selections that need to be added and merged)
@@ -101,45 +140,24 @@ def _expand_specific_macro_edge(schema, macro_selection_set, selection_ast):
     for macro_ast in deepcopy(macro_selection_set).selections:
         directives = get_directives_for_ast(macro_ast)
         if MacroEdgeTargetDirective.name in directives:
+            # This is not a copy. We intentionally mutate target_ast to make changes to macro_ast.
             target_ast, _ = directives[MacroEdgeTargetDirective.name][0]
-            continuation_selection_set = selection_ast.selection_set
-
-            # Deal with coercions at the target
-            first_selection = selection_ast.selection_set.selections[0]
-            if isinstance(first_selection, InlineFragment):
-                coercion_class = first_selection.type_condition.name.value
-                if isinstance(target_ast, InlineFragment):
-                    target_class = target_ast.type_condition.name.value
-                    if _is_subclass(coercion_class, target_class):
-                        continuation_selection_set = first_selection.selection_set
-                        target_ast.type_condition = first_selection.type_condition
-                        # TODO(bojanserafimov): Merge directives on fragment
-                    else:
-                        raise AssertionError(u'Cannot coerce to non-subclass.')
-                else:
-                    # TODO(bojanserafimov): When compiling the macro, compute the type at the
-                    #                       target and record that in the macro descriptor.
-                    raise NotImplementedError(u'Cannot coerce from macro that does not end'
-                                              u'in a coercion.')
+            _merge_selection_into_target(target_ast, selection_ast, subclass_sets=subclass_sets)
 
             if replacement_selection_ast is not None:
-                raise AssertionError('TODO')
-
-            target_ast.selection_set = _merge_selection_sets(
-                target_ast.selection_set, continuation_selection_set)
-            target_ast.directives = []  # TODO wrong
+                raise AssertionError(u'Only one selection should contain a target.')
             replacement_selection_ast = macro_ast
         else:
             extra_selections.append(macro_ast)
 
     if replacement_selection_ast is None:
-        raise AssertionError('TODO')
-
+        raise AssertionError(u'At least one selection should contain a target.')
 
     return replacement_selection_ast, extra_selections
 
 
-def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast, query_args):
+def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
+                                ast, query_args, subclass_sets=None):
     """Return (new_ast, new_query_args) containing the AST after macro expansion.
 
     Args:
@@ -148,6 +166,7 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
         current_schema_type: GraphQL type object describing the current type at the given AST node
         ast: GraphQL AST object that potentially requires macro expansion
         query_args: dict mapping strings to any type, containing the arguments for the query
+        subclass_sets: optional dict mapping class names to the set of its subclass names
 
     Returns:
         tuple (new_ast, new_graphql_args) containing a potentially-rewritten GraphQL AST object
@@ -172,7 +191,8 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
         if isinstance(selection_ast, InlineFragment):
             vertex_field_type = schema.get_type(selection_ast.type_condition.name.value)
             new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
-                schema, macro_registry, vertex_field_type, selection_ast, new_query_args)
+                schema, macro_registry, vertex_field_type,
+                selection_ast, new_query_args, subclass_sets=subclass_sets)
         else:
             field_name = get_ast_field_name(selection_ast)
             if is_vertex_field_name(field_name):
@@ -181,7 +201,8 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
                     macro_edge_descriptor = macro_edges_at_this_type[field_name]
 
                     new_selection_ast, extra_selections = _expand_specific_macro_edge(
-                        schema, macro_edge_descriptor.expansion_selection_set, selection_ast)
+                        macro_edge_descriptor.expansion_selection_set,
+                        selection_ast, subclass_sets=subclass_sets)
                     extra_selection_set = _merge_selection_sets(
                         extra_selection_set, SelectionSet(extra_selections))
 
@@ -197,7 +218,8 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
                 #                instead of reaching into the compiler.helpers module.
                 vertex_field_type = get_vertex_field_type(current_schema_type, field_name)
                 new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
-                    schema, macro_registry, vertex_field_type, new_selection_ast, new_query_args)
+                    schema, macro_registry, vertex_field_type,
+                    new_selection_ast, new_query_args, subclass_sets=subclass_sets)
 
         if new_selection_ast is not selection_ast:
             made_changes = True
@@ -221,7 +243,7 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
 # Public API #
 # ############
 
-def expand_macros_in_query_ast(schema, macro_registry, query_ast, query_args):
+def expand_macros_in_query_ast(schema, macro_registry, query_ast, query_args, subclass_sets):
     """Return (new_query_ast, new_query_args) containing the GraphQL after macro expansion.
 
     Args:
@@ -229,6 +251,7 @@ def expand_macros_in_query_ast(schema, macro_registry, query_ast, query_args):
         macro_registry: MacroRegistry, the registry of macro descriptors used for expansion
         query_ast: GraphQL query AST object that potentially requires macro expansion
         query_args: dict mapping strings to any type, containing the arguments for the query
+        subclass_sets: optional dict mapping class names to the set of its subclass names
 
     Returns:
         tuple (new_query_ast, new_graphql_args) containing a potentially-rewritten GraphQL query AST
@@ -243,7 +266,7 @@ def expand_macros_in_query_ast(schema, macro_registry, query_ast, query_args):
     base_start_type = query_type.fields[base_start_type_name].type
 
     new_base_ast, new_query_args = _expand_macros_in_inner_ast(
-        schema, macro_registry, base_start_type, base_ast, query_args)
+        schema, macro_registry, base_start_type, base_ast, query_args, subclass_sets=subclass_sets)
 
     if new_base_ast is base_ast:
         # No macro expansion happened.

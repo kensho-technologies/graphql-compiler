@@ -276,7 +276,7 @@ def get_test_macro_registry():
                 }
             }
         }''', {
-            'name': 'Nate',
+            'wanted': 'Nate',
         }),
         ('''{
             Animal @macro_edge_definition(name: "out_Animal_RichSiblings") {

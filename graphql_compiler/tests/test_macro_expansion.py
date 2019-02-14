@@ -3,6 +3,7 @@ import unittest
 
 import pytest
 
+from ..compiler.subclass import compute_subclass_sets
 from ..macros import perform_macro_expansion
 from .test_helpers import compare_graphql, get_schema, get_test_macro_registry
 
@@ -16,6 +17,8 @@ class MacroExpansionTests(unittest.TestCase):
         self.type_equivalence_hints = {
             self.schema.get_type('Event'): self.schema.get_type('EventOrBirthEvent'),
         }
+        self.subclass_sets = compute_subclass_sets(
+            self.schema, type_equivalence_hints=self.type_equivalence_hints)
 
     def test_macro_edge_basic(self):
         query = '''{
@@ -39,7 +42,7 @@ class MacroExpansionTests(unittest.TestCase):
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -79,7 +82,7 @@ class MacroExpansionTests(unittest.TestCase):
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -120,7 +123,7 @@ class MacroExpansionTests(unittest.TestCase):
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -151,7 +154,7 @@ class MacroExpansionTests(unittest.TestCase):
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -179,7 +182,7 @@ class MacroExpansionTests(unittest.TestCase):
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -209,7 +212,7 @@ class MacroExpansionTests(unittest.TestCase):
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -239,7 +242,7 @@ class MacroExpansionTests(unittest.TestCase):
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -267,7 +270,7 @@ class MacroExpansionTests(unittest.TestCase):
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -295,7 +298,7 @@ class MacroExpansionTests(unittest.TestCase):
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -330,12 +333,10 @@ class MacroExpansionTests(unittest.TestCase):
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_with_filter_1(self):
         query = '''{
             Animal {
@@ -364,18 +365,17 @@ class MacroExpansionTests(unittest.TestCase):
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_with_filter_2(self):
-        # TODO fix
         query = '''{
             Animal {
-                out_Animal_NearbyEvents {
+                out_Animal_RelatedEvent {
                    ... on BirthEvent @filter(op_name: "name_or_alias", value: ["$wanted"]){
-                       @output(out_name: "event")
+                       name @output(out_name: "event")
                    }
                 }
             }
@@ -386,11 +386,9 @@ class MacroExpansionTests(unittest.TestCase):
 
         expected_query = '''{
             Animal {
-                out_Animal_LivesIn {
-                    in_Entity_Related {
-                        ... on BirthEvent @filter(op_name: "name_or_alias", value: ["$wanted"]){
-                            @output(out_name: "event")
-                        }
+                in_Entity_Related {
+                    ... on BirthEvent @filter(op_name: "name_or_alias", value: ["$wanted"]){
+                        name @output(out_name: "event")
                     }
                 }
             }
@@ -400,11 +398,10 @@ class MacroExpansionTests(unittest.TestCase):
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_with_filter_3(self):
         query = '''{
             Animal {
@@ -419,7 +416,7 @@ class MacroExpansionTests(unittest.TestCase):
             Animal {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"]) {
-                        name @output(out_name: "grandkid")
+                        name @output(out_name: "official_name")
                     }
                 }
             }
@@ -429,11 +426,10 @@ class MacroExpansionTests(unittest.TestCase):
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_with_filter_4(self):
         query = '''{
             Animal {
@@ -450,9 +446,9 @@ class MacroExpansionTests(unittest.TestCase):
         expected_query = '''{
             Animal {
                 out_Animal_ParentOf {
-                    out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"]) {
-                                        @filter(op_name: "name_or_alias", value: ["$wanted"]) {
-                        name @output(out_name: "grandkid")
+                    out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"])
+                                        @filter(op_name: "name_or_alias", value: ["$something"]) {
+                        name @output(out_name: "official_name")
                     }
                 }
             }
@@ -463,7 +459,7 @@ class MacroExpansionTests(unittest.TestCase):
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -498,7 +494,7 @@ class MacroExpansionTests(unittest.TestCase):
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -532,7 +528,7 @@ class MacroExpansionTests(unittest.TestCase):
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -568,7 +564,7 @@ class MacroExpansionTests(unittest.TestCase):
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -600,7 +596,7 @@ class MacroExpansionTests(unittest.TestCase):
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -639,6 +635,6 @@ class MacroExpansionTests(unittest.TestCase):
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args)
+            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
