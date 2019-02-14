@@ -21,7 +21,6 @@ class MacroExpansionTests(unittest.TestCase):
         self.subclass_sets = compute_subclass_sets(
             self.schema, type_equivalence_hints=self.type_equivalence_hints)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_duplicate_edge_traversal(self):
         query = '''{
             Animal {
@@ -39,7 +38,6 @@ class MacroExpansionTests(unittest.TestCase):
             perform_macro_expansion(self.schema, self.macro_registry, query, args,
                                     subclass_sets=self.subclass_sets)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_duplicate_macro_traversal(self):
         query = '''{
             Animal {
@@ -57,7 +55,6 @@ class MacroExpansionTests(unittest.TestCase):
             perform_macro_expansion(self.schema, self.macro_registry, query, args,
                                     subclass_sets=self.subclass_sets)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_invalid_1(self):
         query = '''{
             Animal {

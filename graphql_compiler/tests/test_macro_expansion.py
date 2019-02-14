@@ -20,7 +20,6 @@ class MacroExpansionTests(unittest.TestCase):
         self.subclass_sets = compute_subclass_sets(
             self.schema, type_equivalence_hints=self.type_equivalence_hints)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_basic(self):
         query = '''{
             Animal {
@@ -47,7 +46,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_non_leaf_target_and_field_merging(self):
         query = '''{
             Animal {
@@ -88,7 +86,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_source_merging(self):
         query = '''{
             Animal {
@@ -161,7 +158,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_1(self):
         query = '''{
             Animal {
@@ -250,7 +246,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_4(self):
         query = '''{
             Animal {
@@ -279,7 +274,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_5(self):
         query = '''{
             Animal {
@@ -343,7 +337,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_with_filter_1(self):
         query = '''{
             Animal {
@@ -409,7 +402,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_with_filter_3(self):
         query = '''{
             Animal {
@@ -438,7 +430,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_target_coercion_with_filter_4(self):
         query = '''{
             Animal {
@@ -472,7 +463,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_arguments(self):
         query = '''{
             Location {
@@ -579,7 +569,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_nested_use(self):
         query = '''{
             Animal {
@@ -612,7 +601,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_parallel_use(self):
         query = '''{
             Animal {
