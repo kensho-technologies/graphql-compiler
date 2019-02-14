@@ -519,9 +519,6 @@ class MacroExpansionTests(unittest.TestCase):
                     out_Animal_ParentOf @macro_edge_target {
                         net_worth @filter(op_name: ">", value: ["%parent_net_worth_1"])
                                   @filter(op_name: ">", value: ["%parent_net_worth"])
-                        out_Animal_BornAt {
-                            event_date @filter(op_name: "<", value: ["%birthday"])
-                        }
                     }
                 }
             }

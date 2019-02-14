@@ -255,12 +255,11 @@ class MacroValidationTests(unittest.TestCase):
             register_macro_edge(macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_duplicating_real_edge_name(self):
         query = '''{
             Species @macro_edge_definition(name: "out_Species_Eats") {
                 out_Entity_Related {
-                    out_Entity_Related @macro_edge_target {
+                    out_Entity_Related {
                         ... on Animal @macro_edge_target {
                             uuid
                         }
@@ -271,9 +270,7 @@ class MacroValidationTests(unittest.TestCase):
         args = {}
 
         macro_registry = create_macro_registry()
-        register_macro_edge(macro_registry, self.schema, query,
-                            args, self.type_equivalence_hints)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
@@ -282,7 +279,7 @@ class MacroValidationTests(unittest.TestCase):
         query = '''{
             Species @macro_edge_definition(name: "out_Animal_ParentOf") {
                 out_Entity_Related {
-                    out_Entity_Related @macro_edge_target {
+                    out_Entity_Related {
                         ... on Animal @macro_edge_target {
                             uuid
                         }
@@ -293,18 +290,15 @@ class MacroValidationTests(unittest.TestCase):
         args = {}
 
         macro_registry = create_macro_registry()
-        register_macro_edge(macro_registry, self.schema, query,
-                            args, self.type_equivalence_hints)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_duplicating_field_name(self):
         query = '''{
             Species @macro_edge_definition(name: "net_worth") {
                 out_Entity_Related {
-                    out_Entity_Related @macro_edge_target {
+                    out_Entity_Related {
                         ... on Animal @macro_edge_target {
                             uuid
                         }
@@ -315,9 +309,7 @@ class MacroValidationTests(unittest.TestCase):
         args = {}
 
         macro_registry = create_macro_registry()
-        register_macro_edge(macro_registry, self.schema, query,
-                            args, self.type_equivalence_hints)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
@@ -338,7 +330,7 @@ class MacroValidationTests(unittest.TestCase):
         duplicate_query = '''{
             Location @macro_edge_definition(name: "out_Animal_GrandparentOf") {
                 out_Entity_Related {
-                    out_Entity_Related @macro_edge_target {
+                    out_Entity_Related {
                         ... on Animal @macro_edge_target {
                             uuid
                         }
@@ -407,7 +399,7 @@ class MacroValidationTests(unittest.TestCase):
         query_on_subclass = '''{
             Entity @macro_edge_definition(name: "out__RelatedOfRelated") {
                 out_Entity_Related {
-                    out_Entity_Related @macro_edge_target {
+                    out_Entity_Related {
                         ... on Event @macro_edge_target {
                             uuid
                         }
