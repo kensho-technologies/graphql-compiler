@@ -72,7 +72,8 @@ def register_macro_edge(macro_registry, schema, macro_edge_graphql, macro_edge_a
     macro_registry.macro_edges.setdefault(class_name, dict())[macro_edge_name] = macro_descriptor
 
 
-def perform_macro_expansion(schema, macro_registry, graphql_with_macro, graphql_args):
+def perform_macro_expansion(schema, macro_registry, graphql_with_macro,
+                            graphql_args, subclass_sets=None):
     """Return a new GraphQL query string and args, after expanding any encountered macros.
 
     Args:
@@ -80,6 +81,7 @@ def perform_macro_expansion(schema, macro_registry, graphql_with_macro, graphql_
         macro_registry: MacroRegistry, the registry of macro descriptors used for expansion
         graphql_with_macro: string, GraphQL query that potentially requires macro expansion
         graphql_args: dict mapping strings to any type, containing the arguments for the query
+        subclass_sets: optional dict mapping class names to the set of its subclass names
 
     Returns:
         tuple (new_graphql_string, new_graphql_args) containing the rewritten GraphQL query and
@@ -89,7 +91,7 @@ def perform_macro_expansion(schema, macro_registry, graphql_with_macro, graphql_
     query_ast = safe_parse_graphql(graphql_with_macro)
 
     new_query_ast, new_args = expand_macros_in_query_ast(
-        schema, macro_registry, query_ast, graphql_args)
+        schema, macro_registry, query_ast, graphql_args, subclass_sets=subclass_sets)
     new_graphql_string = print_ast(new_query_ast)
 
     return new_graphql_string, new_args
