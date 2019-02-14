@@ -66,15 +66,25 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
             if ast.selection_set is not None or len(ast.directives) > 0
         }
 
+    # Get a deterministic ordering of the merged selections
+    selection_name_order = [
+        ast.name.value
+        for ast in selection_set_a.selections
+        if ast.name.value not in selection_dict_b
+    ] + [
+        ast.name.value
+        for ast in selection_set_b.selections
+    ]
+
     # Make sure that all property fields come before all vertex fields.
     return SelectionSet([
-        ast
-        for name, ast in six.iteritems(merged_selection_dict)
-        if ast.selection_set is None
+        merged_selection_dict[name]
+        for name in selection_name_order
+        if name in merged_selection_dict and merged_selection_dict[name].selection_set is None
     ] + [
-        ast
-        for name, ast in six.iteritems(merged_selection_dict)
-        if ast.selection_set is not None
+        merged_selection_dict[name]
+        for name in selection_name_order
+        if name in merged_selection_dict and merged_selection_dict[name].selection_set is not None
     ])
 
 
