@@ -28,7 +28,7 @@ def _merge_non_overlapping_dicts(merge_target, new_data):
     return result
 
 
-def _expand_specific_macro_edge(macro_definition_selection_set, selection_ast):
+def _expand_specific_macro_edge(macro_definition_selection_set, selection_ast, subclass_sets=None):
     """Produce a tuple containing the new replacement selection AST, and a list of extra selections.
 
     Args:
@@ -36,6 +36,7 @@ def _expand_specific_macro_edge(macro_definition_selection_set, selection_ast):
                                         defining the macro edge. Can be retrieved as the
                                         "expansion_selection_set" key from a MacroEdgeDescriptor.
         selection_ast: GraphQL AST object containing the selection that is relying on a macro edge.
+        subclass_sets: optional dict mapping class names to the set of its subclass names
 
     Returns:
         (replacement selection AST, list of extra selections that need to be added and merged)
@@ -44,7 +45,8 @@ def _expand_specific_macro_edge(macro_definition_selection_set, selection_ast):
     raise NotImplementedError()
 
 
-def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast, query_args):
+def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
+                                ast, query_args, subclass_sets=None):
     """Return (new_ast, new_query_args) containing the AST after macro expansion.
 
     Args:
@@ -53,6 +55,7 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
         current_schema_type: GraphQL type object describing the current type at the given AST node
         ast: GraphQL AST object that potentially requires macro expansion
         query_args: dict mapping strings to any type, containing the arguments for the query
+        subclass_sets: optional dict mapping class names to the set of its subclass names
 
     Returns:
         tuple (new_ast, new_graphql_args) containing a potentially-rewritten GraphQL AST object
@@ -77,7 +80,8 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
         if isinstance(selection_ast, InlineFragment):
             vertex_field_type = schema.get_type(selection_ast.type_condition.name.value)
             new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
-                schema, macro_registry, vertex_field_type, selection_ast, new_query_args)
+                schema, macro_registry, vertex_field_type, selection_ast, new_query_args,
+                subclass_sets=subclass_sets)
         else:
             field_name = get_ast_field_name(selection_ast)
             if is_vertex_field_name(field_name):
@@ -86,7 +90,8 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
                     macro_edge_descriptor = macro_edges_at_this_type[field_name]
 
                     new_selection_ast, extra_selections = _expand_specific_macro_edge(
-                        macro_edge_descriptor.expansion_selection_set, selection_ast)
+                        macro_edge_descriptor.expansion_selection_set, selection_ast,
+                        subclass_sets=subclass_sets)
                     extra_selections_list.append(extra_selections)
 
                     # TODO(predrag): This is where using the same macro twice in one query
@@ -103,7 +108,8 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
                 #                instead of reaching into the compiler.helpers module.
                 vertex_field_type = get_vertex_field_type(current_schema_type, field_name)
                 new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
-                    schema, macro_registry, vertex_field_type, new_selection_ast, new_query_args)
+                    schema, macro_registry, vertex_field_type, new_selection_ast, new_query_args,
+                    subclass_sets=subclass_sets)
 
         if new_selection_ast is not selection_ast:
             made_changes = True
@@ -131,7 +137,7 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type, ast
 # Public API #
 # ############
 
-def expand_macros_in_query_ast(schema, macro_registry, query_ast, query_args):
+def expand_macros_in_query_ast(schema, macro_registry, query_ast, query_args, subclass_sets=None):
     """Return (new_query_ast, new_query_args) containing the GraphQL after macro expansion.
 
     Args:
@@ -139,6 +145,7 @@ def expand_macros_in_query_ast(schema, macro_registry, query_ast, query_args):
         macro_registry: MacroRegistry, the registry of macro descriptors used for expansion
         query_ast: GraphQL query AST object that potentially requires macro expansion
         query_args: dict mapping strings to any type, containing the arguments for the query
+        subclass_sets: optional dict mapping class names to the set of its subclass names
 
     Returns:
         tuple (new_query_ast, new_graphql_args) containing a potentially-rewritten GraphQL query AST
@@ -153,7 +160,7 @@ def expand_macros_in_query_ast(schema, macro_registry, query_ast, query_args):
     base_start_type = query_type.fields[base_start_type_name].type
 
     new_base_ast, new_query_args = _expand_macros_in_inner_ast(
-        schema, macro_registry, base_start_type, base_ast, query_args)
+        schema, macro_registry, base_start_type, base_ast, query_args, subclass_sets=subclass_sets)
 
     if new_base_ast is base_ast:
         # No macro expansion happened.
