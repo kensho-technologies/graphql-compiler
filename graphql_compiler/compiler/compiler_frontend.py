@@ -972,6 +972,54 @@ def _validate_schema_and_ast(schema, ast):
 ##############
 
 
+def ast_to_ir(schema, ast, type_equivalence_hints=None):
+    """Convert the given GraphQL string into compiler IR, using the given schema object.
+
+    Args:
+        schema: GraphQL schema object, created using the GraphQL library
+        ast: AST object to be compiled to IR
+        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
+                                Used as a workaround for GraphQL's lack of support for
+                                inheritance across "types" (i.e. non-interfaces), as well as a
+                                workaround for Gremlin's total lack of inheritance-awareness.
+                                The key-value pairs in the dict specify that the "key" type
+                                is equivalent to the "value" type, i.e. that the GraphQL type or
+                                interface in the key is the most-derived common supertype
+                                of every GraphQL type in the "value" GraphQL union.
+                                Recursive expansion of type equivalence hints is not performed,
+                                and only type-level correctness of this argument is enforced.
+                                See README.md for more details on everything this parameter does.
+                                *****
+                                Be very careful with this option, as bad input here will
+                                lead to incorrect output queries being generated.
+                                *****
+
+    Returns:
+        IrAndMetadata named tuple, containing fields:
+        - ir_blocks: a list of IR basic block objects
+        - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
+        - output_metadata: a dict of output name (string) -> OutputMetadata object
+        - query_metadata_table: a QueryMetadataTable object containing location metadata
+
+    Raises flavors of GraphQLError in the following cases:
+        - if the query is invalid GraphQL (GraphQLParsingError);
+        - if the query doesn't match the schema (GraphQLValidationError);
+        - if the query has more than one definition block (GraphQLValidationError);
+        - if the query has more than one selection in the root object (GraphQLCompilationError);
+        - if the query does not obey directive usage rules (GraphQLCompilationError);
+        - if the query provides invalid / disallowed / wrong number of arguments
+          for a directive (GraphQLCompilationError).
+
+    In the case of implementation bugs, could also raise ValueError, TypeError, or AssertionError.
+    """
+    validation_errors = _validate_schema_and_ast(schema, ast)
+    if validation_errors:
+        raise GraphQLValidationError(u'String does not validate: {}'.format(validation_errors))
+
+    base_ast = get_only_query_definition(ast, GraphQLValidationError)
+    return _compile_root_ast_to_ir(schema, base_ast, type_equivalence_hints=type_equivalence_hints)
+
+
 def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
     """Convert the given GraphQL string into compiler IR, using the given schema object.
 
@@ -1013,12 +1061,4 @@ def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
     In the case of implementation bugs, could also raise ValueError, TypeError, or AssertionError.
     """
     ast = safe_parse_graphql(graphql_string)
-
-    validation_errors = _validate_schema_and_ast(schema, ast)
-
-    if validation_errors:
-        raise GraphQLValidationError(u'String does not validate: {}'.format(validation_errors))
-
-    base_ast = get_only_query_definition(ast, GraphQLValidationError)
-
-    return _compile_root_ast_to_ir(schema, base_ast, type_equivalence_hints=type_equivalence_hints)
+    return ast_to_ir(schema, ast, type_equivalence_hints=type_equivalence_hints)
