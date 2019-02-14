@@ -33,6 +33,8 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
     """Merge selection sets, merging directives on name conflict."""
     if selection_set_a is None:
         return selection_set_b
+    if selection_set_b is None:
+        return selection_set_a
 
     # Convert to dict
     selection_dict_a = get_uniquely_named_objects_by_name(selection_set_a.selections)
@@ -205,7 +207,7 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
                         macro_edge_descriptor.expansion_selection_set, selection_ast,
                         subclass_sets=subclass_sets)
                     extra_selection_set = _merge_selection_sets(
-                        extra_selection_set, SelectionSet(extra_selections))
+                        SelectionSet(extra_selections), extra_selection_set)
 
                     new_query_args = _merge_non_overlapping_dicts(
                         new_query_args, macro_edge_descriptor.macro_args)
