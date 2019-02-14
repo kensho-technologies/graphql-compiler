@@ -91,16 +91,16 @@ def _merge_selection_into_target(target_ast, selection_ast, subclass_sets=None):
             # coercion_class is required to subclass target_class so we can merge the type coercions
             if coercion_class != target_class:
                 if subclass_sets is None:
-                    raise AssertionError(u'Cannot prove type coercion at macro target is valid.'
+                    raise AssertionError(u'Cannot prove type coercion at macro target is valid. '
                                          u'Please provide a proof that {} subclasses {} using the '
                                          u'subclass_sets argument.'
                                          .format(coercion_class, target_class))
                 else:
                     if (target_class not in subclass_sets or
                             coercion_class not in subclass_sets[target_class]):
-                        raise AssertionError(u'Invalid type coercion at macro target. {} '
-                                             u'is expected to subclass {}.'
-                                             .format(coercion_class, target_class))
+                        raise GraphQLCompilationError(u'Invalid type coercion at macro target. {} '
+                                                      u'is expected to subclass {}.'
+                                                      .format(coercion_class, target_class))
         else:
             # TODO(bojanserafimov): When compiling the macro, compute the type at the
             #                       target and record that in the macro descriptor.
