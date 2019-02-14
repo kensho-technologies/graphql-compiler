@@ -300,6 +300,28 @@ class MacroValidationTests(unittest.TestCase):
                                 args, self.type_equivalence_hints)
 
     @pytest.mark.skip(reason='not implemented')
+    def test_macro_edge_duplicating_field_name(self):
+        query = '''{
+            Species @macro_edge_definition(name: "net_worth") {
+                out_Entity_Related {
+                    out_Entity_Related @macro_edge_target {
+                        ... on Animal @macro_edge_target {
+                            uuid
+                        }
+                    }
+                }
+            }
+        }'''
+        args = {}
+
+        macro_registry = create_macro_registry()
+        register_macro_edge(macro_registry, self.schema, query,
+                            args, self.type_equivalence_hints)
+        with self.assertRaises(AssertionError):
+            register_macro_edge(macro_registry, self.schema, query,
+                                args, self.type_equivalence_hints)
+
+    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_duplicate_definition_on_target(self):
         # Future-proofing, so that we can reverse macro edges
         query = '''{
