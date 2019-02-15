@@ -11,6 +11,7 @@ from ...ast_manipulation import (
 )
 from ...compiler.compiler_frontend import ast_to_ir
 from ...exceptions import GraphQLInvalidMacroError
+from ...query_formatting.common import ensure_arguments_are_provided
 from ...schema import VERTEX_FIELD_PREFIXES, is_vertex_field_name
 from .directives import (
     MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
@@ -189,13 +190,13 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     # - the macro definition directive AST contains only @filter/@fold directives together with
     #   the target directive;
     # - the macro target is not within a @fold;
-    # - after adding an output, the macro compiles successfully, the macro args and necessary and
-    #   sufficient for the macro, and the macro args' types match the inferred types of the
-    #   runtime parameters in the macro.
 
     # Check that the macro successfully compiles to IR
-    ast_to_ir(schema, _get_minimal_query_ast_from_macro_ast(ast),
-              type_equivalence_hints=type_equivalence_hints)
+    _, input_metadata, _, _ = ast_to_ir(schema, _get_minimal_query_ast_from_macro_ast(ast),
+                                        type_equivalence_hints=type_equivalence_hints)
+    ensure_arguments_are_provided(input_metadata, macro_edge_args)
+    # TODO(bojanserafimov): Check all the provided arguments were necessary
+    # TODO(bojanserafimov): Check the arguments have the correct types
 
     _validate_class_selection_ast(
         get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast)
