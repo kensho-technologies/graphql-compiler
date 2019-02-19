@@ -1213,7 +1213,7 @@ from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 from sqlalchemy import MetaData, Table, Column, String, create_engine
 from graphql_compiler.compiler.ir_lowering_sql.metadata import SqlMetadata
-from graphql_compiler import compile_graphql_to_sql, insert_arguments_into_query
+from graphql_compiler import graphql_to_sql
 
 # Step 1: Configure a GraphQL schema (note that this can also be done programmatically)
 schema_text = '''
@@ -1224,7 +1224,7 @@ schema {
 
 directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
 
-# < ... more directives here ... >
+# < more directives here, see the GraphQL schema section of this README for more details. >
 
 directive @output(out_name: String!) on FIELD
 
@@ -1265,8 +1265,7 @@ parameters = {
     'names': ['animal name 1', 'animal name 2'],
 }
 
-compilation_result = compile_graphql_to_sql(schema, graphql_query, sql_metadata)
-compilation_result = insert_arguments_into_query(compilation_result, parameters)
+compilation_result = graphql_to_sql(schema, graphql_query, parameters, sql_metadata)
 
 # Step 6: Execute compiled query against a SQLAlchemy engine/connection. 
 # See https://docs.sqlalchemy.org/en/latest/core/connections.html for more details.
