@@ -104,33 +104,29 @@ def _validate_macro_edge_name_for_class_name(schema, class_name, macro_edge_name
 
 def _get_minimal_query_ast_from_macro_ast(macro_ast):
     """Get a query that should successfully compile to IR if the macro is valid."""
-    macro_directives = get_directives_for_ast(macro_ast)
     query_ast = remove_directives_from_ast(macro_ast, {
         directive.name
         for directive in MACRO_EDGE_DIRECTIVES
     })
 
-    # Add an output directive to make the ast a valid query
-    if 'output' not in macro_directives:
-        output_directive = Directive(Name('output'), arguments=[
-            Argument(Name('out_name'), StringValue('dummy_output_name'))
-        ])
+    # Add this output directive to make the ast a valid query
+    output_directive = Directive(Name('output'), arguments=[
+        Argument(Name('out_name'), StringValue('dummy_output_name'))
+    ])
 
-        # Add an output to a uuid field at the beginning of the query
-        # HACK(bojanserafimov): It's possible that the type at the top doesn't have a uuid field.
-        #                       It's also possible that none of the types in the macro have a field
-        #                       that we can output. The proper solution is to bypass the rule that
-        #                       a query has an output.
-        field = None
-        top_level_selections = query_ast.selection_set.selections[0].selection_set.selections
-        for selection in top_level_selections:
-            if isinstance(selection, Field):
-                if selection.name.value == 'uuid':
-                    field = selection
-        if field is None:
-            top_level_selections.insert(0, Field(Name('uuid'), directives=[]))
-            field = top_level_selections[0]
-        field.directives.append(output_directive)
+    # Find or create a __typename field
+    field = None
+    top_level_selections = query_ast.selection_set.selections[0].selection_set.selections
+    for selection in top_level_selections:
+        if isinstance(selection, Field):
+            if selection.name.value == '__typename':
+                field = selection
+    if field is None:
+        top_level_selections.insert(0, Field(Name('__typename'), directives=[]))
+        field = top_level_selections[0]
+
+    # Add an output to the __typename filed
+    field.directives.append(output_directive)
     return Document([query_ast])
 
 # ############
@@ -197,6 +193,7 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     ensure_arguments_are_provided(input_metadata, macro_edge_args)
     # TODO(bojanserafimov): Check all the provided arguments were necessary
     # TODO(bojanserafimov): Check the arguments have the correct types
+    # TODO(bojanserafimov): Check that there's no @output in the macro
 
     _validate_class_selection_ast(
         get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast)
