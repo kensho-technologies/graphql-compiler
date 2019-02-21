@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from copy import copy, deepcopy
+from copy import copy
 from itertools import chain
 
 from graphql.language.ast import InlineFragment, SelectionSet
@@ -12,7 +12,7 @@ from ..compiler.helpers import get_uniquely_named_objects_by_name, get_vertex_fi
 from ..exceptions import GraphQLCompilationError, GraphQLInvalidMacroError
 from ..schema import is_vertex_field_name
 from .macro_edge.directives import MacroEdgeTargetDirective
-from .macro_edge.helpers import get_directives_for_ast
+from .macro_edge.helpers import find_target_and_copy_path_to_it
 
 
 def _merge_non_overlapping_dicts(merge_target, new_data):
@@ -200,19 +200,16 @@ def _expand_specific_macro_edge(macro_selection_set, selection_ast, subclass_set
     # TODO(bojanserafimov): Rename macro tags if conflicting with user-defined tag names.
     # TODO(bojanserafimov): Remove macro tags if the user has tagged the same field.
 
-    for macro_ast in deepcopy(macro_selection_set).selections:
-        directives = get_directives_for_ast(macro_ast)
-        if MacroEdgeTargetDirective.name in directives:
-            # This is not a copy. We intentionally mutate target_ast to make changes to macro_ast.
-            target_ast, _ = directives[MacroEdgeTargetDirective.name][0]
-            _merge_selection_into_target(target_ast, selection_ast, subclass_sets=subclass_sets)
-
+    for macro_ast in macro_selection_set.selections:
+        new_ast, target_ast = find_target_and_copy_path_to_it(macro_ast)
+        if target_ast is None:
+            extra_selections.append(macro_ast)
+        else:
             if replacement_selection_ast is not None:
                 raise AssertionError(u'Found multiple @macro_edge_target directives. {}'
                                      .format(macro_selection_set))
-            replacement_selection_ast = macro_ast
-        else:
-            extra_selections.append(macro_ast)
+            replacement_selection_ast = new_ast
+            _merge_selection_into_target(target_ast, selection_ast, subclass_sets=subclass_sets)
 
     if replacement_selection_ast is None:
         raise AssertionError(u'Found no @macro_edge_target directives in macro selection set. {}'
