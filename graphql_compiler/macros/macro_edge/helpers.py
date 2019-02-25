@@ -100,7 +100,21 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
 
 
 def find_target_and_copy_path_to_it(ast):
-    """Return the same ast and the ast at the target, with the path to the target shallow copied."""
+    """Copy the AST objects on the path to the target, returning it and the target AST.
+
+    This function makes it easy to change the AST at the @target directive without mutating the
+    original object or doing a deepcopy.
+
+    Args:
+        ast: GraphQL library AST object
+
+    Returns:
+        pair containing:
+        - GraphQL library AST object equal to the input. Objects on the path to the @target
+          directive are shallow copied.
+        - GraphQL library AST object at the @target directive of the resulting AST, or None
+          if there was no @target directive in the AST.
+    """
     for directive in ast.directives:
         if directive.name.value == MacroEdgeTargetDirective.name:
             target_ast = copy(ast)

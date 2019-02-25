@@ -41,7 +41,8 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
 
     The order of selections in the resulting SelectionSet has the following properties:
     - property fields are before vertex fields.
-    - fields present in selection_set_b are after all other fields.
+    - property fields in selection_set_b come later than other property fields.
+    - vertex fields in selection_set_b come later than other vertex fields.
     - ties are resolved by respecting the ordering of fields in the input arguments.
 
     Args:
@@ -72,7 +73,7 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
                                           .format(field_name))
 
         merged_field = copy(field_a)
-        merged_field.directives = field_a.directives + field_b.directives
+        merged_field.directives = list(chain(field_a.directives, field_b.directives))
         common_selection_dict[field_name] = merged_field
 
     # Merge dicts, using common_selection_dict for keys present in both selection sets.
@@ -101,16 +102,16 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
         for ast in selection_set_b.selections
     )))
 
-    # Make sure that all property fields come before all vertex fields.
-    return SelectionSet(list(chain((
+    # Make sure that all property fields come before all vertex fields. Note that sort is stable.
+    merged_selections = [
         merged_selection_dict[name]
         for name in selection_name_order
-        if name in merged_selection_dict and merged_selection_dict[name].selection_set is None
-    ), (
-        merged_selection_dict[name]
-        for name in selection_name_order
-        if name in merged_selection_dict and merged_selection_dict[name].selection_set is not None
-    ))))
+        if name in merged_selection_dict
+    ]
+    return SelectionSet(sorted(
+        merged_selections,
+        key=lambda ast: ast.selection_set is not None
+    ))
 
 
 def _merge_selection_into_target(target_ast, selection_ast, subclass_sets=None):
@@ -136,8 +137,8 @@ def _merge_selection_into_target(target_ast, selection_ast, subclass_sets=None):
     for selection in selection_ast.selection_set.selections:
         if isinstance(selection, InlineFragment):
             if len(selection_ast.selection_set.selections) != 1:
-                raise GraphQLCompilationError(u'Found selections outside type coercion {}'
-                                              .format(selection_ast))
+                raise GraphQLCompilationError(u'Found selections outside type coercion. '
+                                              u'Please move them inside the coercion.')
             else:
                 coercion = selection
 
@@ -155,8 +156,8 @@ def _merge_selection_into_target(target_ast, selection_ast, subclass_sets=None):
                 if subclass_sets is None:
                     # TODO(bojanserafimov): Write test for this failure
                     raise GraphQLCompilationError(
-                        u'Cannot prove type coercion at macro target is valid. Please provide a'
-                        u'proof that {} subclasses {} using the subclass_sets argument.'
+                        u'Cannot prove type coercion at macro target is valid. Please provide a '
+                        u'hint that {} subclasses {} using the subclass_sets argument.'
                         .format(coercion_class, target_class))
                 else:
                     if (target_class not in subclass_sets or
