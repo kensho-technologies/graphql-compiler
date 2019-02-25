@@ -63,6 +63,7 @@ setup(
         'pytz>=2016.10',
         'six>=1.10.0',
         'sqlalchemy>=1.2.1,<1.3',
+        'frozendict==1.2'
     ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
