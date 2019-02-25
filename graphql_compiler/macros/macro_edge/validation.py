@@ -114,6 +114,10 @@ def _get_minimal_query_ast_from_macro_ast(macro_ast):
         Argument(Name('out_name'), StringValue('dummy_output_name'))
     ])
 
+    # Prevent mutations to to macro_ast
+    query_ast = copy(query_ast)
+    query_ast.selection_set = copy(query_ast.selection_set)
+
     # Find or create a __typename field
     field = None
     top_level_selections = query_ast.selection_set.selections[0].selection_set.selections
