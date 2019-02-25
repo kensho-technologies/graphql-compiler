@@ -4,6 +4,7 @@ from copy import copy
 from graphql.language.ast import Field, InlineFragment, OperationDefinition, SelectionSet
 
 from ..macro_edge.directives import MacroEdgeTargetDirective
+from ...compiler.helpers import get_vertex_field_type
 
 
 def _yield_ast_nodes_with_directives(ast):
@@ -115,11 +116,13 @@ def find_target_and_copy_path_to_it(ast):
         - GraphQL library AST object at the @target directive of the resulting AST, or None
           if there was no @target directive in the AST.
     """
+    # Base case
     for directive in ast.directives:
         if directive.name.value == MacroEdgeTargetDirective.name:
             target_ast = copy(ast)
             return target_ast, target_ast
 
+    # Recurse
     new_selections = []
     target_ast = None
     if isinstance(ast, (Field, InlineFragment, OperationDefinition)):
@@ -138,6 +141,34 @@ def find_target_and_copy_path_to_it(ast):
         new_ast = copy(ast)
         new_ast.selection_set = SelectionSet(new_selections)
         return new_ast, target_ast
+
+
+def get_type_at_target(schema, ast, current_type):
+    """Return type at target or none if there is no target."""
+    # Base case
+    for directive in ast.directives:
+        if directive.name.value == MacroEdgeTargetDirective.name:
+            return current_type
+
+    # Recurse
+    if isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+        if ast.selection_set is not None:
+            for selection in ast.selection_set.selections:
+                if isinstance(selection, Field):
+                    type_in_selection = get_vertex_field_type(current_type, selection.name.value)
+                if isinstance(selection, InlineFragment):
+                    type_in_selection = schema.get_type(selection.type_condition.name.value)
+                else:
+                    raise AssertionError(u'Unexpected selection type received: {} {}'
+                                         .format(type(selection), selection))
+                type_at_target = get_type_at_target(schema, selection, type_in_selection)
+                if type_at_target is not None:
+                    return type_at_target
+
+    else:
+        raise AssertionError(u'Unexpected AST type received: {} {}'.format(type(ast), ast))
+
+    return None  # Didn't find target
 
 
 def omit_ast_from_ast_selections(ast, ast_to_omit):

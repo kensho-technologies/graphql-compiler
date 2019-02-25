@@ -12,7 +12,7 @@ from ..compiler.helpers import get_uniquely_named_objects_by_name, get_vertex_fi
 from ..exceptions import GraphQLCompilationError, GraphQLInvalidMacroError
 from ..schema import is_vertex_field_name
 from .macro_edge.directives import MacroEdgeTargetDirective
-from .macro_edge.helpers import find_target_and_copy_path_to_it
+from .macro_edge.helpers import find_target_and_copy_path_to_it, get_type_at_target
 
 
 def _merge_non_overlapping_dicts(merge_target, new_data):
