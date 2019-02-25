@@ -3,6 +3,8 @@ from copy import copy
 
 from graphql.language.ast import Field, InlineFragment, OperationDefinition, SelectionSet
 
+from ..macro_edge.directives import MacroEdgeTargetDirective
+
 
 def _yield_ast_nodes_with_directives(ast):
     """Get the AST objects where directives appear, anywhere in the given AST.
@@ -95,6 +97,47 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
     new_ast.selection_set = SelectionSet(new_selections)
     new_ast.directives = directives_to_keep
     return new_ast
+
+
+def find_target_and_copy_path_to_it(ast):
+    """Copy the AST objects on the path to the target, returning it and the target AST.
+
+    This function makes it easy to change the AST at the @target directive without mutating the
+    original object or doing a deepcopy.
+
+    Args:
+        ast: GraphQL library AST object
+
+    Returns:
+        pair containing:
+        - GraphQL library AST object equal to the input. Objects on the path to the @target
+          directive are shallow copied.
+        - GraphQL library AST object at the @target directive of the resulting AST, or None
+          if there was no @target directive in the AST.
+    """
+    for directive in ast.directives:
+        if directive.name.value == MacroEdgeTargetDirective.name:
+            target_ast = copy(ast)
+            return target_ast, target_ast
+
+    new_selections = []
+    target_ast = None
+    if isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+        if ast.selection_set is not None:
+            for selection in ast.selection_set.selections:
+                new_selection, possible_target_ast = find_target_and_copy_path_to_it(selection)
+                new_selections.append(new_selection)
+                if possible_target_ast is not None:
+                    target_ast = possible_target_ast
+    else:
+        raise AssertionError(u'Unexpected AST type received: {} {}'.format(type(ast), ast))
+
+    if target_ast is None:
+        return ast, None
+    else:
+        new_ast = copy(ast)
+        new_ast.selection_set = SelectionSet(new_selections)
+        return new_ast, target_ast
 
 
 def omit_ast_from_ast_selections(ast, ast_to_omit):

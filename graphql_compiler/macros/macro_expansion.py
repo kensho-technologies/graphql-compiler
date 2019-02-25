@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from copy import copy, deepcopy
+from copy import copy
+from itertools import chain
 
 from graphql.language.ast import InlineFragment, SelectionSet
 import six
@@ -11,7 +12,7 @@ from ..compiler.helpers import get_uniquely_named_objects_by_name, get_vertex_fi
 from ..exceptions import GraphQLCompilationError, GraphQLInvalidMacroError
 from ..schema import is_vertex_field_name
 from .macro_edge.directives import MacroEdgeTargetDirective
-from .macro_edge.helpers import get_directives_for_ast
+from .macro_edge.helpers import find_target_and_copy_path_to_it
 
 
 def _merge_non_overlapping_dicts(merge_target, new_data):
@@ -30,7 +31,27 @@ def _merge_non_overlapping_dicts(merge_target, new_data):
 
 
 def _merge_selection_sets(selection_set_a, selection_set_b):
-    """Merge selection sets, merging directives on name conflict."""
+    """Merge selection sets, merging directives on name conflict.
+
+    Create a selection set that contains the selections of both inputs. If there is a name
+    collision on a property field, we take the directives from both inputs on that field and
+    merge them. We disallow name collision on a vertex field.
+
+    The value None represents an empty SelectionSet.
+
+    The order of selections in the resulting SelectionSet has the following properties:
+    - property fields are before vertex fields.
+    - property fields in selection_set_b come later than other property fields.
+    - vertex fields in selection_set_b come later than other vertex fields.
+    - ties are resolved by respecting the ordering of fields in the input arguments.
+
+    Args:
+        selection_set_a: SelectionSet or None to be merged with the other
+        selection_set_b: SelectionSet or None to be merged with the other
+
+    Returns:
+        SelectionSet or None with contents from both input selection sets
+    """
     if selection_set_a is None:
         return selection_set_b
     if selection_set_b is None:
@@ -47,66 +68,97 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
         field_a = selection_dict_a[field_name]
         field_b = selection_dict_b[field_name]
         if field_a.selection_set is not None or field_b.selection_set is not None:
-            raise GraphQLCompilationError('TODO')
+            raise GraphQLCompilationError(u'Macro expansion results in a query traversing the '
+                                          u'same edge {} twice, which is disallowed.'
+                                          .format(field_name))
 
-        merged_field = deepcopy(field_a)
-        merged_field.directives += field_b.directives
+        merged_field = copy(field_a)
+        merged_field.directives = list(chain(field_a.directives, field_b.directives))
         common_selection_dict[field_name] = merged_field
 
-    # Merge dicts
+    # Merge dicts, using common_selection_dict for keys present in both selection sets.
     merged_selection_dict = copy(selection_dict_a)
     merged_selection_dict.update(selection_dict_b)
-    merged_selection_dict.update(common_selection_dict)
+    merged_selection_dict.update(common_selection_dict)  # Overwrite keys in the intersection.
 
-    # Remove pro-forma fields if allowed
-    if len(merged_selection_dict) > 1:
+    # The macro or the user code could have an unused (pro-forma) field for the sake of not
+    # having an empty selection in a vertex field. We remove pro-forma fields if they are
+    # no longer necessary.
+    if len(merged_selection_dict) > 1:  # Otherwise we need a pro-forma field
         merged_selection_dict = {
             name: ast
             for name, ast in six.iteritems(merged_selection_dict)
             if ast.selection_set is not None or len(ast.directives) > 0
+            # If there's selections or directives under the field, it is not pro-forma.
         }
 
     # Get a deterministic ordering of the merged selections
-    selection_name_order = [
+    selection_name_order = list(chain((
         ast.name.value
         for ast in selection_set_a.selections
         if ast.name.value not in selection_dict_b
-    ] + [
+    ), (
         ast.name.value
         for ast in selection_set_b.selections
-    ]
+    )))
 
-    # Make sure that all property fields come before all vertex fields.
-    return SelectionSet([
+    # Make sure that all property fields come before all vertex fields. Note that sort is stable.
+    merged_selections = [
         merged_selection_dict[name]
         for name in selection_name_order
-        if name in merged_selection_dict and merged_selection_dict[name].selection_set is None
-    ] + [
-        merged_selection_dict[name]
-        for name in selection_name_order
-        if name in merged_selection_dict and merged_selection_dict[name].selection_set is not None
-    ])
+        if name in merged_selection_dict
+    ]
+    return SelectionSet(sorted(
+        merged_selections,
+        key=lambda ast: ast.selection_set is not None
+    ))
 
 
 def _merge_selection_into_target(target_ast, selection_ast, subclass_sets=None):
-    """Add the selections, directives, and coercions from the selection_ast to the target_ast."""
+    """Add the selections, directives, and coercions from the selection_ast to the target_ast.
+
+    Mutate the target_ast, merging into it everything from the selection_ast. If the target
+    is at a type coercion and the selection_ast starts with a type coercion, combine them
+    into one coercion that preserves the semantics of nested coercions, which are disallowed.
+
+    For details on how fields and directives are merged, see _merge_selection_sets.
+
+    Args:
+        target_ast: AST at the @macro_edge_target directive
+        selection_ast: AST to merge inside the target. Required to have a nonempty selection set.
+        subclass_sets: optional dict mapping class names to the set of its subclass names
+    """
+    if selection_ast.selection_set is None or not selection_ast.selection_set.selections:
+        raise AssertionError(u'Precondition violated. selection_ast is expected to be nonempty {}'
+                             .format(selection_ast))
+
+    # See if there's a type coercion in the selection_ast
+    coercion = None
+    for selection in selection_ast.selection_set.selections:
+        if isinstance(selection, InlineFragment):
+            if len(selection_ast.selection_set.selections) != 1:
+                raise GraphQLCompilationError(u'Found selections outside type coercion. '
+                                              u'Please move them inside the coercion.')
+            else:
+                coercion = selection
+
     # Deal with coercions at the target
     continuation_ast = selection_ast
-    first_selection = selection_ast.selection_set.selections[0]
-    if isinstance(first_selection, InlineFragment):
-        coercion_class = first_selection.type_condition.name.value
+    if coercion is not None:
+        coercion_class = coercion.type_condition.name.value
         if isinstance(target_ast, InlineFragment):
             target_class = target_ast.type_condition.name.value
-            continuation_ast = first_selection
-            target_ast.type_condition = first_selection.type_condition
+            continuation_ast = coercion
+            target_ast.type_condition = coercion.type_condition
 
             # coercion_class is required to subclass target_class so we can merge the type coercions
             if coercion_class != target_class:
                 if subclass_sets is None:
-                    raise AssertionError(u'Cannot prove type coercion at macro target is valid. '
-                                         u'Please provide a proof that {} subclasses {} using the '
-                                         u'subclass_sets argument.'
-                                         .format(coercion_class, target_class))
+                    # TODO(bojanserafimov): Write test for this failure
+                    raise GraphQLCompilationError(
+                        u'Cannot prove type coercion at macro target is valid. Please provide a '
+                        u'hint that {} subclasses {} using the subclass_sets argument.'
+                        .format(coercion_class, target_class))
                 else:
                     if (target_class not in subclass_sets or
                             coercion_class not in subclass_sets[target_class]):
@@ -114,8 +166,7 @@ def _merge_selection_into_target(target_ast, selection_ast, subclass_sets=None):
                                                       u'is expected to subclass {}.'
                                                       .format(coercion_class, target_class))
         else:
-            # TODO(bojanserafimov): When compiling the macro, compute the type at the
-            #                       target and record that in the macro descriptor.
+            # TODO(bojanserafimov): Compute the type at the target and use it to validate.
             raise NotImplementedError(u'Cannot coerce from macro that does not end '
                                       u'in a coercion.')
 
@@ -150,21 +201,20 @@ def _expand_specific_macro_edge(macro_selection_set, selection_ast, subclass_set
     # TODO(bojanserafimov): Rename macro tags if conflicting with user-defined tag names.
     # TODO(bojanserafimov): Remove macro tags if the user has tagged the same field.
 
-    for macro_ast in deepcopy(macro_selection_set).selections:
-        directives = get_directives_for_ast(macro_ast)
-        if MacroEdgeTargetDirective.name in directives:
-            # This is not a copy. We intentionally mutate target_ast to make changes to macro_ast.
-            target_ast, _ = directives[MacroEdgeTargetDirective.name][0]
+    for macro_ast in macro_selection_set.selections:
+        new_ast, target_ast = find_target_and_copy_path_to_it(macro_ast)
+        if target_ast is None:
+            extra_selections.append(macro_ast)
+        else:
+            if replacement_selection_ast is not None:
+                raise AssertionError(u'Found multiple @macro_edge_target directives. {}'
+                                     .format(macro_selection_set))
+            replacement_selection_ast = new_ast
             _merge_selection_into_target(target_ast, selection_ast, subclass_sets=subclass_sets)
 
-            if replacement_selection_ast is not None:
-                raise AssertionError(u'Only one selection should contain a target.')
-            replacement_selection_ast = macro_ast
-        else:
-            extra_selections.append(macro_ast)
-
     if replacement_selection_ast is None:
-        raise AssertionError(u'At least one selection should contain a target.')
+        raise AssertionError(u'Found no @macro_edge_target directives in macro selection set. {}'
+                             .format(macro_selection_set))
 
     return replacement_selection_ast, extra_selections
 
