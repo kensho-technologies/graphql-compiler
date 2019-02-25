@@ -3,7 +3,9 @@ from collections import namedtuple
 from copy import copy
 from itertools import chain
 
-from graphql.language.ast import Argument, Directive, Document, Field, Name, StringValue
+from graphql.language.ast import (
+    Argument, Directive, Document, Field, Name, SelectionSet, StringValue
+)
 from graphql.validation import validate
 
 from ...ast_manipulation import (
@@ -114,17 +116,18 @@ def _get_minimal_query_ast_from_macro_ast(macro_ast):
         Argument(Name('out_name'), StringValue('dummy_output_name'))
     ])
 
-    # Prevent mutations to to macro_ast
+    # Prevent mutations to macro_ast
     query_ast = copy(query_ast)
-    query_ast.selection_set = copy(query_ast.selection_set)
+    query_ast.selection_set = SelectionSet(copy(query_ast.selection_set.selections))
 
     # Find or create a __typename field
     field = None
     top_level_selections = query_ast.selection_set.selections[0].selection_set.selections
-    for selection in top_level_selections:
+    for idx, selection in enumerate(top_level_selections):
         if isinstance(selection, Field):
             if selection.name.value == '__typename':
-                field = selection
+                top_level_selections[idx] = copy(selection)
+                field = top_level_selections[idx]
     if field is None:
         top_level_selections.insert(0, Field(Name('__typename'), directives=[]))
         field = top_level_selections[0]
