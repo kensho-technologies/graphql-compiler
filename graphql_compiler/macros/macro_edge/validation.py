@@ -111,7 +111,7 @@ def _get_minimal_query_ast_from_macro_ast(macro_ast):
         for directive in MACRO_EDGE_DIRECTIVES
     })
 
-    # Add this output directive to make the ast a valid query
+    # We will add this output directive to make the ast a valid query
     output_directive = Directive(Name('output'), arguments=[
         Argument(Name('out_name'), StringValue('dummy_output_name'))
     ])
