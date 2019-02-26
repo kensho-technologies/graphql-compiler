@@ -29,7 +29,6 @@ graphql-core = "==2.1"
 pytz = "==2017.2"
 six = "==1.10.0"
 sqlalchemy = "==1.2.9"
-frozendict = "==1.2"
 
 [requires]
 python_version = "3.6"

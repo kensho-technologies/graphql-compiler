@@ -58,7 +58,6 @@ setup(
     packages=find_packages(exclude=['tests*']),
     install_requires=[
         'arrow>=0.7.0',
-        'frozendict==1.2',
         'funcy>=1.6',
         'graphql-core==2.1',
         'pytz>=2016.10',
