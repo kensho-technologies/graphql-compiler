@@ -9,7 +9,11 @@ from .match_formatting import insert_arguments_into_match_query
 from .sql_formatting import insert_arguments_into_sql_query
 
 
-def _ensure_arguments_are_provided(expected_types, arguments):
+######
+# Public API
+######
+
+def ensure_arguments_are_provided(expected_types, arguments):
     """Ensure that all arguments expected by the query were actually provided."""
     # This function only checks that the arguments were specified,
     # and does not check types. Type checking is done as part of the actual formatting step.
@@ -24,10 +28,6 @@ def _ensure_arguments_are_provided(expected_types, arguments):
                                           u'{}'.format(missing_args, unexpected_args))
 
 
-######
-# Public API
-######
-
 def insert_arguments_into_query(compilation_result, arguments):
     """Insert the arguments into the compiled GraphQL query to form a complete query.
 
@@ -38,7 +38,7 @@ def insert_arguments_into_query(compilation_result, arguments):
     Returns:
         string, a query in the appropriate output language, with inserted argument data
     """
-    _ensure_arguments_are_provided(compilation_result.input_metadata, arguments)
+    ensure_arguments_are_provided(compilation_result.input_metadata, arguments)
 
     if compilation_result.language == MATCH_LANGUAGE:
         return insert_arguments_into_match_query(compilation_result, arguments)

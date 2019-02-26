@@ -3,12 +3,17 @@ from collections import namedtuple
 from copy import copy
 from itertools import chain
 
+from graphql.language.ast import (
+    Argument, Directive, Document, Field, Name, SelectionSet, StringValue
+)
 from graphql.validation import validate
 
 from ...ast_manipulation import (
     get_ast_field_name, get_human_friendly_ast_field_name, get_only_selection_from_ast
 )
+from ...compiler.compiler_frontend import ast_to_ir
 from ...exceptions import GraphQLInvalidMacroError
+from ...query_formatting.common import ensure_arguments_are_provided
 from ...schema import VERTEX_FIELD_PREFIXES, is_vertex_field_name
 from .directives import (
     MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
@@ -99,6 +104,42 @@ def _validate_macro_edge_name_for_class_name(schema, class_name, macro_edge_name
             .format(macro_edge_name, class_name))
 
 
+def _get_minimal_query_ast_from_macro_ast(macro_ast):
+    """Get a query that should successfully compile to IR if the macro is valid."""
+    ast_without_macro_directives = remove_directives_from_ast(macro_ast, {
+        directive.name
+        for directive in MACRO_EDGE_DIRECTIVES
+    })
+
+    # We will add this output directive to make the ast a valid query
+    output_directive = Directive(Name('output'), arguments=[
+        Argument(Name('out_name'), StringValue('dummy_output_name'))
+    ])
+
+    # Shallow copy everything on the path to the first level selection list
+    query_ast = copy(ast_without_macro_directives)
+    root_level_selection = copy(get_only_selection_from_ast(query_ast, GraphQLInvalidMacroError))
+    first_level_selections = copy(root_level_selection.selection_set.selections)
+
+    # Add an output to a new or existing __typename field
+    existing_typename_field = None
+    for idx, selection in enumerate(first_level_selections):
+        if isinstance(selection, Field):
+            if selection.name.value == '__typename':
+                # We have a copy of the list, but the elements are references to objects
+                # in macro_ast that we don't want to mutate. So the following copy is necessary.
+                existing_typename_field = copy(selection)
+                existing_typename_field.directives = copy(existing_typename_field.directives)
+                existing_typename_field.directives.append(output_directive)
+                first_level_selections[idx] = existing_typename_field
+    if existing_typename_field is None:
+        first_level_selections.insert(0, Field(Name('__typename'), directives=[output_directive]))
+
+    # Propagate the changes back to the result_ast
+    root_level_selection.selection_set = SelectionSet(first_level_selections)
+    query_ast.selection_set = SelectionSet([root_level_selection])
+    return Document([query_ast])
+
 # ############
 # Public API #
 # ############
@@ -156,12 +197,14 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     # - the macro definition directive AST contains only @filter/@fold directives together with
     #   the target directive;
     # - the macro target is not within a @fold;
-    # - after adding an output, the macro compiles successfully, the macro args and necessary and
-    #   sufficient for the macro, and the macro args' types match the inferred types of the
-    #   runtime parameters in the macro.
 
-    # TODO(bojanserafimov): After compiling the macro, read the type at the target from the location
-    #                       info in the metadata table, and record it in the macro descriptor.
+    # Check that the macro successfully compiles to IR
+    _, input_metadata, _, _ = ast_to_ir(schema, _get_minimal_query_ast_from_macro_ast(ast),
+                                        type_equivalence_hints=type_equivalence_hints)
+    ensure_arguments_are_provided(input_metadata, macro_edge_args)
+    # TODO(bojanserafimov): Check all the provided arguments were necessary
+    # TODO(bojanserafimov): Check the arguments have the correct types
+    # TODO(bojanserafimov): Check that there's no @output in the macro
 
     _validate_class_selection_ast(
         get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast)
