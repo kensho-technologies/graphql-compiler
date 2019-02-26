@@ -1,8 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from itertools import chain
 
-from frozendict import frozendict
 import six
+
+from frozendict import frozendict
 
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
 from .schema_properties import (
