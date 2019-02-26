@@ -114,7 +114,7 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
     ))
 
 
-def _merge_selection_into_target(target_ast, selection_ast, subclass_sets=None):
+def _merge_selection_into_target(target_ast, type_at_target, selection_ast, subclass_sets=None):
     """Add the selections, directives, and coercions from the selection_ast to the target_ast.
 
     Mutate the target_ast, merging into it everything from the selection_ast. If the target
@@ -125,12 +125,20 @@ def _merge_selection_into_target(target_ast, selection_ast, subclass_sets=None):
 
     Args:
         target_ast: AST at the @macro_edge_target directive
+        type_at_target: str name of the type at the target
         selection_ast: AST to merge inside the target. Required to have a nonempty selection set.
         subclass_sets: optional dict mapping class names to the set of its subclass names
     """
     if selection_ast.selection_set is None or not selection_ast.selection_set.selections:
         raise AssertionError(u'Precondition violated. selection_ast is expected to be nonempty {}'
                              .format(selection_ast))
+
+    # Remove @macro_edge_target directive
+    target_ast.directives = [
+        directive
+        for directive in target_ast.directives
+        if directive.name.value != MacroEdgeTargetDirective.name
+    ]
 
     # See if there's a type coercion in the selection_ast
     coercion = None
@@ -146,48 +154,43 @@ def _merge_selection_into_target(target_ast, selection_ast, subclass_sets=None):
     continuation_ast = selection_ast
     if coercion is not None:
         coercion_class = coercion.type_condition.name.value
+        continuation_ast = coercion
         if isinstance(target_ast, InlineFragment):
-            target_class = target_ast.type_condition.name.value
-            continuation_ast = coercion
             target_ast.type_condition = coercion.type_condition
-
-            # coercion_class is required to subclass target_class so we can merge the type coercions
-            if coercion_class != target_class:
-                if subclass_sets is None:
-                    # TODO(bojanserafimov): Write test for this failure
-                    raise GraphQLCompilationError(
-                        u'Cannot prove type coercion at macro target is valid. Please provide a '
-                        u'hint that {} subclasses {} using the subclass_sets argument.'
-                        .format(coercion_class, target_class))
-                else:
-                    if (target_class not in subclass_sets or
-                            coercion_class not in subclass_sets[target_class]):
-                        raise GraphQLCompilationError(u'Invalid type coercion at macro target. {} '
-                                                      u'is expected to subclass {}.'
-                                                      .format(coercion_class, target_class))
         else:
-            # TODO(bojanserafimov): Compute the type at the target and use it to validate.
-            raise NotImplementedError(u'Cannot coerce from macro that does not end '
-                                      u'in a coercion.')
+            target_ast.selection_set = SelectionSet([InlineFragment(
+                coercion.type_condition, target_ast.selection_set, directives=[])])
+            target_ast = target_ast.selection_set.selections[0]
+
+        # coercion_class is required to subclass type_at_target so we can merge the
+        # macro selections inside the coercion, and merge the two coercions into one
+        if coercion_class != type_at_target:
+            if subclass_sets is None:
+                # TODO(bojanserafimov): Write test for this failure
+                raise GraphQLCompilationError(
+                    u'Cannot prove type coercion at macro target is valid. Please provide a '
+                    u'hint that {} subclasses {} using the subclass_sets argument.'
+                    .format(coercion_class, type_at_target))
+            else:
+                if (type_at_target not in subclass_sets or
+                        coercion_class not in subclass_sets[type_at_target]):
+                    raise GraphQLCompilationError(u'Invalid type coercion at macro target. {} '
+                                                  u'is expected to subclass {}.'
+                                                  .format(coercion_class, type_at_target))
 
     # Merge the continuation into the target
     target_ast.directives += continuation_ast.directives
     target_ast.selection_set = _merge_selection_sets(
         target_ast.selection_set, continuation_ast.selection_set)
-    target_ast.directives = [
-        directive
-        for directive in target_ast.directives
-        if directive.name.value != MacroEdgeTargetDirective.name
-    ]
 
 
-def _expand_specific_macro_edge(macro_selection_set, selection_ast, subclass_sets=None):
+def _expand_specific_macro_edge(schema, macro_ast, selection_ast, subclass_sets=None):
     """Produce a tuple containing the new replacement selection AST, and a list of extra selections.
 
     Args:
-        macro_selection_set: SelectionSet GraphQL object containing the selections defining the
-                             macro edge. Can be retrieved as the "expansion_selection_set" key from
-                             a MacroEdgeDescriptor.
+        schema: GraphQL schema object, created using the GraphQL library
+        macro_ast: AST GraphQL object defining the macro edge. Can be retrieved as
+                   the "expansion_ast" key from a MacroEdgeDescriptor.
         selection_ast: GraphQL AST object containing the selection that is relying on a macro edge.
         subclass_sets: optional dict mapping class names to the set of its subclass names
 
@@ -201,16 +204,18 @@ def _expand_specific_macro_edge(macro_selection_set, selection_ast, subclass_set
     # TODO(bojanserafimov): Rename macro tags if conflicting with user-defined tag names.
     # TODO(bojanserafimov): Remove macro tags if the user has tagged the same field.
 
-    for macro_ast in macro_selection_set.selections:
-        new_ast, target_ast = find_target_and_copy_path_to_it(macro_ast)
+    for macro_selection in macro_ast.selection_set.selections:
+        new_ast, target_ast = find_target_and_copy_path_to_it(macro_selection)
         if target_ast is None:
-            extra_selections.append(macro_ast)
+            extra_selections.append(macro_selection)
         else:
             if replacement_selection_ast is not None:
                 raise AssertionError(u'Found multiple @macro_edge_target directives. {}'
                                      .format(macro_selection_set))
             replacement_selection_ast = new_ast
-            _merge_selection_into_target(target_ast, selection_ast, subclass_sets=subclass_sets)
+            type_at_target = get_type_at_target(schema, macro_ast)
+            _merge_selection_into_target(target_ast, type_at_target.name,
+                                         selection_ast, subclass_sets=subclass_sets)
 
     if replacement_selection_ast is None:
         raise AssertionError(u'Found no @macro_edge_target directives in macro selection set. {}'
@@ -264,7 +269,7 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
                     macro_edge_descriptor = macro_edges_at_this_type[field_name]
 
                     new_selection_ast, extra_selections = _expand_specific_macro_edge(
-                        macro_edge_descriptor.expansion_selection_set, selection_ast,
+                        schema, macro_edge_descriptor.expansion_ast, selection_ast,
                         subclass_sets=subclass_sets)
                     extra_selection_set = _merge_selection_sets(
                         SelectionSet(extra_selections), extra_selection_set)
