@@ -25,7 +25,7 @@ from .schema_generation.utils import toposort_classes
 __package_name__ = 'graphql-compiler'
 __version__ = '1.10.0'
 
-# Match query used to generate OrientDB records used GraphQL schema auto-generate .
+# Match query used to generate OrientDB records that are themselves used to generate GraphQL schema.
 ORIENTDB_SCHEMA_RECORDS_QUERY = 'SELECT FROM (SELECT expand(classes) FROM metadata:schema) '\
                                 'WHERE name NOT IN [\'ORole\', \'ORestricted\', \'OTriggered\', '\
                                 '\'ORIDs\', \'OUser\', \'OIdentity\', \'OSchedule\', \'OFunction\']'

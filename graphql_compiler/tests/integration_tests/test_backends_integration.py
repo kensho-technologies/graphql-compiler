@@ -174,8 +174,7 @@ class IntegrationTests(TestCase):
     @integration_fixtures
     def test_get_graphql_schema_from_orientdb_schema(self):
         schema_records = self.graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
-        schema, _ = get_graphql_schema_from_orientdb_records(schema_records,
-                                                             hidden_classes={
-                                                                 ORIENTDB_BASE_VERTEX_CLASS_NAME})
+        schema, _ = get_graphql_schema_from_orientdb_records(
+            schema_records, hidden_classes={ORIENTDB_BASE_VERTEX_CLASS_NAME})
         compare_ignoring_whitespace(self, ORIENTDB_GENERATED_SCHEMA, print_schema(schema), None)
 # pylint: enable=no-member
