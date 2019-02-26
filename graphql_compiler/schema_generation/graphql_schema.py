@@ -8,7 +8,7 @@ from graphql.type import (
 )
 import six
 
-from graphql_compiler.schema import (
+from ..schema import (
     DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 )
 

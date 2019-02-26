@@ -52,8 +52,8 @@ def _validate_edges_do_not_have_extra_links(class_name, properties):
             continue
 
         if property_descriptor.type_id == PROPERTY_TYPE_LINK_ID:
-            raise IllegalSchemaStateError(u'Edge class "{}" has a property of type Link that is'
-                                          u' not an edge endpoint, this is not allowed: '
+            raise IllegalSchemaStateError(u'Edge class "{}" has a property of type Link that is '
+                                          u'not an edge endpoint, this is not allowed: '
                                           u'{}'.format(class_name, property_name))
 
 
@@ -371,7 +371,7 @@ class SchemaGraph(object):
 
     def _set_up_inheritance_and_subclass_sets(self, schema_query_result):
         """Load all inheritance data from the OrientDB schema query. Used as part of __init__."""
-        # For each class name, construct iisort ts inheritance set:
+        # For each class name, construct its inheritance set:
         # itself + the set of class names from which it inherits.
         for class_definition in schema_query_result:
             class_name = class_definition['name']
