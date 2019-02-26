@@ -18,6 +18,7 @@ from .schema import (  # noqa
     insert_meta_fields_into_existing_schema, is_meta_field
 )
 from .schema_generation.schema_graph import SchemaGraph
+from .schema_generation.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from .schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from .schema_generation.utils import toposort_classes
 
@@ -164,5 +165,12 @@ def get_graphql_schema_from_orientdb_records(schema_records, class_to_field_type
     """
     schema_query_data = toposort_classes([x.oRecordData for x in schema_records])
     schema_graph = SchemaGraph(schema_query_data)
+    # If the OrientDB base vertex class no properties defined, hide it since
+    # classes with no properties are not representable in the GraphQL schema.
+    base_vertex = schema_graph.get_element_by_class_name(ORIENTDB_BASE_VERTEX_CLASS_NAME)
+    if len(base_vertex.properties) == 0:
+        if hidden_classes is None:
+            hidden_classes = set()
+        hidden_classes.add(ORIENTDB_BASE_VERTEX_CLASS_NAME)
     return get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
                                                 hidden_classes)

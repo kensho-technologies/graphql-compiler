@@ -9,7 +9,6 @@ import pytest
 from graphql_compiler import ORIENTDB_SCHEMA_RECORDS_QUERY, get_graphql_schema_from_orientdb_records
 from graphql_compiler.tests import test_backend
 
-from ...schema_generation.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ..test_helpers import ORIENTDB_GENERATED_SCHEMA, compare_ignoring_whitespace, get_schema
 from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
 from .integration_test_helpers import (
@@ -174,7 +173,6 @@ class IntegrationTests(TestCase):
     @integration_fixtures
     def test_get_graphql_schema_from_orientdb_schema(self):
         schema_records = self.graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
-        schema, _ = get_graphql_schema_from_orientdb_records(
-            schema_records, hidden_classes={ORIENTDB_BASE_VERTEX_CLASS_NAME})
+        schema, _ = get_graphql_schema_from_orientdb_records(schema_records)
         compare_ignoring_whitespace(self, ORIENTDB_GENERATED_SCHEMA, print_schema(schema), None)
 # pylint: enable=no-member
