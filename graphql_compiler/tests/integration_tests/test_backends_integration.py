@@ -2,12 +2,15 @@
 from decimal import Decimal
 from unittest import TestCase
 
+from graphql.utils.schema_printer import print_schema
 from parameterized import parameterized
 import pytest
 
+from graphql_compiler import ORIENTDB_SCHEMA_RECORDS_QUERY, get_graphql_schema_from_orientdb_records
 from graphql_compiler.tests import test_backend
 
-from ..test_helpers import get_schema
+from ...schema_generation.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
+from ..test_helpers import ORIENTDB_GENERATED_SCHEMA, compare_ignoring_whitespace, get_schema
 from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
 from .integration_test_helpers import (
     compile_and_run_match_query, compile_and_run_sql_query, sort_db_results
@@ -168,4 +171,11 @@ class IntegrationTests(TestCase):
         ]
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
+    @integration_fixtures
+    def test_get_graphql_schema_from_orientdb_schema(self):
+        schema_records = self.graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+        schema, _ = get_graphql_schema_from_orientdb_records(schema_records,
+                                                             hidden_classes={
+                                                                 ORIENTDB_BASE_VERTEX_CLASS_NAME})
+        compare_ignoring_whitespace(self, ORIENTDB_GENERATED_SCHEMA, print_schema(schema), None)
 # pylint: enable=no-member

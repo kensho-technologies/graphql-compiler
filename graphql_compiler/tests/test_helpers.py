@@ -18,6 +18,138 @@ WHITESPACE_PATTERN = re.compile(u'[\t\n ]*', flags=re.UNICODE)
 # flag to indicate a test component should be skipped
 SKIP_TEST = 'SKIP'
 
+# String of a GraphQL schema generated from OrientDB. Used for future reference testing.
+ORIENTDB_GENERATED_SCHEMA = '''
+       schema {
+         query: RootSchemaQuery
+       }
+
+       directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
+
+       directive @tag(tag_name: String!) on FIELD
+
+       directive @output(out_name: String!) on FIELD
+
+       directive @output_source on FIELD
+
+       directive @optional on FIELD
+
+       directive @recurse(depth: Int!) on FIELD
+
+       directive @fold on FIELD
+
+       type Animal implements Entity {
+         _x_count: Int
+         alias: [String]
+         birthday: Date
+         color: String
+         description: String
+         in_Animal_ParentOf: [Animal]
+         in_Entity_Related: [Entity]
+         name: String
+         net_worth: Decimal
+         out_Animal_BornAt: [Union__BirthEvent__Event]
+         out_Animal_FedAt: [Union__BirthEvent__Event]
+         out_Animal_ImportantEvent: [Union__BirthEvent__Event]
+         out_Animal_OfSpecies: [Species]
+         out_Animal_ParentOf: [Animal]
+         out_Entity_Related: [Entity]
+         uuid: String
+       }
+
+       type BirthEvent implements Entity {
+         _x_count: Int
+         alias: [String]
+         description: String
+         event_date: Date
+         in_Animal_BornAt: [Animal]
+         in_Animal_FedAt: [Animal]
+         in_Animal_ImportantEvent: [Animal]
+         in_Entity_Related: [Entity]
+         name: String
+         out_Entity_Related: [Entity]
+         uuid: String
+       }
+
+       scalar Date
+
+       scalar Decimal
+
+       interface Entity {
+         _x_count: Int
+         alias: [String]
+         description: String
+         in_Entity_Related: [Entity]
+         name: String
+         out_Entity_Related: [Entity]
+         uuid: String
+       }
+
+       type Event implements Entity {
+         _x_count: Int
+         alias: [String]
+         description: String
+         event_date: Date
+         in_Animal_BornAt: [Animal]
+         in_Animal_FedAt: [Animal]
+         in_Animal_ImportantEvent: [Animal]
+         in_Entity_Related: [Entity]
+         name: String
+         out_Entity_Related: [Entity]
+         uuid: String
+       }
+
+       type Food implements Entity {
+         _x_count: Int
+         alias: [String]
+         description: String
+         in_Entity_Related: [Entity]
+         in_Species_Eats: [Species]
+         name: String
+         out_Entity_Related: [Entity]
+         uuid: String
+       }
+
+       type FoodOrSpecies implements Entity {
+         _x_count: Int
+         alias: [String]
+         description: String
+         in_Entity_Related: [Entity]
+         in_Species_Eats: [Species]
+         name: String
+         out_Entity_Related: [Entity]
+         uuid: String
+       }
+
+       type RootSchemaQuery {
+         Animal: Animal
+         BirthEvent: BirthEvent
+         Entity: Entity
+         Event: Event
+         Food: Food
+         FoodOrSpecies: FoodOrSpecies
+         Species: Species
+       }
+
+       type Species implements Entity {
+         _x_count: Int
+         alias: [String]
+         description: String
+         in_Animal_OfSpecies: [Animal]
+         in_Entity_Related: [Entity]
+         in_Species_Eats: [Species]
+         limbs: Int
+         name: String
+         out_Entity_Related: [Entity]
+         out_Species_Eats: [Union__Food__FoodOrSpecies__Species]
+         uuid: String
+       }
+
+       union Union__BirthEvent__Event = BirthEvent | Event
+
+       union Union__Food__FoodOrSpecies__Species = Food | FoodOrSpecies | Species
+   '''
+
 
 def transform(emitted_output):
     """Transform emitted_output into a unique representation, regardless of lines / indentation."""
