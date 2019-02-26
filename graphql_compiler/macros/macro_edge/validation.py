@@ -205,6 +205,8 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     # TODO(bojanserafimov): Check all the provided arguments were necessary
     # TODO(bojanserafimov): Check the arguments have the correct types
     # TODO(bojanserafimov): Check that there's no @output in the macro
+    # TODO(bojanserafimov): @macro_edge_target is not on a union type
+    # TODO(bojanserafimov): @macro_edge_target does not begin with a coercion
 
     _validate_class_selection_ast(
         get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast)

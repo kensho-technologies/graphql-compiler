@@ -186,66 +186,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
-    def test_macro_edge_target_coercion_2(self):
-        # TODO(bojanserafimov) is target on union type allowed?
-        query = '''{
-            Animal {
-                out_Animal_RelatedEvent {
-                   ... on Event {
-                       name @output(out_name: "event")
-                   }
-                }
-            }
-        }'''
-        args = {}
-
-        expected_query = '''{
-            Animal {
-                in_Entity_Related {
-                    ... on Event {
-                        name @output(out_name: "event")
-                    }
-                }
-            }
-        }'''
-        expected_args = {}
-
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
-        compare_graphql(self, expected_query, expanded_query)
-        self.assertEqual(expected_args, new_args)
-
-    @pytest.mark.skip(reason='not implemented')
-    def test_macro_edge_target_coercion_3(self):
-        # TODO(bojanserafimov) is target on union type allowed?
-        query = '''{
-            Animal {
-                out_Animal_RelatedEvent {
-                   ... on BirthEvent {
-                       name @output(out_name: "event")
-                   }
-                }
-            }
-        }'''
-        args = {}
-
-        expected_query = '''{
-            Animal {
-                in_Entity_Related {
-                    ... on BirthEvent {
-                        name @output(out_name: "event")
-                    }
-                }
-            }
-        }'''
-        expected_args = {}
-
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
-        compare_graphql(self, expected_query, expanded_query)
-        self.assertEqual(expected_args, new_args)
-
     def test_macro_edge_target_coercion_4(self):
         query = '''{
             Animal {
@@ -362,39 +302,6 @@ class MacroExpansionTests(unittest.TestCase):
         }'''
         expected_args = {
             'wanted': 'croissant'
-        }
-
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
-        compare_graphql(self, expected_query, expanded_query)
-        self.assertEqual(expected_args, new_args)
-
-    @pytest.mark.skip(reason='not implemented')
-    def test_macro_edge_target_coercion_with_filter_2(self):
-        query = '''{
-            Animal {
-                out_Animal_RelatedEvent {
-                   ... on BirthEvent @filter(op_name: "name_or_alias", value: ["$wanted"]){
-                       name @output(out_name: "event")
-                   }
-                }
-            }
-        }'''
-        args = {
-            'wanted': 'superbowl',
-        }
-
-        expected_query = '''{
-            Animal {
-                in_Entity_Related {
-                    ... on BirthEvent @filter(op_name: "name_or_alias", value: ["$wanted"]){
-                        name @output(out_name: "event")
-                    }
-                }
-            }
-        }'''
-        expected_args = {
-            'wanted': 'superbowl',
         }
 
         expanded_query, new_args = perform_macro_expansion(
