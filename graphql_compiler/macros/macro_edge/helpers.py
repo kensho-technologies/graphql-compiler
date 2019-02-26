@@ -3,9 +3,9 @@ from copy import copy
 
 from graphql.language.ast import Field, InlineFragment, OperationDefinition, SelectionSet
 
+from ...ast_manipulation import get_ast_field_name
+from ...compiler.helpers import get_field_type_from_schema, get_vertex_field_type
 from ..macro_edge.directives import MacroEdgeTargetDirective
-from ...compiler.helpers import get_vertex_field_type, get_field_type_from_schema
-from ...ast_manipulation import get_ast_field_name, get_only_selection_from_ast
 
 
 def _yield_ast_nodes_with_directives(ast):

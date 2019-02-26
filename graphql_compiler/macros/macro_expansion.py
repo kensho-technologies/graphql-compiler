@@ -211,7 +211,7 @@ def _expand_specific_macro_edge(schema, macro_ast, selection_ast, subclass_sets=
         else:
             if replacement_selection_ast is not None:
                 raise AssertionError(u'Found multiple @macro_edge_target directives. {}'
-                                     .format(macro_selection_set))
+                                     .format(macro_ast))
             replacement_selection_ast = new_ast
             type_at_target = get_type_at_target(schema, macro_ast)
             _merge_selection_into_target(target_ast, type_at_target.name,
@@ -219,7 +219,7 @@ def _expand_specific_macro_edge(schema, macro_ast, selection_ast, subclass_sets=
 
     if replacement_selection_ast is None:
         raise AssertionError(u'Found no @macro_edge_target directives in macro selection set. {}'
-                             .format(macro_selection_set))
+                             .format(macro_ast))
 
     return replacement_selection_ast, extra_selections
 
