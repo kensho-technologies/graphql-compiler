@@ -1,3 +1,4 @@
+# Copyright 2019-present Kensho Technologies, LLC.
 class SchemaError(Exception):
     """Base class for all errors related to the schema."""
 
