@@ -1,7 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from itertools import chain
 
-from frozendict import frozendict
 import six
 
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
@@ -127,8 +126,8 @@ class SchemaElement(object):
         self._class_name = class_name
         self._kind = kind
         self._abstract = abstract
-        self._properties = frozendict(properties)
-        self._class_fields = frozendict(class_fields)
+        self._properties = properties
+        self._class_fields = class_fields
 
         # In the schema graph, both vertices and edges are represented with vertices.
         # These dicts have the name of the adjacent schema vertex in the appropriate direction.
