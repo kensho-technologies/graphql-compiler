@@ -1,4 +1,8 @@
-class InvalidClassError(Exception):
+class SchemaError(Exception):
+    """Base class for all errors related to the schema."""
+
+
+class InvalidClassError(SchemaError):
     """Raised for two reasons, disambiguated by their message:
 
         - Class A was expected to be a subclass of class B, but that was found to not be the case.
@@ -9,11 +13,11 @@ class InvalidClassError(Exception):
     """
 
 
-class InvalidPropertyError(Exception):
+class InvalidPropertyError(SchemaError):
     """Raised when a class was expected to have a given property that did not actually exist."""
 
 
-class IllegalSchemaError(Exception):
+class IllegalSchemaStateError(SchemaError):
     """Raised when the schema loaded from OrientDB is in an illegal state.
 
     When loading the OrientDB schema, we check various invariants. For example,
@@ -29,5 +33,5 @@ class IllegalSchemaError(Exception):
     """
 
 
-class IllegalGraphQLRepresentationError(Exception):
+class IllegalGraphQLRepresentationError(SchemaError):
     """Raised when an OrientDB class has no valid GraphQL representation."""

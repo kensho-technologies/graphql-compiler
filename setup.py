@@ -58,12 +58,12 @@ setup(
     packages=find_packages(exclude=['tests*']),
     install_requires=[
         'arrow>=0.7.0',
+        'frozendict==1.2',
         'funcy>=1.6',
         'graphql-core==2.1',
         'pytz>=2016.10',
         'six>=1.10.0',
         'sqlalchemy>=1.2.1,<1.3',
-        'frozendict==1.2'
     ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',

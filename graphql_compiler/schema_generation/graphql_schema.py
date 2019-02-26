@@ -7,9 +7,10 @@ from graphql.type import (
 )
 import six
 
-from ...schema import (
+from graphql_compiler.schema import (
     DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 )
+
 from .exceptions import IllegalGraphQLRepresentationError
 from .schema_properties import (
     EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME, PROPERTY_TYPE_BOOLEAN_ID,

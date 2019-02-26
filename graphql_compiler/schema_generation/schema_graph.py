@@ -3,7 +3,7 @@ from itertools import chain
 from frozendict import frozendict
 import six
 
-from .exceptions import IllegalSchemaError, InvalidClassError, InvalidPropertyError
+from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME,
     ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
@@ -25,8 +25,8 @@ def _validate_edge_has_defined_endpoint_types(class_name, properties):
         edge_destination is not None and edge_destination.type_id == PROPERTY_TYPE_LINK_ID,
     ))
     if not has_defined_endpoint_types:
-        raise IllegalSchemaError(u'Found a non-abstract edge class with undefined or illegal '
-                                 u'in/out properties: {} {}'.format(class_name, properties))
+        raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
+                                      u'in/out properties: {} {}'.format(class_name, properties))
 
 
 def _validate_non_edges_do_not_have_edge_like_properties(class_name, properties):
@@ -35,13 +35,13 @@ def _validate_non_edges_do_not_have_edge_like_properties(class_name, properties)
     has_destination = EDGE_DESTINATION_PROPERTY_NAME in properties
 
     if has_source or has_destination:
-        raise IllegalSchemaError(u'Found a non-edge class that defines edge-like "in" or "out" '
-                                 u'properties: {} {}'.format(class_name, properties))
+        raise IllegalSchemaStateError(u'Found a non-edge class that defines edge-like "in" or '
+                                      u'"out" properties: {} {}'.format(class_name, properties))
 
     for property_name, property_descriptor in six.iteritems(properties):
         if property_descriptor.type_id == PROPERTY_TYPE_LINK_ID:
-            raise IllegalSchemaError(u'Non-edge class "{}" has a property of type Link, this is '
-                                     u'not allowed: {}'.format(class_name, property_name))
+            raise IllegalSchemaStateError(u'Non-edge class "{}" has a property of type Link, this '
+                                          u'is not allowed: {}'.format(class_name, property_name))
 
 
 def _validate_edges_do_not_have_extra_links(class_name, properties):
@@ -51,17 +51,17 @@ def _validate_edges_do_not_have_extra_links(class_name, properties):
             continue
 
         if property_descriptor.type_id == PROPERTY_TYPE_LINK_ID:
-            raise IllegalSchemaError(u'Edge class "{}" has a property of type Link that is not '
-                                     u'an edge endpoint, this is not allowed: '
-                                     u'{}'.format(class_name, property_name))
+            raise IllegalSchemaStateError(u'Edge class "{}" has a property of type Link that is'
+                                          u' not an edge endpoint, this is not allowed: '
+                                          u'{}'.format(class_name, property_name))
 
 
 def _validate_property_names(class_name, properties):
     """Validate that properties do not have names that may cause problems in the GraphQL schema."""
     for property_name in properties:
         if not property_name or property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES):
-            raise IllegalSchemaError(u'Class "{}" has a property with an illegal name: '
-                                     u'{}'.format(class_name, property_name))
+            raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
+                                          u'{}'.format(class_name, property_name))
 
 
 def _validate_collections_have_default_values(class_name, property_name, property_descriptor):
@@ -70,8 +70,8 @@ def _validate_collections_have_default_values(class_name, property_name, propert
     # unexpected errors during GraphQL query execution and other operations.
     if property_descriptor.type_id in COLLECTION_PROPERTY_TYPES:
         if property_descriptor.default is None:
-            raise IllegalSchemaError(u'Class "{}" has a property "{}" of collection type with '
-                                     u'no default value.'.format(class_name, property_name))
+            raise IllegalSchemaStateError(u'Class "{}" has a property "{}" of collection type with '
+                                          u'no default value.'.format(class_name, property_name))
 
 
 def get_superclasses_from_class_definition(class_definition):
@@ -370,7 +370,7 @@ class SchemaGraph(object):
 
     def _set_up_inheritance_and_subclass_sets(self, schema_query_result):
         """Load all inheritance data from the OrientDB schema query. Used as part of __init__."""
-        # For each class name, construct its inheritance set:
+        # For each class name, construct iisort ts inheritance set:
         # itself + the set of class names from which it inherits.
         for class_definition in schema_query_result:
             class_name = class_definition['name']
