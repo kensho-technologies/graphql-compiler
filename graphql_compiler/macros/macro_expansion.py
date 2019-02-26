@@ -12,7 +12,7 @@ from ..compiler.helpers import get_uniquely_named_objects_by_name, get_vertex_fi
 from ..exceptions import GraphQLCompilationError, GraphQLInvalidMacroError
 from ..schema import is_vertex_field_name
 from .macro_edge.directives import MacroEdgeTargetDirective
-from .macro_edge.helpers import find_target_and_copy_path_to_it, get_type_at_target
+from .macro_edge.helpers import find_target_and_copy_path_to_it, get_type_at_macro_edge_target
 
 
 def _merge_non_overlapping_dicts(merge_target, new_data):
@@ -158,9 +158,11 @@ def _merge_selection_into_target(target_ast, type_at_target, selection_ast, subc
         if isinstance(target_ast, InlineFragment):
             target_ast.type_condition = coercion.type_condition
         else:
-            target_ast.selection_set = SelectionSet([InlineFragment(
-                coercion.type_condition, target_ast.selection_set, directives=[])])
-            target_ast = target_ast.selection_set.selections[0]
+            # Slip a type coercion under the target ast
+            new_coercion = InlineFragment(coercion.type_condition,
+                                          target_ast.selection_set, directives=[])
+            target_ast.selection_set = SelectionSet([new_coercion])
+            target_ast = new_coercion
 
         # coercion_class is required to subclass type_at_target so we can merge the
         # macro selections inside the coercion, and merge the two coercions into one
@@ -213,7 +215,7 @@ def _expand_specific_macro_edge(schema, macro_ast, selection_ast, subclass_sets=
                 raise AssertionError(u'Found multiple @macro_edge_target directives. {}'
                                      .format(macro_ast))
             replacement_selection_ast = new_ast
-            type_at_target = get_type_at_target(schema, macro_ast)
+            type_at_target = get_type_at_macro_edge_target(schema, macro_ast)
             _merge_selection_into_target(target_ast, type_at_target.name,
                                          selection_ast, subclass_sets=subclass_sets)
 

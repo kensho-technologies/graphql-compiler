@@ -144,44 +144,44 @@ def find_target_and_copy_path_to_it(ast):
         return new_ast, target_ast
 
 
-def _get_type_at_target(schema, ast, current_type):
-    """Return type at target or none if there is no target."""
+def _get_type_at_macro_edge_target_using_current_type(schema, ast, current_type):
+    """Return type at the @macro_edge_target or None if there is no target."""
     # Base case
     for directive in ast.directives:
         if directive.name.value == MacroEdgeTargetDirective.name:
             return current_type
 
-    # Recurse
-    if isinstance(ast, (Field, InlineFragment, OperationDefinition)):
-        if ast.selection_set is not None:
-            for selection in ast.selection_set.selections:
-                type_in_selection = None
-                if isinstance(selection, Field):
-                    if selection.selection_set is not None:
-                        type_in_selection = get_vertex_field_type(
-                            current_type, selection.name.value)
-                elif isinstance(selection, InlineFragment):
-                    type_in_selection = schema.get_type(selection.type_condition.name.value)
-                else:
-                    raise AssertionError(u'Unexpected selection type received: {} {}'
-                                         .format(type(selection), selection))
-
-                if type_in_selection is not None:
-                    type_at_target = _get_type_at_target(schema, selection, type_in_selection)
-                    if type_at_target is not None:
-                        return type_at_target
-
-    else:
+    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
         raise AssertionError(u'Unexpected AST type received: {} {}'.format(type(ast), ast))
+
+    # Recurse
+    if ast.selection_set is not None:
+        for selection in ast.selection_set.selections:
+            type_in_selection = None
+            if isinstance(selection, Field):
+                if selection.selection_set is not None:
+                    type_in_selection = get_vertex_field_type(
+                        current_type, selection.name.value)
+            elif isinstance(selection, InlineFragment):
+                type_in_selection = schema.get_type(selection.type_condition.name.value)
+            else:
+                raise AssertionError(u'Unexpected selection type received: {} {}'
+                                     .format(type(selection), selection))
+
+            if type_in_selection is not None:
+                type_at_target = _get_type_at_macro_edge_target_using_current_type(
+                    schema, selection, type_in_selection)
+                if type_at_target is not None:
+                    return type_at_target
 
     return None  # Didn't find target
 
 
-def get_type_at_target(schema, ast):
-    """Return type at target or none if there is no target."""
+def get_type_at_macro_edge_target(schema, ast):
+    """Return type at the @macro_edge_target or None if there is no target."""
     root_type = get_ast_field_name(ast)
     root_schema_type = get_field_type_from_schema(schema.get_query_type(), root_type)
-    return _get_type_at_target(schema, ast, root_schema_type)
+    return _get_type_at_macro_edge_target_using_current_type(schema, ast, root_schema_type)
 
 
 def omit_ast_from_ast_selections(ast, ast_to_omit):
