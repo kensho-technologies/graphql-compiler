@@ -102,3 +102,20 @@ class MacroExpansionTests(unittest.TestCase):
         with self.assertRaises(GraphQLCompilationError):
             perform_macro_expansion(self.schema, self.macro_registry, query, args,
                                     subclass_sets=self.subclass_sets)
+
+    @pytest.mark.skip(reason='not implemented')
+    def test_macro_edge_target_on_union_type(self):
+        query = '''{
+            Animal @macro_edge_definition(name: "out_Animal_RelatedEvent") {
+                in_Entity_Related @macro_edge_target {
+                    ... on Event {
+                        uuid
+                    }
+                }
+            }
+        }'''
+        args = {}
+
+        with self.assertRaises(GraphQLCompilationError):
+            perform_macro_expansion(self.schema, self.macro_registry, query, args,
+                                    subclass_sets=self.subclass_sets)
