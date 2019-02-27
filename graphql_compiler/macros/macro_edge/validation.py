@@ -65,7 +65,6 @@ def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
                 .format(directive_definition.name, len(macro_data)))
 
 
-# TODO(bojanserafimov): Write tests for each case
 def _validate_macro_ast_directives(ast, inside_fold_scope=False):
     """Check that the macro is using non-macro direcives properly."""
     subselection_inside_fold_scope = inside_fold_scope
