@@ -320,18 +320,21 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     for non_graph_cls_name in schema_graph.non_graph_class_names:
         if non_graph_cls_name in hidden_classes:
             continue
+        if not schema_graph.get_element_by_class_name(non_graph_cls_name):
+            continue
 
         cls_subclasses = schema_graph.get_subclass_set(non_graph_cls_name)
         # No need to add the possible abstract class if it doesn't have subclasses besides itself.
         if len(cls_subclasses) > 1:
             all_non_abstract_subclasses_are_vertices = True
 
-            # Check if class is abstract and all non-abstract subclasses are vertices.
+            # Check all non-abstract subclasses are vertices.
             for subclass_name in cls_subclasses:
                 subclass = schema_graph.get_element_by_class_name(subclass_name)
-                if not subclass.abstract and not subclass.is_vertex:
-                    all_non_abstract_subclasses_are_vertices = False
-                    break
+                if subclass_name != non_graph_cls_name:
+                    if not subclass.abstract and not subclass.is_vertex:
+                        all_non_abstract_subclasses_are_vertices = False
+                        break
 
             if all_non_abstract_subclasses_are_vertices:
                 # Add abstract class as an interface.
