@@ -24,7 +24,6 @@ def init_snapshot_graph_client():
     return _init_graph_client(load_schema, generate_orient_snapshot_data)
 
 
-@pytest.fixture(scope='session')
 def init_integration_graph_client():
     """Return a client for an initialized db, with all test data imported."""
     return _init_graph_client(load_schema, generate_orient_integration_data)
@@ -57,9 +56,9 @@ def graph_client(request, init_snapshot_graph_client):
 
 
 @pytest.fixture(scope='class')
-def integration_graph_client(request, init_integration_graph_client):
+def integration_graph_client(request):
     """Get a client for an initialized db, with all test data imported."""
-    request.cls.graph_client = init_integration_graph_client
+    request.cls.graph_client = init_integration_graph_client()
 
 
 @pytest.fixture(scope='class')
