@@ -1,7 +1,12 @@
+import sys
+
 from graphql_compiler import (
     ORIENTDB_SCHEMA_RECORDS_QUERY, get_graphql_schema_from_orientdb_records, graphql_to_match
 )
 from graphql_compiler.tests.conftest import init_integration_graph_client
+
+
+sys.path.append('..')
 
 # Initialize dummy OrientDB database and get client
 client = init_integration_graph_client()
