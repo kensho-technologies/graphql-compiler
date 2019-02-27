@@ -125,7 +125,7 @@ def _merge_selection_into_target(target_ast, type_at_target, selection_ast, subc
 
     Args:
         target_ast: AST at the @macro_edge_target directive
-        type_at_target: str name of the type at the target
+        type_at_target: GraphQL type at the @macro_edge_target
         selection_ast: AST to merge inside the target. Required to have a nonempty selection set.
         subclass_sets: optional dict mapping class names to the set of its subclass names
     """
@@ -166,19 +166,18 @@ def _merge_selection_into_target(target_ast, type_at_target, selection_ast, subc
 
         # coercion_class is required to subclass type_at_target so we can merge the
         # macro selections inside the coercion, and merge the two coercions into one
-        if coercion_class != type_at_target:
+        if coercion_class != type_at_target.name:
             if subclass_sets is None:
                 # TODO(bojanserafimov): Write test for this failure
                 raise GraphQLCompilationError(
                     u'Cannot prove type coercion at macro target is valid. Please provide a '
                     u'hint that {} subclasses {} using the subclass_sets argument.'
-                    .format(coercion_class, type_at_target))
+                    .format(coercion_class, type_at_target.name))
             else:
-                if (type_at_target not in subclass_sets or
-                        coercion_class not in subclass_sets[type_at_target]):
-                    raise GraphQLCompilationError(u'Invalid type coercion at macro target. {} '
-                                                  u'is expected to subclass {}.'
-                                                  .format(coercion_class, type_at_target))
+                if coercion_class not in subclass_sets.get(type_at_target.name, set()):
+                    raise GraphQLCompilationError(
+                        u'Only coercions to a subclass are allowed at the macro edge target, but '
+                        u'{} is not a subclass of {}.'.format(coercion_class, type_at_target.name))
 
     # Merge the continuation into the target
     target_ast.directives += continuation_ast.directives
@@ -216,7 +215,7 @@ def _expand_specific_macro_edge(schema, macro_ast, selection_ast, subclass_sets=
                                      .format(macro_ast))
             replacement_selection_ast = new_ast
             type_at_target = get_type_at_macro_edge_target(schema, macro_ast)
-            _merge_selection_into_target(target_ast, type_at_target.name,
+            _merge_selection_into_target(target_ast, type_at_target,
                                          selection_ast, subclass_sets=subclass_sets)
 
     if replacement_selection_ast is None:

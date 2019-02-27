@@ -178,7 +178,7 @@ def _get_type_at_macro_edge_target_using_current_type(schema, ast, current_type)
 
 
 def get_type_at_macro_edge_target(schema, ast):
-    """Return type at the @macro_edge_target or None if there is no target."""
+    """Return the GraphQL type at the @macro_edge_target or None if there is no target."""
     root_type = get_ast_field_name(ast)
     root_schema_type = get_field_type_from_schema(schema.get_query_type(), root_type)
     return _get_type_at_macro_edge_target_using_current_type(schema, ast, root_schema_type)
