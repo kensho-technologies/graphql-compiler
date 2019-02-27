@@ -263,6 +263,8 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
                 if field_name in macro_edges_at_this_type:
                     macro_edge_descriptor = macro_edges_at_this_type[field_name]
 
+                    # TODO(bojanserafimov): Disallow @optional on macro expansion.
+                    # TODO(bojanserafimov): Disallow @recurse on macro expansion.
                     new_selection_ast, extra_selections = _expand_specific_macro_edge(
                         macro_edge_descriptor.expansion_selection_set, selection_ast,
                         subclass_sets=subclass_sets)
