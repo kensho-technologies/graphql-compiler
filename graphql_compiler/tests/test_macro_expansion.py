@@ -498,7 +498,6 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_tag_collision(self):
         query = '''{
             Animal {
@@ -515,7 +514,7 @@ class MacroExpansionTests(unittest.TestCase):
             Animal {
                 net_worth @tag(tag_name: "parent_net_worth")
                 in_Animal_ParentOf {
-                    net_worth @tag(tag_name: "parent_net_worth_1")
+                    net_worth @tag(tag_name: "parent_net_worth_copy_0")
                     out_Animal_ParentOf @macro_edge_target {
                         net_worth @filter(op_name: ">", value: ["%parent_net_worth_1"])
                                   @filter(op_name: ">", value: ["%parent_net_worth"])

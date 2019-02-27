@@ -12,7 +12,7 @@ from ..compiler.helpers import get_uniquely_named_objects_by_name, get_vertex_fi
 from ..exceptions import GraphQLCompilationError, GraphQLInvalidMacroError
 from ..schema import is_vertex_field_name
 from .macro_edge.directives import MacroEdgeTargetDirective
-from .macro_edge.helpers import find_target_and_copy_path_to_it
+from .macro_edge.helpers import find_target_and_copy_path_to_it, get_all_tag_names, replace_tag_names, generate_disambiguations
 
 
 def _merge_non_overlapping_dicts(merge_target, new_data):
@@ -198,9 +198,6 @@ def _expand_specific_macro_edge(macro_selection_set, selection_ast, subclass_set
     replacement_selection_ast = None
     extra_selections = []
 
-    # TODO(bojanserafimov): Rename macro tags if conflicting with user-defined tag names.
-    # TODO(bojanserafimov): Remove macro tags if the user has tagged the same field.
-
     for macro_ast in macro_selection_set.selections:
         new_ast, target_ast = find_target_and_copy_path_to_it(macro_ast)
         if target_ast is None:
@@ -220,7 +217,7 @@ def _expand_specific_macro_edge(macro_selection_set, selection_ast, subclass_set
 
 
 def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
-                                ast, query_args, subclass_sets=None):
+                                ast, query_args, tag_names, subclass_sets=None):
     """Return (new_ast, new_query_args) containing the AST after macro expansion.
 
     Args:
@@ -229,6 +226,7 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
         current_schema_type: GraphQL type object describing the current type at the given AST node
         ast: GraphQL AST object that potentially requires macro expansion
         query_args: dict mapping strings to any type, containing the arguments for the query
+        tag_names: set of names of tags currently in use. The set is mutated in this function.
         subclass_sets: optional dict mapping class names to the set of its subclass names
 
     Returns:
@@ -255,7 +253,7 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
             vertex_field_type = schema.get_type(selection_ast.type_condition.name.value)
             new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
                 schema, macro_registry, vertex_field_type,
-                selection_ast, new_query_args, subclass_sets=subclass_sets)
+                selection_ast, new_query_args, tag_names, subclass_sets=subclass_sets)
         else:
             field_name = get_ast_field_name(selection_ast)
             if is_vertex_field_name(field_name):
@@ -263,9 +261,14 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
                 if field_name in macro_edges_at_this_type:
                     macro_edge_descriptor = macro_edges_at_this_type[field_name]
 
+                    macro_tag_names = get_all_tag_names(macro_edge_descriptor.expansion_selection_set)
+                    name_change_map = generate_disambiguations(tag_names, macro_tag_names)
+                    tag_names |= set(name_change_map.values())
+                    sanitized_macro_ast = replace_tag_names(
+                        name_change_map, macro_edge_descriptor.expansion_selection_set)
+
                     new_selection_ast, extra_selections = _expand_specific_macro_edge(
-                        macro_edge_descriptor.expansion_selection_set, selection_ast,
-                        subclass_sets=subclass_sets)
+                        sanitized_macro_ast, selection_ast, subclass_sets=subclass_sets)
                     extra_selection_set = _merge_selection_sets(
                         SelectionSet(extra_selections), extra_selection_set)
 
@@ -282,7 +285,7 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
                 vertex_field_type = get_vertex_field_type(current_schema_type, field_name)
                 new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
                     schema, macro_registry, vertex_field_type, new_selection_ast, new_query_args,
-                    subclass_sets=subclass_sets)
+                    tag_names, subclass_sets=subclass_sets)
 
         if new_selection_ast is not selection_ast:
             made_changes = True
@@ -327,9 +330,11 @@ def expand_macros_in_query_ast(schema, macro_registry, query_ast, query_args, su
     base_start_type_name = get_ast_field_name(base_ast)
     query_type = schema.get_query_type()
     base_start_type = query_type.fields[base_start_type_name].type
+    tag_names = get_all_tag_names(base_ast)
 
     new_base_ast, new_query_args = _expand_macros_in_inner_ast(
-        schema, macro_registry, base_start_type, base_ast, query_args, subclass_sets=subclass_sets)
+        schema, macro_registry, base_start_type, base_ast, query_args,
+        tag_names, subclass_sets=subclass_sets)
 
     if new_base_ast is base_ast:
         # No macro expansion happened.
@@ -347,4 +352,5 @@ def expand_macros_in_query_ast(schema, macro_registry, query_ast, query_args, su
         new_query_ast = copy(query_ast)
         new_query_ast.definitions = [new_definition]
 
+    # TODO(bojanserafimov): Remove macro tags if the user has tagged the same field.
     return new_query_ast, new_query_args

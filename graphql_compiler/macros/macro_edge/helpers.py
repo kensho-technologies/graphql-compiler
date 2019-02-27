@@ -1,9 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 
-from graphql.language.ast import Field, InlineFragment, OperationDefinition, SelectionSet
+from graphql.language.ast import Field, InlineFragment, OperationDefinition, SelectionSet, Argument, Name, StringValue
 
 from ..macro_edge.directives import MacroEdgeTargetDirective
+from ...schema import TagDirective
 
 
 def _yield_ast_nodes_with_directives(ast):
@@ -49,6 +50,81 @@ def get_directives_for_ast(ast):
         result.setdefault(directive_name, []).append((ast, directive))
 
     return result
+
+
+def get_all_tag_names(ast):
+    """Return a set of strings containing tag names that appear in the query."""
+    return set()  # TODO(bojanserafimov): I need type_analysis to land
+    return {
+        # Schema validation has ensured this exists
+        directive.arguments[0].value.value
+        for ast, directive in _yield_ast_nodes_with_directives(ast)
+        if directive.name.value == TagDirective.name
+    }
+
+
+# TODO(bojanserafimov): This structure repeats a lot in this file. Implement as functor.
+def replace_tag_names(name_change_map, ast):
+    """Replace tag names that are already in use."""
+    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+        return ast
+
+    made_changes = False
+
+    new_selections = None
+    if ast.selection_set is not None:
+        new_selections = []
+        for selection_ast in ast.selection_set.selections:
+            new_selection_ast = remove_directives_from_ast(selection_ast, directive_names_to_omit)
+
+            if selection_ast is not new_selection_ast:
+                # Since we did not get the exact same object as the input, changes were made.
+                # That means this call will also need to make changes and return a new object.
+                made_changes = True
+
+            new_selections.append(new_selection_ast)
+
+    new_directives = []
+    for directive in ast.directives:
+        if directive.name.value == TagDirective.name:
+            # Schema validation has ensured this exists
+            current_name = directive.arguments[0].value.value
+            new_name = name_change_map[current_name]
+            renamed_tag_directive = copy(directive)
+            renamed_tag_directive.arguments = [Argument(Name('tag_name'), StringValue(new_name))]
+            new_directives.append(renamed_tag_directive)
+
+    if not made_changes:
+        # We didn't change anything, return the original input object.
+        return ast
+
+    new_ast = copy(ast)
+    new_ast.selection_set = SelectionSet(new_selections)
+    new_ast.directives = new_directives
+    return new_ast
+
+
+def generate_disambiguations(existing_names, new_names):
+    """Return a dict mapping the new names to similar names not conflicting with existing names.
+
+    Args:
+        existing_names: set of strings, the names that are already taken
+        new_names: set of strings, the names that might coincide with exisitng names
+
+    Returns:
+        dict mapping the new names to other unique names not present in existing_names
+    """
+    name_mapping = dict()
+    for name in new_names:
+        # We try adding different suffixes to disambiguate from the existing names. There will
+        # be no collisions among the disambiguations because they will all have unique prefixes.
+        disambiguation = name
+        index = 0
+        while disambiguation in existing_names:
+            disambiguation = disambiguation + '_copy_' + str(index)
+            index += 1
+        name_mapping[name] = disambiguation
+    return name_mapping
 
 
 def remove_directives_from_ast(ast, directive_names_to_omit):
