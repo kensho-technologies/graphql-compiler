@@ -24,7 +24,8 @@ python -m graphql_compiler.tool <input_file.graphql >output_file.graphql
 It's modeled after Python's `json.tool`, reading from stdin and writing to stdout.
 
 ## Table of contents
-  * [Code Sample](#description)
+  * [Features](#features)
+  * [Code Sample](#code-sample)
   * [Definitions](#definitions)
   * [Directives](#directives)
      * [@optional](#optional)
@@ -54,6 +55,10 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
   * [FAQ](#faq)
   * [License](#license)
+
+## Features
+* **Databases and Query Languages:** We currently support a single database, OrientDB version 2.2.28+, and two query languages that OrientDB supports: the OrientDB dialect of gremlin, and OrientDB's own custom SQL-like query language that we refer to as MATCH, after the name of its graph traversal operator. With OrientDB, MATCH should be the preferred choice for most users, since it tends to run faster than gremlin, and has other desirable properties. See the Execution model section for more details.
+* **GraphQL Language Features:**  We prioritized and implemented a subset of all functionality supported by the GraphQL language. We hope to add more functionality over time.
 
 ## Code Sample 
 ```python3
@@ -1336,12 +1341,7 @@ would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`
 }
 ```
 
-## FAQ
-
-**Q: Does the compiler support all GraphQL language features?**
-
-A: No. We prioritized and implemented a subset of all functionality supported by the
-   GraphQL language. We hope to add more functionality over time.
+##FAQ
 
 **Q: Do you really use GraphQL, or do you just use GraphQL-like syntax?**
 
@@ -1385,6 +1385,8 @@ A: Please check if an issue has already been created for the bug, and open a new
 A: Please reach out to us at
 [graphql-compiler-maintainer@kensho.com](mailto:graphql-compiler-maintainer@kensho.com)
 so we can triage the issue and take appropriate action.
+
+
 
 
 ## License
