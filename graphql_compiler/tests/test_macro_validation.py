@@ -3,7 +3,7 @@ import unittest
 
 import pytest
 
-from ..exceptions import GraphQLInvalidArgumentError, GraphQLInvalidMacroError
+from ..exceptions import GraphQLInvalidMacroError
 from ..macros import create_macro_registry, register_macro_edge
 from .test_helpers import get_schema
 
@@ -243,7 +243,7 @@ class MacroValidationTests(unittest.TestCase):
 
     def test_macro_edge_missing_args(self):
         query = '''{
-            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+            Animal @macro_edge_definition {
                 net_worth @filter(op_name: "=", value: ["$net_worth"])
                 color @filter(op_name: "=", value: ["$color"])
                 out_Animal_ParentOf {
@@ -258,13 +258,13 @@ class MacroValidationTests(unittest.TestCase):
         }
 
         macro_registry = create_macro_registry()
-        with self.assertRaises(GraphQLInvalidArgumentError):
+        with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
     def test_macro_edge_extra_args(self):
         query = '''{
-            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+            Animal @macro_edge_definition {
                 net_worth @filter(op_name: "=", value: ["$net_worth"])
                 color @filter(op_name: "=", value: ["$color"])
                 out_Animal_ParentOf {
@@ -281,29 +281,7 @@ class MacroValidationTests(unittest.TestCase):
         }
 
         macro_registry = create_macro_registry()
-        with self.assertRaises(GraphQLInvalidArgumentError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
-
-    def test_macro_edge_incorrect_arg_types(self):
-        query = '''{
-            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
-                net_worth @filter(op_name: "=", value: ["$net_worth"])
-                color @filter(op_name: "=", value: ["$color"])
-                out_Animal_ParentOf {
-                    out_Animal_ParentOf @macro_edge_target {
-                        uuid
-                    }
-                }
-            }
-        }'''
-        args = {
-            'net_worth': 'five_cows',
-            'color': 'green',
-        }
-
-        macro_registry = create_macro_registry()
-        with self.assertRaises(GraphQLInvalidArgumentError):
+        with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
