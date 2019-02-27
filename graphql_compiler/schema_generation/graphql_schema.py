@@ -320,7 +320,7 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     for non_graph_cls_name in schema_graph.non_graph_class_names:
         if non_graph_cls_name in hidden_classes:
             continue
-        if not schema_graph.get_element_by_class_name(non_graph_cls_name):
+        if not schema_graph.get_element_by_class_name(non_graph_cls_name).abstract:
             continue
 
         cls_subclasses = schema_graph.get_subclass_set(non_graph_cls_name)
