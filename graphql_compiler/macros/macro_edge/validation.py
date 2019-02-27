@@ -147,11 +147,11 @@ def _get_minimal_query_ast_from_macro_ast(macro_ast):
 
 MacroEdgeDescriptor = namedtuple(
     'MacroEdgeDescriptor', (
-        'expansion_selection_set',  # GraphQL SelectionSet object defining how the macro edge
-                                    # should be expanded starting from its base type. These
-                                    # selections must be merged (on both endpoints of the
-                                    # macro edge) with the user-supplied GraphQL input.
-        'macro_args',               # Dict[str, Any] containing any arguments required by the macro
+        'expansion_ast',  # GraphQL AST object defining how the macro edge
+                          # should be expanded starting from its base type. The
+                          # selections must be merged (on both endpoints of the
+                          # macro edge) with the user-supplied GraphQL input.
+        'macro_args',     # Dict[str, Any] containing any arguments required by the macro
     )
 )
 
@@ -205,6 +205,8 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     # TODO(bojanserafimov): Check all the provided arguments were necessary
     # TODO(bojanserafimov): Check the arguments have the correct types
     # TODO(bojanserafimov): Check that there's no @output in the macro
+    # TODO(bojanserafimov): @macro_edge_target is not on a union type
+    # TODO(bojanserafimov): @macro_edge_target does not begin with a coercion
 
     _validate_class_selection_ast(
         get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast)
@@ -227,4 +229,4 @@ def _make_macro_edge_descriptor(macro_definition_ast, macro_edge_args):
     }
     new_ast = remove_directives_from_ast(macro_definition_ast, directives_to_remove)
 
-    return MacroEdgeDescriptor(new_ast.selection_set, macro_edge_args)
+    return MacroEdgeDescriptor(new_ast, macro_edge_args)

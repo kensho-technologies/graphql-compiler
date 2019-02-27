@@ -3,6 +3,8 @@ from copy import copy
 
 from graphql.language.ast import Field, InlineFragment, OperationDefinition, SelectionSet, Argument, Name, StringValue
 
+from ...ast_manipulation import get_ast_field_name
+from ...compiler.helpers import get_field_type_from_schema, get_vertex_field_type
 from ..macro_edge.directives import MacroEdgeTargetDirective
 from ...schema import TagDirective
 
@@ -54,7 +56,6 @@ def get_directives_for_ast(ast):
 
 def get_all_tag_names(ast):
     """Return a set of strings containing tag names that appear in the query."""
-    return set()  # TODO(bojanserafimov): I need type_analysis to land
     return {
         # Schema validation has ensured this exists
         directive.arguments[0].value.value
@@ -75,7 +76,7 @@ def replace_tag_names(name_change_map, ast):
     if ast.selection_set is not None:
         new_selections = []
         for selection_ast in ast.selection_set.selections:
-            new_selection_ast = remove_directives_from_ast(selection_ast, directive_names_to_omit)
+            new_selection_ast = replace_tag_names(name_change_map, selection_ast)
 
             if selection_ast is not new_selection_ast:
                 # Since we did not get the exact same object as the input, changes were made.
@@ -191,11 +192,13 @@ def find_target_and_copy_path_to_it(ast):
         - GraphQL library AST object at the @target directive of the resulting AST, or None
           if there was no @target directive in the AST.
     """
+    # Base case
     for directive in ast.directives:
         if directive.name.value == MacroEdgeTargetDirective.name:
             target_ast = copy(ast)
             return target_ast, target_ast
 
+    # Recurse
     new_selections = []
     target_ast = None
     if isinstance(ast, (Field, InlineFragment, OperationDefinition)):
@@ -214,6 +217,46 @@ def find_target_and_copy_path_to_it(ast):
         new_ast = copy(ast)
         new_ast.selection_set = SelectionSet(new_selections)
         return new_ast, target_ast
+
+
+def _get_type_at_macro_edge_target_using_current_type(schema, ast, current_type):
+    """Return type at the @macro_edge_target or None if there is no target."""
+    # Base case
+    for directive in ast.directives:
+        if directive.name.value == MacroEdgeTargetDirective.name:
+            return current_type
+
+    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+        raise AssertionError(u'Unexpected AST type received: {} {}'.format(type(ast), ast))
+
+    # Recurse
+    if ast.selection_set is not None:
+        for selection in ast.selection_set.selections:
+            type_in_selection = None
+            if isinstance(selection, Field):
+                if selection.selection_set is not None:
+                    type_in_selection = get_vertex_field_type(
+                        current_type, selection.name.value)
+            elif isinstance(selection, InlineFragment):
+                type_in_selection = schema.get_type(selection.type_condition.name.value)
+            else:
+                raise AssertionError(u'Unexpected selection type received: {} {}'
+                                     .format(type(selection), selection))
+
+            if type_in_selection is not None:
+                type_at_target = _get_type_at_macro_edge_target_using_current_type(
+                    schema, selection, type_in_selection)
+                if type_at_target is not None:
+                    return type_at_target
+
+    return None  # Didn't find target
+
+
+def get_type_at_macro_edge_target(schema, ast):
+    """Return the GraphQL type at the @macro_edge_target or None if there is no target."""
+    root_type = get_ast_field_name(ast)
+    root_schema_type = get_field_type_from_schema(schema.get_query_type(), root_type)
+    return _get_type_at_macro_edge_target_using_current_type(schema, ast, root_schema_type)
 
 
 def omit_ast_from_ast_selections(ast, ast_to_omit):
