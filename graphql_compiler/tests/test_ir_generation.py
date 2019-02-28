@@ -585,9 +585,9 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Animal',
             child_location: 'Animal',
-            child_fed_at_location: 'Event',
+            child_fed_at_location: 'BirthEvent',
             child_revisited_location: 'Animal',
-            animal_fed_at_location: 'Event',
+            animal_fed_at_location: 'BirthEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -1053,13 +1053,13 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Animal',
             child_location: 'Animal',
-            child_fed_at_location: 'Event',
+            child_fed_at_location: 'BirthEvent',
             revisited_child_location: 'Animal',
             other_parent_location: 'Animal',
-            other_parent_fed_at_location: 'Event',
+            other_parent_fed_at_location: 'BirthEvent',
             other_parent_revisited_location: 'Animal',
             grandparent_location: 'Animal',
-            grandparent_fed_at_location: 'Event',
+            grandparent_fed_at_location: 'BirthEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -1191,13 +1191,13 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Animal',
             child_location: 'Animal',
-            child_fed_at_location: 'Event',
+            child_fed_at_location: 'BirthEvent',
             revisited_child_location: 'Animal',
             other_parent_location: 'Animal',
-            other_parent_fed_at_location: 'Event',
+            other_parent_fed_at_location: 'BirthEvent',
             other_parent_revisited_location: 'Animal',
             grandparent_location: 'Animal',
-            grandparent_fed_at_location: 'Event',
+            grandparent_fed_at_location: 'BirthEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2818,7 +2818,7 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Animal',
             base_parent_fold: 'Animal',
-            base_fed_at_fold: 'Event',
+            base_fed_at_fold: 'BirthEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -3887,9 +3887,9 @@ class IrGenerationTests(unittest.TestCase):
             base_location: 'Animal',
             parent_location: 'Animal',
             grandparent_location: 'Animal',
-            fed_at_location: 'Event',
+            fed_at_location: 'BirthEvent',
             parent_revisited_location: 'Animal',
-            animal_fed_at_location: 'Event',
+            animal_fed_at_location: 'BirthEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -4084,13 +4084,13 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Animal',
             parent_location: 'Animal',
-            parent_fed_at_location: 'Event',
+            parent_fed_at_location: 'BirthEvent',
             revisited_child_location: 'Animal',
             other_child_location: 'Animal',
-            other_child_fed_at_location: 'Event',
+            other_child_fed_at_location: 'BirthEvent',
             re_revisited_child_location: 'Animal',
             grandchild_location: 'Animal',
-            grandchild_fed_at_location: 'Event',
+            grandchild_fed_at_location: 'BirthEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -4193,7 +4193,7 @@ class IrGenerationTests(unittest.TestCase):
             child_location: 'Animal',
             grandchild_location: 'Animal',
             revisited_base_location: 'Animal',
-            child_fed_at_location: 'Event',
+            child_fed_at_location: 'BirthEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)

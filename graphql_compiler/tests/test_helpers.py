@@ -124,7 +124,7 @@ def get_schema():
             name: String
             net_worth: Decimal
             out_Animal_BornAt: [BirthEvent]
-            out_Animal_FedAt: [Event]
+            out_Animal_FedAt: [BirthEvent]
             out_Animal_ImportantEvent: [Union__BirthEvent__Event]
             out_Animal_LivesIn: [Location]
             out_Animal_OfSpecies: [Species]

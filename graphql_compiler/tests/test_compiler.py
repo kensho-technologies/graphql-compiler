@@ -4772,7 +4772,7 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
                     }}.out('Animal_FedAt') {{
-                        class: Event,
+                        class: BirthEvent,
                         as: Animal__out_Animal_ParentOf__out_Animal_ParentOf
                             __out_Animal_FedAt___1
                     }} ,
@@ -5269,7 +5269,7 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.out('Animal_FedAt') {{
-                        class: Event,
+                        class: BirthEvent,
                         as: Animal__in_Animal_ParentOf__out_Animal_FedAt___1
                     }}
                     RETURN $matches
