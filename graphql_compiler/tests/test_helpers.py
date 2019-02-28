@@ -94,7 +94,7 @@ def get_schema():
     # Instead, it aims to capture as many real-world edge cases as possible,
     # without requiring a massive number of types and interfaces.
     schema_text = '''
-        schema {
+   schema {
             query: RootSchemaQuery
         }
 
@@ -115,38 +115,38 @@ def get_schema():
 
         type Animal implements Entity {
             _x_count: Int
-            name: String
-            color: String
-            description: String
             alias: [String]
             birthday: Date
-            net_worth: Decimal
-            uuid: ID
-            out_Animal_ParentOf: [Animal]
+            color: String
+            description: String
             in_Animal_ParentOf: [Animal]
-            out_Animal_OfSpecies: [Species]
-            out_Animal_FedAt: [Event]
-            out_Animal_BornAt: [BirthEvent]
-            out_Animal_ImportantEvent: [Union__BirthEvent__Event]
             in_Entity_Related: [Entity]
-            out_Entity_Related: [Entity]
+            name: String
+            net_worth: Decimal
+            out_Animal_BornAt: [BirthEvent]
+            out_Animal_FedAt: [Event]
+            out_Animal_ImportantEvent: [Union__BirthEvent__Event]
             out_Animal_LivesIn: [Location]
+            out_Animal_OfSpecies: [Species]
+            out_Animal_ParentOf: [Animal]
+            out_Entity_Related: [Entity]
+            uuid: ID
         }
         
         type BirthEvent implements Entity {
             _x_count: Int
-            name: String
             alias: [String]
             description: String
-            uuid: ID
             event_date: DateTime
-            in_Animal_FedAt: [Animal]
             in_Animal_BornAt: [Animal]
+            in_Animal_FedAt: [Animal]
             in_Animal_ImportantEvent: [Animal]
             in_Entity_Related: [Entity]
+            in_Event_RelatedEvent: [Union__BirthEvent__Event]
+            name: String
             out_Entity_Related: [Entity]
             out_Event_RelatedEvent: [Union__BirthEvent__Event]
-            in_Event_RelatedEvent: [Union__BirthEvent__Event]
+            uuid: ID
         }
         
         scalar Decimal
@@ -157,64 +157,64 @@ def get_schema():
         
         interface Entity {
             _x_count: Int
-            name: String
             alias: [String]
             description: String
-            uuid: ID
             in_Entity_Related: [Entity]
+            name: String
             out_Entity_Related: [Entity]
+            uuid: ID
         }
         
         type Event implements Entity {
             _x_count: Int
-            name: String
             alias: [String]
             description: String
-            uuid: ID
             event_date: DateTime
             in_Animal_FedAt: [Animal]
             in_Animal_ImportantEvent: [Animal]
             in_Entity_Related: [Entity]
+            in_Event_RelatedEvent: [Union__BirthEvent__Event]
+            name: String
             out_Entity_Related: [Entity]
             out_Event_RelatedEvent: [Union__BirthEvent__Event]
-            in_Event_RelatedEvent: [Union__BirthEvent__Event]
+            uuid: ID
         }
         
         type Food implements Entity {
             _x_count: Int
+            alias: [String]
+            description: String
+            in_Entity_Related: [Entity]
+            in_Species_Eats: [Species]
             name: String
             origin: String
-            description: String
-            alias: [String]
-            uuid: ID
-            in_Species_Eats: [Species]
-            in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
+            uuid: ID
         }
         
         type RootSchemaQuery {
-            _x_count: Int
             Animal: Animal
             BirthEvent: BirthEvent
             Entity: Entity
             Event: Event
             Food: Food
-            Species: Species
             Location: Location
+            Species: Species
+            _x_count: Int
         }
         
         type Species implements Entity {
             _x_count: Int
-            name: String
-            description: String
             alias: [String]
-            limbs: Int
-            uuid: ID
-            out_Species_Eats: [Union__Food__FoodOrSpecies__Species]
-            in_Species_Eats: [Species]
+            description: String
             in_Animal_OfSpecies: [Animal]
             in_Entity_Related: [Entity]
+            in_Species_Eats: [Species]
+            limbs: Int
+            name: String
             out_Entity_Related: [Entity]
+            out_Species_Eats: [Union__Food__FoodOrSpecies__Species]
+            uuid: ID
         }
 
         union Union__Food__FoodOrSpecies__Species = Food | Species
@@ -226,9 +226,9 @@ def get_schema():
         
         type Location {
             _x_count: Int
+            in_Animal_LivesIn: [Animal]
             name: String
             uuid: ID
-            in_Animal_LivesIn: [Animal]
         }
     '''
 
