@@ -317,7 +317,7 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
             type_equivalence_hints[graphql_types[vertex_cls_name]] = union_type
 
     # Include all abstract non-vertex classes whose only non-abstract subclasses are vertices.
-    for non_graph_cls_name in schema_graph.non_graph_class_names:
+    for non_graph_cls_name in sorted(schema_graph.non_graph_class_names):
         if non_graph_cls_name in hidden_classes:
             continue
         if not schema_graph.get_element_by_class_name(non_graph_cls_name).abstract:
