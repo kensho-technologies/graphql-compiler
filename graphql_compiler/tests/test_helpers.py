@@ -112,20 +112,6 @@ def get_schema():
 
         directive @fold on FIELD
 
-        scalar Decimal
-
-        scalar DateTime
-
-        scalar Date
-
-        interface Entity {
-            name: String
-            alias: [String]
-            description: String
-            uuid: ID
-            in_Entity_Related: [Entity]
-            out_Entity_Related: [Entity]
-        }
 
         type Animal implements Entity {
             name: String
@@ -145,54 +131,7 @@ def get_schema():
             out_Entity_Related: [Entity]
             out_Animal_LivesIn: [Location]
         }
-
-        type Location {
-            name: String
-            uuid: ID
-            in_Animal_LivesIn: [Animal]
-        }
-
-        type Species implements Entity {
-            name: String
-            description: String
-            alias: [String]
-            limbs: Int
-            uuid: ID
-            out_Species_Eats: [FoodOrSpecies]
-            in_Species_Eats: [Species]
-            in_Animal_OfSpecies: [Animal]
-            in_Entity_Related: [Entity]
-            out_Entity_Related: [Entity]
-        }
-
-        type Food implements Entity {
-            name: String
-            origin: String
-            description: String
-            alias: [String]
-            uuid: ID
-            in_Species_Eats: [Species]
-            in_Entity_Related: [Entity]
-            out_Entity_Related: [Entity]
-        }
-
-        union FoodOrSpecies = Food | Species
-
-        type Event implements Entity {
-            name: String
-            alias: [String]
-            description: String
-            uuid: ID
-            event_date: DateTime
-            in_Animal_FedAt: [Animal]
-            in_Animal_ImportantEvent: [Animal]
-            in_Entity_Related: [Entity]
-            out_Entity_Related: [Entity]
-            out_Event_RelatedEvent: [EventOrBirthEvent]
-            in_Event_RelatedEvent: [EventOrBirthEvent]
-        }
-
-        # Assume that in the database, the below type is actually a subclass of Event.
+        
         type BirthEvent implements Entity {
             name: String
             alias: [String]
@@ -207,10 +146,47 @@ def get_schema():
             out_Event_RelatedEvent: [EventOrBirthEvent]
             in_Event_RelatedEvent: [EventOrBirthEvent]
         }
+        
+        scalar Decimal
 
-        # Because of the above, the base type for this union is Event.
-        union EventOrBirthEvent = Event | BirthEvent
+        scalar DateTime
 
+        scalar Date
+        
+        interface Entity {
+            name: String
+            alias: [String]
+            description: String
+            uuid: ID
+            in_Entity_Related: [Entity]
+            out_Entity_Related: [Entity]
+        }
+        
+        type Event implements Entity {
+            name: String
+            alias: [String]
+            description: String
+            uuid: ID
+            event_date: DateTime
+            in_Animal_FedAt: [Animal]
+            in_Animal_ImportantEvent: [Animal]
+            in_Entity_Related: [Entity]
+            out_Entity_Related: [Entity]
+            out_Event_RelatedEvent: [EventOrBirthEvent]
+            in_Event_RelatedEvent: [EventOrBirthEvent]
+        }
+        
+        type Food implements Entity {
+            name: String
+            origin: String
+            description: String
+            alias: [String]
+            uuid: ID
+            in_Species_Eats: [Species]
+            in_Entity_Related: [Entity]
+            out_Entity_Related: [Entity]
+        }
+        
         type RootSchemaQuery {
             Animal: Animal
             BirthEvent: BirthEvent
@@ -219,6 +195,32 @@ def get_schema():
             Food: Food
             Species: Species
             Location: Location
+        }
+        
+        type Species implements Entity {
+            name: String
+            description: String
+            alias: [String]
+            limbs: Int
+            uuid: ID
+            out_Species_Eats: [FoodOrSpecies]
+            in_Species_Eats: [Species]
+            in_Animal_OfSpecies: [Animal]
+            in_Entity_Related: [Entity]
+            out_Entity_Related: [Entity]
+        }
+
+        union FoodOrSpecies = Food | Species
+
+
+        # Because of the above, the base type for this union is Event.
+        union EventOrBirthEvent = Event | BirthEvent
+
+        
+        type Location {
+            name: String
+            uuid: ID
+            in_Animal_LivesIn: [Animal]
         }
     '''
 
