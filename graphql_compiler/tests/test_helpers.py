@@ -210,14 +210,14 @@ def get_schema():
             alias: [String]
             limbs: Int
             uuid: ID
-            out_Species_Eats: [FoodOrSpecies]
+            out_Species_Eats: [Union__Food__FoodOrSpecies__Species]
             in_Species_Eats: [Species]
             in_Animal_OfSpecies: [Animal]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
         }
 
-        union FoodOrSpecies = Food | Species
+        union Union__Food__FoodOrSpecies__Species = Food | Species
 
 
         # Because of the above, the base type for this union is Event.

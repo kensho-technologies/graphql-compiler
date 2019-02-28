@@ -749,8 +749,8 @@ Type coercions are represented with GraphQL inline fragments.
     }
 }
 ```
-Here, the `out_Species_Eats` vertex field is of the `FoodOrSpecies` union type. To proceed
-with the query, the user must choose which of the types in the `FoodOrSpecies` union to use.
+Here, the `out_Species_Eats` vertex field is of the `Union__Food__FoodOrSpecies__Species` union type. To proceed
+with the query, the user must choose which of the types in the `Union__Food__FoodOrSpecies__Species` union to use.
 In this example, `... on Food` indicates that the `Food` type was chosen, and any vertices
 at that scope that are not of type `Food` are filtered out and discarded.
 
