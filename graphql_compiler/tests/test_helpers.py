@@ -127,7 +127,7 @@ def get_schema():
             out_Animal_OfSpecies: [Species]
             out_Animal_FedAt: [Event]
             out_Animal_BornAt: [BirthEvent]
-            out_Animal_ImportantEvent: [EventOrBirthEvent]
+            out_Animal_ImportantEvent: [Union__BirthEvent__Event]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
             out_Animal_LivesIn: [Location]
@@ -145,8 +145,8 @@ def get_schema():
             in_Animal_ImportantEvent: [Animal]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
-            out_Event_RelatedEvent: [EventOrBirthEvent]
-            in_Event_RelatedEvent: [EventOrBirthEvent]
+            out_Event_RelatedEvent: [Union__BirthEvent__Event]
+            in_Event_RelatedEvent: [Union__BirthEvent__Event]
         }
         
         scalar Decimal
@@ -176,8 +176,8 @@ def get_schema():
             in_Animal_ImportantEvent: [Animal]
             in_Entity_Related: [Entity]
             out_Entity_Related: [Entity]
-            out_Event_RelatedEvent: [EventOrBirthEvent]
-            in_Event_RelatedEvent: [EventOrBirthEvent]
+            out_Event_RelatedEvent: [Union__BirthEvent__Event]
+            in_Event_RelatedEvent: [Union__BirthEvent__Event]
         }
         
         type Food implements Entity {
@@ -221,7 +221,7 @@ def get_schema():
 
 
         # Because of the above, the base type for this union is Event.
-        union EventOrBirthEvent = Event | BirthEvent
+        union Union__BirthEvent__Event = Event | BirthEvent
 
         
         type Location {

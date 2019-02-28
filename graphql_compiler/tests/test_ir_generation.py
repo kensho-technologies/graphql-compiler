@@ -2824,7 +2824,7 @@ class IrGenerationTests(unittest.TestCase):
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
     def test_coercion_to_union_base_type_inside_fold(self):
-        # Given type_equivalence_hints = { Event: EventOrBirthEvent },
+        # Given type_equivalence_hints = { Event: Union__BirthEvent__Event },
         # the coercion should be optimized away as a no-op.
         test_data = test_input_data.coercion_to_union_base_type_inside_fold()
 

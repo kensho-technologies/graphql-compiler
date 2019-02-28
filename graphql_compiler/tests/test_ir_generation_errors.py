@@ -1324,8 +1324,8 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
         invalid_type_equivalence_hints = {
-            'Event': 'EventOrBirthEvent',
-            'BirthEvent': 'EventOrBirthEvent',
+            'Event': 'Union__BirthEvent__Event',
+            'BirthEvent': 'Union__BirthEvent__Event',
         }
         with self.assertRaises(TypeError):
             graphql_to_ir(self.schema, valid_graphql_input,

@@ -2794,7 +2794,7 @@ class CompilerTests(unittest.TestCase):
             }
         }'''
         type_equivalence_hints = {
-            'Event': 'EventOrBirthEvent'
+            'Event': 'Union__BirthEvent__Event'
         }
 
         expected_match = '''
@@ -3458,7 +3458,7 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
     def test_coercion_to_union_base_type_inside_fold(self):
-        # Given type_equivalence_hints = { Event: EventOrBirthEvent },
+        # Given type_equivalence_hints = { Event: Union__BirthEvent__Event },
         # the coercion should be optimized away as a no-op.
         test_data = test_input_data.coercion_to_union_base_type_inside_fold()
 
