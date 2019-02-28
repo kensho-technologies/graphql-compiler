@@ -185,16 +185,38 @@ scalar Decimal
             uuid: ID
         }
         
-                type Food implements Entity, UniquelyIdentifiable {
-          _x_count: Int
-          alias: [String]
-          description: String
-          in_Entity_Related: [Entity]
-          in_Species_Eats: [Species]
-          name: String
-          out_Entity_Related: [Entity]
-          uuid: ID
-        }
+type Food implements Entity, UniquelyIdentifiable {
+  _x_count: Int
+  alias: [String]
+  description: String
+  in_Entity_Related: [Entity]
+  in_Species_Eats: [Species]
+  name: String
+  out_Entity_Related: [Entity]
+  uuid: ID
+}
+
+type FoodOrSpecies implements Entity, UniquelyIdentifiable {
+  _x_count: Int
+  alias: [String]
+  description: String
+  in_Entity_Related: [Entity]
+  in_Species_Eats: [Species]
+  name: String
+  out_Entity_Related: [Entity]
+  uuid: ID
+}
+
+type Location implements Entity, UniquelyIdentifiable {
+  _x_count: Int
+  alias: [String]
+  description: String
+  in_Animal_LivesIn: [Animal]
+  in_Entity_Related: [Entity]
+  name: String
+  out_Entity_Related: [Entity]
+  uuid: ID
+}
         
         type RootSchemaQuery {
             Animal: Animal

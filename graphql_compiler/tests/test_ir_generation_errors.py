@@ -620,12 +620,6 @@ class IrGenerationErrorTests(unittest.TestCase):
                     description @output(out_name: "description_text")
                 }
             }''',
-            '''{
-                Location @filter(op_name: "name_or_alias", value: ["$foo"]) {
-                    name @output(out_name: "name")
-                }
-            }''',
-
             # '=' must be on a property field, not a vertex field
             '''{
                 Event @filter(op_name: "=", value: ["$foo"]) {
