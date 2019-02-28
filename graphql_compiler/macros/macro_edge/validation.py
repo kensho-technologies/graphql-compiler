@@ -68,26 +68,32 @@ def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
 def _validate_macro_ast_directives(ast, inside_fold_scope=False):
     """Check that the macro is using non-macro direcives properly."""
     subselection_inside_fold_scope = inside_fold_scope
+    directives_with_no_restrictions = {
+        FilterDirective.name,
+        TagDirective.name,
+        OptionalDirective.name,
+        RecurseDirective.name,
+        MacroEdgeDefinitionDirective.name,
+    }
     for directive in ast.directives:
         name = directive.name.value
-        if name == FilterDirective.name:
-            pass
-        elif name == TagDirective.name:
+        if name in directives_with_no_restrictions:
             pass
         elif name == OutputDirective.name:
-            raise GraphQLInvalidMacroError(u'Macros should not have outputs.')
+            raise GraphQLInvalidMacroError(u'Macros must not have outputs. '
+                                           u'Found output directive {}'.format(directive))
         elif name == OutputSourceDirective.name:
-            raise GraphQLInvalidMacroError(u'Macros should not have output source directives.')
-        elif name == OptionalDirective.name:
-            pass
-        elif name == RecurseDirective.name:
-            pass
+            raise GraphQLInvalidMacroError(u'Macros must not have output source directives. '
+                                           u'Found an outut_source directive {}'.format(directive))
         elif name == FoldDirective.name:
             subselection_inside_fold_scope = True
         elif name == MacroEdgeTargetDirective.name:
             if inside_fold_scope:
                 raise GraphQLInvalidMacroError(
                     u'The @macro_edge_target cannot be inside a fold scope.')
+        else:
+            raise AssertionError(u'Unexpected directive name found: {} {}'.
+                                 format(directive.name.value, directive))
 
     if isinstance(ast, (Field, InlineFragment, OperationDefinition)):
         if ast.selection_set is not None:
