@@ -114,6 +114,7 @@ def get_schema():
 
 
         type Animal implements Entity {
+            _x_count: Int
             name: String
             color: String
             description: String
@@ -133,6 +134,7 @@ def get_schema():
         }
         
         type BirthEvent implements Entity {
+            _x_count: Int
             name: String
             alias: [String]
             description: String
@@ -154,6 +156,7 @@ def get_schema():
         scalar Date
         
         interface Entity {
+            _x_count: Int
             name: String
             alias: [String]
             description: String
@@ -163,6 +166,7 @@ def get_schema():
         }
         
         type Event implements Entity {
+            _x_count: Int
             name: String
             alias: [String]
             description: String
@@ -177,6 +181,7 @@ def get_schema():
         }
         
         type Food implements Entity {
+            _x_count: Int
             name: String
             origin: String
             description: String
@@ -188,6 +193,7 @@ def get_schema():
         }
         
         type RootSchemaQuery {
+            _x_count: Int
             Animal: Animal
             BirthEvent: BirthEvent
             Entity: Entity
@@ -198,6 +204,7 @@ def get_schema():
         }
         
         type Species implements Entity {
+            _x_count: Int
             name: String
             description: String
             alias: [String]
@@ -218,6 +225,7 @@ def get_schema():
 
         
         type Location {
+            _x_count: Int
             name: String
             uuid: ID
             in_Animal_LivesIn: [Animal]
@@ -226,7 +234,6 @@ def get_schema():
 
     ast = parse(schema_text)
     schema = build_ast_schema(ast)
-    insert_meta_fields_into_existing_schema(schema)
     return schema
 
 
