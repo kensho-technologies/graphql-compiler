@@ -93,8 +93,8 @@ def get_schema():
     # Instead, it aims to capture as many real-world edge cases as possible,
     # without requiring a massive number of types and interfaces.
     schema_text = '''
-          schema {
-          query: RootSchemaQuery
+        schema {
+            query: RootSchemaQuery
         }
 
         directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
