@@ -1,10 +1,7 @@
 ### UUIDs ###
-CREATE CLASS UniquelyIdentifiable
+CREATE CLASS UniquelyIdentifiable ABSTRACT
 CREATE PROPERTY UniquelyIdentifiable.uuid String
-# make uuid default to '' and insert such a record on purpose
-# this will ensure that no UniquelyIdentifiable is added without a valid uuid field
-ALTER PROPERTY UniquelyIdentifiable.uuid DEFAULT ''
-INSERT INTO UniquelyIdentifiable SET uuid = ''
+ALTER PROPERTY UniquelyIdentifiable.uuid MANDATORY TRUE
 CREATE INDEX UniquelyIdentifiable.uuid UNIQUE_HASH_INDEX
 ###############
 
@@ -32,6 +29,11 @@ CREATE CLASS Event EXTENDS Entity
 
 CREATE PROPERTY Event.event_date Date
 CREATE INDEX Event.event_date NOTUNIQUE
+
+CREATE CLASS Event_RelatedEvent EXTENDS E
+CREATE PROPERTY Event_RelatedEvent.in LINK Event
+CREATE PROPERTY Event_RelatedEvent.out LINK Event
+CREATE INDEX Event_RelatedEvent ON Event_RelatedEvent (in, out) UNIQUE_HASH_INDEX
 ###############
 
 
@@ -39,6 +41,9 @@ CREATE INDEX Event.event_date NOTUNIQUE
 CREATE CLASS BirthEvent EXTENDS Event
 ###############
 
+### Location ###
+CREATE CLASS Location EXTENDS Entity
+###############
 
 ### Animal ###
 CREATE CLASS Animal EXTENDS Entity
@@ -71,6 +76,11 @@ CREATE CLASS Animal_BornAt EXTENDS E
 CREATE PROPERTY Animal_BornAt.in LINK Event
 CREATE PROPERTY Animal_BornAt.out LINK Animal
 CREATE INDEX Animal_BornAt ON Animal_BornAt (in, out) UNIQUE_HASH_INDEX
+
+CREATE CLASS Animal_LivesIn EXTENDS E
+CREATE PROPERTY Animal_LivesIn.in LINK Location
+CREATE PROPERTY Animal_LivesIn.out LINK Animal
+CREATE INDEX Animal_LivesIn ON Animal_LivesIn (in, out) UNIQUE_HASH_INDEX
 ###############
 
 
