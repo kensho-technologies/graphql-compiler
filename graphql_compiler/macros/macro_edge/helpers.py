@@ -1,12 +1,12 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 
-from graphql.language.ast import Field, InlineFragment, OperationDefinition, SelectionSet, Argument, Name, StringValue
+from graphql.language.ast import Field, InlineFragment, OperationDefinition, SelectionSet, Argument, Name, StringValue, ListValue
 
 from ...ast_manipulation import get_ast_field_name
 from ...compiler.helpers import get_field_type_from_schema, get_vertex_field_type
 from ..macro_edge.directives import MacroEdgeTargetDirective
-from ...schema import TagDirective
+from ...schema import TagDirective, FilterDirective
 
 
 def _yield_ast_nodes_with_directives(ast):
@@ -64,6 +64,69 @@ def get_all_tag_names(ast):
     }
 
 
+def remove_duplicate_tags(non_macro_names, ast):
+    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+        return ast
+
+    made_changes = False
+    name_change_map = dict()
+
+    new_selection_set = None
+    if ast.selection_set is not None:
+        new_selections = []
+        for selection_ast in ast.selection_set.selections:
+            new_selection_ast, inner_name_change_map = remove_duplicate_tags(
+                non_macro_names, selection_ast)
+            name_change_map.update(inner_name_change_map)
+
+            if selection_ast is not new_selection_ast:
+                # Since we did not get the exact same object as the input, changes were made.
+                # That means this call will also need to make changes and return a new object.
+                made_changes = True
+
+            new_selections.append(new_selection_ast)
+        new_selection_set = SelectionSet(new_selections)
+
+    # Find which name to use, and remove all other tags
+    new_directives = ast.directives
+    tag_names = {
+        directive.arguments[0].value.value
+        for directive in ast.directives
+        if directive.name.value == TagDirective.name
+    }
+    made_changes = made_changes or len(tag_names) > 1
+    if tag_names:
+        name_to_use = None
+        user_specified_names = tag_names & non_macro_names
+        if len(user_specified_names) == 0:
+            name_to_use = min(tag_names, key=len)
+        elif len(user_specified_names) == 1:
+            name_to_use = next(iter(user_specified_names))
+        else:
+            raise GraphQLCompilationError(u'Multiple tags on the same field are not allowed: {}'
+                                          .format(user_specified_names))
+        name_change_map.update({
+            name: name_to_use
+            for name in tag_names
+        })
+        new_directives = [
+            directive
+            for directive in ast.directives
+            if (directive.name.value != TagDirective.name or
+                directive.arguments[0].value.value == name_to_use)
+        ]
+
+    if not made_changes:
+        # We didn't change anything, return the original input object.
+        return ast, name_change_map
+
+    new_ast = copy(ast)
+    new_ast.selection_set = new_selection_set
+    new_ast.directives = new_directives
+    return new_ast, name_change_map
+
+
+
 # TODO(bojanserafimov): This structure repeats a lot in this file. Implement as functor.
 def replace_tag_names(name_change_map, ast):
     """Replace tag names that are already in use."""
@@ -72,7 +135,7 @@ def replace_tag_names(name_change_map, ast):
 
     made_changes = False
 
-    new_selections = None
+    new_selection_set = None
     if ast.selection_set is not None:
         new_selections = []
         for selection_ast in ast.selection_set.selections:
@@ -84,23 +147,51 @@ def replace_tag_names(name_change_map, ast):
                 made_changes = True
 
             new_selections.append(new_selection_ast)
+        new_selection_set = SelectionSet(new_selections)
 
+    # Rename tag names in @tag and @filter directives, and record if we made changes
     new_directives = []
     for directive in ast.directives:
         if directive.name.value == TagDirective.name:
-            # Schema validation has ensured this exists
             current_name = directive.arguments[0].value.value
             new_name = name_change_map[current_name]
+            if new_name != current_name:
+                made_changes = True
             renamed_tag_directive = copy(directive)
             renamed_tag_directive.arguments = [Argument(Name('tag_name'), StringValue(new_name))]
             new_directives.append(renamed_tag_directive)
+        elif directive.name.value == FilterDirective.name:
+            filter_with_renamed_args = copy(directive)
+            filter_with_renamed_args.arguments = []
+            for argument in directive.arguments:
+                if argument.name.value == 'op_name':
+                    filter_with_renamed_args.arguments.append(argument)
+                elif argument.name.value == 'value':
+                    new_value_list = []
+                    for value in argument.value.values:
+                        if value.value.startswith('%'):
+                            current_name = value.value[1:]
+                            new_name = name_change_map[current_name]
+                            if new_name != current_name:
+                                made_changes = True
+                            new_value_list.append(StringValue('%' + new_name))
+                        else:
+                            new_value_list.append(value)
+                    filter_with_renamed_args.arguments.append(
+                        Argument(Name('value'), value=ListValue(new_value_list)))
+                else:
+                    raise AssertionError(u'Unknown argument name {} in filter'
+                                         .format(argument.name.value))
+            new_directives.append(filter_with_renamed_args)
+        else:
+            new_directives.append(directive)
 
     if not made_changes:
         # We didn't change anything, return the original input object.
         return ast
 
     new_ast = copy(ast)
-    new_ast.selection_set = SelectionSet(new_selections)
+    new_ast.selection_set = new_selection_set
     new_ast.directives = new_directives
     return new_ast
 
@@ -145,7 +236,7 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
 
     made_changes = False
 
-    new_selections = None
+    new_selection_set = None
     if ast.selection_set is not None:
         new_selections = []
         for selection_ast in ast.selection_set.selections:
@@ -157,6 +248,7 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
                 made_changes = True
 
             new_selections.append(new_selection_ast)
+        new_selection_set = SelectionSet(new_selections)
 
     directives_to_keep = [
         directive
@@ -171,7 +263,7 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
         return ast
 
     new_ast = copy(ast)
-    new_ast.selection_set = SelectionSet(new_selections)
+    new_ast.selection_set = new_selection_set
     new_ast.directives = directives_to_keep
     return new_ast
 
