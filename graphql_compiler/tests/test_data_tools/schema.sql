@@ -73,7 +73,7 @@ CREATE PROPERTY Animal_ImportantEvent.out LINK Animal
 CREATE INDEX Animal_ImportantEvent ON Animal_ImportantEvent (in, out) UNIQUE_HASH_INDEX
 
 CREATE CLASS Animal_BornAt EXTENDS E
-CREATE PROPERTY Animal_BornAt.in LINK Event
+CREATE PROPERTY Animal_BornAt.in LINK BirthEvent
 CREATE PROPERTY Animal_BornAt.out LINK Animal
 CREATE INDEX Animal_BornAt ON Animal_BornAt (in, out) UNIQUE_HASH_INDEX
 
