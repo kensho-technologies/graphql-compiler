@@ -1,12 +1,15 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 
-from graphql.language.ast import Field, InlineFragment, OperationDefinition, SelectionSet, Argument, Name, StringValue, ListValue
+from graphql.language.ast import (
+    Argument, Field, InlineFragment, ListValue, Name, OperationDefinition, SelectionSet,
+    StringValue
+)
 
 from ...ast_manipulation import get_ast_field_name
 from ...compiler.helpers import get_field_type_from_schema, get_vertex_field_type
+from ...schema import FilterDirective, TagDirective
 from ..macro_edge.directives import MacroEdgeTargetDirective
-from ...schema import TagDirective, FilterDirective
 
 
 def _yield_ast_nodes_with_directives(ast):
@@ -64,7 +67,20 @@ def get_all_tag_names(ast):
     }
 
 
-def remove_duplicate_tags(non_macro_names, ast):
+def _remove_colocated_tags(non_macro_names, ast):
+    """Return an AST with at most one tag per field by removing tags.
+
+    Args:
+        non_macro_names: set of tag names that the user wrote. We prefer keeping these names.
+        ast: GraphQL query AST object that potentially has multiple colocated tags. This AST
+             should not contain any duplicate tags (different tags with the same name).
+
+    Returns:
+        tuple (new_ast, name_change_map). new_ast is the ast with at most one tag per field.
+        name_change_map is a dict (string -> string) that contains the new name for each
+        tag name. Names of removed tags are mapped to the name of the colocated tag that was
+        not removed.
+    """
     if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
         return ast
 
@@ -75,7 +91,7 @@ def remove_duplicate_tags(non_macro_names, ast):
     if ast.selection_set is not None:
         new_selections = []
         for selection_ast in ast.selection_set.selections:
-            new_selection_ast, inner_name_change_map = remove_duplicate_tags(
+            new_selection_ast, inner_name_change_map = _remove_colocated_tags(
                 non_macro_names, selection_ast)
             name_change_map.update(inner_name_change_map)
 
@@ -103,8 +119,8 @@ def remove_duplicate_tags(non_macro_names, ast):
         elif len(user_specified_names) == 1:
             name_to_use = next(iter(user_specified_names))
         else:
-            raise GraphQLCompilationError(u'Multiple tags on the same field are not allowed: {}'
-                                          .format(user_specified_names))
+            raise AssertionError(u'Multiple tags on the same field are not allowed: {}'
+                                 .format(user_specified_names))
         name_change_map.update({
             name: name_to_use
             for name in tag_names
@@ -126,8 +142,6 @@ def remove_duplicate_tags(non_macro_names, ast):
     return new_ast, name_change_map
 
 
-
-# TODO(bojanserafimov): This structure repeats a lot in this file. Implement as functor.
 def replace_tag_names(name_change_map, ast):
     """Replace tag names that are already in use."""
     if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
@@ -194,6 +208,27 @@ def replace_tag_names(name_change_map, ast):
     new_ast.selection_set = new_selection_set
     new_ast.directives = new_directives
     return new_ast
+
+
+def merge_colocated_tags(non_macro_names, ast):
+    """Return an AST with at most one tag per field by removing tags and renaming their uses.
+
+    Filters that use the values of the removed tags will instead use the value of a different
+    tag that was on the same field and not removed.
+
+    Args:
+        non_macro_names: set of tag names that the user wrote. We prefer keeping these names.
+        ast: GraphQL query AST object that potentially has multiple colocated tags. This AST
+             should not contain any duplicate tags (different tags with the same name).
+
+    Returns:
+        tuple (new_ast, name_change_map). new_ast is the ast with at most one tag per field.
+        name_change_map is a dict (string -> string) that contains the new name for each
+        tag name. Names of removed tags are mapped to the name of the colocated tag that was
+        not removed.
+    """
+    deduplicated_ast, name_change_map = _remove_colocated_tags(non_macro_names, ast)
+    return replace_tag_names(name_change_map, deduplicated_ast)
 
 
 def generate_disambiguations(existing_names, new_names):

@@ -1,8 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import unittest
 
-import pytest
-
 from ..compiler.subclass import compute_subclass_sets
 from ..macros import perform_macro_expansion
 from .test_helpers import compare_graphql, get_schema, get_test_macro_registry

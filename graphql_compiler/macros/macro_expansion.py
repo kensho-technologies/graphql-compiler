@@ -12,7 +12,10 @@ from ..compiler.helpers import get_uniquely_named_objects_by_name, get_vertex_fi
 from ..exceptions import GraphQLCompilationError, GraphQLInvalidMacroError
 from ..schema import is_vertex_field_name
 from .macro_edge.directives import MacroEdgeTargetDirective
-from .macro_edge.helpers import find_target_and_copy_path_to_it, get_all_tag_names, replace_tag_names, generate_disambiguations, get_type_at_macro_edge_target, remove_duplicate_tags
+from .macro_edge.helpers import (
+    find_target_and_copy_path_to_it, generate_disambiguations, get_all_tag_names,
+    get_type_at_macro_edge_target, merge_colocated_tags, replace_tag_names
+)
 
 
 def _merge_non_overlapping_dicts(merge_target, new_data):
@@ -353,12 +356,10 @@ def expand_macros_in_query_ast(schema, macro_registry, query_ast, query_args, su
         new_query_ast = query_ast
         new_query_args = query_args
     else:
-        # Remove duplicate tags coming from macros
-        deduplicated_base_ast, name_change_map = remove_duplicate_tags(original_tag_names, new_base_ast)
-        final_base_ast = replace_tag_names(name_change_map, deduplicated_base_ast)
-
         new_definition = copy(definition_ast)
-        new_definition.selection_set = SelectionSet([final_base_ast])
+        new_definition.selection_set = SelectionSet([
+            merge_colocated_tags(original_tag_names, new_base_ast)
+        ])
 
         new_query_ast = copy(query_ast)
         new_query_ast.definitions = [new_definition]
