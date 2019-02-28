@@ -750,7 +750,7 @@ class IrGenerationErrorTests(unittest.TestCase):
     def test_property_field_after_vertex_field(self):
         # sanity check: the correctly-ordered version of the query compiles fine
         graphql_to_ir(self.schema, '''{
-            Event {
+            BirthEvent {
                 name @output(out_name: "name")
                 event_date @tag(tag_name: "date")
                 in_Animal_FedAt {
@@ -761,7 +761,7 @@ class IrGenerationErrorTests(unittest.TestCase):
 
         invalid_queries = (
             '''{
-                Event {
+                BirthEvent {
                     name @output(out_name: "name")
                     in_Animal_FedAt {
                         name @output(out_name: "animal")
@@ -769,7 +769,7 @@ class IrGenerationErrorTests(unittest.TestCase):
                     event_date @tag(tag_name: "date")
                 }
             }''', '''{
-                Event {
+                BirthEvent {
                     in_Animal_FedAt {
                         name @output(out_name: "animal")
                     }
