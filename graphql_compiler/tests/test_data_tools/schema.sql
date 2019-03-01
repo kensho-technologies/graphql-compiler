@@ -41,6 +41,10 @@ CREATE INDEX Event_RelatedEvent ON Event_RelatedEvent (in, out) UNIQUE_HASH_INDE
 CREATE CLASS BirthEvent EXTENDS Event
 ###############
 
+### FeedingEvent ###
+CREATE CLASS FeedingEvent EXTENDS Event
+###############
+
 ### Location ###
 CREATE CLASS Location EXTENDS Entity
 ###############
@@ -63,7 +67,7 @@ CREATE PROPERTY Animal_ParentOf.out LINK Animal
 CREATE INDEX Animal_ParentOf ON Animal_ParentOf (in, out) UNIQUE_HASH_INDEX
 
 CREATE CLASS Animal_FedAt EXTENDS E
-CREATE PROPERTY Animal_FedAt.in LINK BirthEvent
+CREATE PROPERTY Animal_FedAt.in LINK FeedingEvent
 CREATE PROPERTY Animal_FedAt.out LINK Animal
 CREATE INDEX Animal_FedAt ON Animal_FedAt (in, out) UNIQUE_HASH_INDEX
 
