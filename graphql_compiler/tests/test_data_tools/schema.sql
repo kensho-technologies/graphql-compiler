@@ -34,11 +34,13 @@ CREATE PROPERTY Event.event_date Date
 CREATE INDEX Event.event_date NOTUNIQUE
 ###############
 
+### FeedingEvent ###
+CREATE CLASS FeedingEvent EXTENDS Event
+###############
 
 ### BirthEvent ###
 CREATE CLASS BirthEvent EXTENDS Event
 ###############
-
 
 ### Animal ###
 CREATE CLASS Animal EXTENDS Entity
