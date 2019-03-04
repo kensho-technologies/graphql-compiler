@@ -30,8 +30,7 @@ def _check_is_string_value(value):
                                               u'{}'.format(value))
 
 
-# TODO(bojanserafimov): test this function
-def _validate_argument_type(expected_type, value):
+def validate_argument_type(expected_type, value):
     """Check if the value is appropriate for the type and usable in any of our backends.
 
     Backends are the database languages we have the ability to compile to, like OrientDB Match,
@@ -51,17 +50,17 @@ def _validate_argument_type(expected_type, value):
     elif GraphQLFloat.is_same_type(expected_type):
         if not isinstance(value, float):
             raise GraphQLInvalidArgumentError(u'Attempting to represent a non-float as a float: '
-                                              u'{}'.format(value))
+                                              u'{} {}'.format(type(value), value))
     elif GraphQLInt.is_same_type(expected_type):
         # Special case: in Python, isinstance(True, int) returns True.
         # Safeguard against this with an explicit check against bool type.
         if isinstance(value, bool) or not isinstance(value, six.integer_types):
             raise GraphQLInvalidArgumentError(u'Attempting to represent a non-int as an int: '
-                                              u'{}'.format(value))
+                                              u'{} {}'.format(type(value), value))
     elif GraphQLBoolean.is_same_type(expected_type):
         if not isinstance(value, bool):
             raise GraphQLInvalidArgumentError(u'Attempting to represent a non-bool as a bool: '
-                                              u'{}'.format(value))
+                                              u'{} {}'.format(type(value), value))
     elif GraphQLDecimal.is_same_type(expected_type):
         if not isinstance(value, decimal.Decimal):
             try:
@@ -71,7 +70,7 @@ def _validate_argument_type(expected_type, value):
     elif GraphQLDate.is_same_type(expected_type):
         if not isinstance(value, datetime.date):
             raise GraphQLInvalidArgumentError(u'Attempting to represent a non-date as a date: '
-                                              u'{}'.format(value))
+                                              u'{} {}'.format(type(value), value))
         try:
             expected_type.serialize(value)
         except ValueError as e:
@@ -79,7 +78,8 @@ def _validate_argument_type(expected_type, value):
     elif GraphQLDateTime.is_same_type(expected_type):
         if not isinstance(value, (datetime.date, arrow.Arrow)):
             raise GraphQLInvalidArgumentError(
-                u'Attempting to represent a non-datetime as a datetime: {}'.format(value))
+                u'Attempting to represent a non-datetime as a datetime: {} {}'
+                .format(type(value), value))
         try:
             expected_type.serialize(value)
         except ValueError as e:
@@ -87,10 +87,10 @@ def _validate_argument_type(expected_type, value):
     elif isinstance(expected_type, GraphQLList):
         if not isinstance(value, list):
             raise GraphQLInvalidArgumentError(u'Attempting to represent a non-list as a list: '
-                                              u'{}'.format(value))
+                                              u'{} {}'.format(type(value), value))
         inner_type = strip_non_null_from_type(expected_type.of_type)
         for element in value:
-            _validate_argument_type(element, inner_type)
+            validate_argument_type(inner_type, element)
     else:
         raise AssertionError(u'Could not safely represent the requested GraphQL type: '
                              u'{} {}'.format(expected_type, value))
@@ -108,7 +108,7 @@ def ensure_arguments_are_provided(expected_types, arguments):
                                           u'missing {}, unexpected '
                                           u'{}'.format(missing_args, unexpected_args))
     for name in expected_arg_names:
-        _validate_argument_type(expected_types[name], arguments[name])
+        validate_argument_type(expected_types[name], arguments[name])
 
 
 def insert_arguments_into_query(compilation_result, arguments):

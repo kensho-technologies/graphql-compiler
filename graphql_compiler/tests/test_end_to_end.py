@@ -1,11 +1,17 @@
 # Copyright 2017-present Kensho Technologies, LLC.
+import datetime
 from decimal import Decimal
 import unittest
+
+from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
+import pytz
 
 from .. import graphql_to_gremlin, graphql_to_match
 from ..compiler import compile_graphql_to_gremlin, compile_graphql_to_match
 from ..exceptions import GraphQLInvalidArgumentError
 from ..query_formatting import insert_arguments_into_query
+from ..query_formatting.common import validate_argument_type
+from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .test_helpers import compare_gremlin, compare_match, get_schema
 
 
@@ -153,3 +159,43 @@ class QueryFormattingTests(unittest.TestCase):
 
             with self.assertRaises(GraphQLInvalidArgumentError):
                 graphql_to_gremlin(schema, EXAMPLE_GRAPHQL_QUERY, {})
+
+    def test_argument_types(self):
+        test_cases = (
+            (GraphQLString, ('asdf',), (4, 5.4, True)),
+            (GraphQLID, ('13d72846-1777-6c3a-5743-5d9ced3032ed', 'asf'), (4,)),
+            (GraphQLFloat, (4.1, 4.0), ('4.3', 5)),
+            (GraphQLInt, (3, 4), (4.0, 4.1, True, False, '4')),
+            (GraphQLBoolean, (True, False,), ('True', 0, 1, 0.4)),
+            (GraphQLDecimal, (Decimal(4), True, 0.4, 4), ('sdfsdf')),
+            (
+                GraphQLDate, (
+                    datetime.date(2007, 12, 6),
+                    datetime.date(2008, 12, 6),
+                    datetime.date(2009, 12, 6),
+                    datetime.datetime(2007, 12, 6, 16, 29, 43, 79043),
+                ), (
+                    '2007-12-06',
+                )
+            ),
+            (
+                GraphQLDateTime, (
+                    datetime.datetime(2007, 12, 6, 16, 29, 43, 79043),
+                    datetime.datetime(2008, 12, 6, 16, 29, 43, 79043, tzinfo=pytz.utc),
+                    datetime.datetime(2009, 12, 6, 16, 29, 43, 79043,
+                                      tzinfo=pytz.timezone('US/Eastern')),
+                    datetime.datetime(2007, 12, 6),
+                ), (
+                    '2007-12-06 16:29:43',
+                    datetime.date(2007, 12, 6),
+                )
+            ),
+            (GraphQLList(GraphQLInt), ([], [1], [3, 5]), (4, ['a'], [1, 'a'], [True])),
+            (GraphQLList(GraphQLString), ([], ['a']), (1, 'a', ['a', 4])),
+        )
+        for graphql_type, valid_values, invalid_values in test_cases:
+            for valid_value in valid_values:
+                validate_argument_type(graphql_type, valid_value)
+            for invalid_value in invalid_values:
+                with self.assertRaises(GraphQLInvalidArgumentError):
+                    validate_argument_type(graphql_type, invalid_value)
