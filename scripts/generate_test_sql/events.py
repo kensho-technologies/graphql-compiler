@@ -11,7 +11,7 @@ FEEDING_EVENT_NAMES_LIST = (
 
 
 def _create_feeding_event_statement(event_name):
-    """Return a SQL statement to create a Event vertex."""
+    """Return a SQL statement to create a FeedingEvent vertex."""
     field_name_to_value = {'name': event_name, 'event_date': get_random_date(), 'uuid': get_uuid()}
     return create_vertex_statement('FeedingEvent', field_name_to_value)
 

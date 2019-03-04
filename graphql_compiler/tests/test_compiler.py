@@ -2815,7 +2815,7 @@ class CompilerTests(unittest.TestCase):
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Entity_Related')
-            .filter{it, m -> ['BirthEvent','Event','FeedingEvent'].contains(it['@class'])}
+            .filter{it, m -> ['BirthEvent', 'Event', 'FeedingEvent'].contains(it['@class'])}
             .as('Animal__out_Entity_Related___1')
             .back('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
