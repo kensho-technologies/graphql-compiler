@@ -620,12 +620,6 @@ class IrGenerationErrorTests(unittest.TestCase):
                     description @output(out_name: "description_text")
                 }
             }''',
-            '''{
-                Location @filter(op_name: "name_or_alias", value: ["$foo"]) {
-                    name @output(out_name: "name")
-                }
-            }''',
-
             # '=' must be on a property field, not a vertex field
             '''{
                 Event @filter(op_name: "=", value: ["$foo"]) {
@@ -750,7 +744,7 @@ class IrGenerationErrorTests(unittest.TestCase):
     def test_property_field_after_vertex_field(self):
         # sanity check: the correctly-ordered version of the query compiles fine
         graphql_to_ir(self.schema, '''{
-            Event {
+            FeedingEvent {
                 name @output(out_name: "name")
                 event_date @tag(tag_name: "date")
                 in_Animal_FedAt {
@@ -761,7 +755,7 @@ class IrGenerationErrorTests(unittest.TestCase):
 
         invalid_queries = (
             '''{
-                Event {
+                FeedingEvent {
                     name @output(out_name: "name")
                     in_Animal_FedAt {
                         name @output(out_name: "animal")
@@ -769,7 +763,7 @@ class IrGenerationErrorTests(unittest.TestCase):
                     event_date @tag(tag_name: "date")
                 }
             }''', '''{
-                Event {
+                FeedingEvent {
                     in_Animal_FedAt {
                         name @output(out_name: "animal")
                     }
@@ -1324,8 +1318,8 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }'''
         invalid_type_equivalence_hints = {
-            'Event': 'EventOrBirthEvent',
-            'BirthEvent': 'EventOrBirthEvent',
+            'Event': 'Union__BirthEvent__Event__FeedingEvent',
+            'BirthEvent': 'Union__BirthEvent__Event__FeedingEvent',
         }
         with self.assertRaises(TypeError):
             graphql_to_ir(self.schema, valid_graphql_input,
