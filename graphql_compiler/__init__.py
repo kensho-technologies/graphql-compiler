@@ -27,10 +27,11 @@ __package_name__ = 'graphql-compiler'
 __version__ = '1.10.0'
 
 # Match query used to generate OrientDB records that are themselves used to generate GraphQL schema.
-ORIENTDB_SCHEMA_RECORDS_QUERY = 'SELECT FROM (SELECT expand(classes) FROM metadata:schema) '\
-                                'WHERE name NOT IN [\'ORole\', \'ORestricted\', \'OTriggered\', '\
-                                '\'ORIDs\', \'OUser\', \'OIdentity\', \'OSchedule\', \'OFunction\']'
-
+ORIENTDB_SCHEMA_RECORDS_QUERY = (
+    'SELECT FROM (SELECT expand(classes) FROM metadata:schema) '
+    'WHERE name NOT IN [\'ORole\', \'ORestricted\', \'OTriggered\', '
+    '\'ORIDs\', \'OUser\', \'OIdentity\', \'OSchedule\', \'OFunction\']'
+)
 
 def graphql_to_match(schema, graphql_query, parameters, type_equivalence_hints=None):
     """Compile the GraphQL input using the schema into a MATCH query and associated metadata.
