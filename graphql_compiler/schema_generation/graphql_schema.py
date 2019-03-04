@@ -11,7 +11,7 @@ import six
 from ..schema import (
     DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 )
-from .exceptions import IllegalGraphQLRepresentationError
+from .exceptions import EmptySchemaError, IllegalGraphQLRepresentationError
 from .schema_properties import (
     EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME, PROPERTY_TYPE_BOOLEAN_ID,
     PROPERTY_TYPE_DATE_ID, PROPERTY_TYPE_DATETIME_ID, PROPERTY_TYPE_DECIMAL_ID,
@@ -190,17 +190,15 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
 
     Args:
         schema_graph: SchemaGraph
-        class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
-            (string -> {string -> GraphQLType}). Used to override the type of a field in the class
-            where it's first defined and all the the class's subclasses.
-        hidden_classes: optional set of Strings, classes to not include in the GraphQL schema.
+         class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
+                                       (string -> {string -> GraphQLType}. Used to override the
+                                       type of a field in the class where it's first defined and all
+                                       the the class's subclasses.
+        hidden_classes: optional set of strings, classes to not include in the GraphQL schema.
 
     Returns:
-        tuple (GraphQL schema object, GraphQL type equivalence hints dict), or (None, None)
-        if there is no schema data in the graph yet.
-        For example, the graph has no schema data if applying schema updates from the very
-        first update. We have to return None because the GraphQL library does not support
-        empty schema objects -- the root object must have some keys and values.
+        tuple of (GraphQL schema object, GraphQL type equivalence hints dict),
+        (GraphQLSchema, GraphQLUnionType).
     """
     if class_to_field_type_overrides is None:
         class_to_field_type_overrides = dict()
@@ -348,9 +346,8 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
                 graphql_types[non_graph_cls_name] = graphql_type
 
     if not graphql_types:
-        # After evaluating all subclasses of V, we weren't able to find any visible schema data
-        # to import into the GraphQL schema object.
-        return None, None
+        raise EmptySchemaError(u'After evaluating all subclasses of V, we were not able to find'
+                               u'visible schema data to import into the GraphQL schema object')
 
     # Create the root query GraphQL type. Consists of all non-union classes, i.e.
     # all non-abstract classes (as GraphQL types) and all abstract classes (as GraphQL interfaces).
