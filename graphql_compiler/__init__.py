@@ -77,7 +77,7 @@ def graphql_to_sql(schema, graphql_query, parameters, compiler_metadata,
         schema: GraphQL schema object describing the schema of the graph to be queried
         graphql_query: the GraphQL query to compile to SQL, as a string
         parameters: dict, mapping argument name to its value, for every parameter the query expects.
-        compiler_metadata: CompilerMetadata object, provides SQLAlchemy specific backend
+        compiler_metadata: SqlMetadata object, provides SQLAlchemy specific backend
                            information
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
                                 Used as a workaround for GraphQL's lack of support for
