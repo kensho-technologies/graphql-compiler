@@ -87,12 +87,19 @@ def _remove_colocated_tags(non_macro_names, ast):
     made_changes = False
     name_change_map = dict()
 
+    # Recurse
     new_selection_set = None
     if ast.selection_set is not None:
         new_selections = []
         for selection_ast in ast.selection_set.selections:
             new_selection_ast, inner_name_change_map = _remove_colocated_tags(
                 non_macro_names, selection_ast)
+
+            name_collisions = set(name_change_map.keys()) & set(inner_name_change_map.keys())
+            if name_collisions:
+                raise AssertionError(u'The ast should not contain multiple tags with '
+                                     u'the same name. Found duplicate on names: {}'
+                                     .format(name_collisions))
             name_change_map.update(inner_name_change_map)
 
             if selection_ast is not new_selection_ast:
@@ -105,11 +112,15 @@ def _remove_colocated_tags(non_macro_names, ast):
 
     # Find which name to use, and remove all other tags
     new_directives = ast.directives
-    tag_names = {
+    tag_name_list = [
         directive.arguments[0].value.value
         for directive in ast.directives
         if directive.name.value == TagDirective.name
-    }
+    ]
+    tag_names = set(tag_name_list)
+    if len(tag_name_list) != len(tag_names):
+        raise AssertionError(u'The ast should not contain multiple tags with '
+                             u'the same name. {}'.format(tag_name_list))
     made_changes = made_changes or len(tag_names) > 1
     if tag_names:
         name_to_use = None
