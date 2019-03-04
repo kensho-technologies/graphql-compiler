@@ -8,6 +8,7 @@ from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQL
 import six
 
 from ..compiler import GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LANGUAGE
+from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .gremlin_formatting import insert_arguments_into_gremlin_query
@@ -31,7 +32,16 @@ def _check_is_string_value(value):
 
 # TODO(bojanserafimov): test this function
 def _validate_argument_type(expected_type, value):
-    """Check if the value is appropriate for the type and usable in any of our backends."""
+    """Check if the value is appropriate for the type and usable in any of our backends.
+
+    Backends are the database languages we have the ability to compile to, like OrientDB Match,
+    Gramlin, or SQLAlchemy. This function should be stricter than the validation done by any
+    specific backend. That way code that passes validation can be compiled to any backend.
+
+    Args:
+        expected_type: GraphQL type we expect
+        value: object that can be interpreted as being of that type
+    """
     if GraphQLString.is_same_type(expected_type):
         _check_is_string_value(value)
     elif GraphQLID.is_same_type(expected_type):
@@ -62,20 +72,31 @@ def _validate_argument_type(expected_type, value):
         if not isinstance(value, datetime.date):
             raise GraphQLInvalidArgumentError(u'Attempting to represent a non-date as a date: '
                                               u'{}'.format(value))
+        try:
+            expected_type.serialize(value)
+        except ValueError as e:
+            raise GraphQLInvalidArgumentError(e)
     elif GraphQLDateTime.is_same_type(expected_type):
         if not isinstance(value, (datetime.date, arrow.Arrow)):
-            raise GraphQLInvalidArgumentError(u'Attempting to represent a non-date as a date: '
-                                              u'{}'.format(value))
+            raise GraphQLInvalidArgumentError(
+                u'Attempting to represent a non-datetime as a datetime: {}'.format(value))
+        try:
+            expected_type.serialize(value)
+        except ValueError as e:
+            raise GraphQLInvalidArgumentError(e)
     elif isinstance(expected_type, GraphQLList):
         if not isinstance(value, list):
             raise GraphQLInvalidArgumentError(u'Attempting to represent a non-list as a list: '
                                               u'{}'.format(value))
+        inner_type = strip_non_null_from_type(expected_type.of_type)
+        for element in value:
+            _validate_argument_type(element, inner_type)
     else:
         raise AssertionError(u'Could not safely represent the requested GraphQL type: '
                              u'{} {}'.format(expected_type, value))
 
 
-def ensure_arguments_are_provided(expected_types, arguments, check_types=False):
+def ensure_arguments_are_provided(expected_types, arguments):
     """Ensure that all arguments expected by the query were actually provided."""
     expected_arg_names = set(six.iterkeys(expected_types))
     provided_arg_names = set(six.iterkeys(arguments))
@@ -86,9 +107,8 @@ def ensure_arguments_are_provided(expected_types, arguments, check_types=False):
         raise GraphQLInvalidArgumentError(u'Missing or unexpected arguments found: '
                                           u'missing {}, unexpected '
                                           u'{}'.format(missing_args, unexpected_args))
-    if check_types:
-        for name in expected_arg_names:
-            _validate_argument_type(expected_types[name], arguments[name])
+    for name in expected_arg_names:
+        _validate_argument_type(expected_types[name], arguments[name])
 
 
 def insert_arguments_into_query(compilation_result, arguments):

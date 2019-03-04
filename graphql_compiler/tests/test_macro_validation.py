@@ -225,7 +225,9 @@ class MacroValidationTests(unittest.TestCase):
             }
         }'''
         args = {
-            'net_worth': 'five_cows',
+            # Expecting GraphQLInt for net_worth, but providing string.
+            # Only valid values are six.integer_types minus bool.
+            'net_worth': 'incorrect_net_worth_type',
             'color': 'green',
         }
 
