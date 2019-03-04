@@ -10,10 +10,10 @@ def toposort_classes(classes):
             class_name: string, name of the class to process
             name_to_class: dict, class_name -> descriptor
             processed_classes: set of strings, a set of classes that have already been processed
-            current_trace: list of strings, list of classes traversed during the recursion.
+            current_trace: list of strings, list of classes traversed during the recursion
 
         Returns:
-            element of classes list sorted in topological order
+            list of dicts, list of classes sorted in topological order
         """
         # Check if this class has already been handled
         if class_name in processed_classes:
@@ -52,7 +52,7 @@ def toposort_classes(classes):
 
     toposorted = []
     for name in class_map.keys():
-        toposorted.extend(get_class_topolist(name, class_map, seen_classes, set([])))
+        toposorted.extend(get_class_topolist(name, class_map, seen_classes, set()))
     return toposorted
 
 
