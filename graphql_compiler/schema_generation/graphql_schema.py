@@ -197,8 +197,8 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
         hidden_classes: optional set of strings, classes to not include in the GraphQL schema.
 
     Returns:
-        tuple of (GraphQL schema object, GraphQL type equivalence hints dict),
-        (GraphQLSchema, GraphQLUnionType).
+        tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
+        The tuple is of type (GraphQLSchema, GraphQLUnionType).
     """
     if class_to_field_type_overrides is None:
         class_to_field_type_overrides = dict()

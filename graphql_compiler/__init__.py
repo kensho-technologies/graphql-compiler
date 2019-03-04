@@ -158,8 +158,8 @@ def get_graphql_schema_from_orientdb_records(schema_records, class_to_field_type
         hidden_classes: optional set of strings, classes to not include in the GraphQL schema.
 
     Returns:
-        tuple of (GraphQL schema object, GraphQL type equivalence hints dict),
-        (GraphQLSchema, GraphQLUnionType).
+        tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
+        The tuple is of type (GraphQLSchema, GraphQLUnionType).
     """
     schema_query_data = toposort_classes([x.oRecordData for x in schema_records])
     schema_graph = SchemaGraph(schema_query_data)
