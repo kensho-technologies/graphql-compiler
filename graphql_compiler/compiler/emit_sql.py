@@ -30,7 +30,7 @@ CompilationContext = namedtuple('CompilationContext', (
     # 'query_path_to_node': Dict[Tuple[str, ...], SqlNode], mapping from each
     # query_path to the SqlNode located at that query_path.
     'query_path_to_node',
-    # 'compiler_metadata': CompilerMetadata, SQLAlchemy metadata about Table objects, and
+    # 'compiler_metadata': SqlMetadata, SQLAlchemy metadata about Table objects, and
     # further backend specific configuration.
     'compiler_metadata',
 ))
@@ -41,7 +41,7 @@ def emit_code_from_ir(sql_query_tree, compiler_metadata):
 
     Args:
         sql_query_tree: SqlQueryTree, tree representation of the query to emit.
-        compiler_metadata: CompilerMetadata, SQLAlchemy specific metadata.
+        compiler_metadata: SqlMetadata, SQLAlchemy specific metadata.
 
     Returns:
         SQLAlchemy Query
