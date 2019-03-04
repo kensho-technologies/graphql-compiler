@@ -17,214 +17,11 @@ WHITESPACE_PATTERN = re.compile(u'[\t\n ]*', flags=re.UNICODE)
 # flag to indicate a test component should be skipped
 SKIP_TEST = 'SKIP'
 
-# String of a GraphQL schema generated from OrientDB. Used for future reference testing.
-ORIENTDB_GENERATED_SCHEMA = '''
-       schema {
-         query: RootSchemaQuery
-       }
-
-       directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
-
-       directive @tag(tag_name: String!) on FIELD
-
-       directive @output(out_name: String!) on FIELD
-
-       directive @output_source on FIELD
-
-       directive @optional on FIELD
-
-       directive @recurse(depth: Int!) on FIELD
-
-       directive @fold on FIELD
-
-       type Animal implements Entity {
-         _x_count: Int
-         alias: [String]
-         birthday: Date
-         color: String
-         description: String
-         in_Animal_ParentOf: [Animal]
-         in_Entity_Related: [Entity]
-         name: String
-         net_worth: Decimal
-         out_Animal_BornAt: [Union__BirthEvent__Event]
-         out_Animal_FedAt: [Union__BirthEvent__Event]
-         out_Animal_ImportantEvent: [Union__BirthEvent__Event]
-         out_Animal_OfSpecies: [Species]
-         out_Animal_ParentOf: [Animal]
-         out_Entity_Related: [Entity]
-         uuid: String
-       }
-
-       type BirthEvent implements Entity {
-         _x_count: Int
-         alias: [String]
-         description: String
-         event_date: Date
-         in_Animal_BornAt: [Animal]
-         in_Animal_FedAt: [Animal]
-         in_Animal_ImportantEvent: [Animal]
-         in_Entity_Related: [Entity]
-         name: String
-         out_Entity_Related: [Entity]
-         uuid: String
-       }
-
-       scalar Date
-
-       scalar Decimal
-
-       interface Entity {
-         _x_count: Int
-         alias: [String]
-         description: String
-         in_Entity_Related: [Entity]
-         name: String
-         out_Entity_Related: [Entity]
-         uuid: String
-       }
-
-       type Event implements Entity {
-         _x_count: Int
-         alias: [String]
-         description: String
-         event_date: Date
-         in_Animal_BornAt: [Animal]
-         in_Animal_FedAt: [Animal]
-         in_Animal_ImportantEvent: [Animal]
-         in_Entity_Related: [Entity]
-         name: String
-         out_Entity_Related: [Entity]
-         uuid: String
-       }
-
-       type Food implements Entity {
-         _x_count: Int
-         alias: [String]
-         description: String
-         in_Entity_Related: [Entity]
-         in_Species_Eats: [Species]
-         name: String
-         out_Entity_Related: [Entity]
-         uuid: String
-       }
-
-       type FoodOrSpecies implements Entity {
-         _x_count: Int
-         alias: [String]
-         description: String
-         in_Entity_Related: [Entity]
-         in_Species_Eats: [Species]
-         name: String
-         out_Entity_Related: [Entity]
-         uuid: String
-       }
-
-       type RootSchemaQuery {
-         Animal: Animal
-         BirthEvent: BirthEvent
-         Entity: Entity
-         Event: Event
-         Food: Food
-         FoodOrSpecies: FoodOrSpecies
-         Species: Species
-       }
-
-       type Species implements Entity {
-         _x_count: Int
-         alias: [String]
-         description: String
-         in_Animal_OfSpecies: [Animal]
-         in_Entity_Related: [Entity]
-         in_Species_Eats: [Species]
-         limbs: Int
-         name: String
-         out_Entity_Related: [Entity]
-         out_Species_Eats: [Union__Food__FoodOrSpecies__Species]
-         uuid: String
-       }
-
-       union Union__BirthEvent__Event = BirthEvent | Event
-
-       union Union__Food__FoodOrSpecies__Species = Food | FoodOrSpecies | Species
-   '''
-
-
-def transform(emitted_output):
-    """Transform emitted_output into a unique representation, regardless of lines / indentation."""
-    return WHITESPACE_PATTERN.sub(u'', emitted_output)
-
-
-def _get_mismatch_message(expected_blocks, received_blocks):
-    """Create a well-formated error message indicating that two lists of blocks are mismatched."""
-    pretty_expected = pformat(expected_blocks)
-    pretty_received = pformat(received_blocks)
-    return u'{}\n\n!=\n\n{}'.format(pretty_expected, pretty_received)
-
-
-def compare_ir_blocks(test_case, expected_blocks, received_blocks):
-    """Compare the expected and received IR blocks."""
-    mismatch_message = _get_mismatch_message(expected_blocks, received_blocks)
-
-    if len(expected_blocks) != len(received_blocks):
-        test_case.fail(u'Not the same number of blocks:\n\n'
-                       u'{}'.format(mismatch_message))
-
-    for i in six.moves.xrange(len(expected_blocks)):
-        expected = expected_blocks[i]
-        received = received_blocks[i]
-        test_case.assertEqual(expected, received,
-                              msg=u'Blocks at position {} were different: {} vs {}\n\n'
-                                  u'{}'.format(i, expected, received, mismatch_message))
-
-
-def compare_match(test_case, expected, received, parameterized=True):
-    """Compare the expected and received MATCH code, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(
-        pretty_print_match(expected, parameterized=parameterized),
-        pretty_print_match(received, parameterized=parameterized))
-    compare_ignoring_whitespace(test_case, expected, received, msg)
-
-
-def compare_sql(test_case, expected, received):
-    """Compare the expected and received SQL query, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(expected, received)
-    compare_ignoring_whitespace(test_case, expected, received, msg)
-
-
-def compare_gremlin(test_case, expected, received):
-    """Compare the expected and received Gremlin code, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(
-        pretty_print_gremlin(expected),
-        pretty_print_gremlin(received))
-    compare_ignoring_whitespace(test_case, expected, received, msg)
-
-
-def compare_input_metadata(test_case, expected, received):
-    """Compare two dicts of input metadata, using proper GraphQL type comparison operators."""
-    # First, assert that the sets of keys in both dicts are equal.
-    test_case.assertEqual(set(six.iterkeys(expected)), set(six.iterkeys(received)))
-
-    # Then, compare the values for each key in both dicts.
-    for key in six.iterkeys(expected):
-        expected_value = expected[key]
-        received_value = received[key]
-
-        test_case.assertTrue(expected_value.is_same_type(received_value),
-                             msg=u'{} != {}'.format(str(expected_value), str(received_value)))
-
-
-def compare_ignoring_whitespace(test_case, expected, received, msg):
-    """Compare expected and received code, ignoring whitespace, with the given failure message."""
-    test_case.assertEqual(transform(expected), transform(received), msg=msg)
-
-
-def get_schema():
-    """Get a schema object for testing."""
-    # This schema isn't meant to be a paragon of good schema design.
-    # Instead, it aims to capture as many real-world edge cases as possible,
-    # without requiring a massive number of types and interfaces.
-    schema_text = '''
+# Text representation of a GraphQL schema generated from OrientDB.
+# This schema isn't meant to be a paragon of good schema design.
+# Instead, it aims to capture as many real-world edge cases as possible,
+# without requiring a massive number of types and interfaces.
+SCHEMA_TEXT = '''
         schema {
           query: RootSchemaQuery
         }
@@ -393,7 +190,79 @@ def get_schema():
         }
     '''
 
-    ast = parse(schema_text)
+
+def transform(emitted_output):
+    """Transform emitted_output into a unique representation, regardless of lines / indentation."""
+    return WHITESPACE_PATTERN.sub(u'', emitted_output)
+
+
+def _get_mismatch_message(expected_blocks, received_blocks):
+    """Create a well-formated error message indicating that two lists of blocks are mismatched."""
+    pretty_expected = pformat(expected_blocks)
+    pretty_received = pformat(received_blocks)
+    return u'{}\n\n!=\n\n{}'.format(pretty_expected, pretty_received)
+
+
+def compare_ir_blocks(test_case, expected_blocks, received_blocks):
+    """Compare the expected and received IR blocks."""
+    mismatch_message = _get_mismatch_message(expected_blocks, received_blocks)
+
+    if len(expected_blocks) != len(received_blocks):
+        test_case.fail(u'Not the same number of blocks:\n\n'
+                       u'{}'.format(mismatch_message))
+
+    for i in six.moves.xrange(len(expected_blocks)):
+        expected = expected_blocks[i]
+        received = received_blocks[i]
+        test_case.assertEqual(expected, received,
+                              msg=u'Blocks at position {} were different: {} vs {}\n\n'
+                                  u'{}'.format(i, expected, received, mismatch_message))
+
+
+def compare_match(test_case, expected, received, parameterized=True):
+    """Compare the expected and received MATCH code, ignoring whitespace."""
+    msg = '\n{}\n\n!=\n\n{}'.format(
+        pretty_print_match(expected, parameterized=parameterized),
+        pretty_print_match(received, parameterized=parameterized))
+    compare_ignoring_whitespace(test_case, expected, received, msg)
+
+
+def compare_sql(test_case, expected, received):
+    """Compare the expected and received SQL query, ignoring whitespace."""
+    msg = '\n{}\n\n!=\n\n{}'.format(expected, received)
+    compare_ignoring_whitespace(test_case, expected, received, msg)
+
+
+def compare_gremlin(test_case, expected, received):
+    """Compare the expected and received Gremlin code, ignoring whitespace."""
+    msg = '\n{}\n\n!=\n\n{}'.format(
+        pretty_print_gremlin(expected),
+        pretty_print_gremlin(received))
+    compare_ignoring_whitespace(test_case, expected, received, msg)
+
+
+def compare_input_metadata(test_case, expected, received):
+    """Compare two dicts of input metadata, using proper GraphQL type comparison operators."""
+    # First, assert that the sets of keys in both dicts are equal.
+    test_case.assertEqual(set(six.iterkeys(expected)), set(six.iterkeys(received)))
+
+    # Then, compare the values for each key in both dicts.
+    for key in six.iterkeys(expected):
+        expected_value = expected[key]
+        received_value = received[key]
+
+        test_case.assertTrue(expected_value.is_same_type(received_value),
+                             msg=u'{} != {}'.format(str(expected_value), str(received_value)))
+
+
+def compare_ignoring_whitespace(test_case, expected, received, msg):
+    """Compare expected and received code, ignoring whitespace, with the given failure message."""
+    test_case.assertEqual(transform(expected), transform(received), msg=msg)
+
+
+def get_schema():
+    """Get a schema object for testing."""
+    ast = parse(SCHEMA_TEXT)
     schema = build_ast_schema(ast)
     return schema
 

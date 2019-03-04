@@ -154,7 +154,7 @@ def get_graphql_schema_from_orientdb_records(schema_records, class_to_field_type
         class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
                                        (string -> {string -> GraphQLType}. Used to override the
                                        type of a field in the class where it's first defined and all
-                                       the the class's subclasses.
+                                       the class's subclasses.
         hidden_classes: optional set of strings, classes to not include in the GraphQL schema.
 
     Returns:
