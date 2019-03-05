@@ -202,7 +202,30 @@ class SchemaGraph(object):
     def __init__(self, schema_query_result):
         """Create a new SchemaGraph from the given schema and index query results.
 
-        Args:
+    Args:
+        schema_data: list of dicts describing the classes in the OrientDB schema. Required to
+                     already be topologically sorted with respect to inheritance hierarchy.
+                     Each dict has the following string fields.
+                        - name: string, the name of the class.
+                        - superClasses (optional): list of strings, the name of the class's
+                                                   superclasses.
+                        - superClass (optional): string, the name of the class's superclass. May be
+                                                 used instead of superClasses if there is only one
+                                                 superClass. Used for backwards compatibility.
+                        - abstract: bool, true if the class is abstract.
+                        - properties: list of dicts, describing the class's fields.
+                            Each property dictionary has the following string fields.
+                                - name: string, the name of the field.
+                                - type_id: int, builtin OrientDB type ID of the field.
+                                - linked_type (optional): int, if the field is a collection of
+                                                          builtin OrientDB objects, then
+                                                          it indicates their type ID.
+                                - linked_class (optional): string, if the field is a collection of
+                                                           class instance, then it indicates the
+                                                           name of the class. If class is an edge
+                                                           class, and the field name is either 'in'
+                                                           or 'out' then it describes the name of
+                                                           an endpoint of the edge.
             schema_query_result: list of dicts describing the OrientDB schema, in OrientDB's format:
                                  e.g. "SELECT * FROM (SELECT expand(classes) FROM metadata:schema)"
                                  Required to already be topologically sorted with respect to the
