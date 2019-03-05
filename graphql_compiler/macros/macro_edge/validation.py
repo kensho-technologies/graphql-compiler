@@ -66,25 +66,35 @@ def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
 
 
 def _validate_macro_ast_directives(ast, inside_fold_scope=False):
-    """Check that the macro is using non-macro direcives properly."""
+    """Check that the macro is using non-macro direcives properly.
+
+    Restrictions on use of directives:
+    - @output and @output_source are disallowed
+    - @macro_edge_target is not allowed to be inside a @fold scope
+
+    Args:
+        ast: GraphQL AST describing a subtree of the macro
+        inside_fold_scope: bool, whether the subtree is within a @fold scope
+    """
     subselection_inside_fold_scope = inside_fold_scope
-    directives_with_no_restrictions = {
+    directives_with_no_restrictions = (
         FilterDirective.name,
         TagDirective.name,
         OptionalDirective.name,
         RecurseDirective.name,
         MacroEdgeDefinitionDirective.name,
-    }
+    )
+    disallowed_directives = (
+        OutputDirective.name,
+        OutputSourceDirective.name,
+    )
     for directive in ast.directives:
         name = directive.name.value
         if name in directives_with_no_restrictions:
             pass
-        elif name == OutputDirective.name:
-            raise GraphQLInvalidMacroError(u'Macros must not have outputs. '
-                                           u'Found output directive {}'.format(directive))
-        elif name == OutputSourceDirective.name:
-            raise GraphQLInvalidMacroError(u'Macros must not have output source directives. '
-                                           u'Found an outut_source directive {}'.format(directive))
+        elif name in disallowed_directives:
+            raise GraphQLInvalidMacroError(u'Macros are not allowed to use the {} directive. '
+                                           u'Found usage {}'.format(name, directive))
         elif name == FoldDirective.name:
             subselection_inside_fold_scope = True
         elif name == MacroEdgeTargetDirective.name:
