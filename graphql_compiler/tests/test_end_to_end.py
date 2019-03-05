@@ -167,15 +167,15 @@ class QueryFormattingTests(unittest.TestCase):
             (GraphQLFloat, (4.1, 4.0), ('4.3', 5)),
             (GraphQLInt, (3, 4), (4.0, 4.1, True, False, '4')),
             (GraphQLBoolean, (True, False,), ('True', 0, 1, 0.4)),
-            (GraphQLDecimal, (Decimal(4), True, 0.4, 4), ('sdfsdf')),
+            (GraphQLDecimal, (Decimal(4), 0.4, 4), (True, 'sdfsdf')),
             (
                 GraphQLDate, (
                     datetime.date(2007, 12, 6),
                     datetime.date(2008, 12, 6),
                     datetime.date(2009, 12, 6),
-                    datetime.datetime(2007, 12, 6, 16, 29, 43, 79043),
                 ), (
                     '2007-12-06',
+                    datetime.datetime(2007, 12, 6, 16, 29, 43, 79043),
                 )
             ),
             (

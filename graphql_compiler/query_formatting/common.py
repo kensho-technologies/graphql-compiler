@@ -62,13 +62,18 @@ def validate_argument_type(expected_type, value):
             raise GraphQLInvalidArgumentError(u'Attempting to represent a non-bool as a bool: '
                                               u'{} {}'.format(type(value), value))
     elif GraphQLDecimal.is_same_type(expected_type):
+        if isinstance(value, bool):
+            raise GraphQLInvalidArgumentError(
+                u'Attempting to represent a non-decimal as a decimal: {} {}'
+                .format(type(value), value))
         if not isinstance(value, decimal.Decimal):
             try:
                 decimal.Decimal(value)
             except decimal.InvalidOperation as e:
                 raise GraphQLInvalidArgumentError(e)
     elif GraphQLDate.is_same_type(expected_type):
-        if not isinstance(value, datetime.date):
+        # Datetimes pass as instances of date. We want to explicitly only allow dates.
+        if isinstance(value, datetime.datetime) or not isinstance(value, datetime.date):
             raise GraphQLInvalidArgumentError(u'Attempting to represent a non-date as a date: '
                                               u'{} {}'.format(type(value), value))
         try:
