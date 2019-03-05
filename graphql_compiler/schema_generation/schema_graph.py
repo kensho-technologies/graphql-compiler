@@ -199,33 +199,35 @@ class SchemaGraph(object):
     on the graph. It also holds a fully denormalized schema for the graph.
     """
 
-    def __init__(self, schema_query_result):
+    def __init__(self, schema_data):
         """Create a new SchemaGraph from the given schema and index query results.
 
-    Args:
-        schema_data: list of dicts describing the classes in the OrientDB schema. Required to
-                     already be topologically sorted with respect to inheritance hierarchy.
-                     Each dict has the following string fields.
-                        - name: string, the name of the class.
-                        - superClasses (optional): list of strings, the name of the class's
-                                                   superclasses.
-                        - superClass (optional): string, the name of the class's superclass. May be
-                                                 used instead of superClasses if there is only one
-                                                 superClass. Used for backwards compatibility.
-                        - abstract: bool, true if the class is abstract.
-                        - properties: list of dicts, describing the class's fields.
-                            Each property dictionary has the following string fields.
-                                - name: string, the name of the field.
-                                - type_id: int, builtin OrientDB type ID of the field.
-                                - linked_type (optional): int, if the field is a collection of
-                                                          builtin OrientDB objects, then
-                                                          it indicates their type ID.
-                                - linked_class (optional): string, if the field is a collection of
-                                                           class instance, then it indicates the
-                                                           name of the class. If class is an edge
-                                                           class, and the field name is either 'in'
-                                                           or 'out' then it describes the name of
-                                                           an endpoint of the edge.
+        Args:
+            schema_data: list of dicts describing the classes in the OrientDB schema. Required to
+                         already be topologically sorted with respect to inheritance hierarchy.
+                         Each dict has the following string fields.
+                            - name: string, the name of the class.
+                            - superClasses (optional): list of strings, the name of the class's
+                                                       superclasses.
+                            - superClass (optional): string, the name of the class's superclass.
+                                                     May be used instead of superClasses if there is
+                                                     only one superclass. Used for backwards
+                                                     compatibility.
+                            - abstract: bool, true if the class is abstract.
+                            - properties: list of dicts, describing the class's fields.
+                                          Each property dictionary has the following string fields.
+                                            - name: string, the name of the field.
+                                    - type_id: int, builtin OrientDB type ID of the field.
+                                    - linked_type (optional): int, if the field is a collection of
+                                                              builtin OrientDB objects, then
+                                                              it indicates their type ID.
+                                    - linked_class (optional): string, if the field is a collection
+                                                               of class instance, then it indicates
+                                                               the name of the class. If class is
+                                                               an edge class, and the field name is
+                                                               either 'in' or 'out' then it
+                                                               describes the name of an endpoint of
+                                                               the edge.
 
         Returns:
             fully-constructed SchemaGraph object
@@ -239,13 +241,13 @@ class SchemaGraph(object):
         self._edge_class_names = set()
         self._non_graph_class_names = set()
 
-        # The schema_query_result better be topologically sorted, or this call will fail.
-        self._set_up_inheritance_and_subclass_sets(schema_query_result)
+        # The schema_data better be topologically sorted, or this call will fail.
+        self._set_up_inheritance_and_subclass_sets(schema_data)
 
         # We no longer care about topological sorting; map each class name to its definition.
         class_name_to_definition = {
             class_definition['name']: class_definition
-            for class_definition in schema_query_result
+            for class_definition in schema_data
         }
 
         # Initialize the _vertex_class_names, _edge_class_names, and _non_graph_class_names sets.

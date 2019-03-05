@@ -17,21 +17,9 @@ from .schema import (  # noqa
     DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal,
     insert_meta_fields_into_existing_schema, is_meta_field
 )
-from .schema_generation.schema_graph import SchemaGraph
-from .schema_generation.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
-from .schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-from .schema_generation.utils import toposort_classes
-
-
 __package_name__ = 'graphql-compiler'
 __version__ = '1.10.0'
 
-# Match query used to generate OrientDB records that are themselves used to generate GraphQL schema.
-ORIENTDB_SCHEMA_RECORDS_QUERY = (
-    'SELECT FROM (SELECT expand(classes) FROM metadata:schema) '
-    'WHERE name NOT IN [\'ORole\', \'ORestricted\', \'OTriggered\', '
-    '\'ORIDs\', \'OUser\', \'OIdentity\', \'OSchedule\', \'OFunction\']'
-)
 
 def graphql_to_match(schema, graphql_query, parameters, type_equivalence_hints=None):
     """Compile the GraphQL input using the schema into a MATCH query and associated metadata.
@@ -142,54 +130,3 @@ def graphql_to_gremlin(schema, graphql_query, parameters, type_equivalence_hints
         schema, graphql_query, type_equivalence_hints=type_equivalence_hints)
     return compilation_result._replace(
         query=insert_arguments_into_query(compilation_result, parameters))
-
-
-def get_graphql_schema_from_orientdb_records(schema_data, class_to_field_type_overrides=None,
-                                             hidden_classes=None):
-    """Construct a GraphQL schema from a list of OrientDB schema records.
-
-    Args:
-        schema_data: list of dicts describing the classes in the OrientDB schema.
-                     Each dict has the following string fields.
-                        - name: string, the name of the class.
-                        - superClasses (optional): list of strings, the name of the class's
-                                                   superclasses.
-                        - superClass (optional): string, the name of the class's superclass. May be
-                                                 used instead of superClasses if there is only one
-                                                 superClass. Used for backwards compatibility.
-                        - abstract: bool, true if the class is abstract.
-                        - properties: list of dicts, describing the class's fields.
-                            Each property dictionary has the following string fields.
-                                - name: string, the name of the field.
-                                - type_id: int, builtin OrientDB type ID of the field.
-                                - linked_type (optional): int, if the field is a collection of
-                                                          builtin OrientDB objects, then
-                                                          it indicates their type ID.
-                                - linked_class (optional): string, if the field is a collection of
-                                                           class instance, then it indicates the
-                                                           name of the class. If class is an edge
-                                                           class, and the field name is either 'in'
-                                                           or 'out' then it describes the name of
-                                                           an endpoint of the edge.
-        class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
-                                       (string -> {string -> GraphQLType}. Used to override the
-                                       type of a field in the class where it's first defined and all
-                                       the class's subclasses.
-        hidden_classes: optional set of strings, classes to not include in the GraphQL schema.
-
-    Returns:
-        tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
-        The tuple is of type (GraphQLSchema, GraphQLUnionType).
-    """
-    schema_query_data = toposort_classes([x.oRecordData for x in schema_data])
-    schema_graph = SchemaGraph(schema_query_data)
-    print(schema_query_data)
-    # If the OrientDB base vertex class no properties defined, hide it since
-    # classes with no properties are not representable in the GraphQL schema.
-    base_vertex = schema_graph.get_element_by_class_name(ORIENTDB_BASE_VERTEX_CLASS_NAME)
-    if len(base_vertex.properties) == 0:
-        if hidden_classes is None:
-            hidden_classes = set()
-        hidden_classes.add(ORIENTDB_BASE_VERTEX_CLASS_NAME)
-    return get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
-                                                hidden_classes)

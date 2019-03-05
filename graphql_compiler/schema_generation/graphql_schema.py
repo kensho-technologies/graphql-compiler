@@ -184,25 +184,22 @@ def _create_union_types_specification(schema_graph, graphql_types, hidden_classe
     return types_spec
 
 
-def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides=None,
-                                         hidden_classes=None):
+def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
+                                         hidden_classes):
     """Return a GraphQL schema object corresponding to the schema of the given schema graph.
 
     Args:
         schema_graph: SchemaGraph
-         class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
+        class_to_field_type_overrides: dict, class name -> {field name -> field type},
                                        (string -> {string -> GraphQLType}. Used to override the
                                        type of a field in the class where it's first defined and all
                                        the class's subclasses.
-        hidden_classes: optional set of strings, classes to not include in the GraphQL schema.
+        hidden_classes: set of strings, classes to not include in the GraphQL schema.
 
     Returns:
         tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
         The tuple is of type (GraphQLSchema, GraphQLUnionType).
     """
-    if class_to_field_type_overrides is None:
-        class_to_field_type_overrides = dict()
-
     # Assert that the fields we want to override are not defined in a superclass.
     for class_name, field_type_overrides in six.iteritems(class_to_field_type_overrides):
         for superclass_name in schema_graph.get_inheritance_set(class_name):
