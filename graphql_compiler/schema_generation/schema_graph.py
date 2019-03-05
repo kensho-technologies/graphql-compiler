@@ -226,10 +226,6 @@ class SchemaGraph(object):
                                                            class, and the field name is either 'in'
                                                            or 'out' then it describes the name of
                                                            an endpoint of the edge.
-            schema_query_result: list of dicts describing the OrientDB schema, in OrientDB's format:
-                                 e.g. "SELECT * FROM (SELECT expand(classes) FROM metadata:schema)"
-                                 Required to already be topologically sorted with respect to the
-                                 inheritance hierarchy.
 
         Returns:
             fully-constructed SchemaGraph object
