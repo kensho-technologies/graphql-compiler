@@ -96,7 +96,7 @@ class SchemaElement(object):
     ELEMENT_KIND_EDGE = 'edge'
     ELEMENT_KIND_NON_GRAPH = 'non-graph'
 
-    def __init__(self, class_name, kind, abstract, properties, class_fields):
+    def __init__(self, class_name, kind, abstract, properties):
         """Create a new SchemaElement object.
 
         Args:
@@ -107,7 +107,6 @@ class SchemaElement(object):
             abstract: bool, True if the class is abstract, and False otherwise.
             properties: dict, property name -> PropertyDescriptor describing the properties of
                         the schema element.
-            class_fields: dict, class field name -> class field value, both strings
 
         Returns:
             a SchemaElement with the given parameters
@@ -127,7 +126,6 @@ class SchemaElement(object):
         self._kind = kind
         self._abstract = abstract
         self._properties = properties
-        self._class_fields = class_fields
 
         # In the schema graph, both vertices and edges are represented with vertices.
         # These dicts have the name of the adjacent schema vertex in the appropriate direction.
@@ -441,12 +439,6 @@ class SchemaGraph(object):
         for class_name in class_names:
             class_definition = class_name_to_definition[class_name]
 
-            class_fields = class_definition.get('customFields')
-            if class_fields is None:
-                # OrientDB likes to make empty collections be None instead.
-                # We convert this field back to an empty dict, for our general sanity.
-                class_fields = dict()
-
             abstract = class_definition['abstract']
             if class_name in orientdb_base_classes:
                 # Special-case the V and E base classes:
@@ -511,8 +503,7 @@ class SchemaGraph(object):
                                          .format(property_name, class_name))
 
             self._elements[class_name] = SchemaElement(class_name, kind, abstract,
-                                                       property_name_to_descriptor, class_fields
-                                                       )
+                                                       property_name_to_descriptor)
 
     def _create_descriptor_from_property_definition(self, class_name, property_definition,
                                                     class_name_to_definition):
