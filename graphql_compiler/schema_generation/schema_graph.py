@@ -14,10 +14,6 @@ from .schema_properties import (
 
 def _validate_edge_has_defined_endpoint_types(class_name, properties):
     """Validate that the edge properties dict has defined types for the in/out link properties."""
-    exception_classes = frozenset({ORIENTDB_BASE_EDGE_CLASS_NAME})
-    if class_name in exception_classes:
-        return
-
     edge_source = properties.get(EDGE_SOURCE_PROPERTY_NAME, None)
     edge_destination = properties.get(EDGE_DESTINATION_PROPERTY_NAME, None)
     has_defined_endpoint_types = all((
@@ -112,9 +108,11 @@ class SchemaElement(object):
             a SchemaElement with the given parameters
         """
         if kind == SchemaElement.ELEMENT_KIND_EDGE:
-            # Ensure that all edge classes have defined in/out properties.
-            _validate_edge_has_defined_endpoint_types(class_name, properties)
             _validate_edges_do_not_have_extra_links(class_name, properties)
+            if not abstract:
+                # Ensure that all non-abstract edge classes have defined in/out properties.
+                _validate_edge_has_defined_endpoint_types(class_name, properties)
+
         else:
             # Non-edges must not have properties like "in" or "out" defined, and
             # must not have properties of type "Link".
