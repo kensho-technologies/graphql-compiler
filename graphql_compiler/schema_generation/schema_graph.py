@@ -362,6 +362,7 @@ class SchemaGraph(object):
     def validate_properties_exist(self, classname, property_names):
         """Validate that the specified property names are indeed defined on the given class."""
         schema_element = self.get_element_by_class_name(classname)
+
         requested_properties = set(property_names)
         available_properties = set(schema_element.properties.keys())
         non_existent_properties = requested_properties - available_properties
@@ -462,6 +463,7 @@ class SchemaGraph(object):
 
         for class_name in class_names:
             class_definition = class_name_to_definition[class_name]
+
             class_fields = class_definition.get('customFields')
             if class_fields is None:
                 # OrientDB likes to make empty collections be None instead.
