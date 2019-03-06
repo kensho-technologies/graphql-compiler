@@ -93,7 +93,7 @@ class SchemaElement(object):
     ELEMENT_KIND_EDGE = 'edge'
     ELEMENT_KIND_NON_GRAPH = 'non-graph'
 
-    def __init__(self, class_name, kind, abstract, properties):
+    def __init__(self, class_name, kind, abstract, properties, class_fields):
         """Create a new SchemaElement object.
 
         Args:
@@ -104,6 +104,7 @@ class SchemaElement(object):
             abstract: bool, True if the class is abstract, and False otherwise.
             properties: dict, property name -> PropertyDescriptor describing the properties of
                         the schema element.
+            class_fields: dict, class field name -> class field value, both strings
 
         Returns:
             a SchemaElement with the given parameters
@@ -125,6 +126,7 @@ class SchemaElement(object):
         self._kind = kind
         self._abstract = abstract
         self._properties = properties
+        self._class_fields = class_fields
 
         # In the schema graph, both vertices and edges are represented with vertices.
         # These dicts have the name of the adjacent schema vertex in the appropriate direction.
@@ -155,6 +157,11 @@ class SchemaElement(object):
     def properties(self):
         """Return a dict of property name to property descriptor for this schema element."""
         return self._properties
+
+    @property
+    def class_fields(self):
+        """Return a dict containing all class fields defined on the schema element."""
+        return self._class_fields
 
     @property
     def is_vertex(self):
@@ -200,34 +207,39 @@ class SchemaGraph(object):
 
         Args:
             schema_data: list of dicts describing the classes in the OrientDB schema.
-                         Each dict has the following string fields.
+                         Each dict has the following string fields:
                             - name: string, the name of the class.
                             - superClasses (optional): list of strings, the name of the class's
                                                        superclasses.
-                            - superClass (optional): string, the name of the class's superclass.
-                                                     May be used instead of superClasses if there is
-                                                     only one superclass. Used for backwards
-                                                     compatibility.
+                            - superClass (optional): string, the name of the class's superclass. May
+                                                     be used instead of superClasses if there is
+                                                     only one superClass. Used for backwards
+                                                     compatibility with OrientDB.
+                            - customFields (optional): dict, string -> string, data defined on the
+                                                       class instead of instances of the class.
                             - abstract: bool, true if the class is abstract.
-                            - properties: list of dicts, describing the class's fields.
-                                          Each property dictionary has the following string fields.
-                                            - name: string, the name of the field.
-                                    - type_id: int, builtin OrientDB type ID of the field.
-                                    - linked_type (optional): int, if the field is a collection of
-                                                              builtin OrientDB objects, then
-                                                              it indicates their type ID.
-                                    - linked_class (optional): string, if the field is a collection
-                                                               of class instance, then it indicates
-                                                               the name of the class. If class is
-                                                               an edge class, and the field name is
-                                                               either 'in' or 'out' then it
-                                                               describes the name of an endpoint of
-                                                               the edge.
+                            - properties: list of dicts, describing the class's properties.
+                                          Each property dictionary has the following string fields:
+                                             - name: string, the name of the property.
+                                             - type_id: int, builtin OrientDB type ID of the field.
+                                             - linked_type (optional): int, if the property is a
+                                                                       collection of builtin
+                                                                       OrientDB objects, then it
+                                                                       indicates their type ID.
+                                             - linked_class (optional): string, if the property is a
+                                                                       collection of class
+                                                                       instances, then it indicates
+                                                                       the name of the class. If
+                                                                       class is an edge class, and
+                                                                       the field name is either 'in'
+                                                                       or 'out', then it describes
+                                                                       the name of an endpoint of
+                                                                       the edge.
 
         Returns:
             fully-constructed SchemaGraph object
         """
-        schema_data = toposort_classes([x.oRecordData for x in schema_data])
+        toposorted_schema_data = toposort_classes(schema_data)
         self._elements = dict()
 
         self._inheritance_sets = dict()
@@ -237,13 +249,11 @@ class SchemaGraph(object):
         self._edge_class_names = set()
         self._non_graph_class_names = set()
 
-        # The schema_data better be topologically sorted, or this call will fail.
-        self._set_up_inheritance_and_subclass_sets(schema_data)
+        self._set_up_inheritance_and_subclass_sets(toposorted_schema_data)
 
-        # We no longer care about topological sorting; map each class name to its definition.
         class_name_to_definition = {
             class_definition['name']: class_definition
-            for class_definition in schema_data
+            for class_definition in toposorted_schema_data
         }
 
         # Initialize the _vertex_class_names, _edge_class_names, and _non_graph_class_names sets.
@@ -352,7 +362,6 @@ class SchemaGraph(object):
     def validate_properties_exist(self, classname, property_names):
         """Validate that the specified property names are indeed defined on the given class."""
         schema_element = self.get_element_by_class_name(classname)
-
         requested_properties = set(property_names)
         available_properties = set(schema_element.properties.keys())
         non_existent_properties = requested_properties - available_properties
@@ -453,6 +462,11 @@ class SchemaGraph(object):
 
         for class_name in class_names:
             class_definition = class_name_to_definition[class_name]
+            class_fields = class_definition.get('customFields')
+            if class_fields is None:
+                # OrientDB likes to make empty collections be None instead.
+                # We convert this field back to an empty dict, for our general sanity.
+                class_fields = dict()
 
             abstract = class_definition['abstract']
             if class_name in orientdb_base_classes:
@@ -518,7 +532,7 @@ class SchemaGraph(object):
                                          .format(property_name, class_name))
 
             self._elements[class_name] = SchemaElement(class_name, kind, abstract,
-                                                       property_name_to_descriptor)
+                                                       property_name_to_descriptor, class_fields)
 
     def _create_descriptor_from_property_definition(self, class_name, property_definition,
                                                     class_name_to_definition):

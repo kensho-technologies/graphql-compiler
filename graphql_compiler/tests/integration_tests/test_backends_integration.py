@@ -176,11 +176,12 @@ class IntegrationTests(TestCase):
     @integration_fixtures
     def test_get_graphql_schema_from_orientdb_schema(self):
         schema_records = self.graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+        schema_data = [x.oRecordData for x in schema_records]
         type_overrides = {
             "UniquelyIdentifiable": {"uuid": GraphQLID},
             "Animal": {"birthday": GraphQLDate},
             "Event": {"event_date": GraphQLDateTime}
         }
-        schema, _ = get_graphql_schema_from_orientdb_schema_data(schema_records, type_overrides)
+        schema, _ = get_graphql_schema_from_orientdb_schema_data(schema_data, type_overrides)
         compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
 # pylint: enable=no-member

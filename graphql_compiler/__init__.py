@@ -141,36 +141,41 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
 
     Args:
         schema_data: list of dicts describing the classes in the OrientDB schema.
-                     Each dict has the following string fields.
+                     Each dict has the following string fields:
                         - name: string, the name of the class.
                         - superClasses (optional): list of strings, the name of the class's
                                                    superclasses.
                         - superClass (optional): string, the name of the class's superclass. May be
                                                  used instead of superClasses if there is only one
-                                                 superClass. Used for backwards compatibility.
+                                                 superClass. Used for backwards compatibility with
+                                                 OrientDB.
+                        - customFields (optional): dict, string -> string, data defined on the class
+                                                   instead of instances of the class.
                         - abstract: bool, true if the class is abstract.
-                        - properties: list of dicts, describing the class's fields.
-                            Each property dictionary has the following string fields.
-                                - name: string, the name of the field.
-                                - type_id: int, builtin OrientDB type ID of the field.
-                                - linked_type (optional): int, if the field is a collection of
-                                                          builtin OrientDB objects, then
-                                                          it indicates their type ID.
-                                - linked_class (optional): string, if the field is a collection of
-                                                           class instance, then it indicates the
-                                                           name of the class. If class is an edge
-                                                           class, and the field name is either 'in'
-                                                           or 'out' then it describes the name of
-                                                           an endpoint of the edge.
+                        - properties: list of dicts, describing the class's properties.
+                                      Each property dictionary has the following string fields:
+                                         - name: string, the name of the property.
+                                         - type_id: int, builtin OrientDB type ID of the field.
+                                         - linked_type (optional): int, if the property is a
+                                                                   collection of builtin OrientDB
+                                                                   objects, then it indicates their
+                                                                   type ID.
+                                         - linked_class (optional): string, if the property is a
+                                                                   collection of class instances,
+                                                                   then it indicates the name of the
+                                                                   class. If class is an edge class,
+                                                                   and the field name is either 'in'
+                                                                   or 'out', then it describes the
+                                                                   name of an endpoint of the edge.
         class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
-                                       (string -> {string -> GraphQLType}. Used to override the
+                                       (string -> {string -> GraphQLType}). Used to override the
                                        type of a field in the class where it's first defined and all
                                        the class's subclasses.
 
     Returns:
         tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
         The tuple is of type (GraphQLSchema, GraphQLUnionType).
-        We hide classes with no fields in the schema since they are not representable in GraphQL.
+        We hide classes with no properties in the schema since they're not representable in GraphQL.
     """
     if class_to_field_type_overrides is None:
         class_to_field_type_overrides = dict()
