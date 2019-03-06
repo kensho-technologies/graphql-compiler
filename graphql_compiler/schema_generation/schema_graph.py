@@ -13,8 +13,8 @@ from .schema_properties import (
 from .utils import toposort_classes
 
 
-def _validate_edge_has_defined_endpoint_types(class_name, properties):
-    """Validate that the edge properties dict has defined types for the in/out link properties."""
+def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, properties):
+    """Validate that the non-abstract edge properties dict has defined in/out link properties."""
     edge_source = properties.get(EDGE_SOURCE_PROPERTY_NAME, None)
     edge_destination = properties.get(EDGE_DESTINATION_PROPERTY_NAME, None)
     has_defined_endpoint_types = all((
@@ -112,8 +112,7 @@ class SchemaElement(object):
         if kind == SchemaElement.ELEMENT_KIND_EDGE:
             _validate_edges_do_not_have_extra_links(class_name, properties)
             if not abstract:
-                # Ensure that all non-abstract edge classes have defined in/out properties.
-                _validate_edge_has_defined_endpoint_types(class_name, properties)
+                _validate_non_abstract_edge_has_defined_endpoint_types(class_name, properties)
 
         else:
             # Non-edges must not have properties like "in" or "out" defined, and
@@ -203,10 +202,14 @@ class SchemaGraph(object):
     """
 
     def __init__(self, schema_data):
-        """Create a new SchemaGraph from the given schema and index query results.
+        """Create a new SchemaGraph from the OrientDB schema.
 
         Args:
-            schema_data: list of dicts describing the classes in the OrientDB schema.
+            schema_data: list of dicts describing the classes in the OrientDB schema. The following
+                         format is the way the data is structured in OrientDB 2. See
+                         test_get_graphql_schema_from_orientdb_schema in
+                         graphql_compiler/tests/integration_tests/test_backends_integration.py
+                         for an example of how to query this data.
                          Each dict has the following string fields:
                             - name: string, the name of the class.
                             - superClasses (optional): list of strings, the name of the class's
@@ -391,11 +394,11 @@ class SchemaGraph(object):
         """Return the set of non-graph class names in the SchemaGraph."""
         return self._non_graph_class_names
 
-    def _set_up_inheritance_and_subclass_sets(self, schema_query_result):
-        """Load all inheritance data from the OrientDB schema query. Used as part of __init__."""
+    def _set_up_inheritance_and_subclass_sets(self, schema_data):
+        """Load all inheritance data from the OrientDB schema. Used as part of __init__."""
         # For each class name, construct its inheritance set:
         # itself + the set of class names from which it inherits.
-        for class_definition in schema_query_result:
+        for class_definition in schema_data:
             class_name = class_definition['name']
             immediate_superclass_names = get_superclasses_from_class_definition(
                 class_definition)

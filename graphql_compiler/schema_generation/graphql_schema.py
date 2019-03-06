@@ -30,8 +30,9 @@ def _get_inherited_field_types(class_to_field_type_overrides, schema_graph):
     return inherited_field_type_overrides
 
 
-def _validate_overriden_classes_have_no_superclasses(class_to_field_type_overrides, schema_graph):
-    """Assert that the fields we want to override are not defined in a superclass."""
+def _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_type_overrides,
+                                                               schema_graph):
+    """Assert that the fields we want to override are not defined in superclasses."""
     for class_name, field_type_overrides in six.iteritems(class_to_field_type_overrides):
         for superclass_name in schema_graph.get_inheritance_set(class_name):
             if superclass_name != class_name:
@@ -45,14 +46,13 @@ def _validate_overriden_classes_have_no_superclasses(class_to_field_type_overrid
 
 
 def _get_classes_with_no_properties(schema_graph):
-    """Return the set of classes that have no properties. There are not representable in GraphQL."""
-    hidden_classes = set()
-    # If user fails to input hidden types, assert that at all vertices have valid GraphQL reps.
+    """Return the set of classes that have no properties."""
+    classes_with_no_properties = set()
     for vertex_cls_name in schema_graph.vertex_class_names:
         vertex_cls = schema_graph.get_element_by_class_name(vertex_cls_name)
         if len(vertex_cls.properties) == 0:
-            hidden_classes.add(vertex_cls_name)
-    return hidden_classes
+            classes_with_no_properties.add(vertex_cls_name)
+    return classes_with_no_properties
 
 
 def _property_descriptor_to_graphql_type(property_obj):
@@ -234,7 +234,8 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
         The tuple is of type (GraphQLSchema, GraphQLUnionType).
         We hide classes with no properties in the schema since they're not representable in GraphQL.
     """
-    _validate_overriden_classes_have_no_superclasses(class_to_field_type_overrides, schema_graph)
+    _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_type_overrides,
+                                                               schema_graph)
 
     # The field types of subclasses must also be overridden.
     # Remember that the result returned by get_subclass_set(class_name) includes class_name itself.
@@ -352,7 +353,7 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
                 graphql_types[non_graph_cls_name] = graphql_type
 
     if not graphql_types:
-        raise EmptySchemaError(u'After evaluating all subclasses of V, we were not able to find'
+        raise EmptySchemaError(u'After evaluating all subclasses of V, we were not able to find '
                                u'visible schema data to import into the GraphQL schema object')
 
     # Create the root query GraphQL type. Consists of all non-union classes, i.e.
