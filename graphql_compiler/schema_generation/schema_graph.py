@@ -10,6 +10,7 @@ from .schema_properties import (
     PROPERTY_TYPE_LINK_ID, PropertyDescriptor, parse_default_property_value,
     validate_supported_property_type_id
 )
+from .utils import toposort_classes
 
 
 def _validate_edge_has_defined_endpoint_types(class_name, properties):
@@ -156,11 +157,6 @@ class SchemaElement(object):
         return self._properties
 
     @property
-    def class_fields(self):
-        """Return a dict containing all class fields defined on the schema element."""
-        return self._class_fields
-
-    @property
     def is_vertex(self):
         """Return True if the schema element represents a vertex type, and False otherwise."""
         return self._kind == SchemaElement.ELEMENT_KIND_VERTEX
@@ -203,8 +199,7 @@ class SchemaGraph(object):
         """Create a new SchemaGraph from the given schema and index query results.
 
         Args:
-            schema_data: list of dicts describing the classes in the OrientDB schema. Required to
-                         already be topologically sorted with respect to inheritance hierarchy.
+            schema_data: list of dicts describing the classes in the OrientDB schema.
                          Each dict has the following string fields.
                             - name: string, the name of the class.
                             - superClasses (optional): list of strings, the name of the class's
@@ -232,6 +227,7 @@ class SchemaGraph(object):
         Returns:
             fully-constructed SchemaGraph object
         """
+        schema_data = toposort_classes([x.oRecordData for x in schema_data])
         self._elements = dict()
 
         self._inheritance_sets = dict()

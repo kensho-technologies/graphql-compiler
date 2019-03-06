@@ -7,11 +7,12 @@ from graphql.utils.schema_printer import print_schema
 from parameterized import parameterized
 import pytest
 
-from graphql_compiler import ORIENTDB_SCHEMA_RECORDS_QUERY, get_graphql_schema_from_orientdb_records
+from graphql_compiler import get_graphql_schema_from_orientdb_schema_data
 from graphql_compiler.schema import GraphQLDate, GraphQLDateTime
+from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 from graphql_compiler.tests import test_backend
 
-from ..test_helpers import compare_ignoring_whitespace, get_schema, SCHEMA_TEXT
+from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
 from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
 from .integration_test_helpers import (
     compile_and_run_match_query, compile_and_run_sql_query, sort_db_results
@@ -180,7 +181,6 @@ class IntegrationTests(TestCase):
             "Animal": {"birthday": GraphQLDate},
             "Event": {"event_date": GraphQLDateTime}
         }
-        schema, _ = get_graphql_schema_from_orientdb_records(
-            schema_records, class_to_field_type_overrides=type_overrides)
+        schema, _ = get_graphql_schema_from_orientdb_schema_data(schema_records, type_overrides)
         compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
 # pylint: enable=no-member
