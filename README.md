@@ -1504,15 +1504,6 @@ A: No -- there are many existing frameworks for running a web server. We simply 
    nor does it deserialize the results. Therefore, it is agnostic to the choice of
    server framework and database client library used.
 
-**Q: What databases and query languages does the compiler support?**
-
-A: We currently support a single database, OrientDB version 2.2.28+, and two query languages
-   that OrientDB supports: the OrientDB dialect of `gremlin`, and OrientDB's own custom SQL-like
-   query language that we refer to as `MATCH`, after the name of its graph traversal operator.
-   With OrientDB, `MATCH` should be the preferred choice for most users, since it tends to run
-   faster than `gremlin`, and has other desirable properties. See the
-   [Execution model](#execution-model) section for more details.
-
 **Q: Do you plan to support other databases / more GraphQL features in the future?**
 
 A: We'd love to, and we could really use your help! Please consider contributing to this project
