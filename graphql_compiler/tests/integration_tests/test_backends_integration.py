@@ -2,12 +2,17 @@
 from decimal import Decimal
 from unittest import TestCase
 
+from graphql.type import GraphQLID
+from graphql.utils.schema_printer import print_schema
 from parameterized import parameterized
 import pytest
 
+from graphql_compiler import get_graphql_schema_from_orientdb_schema_data
+from graphql_compiler.schema import GraphQLDate, GraphQLDateTime
+from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 from graphql_compiler.tests import test_backend
 
-from ..test_helpers import get_schema
+from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
 from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
 from .integration_test_helpers import (
     compile_and_run_match_query, compile_and_run_sql_query, sort_db_results
@@ -168,4 +173,15 @@ class IntegrationTests(TestCase):
         ]
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
+    @integration_fixtures
+    def test_get_graphql_schema_from_orientdb_schema(self):
+        schema_records = self.graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+        schema_data = [x.oRecordData for x in schema_records]
+        type_overrides = {
+            "UniquelyIdentifiable": {"uuid": GraphQLID},
+            "Animal": {"birthday": GraphQLDate},
+            "Event": {"event_date": GraphQLDateTime}
+        }
+        schema, _ = get_graphql_schema_from_orientdb_schema_data(schema_data, type_overrides)
+        compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
 # pylint: enable=no-member
