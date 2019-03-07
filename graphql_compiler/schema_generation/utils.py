@@ -1,6 +1,14 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 
 
+# Match query used to generate OrientDB records that are themselves used to generate GraphQL schema.
+ORIENTDB_SCHEMA_RECORDS_QUERY = (
+    'SELECT FROM (SELECT expand(classes) FROM metadata:schema) '
+    'WHERE name NOT IN [\'ORole\', \'ORestricted\', \'OTriggered\', '
+    '\'ORIDs\', \'OUser\', \'OIdentity\', \'OSchedule\', \'OFunction\']'
+)
+
+
 def toposort_classes(classes):
     """Sort class metadatas so that a superclass is always before the subclass"""
     def get_class_topolist(class_name, name_to_class, processed_classes, current_trace):
@@ -10,10 +18,10 @@ def toposort_classes(classes):
             class_name: string, name of the class to process
             name_to_class: dict, class_name -> descriptor
             processed_classes: set of strings, a set of classes that have already been processed
-            current_trace: list of strings, list of classes traversed during the recursion.
+            current_trace: list of strings, list of classes traversed during the recursion
 
         Returns:
-            element of classes list sorted in topological order
+            list of dicts, list of classes sorted in topological order
         """
         # Check if this class has already been handled
         if class_name in processed_classes:
@@ -52,7 +60,7 @@ def toposort_classes(classes):
 
     toposorted = []
     for name in class_map.keys():
-        toposorted.extend(get_class_topolist(name, class_map, seen_classes, set([])))
+        toposorted.extend(get_class_topolist(name, class_map, seen_classes, set()))
     return toposorted
 
 

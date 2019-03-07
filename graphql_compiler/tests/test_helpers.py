@@ -8,7 +8,6 @@ from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
-from ..schema import insert_meta_fields_into_existing_schema
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
@@ -18,137 +17,178 @@ WHITESPACE_PATTERN = re.compile(u'[\t\n ]*', flags=re.UNICODE)
 # flag to indicate a test component should be skipped
 SKIP_TEST = 'SKIP'
 
-# String of a GraphQL schema generated from OrientDB. Used for future reference testing.
-ORIENTDB_GENERATED_SCHEMA = '''
-       schema {
-         query: RootSchemaQuery
-       }
+# Text representation of a GraphQL schema generated from OrientDB.
+# This schema isn't meant to be a paragon of good schema design.
+# Instead, it aims to capture as many real-world edge cases as possible,
+# without requiring a massive number of types and interfaces.
+SCHEMA_TEXT = '''
+    schema {
+      query: RootSchemaQuery
+    }
 
-       directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
+    directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
 
-       directive @tag(tag_name: String!) on FIELD
+    directive @tag(tag_name: String!) on FIELD
 
-       directive @output(out_name: String!) on FIELD
+    directive @output(out_name: String!) on FIELD
 
-       directive @output_source on FIELD
+    directive @output_source on FIELD
 
-       directive @optional on FIELD
+    directive @optional on FIELD
 
-       directive @recurse(depth: Int!) on FIELD
+    directive @recurse(depth: Int!) on FIELD
 
-       directive @fold on FIELD
+    directive @fold on FIELD
 
-       type Animal implements Entity {
-         _x_count: Int
-         alias: [String]
-         birthday: Date
-         color: String
-         description: String
-         in_Animal_ParentOf: [Animal]
-         in_Entity_Related: [Entity]
-         name: String
-         net_worth: Decimal
-         out_Animal_BornAt: [Union__BirthEvent__Event]
-         out_Animal_FedAt: [Union__BirthEvent__Event]
-         out_Animal_ImportantEvent: [Union__BirthEvent__Event]
-         out_Animal_OfSpecies: [Species]
-         out_Animal_ParentOf: [Animal]
-         out_Entity_Related: [Entity]
-         uuid: String
-       }
+    type Animal implements Entity, UniquelyIdentifiable {
+      _x_count: Int
+      alias: [String]
+      birthday: Date
+      color: String
+      description: String
+      in_Animal_ParentOf: [Animal]
+      in_Entity_Related: [Entity]
+      name: String
+      net_worth: Decimal
+      out_Animal_BornAt: [BirthEvent]
+      out_Animal_FedAt: [FeedingEvent]
+      out_Animal_ImportantEvent: [Union__BirthEvent__Event__FeedingEvent]
+      out_Animal_LivesIn: [Location]
+      out_Animal_OfSpecies: [Species]
+      out_Animal_ParentOf: [Animal]
+      out_Entity_Related: [Entity]
+      uuid: ID
+    }
 
-       type BirthEvent implements Entity {
-         _x_count: Int
-         alias: [String]
-         description: String
-         event_date: Date
-         in_Animal_BornAt: [Animal]
-         in_Animal_FedAt: [Animal]
-         in_Animal_ImportantEvent: [Animal]
-         in_Entity_Related: [Entity]
-         name: String
-         out_Entity_Related: [Entity]
-         uuid: String
-       }
+    type BirthEvent implements Entity, UniquelyIdentifiable {
+      _x_count: Int
+      alias: [String]
+      description: String
+      event_date: DateTime
+      in_Animal_BornAt: [Animal]
+      in_Animal_ImportantEvent: [Animal]
+      in_Entity_Related: [Entity]
+      in_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
+      name: String
+      out_Entity_Related: [Entity]
+      out_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
+      uuid: ID
+    }
 
-       scalar Date
+    scalar Date
 
-       scalar Decimal
+    scalar DateTime
 
-       interface Entity {
-         _x_count: Int
-         alias: [String]
-         description: String
-         in_Entity_Related: [Entity]
-         name: String
-         out_Entity_Related: [Entity]
-         uuid: String
-       }
+    scalar Decimal
 
-       type Event implements Entity {
-         _x_count: Int
-         alias: [String]
-         description: String
-         event_date: Date
-         in_Animal_BornAt: [Animal]
-         in_Animal_FedAt: [Animal]
-         in_Animal_ImportantEvent: [Animal]
-         in_Entity_Related: [Entity]
-         name: String
-         out_Entity_Related: [Entity]
-         uuid: String
-       }
+    interface Entity {
+      _x_count: Int
+      alias: [String]
+      description: String
+      in_Entity_Related: [Entity]
+      name: String
+      out_Entity_Related: [Entity]
+      uuid: ID
+    }
 
-       type Food implements Entity {
-         _x_count: Int
-         alias: [String]
-         description: String
-         in_Entity_Related: [Entity]
-         in_Species_Eats: [Species]
-         name: String
-         out_Entity_Related: [Entity]
-         uuid: String
-       }
+    type Event implements Entity, UniquelyIdentifiable {
+      _x_count: Int
+      alias: [String]
+      description: String
+      event_date: DateTime
+      in_Animal_ImportantEvent: [Animal]
+      in_Entity_Related: [Entity]
+      in_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
+      name: String
+      out_Entity_Related: [Entity]
+      out_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
+      uuid: ID
+    }
 
-       type FoodOrSpecies implements Entity {
-         _x_count: Int
-         alias: [String]
-         description: String
-         in_Entity_Related: [Entity]
-         in_Species_Eats: [Species]
-         name: String
-         out_Entity_Related: [Entity]
-         uuid: String
-       }
+    type FeedingEvent implements Entity, UniquelyIdentifiable {
+      _x_count: Int
+      alias: [String]
+      description: String
+      event_date: DateTime
+      in_Animal_FedAt: [Animal]
+      in_Animal_ImportantEvent: [Animal]
+      in_Entity_Related: [Entity]
+      in_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
+      name: String
+      out_Entity_Related: [Entity]
+      out_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
+      uuid: ID
+    }
 
-       type RootSchemaQuery {
-         Animal: Animal
-         BirthEvent: BirthEvent
-         Entity: Entity
-         Event: Event
-         Food: Food
-         FoodOrSpecies: FoodOrSpecies
-         Species: Species
-       }
+    type Food implements Entity, UniquelyIdentifiable {
+      _x_count: Int
+      alias: [String]
+      description: String
+      in_Entity_Related: [Entity]
+      in_Species_Eats: [Species]
+      name: String
+      out_Entity_Related: [Entity]
+      uuid: ID
+    }
 
-       type Species implements Entity {
-         _x_count: Int
-         alias: [String]
-         description: String
-         in_Animal_OfSpecies: [Animal]
-         in_Entity_Related: [Entity]
-         in_Species_Eats: [Species]
-         limbs: Int
-         name: String
-         out_Entity_Related: [Entity]
-         out_Species_Eats: [Union__Food__FoodOrSpecies__Species]
-         uuid: String
-       }
+    type FoodOrSpecies implements Entity, UniquelyIdentifiable {
+      _x_count: Int
+      alias: [String]
+      description: String
+      in_Entity_Related: [Entity]
+      in_Species_Eats: [Species]
+      name: String
+      out_Entity_Related: [Entity]
+      uuid: ID
+    }
 
-       union Union__BirthEvent__Event = BirthEvent | Event
+    type Location implements Entity, UniquelyIdentifiable {
+      _x_count: Int
+      alias: [String]
+      description: String
+      in_Animal_LivesIn: [Animal]
+      in_Entity_Related: [Entity]
+      name: String
+      out_Entity_Related: [Entity]
+      uuid: ID
+    }
 
-       union Union__Food__FoodOrSpecies__Species = Food | FoodOrSpecies | Species
-   '''
+    type RootSchemaQuery {
+      Animal: Animal
+      BirthEvent: BirthEvent
+      Entity: Entity
+      Event: Event
+      FeedingEvent: FeedingEvent
+      Food: Food
+      FoodOrSpecies: FoodOrSpecies
+      Location: Location
+      Species: Species
+      UniquelyIdentifiable: UniquelyIdentifiable
+    }
+
+    type Species implements Entity, UniquelyIdentifiable {
+      _x_count: Int
+      alias: [String]
+      description: String
+      in_Animal_OfSpecies: [Animal]
+      in_Entity_Related: [Entity]
+      in_Species_Eats: [Species]
+      limbs: Int
+      name: String
+      out_Entity_Related: [Entity]
+      out_Species_Eats: [Union__Food__FoodOrSpecies__Species]
+      uuid: ID
+    }
+
+    union Union__BirthEvent__Event__FeedingEvent = BirthEvent | Event | FeedingEvent
+
+    union Union__Food__FoodOrSpecies__Species = Food | FoodOrSpecies | Species
+
+    interface UniquelyIdentifiable {
+      _x_count: Int
+      uuid: ID
+    }
+'''
 
 
 def transform(emitted_output):
@@ -222,141 +262,8 @@ def compare_ignoring_whitespace(test_case, expected, received, msg):
 
 def get_schema():
     """Get a schema object for testing."""
-    # This schema isn't meant to be a paragon of good schema design.
-    # Instead, it aims to capture as many real-world edge cases as possible,
-    # without requiring a massive number of types and interfaces.
-    schema_text = '''
-        schema {
-            query: RootSchemaQuery
-        }
-
-        directive @recurse(depth: Int!) on FIELD
-
-        directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
-
-        directive @tag(tag_name: String!) on FIELD
-
-        directive @output(out_name: String!) on FIELD
-
-        directive @output_source on FIELD
-
-        directive @optional on FIELD
-
-        directive @fold on FIELD
-
-        scalar Decimal
-
-        scalar DateTime
-
-        scalar Date
-
-        interface Entity {
-            name: String
-            alias: [String]
-            description: String
-            uuid: ID
-            in_Entity_Related: [Entity]
-            out_Entity_Related: [Entity]
-        }
-
-        type Animal implements Entity {
-            name: String
-            color: String
-            description: String
-            alias: [String]
-            birthday: Date
-            net_worth: Decimal
-            uuid: ID
-            out_Animal_ParentOf: [Animal]
-            in_Animal_ParentOf: [Animal]
-            out_Animal_OfSpecies: [Species]
-            out_Animal_FedAt: [Event]
-            out_Animal_BornAt: [BirthEvent]
-            out_Animal_ImportantEvent: [EventOrBirthEvent]
-            in_Entity_Related: [Entity]
-            out_Entity_Related: [Entity]
-            out_Animal_LivesIn: [Location]
-        }
-
-        type Location {
-            name: String
-            uuid: ID
-            in_Animal_LivesIn: [Animal]
-        }
-
-        type Species implements Entity {
-            name: String
-            description: String
-            alias: [String]
-            limbs: Int
-            uuid: ID
-            out_Species_Eats: [FoodOrSpecies]
-            in_Species_Eats: [Species]
-            in_Animal_OfSpecies: [Animal]
-            in_Entity_Related: [Entity]
-            out_Entity_Related: [Entity]
-        }
-
-        type Food implements Entity {
-            name: String
-            origin: String
-            description: String
-            alias: [String]
-            uuid: ID
-            in_Species_Eats: [Species]
-            in_Entity_Related: [Entity]
-            out_Entity_Related: [Entity]
-        }
-
-        union FoodOrSpecies = Food | Species
-
-        type Event implements Entity {
-            name: String
-            alias: [String]
-            description: String
-            uuid: ID
-            event_date: DateTime
-            in_Animal_FedAt: [Animal]
-            in_Animal_ImportantEvent: [Animal]
-            in_Entity_Related: [Entity]
-            out_Entity_Related: [Entity]
-            out_Event_RelatedEvent: [EventOrBirthEvent]
-            in_Event_RelatedEvent: [EventOrBirthEvent]
-        }
-
-        # Assume that in the database, the below type is actually a subclass of Event.
-        type BirthEvent implements Entity {
-            name: String
-            alias: [String]
-            description: String
-            uuid: ID
-            event_date: DateTime
-            in_Animal_FedAt: [Animal]
-            in_Animal_BornAt: [Animal]
-            in_Animal_ImportantEvent: [Animal]
-            in_Entity_Related: [Entity]
-            out_Entity_Related: [Entity]
-            out_Event_RelatedEvent: [EventOrBirthEvent]
-            in_Event_RelatedEvent: [EventOrBirthEvent]
-        }
-
-        # Because of the above, the base type for this union is Event.
-        union EventOrBirthEvent = Event | BirthEvent
-
-        type RootSchemaQuery {
-            Animal: Animal
-            BirthEvent: BirthEvent
-            Entity: Entity
-            Event: Event
-            Food: Food
-            Species: Species
-            Location: Location
-        }
-    '''
-
-    ast = parse(schema_text)
+    ast = parse(SCHEMA_TEXT)
     schema = build_ast_schema(ast)
-    insert_meta_fields_into_existing_schema(schema)
     return schema
 
 

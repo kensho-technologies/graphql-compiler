@@ -1614,7 +1614,7 @@ def fold_date_and_datetime_fields():
 
 
 def coercion_to_union_base_type_inside_fold():
-    # Given type_equivalence_hints = { Event: EventOrBirthEvent },
+    # Given type_equivalence_hints = { Event: Union__BirthEvent__Event__FeedingEvent },
     # the coercion should be optimized away as a no-op.
     graphql_input = '''{
         Animal {
@@ -1627,7 +1627,7 @@ def coercion_to_union_base_type_inside_fold():
         }
     }'''
     type_equivalence_hints = {
-        'Event': 'EventOrBirthEvent'
+        'Event': 'Union__BirthEvent__Event__FeedingEvent'
     }
     expected_output_metadata = {
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
@@ -1656,7 +1656,7 @@ def no_op_coercion_inside_fold():
         }
     }'''
     type_equivalence_hints = {
-        'Event': 'EventOrBirthEvent'
+        'Event': 'Union__BirthEvent__Event__FeedingEvent'
     }
     expected_output_metadata = {
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
@@ -2696,7 +2696,7 @@ def recursive_field_type_is_subtype_of_parent_field():
     expected_input_metadata = {}
 
     type_equivalence_hints = {
-        'Event': 'EventOrBirthEvent',
+        'Event': 'Union__BirthEvent__Event__FeedingEvent',
     }
 
     return CommonTestData(

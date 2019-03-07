@@ -2794,7 +2794,7 @@ class CompilerTests(unittest.TestCase):
             }
         }'''
         type_equivalence_hints = {
-            'Event': 'EventOrBirthEvent'
+            'Event': 'Union__BirthEvent__Event__FeedingEvent'
         }
 
         expected_match = '''
@@ -2815,7 +2815,7 @@ class CompilerTests(unittest.TestCase):
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Entity_Related')
-            .filter{it, m -> ['BirthEvent', 'Event'].contains(it['@class'])}
+            .filter{it, m -> ['BirthEvent', 'Event', 'FeedingEvent'].contains(it['@class'])}
             .as('Animal__out_Entity_Related___1')
             .back('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -3458,7 +3458,7 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
     def test_coercion_to_union_base_type_inside_fold(self):
-        # Given type_equivalence_hints = { Event: EventOrBirthEvent },
+        # Given type_equivalence_hints = { Event: Union__BirthEvent__Event__FeedingEvent },
         # the coercion should be optimized away as a no-op.
         test_data = test_input_data.coercion_to_union_base_type_inside_fold()
 
@@ -4772,7 +4772,7 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
                     }}.out('Animal_FedAt') {{
-                        class: Event,
+                        class: FeedingEvent,
                         as: Animal__out_Animal_ParentOf__out_Animal_ParentOf
                             __out_Animal_FedAt___1
                     }} ,
@@ -5269,7 +5269,7 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         as: Animal__in_Animal_ParentOf___1
                     }}.out('Animal_FedAt') {{
-                        class: Event,
+                        class: FeedingEvent,
                         as: Animal__in_Animal_ParentOf__out_Animal_FedAt___1
                     }}
                     RETURN $matches

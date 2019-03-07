@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import random
 
-from .events import EVENT_NAMES_LIST
+from .events import FEEDING_EVENT_NAMES_LIST
 from .species import FOOD_LIST, SPECIES_LIST
 from .utils import (
     create_edge_statement, create_name, create_vertex_statement, extract_base_name_and_label,
@@ -29,8 +29,8 @@ ANIMAL_FED_AT_EXISTENCE_THRESHOLD = 0.5
 
 def _create_animal_fed_at_random_event_statement(from_name):
     """Return a SQL statement to create an Animal_FedAt edge connected to a random Event."""
-    event_name = random.choice(EVENT_NAMES_LIST)
-    return create_edge_statement('Animal_FedAt', 'Animal', from_name, 'Event', event_name)
+    event_name = random.choice(FEEDING_EVENT_NAMES_LIST)
+    return create_edge_statement('Animal_FedAt', 'Animal', from_name, 'FeedingEvent', event_name)
 
 
 def _get_animal_aliases(animal_name, parent_names):
