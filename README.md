@@ -84,13 +84,13 @@ schema, type_equivalence_hints = get_graphql_schema_from_orientdb_schema_data(sc
 # Write GraphQL query to get the names of all animals with a particular net worth
 # Note that we prefix net_worth with '$' and surround it with quotes to indicate it's a parameter
 graphql_query = '''
- {
-     Animal {
-         name @output(out_name: "animal_name")
-         net_worth @filter(op_name: "=", value: ["$net_worth"])
-     }
- }
- '''
+{
+    Animal {
+        name @output(out_name: "animal_name")
+        net_worth @filter(op_name: "=", value: ["$net_worth"])
+    }
+}
+'''
 parameters = {
     'net_worth': '100',
 }
@@ -102,7 +102,6 @@ compilation_result = graphql_to_match(schema, graphql_query, parameters, type_eq
 query = compilation_result.query
 results = [row.oRecordData for row in client.command(query)]
 assert results == [{'animal_name': 'Animal 1'}]
-
 ```
 ## Definitions
 - **GraphQLSchema object**- To be able to compile GraphQL, the first thing you will need is a GraphQLSchema object describing 
@@ -1486,7 +1485,7 @@ would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`
 }
 ```
 
-##FAQ
+## FAQ
 
 **Q: Do you really use GraphQL, or do you just use GraphQL-like syntax?**
 

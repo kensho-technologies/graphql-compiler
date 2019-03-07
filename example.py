@@ -16,13 +16,13 @@ schema, type_equivalence_hints = get_graphql_schema_from_orientdb_schema_data(sc
 # Write GraphQL query to get the names of all animals with a particular net worth
 # Note that we prefix net_worth with '$' and surround it with quotes to indicate it's a parameter
 graphql_query = '''
- {
-     Animal {
-         name @output(out_name: "animal_name")
-         net_worth @filter(op_name: "=", value: ["$net_worth"])
-     }
- }
- '''
+{
+    Animal {
+        name @output(out_name: "animal_name")
+        net_worth @filter(op_name: "=", value: ["$net_worth"])
+    }
+}
+'''
 parameters = {
     'net_worth': '100',
 }
