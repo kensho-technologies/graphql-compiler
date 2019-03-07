@@ -73,7 +73,7 @@ from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUE
 from graphql_compiler.tests.conftest import init_integration_graph_client
 
 
-# Initialize dummy OrientDB database and get client
+# Initialize dummy OrientDB database and get pyorient OrientDB client
 client = init_integration_graph_client()
 
 # Generate GraphQL schema from queried OrientDB schema records
