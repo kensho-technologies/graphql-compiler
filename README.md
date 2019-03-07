@@ -105,8 +105,8 @@ assert results == [{'animal_name': 'Animal 1'}]
 ```
 ## Definitions
 - **GraphQLSchema object**- To be able to compile GraphQL, the first thing you will need is a GraphQLSchema object describing 
-the underlying database. To build it you can use `get_graphql_schema_from_orientdb_records` as 
-demonstrated in the code example above. 
+the underlying database. To build it you can use `get_graphql_schema_from_orientdb_schema_data` as 
+demonstrated in the code example below. 
 ```python
 # Generate GraphQL schema from queried OrientDB schema records
 schema_records = client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
