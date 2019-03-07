@@ -1,6 +1,7 @@
 from graphql_compiler import (
-    ORIENTDB_SCHEMA_RECORDS_QUERY, get_graphql_schema_from_orientdb_records, graphql_to_match
+    get_graphql_schema_from_orientdb_schema_data, graphql_to_match
 )
+from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 from graphql_compiler.tests.conftest import init_integration_graph_client
 
 
@@ -9,7 +10,8 @@ client = init_integration_graph_client()
 
 # Generate GraphQL schema from queried OrientDB schema records
 schema_records = client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
-schema, type_equivalence_hints = get_graphql_schema_from_orientdb_records(schema_records)
+schema_data = [x.oRecordData for x in schema_records]
+schema, type_equivalence_hints = get_graphql_schema_from_orientdb_schema_data(schema_data)
 
 # Write GraphQL query to get the names of all animals with a particular net worth
 # Note that we prefix net_worth with '$' and surround it with quotes to indicate it's a parameter

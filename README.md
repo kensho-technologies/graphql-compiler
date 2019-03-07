@@ -67,8 +67,9 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
 ## Code Sample 
 ```python3
 from graphql_compiler import (
-    ORIENTDB_SCHEMA_RECORDS_QUERY, get_graphql_schema_from_orientdb_records, graphql_to_match
+    get_graphql_schema_from_orientdb_schema_data, graphql_to_match
 )
+from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 from graphql_compiler.tests.conftest import init_integration_graph_client
 
 
@@ -77,7 +78,8 @@ client = init_integration_graph_client()
 
 # Generate GraphQL schema from queried OrientDB schema records
 schema_records = client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
-schema, type_equivalence_hints = get_graphql_schema_from_orientdb_records(schema_records)
+schema_data = [x.oRecordData for x in schema_records]
+schema, type_equivalence_hints = get_graphql_schema_from_orientdb_schema_data(schema_data)
 
 # Write GraphQL query to get the names of all animals with a particular net worth
 # Note that we prefix net_worth with '$' and surround it with quotes to indicate it's a parameter
@@ -100,7 +102,7 @@ compilation_result = graphql_to_match(schema, graphql_query, parameters, type_eq
 query = compilation_result.query
 results = [row.oRecordData for row in client.command(query)]
 assert results == [{'animal_name': 'Animal 1'}]
- 
+
 ```
 ## Definitions
 - **GraphQLSchema object**- To be able to compile GraphQL, the first thing you will need is a GraphQLSchema object describing 
@@ -109,7 +111,8 @@ demonstrated in the code example above.
 ```python
 # Generate GraphQL schema from queried OrientDB schema records
 schema_records = client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
-schema, type_equivalence_hints = get_graphql_schema_from_orientdb_records(schema_records)
+schema_data = [x.oRecordData for x in schema_records]
+schema, type_equivalence_hints = get_graphql_schema_from_orientdb_schema_data(schema_data)
 ```
 - **Vertex field**: A field corresponding to a vertex in the graph. In the below example, `Animal`
   and `out_Entity_Related` are vertex fields. The `Animal` field is the field at which querying

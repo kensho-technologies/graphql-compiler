@@ -141,9 +141,7 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
 
     Args:
         schema_data: list of dicts describing the classes in the OrientDB schema. The following
-                     format is the way the data is structured in OrientDB 2. See
-                     test_get_graphql_schema_from_orientdb_schema in
-                     graphql_compiler/tests/integration_tests/test_backends_integration.py
+                     format is the way the data is structured in OrientDB 2. See example.py
                      for an example of how to query this data.
                      Each dict has the following string fields:
                         - name: string, the name of the class.
