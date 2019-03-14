@@ -16,10 +16,6 @@ from .match_formatting import insert_arguments_into_match_query
 from .sql_formatting import insert_arguments_into_sql_query
 
 
-######
-# Public API
-######
-
 def _check_is_string_value(value):
     """Raise if the value is not a proper utf-8 string."""
     if not isinstance(value, six.string_types):
@@ -28,6 +24,11 @@ def _check_is_string_value(value):
         else:
             raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
                                               u'{}'.format(value))
+
+
+######
+# Public API
+######
 
 
 def validate_argument_type(expected_type, value):
