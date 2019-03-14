@@ -58,7 +58,11 @@ def get_directives_for_ast(ast):
 
 
 def get_all_tag_names(ast):
-    """Return a set of strings containing tag names that appear in the query."""
+    """Return a set of strings containing tag names that appear in the query.
+
+    Args:
+        ast: GraphQL query AST object
+    """
     return {
         # Schema validation has ensured this exists
         directive.arguments[0].value.value
@@ -67,8 +71,8 @@ def get_all_tag_names(ast):
     }
 
 
-def _remove_colocated_tags(non_macro_names, ast):
-    """Return an AST with at most one tag per field by removing tags.
+def _remove_colocated_tags_at_ast_node(non_macro_names, ast):
+    """Return an AST node with at most one tag per field by removing tags.
 
     Args:
         non_macro_names: set of tag names that the user wrote. We prefer keeping these names.
@@ -76,7 +80,63 @@ def _remove_colocated_tags(non_macro_names, ast):
              should not contain any duplicate tags (different tags with the same name).
 
     Returns:
-        tuple (new_ast, name_change_map). new_ast is the ast with at most one tag per field.
+        tuple(made_changes, new_ast, name_change_map).
+        made_changes is a bool describing whether there were any tags to remove. new_ast is
+        the ast with at most one tag per field. name_change_map is a dict (string -> string)
+        that contains the new name for each tag name. Names of removed tags are mapped to
+        the name of the colocated tag that was not removed.
+    """
+    new_directives = ast.directives
+    tag_name_list = [
+        directive.arguments[0].value.value
+        for directive in ast.directives
+        if directive.name.value == TagDirective.name
+    ]
+    tag_names = set(tag_name_list)
+    if len(tag_name_list) != len(tag_names):
+        raise AssertionError(u'The ast should not contain multiple tags with '
+                             u'the same name. {}'.format(tag_name_list))
+    made_changes = len(tag_names) > 1
+    name_change_map = dict()
+    if tag_names:
+        # Find which tag to keep
+        name_to_use = None
+        user_specified_names = tag_names & non_macro_names
+        if len(user_specified_names) == 0:
+            name_to_use = min(tag_names, key=len)
+        elif len(user_specified_names) == 1:
+            name_to_use = next(iter(user_specified_names))
+        else:
+            raise AssertionError(u'Multiple tags on the same field are not allowed: {}'
+                                 .format(user_specified_names))
+
+        # Remove all tags but the one we decided to keep
+        name_change_map = {
+            name: name_to_use
+            for name in tag_names
+        }
+        new_directives = [
+            directive
+            for directive in ast.directives
+            if (directive.name.value != TagDirective.name or
+                directive.arguments[0].value.value == name_to_use)
+        ]
+
+    return made_changes, new_directives, name_change_map
+
+
+def _remove_colocated_tags(non_macro_names, ast):
+    """Return an AST with at most one tag per field by removing tags.
+
+    See merge_colocated_tags in this module for an example usage.
+
+    Args:
+        non_macro_names: set of tag names that the user wrote. We prefer keeping these names.
+        ast: GraphQL query AST object that potentially has multiple colocated tags. This AST
+             should not contain any duplicate tags (different tags with the same name).
+
+    Returns:
+        tuple(new_ast, name_change_map). new_ast is the ast with at most one tag per field.
         name_change_map is a dict (string -> string) that contains the new name for each
         tag name. Names of removed tags are mapped to the name of the colocated tag that was
         not removed.
@@ -110,38 +170,11 @@ def _remove_colocated_tags(non_macro_names, ast):
             new_selections.append(new_selection_ast)
         new_selection_set = SelectionSet(new_selections)
 
-    # Find which name to use, and remove all other tags
-    new_directives = ast.directives
-    tag_name_list = [
-        directive.arguments[0].value.value
-        for directive in ast.directives
-        if directive.name.value == TagDirective.name
-    ]
-    tag_names = set(tag_name_list)
-    if len(tag_name_list) != len(tag_names):
-        raise AssertionError(u'The ast should not contain multiple tags with '
-                             u'the same name. {}'.format(tag_name_list))
-    made_changes = made_changes or len(tag_names) > 1
-    if tag_names:
-        name_to_use = None
-        user_specified_names = tag_names & non_macro_names
-        if len(user_specified_names) == 0:
-            name_to_use = min(tag_names, key=len)
-        elif len(user_specified_names) == 1:
-            name_to_use = next(iter(user_specified_names))
-        else:
-            raise AssertionError(u'Multiple tags on the same field are not allowed: {}'
-                                 .format(user_specified_names))
-        name_change_map.update({
-            name: name_to_use
-            for name in tag_names
-        })
-        new_directives = [
-            directive
-            for directive in ast.directives
-            if (directive.name.value != TagDirective.name or
-                directive.arguments[0].value.value == name_to_use)
-        ]
+    # Process the current node
+    made_changes_at_this_node, new_directives, new_name_change_map = \
+        _remove_colocated_tags_at_ast_node(non_macro_names, ast)
+    made_changes = made_changes or made_changes_at_this_node
+    name_change_map.update(new_name_change_map)
 
     if not made_changes:
         # We didn't change anything, return the original input object.
@@ -153,28 +186,10 @@ def _remove_colocated_tags(non_macro_names, ast):
     return new_ast, name_change_map
 
 
-def replace_tag_names(name_change_map, ast):
-    """Replace tag names that are already in use."""
-    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
-        return ast
-
-    made_changes = False
-
-    new_selection_set = None
-    if ast.selection_set is not None:
-        new_selections = []
-        for selection_ast in ast.selection_set.selections:
-            new_selection_ast = replace_tag_names(name_change_map, selection_ast)
-
-            if selection_ast is not new_selection_ast:
-                # Since we did not get the exact same object as the input, changes were made.
-                # That means this call will also need to make changes and return a new object.
-                made_changes = True
-
-            new_selections.append(new_selection_ast)
-        new_selection_set = SelectionSet(new_selections)
-
+def _replace_tag_names_at_current_node(name_change_map, ast):
+    """Replace tag names that are already in use at the root of the AST."""
     # Rename tag names in @tag and @filter directives, and record if we made changes
+    made_changes = False
     new_directives = []
     for directive in ast.directives:
         if directive.name.value == TagDirective.name:
@@ -210,6 +225,35 @@ def replace_tag_names(name_change_map, ast):
             new_directives.append(filter_with_renamed_args)
         else:
             new_directives.append(directive)
+    return made_changes, new_directives
+
+
+def replace_tag_names(name_change_map, ast):
+    """Replace tag names that are already in use in the whole AST."""
+    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+        return ast
+
+    made_changes = False
+
+    # Recurse
+    new_selection_set = None
+    if ast.selection_set is not None:
+        new_selections = []
+        for selection_ast in ast.selection_set.selections:
+            new_selection_ast = replace_tag_names(name_change_map, selection_ast)
+
+            if selection_ast is not new_selection_ast:
+                # Since we did not get the exact same object as the input, changes were made.
+                # That means this call will also need to make changes and return a new object.
+                made_changes = True
+
+            new_selections.append(new_selection_ast)
+        new_selection_set = SelectionSet(new_selections)
+
+    # Process the current node
+    made_changes_at_this_node, new_directives = _replace_tag_names_at_current_node(
+        name_change_map, ast)
+    made_changes = made_changes or made_changes_at_this_node
 
     if not made_changes:
         # We didn't change anything, return the original input object.
@@ -224,6 +268,10 @@ def replace_tag_names(name_change_map, ast):
 def merge_colocated_tags(non_macro_names, ast):
     """Return an AST with at most one tag per field by removing tags and renaming their uses.
 
+    If both the macro and the user of a macro tagged the same field, the resulting query after
+    expansion will have two tags on the same field. We use this function to simplify such
+    queries.
+
     Filters that use the values of the removed tags will instead use the value of a different
     tag that was on the same field and not removed.
 
@@ -233,7 +281,7 @@ def merge_colocated_tags(non_macro_names, ast):
              should not contain any duplicate tags (different tags with the same name).
 
     Returns:
-        tuple (new_ast, name_change_map). new_ast is the ast with at most one tag per field.
+        tuple(new_ast, name_change_map). new_ast is the ast with at most one tag per field.
         name_change_map is a dict (string -> string) that contains the new name for each
         tag name. Names of removed tags are mapped to the name of the colocated tag that was
         not removed.
