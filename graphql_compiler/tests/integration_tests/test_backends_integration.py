@@ -175,6 +175,10 @@ class IntegrationTests(TestCase):
 
     @integration_fixtures
     def test_get_graphql_schema_from_orientdb_schema(self):
+        # This is essentially a snapshot test for the schema
+        # Note that it tests that the class types are correctly overridden
+        # It also tests that we include abstract classes whose only non-abstract subclasses are
+        # vertexes by testing that we include an UniquelyIdentifiable interface.
         schema_records = self.graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
         schema_data = [x.oRecordData for x in schema_records]
         type_overrides = {
