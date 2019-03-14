@@ -1,12 +1,12 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Perform optimizations and lowering of the IR that allows the compiler to emit Gremlin queries.
 
-The compiler IR allows blocks and expressions that cannot be directly compiled to Gremlin or MATCH.
-For example, ContextFieldExistence is an Expression that returns True iff its given vertex exists,
-but the produced Gremlin and MATCH outputs for this purpose are entirely different and not easy
-to generate directly from this Expression object. An output-language-aware IR lowering step allows
-us to convert this Expression into other Expressions, using data already present in the IR,
-to simplify the final code generation step.
+The compiler IR allows blocks and expressions that cannot be directly compiled to the underlying
+database query languages. For example, ContextFieldExistence is an Expression that returns
+True iff its given vertex exists, but the produced Gremlin and MATCH outputs for this purpose
+are entirely different and not easy to generate directly from this Expression object.
+An output-language-aware IR lowering step allows us to convert this Expression into
+other Expressions, using data already present in the IR, to simplify the final code generation step.
 """
 from graphql import GraphQLList
 from graphql.type import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
