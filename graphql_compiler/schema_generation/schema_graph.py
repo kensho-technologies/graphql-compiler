@@ -222,7 +222,8 @@ class SchemaGraph(object):
                             - properties: list of dicts, describing the class's properties.
                                           Each property dictionary has the following string fields:
                                              - name: string, the name of the property.
-                                             - type_id: int, builtin OrientDB type ID of the field.
+                                             - type: int, builtin OrientDB type ID of the field.
+                                                     See schema_properties.py for the mapping.
                                              - linked_type (optional): int, if the property is a
                                                                        collection of builtin
                                                                        OrientDB objects, then it
