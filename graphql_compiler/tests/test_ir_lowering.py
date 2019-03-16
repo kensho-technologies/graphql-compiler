@@ -4,7 +4,7 @@ import unittest
 
 from graphql import GraphQLID, GraphQLString
 
-from ..compiler import ir_lowering_common, ir_lowering_gremlin, ir_lowering_match, ir_sanity_checks
+from ..compiler import ir_lowering_gremlin, ir_lowering_match, ir_sanity_checks
 from ..compiler.blocks import (
     Backtrack, CoerceType, ConstructResult, EndOptional, Filter, MarkLocation, QueryRoot, Traverse
 )
@@ -14,7 +14,9 @@ from ..compiler.expressions import (
     ZeroLiteral
 )
 from ..compiler.helpers import Location
-from ..compiler.ir_lowering_common import OutputContextVertex
+from ..compiler.ir_lowering_common.common import (OutputContextVertex,
+                                                  merge_consecutive_filter_clauses,
+                                                  optimize_boolean_expression_comparisons)
 from ..compiler.ir_lowering_match.utils import BetweenClause, CompoundMatchQuery
 from ..compiler.match_query import MatchQuery, convert_to_match_query
 from ..compiler.metadata import LocationInfo, QueryMetadataTable
@@ -77,7 +79,7 @@ class CommonIrLoweringTests(unittest.TestCase):
             expected_ir_blocks = [
                 Filter(expected_output),
             ]
-            actual_ir_blocks = ir_lowering_common.optimize_boolean_expression_comparisons(ir_blocks)
+            actual_ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
             check_test_data(self, expected_ir_blocks, actual_ir_blocks)
 
 
@@ -673,7 +675,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             })
         ]
 
-        final_blocks = ir_lowering_common.merge_consecutive_filter_clauses(ir_blocks)
+        final_blocks = merge_consecutive_filter_clauses(ir_blocks)
         check_test_data(self, expected_final_blocks, final_blocks)
 
     def test_binary_composition_inside_ternary_conditional(self):

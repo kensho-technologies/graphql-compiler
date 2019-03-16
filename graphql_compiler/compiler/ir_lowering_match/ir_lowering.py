@@ -11,11 +11,10 @@ to simplify the final code generation step.
 import six
 
 from ..blocks import Backtrack, CoerceType, MarkLocation, QueryRoot
-from ..expressions import (
-    BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, FoldedContextField,
-    GlobalContextField, Literal, TernaryConditional, TrueLiteral
+from ..expressions import BinaryComposition, FalseLiteral, Literal, TernaryConditional, TrueLiteral
+from ..ir_lowering_common.location_renaming import (
+    flatten_location_translations, make_location_rewriter_visitor_fn, translate_potential_location
 )
-from ..helpers import FoldScopeLocation
 from .utils import convert_coerce_type_to_instanceof_filter
 
 
@@ -215,76 +214,17 @@ def lower_backtrack_blocks(match_query, location_types):
 
         new_match_traversals.append(new_traversal)
 
-    _flatten_location_translations(location_translations)
+    flatten_location_translations(location_translations)
     new_match_query = match_query._replace(match_traversals=new_match_traversals)
 
     return _translate_equivalent_locations(new_match_query, location_translations)
-
-
-def _flatten_location_translations(location_translations):
-    """If location A translates to B, and B to C, then make A translate directly to C.
-
-    Args:
-        location_translations: dict of Location -> Location, where the key translates to the value.
-                               Mutated in place for efficiency and simplicity of implementation.
-    """
-    sources_to_process = set(six.iterkeys(location_translations))
-
-    def _update_translation(source):
-        """Return the proper (fully-flattened) translation for the given location."""
-        destination = location_translations[source]
-        if destination not in location_translations:
-            # "destination" cannot be translated, no further flattening required.
-            return destination
-        else:
-            # "destination" can itself be translated -- do so,
-            # and then flatten "source" to the final translation as well.
-            sources_to_process.discard(destination)
-            final_destination = _update_translation(destination)
-            location_translations[source] = final_destination
-            return final_destination
-
-    while sources_to_process:
-        _update_translation(sources_to_process.pop())
 
 
 def _translate_equivalent_locations(match_query, location_translations):
     """Translate Location objects into their equivalent locations, based on the given dict."""
     new_match_traversals = []
 
-    def visitor_fn(expression):
-        """Expression visitor function used to rewrite expressions with updated Location data."""
-        if isinstance(expression, (ContextField, GlobalContextField)):
-            old_location = expression.location.at_vertex()
-            new_location = location_translations.get(old_location, old_location)
-            if expression.location.field is not None:
-                new_location = new_location.navigate_to_field(expression.location.field)
-
-            # The Expression could be one of many types, including:
-            #   - ContextField
-            #   - GlobalContextField
-            # We determine its exact class to make sure we return an object of the same class
-            # as the expression being replaced.
-            expression_cls = type(expression)
-            return expression_cls(new_location, expression.field_type)
-        elif isinstance(expression, ContextFieldExistence):
-            old_location = expression.location
-            new_location = location_translations.get(old_location, old_location)
-
-            return ContextFieldExistence(new_location)
-        elif isinstance(expression, FoldedContextField):
-            # Update the Location within FoldedContextField
-            old_location = expression.fold_scope_location.base_location
-            new_location = location_translations.get(old_location, old_location)
-
-            fold_path = expression.fold_scope_location.fold_path
-            fold_field = expression.fold_scope_location.field
-            new_fold_scope_location = FoldScopeLocation(new_location, fold_path, field=fold_field)
-            field_type = expression.field_type
-
-            return FoldedContextField(new_fold_scope_location, field_type)
-        else:
-            return expression
+    visitor_fn = make_location_rewriter_visitor_fn(location_translations)
 
     # Rewrite the Locations in the steps of each MATCH traversal.
     for current_match_traversal in match_query.match_traversals:
@@ -315,16 +255,11 @@ def _translate_equivalent_locations(match_query, location_translations):
 
         new_match_traversals.append(new_traversal)
 
-    new_folds = {}
     # Update the Location within each FoldScopeLocation
-    for fold_scope_location, fold_ir_blocks in six.iteritems(match_query.folds):
-        fold_path = fold_scope_location.fold_path
-        fold_field = fold_scope_location.field
-        old_location = fold_scope_location.base_location
-        new_location = location_translations.get(old_location, old_location)
-        new_fold_scope_location = FoldScopeLocation(new_location, fold_path, field=fold_field)
-
-        new_folds[new_fold_scope_location] = fold_ir_blocks
+    new_folds = {
+        translate_potential_location(location_translations, fold_scope_location): fold_ir_blocks
+        for fold_scope_location, fold_ir_blocks in six.iteritems(match_query.folds)
+    }
 
     # Rewrite the Locations in the ConstructResult output block.
     new_output_block = match_query.output_block.visit_and_update_expressions(visitor_fn)
