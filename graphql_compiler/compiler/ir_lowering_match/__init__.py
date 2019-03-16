@@ -102,7 +102,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
 
     match_query = lower_comparisons_to_between(match_query)
 
-    match_query = lower_backtrack_blocks(match_query, location_types)
+    match_query = lower_backtrack_blocks(match_query, query_metadata_table)
     match_query = truncate_repeated_single_step_traversals(match_query)
     match_query = orientdb_class_with_while.workaround_type_coercions_in_recursions(match_query)
 

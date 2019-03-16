@@ -9,31 +9,16 @@ from ..expressions import (
 from ..helpers import FoldScopeLocation, Location
 
 
-def flatten_location_translations(location_translations):
-    """If location A translates to B, and B to C, then make A translate directly to C.
+def make_revisit_location_translations(query_metadata_table):
+    """Return a dict mapping location revisits to the location being revisited, for rewriting."""
+    location_translations = dict()
 
-    Args:
-        location_translations: dict of Location -> Location, where the key translates to the value.
-                               Mutated in place for efficiency and simplicity of implementation.
-    """
-    sources_to_process = set(six.iterkeys(location_translations))
+    for location, _ in query_metadata_table.registered_locations:
+        location_being_revisited = query_metadata_table.get_revisit_origin(location)
+        if location_being_revisited != location:
+            location_translations[location] = location_being_revisited
 
-    def _update_translation(source):
-        """Return the proper (fully-flattened) translation for the given location."""
-        destination = location_translations[source]
-        if destination not in location_translations:
-            # "destination" cannot be translated, no further flattening required.
-            return destination
-        else:
-            # "destination" can itself be translated -- do so,
-            # and then flatten "source" to the final translation as well.
-            sources_to_process.discard(destination)
-            final_destination = _update_translation(destination)
-            location_translations[source] = final_destination
-            return final_destination
-
-    while sources_to_process:
-        _update_translation(sources_to_process.pop())
+    return location_translations
 
 
 def translate_potential_location(location_translations, potential_location):

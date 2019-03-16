@@ -56,5 +56,11 @@ def insert_explicit_type_bounds(ir_blocks, query_metadata_table, type_equivalenc
     return new_ir_blocks
 
 
-def remove_mark_location_after_optional_backtrack():
+def remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_table):
+    """Remove location revisits, since they are not required in Cypher."""
+    location_translations = make_revisit_location_translations(query_metadata_table)
+
+    for block in ir_blocks:
+        pass
+
     raise NotImplementedError()

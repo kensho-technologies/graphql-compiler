@@ -13,7 +13,8 @@ import six
 from ..blocks import Backtrack, CoerceType, MarkLocation, QueryRoot
 from ..expressions import BinaryComposition, FalseLiteral, Literal, TernaryConditional, TrueLiteral
 from ..ir_lowering_common.location_renaming import (
-    flatten_location_translations, make_location_rewriter_visitor_fn, translate_potential_location
+    make_revisit_location_translations, make_location_rewriter_visitor_fn,
+    translate_potential_location
 )
 from .utils import convert_coerce_type_to_instanceof_filter
 
@@ -170,16 +171,17 @@ def truncate_repeated_single_step_traversals(match_query):
     return match_query._replace(match_traversals=new_match_traversals)
 
 
-def lower_backtrack_blocks(match_query, location_types):
+def lower_backtrack_blocks(match_query, query_metadata_table):
     """Lower Backtrack blocks into (QueryRoot, MarkLocation) pairs of blocks."""
     # The lowering works as follows:
     #   1. Upon seeing a Backtrack block, end the current traversal (if non-empty).
     #   2. Start new traversal from the type and location to which the Backtrack pointed.
-    #   3. If the Backtrack block had an associated MarkLocation, mark that location
+    #   3. If the Backtrack block had an associated MarkLocation, ensure that location is marked
     #      as equivalent to the location where the Backtrack pointed.
+    #   4. Rewrite all expressions that reference such revisit locations, making them refer to
+    #      the revisit origin location instead.
     new_match_traversals = []
-
-    location_translations = dict()
+    locations_needing_translation = set()
 
     for current_match_traversal in match_query.match_traversals:
         new_traversal = []
@@ -193,16 +195,16 @@ def lower_backtrack_blocks(match_query, location_types):
                     new_traversal = []
 
                 backtrack_location = step.root_block.location
-                backtrack_location_type = location_types[backtrack_location]
+                backtrack_location_info = query_metadata_table.get_location_info(backtrack_location)
 
                 # 2. Start new traversal from the type and location to which the Backtrack pointed.
-                new_root_block = QueryRoot({backtrack_location_type.name})
+                new_root_block = QueryRoot({backtrack_location_info.type.name})
                 new_as_block = MarkLocation(backtrack_location)
 
                 # 3. If the Backtrack block had an associated MarkLocation, mark that location
                 #    as equivalent to the location where the Backtrack pointed.
                 if step.as_block is not None:
-                    location_translations[step.as_block.location] = backtrack_location
+                    locations_needing_translation.add(step.as_block.location)
 
                 if step.coerce_type_block is not None:
                     raise AssertionError(u'Encountered type coercion in a MatchStep with '
@@ -214,8 +216,14 @@ def lower_backtrack_blocks(match_query, location_types):
 
         new_match_traversals.append(new_traversal)
 
-    flatten_location_translations(location_translations)
     new_match_query = match_query._replace(match_traversals=new_match_traversals)
+
+    location_translations = make_revisit_location_translations(query_metadata_table)
+    if locations_needing_translation != set(six.iterkeys(location_translations)):
+        raise AssertionError(u'Unexpectedly, the revisit location translations table computed from '
+                             u'the query metadata table did not match the locations needing '
+                             u'translation. This is a bug. {} {}'
+                             .format(location_translations, locations_needing_translation))
 
     return _translate_equivalent_locations(new_match_query, location_translations)
 
