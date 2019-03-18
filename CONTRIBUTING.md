@@ -27,7 +27,11 @@ pipenv shell
 
 py.test graphql_compiler/tests
 ```
-
+If you have any trouble starting the mysql database, make sure mysql service is not already running
+by typing:
+```
+service mysql stop
+```
 Some snapshot and integration tests take longer to setup, run, and teardown. These can be optionally
 skipped during development by running the tests with the `--skip-slow` flag:
 ```bash
