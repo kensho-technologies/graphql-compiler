@@ -136,7 +136,8 @@ def graphql_to_gremlin(schema, graphql_query, parameters, type_equivalence_hints
         query=insert_arguments_into_query(compilation_result, parameters))
 
 
-def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_type_overrides=None):
+def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_type_overrides=None,
+                                                 hidden_classes=None):
     """Construct a GraphQL schema from an OrientDB schema.
 
     Args:
@@ -175,6 +176,7 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
                                        (string -> {string -> GraphQLType}). Used to override the
                                        type of a field in the class where it's first defined and all
                                        the class's subclasses.
+        hidden_classes: optional set of strings, classes to not include in the GraphQL schema.
 
     Returns:
         tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
@@ -183,6 +185,9 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
     """
     if class_to_field_type_overrides is None:
         class_to_field_type_overrides = dict()
+    if hidden_classes is None:
+        hidden_classes = set()
 
     schema_graph = SchemaGraph(schema_data)
-    return get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides)
+    return get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
+                                                hidden_classes)

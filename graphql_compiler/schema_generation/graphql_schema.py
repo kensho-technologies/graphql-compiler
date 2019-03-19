@@ -45,16 +45,6 @@ def _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_ty
                             .format(field_name, class_name, superclass_name))
 
 
-def _get_classes_with_no_properties(schema_graph):
-    """Return the set of classes that have no properties."""
-    classes_with_no_properties = set()
-    for vertex_cls_name in schema_graph.vertex_class_names:
-        vertex_cls = schema_graph.get_element_by_class_name(vertex_cls_name)
-        if len(vertex_cls.properties) == 0:
-            classes_with_no_properties.add(vertex_cls_name)
-    return classes_with_no_properties
-
-
 def _property_descriptor_to_graphql_type(property_obj):
     """Return the best GraphQL type representation for an OrientDB property descriptor."""
     property_type = property_obj.type_id
@@ -219,7 +209,8 @@ def _create_union_types_specification(schema_graph, graphql_types, hidden_classe
     return types_spec
 
 
-def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides):
+def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
+                                         hidden_classes):
     """Return a GraphQL schema object corresponding to the schema of the given schema graph.
 
     Args:
@@ -228,6 +219,7 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
                                        (string -> {string -> GraphQLType}). Used to override the
                                        type of a field in the class where it's first defined and all
                                        the class's subclasses.
+        hidden_classes: set of strings, classes to not include in the GraphQL schema.
 
     Returns:
         tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
@@ -241,9 +233,6 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     # Remember that the result returned by get_subclass_set(class_name) includes class_name itself.
     inherited_field_type_overrides = _get_inherited_field_types(class_to_field_type_overrides,
                                                                 schema_graph)
-
-    # Classes with no properties are not representable in GraphQL.
-    hidden_classes = _get_classes_with_no_properties(schema_graph)
 
     graphql_types = OrderedDict()
     type_equivalence_hints = OrderedDict()
