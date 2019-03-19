@@ -1,7 +1,15 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
-from ..ir_lowering_common import (lower_context_field_existence, merge_consecutive_filter_clauses,
-                                  optimize_boolean_expression_comparisons)
+from ..ir_lowering_common.common import (
+    lower_context_field_existence,
+    merge_consecutive_filter_clauses,
+    optimize_boolean_expression_comparisons
+)
+from .ir_lowering import (
+    insert_explicit_type_bounds, remove_mark_location_after_optional_backtrack,
+    replace_local_fields_with_context_fields
+)
+from ..cypher_query import convert_to_cypher_query
 
 
 ##############
@@ -33,7 +41,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        list of IR blocks suitable for outputting as Cypher
+        CypherQuery object
     """
     sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
@@ -41,12 +49,13 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
         ir_blocks, query_metadata_table,
         type_equivalence_hints=type_equivalence_hints)
 
-    ir_blocks = add_parent_types_to_type_bounds(
-        ir_blocks, query_metadata_table,
-        type_equivalence_hints=type_equivalence_hints)
-
+    ir_blocks = remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_table)
     ir_blocks = lower_context_field_existence(ir_blocks)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
     ir_blocks = merge_consecutive_filter_clauses(ir_blocks)
+    ir_blocks = replace_local_fields_with_context_fields(ir_blocks)
 
-    return ir_blocks
+    cypher_query = convert_to_cypher_query(
+        ir_blocks, query_metadata_table, type_equivalence_hints=type_equivalence_hints)
+
+    return cypher_query

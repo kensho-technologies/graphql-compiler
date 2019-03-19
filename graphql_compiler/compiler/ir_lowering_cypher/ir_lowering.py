@@ -1,5 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from ..blocks import CoerceType, Filter, Fold, MarkLocation, Traverse
+from ..ir_lowering_common.location_renaming import (
+    make_location_rewriter_visitor_fn, make_revisit_location_translations
+)
 
 ##################################
 # Optimization / lowering passes #
@@ -59,8 +62,20 @@ def insert_explicit_type_bounds(ir_blocks, query_metadata_table, type_equivalenc
 def remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_table):
     """Remove location revisits, since they are not required in Cypher."""
     location_translations = make_revisit_location_translations(query_metadata_table)
+    visitor_fn = make_location_rewriter_visitor_fn(location_translations)
 
+    new_ir_blocks = []
     for block in ir_blocks:
-        pass
+        if isinstance(block, MarkLocation) and block.location in location_translations:
+            # Drop this block, since we'll be replacing its location with its revisit origin.
+            pass
+        else:
+            # Rewrite the locations in this block (if any), to reflect the desired translation.
+            new_block = block.visit_and_update_expressions(visitor_fn)
+            new_ir_blocks.append(new_block)
 
+    return new_ir_blocks
+
+
+def replace_local_fields_with_context_fields(ir_blocks):
     raise NotImplementedError()
