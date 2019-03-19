@@ -83,7 +83,7 @@ from .directive_helpers import (
     validate_root_vertex_directives, validate_vertex_directives,
     validate_vertex_field_directive_in_context, validate_vertex_field_directive_interactions
 )
-from .filters import process_filter_directive
+from .filters import _is_tag_argument, process_filter_directive
 from .helpers import (
     FoldScopeLocation, Location, get_ast_field_name, get_edge_direction_and_name,
     get_field_type_from_schema, get_uniquely_named_objects_by_name, get_vertex_field_type,
@@ -718,6 +718,21 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     return basic_blocks
 
 
+def _validate_all_tags_are_used(context):
+    tag_names = set([tag_name for tag_name in context['tags']])
+    filter_args = set([])
+    for location, location_info in context['metadata'].registered_locations:
+        filter_infos = context['metadata'].get_filter_infos(location)
+        for filter_info in filter_infos:
+            for arg in filter_info.args:
+                if _is_tag_argument(arg):
+                    filter_args.add(arg[1:])
+
+    unused_tags = tag_names - filter_args
+    if len(unused_tags) > 0:
+        raise GraphQLCompilationError(u'Found at least one unused @tag: {}.'.format(unused_tags))
+
+
 def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     """Compile a full GraphQL abstract syntax tree (AST) to intermediate representation.
 
@@ -818,6 +833,8 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     new_basic_blocks = _compile_ast_node_to_ir(
         schema, current_schema_type, base_ast, location, context)
     basic_blocks.extend(new_basic_blocks)
+
+    _validate_all_tags_are_used(context)
 
     # All operations after this point affect the global query scope, and are not related to
     # the "current" location in the query produced by the sequence of Traverse/Backtrack blocks.
