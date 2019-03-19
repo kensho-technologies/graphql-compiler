@@ -179,7 +179,6 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
     Returns:
         tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
         The tuple is of type (GraphQLSchema, GraphQLUnionType).
-        We hide classes with no properties in the schema since they're not representable in GraphQL.
     """
     if class_to_field_type_overrides is None:
         class_to_field_type_overrides = dict()

@@ -221,7 +221,6 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     Returns:
         tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
         The tuple is of type (GraphQLSchema, GraphQLUnionType).
-        We hide classes with no properties in the schema since they're not representable in GraphQL.
     """
     _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_type_overrides,
                                                                schema_graph)
