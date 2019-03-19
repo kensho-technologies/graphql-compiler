@@ -207,7 +207,9 @@ class SchemaGraph(object):
         Args:
             schema_data: list of dicts describing the classes in the OrientDB schema. The following
                          format is the way the data is structured in OrientDB 2. See
-                         the README.md file for an example of how to query this data.
+                         test_get_graphql_schema_from_orientdb_schema in
+                         graphql_compiler/tests/integration_tests/test_backends_integration.py
+                         for an example of how to query this data.
                          Each dict has the following string fields:
                             - name: string, the name of the class.
                             - superClasses (optional): list of strings, the name of the class's
@@ -222,21 +224,20 @@ class SchemaGraph(object):
                             - properties: list of dicts, describing the class's properties.
                                           Each property dictionary has the following string fields:
                                              - name: string, the name of the property.
-                                             - type: int, builtin OrientDB type ID of the field.
-                                                     See schema_properties.py for the mapping.
+                                             - type_id: int, builtin OrientDB type ID of the field.
                                              - linked_type (optional): int, if the property is a
                                                                        collection of builtin
                                                                        OrientDB objects, then it
                                                                        indicates their type ID.
                                              - linked_class (optional): string, if the property is a
-                                                                        collection of class
-                                                                        instances, then it indicates
-                                                                        the name of the class. If
-                                                                        class is an edge class, and
-                                                                        the field name is either
-                                                                        'in' or 'out', then it
-                                                                        describes the name of an
-                                                                        endpoint of the edge.
+                                                                       collection of class
+                                                                       instances, then it indicates
+                                                                       the name of the class. If
+                                                                       class is an edge class, and
+                                                                       the field name is either 'in'
+                                                                       or 'out', then it describes
+                                                                       the name of an endpoint of
+                                                                       the edge.
 
         Returns:
             fully-constructed SchemaGraph object

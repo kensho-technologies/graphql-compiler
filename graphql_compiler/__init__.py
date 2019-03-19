@@ -141,7 +141,9 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
 
     Args:
         schema_data: list of dicts describing the classes in the OrientDB schema. The following
-                     format is the way the data is structured in OrientDB 2. See the README.md file
+                     format is the way the data is structured in OrientDB 2. See
+                     test_get_graphql_schema_from_orientdb_schema in
+                     graphql_compiler/tests/integration_tests/test_backends_integration.py
                      for an example of how to query this data.
                      Each dict has the following string fields:
                         - name: string, the name of the class.
@@ -157,8 +159,7 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
                         - properties: list of dicts, describing the class's properties.
                                       Each property dictionary has the following string fields:
                                          - name: string, the name of the property.
-                                         - type: int, builtin OrientDB type ID of the property.
-                                                 See schema_properties.py for the mapping.
+                                         - type_id: int, builtin OrientDB type ID of the field.
                                          - linked_type (optional): int, if the property is a
                                                                    collection of builtin OrientDB
                                                                    objects, then it indicates their
@@ -172,8 +173,8 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
                                                                    name of an endpoint of the edge.
         class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
                                        (string -> {string -> GraphQLType}). Used to override the
-                                       type of a field in the class where it's first
-                                       defined and all the class's subclasses.
+                                       type of a field in the class where it's first defined and all
+                                       the class's subclasses.
 
     Returns:
         tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
