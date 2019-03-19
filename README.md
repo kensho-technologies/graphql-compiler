@@ -80,7 +80,7 @@ from graphql_compiler.tests.conftest import init_integration_graph_client
 # unless you are in the development enviroment outlined by CONTRIBUTING.md.
 
 # If you are not a developer, please see [Game of Graphql](https://github.com/kensho-technologies/game-of-graphql) for an end-to-end example.
-
+[link to Google!](http://google.com)
 # Step 1: Initialize dummy OrientDB database and get pyorient OrientDB client
 client = init_integration_graph_client()
 
