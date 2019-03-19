@@ -164,12 +164,13 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
                                                                    objects, then it indicates their
                                                                    type ID.
                                          - linked_class (optional): string, if the property is a
-                                                                   collection of class instances,
-                                                                   then it indicates the name of the
-                                                                   class. If class is an edge class,
-                                                                   and the field name is either 'in'
-                                                                   or 'out', then it describes the
-                                                                   name of an endpoint of the edge.
+                                                                    collection of class instances,
+                                                                    then it indicates the name of the
+                                                                    class. If class is an edge
+                                                                    class, and the field name is
+                                                                    either 'in' or 'out', then it
+                                                                    describes the name of an
+                                                                    endpoint of the edge.
         class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
                                        (string -> {string -> GraphQLType}). Used to override the
                                        type of a field in the class where it's first
