@@ -179,6 +179,9 @@ class IntegrationTests(TestCase):
     @integration_fixtures
     def test_override_field_types(self):
         schema, _ = generate_schema(self.graph_client)
+        # Since Animal implements the UniquelyIdentifiable interface and since we we overrode
+        # UniquelyIdentifiable's uuid field to be of type GraphQLID when we generated the schema,
+        # then Animal's uuid field should also be of type GrapqhQLID.
         self.assertEqual(schema.get_type("Animal").fields["uuid"].type, GraphQLID)
 
     @integration_fixtures

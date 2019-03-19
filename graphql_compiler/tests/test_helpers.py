@@ -273,7 +273,7 @@ def get_schema():
 
 
 def generate_schema(graph_client):
-    """Generate schema and type equivalence dict from an OrientDB client"""
+    """Generate schema and type equivalence dict from a pyorient client"""
     schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
     type_overrides = {
