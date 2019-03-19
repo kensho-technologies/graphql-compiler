@@ -183,6 +183,5 @@ class IntegrationTests(TestCase):
             "Event": {"event_date": GraphQLDateTime}
         }
         schema, _ = get_graphql_schema_from_orientdb_schema_data(schema_data, type_overrides)
-        print(print_schema(schema))
         compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
 # pylint: enable=no-member
