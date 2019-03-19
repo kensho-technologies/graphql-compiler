@@ -3,9 +3,12 @@
 from pprint import pformat
 import re
 
-from graphql import parse
+from graphql import parse, GraphQLID
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
+from graphql_compiler import (GraphQLDate, GraphQLDateTime,
+                              get_graphql_schema_from_orientdb_schema_data)
+from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 
@@ -267,6 +270,18 @@ def get_schema():
     return schema
 
 
+def generate_schema(graph_client):
+    """Generate schema and type equivalence dict from an OrientDB client"""
+    schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+    schema_data = [x.oRecordData for x in schema_records]
+    type_overrides = {
+        "UniquelyIdentifiable": {"uuid": GraphQLID},
+        "Animal": {"birthday": GraphQLDate},
+        "Event": {"event_date": GraphQLDateTime}
+    }
+    return get_graphql_schema_from_orientdb_schema_data(schema_data, type_overrides)
+
+
 def construct_location_types(location_types_as_strings):
     """Convert the supplied dict into a proper location_types dict with GraphQL types as values."""
     schema = get_schema()
@@ -275,3 +290,4 @@ def construct_location_types(location_types_as_strings):
         location: schema.get_type(type_name)
         for location, type_name in six.iteritems(location_types_as_strings)
     }
+
