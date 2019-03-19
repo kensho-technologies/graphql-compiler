@@ -76,6 +76,12 @@ from graphql_compiler import (
 from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 from graphql_compiler.tests.conftest import init_integration_graph_client
 
+# The following code is meant to serve as a mock example and will not run
+# unless you are in the development enviroment outlined by CONTRIBUTING.md.
+
+# If you are not a developer, please see https://github.com/kensho-technologies/game-of-graphql
+# for an end-to-end example.
+
 # Step 1: Initialize dummy OrientDB database and get pyorient OrientDB client
 client = init_integration_graph_client()
 
