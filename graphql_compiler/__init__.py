@@ -165,8 +165,8 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
                                                                    type ID.
                                          - linked_class (optional): string, if the property is a
                                                                     collection of class instances,
-                                                                    then it indicates the name of the
-                                                                    class. If class is an edge
+                                                                    then it indicates the name of
+                                                                    the class. If class is an edge
                                                                     class, and the field name is
                                                                     either 'in' or 'out', then it
                                                                     describes the name of an
