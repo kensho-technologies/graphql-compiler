@@ -98,8 +98,7 @@ def _get_union_type_name(type_names_to_union):
     return u'Union__' + u'__'.join(sorted(type_names_to_union))
 
 
-def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hidden_classes,
-                          cls_name):
+def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, cls_name):
     """Return a dict from field name to GraphQL field type, for the specified graph class."""
     properties = schema_graph.get_element_by_class_name(cls_name).properties
 
@@ -140,16 +139,10 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
             # is non-abstract and has subclasses, we need to return its subclasses as an union type.
             # This is because GraphQL fragments cannot be applied on concrete types, and
             # GraphQL does not support inheritance of concrete types.
-            type_names_to_union = [
-                subclass
-                for subclass in subclasses
-                if subclass not in hidden_classes
-            ]
-            if type_names_to_union:
-                edge_endpoint_type_name = _get_union_type_name(type_names_to_union)
+            if subclasses:
+                edge_endpoint_type_name = _get_union_type_name(subclasses)
         else:
-            if to_type_name not in hidden_classes:
-                edge_endpoint_type_name = to_type_name
+            edge_endpoint_type_name = to_type_name
 
         if edge_endpoint_type_name is not None:
             # If we decided to not hide this edge due to its endpoint type being non-representable,
@@ -166,8 +159,7 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
     return result
 
 
-def _create_field_specification(schema_graph, graphql_types, field_type_overrides,
-                                hidden_classes, cls_name):
+def _create_field_specification(schema_graph, graphql_types, field_type_overrides, cls_name):
     """Return a function that specifies the fields present on the given type."""
     def field_maker_func():
         """Create and return the fields for the given GraphQL type."""
@@ -175,7 +167,7 @@ def _create_field_specification(schema_graph, graphql_types, field_type_override
         result.update(OrderedDict([
             (name, GraphQLField(value))
             for name, value in sorted(six.iteritems(_get_fields_for_class(
-                schema_graph, graphql_types, field_type_overrides, hidden_classes, cls_name)),
+                schema_graph, graphql_types, field_type_overrides, cls_name)),
                 key=lambda x: x[0])
         ]))
         return result
@@ -183,27 +175,25 @@ def _create_field_specification(schema_graph, graphql_types, field_type_override
     return field_maker_func
 
 
-def _create_interface_specification(schema_graph, graphql_types, hidden_classes, cls_name):
+def _create_interface_specification(schema_graph, graphql_types, cls_name):
     """Return a function that specifies the interfaces implemented by the given type."""
     def interface_spec():
         """Return a list of GraphQL interface types implemented by the type named 'cls_name'."""
         abstract_inheritance_set = (
             superclass_name
             for superclass_name in sorted(list(schema_graph.get_inheritance_set(cls_name)))
-            if (superclass_name not in hidden_classes and
-                schema_graph.get_element_by_class_name(superclass_name).abstract)
+            if schema_graph.get_element_by_class_name(superclass_name).abstract
         )
 
         return [
             graphql_types[x]
             for x in abstract_inheritance_set
-            if x not in hidden_classes
         ]
 
     return interface_spec
 
 
-def _create_union_types_specification(schema_graph, graphql_types, hidden_classes, base_name):
+def _create_union_types_specification(schema_graph, graphql_types, base_name):
     """Return a function that gives the types in the union type rooted at base_name."""
     # When edges point to vertices of type base_name, and base_name is both non-abstract and
     # has subclasses, we need to represent the edge endpoint type with a union type based on
@@ -213,7 +203,6 @@ def _create_union_types_specification(schema_graph, graphql_types, hidden_classe
         return [
             graphql_types[x]
             for x in sorted(list(schema_graph.get_subclass_set(base_name)))
-            if x not in hidden_classes
         ]
 
     return types_spec
@@ -242,17 +231,12 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     inherited_field_type_overrides = _get_inherited_field_types(class_to_field_type_overrides,
                                                                 schema_graph)
 
-    # Classes with no properties are not representable in GraphQL.
-    hidden_classes = _get_classes_with_no_properties(schema_graph)
-
     graphql_types = OrderedDict()
     type_equivalence_hints = OrderedDict()
 
     # For each vertex class, construct its analogous GraphQL type representation.
     for vertex_cls_name in sorted(schema_graph.vertex_class_names):
         vertex_cls = schema_graph.get_element_by_class_name(vertex_cls_name)
-        if vertex_cls_name in hidden_classes:
-            continue
 
         inherited_field_type_overrides.setdefault(vertex_cls_name, dict())
         field_type_overrides = inherited_field_type_overrides[vertex_cls_name]
@@ -271,7 +255,7 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
         # are not closures. Instead, call a function with 'cls_name' as an argument,
         # and have that function construct and return the required lambda.
         field_specification_lambda = _create_field_specification(
-            schema_graph, graphql_types, field_type_overrides, hidden_classes, vertex_cls_name)
+            schema_graph, graphql_types, field_type_overrides, vertex_cls_name)
 
         # Abstract classes are interfaces, concrete classes are object types.
         current_graphql_type = None
@@ -285,7 +269,7 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
             # we need to create an interface specification lambda function that
             # specifies the interfaces implemented by this type.
             interface_specification_lambda = _create_interface_specification(
-                schema_graph, graphql_types, hidden_classes, vertex_cls_name)
+                schema_graph, graphql_types, vertex_cls_name)
 
             # N.B.: Ignore the "is_type_of" argument below, it is simply a circumvention of
             #       a sanity check inside the GraphQL library. The library assumes that we'll use
@@ -302,8 +286,6 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     # For each vertex class, construct all union types representations.
     for vertex_cls_name in sorted(schema_graph.vertex_class_names):
         vertex_cls = schema_graph.get_element_by_class_name(vertex_cls_name)
-        if vertex_cls_name in hidden_classes:
-            continue
 
         vertex_cls_subclasses = schema_graph.get_subclass_set(vertex_cls_name)
         if not vertex_cls.abstract and len(vertex_cls_subclasses) > 1:
@@ -315,7 +297,7 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
             # we need to create a union type specification lambda function that specifies
             # the types that this union type is composed of.
             type_specification_lambda = _create_union_types_specification(
-                schema_graph, graphql_types, hidden_classes, vertex_cls_name)
+                schema_graph, graphql_types, vertex_cls_name)
 
             union_type = GraphQLUnionType(union_type_name, types=type_specification_lambda)
             graphql_types[union_type_name] = union_type
@@ -323,8 +305,6 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
 
     # Include all abstract non-vertex classes whose only non-abstract subclasses are vertices.
     for non_graph_cls_name in sorted(schema_graph.non_graph_class_names):
-        if non_graph_cls_name in hidden_classes:
-            continue
         if not schema_graph.get_element_by_class_name(non_graph_cls_name).abstract:
             continue
 
@@ -346,8 +326,7 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
                 inherited_field_type_overrides.setdefault(non_graph_cls_name, dict())
                 field_type_overrides = inherited_field_type_overrides[non_graph_cls_name]
                 field_specification_lambda = _create_field_specification(
-                    schema_graph, graphql_types, field_type_overrides, hidden_classes,
-                    non_graph_cls_name)
+                    schema_graph, graphql_types, field_type_overrides, non_graph_cls_name)
                 graphql_type = GraphQLInterfaceType(non_graph_cls_name,
                                                     fields=field_specification_lambda)
                 graphql_types[non_graph_cls_name] = graphql_type
