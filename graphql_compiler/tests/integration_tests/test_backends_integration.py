@@ -4,12 +4,10 @@ from unittest import TestCase
 
 from graphql.type import GraphQLID
 from graphql.utils.schema_printer import print_schema
-from parameterized import parameterized
-import pytest
-
-from graphql_compiler.schema import GraphQLDate, GraphQLDateTime
 from graphql_compiler.tests import test_backend
 from graphql_compiler.tests.test_helpers import generate_schema
+from parameterized import parameterized
+import pytest
 
 from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
 from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
@@ -175,9 +173,7 @@ class IntegrationTests(TestCase):
     @integration_fixtures
     def test_snapshot_graphql_schema_from_orientdb_schema(self):
         class_to_field_type_overrides = {
-            "UniquelyIdentifiable": {"uuid": GraphQLID},
-            "Animal": {"birthday": GraphQLDate},
-            "Event": {"event_date": GraphQLDateTime}
+            "UniquelyIdentifiable": {"uuid": GraphQLID}
         }
         schema, _ = generate_schema(self.graph_client,
                                     class_to_field_type_overrides=class_to_field_type_overrides)
