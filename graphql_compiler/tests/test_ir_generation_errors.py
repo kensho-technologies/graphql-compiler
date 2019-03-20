@@ -730,6 +730,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             Event {
                 name @tag(tag_name: "name")
                 event_date @output(out_name: "date")
+                description @filter(op_name: "has_substring", value: ["%name"])
             }
         }''')
 
@@ -738,6 +739,8 @@ class IrGenerationErrorTests(unittest.TestCase):
                 Event {
                     name @tag(tag_name: "name") @tag(tag_name: "name2")
                     event_date @output(out_name: "date")
+                    description @filter(op_name: "has_substring", value: ["%name"])
+                                @filter(op_name: "has_substring", value: ["%name2"])
                 }
             }''')
 
@@ -750,6 +753,11 @@ class IrGenerationErrorTests(unittest.TestCase):
                 in_Animal_FedAt {
                     name @output(out_name: "animal")
                 }
+                in_Event_RelatedEvent {
+                    ... on Event {
+                        event_date @filter(op_name: "=", value: ["%date"])
+                    }
+                }
             }
         }''')
 
@@ -761,6 +769,11 @@ class IrGenerationErrorTests(unittest.TestCase):
                         name @output(out_name: "animal")
                     }
                     event_date @tag(tag_name: "date")
+                    in_Event_RelatedEvent {
+                        ... on Event {
+                            event_date @filter(op_name: "=", value: ["%date"])
+                        }
+                    }
                 }
             }''', '''{
                 FeedingEvent {
@@ -769,6 +782,11 @@ class IrGenerationErrorTests(unittest.TestCase):
                     }
                     name @output(out_name: "name")
                     event_date @tag(tag_name: "date")
+                    in_Event_RelatedEvent {
+                        ... on Event {
+                            event_date @filter(op_name: "=", value: ["%date"])
+                        }
+                    }
                 }
             }'''
         )
