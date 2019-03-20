@@ -7,9 +7,7 @@ from graphql import GraphQLID, parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
-from graphql_compiler import (
-    GraphQLDate, GraphQLDateTime, get_graphql_schema_from_orientdb_schema_data
-)
+from graphql_compiler import get_graphql_schema_from_orientdb_schema_data
 from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
@@ -278,8 +276,6 @@ def generate_schema(graph_client):
     schema_data = [x.oRecordData for x in schema_records]
     type_overrides = {
         'UniquelyIdentifiable': {'uuid': GraphQLID},
-        'Animal': {'birthday': GraphQLDate},
-        'Event': {'event_date': GraphQLDateTime}
     }
     return get_graphql_schema_from_orientdb_schema_data(schema_data, type_overrides)
 
