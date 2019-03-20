@@ -4,7 +4,7 @@ from collections import namedtuple
 
 import six
 
-from .helpers import FoldScopeLocation, Location
+from .helpers import Location
 
 
 LocationInfo = namedtuple(
@@ -156,9 +156,6 @@ class QueryMetadataTable(object):
 
     def record_filter_info(self, location, filter_info):
         """Record filter information about the location."""
-        if isinstance(location, FoldScopeLocation):
-            # NOTE(gurer): ignore filters inside the fold for now
-            return
         record_location = location.at_vertex()
         self._filter_infos.setdefault(record_location, []).append(filter_info)
 
