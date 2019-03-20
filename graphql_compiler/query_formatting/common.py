@@ -17,7 +17,7 @@ from .sql_formatting import insert_arguments_into_sql_query
 
 
 def _check_is_string_value(value):
-    """Raise if the value is not a proper utf-8 string."""
+    """Raise if the value is not a string."""
     if isinstance(value, bytes):  # in python 2, bytes are six.string_types
         raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
                                           u'{}'.format(value))
