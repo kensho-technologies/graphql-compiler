@@ -162,7 +162,7 @@ class QueryFormattingTests(unittest.TestCase):
 
     def test_argument_types(self):
         test_cases = (
-            (GraphQLString, ('asdf',), (4, 5.4, True, b'asdf')),
+            (GraphQLString, ('asdf',), (4, 5.4, True)),
             (GraphQLID, ('13d72846-1777-6c3a-5743-5d9ced3032ed', 'asf'), (4, 4.4, True)),
             (GraphQLFloat, (4.1, 4.0), ('4.3', 5)),
             (GraphQLInt, (3, 4), (4.0, 4.1, True, False, '4')),

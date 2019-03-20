@@ -16,16 +16,6 @@ from .match_formatting import insert_arguments_into_match_query
 from .sql_formatting import insert_arguments_into_sql_query
 
 
-def _check_is_string_value(value):
-    """Raise if the value is not a string."""
-    if isinstance(value, bytes):  # in python 2, bytes are six.string_types
-        raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
-                                          u'{}'.format(value))
-    if not isinstance(value, six.string_types):
-        raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
-                                          u'{}'.format(value))
-
-
 ######
 # Public API
 ######
@@ -43,11 +33,15 @@ def validate_argument_type(expected_type, value):
         value: object that can be interpreted as being of that type
     """
     if GraphQLString.is_same_type(expected_type):
-        _check_is_string_value(value)
+        if not isinstance(value, six.string_types):
+            raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
+                                              u'{}'.format(value))
     elif GraphQLID.is_same_type(expected_type):
         # IDs can be strings or numbers, but the GraphQL library coerces them to strings.
         # We will follow suit and treat them as strings.
-        _check_is_string_value(value)
+        if not isinstance(value, six.string_types):
+            raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
+                                              u'{}'.format(value))
     elif GraphQLFloat.is_same_type(expected_type):
         if not isinstance(value, float):
             raise GraphQLInvalidArgumentError(u'Attempting to represent a non-float as a float: '
