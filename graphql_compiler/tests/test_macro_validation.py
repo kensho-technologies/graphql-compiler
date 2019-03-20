@@ -21,7 +21,7 @@ class MacroValidationTests(unittest.TestCase):
         query = '''mutation {
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
                 out_Animal_ParentOf {
-                    out_Animal_ParentOf {
+                    out_Animal_ParentOf @macro_edge_target {
                         uuid
                     }
                 }
@@ -33,6 +33,79 @@ class MacroValidationTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
+
+    def test_macro_with_output_directive(self):
+        query = '''{
+            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf @macro_edge_target {
+                        uuid @output(out_name: "uuid")
+                    }
+                }
+            }
+        }'''
+        args = {}
+
+        macro_registry = create_macro_registry()
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, self.schema, query,
+                                args, self.type_equivalence_hints)
+
+    def test_macro_with_output_source_directive(self):
+        query = '''{
+            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
+                out_Animal_ParentOf @output_source {
+                    out_Animal_ParentOf @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }'''
+        args = {}
+
+        macro_registry = create_macro_registry()
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, self.schema, query,
+                                args, self.type_equivalence_hints)
+
+    def test_macro_with_target_inside_fold(self):
+        query = '''{
+            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
+                out_Animal_ParentOf @fold {
+                    out_Animal_ParentOf @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }'''
+        args = {}
+
+        macro_registry = create_macro_registry()
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, self.schema, query,
+                                args, self.type_equivalence_hints)
+
+    def test_macro_with_target_outside_fold(self):
+        query = '''{
+            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf @macro_edge_target {
+                        uuid
+                    }
+                }
+                out_Animal_LivesIn @fold {
+                    _x_count @filter(op_name: "=", value: ["$num_locations"])
+                }
+            }
+        }'''
+        args = {
+            'num_locations': 1,
+        }
+
+        # It should compile successfully
+        macro_registry = create_macro_registry()
+        register_macro_edge(macro_registry, self.schema, query,
+                            args, self.type_equivalence_hints)
 
     def test_macro_edge_missing_target(self):
         query = '''{

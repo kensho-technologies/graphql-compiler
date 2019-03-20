@@ -4,7 +4,8 @@ from copy import copy
 from itertools import chain
 
 from graphql.language.ast import (
-    Argument, Directive, Document, Field, Name, SelectionSet, StringValue
+    Argument, Directive, Document, Field, InlineFragment, Name, OperationDefinition, SelectionSet,
+    StringValue
 )
 from graphql.validation import validate
 
@@ -14,7 +15,10 @@ from ...ast_manipulation import (
 from ...compiler.compiler_frontend import ast_to_ir
 from ...exceptions import GraphQLInvalidMacroError
 from ...query_formatting.common import ensure_arguments_are_provided
-from ...schema import VERTEX_FIELD_PREFIXES, is_vertex_field_name
+from ...schema import (
+    VERTEX_FIELD_PREFIXES, FilterDirective, FoldDirective, OptionalDirective, OutputDirective,
+    OutputSourceDirective, RecurseDirective, TagDirective, is_vertex_field_name
+)
 from .directives import (
     MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
 )
@@ -59,6 +63,55 @@ def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
                 u'Required macro edge directive "@{}" was unexpectedly present more than once in '
                 u'the supplied macro edge definition GraphQL. It was found {} times.'
                 .format(directive_definition.name, len(macro_data)))
+
+
+def _validate_macro_ast_directives(ast, inside_fold_scope=False):
+    """Check that the macro is using non-macro direcives properly.
+
+    Restrictions on use of directives:
+    - @output and @output_source are disallowed
+    - @macro_edge_target is not allowed to be inside a @fold scope
+
+    Args:
+        ast: GraphQL AST describing a subtree of the macro
+        inside_fold_scope: bool, whether the subtree is within a @fold scope
+    """
+    subselection_inside_fold_scope = inside_fold_scope
+    directives_with_no_restrictions = frozenset({
+        FilterDirective.name,
+        TagDirective.name,
+        OptionalDirective.name,
+        RecurseDirective.name,
+        MacroEdgeDefinitionDirective.name,
+    })
+    disallowed_directives = frozenset({
+        OutputDirective.name,
+        OutputSourceDirective.name,
+    })
+    for directive in ast.directives:
+        name = directive.name.value
+        if name in directives_with_no_restrictions:
+            pass
+        elif name in disallowed_directives:
+            raise GraphQLInvalidMacroError(u'Macros are not allowed to use the {} directive. '
+                                           u'Found usage {}'.format(name, directive))
+        elif name == FoldDirective.name:
+            subselection_inside_fold_scope = True
+        elif name == MacroEdgeTargetDirective.name:
+            if inside_fold_scope:
+                raise GraphQLInvalidMacroError(
+                    u'The @macro_edge_target cannot be inside a fold scope.')
+        else:
+            raise AssertionError(u'Unexpected directive name found: {} {}'
+                                 .format(directive.name.value, directive))
+
+    if isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+        if ast.selection_set is not None:
+            for selection in ast.selection_set.selections:
+                _validate_macro_ast_directives(
+                    selection, inside_fold_scope=subselection_inside_fold_scope)
+    else:
+        raise AssertionError(u'Unexpected AST type received: {} {}'.format(type(ast), ast))
 
 
 def _validate_class_selection_ast(ast, macro_defn_ast):
@@ -189,14 +242,10 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     macro_directives = get_directives_for_ast(ast)
 
     _validate_macro_ast_with_macro_directives(schema, ast, macro_directives)
+    _validate_macro_ast_directives(ast)
 
     macro_defn_ast, macro_defn_directive = macro_directives[MacroEdgeDefinitionDirective.name][0]
     # macro_target_ast, _ = macro_directives[MacroEdgeTargetDirective.name][0]
-
-    # TODO(predrag): Required further validation:
-    # - the macro definition directive AST contains only @filter/@fold directives together with
-    #   the target directive;
-    # - the macro target is not within a @fold;
 
     # Check that the macro successfully compiles to IR
     _, input_metadata, _, _ = ast_to_ir(schema, _get_minimal_query_ast_from_macro_ast(ast),
@@ -204,7 +253,6 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     ensure_arguments_are_provided(input_metadata, macro_edge_args)
     # TODO(bojanserafimov): Check all the provided arguments were necessary
     # TODO(bojanserafimov): Check the arguments have the correct types
-    # TODO(bojanserafimov): Check that there's no @output in the macro
     # TODO(bojanserafimov): @macro_edge_target is not on a union type
     # TODO(bojanserafimov): @macro_edge_target does not begin with a coercion
 
