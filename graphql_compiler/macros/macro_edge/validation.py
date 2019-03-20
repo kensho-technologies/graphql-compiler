@@ -77,17 +77,17 @@ def _validate_macro_ast_directives(ast, inside_fold_scope=False):
         inside_fold_scope: bool, whether the subtree is within a @fold scope
     """
     subselection_inside_fold_scope = inside_fold_scope
-    directives_with_no_restrictions = (
+    directives_with_no_restrictions = frozenset({
         FilterDirective.name,
         TagDirective.name,
         OptionalDirective.name,
         RecurseDirective.name,
         MacroEdgeDefinitionDirective.name,
-    )
-    disallowed_directives = (
+    })
+    disallowed_directives = frozenset({
         OutputDirective.name,
         OutputSourceDirective.name,
-    )
+    })
     for directive in ast.directives:
         name = directive.name.value
         if name in directives_with_no_restrictions:
@@ -102,8 +102,8 @@ def _validate_macro_ast_directives(ast, inside_fold_scope=False):
                 raise GraphQLInvalidMacroError(
                     u'The @macro_edge_target cannot be inside a fold scope.')
         else:
-            raise AssertionError(u'Unexpected directive name found: {} {}'.
-                                 format(directive.name.value, directive))
+            raise AssertionError(u'Unexpected directive name found: {} {}'
+                                 .format(directive.name.value, directive))
 
     if isinstance(ast, (Field, InlineFragment, OperationDefinition)):
         if ast.selection_set is not None:
