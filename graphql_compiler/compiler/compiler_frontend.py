@@ -721,7 +721,7 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
 def _validate_all_tags_are_used(context):
     tag_names = set([tag_name for tag_name in context['tags']])
     filter_args = set([])
-    for location, location_info in context['metadata'].registered_locations:
+    for location, _ in context['metadata'].registered_locations:
         filter_infos = context['metadata'].get_filter_infos(location)
         for filter_info in filter_infos:
             for arg in filter_info.args:
