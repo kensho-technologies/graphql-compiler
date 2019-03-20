@@ -16,16 +16,6 @@ from .match_formatting import insert_arguments_into_match_query
 from .sql_formatting import insert_arguments_into_sql_query
 
 
-def _check_is_string_value(value):
-    """Raise if the value is not a proper utf-8 string."""
-    if not isinstance(value, six.string_types):
-        if isinstance(value, bytes):  # should only happen in py3
-            value.decode('utf-8')  # decoding should not raise errors
-        else:
-            raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
-                                              u'{}'.format(value))
-
-
 ######
 # Public API
 ######
@@ -39,15 +29,19 @@ def validate_argument_type(expected_type, value):
     specific backend. That way code that passes validation can be compiled to any backend.
 
     Args:
-        expected_type: GraphQL type we expect
+        expected_type: GraphQLType we expect
         value: object that can be interpreted as being of that type
     """
     if GraphQLString.is_same_type(expected_type):
-        _check_is_string_value(value)
+        if not isinstance(value, six.string_types):
+            raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
+                                              u'{}'.format(value))
     elif GraphQLID.is_same_type(expected_type):
         # IDs can be strings or numbers, but the GraphQL library coerces them to strings.
         # We will follow suit and treat them as strings.
-        _check_is_string_value(value)
+        if not isinstance(value, six.string_types):
+            raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into an id: '
+                                              u'{}'.format(value))
     elif GraphQLFloat.is_same_type(expected_type):
         if not isinstance(value, float):
             raise GraphQLInvalidArgumentError(u'Attempting to represent a non-float as a float: '
@@ -63,6 +57,8 @@ def validate_argument_type(expected_type, value):
             raise GraphQLInvalidArgumentError(u'Attempting to represent a non-bool as a bool: '
                                               u'{} {}'.format(type(value), value))
     elif GraphQLDecimal.is_same_type(expected_type):
+        # Special case: in Python, isinstance(True, int) returns True.
+        # Safeguard against this with an explicit check against bool type.
         if isinstance(value, bool):
             raise GraphQLInvalidArgumentError(
                 u'Attempting to represent a non-decimal as a decimal: {} {}'
@@ -98,7 +94,7 @@ def validate_argument_type(expected_type, value):
         for element in value:
             validate_argument_type(inner_type, element)
     else:
-        raise AssertionError(u'Could not safely represent the requested GraphQL type: '
+        raise AssertionError(u'Could not safely represent the requested GraphQLType: '
                              u'{} {}'.format(expected_type, value))
 
 
