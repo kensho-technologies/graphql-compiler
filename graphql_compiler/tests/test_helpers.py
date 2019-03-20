@@ -278,7 +278,6 @@ def generate_schema(graph_client):
     schema_data = [x.oRecordData for x in schema_records]
     type_overrides = {
         "UniquelyIdentifiable": {"uuid": GraphQLID},
-        "Animal": {"birthday": GraphQLDate},
         "Event": {"event_date": GraphQLDateTime}
     }
     return get_graphql_schema_from_orientdb_schema_data(schema_data, type_overrides)
