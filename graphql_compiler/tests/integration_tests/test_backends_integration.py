@@ -9,6 +9,7 @@ from graphql_compiler.tests.test_helpers import generate_schema
 from parameterized import parameterized
 import pytest
 
+
 from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
 from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
 from .integration_test_helpers import (
