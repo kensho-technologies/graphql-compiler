@@ -490,6 +490,12 @@ class IrGenerationErrorTests(unittest.TestCase):
             }
         }''')
 
+        unused_tag = (GraphQLCompilationError, '''{
+            Animal {
+                name @tag(tag_name: "name")
+            }
+        }''')
+
         errors_and_inputs = (
             tag_on_vertex_field,
             tag_without_name,
@@ -497,6 +503,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             tag_with_illegal_name,
             tag_within_fold_scope,
             tag_on_count_field,
+            unused_tag,
         )
 
         for expected_error, graphql in errors_and_inputs:
