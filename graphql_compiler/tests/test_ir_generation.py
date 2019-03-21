@@ -585,9 +585,9 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Animal',
             child_location: 'Animal',
-            child_fed_at_location: 'Event',
+            child_fed_at_location: 'FeedingEvent',
             child_revisited_location: 'Animal',
-            animal_fed_at_location: 'Event',
+            animal_fed_at_location: 'FeedingEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -1053,13 +1053,13 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Animal',
             child_location: 'Animal',
-            child_fed_at_location: 'Event',
+            child_fed_at_location: 'FeedingEvent',
             revisited_child_location: 'Animal',
             other_parent_location: 'Animal',
-            other_parent_fed_at_location: 'Event',
+            other_parent_fed_at_location: 'FeedingEvent',
             other_parent_revisited_location: 'Animal',
             grandparent_location: 'Animal',
-            grandparent_fed_at_location: 'Event',
+            grandparent_fed_at_location: 'FeedingEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -1191,13 +1191,13 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Animal',
             child_location: 'Animal',
-            child_fed_at_location: 'Event',
+            child_fed_at_location: 'FeedingEvent',
             revisited_child_location: 'Animal',
             other_parent_location: 'Animal',
-            other_parent_fed_at_location: 'Event',
+            other_parent_fed_at_location: 'FeedingEvent',
             other_parent_revisited_location: 'Animal',
             grandparent_location: 'Animal',
-            grandparent_fed_at_location: 'Event',
+            grandparent_fed_at_location: 'FeedingEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -2818,13 +2818,13 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Animal',
             base_parent_fold: 'Animal',
-            base_fed_at_fold: 'Event',
+            base_fed_at_fold: 'FeedingEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
     def test_coercion_to_union_base_type_inside_fold(self):
-        # Given type_equivalence_hints = { Event: EventOrBirthEvent },
+        # Given type_equivalence_hints = { Event: Union__BirthEvent__Event__FeedingEvent },
         # the coercion should be optimized away as a no-op.
         test_data = test_input_data.coercion_to_union_base_type_inside_fold()
 
@@ -3887,9 +3887,9 @@ class IrGenerationTests(unittest.TestCase):
             base_location: 'Animal',
             parent_location: 'Animal',
             grandparent_location: 'Animal',
-            fed_at_location: 'Event',
+            fed_at_location: 'FeedingEvent',
             parent_revisited_location: 'Animal',
-            animal_fed_at_location: 'Event',
+            animal_fed_at_location: 'FeedingEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -4084,13 +4084,13 @@ class IrGenerationTests(unittest.TestCase):
         expected_location_types = {
             base_location: 'Animal',
             parent_location: 'Animal',
-            parent_fed_at_location: 'Event',
+            parent_fed_at_location: 'FeedingEvent',
             revisited_child_location: 'Animal',
             other_child_location: 'Animal',
-            other_child_fed_at_location: 'Event',
+            other_child_fed_at_location: 'FeedingEvent',
             re_revisited_child_location: 'Animal',
             grandchild_location: 'Animal',
-            grandchild_fed_at_location: 'Event',
+            grandchild_fed_at_location: 'FeedingEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -4193,7 +4193,7 @@ class IrGenerationTests(unittest.TestCase):
             child_location: 'Animal',
             grandchild_location: 'Animal',
             revisited_base_location: 'Animal',
-            child_fed_at_location: 'Event',
+            child_fed_at_location: 'FeedingEvent',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
