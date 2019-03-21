@@ -174,17 +174,16 @@ class IntegrationTests(TestCase):
     @integration_fixtures
     def test_snapshot_graphql_schema_from_orientdb_schema(self):
         class_to_field_type_overrides = {
-            "UniquelyIdentifiable": {"uuid": GraphQLID}
+            'UniquelyIdentifiable': {'uuid': GraphQLID}
         }
         schema, _ = generate_schema(self.graph_client,
                                     class_to_field_type_overrides=class_to_field_type_overrides)
-        print(print_schema(schema))
         compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
 
     @integration_fixtures
     def test_override_field_types(self):
         class_to_field_type_overrides = {
-            "UniquelyIdentifiable": {"uuid": GraphQLID}
+            'UniquelyIdentifiable': {'uuid': GraphQLID}
         }
         schema, _ = generate_schema(self.graph_client,
                                     class_to_field_type_overrides=class_to_field_type_overrides)
@@ -197,10 +196,10 @@ class IntegrationTests(TestCase):
     def test_include_admissible_non_graph_class(self):
         schema, _ = generate_schema(self.graph_client)
         # Included abstract non-vertex classes whose non-abstract subclasses are all vertexes.
-        self.assertIsNotNone(schema.get_type("UniquelyIdentifiable"))
+        self.assertIsNotNone(schema.get_type('UniquelyIdentifiable'))
 
     @integration_fixtures
     def test_selectively_hide_classes(self):
-        schema, _ = generate_schema(self.graph_client, hidden_classes={"Animal"})
-        self.assertNotIn("Animal", schema.get_type_map())
+        schema, _ = generate_schema(self.graph_client, hidden_classes={'Animal'})
+        self.assertNotIn('Animal', schema.get_type_map())
 # pylint: enable=no-member
