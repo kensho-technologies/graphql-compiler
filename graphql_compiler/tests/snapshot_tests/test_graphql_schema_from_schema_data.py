@@ -50,7 +50,6 @@ class GraphQLSchemaGenerationTests(TestCase):
                         'name': 'alias',
                         'type': PROPERTY_TYPE_EMBEDDED_SET_ID,
                         'linkedType': PROPERTY_TYPE_STRING_ID,
-                        'customFields': "Alias describes the different names a person can have.",
                         'defaultValue': '{}'
                     }
                 ],
@@ -58,6 +57,10 @@ class GraphQLSchemaGenerationTests(TestCase):
             {
                 'name': 'Person_LivesIn',
                 'abstract': False,
+                'customFields': {
+                    'human_name_in': 'Person',
+                    'human_name_out': 'Location where person lives',
+                },
                 'properties': [
                     {
                         'name': 'in',
