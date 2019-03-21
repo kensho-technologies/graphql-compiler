@@ -27,7 +27,7 @@ CREATE INDEX Entity_Related ON Entity_Related (in, out) UNIQUE_HASH_INDEX
 ### Event ###
 CREATE CLASS Event EXTENDS Entity
 
-CREATE PROPERTY Event.event_date Date
+CREATE PROPERTY Event.event_date DateTime
 CREATE INDEX Event.event_date NOTUNIQUE
 
 CREATE CLASS Event_RelatedEvent EXTENDS E
