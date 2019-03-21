@@ -29,7 +29,7 @@ py.test graphql_compiler/tests
 ```
 
 If you have any trouble starting the mysql database, make sure mysql service is not already 
-running outside of docker by typing:
+running outside of docker. You can do this in Ubuntu by typing:
 ```
 service mysql stop
 ```
