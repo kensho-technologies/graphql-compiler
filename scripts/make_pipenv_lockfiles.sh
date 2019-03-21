@@ -20,7 +20,7 @@ python3 --version | grep 'Python 3'
 rm Pipfile.lock Pipfile.py2.lock
 
 echo 'Creating Python 2 lockfile...'
-pipenv --rm
+pipenv --rm || true  # Don't error if there is no virtualenv yet.
 pipenv lock --python="$(which python2)" --dev
 mv Pipfile.lock Pipfile.py2.lock
 
