@@ -119,7 +119,7 @@ so we can triage the issue and take appropriate action.
   starts, and is therefore the **root vertex field**. In any scope, fields with the prefix `out_`
   denote vertex fields connected by an outbound edge, whereas ones with the prefix `in_` denote
   vertex fields connected by an inbound edge.
-```
+```graphql
 {
     Animal {
         name @output(out_name: "name")
@@ -160,7 +160,7 @@ this directive prevents result sets that are unable to produce a value for that 
 being discarded, and allowed to continue processing the remainder of the query.
 
 #### Example Use
-```
+```graphql
 {
     Animal {
         name @output(out_name: "name")
@@ -204,7 +204,7 @@ Its `out_name` argument specifies the name of the column in which the
 output value should be returned.
 
 #### Example Use
-```
+```graphql
 {
     Animal {
         name @output(out_name: "animal_name")
@@ -233,7 +233,7 @@ on separate rows in the query result, the folded outputs are coalesced into list
 at the scope marked `@fold`.
 
 #### Example Use
-```
+```graphql
 {
     Animal {
         name @output(out_name: "animal_name")
@@ -270,7 +270,7 @@ This query is *invalid* for two separate reasons:
 - It expands vertex fields after an `@output` directive (outputting `animal_name`)
 - The `in_Animal_ParentOf` scope, which is within a scope marked `@fold`,
   expands two vertex fields instead of at most one.
-```
+```graphql
 {
     Animal {
         out_Animal_ParentOf @fold {
@@ -288,7 +288,7 @@ This query is *invalid* for two separate reasons:
 }
 ```
 The following is a valid use of `@fold`:
-```
+```graphql
 {
     Animal {
         out_Animal_ParentOf @fold {
@@ -315,7 +315,7 @@ in the `@filter`'s `value` array. See [Passing parameters](#passing-parameters)
 for more details.
 
 #### Example Use
-```
+```graphql
 {
     Animal {
         name @tag(tag_name: "parent_name")
@@ -366,7 +366,7 @@ all runtime parameters, and their values will be inserted into the final query b
 executed against the database.
 
 Consider the following query:
-```
+```graphql
 {
     Animal {
         name @output(out_name: "animal_name")
@@ -385,7 +385,7 @@ If the user marks a property field with a `@tag` directive and a suitable name,
 that value becomes available to use as a tagged parameter in all subsequent `@filter` directives.
 
 Consider the following query:
-```
+```graphql
 {
     Animal {
         name @tag(out_name: "parent_name")
@@ -450,7 +450,7 @@ at `depth = 0`, i.e. the current vertex -- see the below sections for a more tho
 #### Example Use
 Say the user wants to fetch the names of the children and grandchildren of each `Animal`.
 That could be accomplished by running the following two queries and concatenating their results:
-```
+```graphql
 {
     Animal {
         name @output(out_name: "ancestor")
@@ -460,7 +460,7 @@ That could be accomplished by running the following two queries and concatenatin
     }
 }
 ```
-```
+```graphql
 {
     Animal {
         name @output(out_name: "ancestor")
@@ -476,7 +476,7 @@ If the user then wanted to also add great-grandchildren to the `descendants` out
 require yet another query, and so on. Instead of concatenating the results of multiple queries,
 the user can simply use the `@recurse` directive. The following query returns the child and
 grandchild descendants:
-```
+```graphql
 {
     Animal {
         name @output(out_name: "ancestor")
@@ -508,7 +508,7 @@ Similarly, it cannot have descendants that are more than two steps removed
 
 Now, let's see what happens when we eliminate the outer `out_Animal_ParentOf` vertex field
 and simply have the `@recurse` applied on the `out_Animal_ParentOf` in the root vertex field scope:
-```
+```graphql
 {
     Animal {
         name @output(out_name: "ancestor")
@@ -567,7 +567,7 @@ Supported comparison operators:
 #### Example Use
 
 ##### Equal to (`=`):
-```
+```graphql
 {
     Species {
         name @filter(op_name: "=", value: ["$species_name"])
@@ -600,7 +600,7 @@ Allows you to filter on vertices which contain the exact string `$wanted_name_or
 `name` or `alias` fields.
 
 #### Example Use
-```
+```graphql
 {
     Animal @filter(op_name: "name_or_alias", value: ["$wanted_name_or_alias"]) {
         name @output(out_name: "name")
@@ -618,7 +618,7 @@ Substrings will not be matched.
 
 ### between
 #### Example Use
-```
+```graphql
 {
     Animal {
         name @output(out_name: "name")
@@ -638,7 +638,7 @@ containing the animal's name in a column named `name`.
 
 ### in_collection
 #### Example Use
-```
+```graphql
 {
     Animal {
         name @output(out_name: "animal_name")
@@ -655,7 +655,7 @@ containing the `Animal`'s name and color in columns named `animal_name` and `col
 
 ### has_substring
 #### Example Use
-```
+```graphql
 {
     Animal {
         name @filter(op_name: "has_substring", value: ["$substring"])
@@ -672,7 +672,7 @@ in a column named `animal_name`.
 
 ### contains
 #### Example Use
-```
+```graphql
 {
     Animal {
         alias @filter(op_name: "contains", value: ["$wanted"])
@@ -689,7 +689,7 @@ in a column named `animal_name`.
 
 ### intersects
 #### Example Use
-```
+```graphql
 {
     Animal {
         alias @filter(op_name: "intersects", value: ["$wanted"])
@@ -706,7 +706,7 @@ Each row contains the matching `Animal`'s name in a column named `animal_name`.
 
 ### has_edge_degree
 #### Example Use
-```
+```graphql
 {
     Animal {
         name @output(out_name: "animal_name")
@@ -745,7 +745,7 @@ enclosing scope of the coercion -- they coerce the enclosing scope into a differ
 Type coercions are represented with GraphQL inline fragments.
 
 #### Example Use
-```
+```graphql
 {
     Species {
         name @output(out_name: "species_name")
@@ -762,7 +762,7 @@ with the query, the user must choose which of the types in the `Union__Food__Foo
 In this example, `... on Food` indicates that the `Food` type was chosen, and any vertices
 at that scope that are not of type `Food` are filtered out and discarded.
 
-```
+```graphql
 {
     Species {
         name @output(out_name: "species_name")
@@ -792,7 +792,7 @@ all directives that can be applied to any other property field.
 
 #### Example Use
 
-```
+```graphql
 {
     Entity {
         __typename @output(out_name: "entity_type")
@@ -852,7 +852,7 @@ insert_meta_fields_into_existing_schema(existing_schema)
 
 #### Example Use
 
-```
+```graphql
 {
     Animal {
         name @output(out_name: "name")
@@ -867,7 +867,7 @@ This query returns one row for each `Animal` vertex, containing its name, and th
 of its children. While the output type of the `child_names` selection is a list of strings,
 the output type of the `number_of_children` selection is an integer.
 
-```
+```graphql
 {
     Animal {
         name @output(out_name: "name")
@@ -903,7 +903,7 @@ matched the earlier filter.
 The `has_edge_degree` filter allows filtering based on the number of edges of a particular type.
 There are situations in which filtering with `has_edge_degree` and filtering using `=` on `_x_count`
 produce equivalent queries. Here is one such pair of queries:
-```
+```graphql
 {
     Species {
         name @output(out_name: "name")
@@ -914,7 +914,7 @@ produce equivalent queries. Here is one such pair of queries:
 }
 ```
 and
-```
+```graphql
 {
     Species {
         name @output(out_name: "name")
@@ -932,7 +932,7 @@ elements in the `@fold` is `$num_animals`").
 
 When we add additional filtering within the `Animal` vertices of the `in_Animal_OfSpecies` vertex
 field, this distinction becomes very important. Compare the following two queries:
-```
+```graphql
 {
     Species {
         name @output(out_name: "name")
@@ -945,7 +945,7 @@ field, this distinction becomes very important. Compare the following two querie
 }
 ```
 versus
-```
+```graphql
 {
     Species {
         name @output(out_name: "name")
@@ -1124,7 +1124,7 @@ the `t_name` value in each result, as they are both valid results.
 
 Users may apply the `@output_source` directive on the last scope of the query
 to alter this behavior:
-```
+```graphql
 {
     S {
         name @output(out_name: "s_name")
@@ -1138,7 +1138,7 @@ to alter this behavior:
 Rather than producing at most one result for each `S`, the query will now produce
 at most one result for each distinct value that can be found at `out_E`, where the directive
 is applied:
-```
+```graphql
 [
     {"s_name": "a", "t_name": "x"},
     {"s_name": "a", "t_name": "y"},
@@ -1147,7 +1147,7 @@ is applied:
 
 Conceptually, applying the `@output_source` directive makes it as if the query were written in
 the opposite order:
-```
+```graphql
 {
     T {
         name @output(out_name: "t_name")
@@ -1308,7 +1308,7 @@ Going forward, we will refer to two different kinds of `@optional` directives.
 - A *"simple"* optional is a vertex with an `@optional` directive that does not expand
 any vertex fields within it.
 For example:
-```
+```graphql
 {
     Animal {
         name @output(out_name: "name")
@@ -1338,7 +1338,7 @@ FROM (
 - A *"compound"* optional is a vertex with an `@optional` directive which does expand
 vertex fields within it.
 For example:
-```
+```graphql
 {
     Animal {
         name @output(out_name: "name")
@@ -1445,7 +1445,7 @@ type systems:
 - Gremlin does not have first-class support for inheritance at all.
 
 Assume the following GraphQL schema:
-```
+```graphql
 type Animal {
     name: String
 }
@@ -1474,7 +1474,7 @@ union's equivalent type.
 
 Setting `type_equivalence_hints = { Animal: AnimalCatDog }` during compilation
 would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`:
-```
+```graphql
 {
     Foo {
         adjacent_animal @fold {

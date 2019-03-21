@@ -3,9 +3,12 @@
 from pprint import pformat
 import re
 
-from graphql import parse
+from graphql import GraphQLID, parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
+
+from graphql_compiler import get_graphql_schema_from_orientdb_schema_data
+from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 
@@ -265,6 +268,16 @@ def get_schema():
     ast = parse(SCHEMA_TEXT)
     schema = build_ast_schema(ast)
     return schema
+
+
+def generate_schema(graph_client):
+    """Generate schema and type equivalence dict from a pyorient client"""
+    schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+    schema_data = [x.oRecordData for x in schema_records]
+    type_overrides = {
+        "UniquelyIdentifiable": {"uuid": GraphQLID},
+    }
+    return get_graphql_schema_from_orientdb_schema_data(schema_data, type_overrides)
 
 
 def construct_location_types(location_types_as_strings):
