@@ -17,6 +17,7 @@ python2 --version 2>&1 | grep 'Python 2'  # N.B.: Python 2 prints version info t
 python3 --version | grep 'Python 3'
 
 # Delete the existing lockfiles.
+echo 'Deleting old lockfiles...'
 rm Pipfile.lock Pipfile.py2.lock
 
 echo 'Creating Python 2 lockfile...'
