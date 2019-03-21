@@ -182,18 +182,18 @@ class IntegrationTests(TestCase):
         # Since Animal implements the UniquelyIdentifiable interface and since we we overrode
         # UniquelyIdentifiable's uuid field to be of type GraphQLID when we generated the schema,
         # then Animal's uuid field should also be of type GrapqhQLID.
-        self.assertEqual(GraphQLID, schema.get_type("Animal").fields["uuid"].type)
+        self.assertEqual(schema.get_type('Animal').fields['uuid'].type, GraphQLID)
 
     @integration_fixtures
     def test_include_admissible_non_graph_class(self):
         schema, _ = generate_schema(self.graph_client)
         # Included abstract non-vertex classes whose non-abstract subclasses are all vertexes.
-        self.assertIsNotNone(schema.get_type("UniquelyIdentifiable"))
+        self.assertIsNotNone(schema.get_type('UniquelyIdentifiable'))
 
     @integration_fixtures
     def test_parsed_schema_element_custom_fields(self):
         schema_graph = generate_schema_graph(self.graph_client)
-        parent_of_edge = schema_graph.get_element_by_class_name("Animal_ParentOf")
+        parent_of_edge = schema_graph.get_element_by_class_name('Animal_ParentOf')
         expected_custom_class_fields = {
             'human_name_in': 'Parent',
             'human_name_out': 'Child'
