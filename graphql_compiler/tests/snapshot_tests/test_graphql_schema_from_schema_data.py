@@ -3,13 +3,10 @@ from graphql.utils.schema_printer import print_schema
 from snapshottest import TestCase
 
 from ... import get_graphql_schema_from_orientdb_schema_data
-from ... schema_generation.schema_properties import (ORIENTDB_BASE_EDGE_CLASS_NAME,
-                                                     ORIENTDB_BASE_VERTEX_CLASS_NAME,
-                                                     PROPERTY_TYPE_DECIMAL_ID,
-                                                     PROPERTY_TYPE_EMBEDDED_SET_ID,
-                                                     PROPERTY_TYPE_LINK_ID,
-                                                     PROPERTY_TYPE_STRING_ID)
-
+from ...schema_generation.schema_properties import (
+    ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_DECIMAL_ID,
+    PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_LINK_ID, PROPERTY_TYPE_STRING_ID
+)
 
 
 class GraphQLSchemaGenerationTests(TestCase):
@@ -72,7 +69,7 @@ class GraphQLSchemaGenerationTests(TestCase):
                         'type': PROPERTY_TYPE_LINK_ID,
                         'linkedClass': 'Person',
                     }
-                 ],
+                ],
                 'superClass': ORIENTDB_BASE_EDGE_CLASS_NAME
             },
             {
