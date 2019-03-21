@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 """Convert lowered IR basic blocks to Cypher query strings."""
-from .blocks import QueryRoot, Recurse, Traverse
+from .blocks import Fold, QueryRoot, Recurse, Traverse
 from .helpers import get_only_element_from_collection
 
 
@@ -45,6 +45,8 @@ def _emit_code_from_cypher_step(cypher_step):
             u'%(left_edge_mark)s-[%(quantifier)s:%(edge_type)s]-%(right_edge_mark)s' +
             step_vertex_pattern
         )
+        linked_location_name, _ = cypher_step.linked_location.get_location_name()
+        template_data['linked_location'] = linked_location_name
 
     if has_where_block:
         pattern += u'\n  WHERE %(predicate)s'
@@ -103,9 +105,12 @@ def emit_code_from_ir(cypher_query, compiler_metadata):
     output_fields = cypher_query.output_block.fields
     sorted_output_keys = sorted(output_fields.keys())
     break_and_indent = u'\n  '
-    for output_name in sorted_output_keys:
+    for output_index, output_name in enumerate(sorted_output_keys):
+        if output_index > 0:
+            query_data.append(u',')
+
         output_expression = output_fields[output_name]
         query_data.append(break_and_indent)
-        query_data.append(u'%s AS `%s' % (output_expression.to_cypher(), output_name))
+        query_data.append(u'%s AS `%s`' % (output_expression.to_cypher(), output_name))
 
     return u''.join(query_data)

@@ -222,7 +222,7 @@ class Variable(Expression):
         # Cypher has built-in support for variable expansion, so we'll just emit a variable
         # definition and rely on Cypher to insert the value.
         self.validate()
-        return u'${}'.format(self.variable_name)
+        return u'{}'.format(self.variable_name)
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
@@ -949,7 +949,7 @@ class BinaryComposition(Expression):
             }
         else:
             translation_table = {
-                u'=': (u'==', regular_operator_format),
+                u'=': (u'=', regular_operator_format),
                 u'!=': (u'!=', regular_operator_format),
                 u'>=': (u'>=', regular_operator_format),
                 u'<=': (u'<=', regular_operator_format),
@@ -959,7 +959,7 @@ class BinaryComposition(Expression):
                 u'&&': (u'AND', regular_operator_format),
                 u'contains': (u'IN', inverted_operator_format),
                 u'intersects': (u'IN', intersects_operator_format),
-                u'has_substring': (u'CONTAINS', dotted_operator_format),
+                u'has_substring': (u'CONTAINS', regular_operator_format),
             }
 
         cypher_operator, format_spec = translation_table.get(self.operator, (None, None))

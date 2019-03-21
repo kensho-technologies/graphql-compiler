@@ -4,10 +4,12 @@
 from collections import namedtuple
 
 from .blocks import (
-    Backtrack, CoerceType, ConstructResult, Filter, Fold, GlobalOperationsStart, MarkLocation,
-    OutputSource, QueryRoot, Recurse, Traverse, Unfold
+    Backtrack, CoerceType, ConstructResult, EndOptional, Filter, Fold, GlobalOperationsStart,
+    MarkLocation, OutputSource, QueryRoot, Recurse, Traverse, Unfold
 )
 from .helpers import get_only_element_from_collection
+from .ir_lowering_common.common import extract_folds_from_ir_blocks
+
 
 CypherQuery = namedtuple(
     'CypherQuery',
@@ -31,7 +33,7 @@ CypherStep = namedtuple(
 
 step_block_types = (Traverse, Recurse)
 linked_location_source_types = (MarkLocation, Backtrack)
-discarded_block_types = (Unfold, OutputSource)
+discarded_block_types = (Unfold, OutputSource, EndOptional)
 
 
 def _get_all_supertypes_of_exact_type(query_metadata_table, exact_type):
@@ -60,7 +62,7 @@ def _make_cypher_step(query_metadata_table, linked_location, current_step_blocks
                              .format(current_step_blocks))
 
     exact_step_type = get_only_element_from_collection(coercion_block.target_class)
-    step_types = _get_all_supertypes_of_exact_type(exact_step_type)
+    step_types = _get_all_supertypes_of_exact_type(query_metadata_table, exact_step_type)
 
     return CypherStep(
         linked_location=linked_location, step_block=step_block, step_types=step_types,
@@ -81,7 +83,7 @@ def _make_query_root_cypher_step(query_metadata_table, linked_location, current_
                              .format(current_step_blocks))
 
     exact_step_type = get_only_element_from_collection(step_block.start_class)
-    step_types = _get_all_supertypes_of_exact_type(exact_step_type)
+    step_types = _get_all_supertypes_of_exact_type(query_metadata_table, exact_step_type)
 
     return CypherStep(
         linked_location=linked_location, step_block=step_block, step_types=step_types,
@@ -97,6 +99,7 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
     steps = []
     current_step_blocks = None
     linked_location = None
+    next_linked_location = None
 
     folds, remaining_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
 
@@ -115,12 +118,17 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
                 query_metadata_table, linked_location, current_step_blocks)
             steps.append(cypher_step)
 
+            linked_location = next_linked_location
+            next_linked_location = None
+
             current_step_blocks = [block]
         elif isinstance(block, GlobalOperationsStart):
             global_operations_index = current_block_index
             break
         elif isinstance(block, linked_location_source_types):
-            linked_location = block.location
+            next_linked_location = block.location
+            if isinstance(block, MarkLocation):
+                current_step_blocks.append(block)
         elif isinstance(block, discarded_block_types):
             pass
         elif isinstance(block, (Filter, CoerceType)):
@@ -129,13 +137,13 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
             raise AssertionError(u'Unexpected block encountered: {} {}'
                                  .format(block, ir_blocks))
 
-    steps.append(current_step_blocks)
+    steps.append(_make_cypher_step(query_metadata_table, linked_location, current_step_blocks))
 
     if global_operations_index is None:
         raise AssertionError(u'Unexpectedly, no GlobalOperationsStart block was found in '
                              u'the IR blocks: {}'.format(remaining_ir_blocks))
 
-    global_operations_blocks = ir_blocks[global_operations_index + 1:]
+    global_operations_blocks = remaining_ir_blocks[global_operations_index + 1:]
     global_operations_types = tuple(type(block) for block in global_operations_blocks)
 
     if global_operations_types == (Filter, ConstructResult):

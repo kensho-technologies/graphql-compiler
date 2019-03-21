@@ -6,6 +6,7 @@ from ..expressions import ContextField, LocalField
 from ..ir_lowering_common.location_renaming import (
     make_location_rewriter_visitor_fn, make_revisit_location_translations
 )
+from ..helpers import FoldScopeLocation
 
 ##################################
 # Optimization / lowering passes #
@@ -51,8 +52,8 @@ def insert_explicit_type_bounds(ir_blocks, query_metadata_table, type_equivalenc
             if next_coerce_type:
                 # There's already a type coercion here, nothing needs to be done here.
                 pass
-            elif new_mark_location:
-                location_info = query_metadata_table.get_location_info(new_mark_location.location)
+            elif next_mark_location:
+                location_info = query_metadata_table.get_location_info(next_mark_location.location)
                 new_ir_blocks.append(CoerceType({location_info.type.name}))
             else:
                 raise AssertionError(u'Illegal IR blocks found. Block {} at index {} does not have '
@@ -80,6 +81,11 @@ def remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_tabl
     return new_ir_blocks
 
 
+def _get_field_type(location):
+    """Not implemented yet."""
+    raise NotImplementedError()
+
+
 def replace_local_fields_with_context_fields(ir_blocks):
     """Rewrite LocalField expressions into ContextField expressions referencing that location."""
     def visitor_func_base(location, expression):
@@ -88,7 +94,11 @@ def replace_local_fields_with_context_fields(ir_blocks):
             return expression
 
         location_at_field = location.navigate_to_field(expression.field_name)
-        return ContextField(location_at_field)
+        if isinstance(location, FoldScopeLocation):
+            field_type = _get_field_type(location_at_field)
+            return FoldedContextField(location_at_field, field_type)
+        else:
+            return ContextField(location_at_field)
 
     new_ir_blocks = []
     blocks_to_be_rewritten = []

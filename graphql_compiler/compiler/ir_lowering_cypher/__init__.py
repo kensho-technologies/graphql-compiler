@@ -1,8 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from ..ir_lowering_common.common import (
-    lower_context_field_existence,
-    merge_consecutive_filter_clauses,
+    lower_context_field_existence, merge_consecutive_filter_clauses,
     optimize_boolean_expression_comparisons
 )
 from .ir_lowering import (
