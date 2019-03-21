@@ -31,21 +31,15 @@ pipenv shell
 py.test graphql_compiler/tests
 ```
 
-If you have any trouble starting the mysql database, make sure mysql service is not already 
-running outside of docker. You can stop mysql service in OSX with:
-```bash 
-brew services stop mysql
-```
-or on Ubuntu with 
-```bash
-service mysql stop
-```
-
 Some snapshot and integration tests take longer to setup, run, and teardown. These can be optionally
 skipped during development by running the tests with the `--skip-slow` flag:
 ```bash
 py.test graphql_compiler/tests --skip-slow
 ```
+
+If you run into any issues, please consult the TROUBLESHOOTING.md file. If you encounter and resolve
+an issue that is not already part of the troubleshooting guide, we'd appreciate it if you open
+a pull request and update the guide to make future development easier.
 
 A test method or class can be marked as slow to be skipped in this fashion by decorating with the
 `@pytest.mark.slow` flag.
