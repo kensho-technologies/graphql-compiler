@@ -4,7 +4,8 @@
 # Fail on first error, on undefined variables, and on errors in a pipeline.
 set -euo pipefail
 
-# Enable recursive globbing, and make globs that do not match return null values.
+# Ensure that the "**" glob operator is applied recursively.
+# Make globs that do not match return null values.
 shopt -s globstar nullglob
 
 # Make sure the current working directory for this script is the root directory.
