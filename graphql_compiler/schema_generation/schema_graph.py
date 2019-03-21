@@ -224,11 +224,11 @@ class SchemaGraph(object):
                                              - name: string, the name of the property.
                                              - type: int, builtin OrientDB type ID of the field.
                                                      See schema_properties.py for the mapping.
-                                             - linked_type (optional): int, if the property is a
+                                             - linkedType (optional): int, if the property is a
                                                                        collection of builtin
                                                                        OrientDB objects, then it
                                                                        indicates their type ID.
-                                             - linked_class (optional): string, if the property is a
+                                             - linkedClass (optional): string, if the property is a
                                                                         collection of class
                                                                         instances, then it indicates
                                                                         the name of the class. If
