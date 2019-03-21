@@ -8,15 +8,20 @@ are entirely different and not easy to generate directly from this Expression ob
 An output-language-aware IR lowering step allows us to convert this Expression into
 other Expressions, using data already present in the IR, to simplify the final code generation step.
 """
-from graphql import GraphQLList
+from graphql import GraphQLInt, GraphQLList
 from graphql.type import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 import six
 
 from ...exceptions import GraphQLCompilationError
 from ...schema import GraphQLDate, GraphQLDateTime
-from ..blocks import Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, Traverse
+from ..blocks import (
+    Backtrack, CoerceType, ConstructResult, Filter, GlobalOperationsStart, MarkLocation, Traverse
+)
 from ..compiler_entities import Expression
-from ..expressions import BinaryComposition, FoldedContextField, Literal, LocalField, NullLiteral
+from ..expressions import (
+    BinaryComposition, FoldedContextField, Literal, LocalField, NullLiteral,
+    make_type_replacement_visitor
+)
 from ..helpers import (
     STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation,
     get_only_element_from_collection, strip_non_null_from_type, validate_safe_string
@@ -148,15 +153,18 @@ class GremlinFoldedContextField(Expression):
                     u'Allowed types are {}.'
                     .format(type(block), self.folded_ir_blocks, allowed_block_types))
 
-        if not isinstance(self.field_type, GraphQLList):
-            raise ValueError(u'Invalid value of "field_type", expected a list type but got: '
+        if isinstance(self.field_type, GraphQLList):
+            inner_type = strip_non_null_from_type(self.field_type.of_type)
+            if isinstance(inner_type, GraphQLList):
+                raise GraphQLCompilationError(
+                    u'Outputting list-valued fields in a @fold context is currently not supported: '
+                    u'{} {}'.format(self.fold_scope_location, self.field_type.of_type))
+        elif GraphQLInt.is_same_type(self.field_type):
+            # This needs to be implemented for @fold _x_count support.
+            raise NotImplementedError()
+        else:
+            raise ValueError(u'Invalid value of "field_type", expected a list or int type but got: '
                              u'{}'.format(self.field_type))
-
-        inner_type = strip_non_null_from_type(self.field_type.of_type)
-        if isinstance(inner_type, GraphQLList):
-            raise GraphQLCompilationError(
-                u'Outputting list-valued fields in a @fold context is currently '
-                u'not supported: {} {}'.format(self.fold_scope_location, self.field_type.of_type))
 
     def to_match(self):
         """Must never be called."""
@@ -316,18 +324,13 @@ def _convert_folded_blocks(folded_ir_blocks):
     return new_folded_ir_blocks
 
 
-def lower_folded_outputs(ir_blocks):
-    """Lower standard folded output fields into GremlinFoldedContextField objects."""
+def lower_folded_outputs_and_context_fields(ir_blocks):
+    """Lower standard folded output / context fields into GremlinFoldedContextField objects."""
     folds, remaining_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
 
     if not remaining_ir_blocks:
         raise AssertionError(u'Expected at least one non-folded block to remain: {} {} '
                              u'{}'.format(folds, remaining_ir_blocks, ir_blocks))
-    output_block = remaining_ir_blocks[-1]
-    if not isinstance(output_block, ConstructResult):
-        raise AssertionError(u'Expected the last non-folded block to be ConstructResult, '
-                             u'but instead was: {} {} '
-                             u'{}'.format(type(output_block), output_block, ir_blocks))
 
     # Turn folded Filter blocks into GremlinFoldedFilter blocks.
     converted_folds = {
@@ -335,21 +338,28 @@ def lower_folded_outputs(ir_blocks):
         for base_fold_location, folded_ir_blocks in six.iteritems(folds)
     }
 
-    new_output_fields = dict()
-    for output_name, output_expression in six.iteritems(output_block.fields):
-        new_output_expression = output_expression
+    def rewriter_fn(folded_context_field):
+        """Rewrite FoldedContextField objects into GremlinFoldedContextField ones."""
+        # Get the matching folded IR blocks and put them in the new context field.
+        base_fold_location_name = folded_context_field.fold_scope_location.get_location_name()[0]
+        folded_ir_blocks = converted_folds[base_fold_location_name]
+        return GremlinFoldedContextField(
+            folded_context_field.fold_scope_location, folded_ir_blocks,
+            folded_context_field.field_type)
 
-        # Turn FoldedContextField expressions into GremlinFoldedContextField ones.
-        if isinstance(output_expression, FoldedContextField):
-            # Get the matching folded IR blocks and put them in the new context field.
-            base_fold_location_name = output_expression.fold_scope_location.get_location_name()[0]
-            folded_ir_blocks = converted_folds[base_fold_location_name]
-            new_output_expression = GremlinFoldedContextField(
-                output_expression.fold_scope_location, folded_ir_blocks,
-                output_expression.field_type)
+    visitor_fn = make_type_replacement_visitor(FoldedContextField, rewriter_fn)
 
-        new_output_fields[output_name] = new_output_expression
+    # Start by just appending blocks to the output list.
+    new_ir_blocks = []
+    block_collection = new_ir_blocks
+    for block in remaining_ir_blocks:
+        block_collection.append(block)
 
-    new_ir_blocks = remaining_ir_blocks[:-1]
-    new_ir_blocks.append(ConstructResult(new_output_fields))
+        if isinstance(block, GlobalOperationsStart):
+            # Once we see the GlobalOperationsStart, start accumulating the blocks for rewriting.
+            block_collection = []
+
+    for block in block_collection:
+        new_ir_blocks.append(block.visit_and_update_expressions(visitor_fn))
+
     return new_ir_blocks

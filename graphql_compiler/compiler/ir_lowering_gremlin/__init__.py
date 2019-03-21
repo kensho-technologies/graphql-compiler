@@ -1,6 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from .ir_lowering import (lower_coerce_type_block_type_data, lower_coerce_type_blocks,
-                          lower_folded_outputs, rewrite_filters_in_optional_blocks)
+                          lower_folded_outputs_and_context_fields,
+                          rewrite_filters_in_optional_blocks)
 from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from ..ir_lowering_common.common import (lower_context_field_existence,
                                          merge_consecutive_filter_clauses,
@@ -49,6 +50,6 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     ir_blocks = lower_coerce_type_blocks(ir_blocks)
     ir_blocks = rewrite_filters_in_optional_blocks(ir_blocks)
     ir_blocks = merge_consecutive_filter_clauses(ir_blocks)
-    ir_blocks = lower_folded_outputs(ir_blocks)
+    ir_blocks = lower_folded_outputs_and_context_fields(ir_blocks)
 
     return ir_blocks
