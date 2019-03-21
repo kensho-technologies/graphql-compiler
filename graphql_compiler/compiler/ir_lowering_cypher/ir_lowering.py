@@ -1,5 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from ..blocks import CoerceType, Filter, Fold, MarkLocation, Traverse
+from functools import partial
+
+from ..blocks import CoerceType, Filter, Fold, MarkLocation, QueryRoot, Traverse
+from ..expressions import ContextField, LocalField
 from ..ir_lowering_common.location_renaming import (
     make_location_rewriter_visitor_fn, make_revisit_location_translations
 )
@@ -78,4 +81,36 @@ def remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_tabl
 
 
 def replace_local_fields_with_context_fields(ir_blocks):
-    raise NotImplementedError()
+    """Rewrite LocalField expressions into ContextField expressions referencing that location."""
+    def visitor_func_base(location, expression):
+        """Rewriter function that converts LocalFields into ContextFields at the given location."""
+        if not isinstance(expression, LocalField):
+            return expression
+
+        location_at_field = location.navigate_to_field(expression.field_name)
+        return ContextField(location_at_field)
+
+    new_ir_blocks = []
+    blocks_to_be_rewritten = []
+    for block in ir_blocks:
+        if isinstance(block, MarkLocation):
+            # First, rewrite all the blocks that might have referenced this location.
+            visitor_fn = partial(visitor_func_base, block.location)
+            for block_for_rewriting in blocks_to_be_rewritten:
+                new_block = block_for_rewriting.visit_and_update_expressions(visitor_fn)
+                new_ir_blocks.append(new_block)
+
+            # Then, append the MarkLocation block itself and start with an empty rewrite list.
+            blocks_to_be_rewritten = []
+            new_ir_blocks.append(block)
+        else:
+            blocks_to_be_rewritten.append(block)
+
+    # Append any remaining blocks that did not need rewriting.
+    new_ir_blocks.extend(blocks_to_be_rewritten)
+
+    if len(ir_blocks) != len(new_ir_blocks):
+        raise AssertionError(u'The number of IR blocks unexpectedly changed, {} vs {}: {} {}'
+                             .format(len(ir_blocks), len(new_ir_blocks), ir_blocks, new_ir_blocks))
+
+    return new_ir_blocks
