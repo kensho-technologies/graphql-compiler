@@ -2,12 +2,15 @@
 from decimal import Decimal
 from unittest import TestCase
 
+from graphql.type import GraphQLID
+from graphql.utils.schema_printer import print_schema
 from parameterized import parameterized
 import pytest
 
 from graphql_compiler.tests import test_backend
+from graphql_compiler.tests.test_helpers import generate_schema
 
-from ..test_helpers import get_schema
+from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
 from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
 from .integration_test_helpers import (
     compile_and_run_match_query, compile_and_run_sql_query, sort_db_results
@@ -168,4 +171,22 @@ class IntegrationTests(TestCase):
         ]
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
+    @integration_fixtures
+    def test_snapshot_graphql_schema_from_orientdb_schema(self):
+        schema, _ = generate_schema(self.graph_client)
+        compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
+
+    @integration_fixtures
+    def test_override_field_types(self):
+        schema, _ = generate_schema(self.graph_client)
+        # Since Animal implements the UniquelyIdentifiable interface and since we we overrode
+        # UniquelyIdentifiable's uuid field to be of type GraphQLID when we generated the schema,
+        # then Animal's uuid field should also be of type GrapqhQLID.
+        self.assertEqual(schema.get_type('Animal').fields['uuid'].type, GraphQLID)
+
+    @integration_fixtures
+    def test_include_admissible_non_graph_class(self):
+        schema, _ = generate_schema(self.graph_client)
+        # Included abstract non-vertex classes whose non-abstract subclasses are all vertexes.
+        self.assertIsNotNone(schema.get_type('UniquelyIdentifiable'))
 # pylint: enable=no-member
