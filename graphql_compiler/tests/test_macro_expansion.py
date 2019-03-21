@@ -15,7 +15,8 @@ class MacroExpansionTests(unittest.TestCase):
         self.schema = get_schema()
         self.macro_registry = get_test_macro_registry()
         self.type_equivalence_hints = {
-            self.schema.get_type('Event'): self.schema.get_type('Union__BirthEvent__Event__FeedingEvent'),
+            self.schema.get_type('Event'): self.schema.get_type(
+                'Union__BirthEvent__Event__FeedingEvent'),
         }
         self.subclass_sets = compute_subclass_sets(
             self.schema, type_equivalence_hints=self.type_equivalence_hints)

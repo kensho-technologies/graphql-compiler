@@ -14,7 +14,8 @@ class MacroValidationTests(unittest.TestCase):
         self.maxDiff = None
         self.schema = get_schema()
         self.type_equivalence_hints = {
-            self.schema.get_type('Event'): self.schema.get_type('Union__BirthEvent__Event__FeedingEvent'),
+            self.schema.get_type('Event'): self.schema.get_type(
+                'Union__BirthEvent__Event__FeedingEvent'),
         }
 
     def test_bad_operation_type(self):

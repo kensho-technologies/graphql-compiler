@@ -13,7 +13,6 @@ from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUE
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
-from ..schema import insert_meta_fields_into_existing_schema
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
