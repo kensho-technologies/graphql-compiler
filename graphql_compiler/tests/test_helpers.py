@@ -43,7 +43,7 @@ SCHEMA_TEXT = '''
 
     directive @fold on FIELD
 
-    type Animal implements Entity, UniquelyIdentifiable, V {
+    type Animal implements Entity, UniquelyIdentifiable {
       _x_count: Int
       alias: [String]
       birthday: Date
@@ -63,7 +63,7 @@ SCHEMA_TEXT = '''
       uuid: ID
     }
 
-    type BirthEvent implements Entity, UniquelyIdentifiable, V {
+    type BirthEvent implements Entity, UniquelyIdentifiable {
       _x_count: Int
       alias: [String]
       description: String
@@ -94,7 +94,7 @@ SCHEMA_TEXT = '''
       uuid: ID
     }
 
-    type Event implements Entity, UniquelyIdentifiable, V {
+    type Event implements Entity, UniquelyIdentifiable {
       _x_count: Int
       alias: [String]
       description: String
@@ -108,7 +108,7 @@ SCHEMA_TEXT = '''
       uuid: ID
     }
 
-    type FeedingEvent implements Entity, UniquelyIdentifiable, V {
+    type FeedingEvent implements Entity, UniquelyIdentifiable {
       _x_count: Int
       alias: [String]
       description: String
@@ -123,7 +123,7 @@ SCHEMA_TEXT = '''
       uuid: ID
     }
 
-    type Food implements Entity, UniquelyIdentifiable, V {
+    type Food implements Entity, UniquelyIdentifiable {
       _x_count: Int
       alias: [String]
       description: String
@@ -134,7 +134,7 @@ SCHEMA_TEXT = '''
       uuid: ID
     }
 
-    type FoodOrSpecies implements Entity, UniquelyIdentifiable, V {
+    type FoodOrSpecies implements Entity, UniquelyIdentifiable {
       _x_count: Int
       alias: [String]
       description: String
@@ -145,7 +145,7 @@ SCHEMA_TEXT = '''
       uuid: ID
     }
 
-    type Location implements Entity, UniquelyIdentifiable, V {
+    type Location implements Entity, UniquelyIdentifiable {
       _x_count: Int
       alias: [String]
       description: String
@@ -167,10 +167,9 @@ SCHEMA_TEXT = '''
       Location: Location
       Species: Species
       UniquelyIdentifiable: UniquelyIdentifiable
-      V: V
     }
 
-    type Species implements Entity, UniquelyIdentifiable, V {
+    type Species implements Entity, UniquelyIdentifiable {
       _x_count: Int
       alias: [String]
       description: String
@@ -191,10 +190,6 @@ SCHEMA_TEXT = '''
     interface UniquelyIdentifiable {
       _x_count: Int
       uuid: ID
-    }
-
-    interface V {
-      _x_count: Int
     }
 '''
 

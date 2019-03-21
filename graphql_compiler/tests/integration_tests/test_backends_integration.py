@@ -178,6 +178,7 @@ class IntegrationTests(TestCase):
         }
         schema, _ = generate_schema(self.graph_client,
                                     class_to_field_type_overrides=class_to_field_type_overrides)
+        print(print_schema(schema))
         compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
 
     @integration_fixtures
@@ -200,6 +201,6 @@ class IntegrationTests(TestCase):
 
     @integration_fixtures
     def test_selectively_hide_classes(self):
-        schema, _ = generate_schema(self.graph_client, hidden_classes="Animal")
+        schema, _ = generate_schema(self.graph_client, hidden_classes={"Animal"})
         self.assertNotIn("Animal", schema.get_type_map())
 # pylint: enable=no-member

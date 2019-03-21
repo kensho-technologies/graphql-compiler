@@ -13,10 +13,11 @@ from ..schema import (
 )
 from .exceptions import EmptySchemaError
 from .schema_properties import (
-    EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME, PROPERTY_TYPE_BOOLEAN_ID,
-    PROPERTY_TYPE_DATE_ID, PROPERTY_TYPE_DATETIME_ID, PROPERTY_TYPE_DECIMAL_ID,
-    PROPERTY_TYPE_DOUBLE_ID, PROPERTY_TYPE_EMBEDDED_LIST_ID, PROPERTY_TYPE_EMBEDDED_SET_ID,
-    PROPERTY_TYPE_FLOAT_ID, PROPERTY_TYPE_INTEGER_ID, PROPERTY_TYPE_STRING_ID
+    EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
+    PROPERTY_TYPE_BOOLEAN_ID, PROPERTY_TYPE_DATE_ID, PROPERTY_TYPE_DATETIME_ID,
+    PROPERTY_TYPE_DECIMAL_ID, PROPERTY_TYPE_DOUBLE_ID, PROPERTY_TYPE_EMBEDDED_LIST_ID,
+    PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_FLOAT_ID, PROPERTY_TYPE_INTEGER_ID,
+    PROPERTY_TYPE_STRING_ID
 )
 
 
@@ -232,6 +233,11 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     # Remember that the result returned by get_subclass_set(class_name) includes class_name itself.
     inherited_field_type_overrides = _get_inherited_field_types(class_to_field_type_overrides,
                                                                 schema_graph)
+
+    # We remove the base vertex class from the schema if it has no properties.
+    # If it has no properties, it's meaningless and makes the schema less syntactically sweet.
+    if not schema_graph.get_element_by_class_name(ORIENTDB_BASE_VERTEX_CLASS_NAME).properties:
+        hidden_classes.add(ORIENTDB_BASE_VERTEX_CLASS_NAME)
 
     graphql_types = OrderedDict()
     type_equivalence_hints = OrderedDict()
