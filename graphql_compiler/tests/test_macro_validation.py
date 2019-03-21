@@ -371,10 +371,9 @@ class MacroValidationTests(unittest.TestCase):
             register_macro_edge(macro_registry, self.schema, query,
                                 args, self.type_equivalence_hints)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_duplicating_real_edge_name_at_target(self):
         query = '''{
-            Species @macro_edge_definition(name: "out_Animal_ParentOf") {
+            Species @macro_edge_definition(name: "out_Entity_Related") {
                 out_Entity_Related {
                     out_Entity_Related {
                         ... on Animal @macro_edge_target {
@@ -425,7 +424,7 @@ class MacroValidationTests(unittest.TestCase):
 
         # Meaningless query that has the same target and name
         duplicate_query = '''{
-            Location @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+            Species @macro_edge_definition(name: "out_Animal_GrandparentOf") {
                 out_Entity_Related {
                     out_Entity_Related {
                         ... on Animal @macro_edge_target {
