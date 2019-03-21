@@ -57,8 +57,8 @@ def validate_argument_type(expected_type, value):
             raise GraphQLInvalidArgumentError(u'Attempting to represent a non-bool as a bool: '
                                               u'{} {}'.format(type(value), value))
     elif GraphQLDecimal.is_same_type(expected_type):
-        # Special case: in Python, isinstance(True, int) returns True.
-        # Safeguard against this with an explicit check against bool type.
+        # Types we support are int, float, and Decimal, but not bool.
+        # isinstance(True, int) returns True, so we explicitly forbid bool.
         if isinstance(value, bool):
             raise GraphQLInvalidArgumentError(
                 u'Attempting to represent a non-decimal as a decimal: {} {}'
