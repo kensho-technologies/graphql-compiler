@@ -237,6 +237,13 @@ class SchemaGraph(object):
                                                                         'in' or 'out', then it
                                                                         describes the name of an
                                                                         endpoint of the edge.
+                                             - defaultValue: string, the textual representation
+                                                             of the default value for the
+                                                             property, as returned by OrientDB's
+                                                             schema introspection code, e.g.,
+                                                             '{}' for the embedded set type. Note
+                                                             that if the property is a collection
+                                                             type is must have a default value.
 
         Returns:
             fully-constructed SchemaGraph object
