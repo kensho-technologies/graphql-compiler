@@ -14,7 +14,7 @@ class SubclassTests(unittest.TestCase):
 
     def test_compute_subclass_sets(self):
         type_equivalence_hints = {
-            self.schema.get_type('Event'): self.schema.get_type('EventOrBirthEvent'),
+            self.schema.get_type('Event'): self.schema.get_type('Union__BirthEvent__Event__FeedingEvent'),
         }
 
         subclass_sets = compute_subclass_sets(

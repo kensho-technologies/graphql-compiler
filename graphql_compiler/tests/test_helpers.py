@@ -306,7 +306,7 @@ def get_test_macro_registry():
     schema = get_schema()
     macro_registry = create_macro_registry()
     type_equivalence_hints = {
-        schema.get_type('Event'): schema.get_type('EventOrBirthEvent'),
+        schema.get_type('Event'): schema.get_type('Union__BirthEvent__Event__FeedingEvent'),
     }
 
     valid_macros = [
