@@ -160,18 +160,27 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
                         - properties: list of dicts, describing the class's properties.
                                       Each property dictionary has the following string fields:
                                          - name: string, the name of the property.
-                                         - type_id: int, builtin OrientDB type ID of the field.
-                                         - linked_type (optional): int, if the property is a
-                                                                   collection of builtin OrientDB
-                                                                   objects, then it indicates their
-                                                                   type ID.
-                                         - linked_class (optional): string, if the property is a
+                                         - type: int, builtin OrientDB type ID of the property.
+                                                 See schema_properties.py for the mapping.
+                                         - linkedType (optional): int, if the property is a
+                                                                  collection of builtin OrientDB
+                                                                  objects, then it indicates their
+                                                                  type ID.
+                                         - linkedClass (optional): string, if the property is a
                                                                    collection of class instances,
-                                                                   then it indicates the name of the
-                                                                   class. If class is an edge class,
-                                                                   and the field name is either 'in'
-                                                                   or 'out', then it describes the
-                                                                   name of an endpoint of the edge.
+                                                                   then it indicates the name of
+                                                                   the class. If class is an edge
+                                                                   class, and the field name is
+                                                                   either 'in' or 'out', then it
+                                                                   describes the name of an
+                                                                   endpoint of the edge.
+                                         - defaultValue: string, the textual representation of the
+                                                         default value for the property, as
+                                                         returned by OrientDB's schema
+                                                         introspection code, e.g., '{}' for
+                                                         the embedded set type. Note that if the
+                                                         property is a collection type, it must
+                                                         have a default value.
         class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
                                        (string -> {string -> GraphQLType}). Used to override the
                                        type of a field in the class where it's first defined and all
