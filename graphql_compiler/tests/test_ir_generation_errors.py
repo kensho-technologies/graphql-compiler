@@ -445,6 +445,9 @@ class IrGenerationErrorTests(unittest.TestCase):
                 out_Animal_ParentOf @tag(tag_name: "role") {
                     uuid @output(out_name: "uuid")
                 }
+                in_Animal_ParentOf {
+                    name @filter(op_name: "!=", value: ["%role"])
+                }
             }
         }''')
 
@@ -462,6 +465,9 @@ class IrGenerationErrorTests(unittest.TestCase):
                 out_Animal_ParentOf {
                     uuid @tag(tag_name: "uuid")
                 }
+                in_Animal_ParentOf {
+                    uuid @filter(op_name: "!=", value: ["%uuid"])
+                }
             }
         }''')
 
@@ -469,6 +475,9 @@ class IrGenerationErrorTests(unittest.TestCase):
             Animal @filter(op_name: "name_or_alias", value: ["$animal_name"]) {
                 name @tag(tag_name: "name'\\\\\\"")
                 uuid @output(out_name: "uuid")
+                in_Animal_ParentOf {
+                    name @filter(op_name: "!=", value: ["%name'\\\\\\""])
+                }
             }
         }''')
 
@@ -478,6 +487,9 @@ class IrGenerationErrorTests(unittest.TestCase):
                     name @tag(tag_name: "name")
                     uuid @output(out_name: "uuid")
                 }
+                in_Animal_ParentOf {
+                    name @filter(op_name: "!=", value: ["%name"])
+                }
             }
         }''')
 
@@ -486,6 +498,9 @@ class IrGenerationErrorTests(unittest.TestCase):
                 name @output(out_name: "name")
                 out_Animal_ParentOf {
                     _x_count @tag(tag_name: "count")
+                }
+                in_Animal_ParentOf {
+                   _x_count @filter(op_name: "=", value: ["%count"])
                 }
             }
         }''')
