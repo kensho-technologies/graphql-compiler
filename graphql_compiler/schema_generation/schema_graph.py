@@ -243,7 +243,7 @@ class SchemaGraph(object):
                                                              schema introspection code, e.g.,
                                                              '{}' for the embedded set type. Note
                                                              that if the property is a collection
-                                                             type is must have a default value.
+                                                             type, it must have a default value.
 
         Returns:
             fully-constructed SchemaGraph object

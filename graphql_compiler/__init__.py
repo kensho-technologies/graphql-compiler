@@ -176,7 +176,7 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
                                                          returned by OrientDB's schema
                                                          introspection code, e.g., '{}' for
                                                          the embedded set type. Note that if the
-                                                         property is a collection type is must
+                                                         property is a collection type, it must
                                                          have a default value.
         class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
                                        (string -> {string -> GraphQLType}). Used to override the

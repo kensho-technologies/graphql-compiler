@@ -1,14 +1,12 @@
 # Copyright 2018-present Kensho Technologies, LLC.
-import unittest
-
 from frozendict import frozendict
+import unittest
 
 from ..schema_generation.schema_graph import SchemaGraph
 from ..schema_generation.schema_properties import (
     ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_EMBEDDED_LIST_ID,
     PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_LINK_ID, PROPERTY_TYPE_STRING_ID
 )
-
 
 BASE_VERTEX_SCHEMA_DATA = frozendict({
     'name': ORIENTDB_BASE_VERTEX_CLASS_NAME,
@@ -127,7 +125,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         self.assertEqual({ORIENTDB_BASE_VERTEX_CLASS_NAME},
                          schema_graph.get_inheritance_set(ORIENTDB_BASE_VERTEX_CLASS_NAME))
 
-    def test_parsed_superclass(self):
+    def test_parsed_superclass_field(self):
         schema_data = [BASE_VERTEX_SCHEMA_DATA, PERSON_SCHEMA_DATA, ENTITY_SCHEMA_DATA,
                        BASE_EDGE_SCHEMA_DATA, LOCATION_SCHEMA_DATA,
                        PERSON_LIVES_IN_EDGE_SCHEMA_DATA]
@@ -135,7 +133,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         self.assertEqual({'Person_LivesIn', ORIENTDB_BASE_EDGE_CLASS_NAME},
                          schema_graph.get_inheritance_set('Person_LivesIn'))
 
-    def test_parsed_superclasses(self):
+    def test_parsed_superclasses_field(self):
         entity = ENTITY_SCHEMA_DATA
         schema_data = [BASE_VERTEX_SCHEMA_DATA, entity]
         schema_graph = SchemaGraph(schema_data)
