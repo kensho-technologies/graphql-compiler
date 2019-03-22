@@ -160,9 +160,9 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
                                          - type: int, builtin OrientDB type ID of the property.
                                                  See schema_properties.py for the mapping.
                                          - linkedType (optional): int, if the property is a
-                                                                   collection of builtin OrientDB
-                                                                   objects, then it indicates their
-                                                                   type ID.
+                                                                  collection of builtin OrientDB
+                                                                  objects, then it indicates their
+                                                                  type ID.
                                          - linkedClass (optional): string, if the property is a
                                                                     collection of class instances,
                                                                     then it indicates the name of

@@ -225,18 +225,18 @@ class SchemaGraph(object):
                                              - type: int, builtin OrientDB type ID of the field.
                                                      See schema_properties.py for the mapping.
                                              - linkedType (optional): int, if the property is a
-                                                                       collection of builtin
-                                                                       OrientDB objects, then it
-                                                                       indicates their type ID.
+                                                                      collection of builtin
+                                                                      OrientDB objects, then it
+                                                                      indicates their type ID.
                                              - linkedClass (optional): string, if the property is a
-                                                                        collection of class
-                                                                        instances, then it indicates
-                                                                        the name of the class. If
-                                                                        class is an edge class, and
-                                                                        the field name is either
-                                                                        'in' or 'out', then it
-                                                                        describes the name of an
-                                                                        endpoint of the edge.
+                                                                       collection of class
+                                                                       instances, then it indicates
+                                                                       the name of the class. If
+                                                                       class is an edge class, and
+                                                                       the field name is either
+                                                                       'in' or 'out', then it
+                                                                       describes the name of an
+                                                                       endpoint of the edge.
                                              - defaultValue: string, the textual representation
                                                              of the default value for the
                                                              property, as returned by OrientDB's
