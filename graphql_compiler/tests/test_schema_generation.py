@@ -1,12 +1,14 @@
 # Copyright 2018-present Kensho Technologies, LLC.
-from frozendict import frozendict
 import unittest
+
+from frozendict import frozendict
 
 from ..schema_generation.schema_graph import SchemaGraph
 from ..schema_generation.schema_properties import (
     ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_EMBEDDED_LIST_ID,
     PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_LINK_ID, PROPERTY_TYPE_STRING_ID
 )
+
 
 BASE_VERTEX_SCHEMA_DATA = frozendict({
     'name': ORIENTDB_BASE_VERTEX_CLASS_NAME,
