@@ -72,8 +72,8 @@ PERSON_LIVES_IN_EDGE_SCHEMA_DATA = frozendict({
     'name': 'Person_LivesIn',
     'abstract': False,
     'customFields': {
-        'human_name_in': 'Person',
-        'human_name_out': 'Location where person lives',
+        'human_name_in': 'Location where person lives',
+        'human_name_out': 'Person',
     },
     'properties': [
         {
@@ -173,12 +173,12 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
                        LOCATION_SCHEMA_DATA, PERSON_LIVES_IN_EDGE_SCHEMA_DATA]
         schema_graph = SchemaGraph(schema_data)
         person_lives_in_edge = schema_graph.get_element_by_class_name('Person_LivesIn')
-        out_property = person_lives_in_edge.properties['out']
-        self.assertEqual(out_property.type_id, PROPERTY_TYPE_LINK_ID)
-        self.assertEqual(out_property.qualifier, 'Person')
         in_property = person_lives_in_edge.properties['in']
         self.assertEqual(in_property.type_id, PROPERTY_TYPE_LINK_ID)
         self.assertEqual(in_property.qualifier, 'Location')
+        out_property = person_lives_in_edge.properties['out']
+        self.assertEqual(out_property.type_id, PROPERTY_TYPE_LINK_ID)
+        self.assertEqual(out_property.qualifier, 'Person')
 
     def test_parsed_class_fields(self):
         schema_data = [BASE_VERTEX_SCHEMA_DATA, ENTITY_SCHEMA_DATA,
@@ -186,7 +186,5 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
                        LOCATION_SCHEMA_DATA, PERSON_LIVES_IN_EDGE_SCHEMA_DATA]
         schema_graph = SchemaGraph(schema_data)
         person_lives_in_edge = schema_graph.get_element_by_class_name('Person_LivesIn')
-        self.assertEqual({
-            'human_name_in': 'Person',
-            'human_name_out': 'Location where person lives'
-        }, person_lives_in_edge.class_fields)
+        self.assertEqual(PERSON_LIVES_IN_EDGE_SCHEMA_DATA['customFields'],
+                         person_lives_in_edge.class_fields)
