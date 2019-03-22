@@ -1,6 +1,8 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import unittest
 
+from frozendict import frozendict
+
 from ..schema_generation.schema_graph import SchemaGraph
 from ..schema_generation.schema_properties import (
     ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_EMBEDDED_LIST_ID,
@@ -8,28 +10,25 @@ from ..schema_generation.schema_properties import (
 )
 
 
-BASE_VERTEX_SCHEMA_DATA = {
+BASE_VERTEX_SCHEMA_DATA = frozendict({
     'name': ORIENTDB_BASE_VERTEX_CLASS_NAME,
     'abstract': False,
     'properties': []
-}
+})
 
-
-BASE_EDGE_SCHEMA_DATA = {
+BASE_EDGE_SCHEMA_DATA = frozendict({
     'name': ORIENTDB_BASE_EDGE_CLASS_NAME,
     'abstract': False,
     'properties': []
-}
+})
 
-
-EXTERNAL_SOURCE_SCHEMA_DATA = {
+EXTERNAL_SOURCE_SCHEMA_DATA = frozendict({
     'name': 'ExternalSource',
     'abstract': False,
     'properties': []
-}
+})
 
-
-ENTITY_SCHEMA_DATA = {
+ENTITY_SCHEMA_DATA = frozendict({
     'name': 'Entity',
     'abstract': True,
     'superClasses': [ORIENTDB_BASE_VERTEX_CLASS_NAME],
@@ -39,10 +38,9 @@ ENTITY_SCHEMA_DATA = {
             'type': PROPERTY_TYPE_STRING_ID,
         }
     ]
-}
+})
 
-
-PERSON_SCHEMA_DATA = {
+PERSON_SCHEMA_DATA = frozendict({
     'name': 'Person',
     'abstract': False,
     'superClass': 'Entity',
@@ -54,10 +52,9 @@ PERSON_SCHEMA_DATA = {
             'defaultValue': '{}'
         },
     ],
-}
+})
 
-
-DATA_POINT_SCHEMA_DATA = {
+DATA_POINT_SCHEMA_DATA = frozendict({
     'name': 'DataPoint',
     'abstract': True,
     'properties': [
@@ -69,10 +66,9 @@ DATA_POINT_SCHEMA_DATA = {
         }
 
     ]
-}
+})
 
-
-PERSON_LIVES_IN_EDGE_SCHEMA_DATA = {
+PERSON_LIVES_IN_EDGE_SCHEMA_DATA = frozendict({
     'name': 'Person_LivesIn',
     'abstract': False,
     'customFields': {
@@ -92,10 +88,9 @@ PERSON_LIVES_IN_EDGE_SCHEMA_DATA = {
         }
     ],
     'superClass': ORIENTDB_BASE_EDGE_CLASS_NAME
-}
+})
 
-
-LOCATION_SCHEMA_DATA = {
+LOCATION_SCHEMA_DATA = frozendict({
     'name': 'Location',
     'abstract': False,
     'superClasses': ['Entity'],
@@ -105,7 +100,7 @@ LOCATION_SCHEMA_DATA = {
             'type': PROPERTY_TYPE_STRING_ID,
         }
     ]
-}
+})
 
 
 class GraphqlSchemaGenerationTests(unittest.TestCase):
