@@ -158,7 +158,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
         if field_is_local:
             representation = expressions.LocalField(argument_name)
         else:
-            representation = expressions.ContextField(location)
+            representation = expressions.ContextField(location, tag_inferred_type)
 
         return (representation, non_existence_expression)
     else:
