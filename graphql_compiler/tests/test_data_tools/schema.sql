@@ -64,6 +64,8 @@ CREATE INDEX Animal.net_worth NOTUNIQUE
 CREATE CLASS Animal_ParentOf EXTENDS E
 CREATE PROPERTY Animal_ParentOf.in LINK Animal
 CREATE PROPERTY Animal_ParentOf.out LINK Animal
+ALTER CLASS Animal_ParentOf CUSTOM human_name_in="Parent"
+ALTER CLASS Animal_ParentOf CUSTOM human_name_out="Child"
 CREATE INDEX Animal_ParentOf ON Animal_ParentOf (in, out) UNIQUE_HASH_INDEX
 
 CREATE CLASS Animal_FedAt EXTENDS E
