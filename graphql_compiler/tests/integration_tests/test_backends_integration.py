@@ -8,7 +8,7 @@ from parameterized import parameterized
 import pytest
 
 from graphql_compiler.tests import test_backend
-from graphql_compiler.tests.test_helpers import generate_schema
+from graphql_compiler.tests.test_helpers import generate_schema, generate_schema_graph
 
 from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
 from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
@@ -173,12 +173,20 @@ class IntegrationTests(TestCase):
 
     @integration_fixtures
     def test_snapshot_graphql_schema_from_orientdb_schema(self):
-        schema, _ = generate_schema(self.graph_client)
+        class_to_field_type_overrides = {
+            'UniquelyIdentifiable': {'uuid': GraphQLID}
+        }
+        schema, _ = generate_schema(self.graph_client,
+                                    class_to_field_type_overrides=class_to_field_type_overrides)
         compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
 
     @integration_fixtures
     def test_override_field_types(self):
-        schema, _ = generate_schema(self.graph_client)
+        class_to_field_type_overrides = {
+            'UniquelyIdentifiable': {'uuid': GraphQLID}
+        }
+        schema, _ = generate_schema(self.graph_client,
+                                    class_to_field_type_overrides=class_to_field_type_overrides)
         # Since Animal implements the UniquelyIdentifiable interface and since we we overrode
         # UniquelyIdentifiable's uuid field to be of type GraphQLID when we generated the schema,
         # then Animal's uuid field should also be of type GrapqhQLID.
@@ -189,4 +197,19 @@ class IntegrationTests(TestCase):
         schema, _ = generate_schema(self.graph_client)
         # Included abstract non-vertex classes whose non-abstract subclasses are all vertexes.
         self.assertIsNotNone(schema.get_type('UniquelyIdentifiable'))
+
+    @integration_fixtures
+    def test_selectively_hide_classes(self):
+        schema, _ = generate_schema(self.graph_client, hidden_classes={'Animal'})
+        self.assertNotIn('Animal', schema.get_type_map())
+
+    @integration_fixtures
+    def test_parsed_schema_element_custom_fields(self):
+        schema_graph = generate_schema_graph(self.graph_client)
+        parent_of_edge = schema_graph.get_element_by_class_name('Animal_ParentOf')
+        expected_custom_class_fields = {
+            'human_name_in': 'Parent',
+            'human_name_out': 'Child'
+        }
+        self.assertEqual(expected_custom_class_fields, parent_of_edge.class_fields)
 # pylint: enable=no-member
