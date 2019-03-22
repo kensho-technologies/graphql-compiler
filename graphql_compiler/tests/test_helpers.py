@@ -3,7 +3,7 @@
 from pprint import pformat
 import re
 
-from graphql import GraphQLID, parse
+from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
@@ -278,14 +278,12 @@ def generate_schema_graph(graph_client):
     return SchemaGraph(schema_data)
 
 
-def generate_schema(graph_client):
+def generate_schema(graph_client, class_to_field_type_overrides=None, hidden_classes=None):
     """Generate schema and type equivalence dict from a pyorient client"""
     schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
-    type_overrides = {
-        'UniquelyIdentifiable': {'uuid': GraphQLID},
-    }
-    return get_graphql_schema_from_orientdb_schema_data(schema_data, type_overrides)
+    return get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_type_overrides,
+                                                        hidden_classes)
 
 
 def construct_location_types(location_types_as_strings):
