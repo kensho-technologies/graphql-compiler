@@ -90,7 +90,7 @@ from .helpers import (
     invert_dict, is_vertex_field_name, strip_non_null_from_type, validate_output_name,
     validate_safe_string
 )
-from .metadata import LocationInfo, QueryMetadataTable, RecurseInfo
+from .metadata import LocationInfo, QueryMetadataTable, RecurseInfo, TagInfo
 
 
 # LocationStackEntry contains the following:
@@ -292,6 +292,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
             'optional': is_in_optional_scope(context),
             'type': strip_non_null_from_type(current_schema_type),
         }
+        context['metadata'].record_tag_info(tag_name, TagInfo(location=location))
 
     output_directive = unique_local_directives.get('output', None)
     if output_directive:

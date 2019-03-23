@@ -24,6 +24,13 @@ LocationInfo = namedtuple(
 )
 
 
+TagInfo = namedtuple(
+    'TagInfo',
+    (
+        'location',
+    )
+)
+
 FilterInfo = namedtuple(
     'FilterInfo',
     (
@@ -153,6 +160,13 @@ class QueryMetadataTable(object):
             raise AssertionError(u'Attempted to get the location info of an unregistered location: '
                                  u'{}'.format(location))
         return location_info
+
+    def record_tag_info(self, tag_name, tag_info):
+        """Record information about the tag."""
+        self._tags[tag_name] = tag_info
+
+    def get_tag_info(self, tag_name):
+        return self._tags.get(tag_name, None)
 
     def record_filter_info(self, location, filter_info):
         """Record filter information about the location."""
