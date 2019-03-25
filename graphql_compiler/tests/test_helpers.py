@@ -10,6 +10,7 @@ import six
 from graphql_compiler import get_graphql_schema_from_orientdb_schema_data
 from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 
+from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
@@ -300,14 +301,20 @@ def construct_location_types(location_types_as_strings):
     }
 
 
-def get_test_macro_registry():
-    """Return a MacroRegistry object containing macros used in tests."""
+def get_empty_test_macro_registry():
+    """Return a MacroRegistry with appropriate type_equivalence_hints and subclass_set."""
     schema = get_schema()
-    macro_registry = create_macro_registry()
     type_equivalence_hints = {
         schema.get_type('Event'): schema.get_type('Union__BirthEvent__Event__FeedingEvent'),
     }
+    subclass_sets = compute_subclass_sets(schema, type_equivalence_hints)
+    macro_registry = create_macro_registry(schema, type_equivalence_hints, subclass_sets)
+    return macro_registry
 
+
+def get_test_macro_registry():
+    """Return a MacroRegistry object containing macros used in tests."""
+    macro_registry = get_empty_test_macro_registry()
     valid_macros = [
         ('''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
@@ -389,5 +396,5 @@ def get_test_macro_registry():
     ]
 
     for graphql, args in valid_macros:
-        register_macro_edge(macro_registry, schema, graphql, args, type_equivalence_hints)
+        register_macro_edge(macro_registry, graphql, args)
     return macro_registry

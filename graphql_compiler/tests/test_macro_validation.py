@@ -4,19 +4,14 @@ import unittest
 import pytest
 
 from ..exceptions import GraphQLInvalidArgumentError, GraphQLInvalidMacroError
-from ..macros import create_macro_registry, register_macro_edge
-from .test_helpers import get_schema
+from ..macros import register_macro_edge
+from .test_helpers import get_empty_test_macro_registry
 
 
 class MacroValidationTests(unittest.TestCase):
     def setUp(self):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
-        self.schema = get_schema()
-        self.type_equivalence_hints = {
-            self.schema.get_type('Event'): self.schema.get_type(
-                'Union__BirthEvent__Event__FeedingEvent'),
-        }
 
     def test_bad_operation_type(self):
         query = '''mutation {
@@ -30,10 +25,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_with_output_directive(self):
         query = '''{
@@ -47,10 +41,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_with_output_source_directive(self):
         query = '''{
@@ -64,10 +57,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_with_target_inside_fold(self):
         query = '''{
@@ -81,10 +73,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_with_target_outside_fold(self):
         query = '''{
@@ -104,9 +95,8 @@ class MacroValidationTests(unittest.TestCase):
         }
 
         # It should compile successfully
-        macro_registry = create_macro_registry()
-        register_macro_edge(macro_registry, self.schema, query,
-                            args, self.type_equivalence_hints)
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_missing_target(self):
         query = '''{
@@ -120,10 +110,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_multiple_targets(self):
         query = '''{
@@ -137,10 +126,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_multiple_targets_2(self):
         query = '''{
@@ -154,10 +142,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_missing_definition(self):
         query = '''{
@@ -171,10 +158,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_invalid_definition(self):
         query = '''{
@@ -188,10 +174,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_invalid_target_directive(self):
@@ -208,10 +193,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_invalid_no_op_1(self):
         query = '''{
@@ -221,10 +205,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_invalid_no_op_2(self):
         query = '''{
@@ -238,10 +221,9 @@ class MacroValidationTests(unittest.TestCase):
             'color': 'green',
         }
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_missing_args(self):
         query = '''{
@@ -259,10 +241,9 @@ class MacroValidationTests(unittest.TestCase):
             'net_worth': 4,
         }
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidArgumentError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_extra_args(self):
         query = '''{
@@ -282,10 +263,9 @@ class MacroValidationTests(unittest.TestCase):
             'asdf': 5
         }
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidArgumentError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_incorrect_arg_types(self):
         query = '''{
@@ -306,10 +286,9 @@ class MacroValidationTests(unittest.TestCase):
             'color': 'green',
         }
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidArgumentError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_multiple_definitions(self):
         query = '''{
@@ -330,10 +309,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_duplicate_definition(self):
         query = '''{
@@ -347,12 +325,10 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
-        register_macro_edge(macro_registry, self.schema, query,
-                            args, self.type_equivalence_hints)
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, query, args)
         with self.assertRaises(AssertionError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_duplicating_real_edge_name(self):
         query = '''{
@@ -368,10 +344,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_duplicating_real_edge_name_at_target(self):
         query = '''{
@@ -387,10 +362,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     def test_macro_edge_duplicating_field_name(self):
         query = '''{
@@ -406,10 +380,9 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
+        macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_duplicate_definition_on_target(self):
@@ -438,12 +411,10 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        macro_registry = create_macro_registry()
-        register_macro_edge(macro_registry, self.schema, query,
-                            args, self.type_equivalence_hints)
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, query, args)
         with self.assertRaises(AssertionError):
-            register_macro_edge(macro_registry, self.schema, duplicate_query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, duplicate_query, args)
 
     @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_dulpicate_definition_on_subclass(self):
@@ -468,20 +439,16 @@ class MacroValidationTests(unittest.TestCase):
         args = {}
 
         # Try registering on the superclass first
-        macro_registry = create_macro_registry()
-        register_macro_edge(macro_registry, self.schema, query,
-                            args, self.type_equivalence_hints)
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, query, args)
         with self.assertRaises(AssertionError):
-            register_macro_edge(macro_registry, self.schema, query_on_subclass,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query_on_subclass, args)
 
         # Try registering on the subclass first
-        macro_registry = create_macro_registry()
-        register_macro_edge(macro_registry, self.schema, query_on_subclass,
-                            args, self.type_equivalence_hints)
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, query_on_subclass, args)
         with self.assertRaises(AssertionError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
 
     @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_duplicate_definition_on_target_subclass(self):
@@ -508,17 +475,13 @@ class MacroValidationTests(unittest.TestCase):
         args = {}
 
         # Try registering on the superclass first
-        macro_registry = create_macro_registry()
-        register_macro_edge(macro_registry, self.schema, query,
-                            args, self.type_equivalence_hints)
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, query, args)
         with self.assertRaises(AssertionError):
-            register_macro_edge(macro_registry, self.schema, query_on_subclass,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query_on_subclass, args)
 
         # Try registering on the subclass first
-        macro_registry = create_macro_registry()
-        register_macro_edge(macro_registry, self.schema, query_on_subclass,
-                            args, self.type_equivalence_hints)
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, query_on_subclass, args)
         with self.assertRaises(AssertionError):
-            register_macro_edge(macro_registry, self.schema, query,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query, args)
