@@ -253,7 +253,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         self.assertEqual(person, schema.get_type('Person'))
 
         # Assert that the union consists of the Baby and Person classes
-        self.assertEqual(set(person_baby_union.types), set(baby, person))
+        self.assertEqual(set(person_baby_union.types), {baby, person})
 
         # Assert that arbitrarily chosen inherited property is still correctly inherited
         self.assertTrue(baby.fields['name'].type.is_same_type(GraphQLString))
