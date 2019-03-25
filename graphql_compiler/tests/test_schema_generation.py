@@ -2,6 +2,10 @@
 import unittest
 
 from frozendict import frozendict
+from graphql.type import GraphQLList, GraphQLString
+import six
+
+from graphql_compiler import get_graphql_schema_from_orientdb_schema_data
 
 from ..schema_generation.schema_graph import SchemaGraph
 from ..schema_generation.schema_properties import (
@@ -53,6 +57,14 @@ PERSON_SCHEMA_DATA = frozendict({
         },
     ],
 })
+
+BABY_SCHEMA_DATA = frozendict({
+    'name': 'Baby',
+    'abstract': False,
+    'superClass': 'Person',
+    'properties': [],
+})
+
 
 DATA_POINT_SCHEMA_DATA = frozendict({
     'name': 'DataPoint',
@@ -188,3 +200,32 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         person_lives_in_edge = schema_graph.get_element_by_class_name('Person_LivesIn')
         self.assertEqual(PERSON_LIVES_IN_EDGE_SCHEMA_DATA['customFields'],
                          person_lives_in_edge.class_fields)
+
+    def test_type_equivalence_dicts(self):
+        schema_data = [BASE_VERTEX_SCHEMA_DATA, ENTITY_SCHEMA_DATA,
+                       BASE_EDGE_SCHEMA_DATA, PERSON_SCHEMA_DATA, BABY_SCHEMA_DATA,
+                       BASE_EDGE_SCHEMA_DATA, LOCATION_SCHEMA_DATA,
+                       PERSON_LIVES_IN_EDGE_SCHEMA_DATA]
+        schema, type_equivalence_dicts = get_graphql_schema_from_orientdb_schema_data(schema_data)
+        person, person_baby_union = next(six.iteritems(type_equivalence_dicts))
+        baby = schema.get_type('Baby')
+        location = schema.get_type('Location')
+
+        # Assert that the Person class is marked as type equivalent to the Person-Baby union
+        self.assertEqual(person, schema.get_type('Person'))
+
+        # Assert that the union consist of the Baby and Person classes
+        self.assertEqual(person_baby_union.types, [baby, person])
+
+        # Assert that arbitrarily chosen inherited property is still correctly inherited
+        self.assertTrue(baby.fields['name'].type.is_same_type(GraphQLString))
+
+        # Assert that arbitrarily chosen edge is correctly represented on all ends
+        location_list_type = GraphQLList(location)
+        union_list_type = GraphQLList(person_baby_union)
+        self.assertTrue(person.fields['out_Person_LivesIn'].type.is_same_type(location_list_type))
+        self.assertTrue(baby.fields['out_Person_LivesIn'].type.is_same_type(location_list_type))
+        self.assertTrue(location.fields['in_Person_LivesIn'].type.is_same_type(union_list_type))
+
+    def validate_type_matching(self, prop, graphql_type):
+        """Validate that the GraphQL type matches what we expect it to be."""
