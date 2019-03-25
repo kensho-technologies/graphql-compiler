@@ -211,7 +211,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         baby = schema.get_type('Baby')
         location = schema.get_type('Location')
 
-        # Assert that the Person class is marked as type equivalent to the Person-Baby union
+        # Assert that the Person class is part of the schema.
         self.assertEqual(person, schema.get_type('Person'))
 
         # Assert that the union consist of the Baby and Person classes
@@ -226,6 +226,3 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         self.assertTrue(person.fields['out_Person_LivesIn'].type.is_same_type(location_list_type))
         self.assertTrue(baby.fields['out_Person_LivesIn'].type.is_same_type(location_list_type))
         self.assertTrue(location.fields['in_Person_LivesIn'].type.is_same_type(union_list_type))
-
-    def validate_type_matching(self, prop, graphql_type):
-        """Validate that the GraphQL type matches what we expect it to be."""
