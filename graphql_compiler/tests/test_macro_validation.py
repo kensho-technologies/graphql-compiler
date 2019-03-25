@@ -5,7 +5,7 @@ import pytest
 
 from ..exceptions import GraphQLInvalidArgumentError, GraphQLInvalidMacroError
 from ..macros import register_macro_edge
-from .test_helpers import get_empty_test_macro_registry, get_schema
+from .test_helpers import get_empty_test_macro_registry
 
 
 class MacroValidationTests(unittest.TestCase):
@@ -478,8 +478,7 @@ class MacroValidationTests(unittest.TestCase):
         macro_registry = get_empty_test_macro_registry()
         register_macro_edge(macro_registry, query, args)
         with self.assertRaises(AssertionError):
-            register_macro_edge(macro_registry, self.schema, query_on_subclass,
-                                args, self.type_equivalence_hints)
+            register_macro_edge(macro_registry, query_on_subclass, args)
 
         # Try registering on the subclass first
         macro_registry = get_empty_test_macro_registry()

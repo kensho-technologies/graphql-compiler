@@ -3,10 +3,9 @@ import unittest
 
 import pytest
 
-from ..compiler.subclass import compute_subclass_sets
 from ..exceptions import GraphQLCompilationError
 from ..macros import perform_macro_expansion
-from .test_helpers import get_schema, get_test_macro_registry
+from .test_helpers import get_test_macro_registry
 
 
 class MacroExpansionTests(unittest.TestCase):
