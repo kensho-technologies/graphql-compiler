@@ -214,7 +214,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         # Assert that the Person class is part of the schema.
         self.assertEqual(person, schema.get_type('Person'))
 
-        # Assert that the union consist of the Baby and Person classes
+        # Assert that the union consists of the Baby and Person classes
         self.assertEqual(person_baby_union.types, [baby, person])
 
         # Assert that arbitrarily chosen inherited property is still correctly inherited
