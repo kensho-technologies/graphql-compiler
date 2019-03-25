@@ -95,7 +95,7 @@ def get_schema_with_macros(macro_registry):
        macros but on types they are not defined at should fail schema validation with
        the schema generated from this function.
     3. This function is total -- A macro registry with all macros inserted by using
-       register_macro_edge should not fail to create a graphql schema with macros.
+       register_macro_edge should not fail to create a GraphQL schema with macros.
 
     Args:
         macro_registry: MacroRegistry object containing a schema and macro descriptors
