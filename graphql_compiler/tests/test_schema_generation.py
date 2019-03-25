@@ -119,7 +119,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
     def test_parsed_vertex(self):
         schema_data = [
             BASE_VERTEX_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA
+            ENTITY_SCHEMA_DATA,
         ]
         schema_graph = SchemaGraph(schema_data)
         self.assertTrue(schema_graph.get_element_by_class_name('Entity').is_vertex)
@@ -131,7 +131,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             ENTITY_SCHEMA_DATA,
             LOCATION_SCHEMA_DATA,
             PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA
+            PERSON_SCHEMA_DATA,
         ]
         schema_graph = SchemaGraph(schema_data)
         self.assertTrue(schema_graph.get_element_by_class_name('Person_LivesIn').is_edge)
@@ -154,7 +154,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             ENTITY_SCHEMA_DATA,
             LOCATION_SCHEMA_DATA,
             PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA
+            PERSON_SCHEMA_DATA,
         ]
         schema_graph = SchemaGraph(schema_data)
         self.assertEqual({'Person_LivesIn', ORIENTDB_BASE_EDGE_CLASS_NAME},
@@ -163,7 +163,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
     def test_parsed_superclasses_field(self):
         schema_data = [
             BASE_VERTEX_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA
+            ENTITY_SCHEMA_DATA,
         ]
         schema_graph = SchemaGraph(schema_data)
         self.assertEqual({'Entity', ORIENTDB_BASE_VERTEX_CLASS_NAME},
@@ -172,7 +172,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
     def test_parse_property(self):
         schema_data = [
             BASE_VERTEX_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA
+            ENTITY_SCHEMA_DATA,
         ]
         schema_graph = SchemaGraph(schema_data)
         name_property = schema_graph.get_element_by_class_name('Entity').properties['name']
@@ -182,7 +182,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         schema_data = [
             BASE_VERTEX_SCHEMA_DATA,
             ENTITY_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA
+            PERSON_SCHEMA_DATA,
         ]
         schema_graph = SchemaGraph(schema_data)
         alias_property = schema_graph.get_element_by_class_name('Person').properties['alias']
@@ -193,7 +193,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
     def test_class_collection_property(self):
         schema_data = [
             DATA_POINT_SCHEMA_DATA,
-            EXTERNAL_SOURCE_SCHEMA_DATA
+            EXTERNAL_SOURCE_SCHEMA_DATA,
         ]
         schema_graph = SchemaGraph(schema_data)
         friends_property = schema_graph.get_element_by_class_name('DataPoint').properties[
@@ -209,7 +209,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             ENTITY_SCHEMA_DATA,
             LOCATION_SCHEMA_DATA,
             PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA
+            PERSON_SCHEMA_DATA,
         ]
         schema_graph = SchemaGraph(schema_data)
         person_lives_in_edge = schema_graph.get_element_by_class_name('Person_LivesIn')
@@ -227,7 +227,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             ENTITY_SCHEMA_DATA,
             LOCATION_SCHEMA_DATA,
             PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA
+            PERSON_SCHEMA_DATA,
         ]
         schema_graph = SchemaGraph(schema_data)
         person_lives_in_edge = schema_graph.get_element_by_class_name('Person_LivesIn')
@@ -242,7 +242,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             ENTITY_SCHEMA_DATA,
             LOCATION_SCHEMA_DATA,
             PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA
+            PERSON_SCHEMA_DATA,
         ]
         schema, type_equivalence_dicts = get_graphql_schema_from_orientdb_schema_data(schema_data)
         person, person_baby_union = next(six.iteritems(type_equivalence_dicts))
