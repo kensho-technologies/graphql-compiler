@@ -1,7 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
+from graphql import parse
 from graphql.language.printer import print_ast
+from graphql.utils.build_ast_schema import build_ast_schema
+from graphql.utils.schema_printer import print_schema
 
 from ..ast_manipulation import safe_parse_graphql
 from .macro_edge import make_macro_edge_descriptor
@@ -104,7 +107,12 @@ def get_schema_with_macros(macro_registry):
     Returns:
         GraphQLSchema with additional fields where macroe edges can be used.
     """
-    raise NotImplementedError()  # TODO(bojanserafimov) implement
+    # HACK(bojanserafimov): GraphQLSchema does not implement the deepcopy behavior
+    schema_deepcopy = build_ast_schema(parse(print_schema(
+        macro_registry.schema_without_macros)))
+
+    # TODO(bojanserafimov) implement
+    return schema_deepcopy
 
 
 def perform_macro_expansion(macro_registry, graphql_with_macro, graphql_args):
