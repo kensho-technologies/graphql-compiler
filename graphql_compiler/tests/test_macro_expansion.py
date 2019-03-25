@@ -12,14 +12,7 @@ class MacroExpansionTests(unittest.TestCase):
     def setUp(self):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
-        self.schema = get_schema()
         self.macro_registry = get_test_macro_registry()
-        self.type_equivalence_hints = {
-            self.schema.get_type('Event'): self.schema.get_type(
-                'Union__BirthEvent__Event__FeedingEvent'),
-        }
-        self.subclass_sets = compute_subclass_sets(
-            self.schema, type_equivalence_hints=self.type_equivalence_hints)
 
     def test_macro_edge_basic(self):
         query = '''{
@@ -42,8 +35,7 @@ class MacroExpansionTests(unittest.TestCase):
         }'''
         expected_args = {}
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -82,8 +74,7 @@ class MacroExpansionTests(unittest.TestCase):
             'net_worth_upper_bound': 5,
         }
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -123,8 +114,7 @@ class MacroExpansionTests(unittest.TestCase):
             'net_worth_upper_bound': 5,
         }
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -153,8 +143,7 @@ class MacroExpansionTests(unittest.TestCase):
         }'''
         expected_args = {}
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -181,8 +170,7 @@ class MacroExpansionTests(unittest.TestCase):
         }'''
         expected_args = {}
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -209,8 +197,7 @@ class MacroExpansionTests(unittest.TestCase):
         }'''
         expected_args = {}
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -237,8 +224,7 @@ class MacroExpansionTests(unittest.TestCase):
         }'''
         expected_args = {}
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -271,8 +257,7 @@ class MacroExpansionTests(unittest.TestCase):
             'wanted': 'croissant'
         }
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -303,8 +288,7 @@ class MacroExpansionTests(unittest.TestCase):
             'wanted': 'croissant'
         }
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -331,8 +315,7 @@ class MacroExpansionTests(unittest.TestCase):
             'wanted': 'Nate',
         }
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -364,8 +347,7 @@ class MacroExpansionTests(unittest.TestCase):
             'wanted': 'Nate',
         }
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -399,8 +381,7 @@ class MacroExpansionTests(unittest.TestCase):
             'num_parents': 0,
         }
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -431,8 +412,7 @@ class MacroExpansionTests(unittest.TestCase):
         }'''
         expected_args = {}
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -467,8 +447,7 @@ class MacroExpansionTests(unittest.TestCase):
         }'''
         expected_args = {}
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -499,8 +478,7 @@ class MacroExpansionTests(unittest.TestCase):
         }'''
         expected_args = {}
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -537,7 +515,6 @@ class MacroExpansionTests(unittest.TestCase):
         }'''
         expected_args = {}
 
-        expanded_query, new_args = perform_macro_expansion(
-            self.schema, self.macro_registry, query, args, subclass_sets=self.subclass_sets)
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)

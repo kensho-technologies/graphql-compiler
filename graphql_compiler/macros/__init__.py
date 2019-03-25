@@ -10,48 +10,61 @@ from .macro_expansion import expand_macros_in_query_ast
 
 MacroRegistry = namedtuple(
     'MacroRegistry', (
-        'macro_edges',  # Dict[str, Dict[str, MacroEdgeDescriptor]] mapping:
-                        # class name -> (macro edge name -> MacroEdgeDescriptor)
+        # GraphQLSchema, created using the GraphQL library
+        'schema_without_macros',
+
+        # Optional dict of GraphQL interface or type -> GraphQL union.
+        # Used as a workaround for GraphQL's lack of support for
+        # inheritance across "types" (i.e. non-interfaces), as well as a
+        # workaround for Gremlin's total lack of inheritance-awareness.
+        # The key-value pairs in the dict specify that the "key" type
+        # is equivalent to the "value" type, i.e. that the GraphQL type or
+        # interface in the key is the most-derived common supertype
+        # of every GraphQL type in the "value" GraphQL union.
+        # Recursive expansion of type equivalence hints is not performed,
+        # and only type-level correctness of this argument is enforced.
+        # See README.md for more details on everything this parameter does.
+        # *****
+        # Be very careful with this option, as bad input here will
+        # lead to incorrect output queries being generated.
+        # *****
+        'type_equivalence_hints',
+
+        # Optional dict mapping class names to the set of its subclass names.
+        # A class in this context means a GraphQL object type or interface.
+        'subclass_sets',
+
+        # Dict[str, Dict[str, MacroEdgeDescriptor]] mapping:
+        # class name -> (macro edge name -> MacroEdgeDescriptor)
+        'macro_edges',
+
         # Any other macro types we may add in the future go here.
     )
 )
 
 
-def create_macro_registry():
+def create_macro_registry(schema, type_equivalence_hints=None, subclass_sets=None):
     """Create and return a new empty macro registry."""
-    return MacroRegistry(macro_edges=dict())
+    return MacroRegistry(
+        schema_without_macros=schema,
+        type_equivalence_hints=type_equivalence_hints,
+        subclass_sets=subclass_sets,
+        macro_edges=dict())
 
 
-def register_macro_edge(macro_registry, schema, macro_edge_graphql, macro_edge_args,
-                        type_equivalence_hints=None):
+def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
     """Add the new macro edge descriptor to the provided MacroRegistry object, mutating it.
 
     Args:
         macro_registry: MacroRegistry object containing macro descriptors, where the new
                         macro edge descriptor should be added.
-        schema: GraphQL schema object, created using the GraphQL library
         macro_edge_graphql: string, GraphQL defining how the new macro edge should be expanded
         macro_edge_args: dict mapping strings to any type, containing any arguments the macro edge
                          requires in order to function.
-        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
-                                Used as a workaround for GraphQL's lack of support for
-                                inheritance across "types" (i.e. non-interfaces), as well as a
-                                workaround for Gremlin's total lack of inheritance-awareness.
-                                The key-value pairs in the dict specify that the "key" type
-                                is equivalent to the "value" type, i.e. that the GraphQL type or
-                                interface in the key is the most-derived common supertype
-                                of every GraphQL type in the "value" GraphQL union.
-                                Recursive expansion of type equivalence hints is not performed,
-                                and only type-level correctness of this argument is enforced.
-                                See README.md for more details on everything this parameter does.
-                                *****
-                                Be very careful with this option, as bad input here will
-                                lead to incorrect output queries being generated.
-                                *****
     """
     class_name, macro_edge_name, macro_descriptor = make_macro_edge_descriptor(
-        schema, macro_edge_graphql, macro_edge_args,
-        type_equivalence_hints=type_equivalence_hints)
+        macro_registry.schema_without_macros, macro_edge_graphql, macro_edge_args,
+        type_equivalence_hints=macro_registry.type_equivalence_hints)
 
     # Ensure this new macro edge does not conflict with any previous descriptor.
     macro_edges_for_class = macro_registry.macro_edges.get(class_name, dict())
@@ -72,16 +85,35 @@ def register_macro_edge(macro_registry, schema, macro_edge_graphql, macro_edge_a
     macro_registry.macro_edges.setdefault(class_name, dict())[macro_edge_name] = macro_descriptor
 
 
-def perform_macro_expansion(schema, macro_registry, graphql_with_macro,
-                            graphql_args, subclass_sets=None):
+def get_schema_with_macros(macro_registry):
+    """Get a new GraphQLSchema with fields where macro edges can be used.
+
+    Specification:
+    1. Every GraphQLQuery that uses macros from this registry appropriately should
+       successfully type-check against the schema generated from this function.
+    2. A GraphQLQuery that uses macros not present in the registry, or uses valid
+       macros but on types they are not defined at should fail schema validation with
+       the schema generated from this function.
+    3. This function is total -- A macro registry with all macros inserted by using
+       register_macro_edge should not fail to create a graphql schema with macros.
+
+    Args:
+        macro_registry: MacroRegistry object containing a schema and macro descriptors
+                        we want to add to the schema.
+
+    Returns:
+        GraphQLSchema with additional fields where macroe edges can be used.
+    """
+    raise NotImplementedError()  # TODO(bojanserafimov) implement
+
+
+def perform_macro_expansion(macro_registry, graphql_with_macro, graphql_args):
     """Return a new GraphQL query string and args, after expanding any encountered macros.
 
     Args:
-        schema: GraphQL schema object, created using the GraphQL library
         macro_registry: MacroRegistry, the registry of macro descriptors used for expansion
         graphql_with_macro: string, GraphQL query that potentially requires macro expansion
         graphql_args: dict mapping strings to any type, containing the arguments for the query
-        subclass_sets: optional dict mapping class names to the set of its subclass names
 
     Returns:
         tuple (new_graphql_string, new_graphql_args) containing the rewritten GraphQL query and
@@ -90,8 +122,7 @@ def perform_macro_expansion(schema, macro_registry, graphql_with_macro,
     """
     query_ast = safe_parse_graphql(graphql_with_macro)
 
-    new_query_ast, new_args = expand_macros_in_query_ast(
-        schema, macro_registry, query_ast, graphql_args, subclass_sets=subclass_sets)
+    new_query_ast, new_args = expand_macros_in_query_ast(macro_registry, query_ast, graphql_args)
     new_graphql_string = print_ast(new_query_ast)
 
     return new_graphql_string, new_args

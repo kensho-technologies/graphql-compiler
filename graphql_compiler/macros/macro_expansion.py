@@ -225,23 +225,23 @@ def _expand_specific_macro_edge(schema, macro_ast, selection_ast, subclass_sets=
     return replacement_selection_ast, extra_selections
 
 
-def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
-                                ast, query_args, subclass_sets=None):
+def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_args):
     """Return (new_ast, new_query_args) containing the AST after macro expansion.
 
     Args:
-        schema: GraphQL schema object, created using the GraphQL library
         macro_registry: MacroRegistry, the registry of macro descriptors used for expansion
         current_schema_type: GraphQL type object describing the current type at the given AST node
         ast: GraphQL AST object that potentially requires macro expansion
         query_args: dict mapping strings to any type, containing the arguments for the query
-        subclass_sets: optional dict mapping class names to the set of its subclass names
 
     Returns:
         tuple (new_ast, new_graphql_args) containing a potentially-rewritten GraphQL AST object
         and its new args. If the input GraphQL AST did not make use of any macros,
         the returned values are guaranteed to be the exact same objects as the input ones.
     """
+    schema = macro_registry.schema_without_macros
+    subclass_sets = macro_registry.subclass_sets
+
     if ast.selection_set is None:
         # No macro expansion happens at this level if there are no selections.
         return ast, query_args
@@ -260,8 +260,7 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
         if isinstance(selection_ast, InlineFragment):
             vertex_field_type = schema.get_type(selection_ast.type_condition.name.value)
             new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
-                schema, macro_registry, vertex_field_type,
-                selection_ast, new_query_args, subclass_sets=subclass_sets)
+                macro_registry, vertex_field_type, selection_ast, new_query_args)
         else:
             field_name = get_ast_field_name(selection_ast)
             if is_vertex_field_name(field_name):
@@ -289,8 +288,7 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
                 #                instead of reaching into the compiler.helpers module.
                 vertex_field_type = get_vertex_field_type(current_schema_type, field_name)
                 new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
-                    schema, macro_registry, vertex_field_type, new_selection_ast, new_query_args,
-                    subclass_sets=subclass_sets)
+                    macro_registry, vertex_field_type, new_selection_ast, new_query_args)
 
         if new_selection_ast is not selection_ast:
             made_changes = True
@@ -314,15 +312,13 @@ def _expand_macros_in_inner_ast(schema, macro_registry, current_schema_type,
 # Public API #
 # ############
 
-def expand_macros_in_query_ast(schema, macro_registry, query_ast, query_args, subclass_sets=None):
+def expand_macros_in_query_ast(macro_registry, query_ast, query_args):
     """Return (new_query_ast, new_query_args) containing the GraphQL after macro expansion.
 
     Args:
-        schema: GraphQL schema object, created using the GraphQL library
         macro_registry: MacroRegistry, the registry of macro descriptors used for expansion
         query_ast: GraphQL query AST object that potentially requires macro expansion
         query_args: dict mapping strings to any type, containing the arguments for the query
-        subclass_sets: optional dict mapping class names to the set of its subclass names
 
     Returns:
         tuple (new_query_ast, new_graphql_args) containing a potentially-rewritten GraphQL query AST
@@ -333,11 +329,11 @@ def expand_macros_in_query_ast(schema, macro_registry, query_ast, query_args, su
     base_ast = get_only_selection_from_ast(definition_ast, GraphQLInvalidMacroError)
 
     base_start_type_name = get_ast_field_name(base_ast)
-    query_type = schema.get_query_type()
+    query_type = macro_registry.schema_without_macros.get_query_type()
     base_start_type = query_type.fields[base_start_type_name].type
 
     new_base_ast, new_query_args = _expand_macros_in_inner_ast(
-        schema, macro_registry, base_start_type, base_ast, query_args, subclass_sets=subclass_sets)
+        macro_registry, base_start_type, base_ast, query_args)
 
     if new_base_ast is base_ast:
         # No macro expansion happened.
