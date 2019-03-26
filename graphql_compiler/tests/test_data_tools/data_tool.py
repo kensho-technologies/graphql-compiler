@@ -51,10 +51,10 @@ def init_sql_integration_test_backends():
         if backend_name in EXPLICIT_DB_BACKENDS:
             # safely drop the test DB, outside of a transaction (autocommit)
             drop_database_command = text('DROP DATABASE IF EXISTS animals;')
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(drop_database_command)
+            engine.execution_options(isolation_level='AUTOCOMMIT').execute(drop_database_command)
             # create the test DB, outside of a transaction (autocommit)
             create_database_command = text('CREATE DATABASE animals;')
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(create_database_command)
+            engine.execution_options(isolation_level='AUTOCOMMIT').execute(create_database_command)
             # update the connection string and engine to connect to this new DB specifically
             connection_string = base_connection_string + u'/animals'
             engine = create_engine(connection_string)
@@ -76,7 +76,7 @@ def tear_down_integration_test_backends(sql_test_backends):
         # set execution options to AUTOCOMMIT so that the DB drop is not performed in a transaction
         # as this is not allowed on some SQL backends
         drop_database_command = text('DROP DATABASE IF EXISTS animals;')
-        engine.execution_options(isolation_level="AUTOCOMMIT").execute(drop_database_command)
+        engine.execution_options(isolation_level='AUTOCOMMIT').execute(drop_database_command)
 
 
 def generate_sql_integration_data(sql_test_backends):
