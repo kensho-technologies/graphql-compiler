@@ -2,9 +2,10 @@
 from collections import namedtuple
 import six
 
-from graphql.language.ast import FieldDefinition, Name, NamedType, ObjectTypeDefinition
+from graphql.language.ast import FieldDefinition, Name, NamedType, ObjectTypeDefinition, Directive, ListType
 from graphql import parse
 from graphql.language.printer import print_ast
+from graphql.type import GraphQLList
 from graphql.utils.build_ast_schema import build_ast_schema
 from graphql.utils.schema_printer import print_schema
 
@@ -12,6 +13,7 @@ from ..compiler.compiler_frontend import validate_schema_and_ast
 from ..ast_manipulation import safe_parse_graphql
 from .macro_edge import make_macro_edge_descriptor
 from .macro_edge.helpers import get_type_at_macro_edge_target
+from .macro_edge.directives import MacroEdgeDirective
 from .macro_expansion import expand_macros_in_query_ast
 from ..exceptions import GraphQLValidationError
 
@@ -133,10 +135,12 @@ def get_schema_with_macros(macro_registry):
                     type_at_target = get_type_at_macro_edge_target(
                         macro_registry.schema_without_macros,
                         macro_edge_descriptor.expansion_ast)
+                    list_type_at_target = ListType(NamedType(Name(type_at_target.name)))
                     arguments = []
+                    directives = [Directive(Name(MacroEdgeDirective.name))]
                     definition.fields.append(FieldDefinition(
                         Name(macro_edge_name), arguments,
-                        NamedType(Name(type_at_target.name)), directives=[]))
+                        list_type_at_target, directives=directives))
     return build_ast_schema(schema_ast)
 
 
