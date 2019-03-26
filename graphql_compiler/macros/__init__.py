@@ -140,7 +140,7 @@ def get_schema_with_macros(macro_registry):
 
 def get_schema_for_macro_definition(schema):
     """Returns a schema with macro directives."""
-    pass  # TODO(bojanserafimov): Implement
+    raise NotImplementedError()  # TODO(bojanserafimov): Implement
 
 
 def perform_macro_expansion(macro_registry, graphql_with_macro, graphql_args):
