@@ -26,3 +26,6 @@ class MacroSchemaTests(unittest.TestCase):
         grandparent_target_type = schema_with_macros.get_type(
             'Animal').fields['out_Animal_GrandparentOf'].type
         self.assertEqual('Animal', grandparent_target_type.name)
+        related_food_target_type = schema_with_macros.get_type(
+            'Animal').fields['out_Animal_RelatedFood'].type
+        self.assertEqual('Food', related_food_target_type.name)

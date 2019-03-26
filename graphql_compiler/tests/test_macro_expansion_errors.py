@@ -106,10 +106,11 @@ class MacroExpansionTests(unittest.TestCase):
             perform_macro_expansion(self.macro_registry, query, args)
 
     def test_incorrect_schema_usage(self):
+        # Test with fields that don't exist in the schema
         query = '''{
             Animal {
                 out_Animal_GrandparentOf {
-                    names @output(out_name: "grandkid")
+                    field_not_in_schema @output(out_name: "grandkid")
                 }
             }
         }'''

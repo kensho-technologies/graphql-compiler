@@ -98,8 +98,7 @@ def get_schema_with_macros(macro_registry):
     """Get a new GraphQLSchema with fields where macro edges can be used.
 
     Preconditions:
-    1. No macro in the registry has the same name as a field on the vertex where it applies,
-       or any interfaces it implements.
+    1. No macro in the registry has the same name as a field on the vertex where it applies.
     2. Members of a union type do not have outgoing macros with the same name.
 
     An easy way to satisfy the preconditions is to create the macro_registry using
@@ -113,7 +112,7 @@ def get_schema_with_macros(macro_registry):
        macros but on types they are not defined at should fail schema validation with
        the schema generated from this function.
     3. This function is total -- A valid macro registry should not fail to create a
-       graphql schema with macros.
+       GraphQL schema with macros.
 
     Args:
         macro_registry: MacroRegistry object containing a schema and macro descriptors
@@ -122,7 +121,10 @@ def get_schema_with_macros(macro_registry):
     Returns:
         GraphQLSchema with additional fields where macroe edges can be used.
     """
+    # The easiest way to manipulate the schema is through its AST. The easiest
+    # way to get an AST is to print it and parse it.
     schema_ast = parse(print_schema(macro_registry.schema_without_macros))
+
     for definition in schema_ast.definitions:
         if isinstance(definition, ObjectTypeDefinition):
             if definition.name.value in macro_registry.macro_edges:
@@ -139,7 +141,18 @@ def get_schema_with_macros(macro_registry):
 
 
 def get_schema_for_macro_definition(schema):
-    """Returns a schema with macro directives."""
+    """Returns a schema with macro directives.
+
+    This returned schema can be used to validate macro definitions, and support GraphQL
+    macro editors, enabling them to autocomplete one the @macro_edge_definition and
+    @macro_edge_target directives.
+
+    Args:
+        schema: GraphQLSchema over which we want to write macros
+
+    Returns:
+        GraphQLSchema usable for writing macros
+    """
     raise NotImplementedError()  # TODO(bojanserafimov): Implement
 
 
@@ -160,7 +173,8 @@ def perform_macro_expansion(macro_registry, graphql_with_macro, graphql_args):
     schema_with_macros = get_schema_with_macros(macro_registry)
     validation_errors = validate_schema_and_ast(schema_with_macros, query_ast)
     if validation_errors:
-        raise GraphQLValidationError(u'String does not validate: {}'.format(validation_errors))
+        raise GraphQLValidationError(u'The provided GraphQL input does not validate: {} {}'
+                                     .format(graphql_with_macro, validation_errors))
 
     new_query_ast, new_args = expand_macros_in_query_ast(macro_registry, query_ast, graphql_args)
     new_graphql_string = print_ast(new_query_ast)
