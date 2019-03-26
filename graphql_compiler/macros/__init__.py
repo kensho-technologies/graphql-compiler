@@ -2,10 +2,10 @@
 from collections import namedtuple
 import six
 
-from graphql.language.ast import FieldDefinition, Name, NamedType, ObjectTypeDefinition, Directive, ListType
+from graphql.language.ast import (
+    FieldDefinition, Name, NamedType, ObjectTypeDefinition, Directive, ListType)
 from graphql import parse
 from graphql.language.printer import print_ast
-from graphql.type import GraphQLList
 from graphql.utils.build_ast_schema import build_ast_schema
 from graphql.utils.schema_printer import print_schema
 

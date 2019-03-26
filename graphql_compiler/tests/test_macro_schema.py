@@ -5,7 +5,6 @@ from graphql.type import GraphQLList
 from graphql.utils.schema_printer import print_schema
 
 from ..macros import get_schema_with_macros
-from ..macros.macro_edge.directives import MacroEdgeDirective
 from .test_helpers import get_empty_test_macro_registry, get_test_macro_registry
 
 
