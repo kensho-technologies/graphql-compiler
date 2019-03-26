@@ -25,7 +25,7 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
 
 ## Table of contents
   * [Features](#features)
-  * [Code Sample](#code-sample)
+  * [Querying OrientDB with GraphQL](#querying-orientdb-with-graphql)
   * [Definitions](#definitions)
   * [Directives](#directives)
      * [@optional](#optional)
@@ -68,7 +68,7 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
    these databases. See the [SQL](#sql) section for more details.
 * **GraphQL Language Features:**  We prioritized and implemented a subset of all functionality supported by the GraphQL language. We hope to add more functionality over time.
 
-## OrientDB Example
+## Querying OrientDB with GraphQL
 ```python3
 from graphql_compiler import (
     get_graphql_schema_from_orientdb_schema_data, graphql_to_match
