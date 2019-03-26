@@ -1,13 +1,17 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
+import six
 
 from graphql import parse
 from graphql.language.printer import print_ast
+from graphql.type import GraphQLObjectType, GraphQLUnionType, GraphQLField, GraphQLSchema, GraphQLList, GraphQLNonNull, GraphQLInterfaceType
 from graphql.utils.build_ast_schema import build_ast_schema
 from graphql.utils.schema_printer import print_schema
 
+from ..schema import DIRECTIVES
 from ..ast_manipulation import safe_parse_graphql
 from .macro_edge import make_macro_edge_descriptor
+from .macro_edge.helpers import get_type_at_macro_edge_target
 from .macro_expansion import expand_macros_in_query_ast
 
 
@@ -34,7 +38,8 @@ MacroRegistry = namedtuple(
         'type_equivalence_hints',
 
         # Optional dict mapping class names to the set of its subclass names.
-        # A class in this context means a GraphQL object type or interface.
+        # A class in this context means the name of a GraphQLObjectType,
+        # GraphQLUnionType or GraphQLInterface.
         'subclass_sets',
 
         # Dict[str, Dict[str, MacroEdgeDescriptor]] mapping:
@@ -88,6 +93,8 @@ def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
     macro_registry.macro_edges.setdefault(class_name, dict())[macro_edge_name] = macro_descriptor
 
 
+
+
 def get_schema_with_macros(macro_registry):
     """Get a new GraphQLSchema with fields where macro edges can be used.
 
@@ -110,9 +117,29 @@ def get_schema_with_macros(macro_registry):
     # HACK(bojanserafimov): GraphQLSchema does not implement the deepcopy behavior
     schema_deepcopy = build_ast_schema(parse(print_schema(
         macro_registry.schema_without_macros)))
+    type_map = schema_deepcopy.get_type_map()
 
-    # TODO(bojanserafimov) implement
-    return schema_deepcopy
+
+    graphql_types = OrderedDict()
+    # Add all objecttypes and interfaces
+    # TODO
+
+    # Add union classes
+    # TODO
+
+    # Construct RootSchemaQuery from graphql_types
+
+    for root_classname, edge_macros in six.iteritems(macro_registry.macro_edges):
+        for macro_edge_name, macro_edge_descriptor in six.iteritems(edge_macros):
+            type_at_root = type_map[root_classname]
+            type_at_target = get_type_at_macro_edge_target(
+                macro_registry.schema_without_macros,
+                macro_edge_descriptor.expansion_ast)
+            type_at_root.fields[macro_edge_name] = GraphQLField(GraphQLList(type_at_target))
+            import pdb; pdb.set_trace()
+
+    # import pdb; pdb.set_trace()
+    return GraphQLSchema(type_map['RootSchemaQuery'], directives=DIRECTIVES)
 
 
 def perform_macro_expansion(macro_registry, graphql_with_macro, graphql_args):
