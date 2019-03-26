@@ -22,7 +22,7 @@ from .schema_generation.graphql_schema import get_graphql_schema_from_schema_gra
 
 
 __package_name__ = 'graphql-compiler'
-__version__ = '1.10.0'
+__version__ = '2.0.0.dev2'
 
 
 def graphql_to_match(schema, graphql_query, parameters, type_equivalence_hints=None):
@@ -194,6 +194,7 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
     """
     if class_to_field_type_overrides is None:
         class_to_field_type_overrides = dict()
+
     if hidden_classes is None:
         hidden_classes = set()
 
