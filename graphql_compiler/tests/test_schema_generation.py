@@ -249,6 +249,9 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         baby = schema.get_type('Baby')
         location = schema.get_type('Location')
 
+        # Assert that there is exactly 1 type equivalence
+        self.assertEqual(1, len(type_equivalence_dicts))
+
         # Assert that the Person class is part of the schema.
         self.assertEqual(person, schema.get_type('Person'))
 
