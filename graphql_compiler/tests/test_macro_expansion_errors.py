@@ -3,7 +3,7 @@ import unittest
 
 import pytest
 
-from ..exceptions import GraphQLCompilationError
+from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from ..macros import perform_macro_expansion
 from .test_helpers import get_test_macro_registry
 
@@ -58,10 +58,9 @@ class MacroExpansionTests(unittest.TestCase):
         }'''
         args = {}
 
-        with self.assertRaises(GraphQLCompilationError):
+        with self.assertRaises(GraphQLValidationError):
             perform_macro_expansion(self.macro_registry, query, args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_invalid_coercion_2(self):
         query = '''{
             Animal {
@@ -74,10 +73,9 @@ class MacroExpansionTests(unittest.TestCase):
         }'''
         args = {}
 
-        with self.assertRaises(GraphQLCompilationError):
+        with self.assertRaises(GraphQLValidationError):
             perform_macro_expansion(self.macro_registry, query, args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_nonexistent(self):
         query = '''{
             Animal {
@@ -88,7 +86,7 @@ class MacroExpansionTests(unittest.TestCase):
         }'''
         args = {}
 
-        with self.assertRaises(GraphQLCompilationError):
+        with self.assertRaises(GraphQLValidationError):
             perform_macro_expansion(self.macro_registry, query, args)
 
     @pytest.mark.skip(reason='not implemented')
@@ -105,4 +103,17 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         with self.assertRaises(GraphQLCompilationError):
+            perform_macro_expansion(self.macro_registry, query, args)
+
+    def test_incorrect_schema_usage(self):
+        query = '''{
+            Animal {
+                out_Animal_GrandparentOf {
+                    names @output(out_name: "grandkid")
+                }
+            }
+        }'''
+        args = {}
+
+        with self.assertRaises(GraphQLValidationError):
             perform_macro_expansion(self.macro_registry, query, args)

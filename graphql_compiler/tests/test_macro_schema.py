@@ -2,10 +2,9 @@
 import unittest
 
 from graphql.utils.schema_printer import print_schema
-import pytest
 
 from ..macros import get_schema_with_macros
-from .test_helpers import get_test_macro_registry, get_empty_test_macro_registry
+from .test_helpers import get_empty_test_macro_registry, get_test_macro_registry
 
 
 class MacroSchemaTests(unittest.TestCase):
@@ -23,9 +22,7 @@ class MacroSchemaTests(unittest.TestCase):
         self.assertEqual(original_printed_schema, printed_schema_with_0_macros)
 
     def test_get_schema_with_macros_basic(self):
-        original_printed_schema = print_schema(self.macro_registry.schema_without_macros)
-        printed_schema_with_macros = print_schema(get_schema_with_macros(self.macro_registry))
-        self.assertNotEqual(original_printed_schema, printed_schema_with_macros)
-
-
-    # TODO(bojanserafimov): More tests
+        schema_with_macros = get_schema_with_macros(self.macro_registry)
+        grandparent_target_type = schema_with_macros.get_type(
+            'Animal').fields['out_Animal_GrandparentOf'].type
+        self.assertEqual('Animal', grandparent_target_type.name)

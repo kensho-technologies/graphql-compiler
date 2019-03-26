@@ -891,7 +891,7 @@ def _compile_output_step(outputs):
     return blocks.ConstructResult(output_fields)
 
 
-def _validate_schema_and_ast(schema, ast):
+def validate_schema_and_ast(schema, ast):
     """Validate the supplied graphql schema and ast.
 
     This method wraps around graphql-core's validation to enforce a stricter requirement of the
@@ -1012,7 +1012,7 @@ def ast_to_ir(schema, ast, type_equivalence_hints=None):
 
     In the case of implementation bugs, could also raise ValueError, TypeError, or AssertionError.
     """
-    validation_errors = _validate_schema_and_ast(schema, ast)
+    validation_errors = validate_schema_and_ast(schema, ast)
     if validation_errors:
         raise GraphQLValidationError(u'String does not validate: {}'.format(validation_errors))
 
