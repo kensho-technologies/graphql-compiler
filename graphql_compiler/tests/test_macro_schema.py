@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import unittest
 
+from graphql.type import GraphQLList
 from graphql.utils.schema_printer import print_schema
 
 from ..macros import get_schema_with_macros
@@ -25,7 +26,9 @@ class MacroSchemaTests(unittest.TestCase):
         schema_with_macros = get_schema_with_macros(self.macro_registry)
         grandparent_target_type = schema_with_macros.get_type(
             'Animal').fields['out_Animal_GrandparentOf'].type
-        self.assertEqual('Animal', grandparent_target_type.name)
+        self.assertTrue(isinstance(grandparent_target_type, GraphQLList))
+        self.assertEqual('Animal', grandparent_target_type.of_type.name)
         related_food_target_type = schema_with_macros.get_type(
             'Animal').fields['out_Animal_RelatedFood'].type
-        self.assertEqual('Food', related_food_target_type.name)
+        self.assertTrue(isinstance(related_food_target_type, GraphQLList))
+        self.assertEqual('Food', related_food_target_type.of_type.name)
