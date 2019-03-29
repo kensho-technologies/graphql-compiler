@@ -21,6 +21,21 @@ from .schema_properties import (
 )
 
 
+def _get_type_equivalences_with_nonzero_indegree_unions(graphql_types, type_equivalence_hints):
+    """Filter union types with zero indegree and their keys from the type equivalence hints dict."""
+    referenced_types = set()
+    for type in graphql_types.values():
+        if isinstance(type, (GraphQLObjectType, GraphQLInterfaceType)):
+            field_map = type.fields
+            for field_name, field in field_map.items():
+                for arg_name, arg in field.args.items():
+                    if isinstance(arg, GraphQLList):
+                        referenced_types.add(arg.type.of_type.name)
+    return {original: union
+            for original, union in type_equivalence_hints.items()
+            if union.name in referenced_types}
+
+
 def _get_inherited_field_types(class_to_field_type_overrides, schema_graph):
     """Return a dictionary describing the field type overrides in subclasses."""
     inherited_field_type_overrides = dict()
@@ -160,6 +175,7 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
 def _create_field_specification(schema_graph, graphql_types, field_type_overrides,
                                 hidden_classes, cls_name):
     """Return a function that specifies the fields present on the given type."""
+
     def field_maker_func():
         """Create and return the fields for the given GraphQL type."""
         result = EXTENDED_META_FIELD_DEFINITIONS.copy()
@@ -176,6 +192,7 @@ def _create_field_specification(schema_graph, graphql_types, field_type_override
 
 def _create_interface_specification(schema_graph, graphql_types, hidden_classes, cls_name):
     """Return a function that specifies the interfaces implemented by the given type."""
+
     def interface_spec():
         """Return a list of GraphQL interface types implemented by the type named 'cls_name'."""
         abstract_inheritance_set = (
@@ -196,6 +213,7 @@ def _create_interface_specification(schema_graph, graphql_types, hidden_classes,
 
 def _create_union_types_specification(schema_graph, graphql_types, hidden_classes, base_name):
     """Return a function that gives the types in the union type rooted at base_name."""
+
     # When edges point to vertices of type base_name, and base_name is both non-abstract and
     # has subclasses, we need to represent the edge endpoint type with a union type based on
     # base_name and its subclasses. This function calculates what types that union should include.
@@ -358,4 +376,10 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     ]))
 
     schema = GraphQLSchema(RootSchemaQuery, directives=DIRECTIVES)
-    return schema, type_equivalence_hints
+
+    # Note that the GraphQLSchema reconstructs the set of types in the schema by recursively
+    # searching through the fields of the RootSchemaQuery. Since union types can only appear in the
+    # fields of other types as edges, union types with zero indegree will not appear in the
+    # schema. Therefore, We remove these unions and their keys from the type equivalence hints.
+    return schema, _get_type_equivalences_with_nonzero_indegree_unions(graphql_types,
+                                                                       type_equivalence_hints)
