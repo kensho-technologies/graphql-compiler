@@ -225,11 +225,15 @@ def _expand_specific_macro_edge(schema, macro_ast, selection_ast, subclass_sets=
     return replacement_selection_ast, extra_selections
 
 
-def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_args):
+def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
+                                current_schema_type, ast, query_args):
     """Return (new_ast, new_query_args) containing the AST after macro expansion.
 
     Args:
         macro_registry: MacroRegistry, the registry of macro descriptors used for expansion
+        inherited_macro_edges: Dict[str, Dict[str, MacroEdgeDescriptor]] mapping:
+                               class name -> (macro edge name -> MacroEdgeDescriptor)
+                               containing macros defined on this class and superclasses
         current_schema_type: GraphQL type object describing the current type at the given AST node
         ast: GraphQL AST object that potentially requires macro expansion
         query_args: dict mapping strings to any type, containing the arguments for the query
@@ -246,7 +250,7 @@ def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_
         # No macro expansion happens at this level if there are no selections.
         return ast, query_args
 
-    macro_edges_at_this_type = macro_registry.macro_edges.get(current_schema_type.name, dict())
+    macro_edges_at_this_type = inherited_macro_edges.get(current_schema_type.name, dict())
 
     made_changes = False
     new_selections = []
@@ -260,7 +264,8 @@ def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_
         if isinstance(selection_ast, InlineFragment):
             vertex_field_type = schema.get_type(selection_ast.type_condition.name.value)
             new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
-                macro_registry, vertex_field_type, selection_ast, new_query_args)
+                macro_registry, inherited_macro_edges, vertex_field_type,
+                selection_ast, new_query_args)
         else:
             field_name = get_ast_field_name(selection_ast)
             if is_vertex_field_name(field_name):
@@ -288,7 +293,8 @@ def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_
                 #                instead of reaching into the compiler.helpers module.
                 vertex_field_type = get_vertex_field_type(current_schema_type, field_name)
                 new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
-                    macro_registry, vertex_field_type, new_selection_ast, new_query_args)
+                    macro_registry, inherited_macro_edges, vertex_field_type,
+                    new_selection_ast, new_query_args)
 
         if new_selection_ast is not selection_ast:
             made_changes = True
@@ -332,8 +338,17 @@ def expand_macros_in_query_ast(macro_registry, query_ast, query_args):
     query_type = macro_registry.schema_without_macros.get_query_type()
     base_start_type = query_type.fields[base_start_type_name].type
 
+    # Dict[str, Dict[str, MacroEdgeDescriptor]] mapping:
+    # class name -> (macro edge name -> MacroEdgeDescriptor)
+    inherited_macro_edges = {}
+    for superclass, subclass_set in six.iteritems(macro_registry.subclass_sets):
+        for subclass in subclass_set:
+            if superclass in macro_registry.macro_edges:
+                inherited_macro_edges.setdefault(subclass, dict()).update(
+                    macro_registry.macro_edges[superclass])
+
     new_base_ast, new_query_args = _expand_macros_in_inner_ast(
-        macro_registry, base_start_type, base_ast, query_args)
+        macro_registry, inherited_macro_edges, base_start_type, base_ast, query_args)
 
     if new_base_ast is base_ast:
         # No macro expansion happened.

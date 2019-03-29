@@ -323,6 +323,15 @@ def get_test_macro_registry():
     macro_registry = get_empty_test_macro_registry()
     valid_macros = [
         ('''{
+            Entity @macro_edge_definition(name: "out_Entity_AlmostRelated") {
+                out_Entity_Related {
+                    out_Entity_Related @macro_edge_target{
+                        uuid
+                    }
+                }
+            }
+        }''', {}),
+        ('''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf @macro_edge_target {
