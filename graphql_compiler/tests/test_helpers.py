@@ -167,6 +167,8 @@ SCHEMA_TEXT = '''
       FoodOrSpecies: FoodOrSpecies
       Location: Location
       Species: Species
+      Union__BirthEvent__Event__FeedingEvent: Union__BirthEvent__Event__FeedingEvent
+      Union__Food__FoodOrSpecies__Species: Union__Food__FoodOrSpecies__Species
       UniquelyIdentifiable: UniquelyIdentifiable
     }
 
