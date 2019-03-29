@@ -25,8 +25,8 @@ def _get_referenced_type_equivances(graphql_types, type_equivalence_hints):
     """Filter union types with no edges from the type equivalence hints dict."""
     referenced_types = set()
     for graphql_type in graphql_types.values():
-        if isinstance(graphql_type , (GraphQLObjectType, GraphQLInterfaceType)):
-            for field_name, field in graphql_type.fields.items():
+        if isinstance(graphql_type, (GraphQLObjectType, GraphQLInterfaceType)):
+            for _, field in graphql_type.fields.items():
                 if isinstance(field.type, GraphQLList):
                     referenced_types.add(field.type.of_type.name)
     return {original: union
