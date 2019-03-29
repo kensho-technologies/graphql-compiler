@@ -269,7 +269,7 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
 
 
 def _make_macro_edge_descriptor(macro_definition_ast, macro_edge_args):
-    """Remove all macro edge directives from the AST, and return a MacroEdgeDescriptor."""
+    """Remove all macro edge directives except for the target, and return a MacroEdgeDescriptor."""
     directives_to_remove = {
         directive.name
         for directive in MACRO_EDGE_DIRECTIVES
