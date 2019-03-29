@@ -21,7 +21,7 @@ from .schema_properties import (
 )
 
 
-def _get_referenced_type_equivances(graphql_types, type_equivalence_hints):
+def _get_referenced_type_equivalences(graphql_types, type_equivalence_hints):
     """Filter union types with no edges from the type equivalence hints dict."""
     referenced_types = set()
     for graphql_type in graphql_types.values():
@@ -29,9 +29,11 @@ def _get_referenced_type_equivances(graphql_types, type_equivalence_hints):
             for _, field in graphql_type.fields.items():
                 if isinstance(field.type, GraphQLList):
                     referenced_types.add(field.type.of_type.name)
-    return {original: union
-            for original, union in type_equivalence_hints.items()
-            if union.name in referenced_types}
+    return {
+        original: union
+        for original, union in type_equivalence_hints.items()
+        if union.name in referenced_types
+    }
 
 
 def _get_inherited_field_types(class_to_field_type_overrides, schema_graph):
@@ -377,5 +379,5 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     # searching through the fields of the RootSchemaQuery. Since union types can only appear in the
     # fields of other types as edges, union types with no in or out edges will not appear in the
     # schema. Therefore, we remove these unions and their keys from the type equivalence hints.
-    return schema, _get_referenced_type_equivances(graphql_types,
-                                                   type_equivalence_hints)
+    return schema, _get_referenced_type_equivalences(graphql_types,
+                                                     type_equivalence_hints)
