@@ -7,6 +7,7 @@ import six
 
 from graphql_compiler import get_graphql_schema_from_orientdb_schema_data
 
+from ..schema_generation.graphql_schema import _get_union_type_name
 from ..schema_generation.schema_graph import SchemaGraph
 from ..schema_generation.schema_properties import (
     ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_EMBEDDED_LIST_ID,
@@ -245,6 +246,12 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             PERSON_SCHEMA_DATA,
         ]
         schema, type_equivalence_dicts = get_graphql_schema_from_orientdb_schema_data(schema_data)
+
+        # Sanity check
+        schema_graph = SchemaGraph(schema_data)
+        person_subclass_set = schema_graph.get_subclass_set('Person')
+        self.assertIsNotNone(schema.get_type(_get_union_type_name(person_subclass_set)))
+
         person, person_baby_union = next(six.iteritems(type_equivalence_dicts))
         baby = schema.get_type('Baby')
         location = schema.get_type('Location')
@@ -267,3 +274,19 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         self.assertTrue(person.fields['out_Person_LivesIn'].type.is_same_type(location_list_type))
         self.assertTrue(baby.fields['out_Person_LivesIn'].type.is_same_type(location_list_type))
         self.assertTrue(location.fields['in_Person_LivesIn'].type.is_same_type(union_list_type))
+
+    def test_filter_type_equivalences_with_no_edges(self):
+        schema_data = [
+            BASE_VERTEX_SCHEMA_DATA,
+            BABY_SCHEMA_DATA,
+            ENTITY_SCHEMA_DATA,
+            PERSON_SCHEMA_DATA,
+        ]
+        schema, type_equivalence_dicts = get_graphql_schema_from_orientdb_schema_data(schema_data)
+        # Since there is not ingoing edge to Person, we filter the Person_Baby union
+        # from the type equivalence dict since it is not discoverable by the GraphQL Schema.
+        self.assertEqual(0, len(type_equivalence_dicts))
+        # Sanity check
+        schema_graph = SchemaGraph(schema_data)
+        person_subclass_set = schema_graph.get_subclass_set('Person')
+        self.assertIsNone(schema.get_type(_get_union_type_name(person_subclass_set)))

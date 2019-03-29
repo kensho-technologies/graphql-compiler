@@ -143,9 +143,7 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
     Args:
         schema_data: list of dicts describing the classes in the OrientDB schema. The following
                      format is the way the data is structured in OrientDB 2. See
-                     test_get_graphql_schema_from_orientdb_schema in
-                     graphql_compiler/tests/integration_tests/test_backends_integration.py
-                     for an example of how to query this data.
+                     the README.md file for an example of how to query this data.
                      Each dict has the following string fields:
                         - name: string, the name of the class.
                         - superClasses (optional): list of strings, the name of the class's
@@ -189,8 +187,7 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
 
     Returns:
         tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
-        The tuple is of type (GraphQLSchema, GraphQLUnionType).
-        We hide classes with no properties in the schema since they're not representable in GraphQL.
+        The tuple is of type (GraphQLSchema, {GraphQLObjectType -> GraphQLUnionType}).
     """
     if class_to_field_type_overrides is None:
         class_to_field_type_overrides = dict()
