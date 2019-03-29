@@ -21,16 +21,14 @@ from .schema_properties import (
 )
 
 
-def _get_type_equivalences_with_nonzero_indegree_unions(graphql_types, type_equivalence_hints):
-    """Filter union types with zero indegree and their keys from the type equivalence hints dict."""
+def _get_type_equivalences_unions_with_edges(graphql_types, type_equivalence_hints):
+    """Filter union types with no edges from the type equivalence hints dict."""
     referenced_types = set()
-    for type in graphql_types.values():
-        if isinstance(type, (GraphQLObjectType, GraphQLInterfaceType)):
-            field_map = type.fields
-            for field_name, field in field_map.items():
-                for arg_name, arg in field.args.items():
-                    if isinstance(arg, GraphQLList):
-                        referenced_types.add(arg.type.of_type.name)
+    for graphql_type in graphql_types.values():
+        if isinstance(graphql_type , (GraphQLObjectType, GraphQLInterfaceType)):
+            for field_name, field in graphql_type.fields.items():
+                if isinstance(field.type, GraphQLList):
+                    referenced_types.add(field.type.of_type.name)
     return {original: union
             for original, union in type_equivalence_hints.items()
             if union.name in referenced_types}
@@ -373,13 +371,14 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     RootSchemaQuery = GraphQLObjectType('RootSchemaQuery', OrderedDict([
         (name, GraphQLField(value))
         for name, value in sorted(six.iteritems(graphql_types), key=lambda x: x[0])
+        if not isinstance(value, GraphQLUnionType)
     ]))
 
     schema = GraphQLSchema(RootSchemaQuery, directives=DIRECTIVES)
 
     # Note that the GraphQLSchema reconstructs the set of types in the schema by recursively
     # searching through the fields of the RootSchemaQuery. Since union types can only appear in the
-    # fields of other types as edges, union types with zero indegree will not appear in the
+    # fields of other types as edges, union types with no in or out edges will not appear in the
     # schema. Therefore, We remove these unions and their keys from the type equivalence hints.
-    return schema, _get_type_equivalences_with_nonzero_indegree_unions(graphql_types,
-                                                                       type_equivalence_hints)
+    return schema, _get_type_equivalences_unions_with_edges(graphql_types,
+                                                            type_equivalence_hints)
