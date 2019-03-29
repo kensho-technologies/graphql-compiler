@@ -90,14 +90,14 @@ PERSON_LIVES_IN_EDGE_SCHEMA_DATA = frozendict({
     },
     'properties': [
         {
-            'name': 'out',
-            'type': PROPERTY_TYPE_LINK_ID,
-            'linkedClass': 'Person',
-        },
-        {
             'name': 'in',
             'type': PROPERTY_TYPE_LINK_ID,
             'linkedClass': 'Location',
+        },
+        {
+            'name': 'out',
+            'type': PROPERTY_TYPE_LINK_ID,
+            'linkedClass': 'Person',
         }
     ],
     'superClass': ORIENTDB_BASE_EDGE_CLASS_NAME

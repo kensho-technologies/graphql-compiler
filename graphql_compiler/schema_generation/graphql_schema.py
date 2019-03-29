@@ -21,7 +21,7 @@ from .schema_properties import (
 )
 
 
-def _get_type_equivalences_unions_with_edges(graphql_types, type_equivalence_hints):
+def _get_referenced_type_equivances(graphql_types, type_equivalence_hints):
     """Filter union types with no edges from the type equivalence hints dict."""
     referenced_types = set()
     for graphql_type in graphql_types.values():
@@ -173,7 +173,6 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
 def _create_field_specification(schema_graph, graphql_types, field_type_overrides,
                                 hidden_classes, cls_name):
     """Return a function that specifies the fields present on the given type."""
-
     def field_maker_func():
         """Create and return the fields for the given GraphQL type."""
         result = EXTENDED_META_FIELD_DEFINITIONS.copy()
@@ -190,7 +189,6 @@ def _create_field_specification(schema_graph, graphql_types, field_type_override
 
 def _create_interface_specification(schema_graph, graphql_types, hidden_classes, cls_name):
     """Return a function that specifies the interfaces implemented by the given type."""
-
     def interface_spec():
         """Return a list of GraphQL interface types implemented by the type named 'cls_name'."""
         abstract_inheritance_set = (
@@ -379,6 +377,6 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     # Note that the GraphQLSchema reconstructs the set of types in the schema by recursively
     # searching through the fields of the RootSchemaQuery. Since union types can only appear in the
     # fields of other types as edges, union types with no in or out edges will not appear in the
-    # schema. Therefore, We remove these unions and their keys from the type equivalence hints.
-    return schema, _get_type_equivalences_unions_with_edges(graphql_types,
-                                                            type_equivalence_hints)
+    # schema. Therefore, we remove these unions and their keys from the type equivalence hints.
+    return schema, _get_referenced_type_equivances(graphql_types,
+                                                   type_equivalence_hints)
