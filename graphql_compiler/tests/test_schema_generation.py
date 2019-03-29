@@ -102,6 +102,45 @@ LOCATION_SCHEMA_DATA = frozendict({
     ]
 })
 
+FRUIT = frozendict({
+    'name': 'Fruit',
+    'abstract': False,
+    'superClasses': [ORIENTDB_BASE_VERTEX_CLASS_NAME],
+    'properties': []
+})
+
+BANANA = frozendict({
+    'name': 'Banana',
+    'abstract': False,
+    'superClasses': [ORIENTDB_BASE_VERTEX_CLASS_NAME],
+    'properties': []
+})
+
+APE = frozendict({
+    'name': 'Ape',
+    'abstract': False,
+    'superClasses': [ORIENTDB_BASE_VERTEX_CLASS_NAME],
+    'properties': []
+})
+
+APE_EATS = frozendict({
+    'name': 'Ape_Eats',
+    'abstract': False,
+    'properties': [
+        {
+            'name': 'in',
+            'type': PROPERTY_TYPE_LINK_ID,
+            'linkedClass': 'Ape',
+        },
+        {
+            'name': 'out',
+            'type': PROPERTY_TYPE_LINK_ID,
+            'linkedClass': 'Fruit',
+        }
+    ],
+    'superClasses': [ORIENTDB_BASE_EDGE_CLASS_NAME]
+})
+
 
 class GraphqlSchemaGenerationTests(unittest.TestCase):
     def test_parsed_vertex(self):
