@@ -2,8 +2,9 @@
 from collections import namedtuple
 import six
 
-from graphql.language.ast import (
-    FieldDefinition, Name, NamedType, ObjectTypeDefinition, Directive, ListType)
+from graphql.language.ast import (FieldDefinition, Name, NamedType,
+                                  ObjectTypeDefinition, InterfaceTypeDefinition,
+                                  Directive, ListType)
 from graphql import parse
 from graphql.language.printer import print_ast
 from graphql.utils.build_ast_schema import build_ast_schema
@@ -127,20 +128,23 @@ def get_schema_with_macros(macro_registry):
     # way to get an AST is to print it and parse it.
     schema_ast = parse(print_schema(macro_registry.schema_without_macros))
 
+    definitions_by_name = {}
     for definition in schema_ast.definitions:
-        if isinstance(definition, ObjectTypeDefinition):
-            if definition.name.value in macro_registry.macro_edges:
-                macro_edges = macro_registry.macro_edges[definition.name.value]
-                for macro_edge_name, macro_edge_descriptor in six.iteritems(macro_edges):
-                    type_at_target = get_type_at_macro_edge_target(
-                        macro_registry.schema_without_macros,
-                        macro_edge_descriptor.expansion_ast)
-                    list_type_at_target = ListType(NamedType(Name(type_at_target.name)))
-                    arguments = []
-                    directives = [Directive(Name(MacroEdgeDirective.name))]
-                    definition.fields.append(FieldDefinition(
-                        Name(macro_edge_name), arguments,
-                        list_type_at_target, directives=directives))
+        if isinstance(definition, (ObjectTypeDefinition, InterfaceTypeDefinition)):
+            definitions_by_name[definition.name.value] = definition
+
+    for macro_base_class_name, macros_for_base_class in six.iteritems(macro_registry.macro_edges):
+        for macro_edge_name, macro_edge_descriptor in six.iteritems(macros_for_base_class):
+            type_at_target = get_type_at_macro_edge_target(
+                macro_registry.schema_without_macros,
+                macro_edge_descriptor.expansion_ast)
+            list_type_at_target = ListType(NamedType(Name(type_at_target.name)))
+            arguments = []
+            directives = [Directive(Name(MacroEdgeDirective.name))]
+            for subclass in macro_registry.subclass_sets[macro_base_class_name]:
+                definitions_by_name[subclass].fields.append(FieldDefinition(
+                    Name(macro_edge_name), arguments, list_type_at_target, directives=directives))
+
     return build_ast_schema(schema_ast)
 
 
