@@ -144,6 +144,7 @@ def get_schema_with_macros(macro_registry):
             for subclass in macro_registry.subclass_sets[macro_base_class_name]:
                 definitions_by_name[subclass].fields.append(FieldDefinition(
                     Name(macro_edge_name), arguments, list_type_at_target, directives=directives))
+
     return build_ast_schema(schema_ast)
 
 
