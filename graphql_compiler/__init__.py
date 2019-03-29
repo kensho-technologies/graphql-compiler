@@ -22,7 +22,7 @@ from .schema_generation.graphql_schema import get_graphql_schema_from_schema_gra
 
 
 __package_name__ = 'graphql-compiler'
-__version__ = '2.0.0.dev2'
+__version__ = '2.0.0.dev3'
 
 
 def graphql_to_match(schema, graphql_query, parameters, type_equivalence_hints=None):
