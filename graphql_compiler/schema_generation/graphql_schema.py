@@ -355,7 +355,6 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     RootSchemaQuery = GraphQLObjectType('RootSchemaQuery', OrderedDict([
         (name, GraphQLField(value))
         for name, value in sorted(six.iteritems(graphql_types), key=lambda x: x[0])
-        if not isinstance(value, GraphQLUnionType)
     ]))
 
     schema = GraphQLSchema(RootSchemaQuery, directives=DIRECTIVES)
