@@ -38,6 +38,31 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
+    def test_macro_edge_on_interface(self):
+        query = '''{
+            Animal {
+                out_Entity_AlmostRelated {
+                    name @output(out_name: "distant_relative")
+                }
+            }
+        }'''
+        args = {}
+
+        expected_query = '''{
+            Animal {
+                out_Entity_Related {
+                    out_Entity_Related {
+                        name @output(out_name: "distant_relative")
+                    }
+                }
+            }
+        }'''
+        expected_args = {}
+
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
     def test_macro_edge_non_leaf_target_and_field_merging(self):
         query = '''{
             Animal {
