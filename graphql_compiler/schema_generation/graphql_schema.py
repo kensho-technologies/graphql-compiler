@@ -209,7 +209,6 @@ def _create_interface_specification(schema_graph, graphql_types, hidden_classes,
 
 def _create_union_types_specification(schema_graph, graphql_types, hidden_classes, base_name):
     """Return a function that gives the types in the union type rooted at base_name."""
-
     # When edges point to vertices of type base_name, and base_name is both non-abstract and
     # has subclasses, we need to represent the edge endpoint type with a union type based on
     # base_name and its subclasses. This function calculates what types that union should include.
