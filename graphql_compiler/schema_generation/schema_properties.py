@@ -192,14 +192,11 @@ def parse_default_property_value(property_name, property_type_id, default_value_
 
 
 # A way to describe a property's type and associated information:
-#   - type_id: int, the OrientDB property type ID -- can be made human-readable
-#              using the above PROPERTY_TYPE_ID_TO_NAME map.
-#   - qualifier: dependent on the type_id
-#        - For Link properties, string -- the name of the class to which the Link points.
-#        - For EmbeddedSet and EmbeddedList, either:
-#              - int, the property type ID of the native OrientDB type, if the data in
-#                the collection is of a built-in OrientDB type, or
-#              - string, the name of the non-graph class representing the data in the collection.
+#   - type: GraphQLType, the GraphQL type of the property.
+#   - qualifier: dependent on the property type
+#        - If the property type is a GraphQLList, string or GraphQLScalarType. If the property is
+#          a link, then it will be the string name of the class to which it points. If the
+#          property it is a collection, it will be the GraphQLScalarType of its elements.
 #        - For all other property types, None.
 #   - default: the default value for the property, used when a record is inserted without an
 #              explicit value for this property. Set to None if no default is given in the schema.
