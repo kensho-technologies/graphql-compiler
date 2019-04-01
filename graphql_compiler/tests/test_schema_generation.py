@@ -66,21 +66,6 @@ BABY_SCHEMA_DATA = frozendict({
     'properties': [],
 })
 
-
-DATA_POINT_SCHEMA_DATA = frozendict({
-    'name': 'DataPoint',
-    'abstract': True,
-    'properties': [
-        {
-            'name': 'data_source',
-            'type': PROPERTY_TYPE_EMBEDDED_LIST_ID,
-            'linkedClass': 'ExternalSource',
-            'defaultValue': '[]'
-        }
-
-    ]
-})
-
 PERSON_LIVES_IN_EDGE_SCHEMA_DATA = frozendict({
     'name': 'Person_LivesIn',
     'abstract': False,
@@ -177,7 +162,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         ]
         schema_graph = SchemaGraph(schema_data)
         name_property = schema_graph.get_element_by_class_name('Entity').properties['name']
-        self.assertEqual(name_property.type_id, PROPERTY_TYPE_STRING_ID)
+        self.assertEqual(name_property.type, GraphQLString)
 
     def test_native_orientdb_collection_property(self):
         schema_data = [
@@ -187,21 +172,9 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         ]
         schema_graph = SchemaGraph(schema_data)
         alias_property = schema_graph.get_element_by_class_name('Person').properties['alias']
-        self.assertEqual(alias_property.type_id, PROPERTY_TYPE_EMBEDDED_SET_ID)
-        self.assertEqual(alias_property.qualifier, PROPERTY_TYPE_STRING_ID)
+        self.assertEqual(alias_property.type, GraphQLList)
+        self.assertEqual(alias_property.qualifier, GraphQLString)
         self.assertEqual(alias_property.default, set())
-
-    def test_class_collection_property(self):
-        schema_data = [
-            DATA_POINT_SCHEMA_DATA,
-            EXTERNAL_SOURCE_SCHEMA_DATA,
-        ]
-        schema_graph = SchemaGraph(schema_data)
-        friends_property = schema_graph.get_element_by_class_name('DataPoint').properties[
-            'data_source']
-        self.assertEqual(friends_property.type_id, PROPERTY_TYPE_EMBEDDED_LIST_ID)
-        self.assertEqual(friends_property.qualifier, 'ExternalSource')
-        self.assertEqual(friends_property.default, list())
 
     def test_link_property(self):
         schema_data = [
@@ -215,10 +188,11 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         schema_graph = SchemaGraph(schema_data)
         person_lives_in_edge = schema_graph.get_element_by_class_name('Person_LivesIn')
         in_property = person_lives_in_edge.properties['in']
-        self.assertEqual(in_property.type_id, PROPERTY_TYPE_LINK_ID)
+        print(in_property)
+        self.assertEqual(in_property.type, GraphQLList)
         self.assertEqual(in_property.qualifier, 'Location')
         out_property = person_lives_in_edge.properties['out']
-        self.assertEqual(out_property.type_id, PROPERTY_TYPE_LINK_ID)
+        self.assertEqual(out_property.type, GraphQLList)
         self.assertEqual(out_property.qualifier, 'Person')
 
     def test_parsed_class_fields(self):

@@ -4,7 +4,13 @@ import datetime
 import time
 
 import six
-
+from graphql.type import (
+    GraphQLBoolean, GraphQLField, GraphQLFloat, GraphQLInt, GraphQLInterfaceType, GraphQLList,
+    GraphQLObjectType, GraphQLSchema, GraphQLString, GraphQLUnionType
+)
+from ..schema import (
+    DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal
+)
 
 EDGE_SOURCE_PROPERTY_NAME = 'out'
 EDGE_DESTINATION_PROPERTY_NAME = 'in'
@@ -87,6 +93,20 @@ PROPERTY_TYPE_ID_TO_NAME = {
     PROPERTY_TYPE_DATE_ID: PROPERTY_TYPE_DATE_NAME,
     PROPERTY_TYPE_DECIMAL_ID: PROPERTY_TYPE_DECIMAL_NAME,
     PROPERTY_TYPE_ANY_ID: PROPERTY_TYPE_ANY_NAME,
+}
+
+ORIENDB_TO_GRAPHQL_TYPE_DICT = {
+    PROPERTY_TYPE_BOOLEAN_ID: GraphQLBoolean,
+    PROPERTY_TYPE_DATE_ID: GraphQLDate,
+    PROPERTY_TYPE_DATETIME_ID: GraphQLDateTime,
+    PROPERTY_TYPE_DECIMAL_ID: GraphQLDecimal,
+    PROPERTY_TYPE_DOUBLE_ID: GraphQLFloat,
+    PROPERTY_TYPE_EMBEDDED_SET_ID: GraphQLList,
+    PROPERTY_TYPE_EMBEDDED_LIST_ID: GraphQLList,
+    PROPERTY_TYPE_FLOAT_ID: GraphQLFloat,
+    PROPERTY_TYPE_INTEGER_ID: GraphQLInt,
+    PROPERTY_TYPE_LINK_ID: GraphQLList,
+    PROPERTY_TYPE_STRING_ID: GraphQLString,
 }
 
 ORIENTDB_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -184,4 +204,4 @@ def parse_default_property_value(property_name, property_type_id, default_value_
 #   - default: the default value for the property, used when a record is inserted without an
 #              explicit value for this property. Set to None if no default is given in the schema.
 PropertyDescriptor = namedtuple('PropertyDescriptor',
-                                ('type_id', 'qualifier', 'default'))
+                                ('type', 'qualifier', 'default'))

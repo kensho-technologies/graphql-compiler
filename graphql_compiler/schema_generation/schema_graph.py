@@ -8,7 +8,17 @@ from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME,
     ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
     PROPERTY_TYPE_LINK_ID, PropertyDescriptor, parse_default_property_value,
-    validate_supported_property_type_id
+    validate_supported_property_type_id, PROPERTY_TYPE_BOOLEAN_ID, PROPERTY_TYPE_DATE_ID,
+    PROPERTY_TYPE_DATETIME_ID, PROPERTY_TYPE_DECIMAL_ID, PROPERTY_TYPE_DOUBLE_ID,
+    PROPERTY_TYPE_EMBEDDED_LIST_ID, PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_FLOAT_ID,
+    PROPERTY_TYPE_INTEGER_ID, PROPERTY_TYPE_STRING_ID, ORIENDB_TO_GRAPHQL_TYPE_DICT
+)
+from graphql.type import (
+    GraphQLBoolean, GraphQLField, GraphQLFloat, GraphQLInt, GraphQLInterfaceType, GraphQLList,
+    GraphQLObjectType, GraphQLSchema, GraphQLString, GraphQLUnionType
+)
+from ..schema import (
+    DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 )
 from .utils import toposort_classes
 
@@ -18,8 +28,8 @@ def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, propertie
     edge_source = properties.get(EDGE_SOURCE_PROPERTY_NAME, None)
     edge_destination = properties.get(EDGE_DESTINATION_PROPERTY_NAME, None)
     has_defined_endpoint_types = all((
-        edge_source is not None and edge_source.type_id == PROPERTY_TYPE_LINK_ID,
-        edge_destination is not None and edge_destination.type_id == PROPERTY_TYPE_LINK_ID,
+        edge_source is not None,
+        edge_destination is not None,
     ))
     if not has_defined_endpoint_types:
         raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
@@ -35,23 +45,6 @@ def _validate_non_edges_do_not_have_edge_like_properties(class_name, properties)
         raise IllegalSchemaStateError(u'Found a non-edge class that defines edge-like "in" or '
                                       u'"out" properties: {} {}'.format(class_name, properties))
 
-    for property_name, property_descriptor in six.iteritems(properties):
-        if property_descriptor.type_id == PROPERTY_TYPE_LINK_ID:
-            raise IllegalSchemaStateError(u'Non-edge class "{}" has a property of type Link, this '
-                                          u'is not allowed: {}'.format(class_name, property_name))
-
-
-def _validate_edges_do_not_have_extra_links(class_name, properties):
-    """Validate that edges do not have properties of Link type that aren't the edge endpoints."""
-    for property_name, property_descriptor in six.iteritems(properties):
-        if property_name in {EDGE_SOURCE_PROPERTY_NAME, EDGE_DESTINATION_PROPERTY_NAME}:
-            continue
-
-        if property_descriptor.type_id == PROPERTY_TYPE_LINK_ID:
-            raise IllegalSchemaStateError(u'Edge class "{}" has a property of type Link that is '
-                                          u'not an edge endpoint, this is not allowed: '
-                                          u'{}'.format(class_name, property_name))
-
 
 def _validate_property_names(class_name, properties):
     """Validate that properties do not have names that may cause problems in the GraphQL schema."""
@@ -61,17 +54,19 @@ def _validate_property_names(class_name, properties):
                                           u'{}'.format(class_name, property_name))
 
 
-def _validate_collections_have_default_values(class_name, property_name, property_descriptor):
+def _validate_collections_have_default_values(class_name, property_name,
+                                              property_descriptor, type_id):
     """Validate that if the property is of collection type, it has a specified default value."""
     # We don't want properties of collection type having "null" values, since that may cause
     # unexpected errors during GraphQL query execution and other operations.
-    if property_descriptor.type_id in COLLECTION_PROPERTY_TYPES:
+    if type_id in COLLECTION_PROPERTY_TYPES:
         if property_descriptor.default is None:
             raise IllegalSchemaStateError(u'Class "{}" has a property "{}" of collection type with '
                                           u'no default value.'.format(class_name, property_name))
 
 
-def get_superclasses_from_class_definition(class_definition):
+
+def _get_superclasses_from_class_definition(class_definition):
     """Extract a list of all superclass names from a class definition dict."""
     # New-style superclasses definition, supporting multiple-inheritance.
     superclasses = class_definition.get('superClasses', None)
@@ -110,7 +105,6 @@ class SchemaElement(object):
             a SchemaElement with the given parameters
         """
         if kind == SchemaElement.ELEMENT_KIND_EDGE:
-            _validate_edges_do_not_have_extra_links(class_name, properties)
             if not abstract:
                 _validate_non_abstract_edge_has_defined_endpoint_types(class_name, properties)
 
@@ -406,7 +400,7 @@ class SchemaGraph(object):
         # itself + the set of class names from which it inherits.
         for class_definition in schema_data:
             class_name = class_definition['name']
-            immediate_superclass_names = get_superclasses_from_class_definition(
+            immediate_superclass_names = _get_superclasses_from_class_definition(
                 class_definition)
 
             inheritance_set = set(immediate_superclass_names)
@@ -591,7 +585,7 @@ class SchemaGraph(object):
                 # No linked class, must be a linked native OrientDB type.
                 validate_supported_property_type_id(name + ' inner type', linked_type)
 
-                qualifier = linked_type
+                qualifier = ORIENDB_TO_GRAPHQL_TYPE_DICT[linked_type]
             elif linked_class is not None and linked_type is None:
                 # No linked type, must be a linked non-graph user-defined type.
                 if linked_class not in self._non_graph_class_names:
@@ -605,14 +599,14 @@ class SchemaGraph(object):
                                      u'neither a linked class nor a linked type: '
                                      u'{}'.format(name, property_definition))
 
+        graphql_type = ORIENDB_TO_GRAPHQL_TYPE_DICT.get(type_id)
         default_value = None
         default_value_string = property_definition.get('defaultValue', None)
         if default_value_string is not None:
             default_value = parse_default_property_value(name, type_id, default_value_string)
-
-        descriptor = PropertyDescriptor(type_id=type_id, qualifier=qualifier, default=default_value)
+        descriptor = PropertyDescriptor(graphql_type, qualifier, default_value)
         # Sanity-check the descriptor before returning it.
-        _validate_collections_have_default_values(class_name, name, descriptor)
+        _validate_collections_have_default_values(class_name, name, descriptor, type_id)
         return descriptor
 
     def _link_vertex_and_edge_types(self):
@@ -629,7 +623,8 @@ class SchemaGraph(object):
                                          u'endpoint types: {}'.format(edge_element))
 
             from_class_name = edge_element.properties[EDGE_SOURCE_PROPERTY_NAME].qualifier
-            to_class_name = edge_element.properties[EDGE_DESTINATION_PROPERTY_NAME].qualifier
+            to_class_name = (edge_element.properties[
+                                 EDGE_DESTINATION_PROPERTY_NAME].qualifier)
 
             edge_schema_element = self._elements[edge_class_name]
 
