@@ -193,11 +193,10 @@ def parse_default_property_value(property_name, property_type_id, default_value_
 
 # A way to describe a property's type and associated information:
 #   - type: GraphQLType, the GraphQL type of the property.
-#   - qualifier: dependent on the property type
-#        - If the property type is a GraphQLList, string or GraphQLScalarType. If the property is
-#          a link, then it will be the string name of the class to which it points. If the
-#          property it is a collection, it will be the GraphQLScalarType of its elements.
-#        - For all other property types, None.
+#   - qualifier: one of three possible types:
+#        - string, the string name of the class to which it points if the property is a link.
+#        - GraphQLScalarType, the type of its elements if the property is a collection.
+#        - None, for all other property types.
 #   - default: the default value for the property, used when a record is inserted without an
 #              explicit value for this property. Set to None if no default is given in the schema.
 PropertyDescriptor = namedtuple('PropertyDescriptor',
