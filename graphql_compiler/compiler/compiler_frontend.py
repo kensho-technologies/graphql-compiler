@@ -720,6 +720,7 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
 
 
 def _validate_all_tags_are_used(metadata):
+    """Ensure all tags are used in some filter."""
     tag_names = set(metadata.tags)
     filter_args = set()
     for location, _ in metadata.registered_locations:
