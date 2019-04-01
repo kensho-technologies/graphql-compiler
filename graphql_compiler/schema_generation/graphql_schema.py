@@ -15,13 +15,6 @@ from .schema_properties import (
 )
 
 
-def _property_descriptor_to_graphql_type(property_obj):
-    if property_obj.type == GraphQLList:
-        return GraphQLList(property_obj.qualifier)
-    else:
-        return property_obj.type
-
-
 def _get_referenced_type_equivalences(graphql_types, type_equivalence_hints):
     """Filter union types with no edges from the type equivalence hints dict."""
     referenced_types = set()
@@ -75,11 +68,13 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
     """Return a dict from field name to GraphQL field type, for the specified graph class."""
     properties = schema_graph.get_element_by_class_name(cls_name).properties
 
-    result = {
-        property_name: _property_descriptor_to_graphql_type(property_obj)
-        for property_name, property_obj in six.iteritems(properties)
-        if property_obj.type is not None
-    }
+    result = {}
+    for property_name, property_obj in properties.items():
+        if property_obj.type is not None:
+            if property_obj.type == GraphQLList:
+                result[property_name] = GraphQLList(property_obj.qualifier)
+            else:
+                result[property_name] = property_obj.type
 
     # Add edge GraphQL fields (edges to other vertex classes).
     schema_element = schema_graph.get_element_by_class_name(cls_name)
