@@ -16,15 +16,16 @@ pip install graphql-compiler
 
 ## Quick Overview 
 
-The GraphQL compiler turns read-only queries written in GraphQL syntax to different 
-query languages. Through the GraphQL compiler, users can write powerful queries that uncover 
+Through the GraphQL compiler, users can write powerful queries that uncover 
 deep relationships in the data while not having to worry about the underlying database query 
-language.
+language. The GraphQL compiler turns read-only queries written in GraphQL syntax to different 
+query languages. 
 
-Furthermore, the GraphQL compiler validates queries through the use of a GraphQLSchema object 
-that specifies the underlying schema of the database. We can currently autogenerate the 
-GraphQLSchema by querying an OrientDB database, (see  [Querying OrientDB with GraphQL](#querying-orientdb-with-graphql)). In the nearby future, we plan to add 
-schema autogeneration from SQLAlchemy metadata. 
+Furthermore, the GraphQL compiler validates queries through the use of a GraphQL schema 
+that specifies the underlying schema of the database. We can currently autogenerate a 
+GraphQL schema by introspecting an OrientDB database, (see [Querying OrientDB with GraphQL](#querying-orientdb-with-graphql)). 
+
+In the near future, we plan to add schema autogeneration from SQLAlchemy metadata as well. 
 
 For a more detailed overview and getting started guide, please see
 [our blog post](https://blog.kensho.com/compiled-graphql-as-a-database-query-language-72e106844282).
