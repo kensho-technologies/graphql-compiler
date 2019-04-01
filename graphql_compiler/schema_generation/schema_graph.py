@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from itertools import chain
 
+from graphql.type import GraphQLList
 import six
 
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
@@ -18,8 +19,8 @@ def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, propertie
     edge_source = properties.get(EDGE_SOURCE_PROPERTY_NAME, None)
     edge_destination = properties.get(EDGE_DESTINATION_PROPERTY_NAME, None)
     has_defined_endpoint_types = all((
-        edge_source is not None,
-        edge_destination is not None,
+        edge_source is not None and edge_source.type == GraphQLList,
+        edge_destination is not None and edge_destination.type == GraphQLList,
     ))
     if not has_defined_endpoint_types:
         raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
