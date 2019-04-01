@@ -10,8 +10,8 @@ from graphql_compiler import get_graphql_schema_from_orientdb_schema_data
 from ..schema_generation.graphql_schema import _get_union_type_name
 from ..schema_generation.schema_graph import SchemaGraph
 from ..schema_generation.schema_properties import (
-    ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_EMBEDDED_LIST_ID,
-    PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_LINK_ID, PROPERTY_TYPE_STRING_ID
+    ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_EMBEDDED_SET_ID,
+    PROPERTY_TYPE_LINK_ID, PROPERTY_TYPE_STRING_ID
 )
 
 
@@ -188,7 +188,6 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         schema_graph = SchemaGraph(schema_data)
         person_lives_in_edge = schema_graph.get_element_by_class_name('Person_LivesIn')
         in_property = person_lives_in_edge.properties['in']
-        print(in_property)
         self.assertEqual(in_property.type, GraphQLList)
         self.assertEqual(in_property.qualifier, 'Location')
         out_property = person_lives_in_edge.properties['out']

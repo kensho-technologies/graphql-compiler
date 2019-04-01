@@ -3,17 +3,15 @@ from collections import OrderedDict
 from itertools import chain
 
 from graphql.type import (
-    GraphQLBoolean, GraphQLField, GraphQLFloat, GraphQLInt, GraphQLInterfaceType, GraphQLList,
-    GraphQLObjectType, GraphQLSchema, GraphQLString, GraphQLUnionType
+    GraphQLField, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLSchema,
+    GraphQLUnionType
 )
 import six
 
-from ..schema import (
-    DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal
-)
+from ..schema import DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS
 from .exceptions import EmptySchemaError
 from .schema_properties import (
-    EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
+    EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME
 )
 
 

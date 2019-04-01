@@ -6,19 +6,9 @@ import six
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME,
-    ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
-    PROPERTY_TYPE_LINK_ID, PropertyDescriptor, parse_default_property_value,
-    validate_supported_property_type_id, PROPERTY_TYPE_BOOLEAN_ID, PROPERTY_TYPE_DATE_ID,
-    PROPERTY_TYPE_DATETIME_ID, PROPERTY_TYPE_DECIMAL_ID, PROPERTY_TYPE_DOUBLE_ID,
-    PROPERTY_TYPE_EMBEDDED_LIST_ID, PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_FLOAT_ID,
-    PROPERTY_TYPE_INTEGER_ID, PROPERTY_TYPE_STRING_ID, ORIENDB_TO_GRAPHQL_TYPE_DICT
-)
-from graphql.type import (
-    GraphQLBoolean, GraphQLField, GraphQLFloat, GraphQLInt, GraphQLInterfaceType, GraphQLList,
-    GraphQLObjectType, GraphQLSchema, GraphQLString, GraphQLUnionType
-)
-from ..schema import (
-    DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal
+    ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENDB_TO_GRAPHQL_TYPE_DICT, ORIENTDB_BASE_EDGE_CLASS_NAME,
+    ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_LINK_ID, PropertyDescriptor,
+    parse_default_property_value, validate_supported_property_type_id
 )
 from .utils import toposort_classes
 
@@ -63,7 +53,6 @@ def _validate_collections_have_default_values(class_name, property_name,
         if property_descriptor.default is None:
             raise IllegalSchemaStateError(u'Class "{}" has a property "{}" of collection type with '
                                           u'no default value.'.format(class_name, property_name))
-
 
 
 def _get_superclasses_from_class_definition(class_definition):
@@ -623,8 +612,7 @@ class SchemaGraph(object):
                                          u'endpoint types: {}'.format(edge_element))
 
             from_class_name = edge_element.properties[EDGE_SOURCE_PROPERTY_NAME].qualifier
-            to_class_name = (edge_element.properties[
-                                 EDGE_DESTINATION_PROPERTY_NAME].qualifier)
+            to_class_name = edge_element.properties[EDGE_DESTINATION_PROPERTY_NAME].qualifier
 
             edge_schema_element = self._elements[edge_class_name]
 

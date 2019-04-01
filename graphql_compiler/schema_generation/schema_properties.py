@@ -3,14 +3,11 @@ from collections import namedtuple
 import datetime
 import time
 
+from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLList, GraphQLString
 import six
-from graphql.type import (
-    GraphQLBoolean, GraphQLField, GraphQLFloat, GraphQLInt, GraphQLInterfaceType, GraphQLList,
-    GraphQLObjectType, GraphQLSchema, GraphQLString, GraphQLUnionType
-)
-from ..schema import (
-    DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal
-)
+
+from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
+
 
 EDGE_SOURCE_PROPERTY_NAME = 'out'
 EDGE_DESTINATION_PROPERTY_NAME = 'in'
