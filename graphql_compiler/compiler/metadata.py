@@ -161,6 +161,11 @@ class QueryMetadataTable(object):
                                  u'{}'.format(location))
         return location_info
 
+    @property
+    def tags(self):
+        """Return a dict of tag name to TagInfo for the query."""
+        return self._tags
+
     def record_tag_info(self, tag_name, tag_info):
         """Record information about the tag."""
         self._tags[tag_name] = tag_info

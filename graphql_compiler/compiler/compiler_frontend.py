@@ -719,15 +719,14 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     return basic_blocks
 
 
-def _validate_all_tags_are_used(context):
-    tag_names = set([tag_name for tag_name in context['tags']])
-    filter_args = set([])
-    for location, _ in context['metadata'].registered_locations:
-        filter_infos = context['metadata'].get_filter_infos(location)
-        for filter_info in filter_infos:
+def _validate_all_tags_are_used(metadata):
+    tag_names = set(metadata.tags)
+    filter_args = set()
+    for location, _ in metadata.registered_locations:
+        for filter_info in metadata.get_filter_infos(location):
             for arg in filter_info.args:
                 if _is_tag_argument(arg):
-                    filter_args.add(arg[1:])
+                    filter_args.add(arg[1:])  # Don't include % in tag name
 
     unused_tags = tag_names - filter_args
     if len(unused_tags) > 0:
@@ -835,7 +834,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         schema, current_schema_type, base_ast, location, context)
     basic_blocks.extend(new_basic_blocks)
 
-    _validate_all_tags_are_used(context)
+    _validate_all_tags_are_used(context['metadata'])
 
     # All operations after this point affect the global query scope, and are not related to
     # the "current" location in the query produced by the sequence of Traverse/Backtrack blocks.
