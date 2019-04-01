@@ -14,6 +14,11 @@ from .schema_properties import (
 from .utils import toposort_classes
 
 
+def _is_link_property(property_obj):
+    """Return whether a property is a link"""
+    return property_obj.type == GraphQLList and isinstance(property_obj.qualifier, str)
+
+
 def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, properties):
     """Validate that the non-abstract edge properties dict has defined in/out link properties."""
     edge_source = properties.get(EDGE_SOURCE_PROPERTY_NAME, None)
@@ -35,6 +40,22 @@ def _validate_non_edges_do_not_have_edge_like_properties(class_name, properties)
     if has_source or has_destination:
         raise IllegalSchemaStateError(u'Found a non-edge class that defines edge-like "in" or '
                                       u'"out" properties: {} {}'.format(class_name, properties))
+    for property_name, property_descriptor in six.iteritems(properties):
+        if _is_link_property(property_descriptor):
+            raise IllegalSchemaStateError(u'Non-edge class "{}" has a property of type Link, this '
+                                          u'is not allowed: {}'.format(class_name, property_name))
+
+
+def _validate_edges_do_not_have_extra_links(class_name, properties):
+    """Validate that edges do not have properties of Link type that aren't the edge endpoints."""
+    for property_name, property_descriptor in six.iteritems(properties):
+        if property_name in {EDGE_SOURCE_PROPERTY_NAME, EDGE_DESTINATION_PROPERTY_NAME}:
+            continue
+
+        if _is_link_property(property_descriptor):
+            raise IllegalSchemaStateError(u'Edge class "{}" has a property of type Link that is '
+                                          u'not an edge endpoint, this is not allowed: '
+                                          u'{}'.format(class_name, property_name))
 
 
 def _validate_property_names(class_name, properties):
@@ -95,6 +116,7 @@ class SchemaElement(object):
             a SchemaElement with the given parameters
         """
         if kind == SchemaElement.ELEMENT_KIND_EDGE:
+            _validate_edges_do_not_have_extra_links(class_name, properties)
             if not abstract:
                 _validate_non_abstract_edge_has_defined_endpoint_types(class_name, properties)
 
