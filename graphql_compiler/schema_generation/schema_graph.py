@@ -510,6 +510,8 @@ class SchemaGraph(object):
                     class_name, orientdb_property_definition, class_name_to_definition)
 
                 if property_name in links.keys():
+                    self._validate_link_definition(orientdb_property_definition, class_name,
+                                                   class_name_to_definition)
                     links[property_name].append(property_descriptor)
                 else:
                     property_name_to_descriptor[property_name] = property_descriptor
@@ -641,3 +643,35 @@ class SchemaGraph(object):
                 to_schema_element = self._elements[to_class]
                 edge_schema_element.out_connections.add(to_class)
                 to_schema_element.in_connections.add(edge_class_name)
+
+    def _validate_link_definition(self, orientdb_property_definition, class_name, class_name_to_definition):
+        """Validates link definition. Precondition: the class name must be either 'in' or 'out'."""
+        name = orientdb_property_definition['name']
+        type_id = orientdb_property_definition['type']
+        linked_class = orientdb_property_definition.get('linkedClass', None)
+
+        if type_id != PROPERTY_TYPE_LINK_ID:
+            raise AssertionError('Found a property with name {} that is not declared with type '
+                                 'Link'.format(class_name))
+
+        if class_name not in self._edge_class_names:
+            raise AssertionError(u'Found a property of type Link on a non-edge class: '
+                                 u'{} {}'.format(name, class_name))
+
+        if linked_class is None:
+            raise AssertionError(u'Property "{}" is declared with type Link but has no '
+                                 u'linked class: {}'.format(name, orientdb_property_definition))
+
+        if linked_class not in self._vertex_class_names:
+            is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
+            all_subclasses_are_vertices = True
+            for subclass in self._subclass_sets[linked_class]:
+                if subclass != linked_class and subclass not in self.vertex_class_names:
+                    all_subclasses_are_vertices = False
+                    break
+            if not (is_linked_class_abstract and all_subclasses_are_vertices):
+                raise AssertionError(u'Property "{}" is declared as a Link to class {}, but '
+                                     u'that class is neither a vertex nor is it an '
+                                     u'abstract class whose subclasses are all vertices!'
+                                     .format(name, linked_class))
+
