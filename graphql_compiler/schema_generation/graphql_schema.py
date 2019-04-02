@@ -8,6 +8,7 @@ from graphql.type import (
 )
 import six
 
+from ..helpers import get_only_element_from_collection
 from ..schema import (
     DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 )
@@ -123,12 +124,14 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
     schema_element = schema_graph.get_element_by_class_name(cls_name)
     outbound_edges = (
         ('out_{}'.format(out_edge_name),
-         next(iter(schema_graph.get_element_by_class_name(out_edge_name).out_connections)))
+         get_only_element_from_collection(schema_graph.get_element_by_class_name(
+             out_edge_name).out_connections))
         for out_edge_name in schema_element.out_connections
     )
     inbound_edges = (
         ('in_{}'.format(in_edge_name),
-         next(iter(schema_graph.get_element_by_class_name(in_edge_name).in_connections)))
+         get_only_element_from_collection(schema_graph.get_element_by_class_name(
+             in_edge_name).in_connections))
         for in_edge_name in schema_element.in_connections
     )
     for field_name, to_type_name in chain(outbound_edges, inbound_edges):

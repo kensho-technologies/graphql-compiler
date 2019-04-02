@@ -3,6 +3,7 @@ from itertools import chain
 
 import six
 
+from ..helpers import get_only_element_from_collection
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME,
@@ -560,8 +561,8 @@ class SchemaGraph(object):
                 raise AssertionError(u'Found a non-abstract edge class with an incorrect number '
                                      u'of endpoints: {}'.format(edge))
 
-            from_class_name = next(iter(edge.in_connections))
-            to_class_name = next(iter(edge.out_connections))
+            from_class_name = get_only_element_from_collection(edge.in_connections)
+            to_class_name = get_only_element_from_collection(edge.out_connections)
 
             # Link from_class_name with edge_class_name
             for from_class in self._subclass_sets[from_class_name]:
