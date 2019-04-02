@@ -32,7 +32,7 @@ def _validate_collections_have_default_values(class_name, property_name, propert
                                           u'no default value.'.format(class_name, property_name))
 
 
-def get_superclasses_from_class_definition(class_definition):
+def _get_superclasses_from_class_definition(class_definition):
     """Extract a list of all superclass names from a class definition dict."""
     # New-style superclasses definition, supporting multiple-inheritance.
     superclasses = class_definition.get('superClasses', None)
@@ -132,19 +132,17 @@ class SchemaElement(object):
         """Make the SchemaElement's connections immutable."""
         self.in_connections = frozenset(self.in_connections)
         self.out_connections = frozenset(self.out_connections)
-        self._validate_endpoints()
 
-    def _validate_endpoints(self):
+    def validate_endpoints(self):
         """Validate that the class has valid endpoints."""
         if self._kind == SchemaElement.ELEMENT_KIND_EDGE:
-            if self.abstract:
-                if not(len(self.in_connections) <= 1 and len(self.out_connections) <= 1):
-                    raise AssertionError(u'Found an edge class with more than 1 incoming or '
-                                         u'outgoing endpoint: {}'.format(self))
-            else:
+            if not(len(self.in_connections) <= 1 and len(self.out_connections) <= 1):
+                raise AssertionError(u'Found an edge class with more than 1 incoming or '
+                                     u'outgoing endpoint: {}'.format(self))
+            if not self.abstract:
                 if not (len(self.in_connections) == 1 and len(self.out_connections) == 1):
-                    raise AssertionError(u'Found a non-abstract edge class with an incorrect '
-                                         u'number of endpoints: {}'.format(self))
+                    raise AssertionError(u'Found a non-abstract edge class with a missing '
+                                         u'incoming/outgoing edgepoint : {}'.format(self))
 
     def __str__(self):
         """Stringify the SchemaElement."""
@@ -240,11 +238,11 @@ class SchemaGraph(object):
         for kind, class_names in six.iteritems(kind_to_class_names):
             self._set_up_schema_elements_of_kind(class_name_to_definition, kind, class_names)
 
-        # Initialize the connections that show which schema classes can be connected to
-        # which other schema classes, then freeze all schema elements.
-        self._link_vertex_and_edge_types()
-        for element in six.itervalues(self._elements):
-            element.freeze()
+        # Initialize the connections that show which vertex schema classes can be connected to
+        # which other vertex schema classes, then freeze all vertex schema elements.
+        self._add_connections_to_vertex_classes()
+        for vertex_name in self._vertex_class_names:
+            self._elements[vertex_name].freeze()
 
     def get_element_by_class_name(self, class_name):
         """Return the SchemaElement for the specified class name"""
@@ -370,7 +368,7 @@ class SchemaGraph(object):
         # itself + the set of class names from which it inherits.
         for class_definition in schema_data:
             class_name = class_definition['name']
-            immediate_superclass_names = get_superclasses_from_class_definition(
+            immediate_superclass_names = _get_superclasses_from_class_definition(
                 class_definition)
 
             inheritance_set = set(immediate_superclass_names)
@@ -453,7 +451,10 @@ class SchemaGraph(object):
                 class_name_to_definition[inherited_class_name]['properties']
                 for inherited_class_name in self._inheritance_sets[class_name]
             )
-            links = {EDGE_DESTINATION_PROPERTY_NAME: [], EDGE_SOURCE_PROPERTY_NAME: []}
+            link_direction_to_endpoint_classes = {
+                EDGE_DESTINATION_PROPERTY_NAME: [],
+                EDGE_SOURCE_PROPERTY_NAME: []
+            }
             for orientdb_property_definition in chain.from_iterable(all_orientdb_property_lists):
                 property_name = orientdb_property_definition['name']
 
@@ -461,7 +462,7 @@ class SchemaGraph(object):
                 # of edge classes. All other properties may only be defined once
                 # in the entire inheritance hierarchy of any schema class, of any kind.
                 duplication_allowed = all((
-                    property_name in links,
+                    property_name in link_direction_to_endpoint_classes,
                     kind == SchemaElement.ELEMENT_KIND_EDGE
                 ))
 
@@ -470,10 +471,11 @@ class SchemaGraph(object):
                                          u'more than once, this is not allowed!'
                                          .format(property_name, class_name))
 
-                if property_name in set(links.keys()):
+                if property_name in link_direction_to_endpoint_classes:
                     self._validate_link(orientdb_property_definition, class_name,
                                         class_name_to_definition)
-                    links[property_name].append(orientdb_property_definition['linkedClass'])
+                    link_direction_to_endpoint_classes[property_name].append(
+                        orientdb_property_definition['linkedClass'])
                 else:
                     property_descriptor = self._create_descriptor_from_orientdb_property_definition(
                         class_name, orientdb_property_definition)
@@ -481,28 +483,24 @@ class SchemaGraph(object):
 
             self._elements[class_name] = SchemaElement(class_name, kind, abstract,
                                                        property_name_to_descriptor, class_fields)
-            for link_direction in links.keys():
-                leaf_link = None
-                # If there are multiple in/out properties, we choose to include the one that
-                # is a subclass of all the elements present in the in/out properties.
-                for link in links[link_direction]:
-                    subclass_set = self._subclass_sets[link]
-                    if len(set(links[link_direction]).intersection(subclass_set)) == 1:
-                        if leaf_link:
-                            raise AssertionError(u'There already exists link "{}" in addition '
-                                                 u'to link "{}" which is a subclass of all '
-                                                 u'in/out links for class "{}".'
-                                                 .format(leaf_link, link, class_name))
-                        leaf_link = link
 
-                if leaf_link is None and not abstract and kind == SchemaElement.ELEMENT_KIND_EDGE:
-                    raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
-                                         u'no such subclass-of-all-elements exists.'
-                                         .format(link_direction, class_name))
-
-            self._elements[class_name].in_connections.update(set(links[EDGE_SOURCE_PROPERTY_NAME]))
-            self._elements[class_name].out_connections.update(
-                set(links[EDGE_DESTINATION_PROPERTY_NAME]))
+            if kind == SchemaElement.ELEMENT_KIND_EDGE:
+                in_leaf_endpoint = self._try_get_leaf_endpoint(EDGE_SOURCE_PROPERTY_NAME,
+                                                               link_direction_to_endpoint_classes,
+                                                               class_name,
+                                                               abstract)
+                out_leaf_endpoint = self._try_get_leaf_endpoint(EDGE_DESTINATION_PROPERTY_NAME,
+                                                                link_direction_to_endpoint_classes,
+                                                                class_name,
+                                                                abstract)
+                edge = self._elements[class_name]
+                # Either of the endpoints may not be defined if the edge is abstract.
+                if in_leaf_endpoint is not None:
+                    edge.in_connections.add(in_leaf_endpoint)
+                if out_leaf_endpoint is not None:
+                    edge.out_connections.add(out_leaf_endpoint)
+                edge.validate_endpoints()
+                edge.freeze()
 
     def _create_descriptor_from_orientdb_property_definition(self, class_name,
                                                              orientdb_property_definition):
@@ -551,17 +549,12 @@ class SchemaGraph(object):
         _validate_collections_have_default_values(class_name, name, descriptor)
         return descriptor
 
-    def _link_vertex_and_edge_types(self):
+    def _add_connections_to_vertex_classes(self):
         """For each edge, link it to the vertex types it connects to each other."""
         for edge_class_name in self._edge_class_names:
             edge = self._elements[edge_class_name]
-
             if edge.abstract:
                 continue
-            elif not(len(edge.in_connections) == 1 and len(edge.out_connections) == 1):
-                raise AssertionError(u'Found a non-abstract edge class with an incorrect number '
-                                     u'of endpoints: {}'.format(edge))
-
             from_class_name = get_only_element_from_collection(edge.in_connections)
             to_class_name = get_only_element_from_collection(edge.out_connections)
 
@@ -606,3 +599,23 @@ class SchemaGraph(object):
                                      u'that class is neither a vertex nor is it an '
                                      u'abstract class whose subclasses are all vertices!'
                                      .format(name, linked_class))
+
+    def _try_get_leaf_endpoint(self, link_direction, link_direction_to_endpoint_classes, class_name,
+                               abstract):
+        """Returns the class at the bottom of the hierarchy of possible endpoint classes or None."""
+        endpoint_classes = link_direction_to_endpoint_classes[link_direction]
+        leaf_endpoint = None
+        for endpoint in endpoint_classes:
+            subclass_set = self._subclass_sets[endpoint]
+            if len(set(endpoint_classes).intersection(subclass_set)) == 1:
+                if leaf_endpoint is not None:
+                    raise AssertionError(u'There already exists link "{}" in addition '
+                                         u'to link "{}" which is a subclass of all '
+                                         u'in/out links for class "{}".'
+                                         .format(leaf_endpoint, endpoint, class_name))
+                leaf_endpoint = endpoint
+        if leaf_endpoint is None and not abstract:
+            raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
+                                 u'no such subclass-of-all-elements exists.'
+                                 .format(link_direction, class_name))
+        return leaf_endpoint
