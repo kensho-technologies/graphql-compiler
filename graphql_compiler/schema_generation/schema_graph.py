@@ -136,14 +136,14 @@ class SchemaElement(object):
 
     def _validate_endpoints(self):
         if self._kind == SchemaElement.ELEMENT_KIND_EDGE:
-            if not self.abstract:
-                if not(len(self.in_connections) == 1 and len(self.out_connections) == 1):
-                    raise AssertionError(u'Found a non-abstract edge class with an incorrect '
-                                         u'number of endpoints: {}'.format(self))
-            else:
+            if self.abstract:
                 if not(len(self.in_connections) <= 1 and len(self.out_connections) <= 1):
                     raise AssertionError(u'Found an edge class with more than 1 incoming or '
                                          u'outgoing endpoint: {}'.format(self))
+            else:
+                if not (len(self.in_connections) == 1 and len(self.out_connections) == 1):
+                    raise AssertionError(u'Found a non-abstract edge class with an incorrect '
+                                         u'number of endpoints: {}'.format(self))
 
     def __str__(self):
         """Stringify the SchemaElement."""
