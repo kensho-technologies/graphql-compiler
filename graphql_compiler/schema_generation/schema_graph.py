@@ -135,6 +135,7 @@ class SchemaElement(object):
         self._validate_endpoints()
 
     def _validate_endpoints(self):
+        """Validate that the class has valid endpoints."""
         if self._kind == SchemaElement.ELEMENT_KIND_EDGE:
             if self.abstract:
                 if not(len(self.in_connections) <= 1 and len(self.out_connections) <= 1):
@@ -576,7 +577,7 @@ class SchemaGraph(object):
 
     def _validate_link(self, orientdb_property_definition, class_name,
                        class_name_to_definition):
-        """Validates that the class is a vertex and that the link is correctly defined.."""
+        """Validates that the class is a vertex and that the link is correctly defined."""
         name = orientdb_property_definition['name']
         type_id = orientdb_property_definition['type']
         linked_class = orientdb_property_definition.get('linkedClass', None)
