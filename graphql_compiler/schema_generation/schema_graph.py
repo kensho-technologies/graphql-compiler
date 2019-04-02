@@ -516,30 +516,30 @@ class SchemaGraph(object):
                 else:
                     property_name_to_descriptor[property_name] = property_descriptor
 
-            for property_name in links.keys():
+            for link_direction in links.keys():
                 elements = {
                     property_descriptor.qualifier
-                    for property_descriptor in links[property_name]
+                    for property_descriptor in links[link_direction]
                 }
                 # If there are multiple in/out properties, we choose to include the one that
                 # is a subclass of all the elements present in the in/out properties.
-                for property_descriptor in links[property_name]:
+                for property_descriptor in links[link_direction]:
                     subclass_set = self._subclass_sets[property_descriptor.qualifier]
                     if len(elements.intersection(subclass_set)) == 1:
-                        current_descriptor = property_name_to_descriptor.get(property_name, None)
+                        current_descriptor = property_name_to_descriptor.get(link_direction, None)
                         if current_descriptor and current_descriptor != property_descriptor:
                             raise AssertionError(u'There already exists property "{}" in addition '
                                                  u'to property "{}" which is a subclass of all '
                                                  u'in/out properties for class "{}".'
                                                  .format(current_descriptor,
                                                          property_descriptor, class_name))
-                        property_name_to_descriptor[property_name] = property_descriptor
+                        property_name_to_descriptor[link_direction] = property_descriptor
 
-                if (property_name not in property_name_to_descriptor and not abstract and
+                if (link_direction not in property_name_to_descriptor and not abstract and
                         kind == SchemaElement.ELEMENT_KIND_EDGE):
                     raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
                                          u'no such subclass-of-all-elements exists.'
-                                         .format(property_name, class_name))
+                                         .format(link_direction, class_name))
 
             self._elements[class_name] = SchemaElement(class_name, kind, abstract,
                                                        property_name_to_descriptor, class_fields)
