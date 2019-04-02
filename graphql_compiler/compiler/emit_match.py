@@ -4,10 +4,11 @@ from collections import deque
 
 import six
 
+from graphql_compiler.helpers import get_only_element_from_collection
+
 from .blocks import Filter, MarkLocation, QueryRoot, Recurse, Traverse
 from .expressions import TrueLiteral
 from .helpers import validate_safe_string
-from graphql_compiler.helpers import get_only_element_from_collection
 
 
 def _get_vertex_location_name(location):
