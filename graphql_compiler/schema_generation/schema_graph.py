@@ -591,7 +591,7 @@ class SchemaGraph(object):
 
             if edge.abstract:
                 continue
-            elif not(len(edge.in_connections) == 1 and len(edge.out_connections)==1):
+            elif not(len(edge.in_connections) == 1 and len(edge.out_connections) == 1):
                 raise AssertionError(u'Found a non-abstract edge class with undefined '
                                      u'endpoint types: {}'.format(edge))
 
@@ -639,4 +639,3 @@ class SchemaGraph(object):
                                      u'that class is neither a vertex nor is it an '
                                      u'abstract class whose subclasses are all vertices!'
                                      .format(name, linked_class))
-
