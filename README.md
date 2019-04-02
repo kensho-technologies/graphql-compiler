@@ -62,6 +62,7 @@ For a more detailed overview and getting started guide, please see
      * [End-To-End SQL Example](#end-to-end-sql-example)
      * [Configuring the SQL Database to Match the GraphQL Schema](#configuring-the-sql-database-to-match-the-graphql-schema)
   * [Miscellaneous](#miscellaneous)
+     * [Pretty Printing GraphQL Queries](#pretty-printing-graphql-queries)
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
   * [FAQ](#faq)
@@ -1309,6 +1310,15 @@ CREATE VIEW animal AS
 At this point, the `animal` view can be used in the SQLAlchemy Table for the purposes of compiling.
 
 ## Miscellaneous
+
+### Pretty Printing GraphQL Queries
+
+To pretty-print GraphQL queries, use the included pretty-printer:
+```
+python -m graphql_compiler.tool <input_file.graphql >output_file.graphql
+```
+It's modeled after Python's `json.tool`, reading from stdin and writing to stdout.
+
 
 ### Expanding [`@optional`](#optional) vertex fields
 Including an optional statement in GraphQL has no performance issues on its own,
