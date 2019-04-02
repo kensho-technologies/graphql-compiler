@@ -503,7 +503,7 @@ class SchemaGraph(object):
                                          u'more than once, this is not allowed!'
                                          .format(property_name, class_name))
 
-                if property_name in links.keys():
+                if property_name in set(links.keys()):
                     self._validate_link_definition(orientdb_property_definition, class_name,
                                                    class_name_to_definition)
                     links[property_name].append(orientdb_property_definition['linkedClass'])
@@ -511,7 +511,8 @@ class SchemaGraph(object):
                     property_descriptor = self._create_descriptor_from_orientdb_property_definition(
                         class_name, orientdb_property_definition)
                     property_name_to_descriptor[property_name] = property_descriptor
-
+            self._elements[class_name] = SchemaElement(class_name, kind, abstract,
+                                                       property_name_to_descriptor, class_fields)
             for link_direction in links.keys():
                 leaf_link = None
                 # If there are multiple in/out properties, we choose to include the one that
@@ -531,11 +532,10 @@ class SchemaGraph(object):
                                          u'no such subclass-of-all-elements exists.'
                                          .format(link_direction, class_name))
 
-            self._elements[class_name] = SchemaElement(class_name, kind, abstract,
-                                                       property_name_to_descriptor, class_fields)
-            self._elements[class_name].in_connections.update(set(links[EDGE_SOURCE_PROPERTY_NAME]))
-            self._elements[class_name].out_connections.update(
-                set(links[EDGE_DESTINATION_PROPERTY_NAME]))
+            if kind == SchemaElement.ELEMENT_KIND_EDGE:
+                self._elements[class_name].in_connections.update(set(links[EDGE_SOURCE_PROPERTY_NAME]))
+                self._elements[class_name].out_connections.update(
+                    set(links[EDGE_DESTINATION_PROPERTY_NAME]))
 
     def _create_descriptor_from_orientdb_property_definition(self, class_name,
                                                              orientdb_property_definition):
@@ -549,9 +549,8 @@ class SchemaGraph(object):
         validate_supported_property_type_id(name, type_id)
 
         if type_id == PROPERTY_TYPE_LINK_ID:
-            raise AssertionError(u'Found a property definition with name of type Link with an : '
-                                 u'{} {}. Links are not properties of SchemaElements.'
-                                 .format(name, class_name))
+            raise AssertionError(u'Found an OrientDB property of type Link with an unexpected '
+                                 u'name: {} {}'.format(name, class_name))
         elif type_id in COLLECTION_PROPERTY_TYPES:
             if linked_class is not None and linked_type is not None:
                 raise AssertionError(u'Property "{}" unexpectedly has both a linked class and '
