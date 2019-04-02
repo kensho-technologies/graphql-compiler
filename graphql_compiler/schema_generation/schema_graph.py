@@ -504,13 +504,14 @@ class SchemaGraph(object):
                                          .format(property_name, class_name))
 
                 if property_name in set(links.keys()):
-                    self._validate_link_definition(orientdb_property_definition, class_name,
-                                                   class_name_to_definition)
+                    self._validate_link(orientdb_property_definition, class_name,
+                                        class_name_to_definition)
                     links[property_name].append(orientdb_property_definition['linkedClass'])
                 else:
                     property_descriptor = self._create_descriptor_from_orientdb_property_definition(
                         class_name, orientdb_property_definition)
                     property_name_to_descriptor[property_name] = property_descriptor
+
             self._elements[class_name] = SchemaElement(class_name, kind, abstract,
                                                        property_name_to_descriptor, class_fields)
             for link_direction in links.keys():
@@ -532,10 +533,9 @@ class SchemaGraph(object):
                                          u'no such subclass-of-all-elements exists.'
                                          .format(link_direction, class_name))
 
-            if kind == SchemaElement.ELEMENT_KIND_EDGE:
-                self._elements[class_name].in_connections.update(set(links[EDGE_SOURCE_PROPERTY_NAME]))
-                self._elements[class_name].out_connections.update(
-                    set(links[EDGE_DESTINATION_PROPERTY_NAME]))
+            self._elements[class_name].in_connections.update(set(links[EDGE_SOURCE_PROPERTY_NAME]))
+            self._elements[class_name].out_connections.update(
+                set(links[EDGE_DESTINATION_PROPERTY_NAME]))
 
     def _create_descriptor_from_orientdb_property_definition(self, class_name,
                                                              orientdb_property_definition):
@@ -608,8 +608,9 @@ class SchemaGraph(object):
                 to_schema_element = self._elements[to_class]
                 to_schema_element.in_connections.add(edge_class_name)
 
-    def _validate_link_definition(self, orientdb_property_definition, class_name, class_name_to_definition):
-        """Validates link definition. Precondition: the class name must be either 'in' or 'out'."""
+    def _validate_link(self, orientdb_property_definition, class_name,
+                       class_name_to_definition):
+        """Validates that the class is a vertex and that the link is correctly defined.."""
         name = orientdb_property_definition['name']
         type_id = orientdb_property_definition['type']
         linked_class = orientdb_property_definition.get('linkedClass', None)
