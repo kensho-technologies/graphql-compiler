@@ -19,8 +19,9 @@ from ..compiler_entities import Expression
 from ..expressions import BinaryComposition, FoldedContextField, Literal, LocalField, NullLiteral
 from ..helpers import (
     STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation,
-    get_only_element_from_collection, strip_non_null_from_type, validate_safe_string
+    strip_non_null_from_type, validate_safe_string
 )
+from graphql_compiler.helpers import get_only_element_from_collection
 from ..ir_lowering_common import extract_folds_from_ir_blocks
 
 

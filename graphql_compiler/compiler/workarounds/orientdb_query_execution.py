@@ -46,7 +46,7 @@ The process of applying the optimizations is as follows:
 
 from ..blocks import CoerceType, QueryRoot, Recurse, Traverse
 from ..expressions import ContextField, ContextFieldExistence
-from ..helpers import get_only_element_from_collection
+from graphql_compiler.helpers import get_only_element_from_collection
 from ..ir_lowering_match.utils import convert_coerce_type_and_add_to_where_block
 
 
