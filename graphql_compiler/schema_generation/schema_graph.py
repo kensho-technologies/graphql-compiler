@@ -13,46 +13,6 @@ from .schema_properties import (
 from .utils import toposort_classes
 
 
-def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, properties):
-    """Validate that the non-abstract edge properties dict has defined in/out link properties."""
-    edge_source = properties.get(EDGE_SOURCE_PROPERTY_NAME, None)
-    edge_destination = properties.get(EDGE_DESTINATION_PROPERTY_NAME, None)
-    has_defined_endpoint_types = all((
-        edge_source is not None and edge_source.type_id == PROPERTY_TYPE_LINK_ID,
-        edge_destination is not None and edge_destination.type_id == PROPERTY_TYPE_LINK_ID,
-    ))
-    if not has_defined_endpoint_types:
-        raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
-                                      u'in/out properties: {} {}'.format(class_name, properties))
-
-
-def _validate_non_edges_do_not_have_edge_like_properties(class_name, properties):
-    """Validate that non-edges do not have the in/out properties defined."""
-    has_source = EDGE_SOURCE_PROPERTY_NAME in properties
-    has_destination = EDGE_DESTINATION_PROPERTY_NAME in properties
-
-    if has_source or has_destination:
-        raise IllegalSchemaStateError(u'Found a non-edge class that defines edge-like "in" or '
-                                      u'"out" properties: {} {}'.format(class_name, properties))
-
-    for property_name, property_descriptor in six.iteritems(properties):
-        if property_descriptor.type_id == PROPERTY_TYPE_LINK_ID:
-            raise IllegalSchemaStateError(u'Non-edge class "{}" has a property of type Link, this '
-                                          u'is not allowed: {}'.format(class_name, property_name))
-
-
-def _validate_edges_do_not_have_extra_links(class_name, properties):
-    """Validate that edges do not have properties of Link type that aren't the edge endpoints."""
-    for property_name, property_descriptor in six.iteritems(properties):
-        if property_name in {EDGE_SOURCE_PROPERTY_NAME, EDGE_DESTINATION_PROPERTY_NAME}:
-            continue
-
-        if property_descriptor.type_id == PROPERTY_TYPE_LINK_ID:
-            raise IllegalSchemaStateError(u'Edge class "{}" has a property of type Link that is '
-                                          u'not an edge endpoint, this is not allowed: '
-                                          u'{}'.format(class_name, property_name))
-
-
 def _validate_property_names(class_name, properties):
     """Validate that properties do not have names that may cause problems in the GraphQL schema."""
     for property_name in properties:
@@ -109,13 +69,6 @@ class SchemaElement(object):
         Returns:
             a SchemaElement with the given parameters
         """
-        if kind == SchemaElement.ELEMENT_KIND_EDGE:
-            _validate_edges_do_not_have_extra_links(class_name, properties)
-        else:
-            # Non-edges must not have properties like "in" or "out" defined, and
-            # must not have properties of type "Link".
-            _validate_non_edges_do_not_have_edge_like_properties(class_name, properties)
-
         _validate_property_names(class_name, properties)
 
         self._class_name = class_name
@@ -178,6 +131,18 @@ class SchemaElement(object):
         """Make the SchemaElement's connections immutable."""
         self.in_connections = frozenset(self.in_connections)
         self.out_connections = frozenset(self.out_connections)
+        self._validate_endpoints()
+
+    def _validate_endpoints(self):
+        if self._kind == SchemaElement.ELEMENT_KIND_EDGE:
+            if not self.abstract:
+                if not(len(self.in_connections) == 1 and len(self.out_connections) == 1):
+                    raise AssertionError(u'Found a non-abstract edge class with an incorrect '
+                                         u'number of endpoints: {}'.format(self))
+            else:
+                if not(len(self.in_connections) <= 1 and len(self.out_connections) <= 1):
+                    raise AssertionError(u'Found an edge class with more than 1 incoming or '
+                                         u'outgoing endpoint: {}'.format(self))
 
     def __str__(self):
         """Stringify the SchemaElement."""
@@ -592,8 +557,8 @@ class SchemaGraph(object):
             if edge.abstract:
                 continue
             elif not(len(edge.in_connections) == 1 and len(edge.out_connections) == 1):
-                raise AssertionError(u'Found a non-abstract edge class with undefined '
-                                     u'endpoint types: {}'.format(edge))
+                raise AssertionError(u'Found a non-abstract edge class with an incorrect number '
+                                     u'of endpoints: {}'.format(edge))
 
             from_class_name = next(iter(edge.in_connections))
             to_class_name = next(iter(edge.out_connections))
