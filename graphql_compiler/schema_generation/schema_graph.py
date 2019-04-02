@@ -488,13 +488,13 @@ class SchemaGraph(object):
                 abstract = True
 
             property_name_to_descriptor = {}
-            all_property_lists = (
+            all_orientdb_property_lists = (
                 class_name_to_definition[inherited_class_name]['properties']
                 for inherited_class_name in self._inheritance_sets[class_name]
             )
             links = {EDGE_DESTINATION_PROPERTY_NAME: [], EDGE_SOURCE_PROPERTY_NAME: []}
-            for property_definition in chain.from_iterable(all_property_lists):
-                property_name = property_definition['name']
+            for orientdb_property_definition in chain.from_iterable(all_orientdb_property_lists):
+                property_name = orientdb_property_definition['name']
 
                 # The only properties we allow to be redefined are the in/out properties
                 # of edge classes. All other properties may only be defined once
@@ -509,8 +509,8 @@ class SchemaGraph(object):
                                          u'more than once, this is not allowed!'
                                          .format(property_name, class_name))
 
-                property_descriptor = self._create_descriptor_from_property_definition(
-                    class_name, property_definition, class_name_to_definition)
+                property_descriptor = self._create_descriptor_from_orientdb_property_definition(
+                    class_name, orientdb_property_definition, class_name_to_definition)
 
                 if property_name in allowed_duplicated_edge_property_names:
                     links[property_name].append(property_descriptor)
@@ -545,13 +545,13 @@ class SchemaGraph(object):
             self._elements[class_name] = SchemaElement(class_name, kind, abstract,
                                                        property_name_to_descriptor, class_fields)
 
-    def _create_descriptor_from_property_definition(self, class_name, property_definition,
+    def _create_descriptor_from_orientdb_property_definition(self, class_name, orientdb_property_definition,
                                                     class_name_to_definition):
         """Return a PropertyDescriptor corresponding to the given OrientDB property definition."""
-        name = property_definition['name']
-        type_id = property_definition['type']
-        linked_class = property_definition.get('linkedClass', None)
-        linked_type = property_definition.get('linkedType', None)
+        name = orientdb_property_definition['name']
+        type_id = orientdb_property_definition['type']
+        linked_class = orientdb_property_definition.get('linkedClass', None)
+        linked_type = orientdb_property_definition.get('linkedType', None)
         qualifier = None
 
         validate_supported_property_type_id(name, type_id)
@@ -567,7 +567,7 @@ class SchemaGraph(object):
 
             if linked_class is None:
                 raise AssertionError(u'Property "{}" is declared with type Link but has no '
-                                     u'linked class: {}'.format(name, property_definition))
+                                     u'linked class: {}'.format(name, orientdb_property_definition))
 
             if linked_class not in self._vertex_class_names:
                 is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
@@ -586,7 +586,7 @@ class SchemaGraph(object):
         elif type_id in COLLECTION_PROPERTY_TYPES:
             if linked_class is not None and linked_type is not None:
                 raise AssertionError(u'Property "{}" unexpectedly has both a linked class and '
-                                     u'a linked type: {}'.format(name, property_definition))
+                                     u'a linked type: {}'.format(name, orientdb_property_definition))
             elif linked_type is not None and linked_class is None:
                 # No linked class, must be a linked native OrientDB type.
                 validate_supported_property_type_id(name + ' inner type', linked_type)
@@ -603,10 +603,10 @@ class SchemaGraph(object):
             else:
                 raise AssertionError(u'Property "{}" is an embedded collection but has '
                                      u'neither a linked class nor a linked type: '
-                                     u'{}'.format(name, property_definition))
+                                     u'{}'.format(name, orientdb_property_definition))
 
         default_value = None
-        default_value_string = property_definition.get('defaultValue', None)
+        default_value_string = orientdb_property_definition.get('defaultValue', None)
         if default_value_string is not None:
             default_value = parse_default_property_value(name, type_id, default_value_string)
 
