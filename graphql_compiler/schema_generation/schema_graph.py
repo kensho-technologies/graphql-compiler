@@ -462,9 +462,6 @@ class SchemaGraph(object):
 
     def _set_up_schema_elements_of_kind(self, class_name_to_definition, kind, class_names):
         """Load all schema classes of the given kind. Used as part of __init__."""
-        allowed_duplicated_edge_property_names = frozenset({
-            EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME
-        })
         orientdb_base_classes = frozenset({
             ORIENTDB_BASE_VERTEX_CLASS_NAME,
             ORIENTDB_BASE_EDGE_CLASS_NAME,
@@ -500,7 +497,7 @@ class SchemaGraph(object):
                 # of edge classes. All other properties may only be defined once
                 # in the entire inheritance hierarchy of any schema class, of any kind.
                 duplication_allowed = all((
-                    property_name in allowed_duplicated_edge_property_names,
+                    property_name in set(links.keys()),
                     kind == SchemaElement.ELEMENT_KIND_EDGE
                 ))
 
@@ -512,12 +509,12 @@ class SchemaGraph(object):
                 property_descriptor = self._create_descriptor_from_orientdb_property_definition(
                     class_name, orientdb_property_definition, class_name_to_definition)
 
-                if property_name in allowed_duplicated_edge_property_names:
+                if property_name in links.keys():
                     links[property_name].append(property_descriptor)
                 else:
                     property_name_to_descriptor[property_name] = property_descriptor
 
-            for property_name in allowed_duplicated_edge_property_names:
+            for property_name in links.keys():
                 elements = {
                     property_descriptor.qualifier
                     for property_descriptor in links[property_name]
