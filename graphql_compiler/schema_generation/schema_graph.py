@@ -461,7 +461,7 @@ class SchemaGraph(object):
                 # of edge classes. All other properties may only be defined once
                 # in the entire inheritance hierarchy of any schema class, of any kind.
                 duplication_allowed = all((
-                    property_name in set(links.keys()),
+                    property_name in links,
                     kind == SchemaElement.ELEMENT_KIND_EDGE
                 ))
 
