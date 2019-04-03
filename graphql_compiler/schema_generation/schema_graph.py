@@ -14,7 +14,7 @@ from .schema_properties import (
 from .utils import toposort_classes
 
 
-def _validate_non_edge_class_no_links(class_name, kind, links):
+def _validate_non_edge_class_has_no_links(class_name, kind, links):
     in_links = links[EDGE_DESTINATION_PROPERTY_NAME]
     out_links = links[EDGE_DESTINATION_PROPERTY_NAME]
     num_links = len(in_links + out_links)
@@ -244,13 +244,8 @@ class SchemaGraph(object):
 
         self._set_up_non_graph_elements(class_name_to_definition)
         self._set_up_edge_elements(class_name_to_definition)
+        # Vertex elements must be set after edge elements
         self._set_up_vertex_elements(class_name_to_definition)
-
-        # Initialize the connections that show which vertex schema classes can be connected to
-        # which other vertex schema classes, then freeze all vertex schema elements.
-        self._add_connections_to_vertex_classes()
-        for vertex_name in self._vertex_class_names:
-            self._elements[vertex_name].freeze()
 
     def get_element_by_class_name(self, class_name):
         """Return the SchemaElement for the specified class name"""
@@ -435,18 +430,19 @@ class SchemaGraph(object):
         for class_name in self.non_graph_class_names:
             elem, links = self.get_schema_elements_and_links(class_name, class_name_to_definition,
                                                              kind)
+            elem.freeze()
             self._elements[class_name] = elem
-            _validate_non_edge_class_no_links(class_name, kind, links)
+            _validate_non_edge_class_has_no_links(class_name, kind, links)
 
     def _set_up_edge_elements(self, class_name_to_definition):
         kind = SchemaElement.ELEMENT_KIND_EDGE
         for class_name in self.edge_class_names:
             elem, links = self.get_schema_elements_and_links(class_name, class_name_to_definition,
                                                              kind)
-
-            self._elements[class_name] = elem
             abstract = self._is_abstract(class_name_to_definition[class_name])
-            self._set_edges_endpoints(class_name, links, abstract)
+            self._set_edges_endpoints(class_name, elem, links, abstract)
+            elem.freeze()
+            self._elements[class_name] = elem
 
     def _set_up_vertex_elements(self, class_name_to_definition):
         kind = SchemaElement.ELEMENT_KIND_VERTEX
@@ -454,25 +450,22 @@ class SchemaGraph(object):
             elem, links = self.get_schema_elements_and_links(class_name, class_name_to_definition,
                                                              kind)
             self._elements[class_name] = elem
-            _validate_non_edge_class_no_links(class_name, kind, links)
+            _validate_non_edge_class_has_no_links(class_name, kind, links)
+        self._add_connections_to_vertex_classes()
+        for class_name in self.vertex_class_names:
+            self._elements[class_name].freeze()
 
-    def _set_edges_endpoints(self, class_name, links, abstract):
-        in_leaf_endpoint = self._try_get_base_endpoint(class_name,
-                                                       EDGE_SOURCE_PROPERTY_NAME,
-                                                       links,
-                                                       abstract)
-        out_leaf_endpoint = self._try_get_base_endpoint(class_name,
-                                                        EDGE_DESTINATION_PROPERTY_NAME,
-                                                        links,
-                                                        abstract)
-        edge = self._elements[class_name]
+    def _set_edges_endpoints(self, class_name, edge, links, abstract):
+        in_leaf_endpoint = self._try_get_limit_endpoint(
+            class_name, EDGE_SOURCE_PROPERTY_NAME, links, abstract)
+        out_leaf_endpoint = self._try_get_limit_endpoint(
+            class_name, EDGE_DESTINATION_PROPERTY_NAME, links, abstract)
         # Either of the endpoints may not be defined if the edge is abstract.
         if in_leaf_endpoint is not None:
             edge.in_connections.add(in_leaf_endpoint)
         if out_leaf_endpoint is not None:
             edge.out_connections.add(out_leaf_endpoint)
         _validate_number_of_edge_endpoints(edge)
-        edge.freeze()
 
     def get_schema_elements_and_links(self, class_name, class_name_to_definition,
                                       kind):
@@ -623,9 +616,9 @@ class SchemaGraph(object):
                                      u'abstract class whose subclasses are all vertices!'
                                      .format(name, linked_class))
 
-    def _try_get_base_endpoint(self, class_name, link_direction,
-                               link_direction_to_endpoint_classes, abstract):
-        """Try to get the base endpoint class of an edge's end.
+    def _try_get_limit_endpoint(self, class_name, link_direction,
+                                link_direction_to_endpoint_classes, abstract):
+        """Try to get the limit endpoint class of an edge's end.
 
         Args:
             class_name: string, the name of the edge class.
@@ -636,25 +629,25 @@ class SchemaGraph(object):
             abstract: bool, describes whether the class is abstract.
 
         Returns:
-            optional string, describing the base endpoint class. We define the endpoint classes
+            optional string, describing the limit endpoint class. We define the endpoint classes
             of an edge's end to be the set of classes that could appear in that end of the edge.
-            We define the base endpoint class as the endpoint class that is not inherited by any
-            of the other endpoint classes. Each edge's end can have at most 1 base endpoint class.
-            The ends of non-abstract edges must each have a base endpoint class.
+            We define the limit endpoint class as the endpoint class that is not inherited by any
+            of the other endpoint classes. Each edge's end can have at most 1 limit endpoint class.
+            The ends of non-abstract edges must each have a limit endpoint class.
         """
         endpoint_classes = link_direction_to_endpoint_classes[link_direction]
-        leaf_endpoint = None
+        limit_endpoint = None
         for endpoint in endpoint_classes:
             subclass_set = self._subclass_sets[endpoint]
             if len(set(endpoint_classes).intersection(subclass_set)) == 1:
-                if leaf_endpoint is not None:
+                if limit_endpoint is not None:
                     raise AssertionError(u'There already exists link "{}" in addition '
                                          u'to link "{}" which is a subclass of all '
                                          u'in/out links for class "{}".'
-                                         .format(leaf_endpoint, endpoint, class_name))
-                leaf_endpoint = endpoint
-        if leaf_endpoint is None and not abstract:
+                                         .format(limit_endpoint, endpoint, class_name))
+                limit_endpoint = endpoint
+        if limit_endpoint is None and not abstract:
             raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
                                  u'no such subclass-of-all-elements exists.'
                                  .format(link_direction, class_name))
-        return leaf_endpoint
+        return limit_endpoint
