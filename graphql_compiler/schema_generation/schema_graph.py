@@ -11,20 +11,13 @@ from .schema_properties import (
     PROPERTY_TYPE_LINK_ID, PropertyDescriptor, parse_default_property_value,
     validate_supported_property_type_id
 )
-from .utils import toposort_classes
-
-
-def _is_abstract(class_definition):
-    """Return if the class is abstract. We pretend the V and E OrientDB classes are abstract."""
-    orientdb_base_classes = frozenset({
-        ORIENTDB_BASE_VERTEX_CLASS_NAME,
-        ORIENTDB_BASE_EDGE_CLASS_NAME,
-    })
-    return class_definition['name'] in orientdb_base_classes or class_definition['abstract']
+from .utils import toposort_classes, is_abstract, get_superclasses_from_class_definition
 
 
 def _validate_non_edge_class_has_no_links(class_name, kind, links):
-    """Validate that classes that are not edges have no links."""
+    """Validate that class that the non-edge class has no links."""
+    if kind == SchemaElement.ELEMENT_KIND_EDGE:
+        raise AssertionError(u'Expected class {} to be a non-edge class.'.format(class_name))
     in_links = links[EDGE_DESTINATION_PROPERTY_NAME]
     out_links = links[EDGE_DESTINATION_PROPERTY_NAME]
     num_links = len(in_links + out_links)
@@ -42,7 +35,7 @@ def _validate_number_of_edge_endpoints(edge):
         if not edge.abstract:
             if not (len(edge.in_connections) == 1 and len(edge.out_connections) == 1):
                 raise AssertionError(u'Found a non-abstract edge class with a missing '
-                                     u'incoming/outgoing edgepoint : {}'.format(edge))
+                                     u'incoming/outgoing endpoint : {}'.format(edge))
     else:
         raise AssertionError(u'Expected an edge class got: {}'.format(edge))
 
@@ -63,23 +56,6 @@ def _validate_collections_have_default_values(class_name, property_name, propert
         if property_descriptor.default is None:
             raise IllegalSchemaStateError(u'Class "{}" has a property "{}" of collection type with '
                                           u'no default value.'.format(class_name, property_name))
-
-
-def _get_superclasses_from_class_definition(class_definition):
-    """Extract a list of all superclass names from a class definition dict."""
-    # New-style superclasses definition, supporting multiple-inheritance.
-    superclasses = class_definition.get('superClasses', None)
-
-    if superclasses:
-        return list(superclasses)
-
-    # Old-style superclass definition, single inheritance only.
-    superclass = class_definition.get('superClass', None)
-    if superclass:
-        return [superclass]
-
-    # No superclasses are present.
-    return []
 
 
 class SchemaElement(object):
@@ -381,7 +357,7 @@ class SchemaGraph(object):
         # itself + the set of class names from which it inherits.
         for class_definition in schema_data:
             class_name = class_definition['name']
-            immediate_superclass_names = _get_superclasses_from_class_definition(
+            immediate_superclass_names = get_superclasses_from_class_definition(
                 class_definition)
 
             inheritance_set = set(immediate_superclass_names)
@@ -451,7 +427,7 @@ class SchemaGraph(object):
         for class_name in self.edge_class_names:
             elem, links = self.get_schema_element_and_links(class_name, class_name_to_definition,
                                                             kind)
-            abstract = _is_abstract(class_name_to_definition[class_name])
+            abstract = is_abstract(class_name_to_definition[class_name])
             self._set_edges_endpoints(class_name, elem, links, abstract)
             elem.freeze()
             self._elements[class_name] = elem
@@ -479,7 +455,7 @@ class SchemaGraph(object):
             class_fields = dict()
         property_name_to_descriptor, links = (
             self._get_class_properties_and_links(class_name, class_name_to_definition))
-        elem = SchemaElement(class_name, kind, _is_abstract(class_definition),
+        elem = SchemaElement(class_name, kind, is_abstract(class_definition),
                              property_name_to_descriptor, class_fields)
         return elem, links
 
