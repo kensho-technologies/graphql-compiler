@@ -14,31 +14,17 @@ from .schema_properties import (
 from .utils import get_superclasses_from_class_definition, toposort_classes
 
 
-<<<<<<< HEAD
 def _validate_non_graph_class_has_no_links(elem):
     """Validate the non-graph class has no links"""
     if elem.is_non_graph:
         if elem.in_connections or elem.out_connections:
-            raise AssertionError(u'Expected non-graph class {} to have no links.'
-=======
-def _validate_non_graph_class_has_no_connections(elem):
-    """Validate the non-graph class has no connections"""
-    if elem.is_non_graph:
-        if elem.in_connections or elem.out_connections:
-            raise AssertionError(u'Expected non-graph class to have no connections: got {}.'
->>>>>>> 70c311980da43444724b8f4d07711fba125ecccf
-                                 .format(elem))
+            raise AssertionError(u'Expected non-graph class {} to have no links.'.format(elem))
     else:
         raise AssertionError(u'Expected class {} to be a non-graph class.'.format(elem))
 
 
-<<<<<<< HEAD
 def _validate_links_not_defined_on_non_edge_class(class_name, kind, links):
     """Validate that no links are defined on the non-edge class."""
-=======
-def _validate_non_edge_class_has_no_links(class_name, kind, links):
-    """Validate that the non-edge class has no links."""
->>>>>>> 70c311980da43444724b8f4d07711fba125ecccf
     if kind == SchemaElement.ELEMENT_KIND_EDGE:
         raise AssertionError(u'Expected class {} to be a non-edge class.'.format(class_name))
     if links[EDGE_DESTINATION_PROPERTY_NAME] + links[EDGE_DESTINATION_PROPERTY_NAME]:
@@ -46,13 +32,8 @@ def _validate_non_edge_class_has_no_links(class_name, kind, links):
                              u'links.'.format(kind, class_name, links))
 
 
-<<<<<<< HEAD
 def _validate_number_of_links_for_edge(elem):
     """Validate that the edge has valid a number of links."""
-=======
-def _validate_number_of_edge_links(elem):
-    """Validate that the elem has valid a number of links."""
->>>>>>> 70c311980da43444724b8f4d07711fba125ecccf
     if elem.is_edge:
         if not (len(elem.in_connections) <= 1 and len(elem.out_connections) <= 1):
             raise AssertionError(u'Found an elem class with either multiple incoming or '
@@ -471,13 +452,8 @@ class SchemaGraph(object):
             elem.freeze()
 
             # Perform validation
-<<<<<<< HEAD
             _validate_links_not_defined_on_non_edge_class(class_name, kind, links)
             _validate_non_graph_class_has_no_links(elem)
-=======
-            _validate_non_edge_class_has_no_links(class_name, kind, links)
-            _validate_non_graph_class_has_no_connections(elem)
->>>>>>> 70c311980da43444724b8f4d07711fba125ecccf
 
             # Store
             self._elements[class_name] = elem
@@ -624,11 +600,11 @@ def _create_descriptor_from_orientdb_property_definition(
             validate_supported_property_type_id(name + ' inner type', linked_type)
 
             qualifier = linked_type
-        elif linked_class is not None and lizype is None:
+        elif linked_class is not None and linked_type is None:
             # No linked type, must be a linkz-graph user-defined type.
-            if linked_class not in non_graphz_names:
-                raise AssertionError(u'Propez}" is declared as the inner type of '
-                                     u'an embedded collection, but is not a non-graph class: '
+            if linked_class not in non_graph_class_names:
+                raise AssertionError(u'Property "{}" is an embedded collection but has '
+                                     u'neither a linked class nor a linked type: '
                                      u'{}'.format(name, linked_class))
             qualifier = linked_class
         else:
