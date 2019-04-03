@@ -485,13 +485,13 @@ class SchemaGraph(object):
                                                        property_name_to_descriptor, class_fields)
 
             if kind == SchemaElement.ELEMENT_KIND_EDGE:
-                in_leaf_endpoint = self._try_get_leaf_endpoint(EDGE_SOURCE_PROPERTY_NAME,
+                in_leaf_endpoint = self._try_get_base_endpoint(class_name,
+                                                               EDGE_SOURCE_PROPERTY_NAME,
                                                                link_direction_to_endpoint_classes,
-                                                               class_name,
                                                                abstract)
-                out_leaf_endpoint = self._try_get_leaf_endpoint(EDGE_DESTINATION_PROPERTY_NAME,
+                out_leaf_endpoint = self._try_get_base_endpoint(class_name,
+                                                                EDGE_DESTINATION_PROPERTY_NAME,
                                                                 link_direction_to_endpoint_classes,
-                                                                class_name,
                                                                 abstract)
                 edge = self._elements[class_name]
                 # Either of the endpoints may not be defined if the edge is abstract.
@@ -600,9 +600,25 @@ class SchemaGraph(object):
                                      u'abstract class whose subclasses are all vertices!'
                                      .format(name, linked_class))
 
-    def _try_get_leaf_endpoint(self, link_direction, link_direction_to_endpoint_classes, class_name,
-                               abstract):
-        """Returns the class at the bottom of the hierarchy of possible endpoint classes or None."""
+    def _try_get_base_endpoint(self, class_name, link_direction,
+                               link_direction_to_endpoint_classes, abstract):
+        """Try to get the base endpoint class of an edge's end.
+
+        Args:
+            class_name: string, the name of the edge class.
+            link_direction: string, either 'in' or 'out', describing the edge's end of interest.
+            link_direction_to_endpoint_classes: dict, string -> [string], mapping a link
+                                                direction to a list set of classes that can
+                                                appear on that end of the edge class.
+            abstract: bool, describes whether the class is abstract.
+
+        Returns:
+            optional string, describing the base endpoint class. We define the endpoint classes
+            of an edge's end to be the set of classes that could appear in that end of the edge.
+            We define the base endpoint class as the endpoint class that is not inherited by any
+            of the other endpoint classes. Each edge's end can have at most 1 base endpoint class.
+            The ends of non-abstract edges must each have a base endpoint class.
+        """
         endpoint_classes = link_direction_to_endpoint_classes[link_direction]
         leaf_endpoint = None
         for endpoint in endpoint_classes:
