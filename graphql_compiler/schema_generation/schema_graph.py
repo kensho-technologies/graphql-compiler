@@ -518,6 +518,7 @@ class SchemaGraph(object):
                                                         kind, inheritance_set)
             abstract = is_abstract(class_name_to_definition[class_name])
             self._set_edges_endpoints(class_name, elem, links, abstract)
+            _validate_number_of_edge_endpoints(elem)
             elem.freeze()
             self._elements[class_name] = elem
 
@@ -686,7 +687,6 @@ class SchemaGraph(object):
             edge.in_connections.add(in_leaf_endpoint)
         if out_leaf_endpoint is not None:
             edge.out_connections.add(out_leaf_endpoint)
-        _validate_number_of_edge_endpoints(edge)
 
     def _try_get_limit_endpoint(self, class_name, link_direction,
                                 link_direction_to_endpoint_classes, abstract):
