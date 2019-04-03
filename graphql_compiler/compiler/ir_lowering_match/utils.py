@@ -4,7 +4,7 @@ import itertools
 
 import six
 
-from graphql_compiler.helpers import get_only_element_from_collection
+from ...helpers import get_only_element_from_collection
 
 from ..blocks import Filter
 from ..expressions import (

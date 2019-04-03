@@ -44,7 +44,7 @@ The process of applying the optimizations is as follows:
           so OrientDB can choose the start point of lowest cardinality.
 """
 
-from graphql_compiler.helpers import get_only_element_from_collection
+from ...helpers import get_only_element_from_collection
 
 from ..blocks import CoerceType, QueryRoot, Recurse, Traverse
 from ..expressions import ContextField, ContextFieldExistence

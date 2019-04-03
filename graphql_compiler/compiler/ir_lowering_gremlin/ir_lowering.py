@@ -12,7 +12,7 @@ from graphql import GraphQLList
 from graphql.type import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 import six
 
-from graphql_compiler.helpers import get_only_element_from_collection
+from ...helpers import get_only_element_from_collection
 
 from ...exceptions import GraphQLCompilationError
 from ...schema import GraphQLDate, GraphQLDateTime
