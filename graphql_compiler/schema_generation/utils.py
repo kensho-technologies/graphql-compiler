@@ -1,9 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 
 # Match query used to generate OrientDB records that are themselves used to generate GraphQL schema.
-from graphql_compiler.schema_generation.schema_properties import (ORIENTDB_BASE_VERTEX_CLASS_NAME,
-                                                                  ORIENTDB_BASE_EDGE_CLASS_NAME)
-
 ORIENTDB_SCHEMA_RECORDS_QUERY = (
     'SELECT FROM (SELECT expand(classes) FROM metadata:schema) '
     'WHERE name NOT IN [\'ORole\', \'ORestricted\', \'OTriggered\', '
@@ -78,15 +75,6 @@ def _list_superclasses(class_def):
         return [sup]
     else:
         return []
-
-
-def is_abstract(class_definition):
-    """Return if the class is abstract. We pretend the V and E OrientDB classes are abstract."""
-    orientdb_base_classes = frozenset({
-        ORIENTDB_BASE_VERTEX_CLASS_NAME,
-        ORIENTDB_BASE_EDGE_CLASS_NAME,
-    })
-    return class_definition['name'] in orientdb_base_classes or class_definition['abstract']
 
 
 def get_superclasses_from_class_definition(class_definition):

@@ -11,7 +11,7 @@ from .schema_properties import (
     PROPERTY_TYPE_LINK_ID, PropertyDescriptor, parse_default_property_value,
     validate_supported_property_type_id
 )
-from .utils import toposort_classes, is_abstract, get_superclasses_from_class_definition
+from .utils import get_superclasses_from_class_definition, toposort_classes
 
 
 def _validate_non_edge_class_has_no_links(class_name, kind, links):
@@ -77,6 +77,7 @@ def _validate_linked_class(edge_name, linked_class, vertex_class_names, class_na
                                  u'that class is neither a vertex nor is it an '
                                  u'abstract class whose subclasses are all vertices!'
                                  .format(edge_name, linked_class))
+
 
 class SchemaElement(object):
     ELEMENT_KIND_VERTEX = 'vertex'
@@ -459,7 +460,7 @@ class SchemaGraph(object):
             elem, links = _get_schema_element_and_links(class_name, class_name_to_definition,
                                                         kind, inheritance_set,
                                                         self._non_graph_class_names)
-            abstract = is_abstract(class_name_to_definition[class_name])
+            abstract = _is_abstract(class_name_to_definition[class_name])
 
             # Set edge connections. (Abstract classes may have missing limit links).
             in_limit_link = _try_get_limit_link(
@@ -473,7 +474,7 @@ class SchemaGraph(object):
 
             # Perform validation
             _validate_number_of_edge_links(elem)
-            for link in links[EDGE_DESTINATION_PROPERTY_NAME]+links[EDGE_SOURCE_PROPERTY_NAME]:
+            for link in links[EDGE_DESTINATION_PROPERTY_NAME] + links[EDGE_SOURCE_PROPERTY_NAME]:
                 _validate_linked_class(class_name, link, self.vertex_class_names,
                                        class_name_to_definition, self._subclass_sets)
 
@@ -531,7 +532,7 @@ def _get_schema_element_and_links(class_name, class_name_to_definition, kind, in
     property_name_to_descriptor, links = (
         _get_class_properties_and_links(class_name, class_name_to_definition, inheritance_set,
                                         non_graph_class_names))
-    elem = SchemaElement(class_name, kind, is_abstract(class_definition),
+    elem = SchemaElement(class_name, kind, _is_abstract(class_definition),
                          property_name_to_descriptor, class_fields)
     return elem, links
 
@@ -651,3 +652,12 @@ def _try_get_limit_link(class_name, link_direction, link_direction_to_link_class
                              u'no such subclass-of-all-elements exists.'
                              .format(link_direction, class_name))
     return limit_link
+
+
+def _is_abstract(class_definition):
+    """Return if the class is abstract. We pretend the V and E OrientDB classes are abstract."""
+    orientdb_base_classes = frozenset({
+        ORIENTDB_BASE_VERTEX_CLASS_NAME,
+        ORIENTDB_BASE_EDGE_CLASS_NAME,
+    })
+    return class_definition['name'] in orientdb_base_classes or class_definition['abstract']
