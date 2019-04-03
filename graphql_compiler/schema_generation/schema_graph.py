@@ -18,14 +18,13 @@ def _validate_non_graph_class_has_no_links(elem):
     """Validate the non-graph class has no links"""
     if elem.is_non_graph:
         if elem.in_connections or elem.out_connections:
-            raise AssertionError(u'Expected non-graph class {} to have no links.'
-                                 .format(elem))
+            raise AssertionError(u'Expected non-graph class {} to have no links.')
     else:
         raise AssertionError(u'Expected class {} to be a non-graph class.'.format(elem))
 
 
-def _validate_links_not_defined_on_non_edge_class(class_name, kind, links):
-    """Validate that no links are defined on the non-edge class."""
+def _validate_non_edge_class_has_no_links(class_name, kind, links):
+    """Validate that the non-edge class has no links."""
     if kind == SchemaElement.ELEMENT_KIND_EDGE:
         raise AssertionError(u'Expected class {} to be a non-edge class.'.format(class_name))
     if links[EDGE_DESTINATION_PROPERTY_NAME] + links[EDGE_DESTINATION_PROPERTY_NAME]:
@@ -453,7 +452,7 @@ class SchemaGraph(object):
             elem.freeze()
 
             # Perform validation
-            _validate_links_not_defined_on_non_edge_class(class_name, kind, links)
+            _validate_link(class_name, kind, links)
             _validate_non_graph_class_has_no_links(elem)
 
             # Store
