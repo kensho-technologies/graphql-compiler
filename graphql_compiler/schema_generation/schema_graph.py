@@ -145,6 +145,26 @@ def _validate_collections_have_default_values(class_name, property_name, propert
                                           u'no default value.'.format(class_name, property_name))
 
 
+def _validate_linked_class(edge_name, linked_class, vertex_class_names, class_name_to_definition,
+                           subclass_sets):
+    """Validates that the linked class is a valid vertex class."""
+    if linked_class is None:
+        raise AssertionError(u'Property "{}" is declared with type Link but has no '
+                             u'linked class: {}'.format(edge_name, linked_class))
+
+    if linked_class not in vertex_class_names:
+        is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
+        all_subclasses_are_vertices = True
+        for subclass in subclass_sets[linked_class]:
+            if subclass != linked_class and subclass not in vertex_class_names:
+                all_subclasses_are_vertices = False
+                break
+        if not (is_linked_class_abstract and all_subclasses_are_vertices):
+            raise AssertionError(u'Property "{}" is declared as a Link to class {}, but '
+                                 u'that class is neither a vertex nor is it an '
+                                 u'abstract class whose subclasses are all vertices!'
+                                 .format(edge_name, linked_class))
+
 class SchemaElement(object):
     ELEMENT_KIND_VERTEX = 'vertex'
     ELEMENT_KIND_EDGE = 'edge'
@@ -519,6 +539,9 @@ class SchemaGraph(object):
             abstract = is_abstract(class_name_to_definition[class_name])
             self._set_edges_endpoints(class_name, elem, links, abstract)
             _validate_number_of_edge_endpoints(elem)
+            for link in links[EDGE_DESTINATION_PROPERTY_NAME]+links[EDGE_SOURCE_PROPERTY_NAME]:
+                _validate_linked_class(class_name, link, self.vertex_class_names,
+                                       class_name_to_definition, self._subclass_sets)
             elem.freeze()
             self._elements[class_name] = elem
 
@@ -565,8 +588,10 @@ class SchemaGraph(object):
             property_name = orientdb_property_definition['name']
 
             if property_name in link_direction_to_endpoint_classes:
-                self._validate_link(orientdb_property_definition, class_name,
-                                    class_name_to_definition)
+                if orientdb_property_definition['type'] != PROPERTY_TYPE_LINK_ID:
+                    raise AssertionError(
+                        'Found a property with name {} that is not declared with type '
+                        'Link'.format(class_name))
                 link_direction_to_endpoint_classes[property_name].append(
                     orientdb_property_definition['linkedClass'])
             else:
@@ -647,34 +672,6 @@ class SchemaGraph(object):
             for to_class in self._subclass_sets[to_class_name]:
                 to_schema_element = self._elements[to_class]
                 to_schema_element.in_connections.add(edge_class_name)
-
-    def _validate_link(self, orientdb_property_definition, class_name,
-                       class_name_to_definition):
-        """Validates that the class is a vertex and that the link is correctly defined."""
-        name = orientdb_property_definition['name']
-        type_id = orientdb_property_definition['type']
-        linked_class = orientdb_property_definition.get('linkedClass', None)
-
-        if type_id != PROPERTY_TYPE_LINK_ID:
-            raise AssertionError('Found a property with name {} that is not declared with type '
-                                 'Link'.format(class_name))
-
-        if linked_class is None:
-            raise AssertionError(u'Property "{}" is declared with type Link but has no '
-                                 u'linked class: {}'.format(name, orientdb_property_definition))
-
-        if linked_class not in self._vertex_class_names:
-            is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
-            all_subclasses_are_vertices = True
-            for subclass in self._subclass_sets[linked_class]:
-                if subclass != linked_class and subclass not in self.vertex_class_names:
-                    all_subclasses_are_vertices = False
-                    break
-            if not (is_linked_class_abstract and all_subclasses_are_vertices):
-                raise AssertionError(u'Property "{}" is declared as a Link to class {}, but '
-                                     u'that class is neither a vertex nor is it an '
-                                     u'abstract class whose subclasses are all vertices!'
-                                     .format(name, linked_class))
 
     def _set_edges_endpoints(self, class_name, edge, links, abstract):
         """Set the edges of a edge class"""
