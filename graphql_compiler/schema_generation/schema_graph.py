@@ -461,25 +461,19 @@ class SchemaGraph(object):
             for orientdb_property_definition in chain.from_iterable(all_orientdb_property_lists):
                 property_name = orientdb_property_definition['name']
 
-                # The only properties we allow to be redefined are the in/out properties
-                # of edge classes. All other properties may only be defined once
-                # in the entire inheritance hierarchy of any schema class, of any kind.
-                duplication_allowed = all((
-                    property_name in link_direction_to_endpoint_classes,
-                    kind == SchemaElement.ELEMENT_KIND_EDGE
-                ))
-
-                if not duplication_allowed and property_name in property_name_to_descriptor:
-                    raise AssertionError(u'The property "{}" on class "{}" is defined '
-                                         u'more than once, this is not allowed!'
-                                         .format(property_name, class_name))
-
                 if property_name in link_direction_to_endpoint_classes:
                     self._validate_link(orientdb_property_definition, class_name,
                                         class_name_to_definition)
                     link_direction_to_endpoint_classes[property_name].append(
                         orientdb_property_definition['linkedClass'])
                 else:
+                    # The only properties we allow to be redefined are the in/out properties
+                    # of edge classes. All other properties may only be defined once
+                    # in the entire inheritance hierarchy of any schema class, of any kind.
+                    if property_name in property_name_to_descriptor:
+                        raise AssertionError(u'The property "{}" on class "{}" is defined '
+                                             u'more than once, this is not allowed!'
+                                             .format(property_name, class_name))
                     property_descriptor = self._create_descriptor_from_orientdb_property_definition(
                         class_name, orientdb_property_definition)
                     property_name_to_descriptor[property_name] = property_descriptor
