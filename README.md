@@ -62,7 +62,7 @@ For a more detailed overview and getting started guide, please see
      * [End-To-End SQL Example](#end-to-end-sql-example)
      * [Configuring the SQL Database to Match the GraphQL Schema](#configuring-the-sql-database-to-match-the-graphql-schema)
   * [Miscellaneous](#miscellaneous)
-     * [Pretty Printing GraphQL Queries](#pretty-printing-graphql-queries)
+     * [Pretty-Printing GraphQL Queries](#pretty-printing-graphql-queries)
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
   * [FAQ](#faq)
@@ -1311,7 +1311,7 @@ At this point, the `animal` view can be used in the SQLAlchemy Table for the pur
 
 ## Miscellaneous
 
-### Pretty Printing GraphQL Queries
+### Pretty-Printing GraphQL Queries
 
 To pretty-print GraphQL queries, use the included pretty-printer:
 ```
