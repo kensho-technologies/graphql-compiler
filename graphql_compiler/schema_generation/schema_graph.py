@@ -14,18 +14,18 @@ from .schema_properties import (
 from .utils import get_superclasses_from_class_definition, toposort_classes
 
 
-def _validate_non_graph_class_has_no_connections(elem):
-    """Validate the non-graph class has no connections"""
+def _validate_non_graph_class_has_no_links(elem):
+    """Validate the non-graph class has no links"""
     if elem.is_non_graph:
         if elem.in_connections or elem.out_connections:
-            raise AssertionError(u'Expected non-graph class {} to have no connections.'
+            raise AssertionError(u'Expected non-graph class {} to have no links.'
                                  .format(elem))
     else:
         raise AssertionError(u'Expected class {} to be a non-graph class.'.format(elem))
 
 
-def _validate_non_edge_class_has_no_links(class_name, kind, links):
-    """Validate that the non-edge class has no links."""
+def _validate_links_not_defined_on_non_edge_class(class_name, kind, links):
+    """Validate that no links are defined on the non-edge class."""
     if kind == SchemaElement.ELEMENT_KIND_EDGE:
         raise AssertionError(u'Expected class {} to be a non-edge class.'.format(class_name))
     if links[EDGE_DESTINATION_PROPERTY_NAME] + links[EDGE_DESTINATION_PROPERTY_NAME]:
@@ -33,8 +33,8 @@ def _validate_non_edge_class_has_no_links(class_name, kind, links):
                              u'links.'.format(kind, class_name, links))
 
 
-def _validate_number_of_edge_links(elem):
-    """Validate that the elem has valid a number of links."""
+def _validate_number_of_links_for_edge(elem):
+    """Validate that the edge has valid a number of links."""
     if elem.is_edge:
         if not (len(elem.in_connections) <= 1 and len(elem.out_connections) <= 1):
             raise AssertionError(u'Found an elem class with either multiple incoming or '
@@ -453,8 +453,8 @@ class SchemaGraph(object):
             elem.freeze()
 
             # Perform validation
-            _validate_non_edge_class_has_no_links(class_name, kind, links)
-            _validate_non_graph_class_has_no_connections(elem)
+            _validate_links_not_defined_on_non_edge_class(class_name, kind, links)
+            _validate_non_graph_class_has_no_links(elem)
 
             # Store
             self._elements[class_name] = elem
@@ -481,7 +481,7 @@ class SchemaGraph(object):
                 elem.out_connections.add(out_limit_link)
 
             # Perform validation
-            _validate_number_of_edge_links(elem)
+            _validate_number_of_links_for_edge(elem)
             for link in links[EDGE_DESTINATION_PROPERTY_NAME] + links[EDGE_SOURCE_PROPERTY_NAME]:
                 _validate_linked_class(class_name, link, self.vertex_class_names,
                                        class_name_to_definition, self._subclass_sets)
@@ -502,7 +502,7 @@ class SchemaGraph(object):
                                                         kind, inheritance_set,
                                                         self._non_graph_class_names)
             # Perform validation
-            _validate_non_edge_class_has_no_links(class_name, kind, links)
+            _validate_links_not_defined_on_non_edge_class(class_name, kind, links)
 
             # Store
             self._elements[class_name] = elem
