@@ -14,6 +14,20 @@ from .schema_properties import (
 from .utils import toposort_classes
 
 
+def _validate_number_of_edge_endpoints(edge):
+    """Validate that the edge has valid a number of endpoints."""
+    if edge._kind == SchemaElement.ELEMENT_KIND_EDGE:
+        if not (len(edge.in_connections) <= 1 and len(edge.out_connections) <= 1):
+            raise AssertionError(u'Found an edge class with either multiple incoming or '
+                                 u'multiple outgoing endpoints: {}'.format(edge))
+        if not edge.abstract:
+            if not (len(edge.in_connections) == 1 and len(edge.out_connections) == 1):
+                raise AssertionError(u'Found a non-abstract edge class with a missing '
+                                     u'incoming/outgoing edgepoint : {}'.format(edge))
+    else:
+        raise AssertionError(u'Expected an edge class got: {}'.format(edge))
+
+
 def _validate_property_names(class_name, properties):
     """Validate that properties do not have names that may cause problems in the GraphQL schema."""
     for property_name in properties:
@@ -132,17 +146,6 @@ class SchemaElement(object):
         """Make the SchemaElement's connections immutable."""
         self.in_connections = frozenset(self.in_connections)
         self.out_connections = frozenset(self.out_connections)
-
-    def validate_endpoints(self):
-        """Validate that the class has valid endpoints."""
-        if self._kind == SchemaElement.ELEMENT_KIND_EDGE:
-            if not(len(self.in_connections) <= 1 and len(self.out_connections) <= 1):
-                raise AssertionError(u'Found an edge class with either multiple incoming or '
-                                     u'multiple outgoing endpoints: {}'.format(self))
-            if not self.abstract:
-                if not (len(self.in_connections) == 1 and len(self.out_connections) == 1):
-                    raise AssertionError(u'Found a non-abstract edge class with a missing '
-                                         u'incoming/outgoing edgepoint : {}'.format(self))
 
     def __str__(self):
         """Stringify the SchemaElement."""
@@ -499,7 +502,7 @@ class SchemaGraph(object):
                     edge.in_connections.add(in_leaf_endpoint)
                 if out_leaf_endpoint is not None:
                     edge.out_connections.add(out_leaf_endpoint)
-                edge.validate_endpoints()
+                _validate_number_of_edge_endpoints(edge)
                 edge.freeze()
 
     def _create_descriptor_from_orientdb_property_definition(self, class_name,
