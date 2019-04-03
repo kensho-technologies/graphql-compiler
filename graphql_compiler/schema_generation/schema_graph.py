@@ -137,8 +137,8 @@ class SchemaElement(object):
         """Validate that the class has valid endpoints."""
         if self._kind == SchemaElement.ELEMENT_KIND_EDGE:
             if not(len(self.in_connections) <= 1 and len(self.out_connections) <= 1):
-                raise AssertionError(u'Found an edge class with more than 1 incoming or '
-                                     u'outgoing endpoint: {}'.format(self))
+                raise AssertionError(u'Found an edge class with either multiple incoming or '
+                                     u'multiple outgoing endpoints: {}'.format(self))
             if not self.abstract:
                 if not (len(self.in_connections) == 1 and len(self.out_connections) == 1):
                     raise AssertionError(u'Found a non-abstract edge class with a missing '
