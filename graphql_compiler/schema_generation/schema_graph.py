@@ -435,47 +435,70 @@ class SchemaGraph(object):
         """Set up non graph elements."""
         kind = SchemaElement.ELEMENT_KIND_NON_GRAPH
         for class_name in self.non_graph_class_names:
+            # Create non-graph SchemaElement
             inheritance_set = self._inheritance_sets[class_name]
             elem, links = _get_schema_element_and_links(class_name, class_name_to_definition,
                                                         kind, inheritance_set,
                                                         self._non_graph_class_names)
+
+            # Freeze connections
             elem.freeze()
+
+            # Perform validation
             _validate_non_edge_class_has_no_links(class_name, kind, links)
+
+            # Store
             self._elements[class_name] = elem
 
     def _set_up_edge_elements(self, class_name_to_definition):
         """Set up edge elements."""
         kind = SchemaElement.ELEMENT_KIND_EDGE
         for class_name in self.edge_class_names:
+            # Create edge SchemaElement
             inheritance_set = self._inheritance_sets[class_name]
             elem, links = _get_schema_element_and_links(class_name, class_name_to_definition,
                                                         kind, inheritance_set,
                                                         self._non_graph_class_names)
             abstract = is_abstract(class_name_to_definition[class_name])
-            self._set_edges_links(class_name, elem, links, abstract)
+
+            # Set edge connections. (Abstract classes may have missing limit links).
+            in_limit_link = _try_get_limit_link(
+                class_name, EDGE_SOURCE_PROPERTY_NAME, links, abstract, self._subclass_sets)
+            out_limit_link = _try_get_limit_link(
+                class_name, EDGE_DESTINATION_PROPERTY_NAME, links, abstract, self._subclass_sets)
+            if in_limit_link is not None:
+                elem.in_connections.add(in_limit_link)
+            if out_limit_link is not None:
+                elem.out_connections.add(out_limit_link)
+
+            # Perform validation
             _validate_number_of_edge_links(elem)
             for link in links[EDGE_DESTINATION_PROPERTY_NAME]+links[EDGE_SOURCE_PROPERTY_NAME]:
                 _validate_linked_class(class_name, link, self.vertex_class_names,
                                        class_name_to_definition, self._subclass_sets)
+
+            # Freeze connections
             elem.freeze()
+
+            # Store
             self._elements[class_name] = elem
 
     def _set_up_vertex_elements(self, class_name_to_definition):
         """Set up vertex elements."""
         kind = SchemaElement.ELEMENT_KIND_VERTEX
         for class_name in self.vertex_class_names:
+            # Create vertex element
             inheritance_set = self._inheritance_sets[class_name]
             elem, links = _get_schema_element_and_links(class_name, class_name_to_definition,
                                                         kind, inheritance_set,
                                                         self._non_graph_class_names)
+            # Perform validation
             _validate_non_edge_class_has_no_links(class_name, kind, links)
-            self._elements[class_name] = elem
-        self._add_connections_to_vertex_classes()
-        for class_name in self.vertex_class_names:
-            self._elements[class_name].freeze()
 
-    def _add_connections_to_vertex_classes(self):
-        """For each edge, link it to the vertex types it connects to each other."""
+            # Store
+            self._elements[class_name] = elem
+
+        # Set vertex connections
         for edge_class_name in self._edge_class_names:
             edge = self._elements[edge_class_name]
             if edge.abstract:
@@ -483,64 +506,17 @@ class SchemaGraph(object):
             from_class_name = get_only_element_from_collection(edge.in_connections)
             to_class_name = get_only_element_from_collection(edge.out_connections)
 
-            # Link from_class_name with edge_class_name
             for from_class in self._subclass_sets[from_class_name]:
-
                 from_schema_element = self._elements[from_class]
                 from_schema_element.out_connections.add(edge_class_name)
 
-            # Link edge_class_name with to_class_name
             for to_class in self._subclass_sets[to_class_name]:
                 to_schema_element = self._elements[to_class]
                 to_schema_element.in_connections.add(edge_class_name)
 
-    def _set_edges_links(self, class_name, edge, links, abstract):
-        """Set the edges of a edge class"""
-        in_leaf_link = self._try_get_limit_link(
-            class_name, EDGE_SOURCE_PROPERTY_NAME, links, abstract)
-        out_leaf_link = self._try_get_limit_link(
-            class_name, EDGE_DESTINATION_PROPERTY_NAME, links, abstract)
-        # Either of the links may not be defined if the edge is abstract.
-        if in_leaf_link is not None:
-            edge.in_connections.add(in_leaf_link)
-        if out_leaf_link is not None:
-            edge.out_connections.add(out_leaf_link)
-
-    def _try_get_limit_link(self, class_name, link_direction,
-                                link_direction_to_link_classes, abstract):
-        """Try to get the limit link class of an edge's end.
-
-        Args:
-            class_name: string, the name of the edge class.
-            link_direction: string, either 'in' or 'out', describing the edge's end of interest.
-            link_direction_to_link_classes: dict, string -> [string], mapping a link
-                                                direction to a list set of classes that can
-                                                appear on that end of the edge class.
-            abstract: bool, describes whether the class is abstract.
-
-        Returns:
-            optional string, describing the limit link class. We define the link classes
-            of an edge's end to be the set of classes that could appear in that end of the edge.
-            We define the limit link class as the link class that is not inherited by any
-            of the other link classes. Each edge's end can have at most 1 limit link class.
-            The ends of non-abstract edges must each have a limit link class.
-        """
-        link_classes = link_direction_to_link_classes[link_direction]
-        limit_link = None
-        for link in link_classes:
-            subclass_set = self._subclass_sets[link]
-            if len(set(link_classes).intersection(subclass_set)) == 1:
-                if limit_link is not None:
-                    raise AssertionError(u'There already exists link "{}" in addition '
-                                         u'to link "{}" which is a subclass of all '
-                                         u'in/out links for class "{}".'
-                                         .format(limit_link, link, class_name))
-                limit_link = link
-        if limit_link is None and not abstract:
-            raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
-                                 u'no such subclass-of-all-elements exists.'
-                                 .format(link_direction, class_name))
-        return limit_link
+        # Freeze connections
+        for class_name in self.vertex_class_names:
+            self._elements[class_name].freeze()
 
 
 def _get_schema_element_and_links(class_name, class_name_to_definition, kind, inheritance_set,
@@ -637,3 +613,41 @@ def _create_descriptor_from_orientdb_property_definition(
     # Sanity-check the descriptor before returning it.
     _validate_collections_have_default_values(class_name, name, descriptor)
     return descriptor
+
+
+def _try_get_limit_link(class_name, link_direction, link_direction_to_link_classes, abstract,
+                        subclass_sets):
+    """Try to get the limit link class of an edge's end.
+
+    Args:
+        class_name: string, the name of the edge class.
+        link_direction: string, either 'in' or 'out', describing the edge's end of interest.
+        link_direction_to_link_classes: dict, string -> [string], mapping a link
+                                            direction to a list set of classes that can
+                                            appear on that end of the edge class.
+        abstract: bool, describes whether the class is abstract.
+        subclass_sets: dict, string -> [string], mapping a class to its subclasses.
+
+    Returns:
+        optional string, describing the limit link class. We define the link classes
+        of an edge's end to be the set of classes that could appear in that end of the edge.
+        We define the limit link class as the link class that is not inherited by any
+        of the other link classes. Each edge's end can have at most 1 limit link class.
+        The ends of non-abstract edges must each have a limit link class.
+    """
+    link_classes = link_direction_to_link_classes[link_direction]
+    limit_link = None
+    for link in link_classes:
+        subclass_set = subclass_sets[link]
+        if len(set(link_classes).intersection(subclass_set)) == 1:
+            if limit_link is not None:
+                raise AssertionError(u'There already exists link "{}" in addition '
+                                     u'to link "{}" which is a subclass of all '
+                                     u'in/out links for class "{}".'
+                                     .format(limit_link, link, class_name))
+            limit_link = link
+    if limit_link is None and not abstract:
+        raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
+                             u'no such subclass-of-all-elements exists.'
+                             .format(link_direction, class_name))
+    return limit_link
