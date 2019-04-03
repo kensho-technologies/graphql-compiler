@@ -14,14 +14,21 @@ Turn complex GraphQL queries into optimized database queries.
 pip install graphql-compiler
 ```
 
+## Quick Overview 
+
+Through the GraphQL compiler, users can write powerful queries that uncover 
+deep relationships in the data while not having to worry about the underlying database query 
+language. The GraphQL compiler turns read-only queries written in GraphQL syntax to different 
+query languages. 
+
+Furthermore, the GraphQL compiler validates queries through the use of a GraphQL schema 
+that specifies the underlying schema of the database. We can currently autogenerate a 
+GraphQL schema by introspecting an OrientDB database, (see [Querying OrientDB with GraphQL](#querying-orientdb-with-graphql)). 
+
+In the near future, we plan to add schema autogeneration from SQLAlchemy metadata as well. 
+
 For a more detailed overview and getting started guide, please see
 [our blog post](https://blog.kensho.com/compiled-graphql-as-a-database-query-language-72e106844282).
-
-To pretty-print GraphQL queries, use the included pretty-printer:
-```
-python -m graphql_compiler.tool <input_file.graphql >output_file.graphql
-```
-It's modeled after Python's `json.tool`, reading from stdin and writing to stdout.
 
 ## Table of contents
   * [Features](#features)
@@ -55,6 +62,7 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
      * [End-To-End SQL Example](#end-to-end-sql-example)
      * [Configuring the SQL Database to Match the GraphQL Schema](#configuring-the-sql-database-to-match-the-graphql-schema)
   * [Miscellaneous](#miscellaneous)
+     * [Pretty-Printing GraphQL Queries](#pretty-printing-graphql-queries)
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
   * [FAQ](#faq)
@@ -1302,6 +1310,15 @@ CREATE VIEW animal AS
 At this point, the `animal` view can be used in the SQLAlchemy Table for the purposes of compiling.
 
 ## Miscellaneous
+
+### Pretty-Printing GraphQL Queries
+
+To pretty-print GraphQL queries, use the included pretty-printer:
+```
+python -m graphql_compiler.tool <input_file.graphql >output_file.graphql
+```
+It's modeled after Python's `json.tool`, reading from stdin and writing to stdout.
+
 
 ### Expanding [`@optional`](#optional) vertex fields
 Including an optional statement in GraphQL has no performance issues on its own,
