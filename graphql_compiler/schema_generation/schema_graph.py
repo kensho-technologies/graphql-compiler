@@ -428,41 +428,49 @@ class SchemaGraph(object):
     def _set_up_schema_elements_of_kind(self, class_name_to_definition, kind, class_names):
         """Load all schema classes of the given kind. Used as part of __init__."""
         for class_name in class_names:
-            class_definition = class_name_to_definition[class_name]
-
-            class_fields = class_definition.get('customFields')
-            if class_fields is None:
-                # OrientDB likes to make empty collections be None instead.
-                # We convert this field back to an empty dict, for our general sanity.
-                class_fields = dict()
-
-            link_direction_to_endpoint_classes, property_name_to_descriptor = (
-                self._get_class_endpoints_and_properties(class_name, class_name_to_definition))
-
-            elem = SchemaElement(class_name, kind, self._is_abstract(class_definition),
-                                 property_name_to_descriptor, class_fields)
+            elem, links = self.get_schema_elements_and_links(class_name, class_name_to_definition,
+                                                             kind)
 
             self._elements[class_name] = elem
 
             if kind == SchemaElement.ELEMENT_KIND_EDGE:
-                in_leaf_endpoint = self._try_get_base_endpoint(class_name,
-                                                               EDGE_SOURCE_PROPERTY_NAME,
-                                                               link_direction_to_endpoint_classes,
-                                                               self._is_abstract(class_definition))
-                out_leaf_endpoint = self._try_get_base_endpoint(class_name,
-                                                                EDGE_DESTINATION_PROPERTY_NAME,
-                                                                link_direction_to_endpoint_classes,
-                                                                self._is_abstract(class_definition))
-                edge = self._elements[class_name]
-                # Either of the endpoints may not be defined if the edge is abstract.
-                if in_leaf_endpoint is not None:
-                    edge.in_connections.add(in_leaf_endpoint)
-                if out_leaf_endpoint is not None:
-                    edge.out_connections.add(out_leaf_endpoint)
-                _validate_number_of_edge_endpoints(edge)
-                edge.freeze()
+                class_definition = class_name_to_definition[class_name]
+                abstract = self._is_abstract(class_definition)
+                self._set_edges_endpoints(abstract, class_name, links)
 
-    def _get_class_endpoints_and_properties(self, class_name, class_name_to_definition):
+    def _set_edges_endpoints(self, abstract, class_name, links):
+        in_leaf_endpoint = self._try_get_base_endpoint(class_name,
+                                                       EDGE_SOURCE_PROPERTY_NAME,
+                                                       links,
+                                                       abstract)
+        out_leaf_endpoint = self._try_get_base_endpoint(class_name,
+                                                        EDGE_DESTINATION_PROPERTY_NAME,
+                                                        links,
+                                                        abstract)
+        edge = self._elements[class_name]
+        # Either of the endpoints may not be defined if the edge is abstract.
+        if in_leaf_endpoint is not None:
+            edge.in_connections.add(in_leaf_endpoint)
+        if out_leaf_endpoint is not None:
+            edge.out_connections.add(out_leaf_endpoint)
+        _validate_number_of_edge_endpoints(edge)
+        edge.freeze()
+
+    def get_schema_elements_and_links(self, class_name, class_name_to_definition,
+                                      kind):
+        class_definition = class_name_to_definition[class_name]
+        class_fields = class_definition.get('customFields')
+        if class_fields is None:
+            # OrientDB likes to make empty collections be None instead.
+            # We convert this field back to an empty dict, for our general sanity.
+            class_fields = dict()
+        property_name_to_descriptor, links = (
+            self._get_class_properties_and_links(class_name, class_name_to_definition))
+        elem = SchemaElement(class_name, kind, self._is_abstract(class_definition),
+                             property_name_to_descriptor, class_fields)
+        return elem, links
+
+    def _get_class_properties_and_links(self, class_name, class_name_to_definition):
         """Return the endpoints and the properties of the class. Only Edge have endpoints."""
         property_name_to_descriptor = {}
         all_orientdb_property_lists = (
@@ -492,7 +500,7 @@ class SchemaGraph(object):
                 property_descriptor = self._create_descriptor_from_orientdb_property_definition(
                     class_name, orientdb_property_definition)
                 property_name_to_descriptor[property_name] = property_descriptor
-        return link_direction_to_endpoint_classes, property_name_to_descriptor
+        return property_name_to_descriptor, link_direction_to_endpoint_classes
 
     def _is_abstract(self, class_definition):
         """Return if the class is abstract. We pretend the V and E OrientDB classes are abstract."""
