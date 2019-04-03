@@ -13,93 +13,6 @@ from .schema_properties import (
 )
 from .utils import toposort_classes, is_abstract, get_superclasses_from_class_definition
 
-def _get_schema_element_and_links(class_name, class_name_to_definition, kind, inheritance_set):
-    """Return the schema element and its links. Only Edges have links."""
-    class_definition = class_name_to_definition[class_name]
-    class_fields = class_definition.get('customFields')
-    if class_fields is None:
-        # OrientDB likes to make empty collections be None instead.
-        # We convert this field back to an empty dict, for our general sanity.
-        class_fields = dict()
-    property_name_to_descriptor, links = (
-        _get_class_properties_and_links(class_name, class_name_to_definition, inheritance_set))
-    elem = SchemaElement(class_name, kind, is_abstract(class_definition),
-                         property_name_to_descriptor, class_fields)
-    return elem, links
-
-
-def _get_class_properties_and_links(class_name, class_name_to_definition, inheritance_set):
-    """Return the properties and links of the class. Only Edges have links."""
-    property_name_to_descriptor = {}
-    all_orientdb_property_lists = (
-        class_name_to_definition[inherited_class_name]['properties']
-        for inherited_class_name in inheritance_set
-    )
-    link_direction_to_link_classes = {
-        EDGE_DESTINATION_PROPERTY_NAME: [],
-        EDGE_SOURCE_PROPERTY_NAME: []
-    }
-    for orientdb_property_definition in chain.from_iterable(all_orientdb_property_lists):
-        property_name = orientdb_property_definition['name']
-
-        if property_name in link_direction_to_link_classes:
-            link_direction_to_link_classes[property_name].append(
-                orientdb_property_definition['linkedClass'])
-        else:
-            # The only properties we allow to be redefined are the in/out properties
-            # of edge classes. All other properties may only be defined once
-            # in the entire inheritance hierarchy of any schema class, of any kind.
-            if property_name in property_name_to_descriptor:
-                raise AssertionError(u'The property "{}" on class "{}" is defined '
-                                     u'more than once, this is not allowed!'
-                                     .format(property_name, class_name))
-            property_descriptor = _create_descriptor_from_orientdb_property_definition(
-                class_name, orientdb_property_definition)
-            property_name_to_descriptor[property_name] = property_descriptor
-    return property_name_to_descriptor, link_direction_to_link_classes
-
-
-def _create_descriptor_from_orientdb_property_definition(class_name,
-                                                         orientdb_property_definition):
-    """Return a PropertyDescriptor corresponding to the given OrientDB property definition."""
-    name = orientdb_property_definition['name']
-    type_id = orientdb_property_definition['type']
-    linked_class = orientdb_property_definition.get('linkedClass', None)
-    linked_type = orientdb_property_definition.get('linkedType', None)
-    qualifier = None
-
-    validate_supported_property_type_id(name, type_id)
-
-    if type_id == PROPERTY_TYPE_LINK_ID:
-        raise AssertionError(u'Found an OrientDB property of type Link with an unexpected '
-                             u'name: {} {}'.format(name, class_name))
-    elif type_id in COLLECTION_PROPERTY_TYPES:
-        if linked_class is not None and linked_type is not None:
-            raise AssertionError(u'Property "{}" unexpectedly has both a linked class and '
-                                 u'a linked type: {}'.format(name,
-                                                             orientdb_property_definition))
-        elif linked_type is not None and linked_class is None:
-            # No linked class, must be a linked native OrientDB type.
-            validate_supported_property_type_id(name + ' inner type', linked_type)
-
-            qualifier = linked_type
-        elif linked_class is not None and linked_type is None:
-            qualifier = linked_class
-        else:
-            raise AssertionError(u'Property "{}" is an embedded collection but has '
-                                 u'neither a linked class nor a linked type: '
-                                 u'{}'.format(name, orientdb_property_definition))
-
-    default_value = None
-    default_value_string = orientdb_property_definition.get('defaultValue', None)
-    if default_value_string is not None:
-        default_value = parse_default_property_value(name, type_id, default_value_string)
-
-    descriptor = PropertyDescriptor(type_id=type_id, qualifier=qualifier, default=default_value)
-    # Sanity-check the descriptor before returning it.
-    _validate_collections_have_default_values(class_name, name, descriptor)
-    return descriptor
-
 
 def _validate_non_edge_class_has_no_links(class_name, kind, links):
     """Validate that class that the non-edge class has no links."""
@@ -558,102 +471,6 @@ class SchemaGraph(object):
         for class_name in self.vertex_class_names:
             self._elements[class_name].freeze()
 
-    def get_schema_element_and_links(self, class_name, class_name_to_definition,
-                                     kind):
-        """Return the schema element and its links. Only Edges have links."""
-        class_definition = class_name_to_definition[class_name]
-        class_fields = class_definition.get('customFields')
-        if class_fields is None:
-            # OrientDB likes to make empty collections be None instead.
-            # We convert this field back to an empty dict, for our general sanity.
-            class_fields = dict()
-        property_name_to_descriptor, links = (
-            self._get_class_properties_and_links(class_name, class_name_to_definition))
-        elem = SchemaElement(class_name, kind, is_abstract(class_definition),
-                             property_name_to_descriptor, class_fields)
-        return elem, links
-
-    def _get_class_properties_and_links(self, class_name, class_name_to_definition):
-        """Return the properties and links of the class. Only Edges have links."""
-        property_name_to_descriptor = {}
-        all_orientdb_property_lists = (
-            class_name_to_definition[inherited_class_name]['properties']
-            for inherited_class_name in self._inheritance_sets[class_name]
-        )
-        link_direction_to_endpoint_classes = {
-            EDGE_DESTINATION_PROPERTY_NAME: [],
-            EDGE_SOURCE_PROPERTY_NAME: []
-        }
-        for orientdb_property_definition in chain.from_iterable(all_orientdb_property_lists):
-            property_name = orientdb_property_definition['name']
-
-            if property_name in link_direction_to_endpoint_classes:
-                if orientdb_property_definition['type'] != PROPERTY_TYPE_LINK_ID:
-                    raise AssertionError(
-                        'Found a property with name {} that is not declared with type '
-                        'Link'.format(class_name))
-                link_direction_to_endpoint_classes[property_name].append(
-                    orientdb_property_definition['linkedClass'])
-            else:
-                # The only properties we allow to be redefined are the in/out properties
-                # of edge classes. All other properties may only be defined once
-                # in the entire inheritance hierarchy of any schema class, of any kind.
-                if property_name in property_name_to_descriptor:
-                    raise AssertionError(u'The property "{}" on class "{}" is defined '
-                                         u'more than once, this is not allowed!'
-                                         .format(property_name, class_name))
-                property_descriptor = self._create_descriptor_from_orientdb_property_definition(
-                    class_name, orientdb_property_definition)
-                property_name_to_descriptor[property_name] = property_descriptor
-        return property_name_to_descriptor, link_direction_to_endpoint_classes
-
-    def _create_descriptor_from_orientdb_property_definition(self, class_name,
-                                                             orientdb_property_definition):
-        """Return a PropertyDescriptor corresponding to the given OrientDB property definition."""
-        name = orientdb_property_definition['name']
-        type_id = orientdb_property_definition['type']
-        linked_class = orientdb_property_definition.get('linkedClass', None)
-        linked_type = orientdb_property_definition.get('linkedType', None)
-        qualifier = None
-
-        validate_supported_property_type_id(name, type_id)
-
-        if type_id == PROPERTY_TYPE_LINK_ID:
-            raise AssertionError(u'Found an OrientDB property of type Link with an unexpected '
-                                 u'name: {} {}'.format(name, class_name))
-        elif type_id in COLLECTION_PROPERTY_TYPES:
-            if linked_class is not None and linked_type is not None:
-                raise AssertionError(u'Property "{}" unexpectedly has both a linked class and '
-                                     u'a linked type: {}'.format(name,
-                                                                 orientdb_property_definition))
-            elif linked_type is not None and linked_class is None:
-                # No linked class, must be a linked native OrientDB type.
-                validate_supported_property_type_id(name + ' inner type', linked_type)
-
-                qualifier = linked_type
-            elif linked_class is not None and linked_type is None:
-                # No linked type, must be a linked non-graph user-defined type.
-                if linked_class not in self._non_graph_class_names:
-                    raise AssertionError(u'Property "{}" is declared as the inner type of '
-                                         u'an embedded collection, but is not a non-graph class: '
-                                         u'{}'.format(name, linked_class))
-
-                qualifier = linked_class
-            else:
-                raise AssertionError(u'Property "{}" is an embedded collection but has '
-                                     u'neither a linked class nor a linked type: '
-                                     u'{}'.format(name, orientdb_property_definition))
-
-        default_value = None
-        default_value_string = orientdb_property_definition.get('defaultValue', None)
-        if default_value_string is not None:
-            default_value = parse_default_property_value(name, type_id, default_value_string)
-
-        descriptor = PropertyDescriptor(type_id=type_id, qualifier=qualifier, default=default_value)
-        # Sanity-check the descriptor before returning it.
-        _validate_collections_have_default_values(class_name, name, descriptor)
-        return descriptor
-
     def _add_connections_to_vertex_classes(self):
         """For each edge, link it to the vertex types it connects to each other."""
         for edge_class_name in self._edge_class_names:
@@ -720,3 +537,91 @@ class SchemaGraph(object):
                                  u'no such subclass-of-all-elements exists.'
                                  .format(link_direction, class_name))
         return limit_endpoint
+
+
+def _get_schema_element_and_links(class_name, class_name_to_definition, kind, inheritance_set):
+    """Return the schema element and its links. Only Edges have links."""
+    class_definition = class_name_to_definition[class_name]
+    class_fields = class_definition.get('customFields')
+    if class_fields is None:
+        # OrientDB likes to make empty collections be None instead.
+        # We convert this field back to an empty dict, for our general sanity.
+        class_fields = dict()
+    property_name_to_descriptor, links = (
+        _get_class_properties_and_links(class_name, class_name_to_definition, inheritance_set))
+    elem = SchemaElement(class_name, kind, is_abstract(class_definition),
+                         property_name_to_descriptor, class_fields)
+    return elem, links
+
+
+def _get_class_properties_and_links(class_name, class_name_to_definition, inheritance_set):
+    """Return the properties and links of the class. Only Edges have links."""
+    property_name_to_descriptor = {}
+    all_orientdb_property_lists = (
+        class_name_to_definition[inherited_class_name]['properties']
+        for inherited_class_name in inheritance_set
+    )
+    link_direction_to_link_classes = {
+        EDGE_DESTINATION_PROPERTY_NAME: [],
+        EDGE_SOURCE_PROPERTY_NAME: []
+    }
+    for orientdb_property_definition in chain.from_iterable(all_orientdb_property_lists):
+        property_name = orientdb_property_definition['name']
+
+        if property_name in link_direction_to_link_classes:
+            link_direction_to_link_classes[property_name].append(
+                orientdb_property_definition['linkedClass'])
+        else:
+            # The only properties we allow to be redefined are the in/out properties
+            # of edge classes. All other properties may only be defined once
+            # in the entire inheritance hierarchy of any schema class, of any kind.
+            if property_name in property_name_to_descriptor:
+                raise AssertionError(u'The property "{}" on class "{}" is defined '
+                                     u'more than once, this is not allowed!'
+                                     .format(property_name, class_name))
+            property_descriptor = _create_descriptor_from_orientdb_property_definition(
+                class_name, orientdb_property_definition)
+            property_name_to_descriptor[property_name] = property_descriptor
+    return property_name_to_descriptor, link_direction_to_link_classes
+
+
+def _create_descriptor_from_orientdb_property_definition(class_name,
+                                                         orientdb_property_definition):
+    """Return a PropertyDescriptor corresponding to the given OrientDB property definition."""
+    name = orientdb_property_definition['name']
+    type_id = orientdb_property_definition['type']
+    linked_class = orientdb_property_definition.get('linkedClass', None)
+    linked_type = orientdb_property_definition.get('linkedType', None)
+    qualifier = None
+
+    validate_supported_property_type_id(name, type_id)
+
+    if type_id == PROPERTY_TYPE_LINK_ID:
+        raise AssertionError(u'Found an OrientDB property of type Link with an unexpected '
+                             u'name: {} {}'.format(name, class_name))
+    elif type_id in COLLECTION_PROPERTY_TYPES:
+        if linked_class is not None and linked_type is not None:
+            raise AssertionError(u'Property "{}" unexpectedly has both a linked class and '
+                                 u'a linked type: {}'.format(name,
+                                                             orientdb_property_definition))
+        elif linked_type is not None and linked_class is None:
+            # No linked class, must be a linked native OrientDB type.
+            validate_supported_property_type_id(name + ' inner type', linked_type)
+
+            qualifier = linked_type
+        elif linked_class is not None and linked_type is None:
+            qualifier = linked_class
+        else:
+            raise AssertionError(u'Property "{}" is an embedded collection but has '
+                                 u'neither a linked class nor a linked type: '
+                                 u'{}'.format(name, orientdb_property_definition))
+
+    default_value = None
+    default_value_string = orientdb_property_definition.get('defaultValue', None)
+    if default_value_string is not None:
+        default_value = parse_default_property_value(name, type_id, default_value_string)
+
+    descriptor = PropertyDescriptor(type_id=type_id, qualifier=qualifier, default=default_value)
+    # Sanity-check the descriptor before returning it.
+    _validate_collections_have_default_values(class_name, name, descriptor)
+    return descriptor
