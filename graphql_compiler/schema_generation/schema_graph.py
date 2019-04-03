@@ -437,7 +437,8 @@ class SchemaGraph(object):
         for class_name in self.non_graph_class_names:
             inheritance_set = self._inheritance_sets[class_name]
             elem, links = _get_schema_element_and_links(class_name, class_name_to_definition,
-                                                        kind, inheritance_set)
+                                                        kind, inheritance_set,
+                                                        self._non_graph_class_names)
             elem.freeze()
             _validate_non_edge_class_has_no_links(class_name, kind, links)
             self._elements[class_name] = elem
@@ -448,7 +449,8 @@ class SchemaGraph(object):
         for class_name in self.edge_class_names:
             inheritance_set = self._inheritance_sets[class_name]
             elem, links = _get_schema_element_and_links(class_name, class_name_to_definition,
-                                                        kind, inheritance_set)
+                                                        kind, inheritance_set,
+                                                        self._non_graph_class_names)
             abstract = is_abstract(class_name_to_definition[class_name])
             self._set_edges_links(class_name, elem, links, abstract)
             _validate_number_of_edge_links(elem)
@@ -464,7 +466,8 @@ class SchemaGraph(object):
         for class_name in self.vertex_class_names:
             inheritance_set = self._inheritance_sets[class_name]
             elem, links = _get_schema_element_and_links(class_name, class_name_to_definition,
-                                                        kind, inheritance_set)
+                                                        kind, inheritance_set,
+                                                        self._non_graph_class_names)
             _validate_non_edge_class_has_no_links(class_name, kind, links)
             self._elements[class_name] = elem
         self._add_connections_to_vertex_classes()
@@ -482,6 +485,7 @@ class SchemaGraph(object):
 
             # Link from_class_name with edge_class_name
             for from_class in self._subclass_sets[from_class_name]:
+
                 from_schema_element = self._elements[from_class]
                 from_schema_element.out_connections.add(edge_class_name)
 
@@ -539,7 +543,8 @@ class SchemaGraph(object):
         return limit_link
 
 
-def _get_schema_element_and_links(class_name, class_name_to_definition, kind, inheritance_set):
+def _get_schema_element_and_links(class_name, class_name_to_definition, kind, inheritance_set,
+                                  non_graph_class_names):
     """Return the schema element and its links. Only Edges have links."""
     class_definition = class_name_to_definition[class_name]
     class_fields = class_definition.get('customFields')
@@ -548,13 +553,15 @@ def _get_schema_element_and_links(class_name, class_name_to_definition, kind, in
         # We convert this field back to an empty dict, for our general sanity.
         class_fields = dict()
     property_name_to_descriptor, links = (
-        _get_class_properties_and_links(class_name, class_name_to_definition, inheritance_set))
+        _get_class_properties_and_links(class_name, class_name_to_definition, inheritance_set,
+                                        non_graph_class_names))
     elem = SchemaElement(class_name, kind, is_abstract(class_definition),
                          property_name_to_descriptor, class_fields)
     return elem, links
 
 
-def _get_class_properties_and_links(class_name, class_name_to_definition, inheritance_set):
+def _get_class_properties_and_links(class_name, class_name_to_definition, inheritance_set,
+                                    non_graph_class_names):
     """Return the properties and links of the class. Only Edges have links."""
     property_name_to_descriptor = {}
     all_orientdb_property_lists = (
@@ -580,13 +587,13 @@ def _get_class_properties_and_links(class_name, class_name_to_definition, inheri
                                      u'more than once, this is not allowed!'
                                      .format(property_name, class_name))
             property_descriptor = _create_descriptor_from_orientdb_property_definition(
-                class_name, orientdb_property_definition)
+                class_name, orientdb_property_definition, non_graph_class_names)
             property_name_to_descriptor[property_name] = property_descriptor
     return property_name_to_descriptor, link_direction_to_link_classes
 
 
-def _create_descriptor_from_orientdb_property_definition(class_name,
-                                                         orientdb_property_definition):
+def _create_descriptor_from_orientdb_property_definition(
+        class_name, orientdb_property_definition, non_graph_class_names):
     """Return a PropertyDescriptor corresponding to the given OrientDB property definition."""
     name = orientdb_property_definition['name']
     type_id = orientdb_property_definition['type']
@@ -610,6 +617,11 @@ def _create_descriptor_from_orientdb_property_definition(class_name,
 
             qualifier = linked_type
         elif linked_class is not None and linked_type is None:
+            # No linked type, must be a linked non-graph user-defined type.
+            if linked_class not in non_graph_class_names:
+                raise AssertionError(u'Property "{}" is declared as the inner type of '
+                                     u'an embedded collection, but is not a non-graph class: '
+                                     u'{}'.format(name, linked_class))
             qualifier = linked_class
         else:
             raise AssertionError(u'Property "{}" is an embedded collection but has '
