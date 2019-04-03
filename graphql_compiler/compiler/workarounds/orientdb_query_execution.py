@@ -45,7 +45,6 @@ The process of applying the optimizations is as follows:
 """
 
 from ...helpers import get_only_element_from_collection
-
 from ..blocks import CoerceType, QueryRoot, Recurse, Traverse
 from ..expressions import ContextField, ContextFieldExistence
 from ..ir_lowering_match.utils import convert_coerce_type_and_add_to_where_block

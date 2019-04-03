@@ -5,7 +5,6 @@ from collections import deque
 import six
 
 from ..helpers import get_only_element_from_collection
-
 from .blocks import Filter, MarkLocation, QueryRoot, Recurse, Traverse
 from .expressions import TrueLiteral
 from .helpers import validate_safe_string

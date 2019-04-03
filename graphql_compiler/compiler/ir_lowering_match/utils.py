@@ -5,7 +5,6 @@ import itertools
 import six
 
 from ...helpers import get_only_element_from_collection
-
 from ..blocks import Filter
 from ..expressions import (
     BinaryComposition, Expression, GlobalContextField, Literal, LocalField, NullLiteral,

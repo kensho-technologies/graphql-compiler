@@ -12,9 +12,8 @@ from graphql import GraphQLList
 from graphql.type import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 import six
 
-from ...helpers import get_only_element_from_collection
-
 from ...exceptions import GraphQLCompilationError
+from ...helpers import get_only_element_from_collection
 from ...schema import GraphQLDate, GraphQLDateTime
 from ..blocks import Backtrack, CoerceType, ConstructResult, Filter, MarkLocation, Traverse
 from ..compiler_entities import Expression

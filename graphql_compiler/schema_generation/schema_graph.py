@@ -24,6 +24,7 @@ def _is_abstract(class_definition):
 
 
 def _validate_non_edge_class_has_no_links(class_name, kind, links):
+    """Validate that classes that are not edges have no links."""
     in_links = links[EDGE_DESTINATION_PROPERTY_NAME]
     out_links = links[EDGE_DESTINATION_PROPERTY_NAME]
     num_links = len(in_links + out_links)
@@ -34,7 +35,7 @@ def _validate_non_edge_class_has_no_links(class_name, kind, links):
 
 def _validate_number_of_edge_endpoints(edge):
     """Validate that the edge has valid a number of endpoints."""
-    if edge._kind == SchemaElement.ELEMENT_KIND_EDGE:
+    if edge.is_edge:
         if not (len(edge.in_connections) <= 1 and len(edge.out_connections) <= 1):
             raise AssertionError(u'Found an edge class with either multiple incoming or '
                                  u'multiple outgoing endpoints: {}'.format(edge))
@@ -513,7 +514,6 @@ class SchemaGraph(object):
                     class_name, orientdb_property_definition)
                 property_name_to_descriptor[property_name] = property_descriptor
         return property_name_to_descriptor, link_direction_to_endpoint_classes
-
 
     def _create_descriptor_from_orientdb_property_definition(self, class_name,
                                                              orientdb_property_definition):
