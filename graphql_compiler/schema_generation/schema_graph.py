@@ -427,11 +427,6 @@ class SchemaGraph(object):
 
     def _set_up_schema_elements_of_kind(self, class_name_to_definition, kind, class_names):
         """Load all schema classes of the given kind. Used as part of __init__."""
-        orientdb_base_classes = frozenset({
-            ORIENTDB_BASE_VERTEX_CLASS_NAME,
-            ORIENTDB_BASE_EDGE_CLASS_NAME,
-        })
-
         for class_name in class_names:
             class_definition = class_name_to_definition[class_name]
 
@@ -441,29 +436,23 @@ class SchemaGraph(object):
                 # We convert this field back to an empty dict, for our general sanity.
                 class_fields = dict()
 
-            abstract = class_definition['abstract']
-            if class_name in orientdb_base_classes:
-                # Special-case the V and E base classes:
-                # OrientDB won't let us make them abstract, but we don't want to create
-                # any vertices or edges with those types either.
-                # Pretend they are marked abstract in OrientDB's schema.
-                abstract = True
-
             link_direction_to_endpoint_classes, property_name_to_descriptor = (
                 self._get_class_endpoints_and_properties(class_name, class_name_to_definition))
 
-            self._elements[class_name] = SchemaElement(class_name, kind, abstract,
-                                                       property_name_to_descriptor, class_fields)
+            elem = SchemaElement(class_name, kind, self._is_abstract(class_definition),
+                                 property_name_to_descriptor, class_fields)
+
+            self._elements[class_name] = elem
 
             if kind == SchemaElement.ELEMENT_KIND_EDGE:
                 in_leaf_endpoint = self._try_get_base_endpoint(class_name,
                                                                EDGE_SOURCE_PROPERTY_NAME,
                                                                link_direction_to_endpoint_classes,
-                                                               abstract)
+                                                               self._is_abstract(class_definition))
                 out_leaf_endpoint = self._try_get_base_endpoint(class_name,
                                                                 EDGE_DESTINATION_PROPERTY_NAME,
                                                                 link_direction_to_endpoint_classes,
-                                                                abstract)
+                                                                self._is_abstract(class_definition))
                 edge = self._elements[class_name]
                 # Either of the endpoints may not be defined if the edge is abstract.
                 if in_leaf_endpoint is not None:
@@ -504,6 +493,14 @@ class SchemaGraph(object):
                     class_name, orientdb_property_definition)
                 property_name_to_descriptor[property_name] = property_descriptor
         return link_direction_to_endpoint_classes, property_name_to_descriptor
+
+    def _is_abstract(self, class_definition):
+        """Return if the class is abstract. We pretend the V and E OrientDB classes are abstract."""
+        orientdb_base_classes = frozenset({
+            ORIENTDB_BASE_VERTEX_CLASS_NAME,
+            ORIENTDB_BASE_EDGE_CLASS_NAME,
+        })
+        return class_definition['name'] in orientdb_base_classes or class_definition['abstract']
 
     def _create_descriptor_from_orientdb_property_definition(self, class_name,
                                                              orientdb_property_definition):
