@@ -14,6 +14,15 @@ from .schema_properties import (
 from .utils import toposort_classes
 
 
+def _is_abstract(class_definition):
+    """Return if the class is abstract. We pretend the V and E OrientDB classes are abstract."""
+    orientdb_base_classes = frozenset({
+        ORIENTDB_BASE_VERTEX_CLASS_NAME,
+        ORIENTDB_BASE_EDGE_CLASS_NAME,
+    })
+    return class_definition['name'] in orientdb_base_classes or class_definition['abstract']
+
+
 def _validate_non_edge_class_has_no_links(class_name, kind, links):
     in_links = links[EDGE_DESTINATION_PROPERTY_NAME]
     out_links = links[EDGE_DESTINATION_PROPERTY_NAME]
@@ -244,7 +253,7 @@ class SchemaGraph(object):
 
         self._set_up_non_graph_elements(class_name_to_definition)
         self._set_up_edge_elements(class_name_to_definition)
-        # Vertex elements must be set after edge elements
+        # Vertex elements must be set after edge elements.
         self._set_up_vertex_elements(class_name_to_definition)
 
     def get_element_by_class_name(self, class_name):
@@ -426,49 +435,41 @@ class SchemaGraph(object):
         self._non_graph_class_names = frozenset(self._non_graph_class_names)
 
     def _set_up_non_graph_elements(self, class_name_to_definition):
+        """Set up non graph elements."""
         kind = SchemaElement.ELEMENT_KIND_NON_GRAPH
         for class_name in self.non_graph_class_names:
-            elem, links = self.get_schema_elements_and_links(class_name, class_name_to_definition,
-                                                             kind)
+            elem, links = self.get_schema_element_and_links(class_name, class_name_to_definition,
+                                                            kind)
             elem.freeze()
-            self._elements[class_name] = elem
             _validate_non_edge_class_has_no_links(class_name, kind, links)
+            self._elements[class_name] = elem
 
     def _set_up_edge_elements(self, class_name_to_definition):
+        """Set up edge elements."""
         kind = SchemaElement.ELEMENT_KIND_EDGE
         for class_name in self.edge_class_names:
-            elem, links = self.get_schema_elements_and_links(class_name, class_name_to_definition,
-                                                             kind)
-            abstract = self._is_abstract(class_name_to_definition[class_name])
+            elem, links = self.get_schema_element_and_links(class_name, class_name_to_definition,
+                                                            kind)
+            abstract = _is_abstract(class_name_to_definition[class_name])
             self._set_edges_endpoints(class_name, elem, links, abstract)
             elem.freeze()
             self._elements[class_name] = elem
 
     def _set_up_vertex_elements(self, class_name_to_definition):
+        """Set up vertex elements."""
         kind = SchemaElement.ELEMENT_KIND_VERTEX
         for class_name in self.vertex_class_names:
-            elem, links = self.get_schema_elements_and_links(class_name, class_name_to_definition,
-                                                             kind)
-            self._elements[class_name] = elem
+            elem, links = self.get_schema_element_and_links(class_name, class_name_to_definition,
+                                                            kind)
             _validate_non_edge_class_has_no_links(class_name, kind, links)
+            self._elements[class_name] = elem
         self._add_connections_to_vertex_classes()
         for class_name in self.vertex_class_names:
             self._elements[class_name].freeze()
 
-    def _set_edges_endpoints(self, class_name, edge, links, abstract):
-        in_leaf_endpoint = self._try_get_limit_endpoint(
-            class_name, EDGE_SOURCE_PROPERTY_NAME, links, abstract)
-        out_leaf_endpoint = self._try_get_limit_endpoint(
-            class_name, EDGE_DESTINATION_PROPERTY_NAME, links, abstract)
-        # Either of the endpoints may not be defined if the edge is abstract.
-        if in_leaf_endpoint is not None:
-            edge.in_connections.add(in_leaf_endpoint)
-        if out_leaf_endpoint is not None:
-            edge.out_connections.add(out_leaf_endpoint)
-        _validate_number_of_edge_endpoints(edge)
-
-    def get_schema_elements_and_links(self, class_name, class_name_to_definition,
-                                      kind):
+    def get_schema_element_and_links(self, class_name, class_name_to_definition,
+                                     kind):
+        """Return the schema element and its links. Only Edges have links."""
         class_definition = class_name_to_definition[class_name]
         class_fields = class_definition.get('customFields')
         if class_fields is None:
@@ -477,12 +478,12 @@ class SchemaGraph(object):
             class_fields = dict()
         property_name_to_descriptor, links = (
             self._get_class_properties_and_links(class_name, class_name_to_definition))
-        elem = SchemaElement(class_name, kind, self._is_abstract(class_definition),
+        elem = SchemaElement(class_name, kind, _is_abstract(class_definition),
                              property_name_to_descriptor, class_fields)
         return elem, links
 
     def _get_class_properties_and_links(self, class_name, class_name_to_definition):
-        """Return the endpoints and the properties of the class. Only Edge have endpoints."""
+        """Return the properties and links of the class. Only Edges have links."""
         property_name_to_descriptor = {}
         all_orientdb_property_lists = (
             class_name_to_definition[inherited_class_name]['properties']
@@ -513,14 +514,6 @@ class SchemaGraph(object):
                 property_name_to_descriptor[property_name] = property_descriptor
         return property_name_to_descriptor, link_direction_to_endpoint_classes
 
-
-    def _is_abstract(self, class_definition):
-        """Return if the class is abstract. We pretend the V and E OrientDB classes are abstract."""
-        orientdb_base_classes = frozenset({
-            ORIENTDB_BASE_VERTEX_CLASS_NAME,
-            ORIENTDB_BASE_EDGE_CLASS_NAME,
-        })
-        return class_definition['name'] in orientdb_base_classes or class_definition['abstract']
 
     def _create_descriptor_from_orientdb_property_definition(self, class_name,
                                                              orientdb_property_definition):
@@ -615,6 +608,19 @@ class SchemaGraph(object):
                                      u'that class is neither a vertex nor is it an '
                                      u'abstract class whose subclasses are all vertices!'
                                      .format(name, linked_class))
+
+    def _set_edges_endpoints(self, class_name, edge, links, abstract):
+        """Set the edges of a edge class"""
+        in_leaf_endpoint = self._try_get_limit_endpoint(
+            class_name, EDGE_SOURCE_PROPERTY_NAME, links, abstract)
+        out_leaf_endpoint = self._try_get_limit_endpoint(
+            class_name, EDGE_DESTINATION_PROPERTY_NAME, links, abstract)
+        # Either of the endpoints may not be defined if the edge is abstract.
+        if in_leaf_endpoint is not None:
+            edge.in_connections.add(in_leaf_endpoint)
+        if out_leaf_endpoint is not None:
+            edge.out_connections.add(out_leaf_endpoint)
+        _validate_number_of_edge_endpoints(edge)
 
     def _try_get_limit_endpoint(self, class_name, link_direction,
                                 link_direction_to_endpoint_classes, abstract):
