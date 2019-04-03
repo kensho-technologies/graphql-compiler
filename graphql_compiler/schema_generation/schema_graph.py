@@ -14,30 +14,37 @@ from .schema_properties import (
 from .utils import get_superclasses_from_class_definition, toposort_classes
 
 
+def _validate_non_graph_class_has_no_connections(elem):
+    """Validate the non-graph class has no connections"""
+    if elem.is_non_graph:
+        if elem.in_connections or elem.out_connections:
+            raise AssertionError(u'Expected non-graph class to have no connections: got {}.'
+                                 .format(elem))
+    else:
+        raise AssertionError(u'Expected class {} to be a non-graph class.'.format(elem))
+
+
 def _validate_non_edge_class_has_no_links(class_name, kind, links):
-    """Validate that class that the non-edge class has no links."""
+    """Validate that the non-edge class has no links."""
     if kind == SchemaElement.ELEMENT_KIND_EDGE:
         raise AssertionError(u'Expected class {} to be a non-edge class.'.format(class_name))
-    in_links = links[EDGE_DESTINATION_PROPERTY_NAME]
-    out_links = links[EDGE_DESTINATION_PROPERTY_NAME]
-    num_links = len(in_links + out_links)
-    if num_links > 0:
+    if links[EDGE_DESTINATION_PROPERTY_NAME] + links[EDGE_DESTINATION_PROPERTY_NAME]:
         raise AssertionError(u'{} class {} has links: {}. Only edge classes should have '
                              u'links.'.format(kind, class_name, links))
 
 
-def _validate_number_of_edge_links(edge):
-    """Validate that the edge has valid a number of links."""
-    if edge.is_edge:
-        if not (len(edge.in_connections) <= 1 and len(edge.out_connections) <= 1):
-            raise AssertionError(u'Found an edge class with either multiple incoming or '
-                                 u'multiple outgoing links: {}'.format(edge))
-        if not edge.abstract:
-            if not (len(edge.in_connections) == 1 and len(edge.out_connections) == 1):
-                raise AssertionError(u'Found a non-abstract edge class with a missing '
-                                     u'incoming/outgoing link : {}'.format(edge))
+def _validate_number_of_edge_links(elem):
+    """Validate that the elem has valid a number of links."""
+    if elem.is_edge:
+        if not (len(elem.in_connections) <= 1 and len(elem.out_connections) <= 1):
+            raise AssertionError(u'Found an elem class with either multiple incoming or '
+                                 u'multiple outgoing links: {}'.format(elem))
+        if not elem.abstract:
+            if not (len(elem.in_connections) == 1 and len(elem.out_connections) == 1):
+                raise AssertionError(u'Found a non-abstract elem class with a missing '
+                                     u'incoming/outgoing link : {}'.format(elem))
     else:
-        raise AssertionError(u'Expected an edge class got: {}'.format(edge))
+        raise AssertionError(u'Expected class {} to be a elem class.'.format(elem))
 
 
 def _validate_property_names(class_name, properties):
@@ -442,11 +449,12 @@ class SchemaGraph(object):
                                                         kind, inheritance_set,
                                                         self._non_graph_class_names)
 
-            # Freeze connections
+            # Freeze connections.
             elem.freeze()
 
             # Perform validation
             _validate_non_edge_class_has_no_links(class_name, kind, links)
+            _validate_non_graph_class_has_no_connections(elem)
 
             # Store
             self._elements[class_name] = elem
