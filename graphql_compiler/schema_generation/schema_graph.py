@@ -449,34 +449,8 @@ class SchemaGraph(object):
                 # Pretend they are marked abstract in OrientDB's schema.
                 abstract = True
 
-            property_name_to_descriptor = {}
-            all_orientdb_property_lists = (
-                class_name_to_definition[inherited_class_name]['properties']
-                for inherited_class_name in self._inheritance_sets[class_name]
-            )
-            link_direction_to_endpoint_classes = {
-                EDGE_DESTINATION_PROPERTY_NAME: [],
-                EDGE_SOURCE_PROPERTY_NAME: []
-            }
-            for orientdb_property_definition in chain.from_iterable(all_orientdb_property_lists):
-                property_name = orientdb_property_definition['name']
-
-                if property_name in link_direction_to_endpoint_classes:
-                    self._validate_link(orientdb_property_definition, class_name,
-                                        class_name_to_definition)
-                    link_direction_to_endpoint_classes[property_name].append(
-                        orientdb_property_definition['linkedClass'])
-                else:
-                    # The only properties we allow to be redefined are the in/out properties
-                    # of edge classes. All other properties may only be defined once
-                    # in the entire inheritance hierarchy of any schema class, of any kind.
-                    if property_name in property_name_to_descriptor:
-                        raise AssertionError(u'The property "{}" on class "{}" is defined '
-                                             u'more than once, this is not allowed!'
-                                             .format(property_name, class_name))
-                    property_descriptor = self._create_descriptor_from_orientdb_property_definition(
-                        class_name, orientdb_property_definition)
-                    property_name_to_descriptor[property_name] = property_descriptor
+            link_direction_to_endpoint_classes, property_name_to_descriptor = (
+                self._get_class_endpoints_and_properties(class_name, class_name_to_definition))
 
             self._elements[class_name] = SchemaElement(class_name, kind, abstract,
                                                        property_name_to_descriptor, class_fields)
@@ -498,6 +472,38 @@ class SchemaGraph(object):
                     edge.out_connections.add(out_leaf_endpoint)
                 _validate_number_of_edge_endpoints(edge)
                 edge.freeze()
+
+    def _get_class_endpoints_and_properties(self, class_name, class_name_to_definition):
+        """Return the endpoints and the properties of the class. Only Edge have endpoints."""
+        property_name_to_descriptor = {}
+        all_orientdb_property_lists = (
+            class_name_to_definition[inherited_class_name]['properties']
+            for inherited_class_name in self._inheritance_sets[class_name]
+        )
+        link_direction_to_endpoint_classes = {
+            EDGE_DESTINATION_PROPERTY_NAME: [],
+            EDGE_SOURCE_PROPERTY_NAME: []
+        }
+        for orientdb_property_definition in chain.from_iterable(all_orientdb_property_lists):
+            property_name = orientdb_property_definition['name']
+
+            if property_name in link_direction_to_endpoint_classes:
+                self._validate_link(orientdb_property_definition, class_name,
+                                    class_name_to_definition)
+                link_direction_to_endpoint_classes[property_name].append(
+                    orientdb_property_definition['linkedClass'])
+            else:
+                # The only properties we allow to be redefined are the in/out properties
+                # of edge classes. All other properties may only be defined once
+                # in the entire inheritance hierarchy of any schema class, of any kind.
+                if property_name in property_name_to_descriptor:
+                    raise AssertionError(u'The property "{}" on class "{}" is defined '
+                                         u'more than once, this is not allowed!'
+                                         .format(property_name, class_name))
+                property_descriptor = self._create_descriptor_from_orientdb_property_definition(
+                    class_name, orientdb_property_definition)
+                property_name_to_descriptor[property_name] = property_descriptor
+        return link_direction_to_endpoint_classes, property_name_to_descriptor
 
     def _create_descriptor_from_orientdb_property_definition(self, class_name,
                                                              orientdb_property_definition):
