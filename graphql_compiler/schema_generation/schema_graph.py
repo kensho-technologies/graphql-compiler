@@ -14,6 +14,15 @@ from .schema_properties import (
 from .utils import toposort_classes
 
 
+def _validate_non_edge_class_no_links(class_name, kind, links):
+    in_links = links[EDGE_DESTINATION_PROPERTY_NAME]
+    out_links = links[EDGE_DESTINATION_PROPERTY_NAME]
+    num_links = len(in_links + out_links)
+    if num_links > 0:
+        raise AssertionError(u'{} class {} has links: {}. Only edge classes should have '
+                             u'links.'.format(kind, class_name, links))
+
+
 def _validate_number_of_edge_endpoints(edge):
     """Validate that the edge has valid a number of endpoints."""
     if edge._kind == SchemaElement.ELEMENT_KIND_EDGE:
@@ -233,13 +242,9 @@ class SchemaGraph(object):
         # Initialize the _vertex_class_names, _edge_class_names, and _non_graph_class_names sets.
         self._split_classes_by_kind(class_name_to_definition)
 
-        kind_to_class_names = {
-            SchemaElement.ELEMENT_KIND_NON_GRAPH: self._non_graph_class_names,
-            SchemaElement.ELEMENT_KIND_VERTEX: self._vertex_class_names,
-            SchemaElement.ELEMENT_KIND_EDGE: self._edge_class_names,
-        }
-        for kind, class_names in six.iteritems(kind_to_class_names):
-            self._set_up_schema_elements_of_kind(class_name_to_definition, kind, class_names)
+        self._set_up_non_graph_elements(class_name_to_definition)
+        self._set_up_edge_elements(class_name_to_definition)
+        self._set_up_vertex_elements(class_name_to_definition)
 
         # Initialize the connections that show which vertex schema classes can be connected to
         # which other vertex schema classes, then freeze all vertex schema elements.
@@ -425,20 +430,33 @@ class SchemaGraph(object):
         self._edge_class_names = frozenset(self._edge_class_names)
         self._non_graph_class_names = frozenset(self._non_graph_class_names)
 
-    def _set_up_schema_elements_of_kind(self, class_name_to_definition, kind, class_names):
-        """Load all schema classes of the given kind. Used as part of __init__."""
-        for class_name in class_names:
+    def _set_up_non_graph_elements(self, class_name_to_definition):
+        kind = SchemaElement.ELEMENT_KIND_NON_GRAPH
+        for class_name in self.non_graph_class_names:
+            elem, links = self.get_schema_elements_and_links(class_name, class_name_to_definition,
+                                                             kind)
+            self._elements[class_name] = elem
+            _validate_non_edge_class_no_links(class_name, kind, links)
+
+    def _set_up_edge_elements(self, class_name_to_definition):
+        kind = SchemaElement.ELEMENT_KIND_EDGE
+        for class_name in self.edge_class_names:
             elem, links = self.get_schema_elements_and_links(class_name, class_name_to_definition,
                                                              kind)
 
             self._elements[class_name] = elem
+            abstract = self._is_abstract(class_name_to_definition[class_name])
+            self._set_edges_endpoints(class_name, links, abstract)
 
-            if kind == SchemaElement.ELEMENT_KIND_EDGE:
-                class_definition = class_name_to_definition[class_name]
-                abstract = self._is_abstract(class_definition)
-                self._set_edges_endpoints(abstract, class_name, links)
+    def _set_up_vertex_elements(self, class_name_to_definition):
+        kind = SchemaElement.ELEMENT_KIND_VERTEX
+        for class_name in self.vertex_class_names:
+            elem, links = self.get_schema_elements_and_links(class_name, class_name_to_definition,
+                                                             kind)
+            self._elements[class_name] = elem
+            _validate_non_edge_class_no_links(class_name, kind, links)
 
-    def _set_edges_endpoints(self, abstract, class_name, links):
+    def _set_edges_endpoints(self, class_name, links, abstract):
         in_leaf_endpoint = self._try_get_base_endpoint(class_name,
                                                        EDGE_SOURCE_PROPERTY_NAME,
                                                        links,
@@ -501,6 +519,7 @@ class SchemaGraph(object):
                     class_name, orientdb_property_definition)
                 property_name_to_descriptor[property_name] = property_descriptor
         return property_name_to_descriptor, link_direction_to_endpoint_classes
+
 
     def _is_abstract(self, class_definition):
         """Return if the class is abstract. We pretend the V and E OrientDB classes are abstract."""
@@ -586,10 +605,6 @@ class SchemaGraph(object):
         if type_id != PROPERTY_TYPE_LINK_ID:
             raise AssertionError('Found a property with name {} that is not declared with type '
                                  'Link'.format(class_name))
-
-        if class_name not in self._edge_class_names:
-            raise AssertionError(u'Found a property of type Link on a non-edge class: '
-                                 u'{} {}'.format(name, class_name))
 
         if linked_class is None:
             raise AssertionError(u'Property "{}" is declared with type Link but has no '
