@@ -537,7 +537,7 @@ def _get_schema_element_and_links(class_name, class_name_to_definition, kind, in
 
 def _get_class_properties_and_links(class_name, class_name_to_definition, inheritance_set,
                                     non_graph_class_names):
-    """Return the properties and links of the class. Only Edges have links."""
+    """Return the properties descriptors and links of the class. Only Edges have links."""
     property_name_to_descriptor = {}
     all_orientdb_property_lists = (
         class_name_to_definition[inherited_class_name]['properties']
