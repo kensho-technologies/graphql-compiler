@@ -461,14 +461,14 @@ class SchemaGraph(object):
             abstract = _is_abstract(class_name_to_definition[class_name])
 
             # Set edge connections. (Abstract classes may have missing leaf links).
-            in_leaf_link = _try_get_leaf_link(
-                class_name, EDGE_SOURCE_PROPERTY_NAME, links, abstract, self._subclass_sets)
-            out_leaf_link = _try_get_leaf_link(
-                class_name, EDGE_DESTINATION_PROPERTY_NAME, links, abstract, self._subclass_sets)
-            if in_leaf_link is not None:
-                elem.in_connections.add(in_leaf_link)
-            if out_leaf_link is not None:
-                elem.out_connections.add(out_leaf_link)
+            in_link = _try_get_base_link_from_superclasses(
+                class_name, EDGE_SOURCE_PROPERTY_NAME, links, abstract, self._inheritance_sets)
+            out_link = _try_get_base_link_from_superclasses(
+                class_name, EDGE_DESTINATION_PROPERTY_NAME, links, abstract, self._inheritance_sets)
+            if in_link is not None:
+                elem.in_connections.add(in_link)
+            if out_link is not None:
+                elem.out_connections.add(out_link)
 
             # Perform validation.
             _validate_number_of_edge_connections(elem)
@@ -614,41 +614,35 @@ def _create_descriptor_from_orientdb_property_definition(
     return descriptor
 
 
-def _try_get_leaf_link(class_name, link_direction, links, abstract,
-                       subclass_sets):
-    """Try to get the leaf link of an edge's end.
+def _try_get_base_link_from_superclasses(class_name, link_direction, links, abstract,
+                                         inheritance_sets):
+    """Try to get the base link class of an edge's end. May be None if edge is abstract.
 
-    Args:
-        class_name: string, the name of the edge class.
-        link_direction: string, either 'in' or 'out', describing the edge's end of interest.
-        links: dict, string -> [string], mapping a link direction to a list set of
-               classes that can appear on that end of the edge class. The link
-               direction can be one of 'in' or 'out'.
-        abstract: bool, describes whether the class is abstract.
-        subclass_sets: dict, string -> [string], mapping a class to its subclasses.
+    The elements of an end of an edge must be of only one class. We shall refer to this class as the
+    base link. The set of link classes is the set of classes that the base link must
+    implement and is defined by edge inheritance. Given the set of link classes of an edge's
+    end, we can reconstruct which is the base link by determining which class inherits from all
+    other link classes.
 
-    Returns:
-        optional string, describing the leaf link. We define the links of an edge's end to be the
-        set of classes that could appear in that end of the edge. We define the leaf link as the
-        link that is not inherited by any of the other links. Each edge's end can have at
-        most 1 leaf link. The ends of non-abstract edges must each have a leaf link.
+    However, note that if the edge is abstract no link classes may be defined for either end. In
+    this case, we return none.
     """
     links_in_direction_of_interest = links[link_direction]
-    leaf_link = None
+    base_link = None
     for link in links_in_direction_of_interest:
-        subclass_set = subclass_sets[link]
-        if len(set(links_in_direction_of_interest).intersection(subclass_set)) == 1:
-            if leaf_link is not None:
-                raise AssertionError(u'There already exists link "{}" in addition '
-                                     u'to link "{}" which is a subclass of all '
-                                     u'in/out links for class "{}".'
-                                     .format(leaf_link, link, class_name))
-            leaf_link = link
-    if leaf_link is None and not abstract:
-        raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
-                             u'no such subclass-of-all-elements exists.'
-                             .format(link_direction, class_name))
-    return leaf_link
+        inheritance_set = inheritance_sets[link]
+        if set(links_in_direction_of_interest).issubset(inheritance_set):
+            base_link = link
+
+    if base_link is None:
+        if len(links_in_direction_of_interest) > 0:
+            raise AssertionError(u'There exists no link class that is a subset of all'
+                                 u'link classes for the link direction {} of edge {}.'.
+                                 format(link_direction, class_name))
+        if not abstract:
+            raise AssertionError(u'There exists no link classes for the link direction {} of '
+                                 u'non-abstract edge {}.'.format(link_direction, class_name))
+    return base_link
 
 
 def _is_abstract(class_definition):
