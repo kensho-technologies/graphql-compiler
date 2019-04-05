@@ -44,7 +44,7 @@ class CompilerEntity(object):
     # pylint: disable=protected-access
     def __eq__(self, other):
         """Return True if the CompilerEntity objects are equal, and False otherwise."""
-        if not type(self) == type(other):
+        if type(self) != type(other):
             return False
 
         if len(self._print_args) != len(other._print_args):
