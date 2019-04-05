@@ -33,9 +33,9 @@ def _validate_number_of_edge_connections(elem):
         if not elem.abstract:
             if not (len(elem.in_connections) == 1 and len(elem.out_connections) == 1):
                 raise AssertionError(u'Found a non-abstract edge class with a missing '
-                                     u'incoming/outgoing connections : {}'.format(elem))
+                                     u'incoming/outgoing connection : {}'.format(elem))
     else:
-        raise AssertionError(u'Expected class {} to be a edge class.'.format(elem))
+        raise AssertionError(u'Expected class {} to be an edge class.'.format(elem))
 
 
 def _validate_property_names(class_name, properties):
@@ -60,8 +60,7 @@ def _validate_linked_class(edge_name, linked_class, vertex_class_names, class_na
                            subclass_sets):
     """Validates that the linked class is a valid vertex class."""
     if linked_class is None:
-        raise AssertionError(u'Property "{}" is declared with type Link but has no '
-                             u'linked class: {}'.format(edge_name, linked_class))
+        raise AssertionError(u'Class "{}" has a link to a null class.'.format(edge_name))
 
     if linked_class not in vertex_class_names:
         is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
@@ -71,7 +70,7 @@ def _validate_linked_class(edge_name, linked_class, vertex_class_names, class_na
                 all_subclasses_are_vertices = False
                 break
         if not (is_linked_class_abstract and all_subclasses_are_vertices):
-            raise AssertionError(u'Property "{}" is declared as a Link to class {}, but '
+            raise AssertionError(u'Class "{}" has a link to class {}, but '
                                  u'that class is neither a vertex nor is it an '
                                  u'abstract class whose subclasses are all vertices!'
                                  .format(edge_name, linked_class))
@@ -625,7 +624,7 @@ def _try_get_base_link_from_superclasses(class_name, link_direction, links, abst
     other link classes.
 
     However, note that if the edge is abstract no link classes may be defined for either end. In
-    this case, we return none.
+    this case, we return None.
     """
     links_in_direction_of_interest = links[link_direction]
     base_link = None
