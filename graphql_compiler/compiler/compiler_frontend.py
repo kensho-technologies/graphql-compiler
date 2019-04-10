@@ -722,15 +722,15 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
 def _validate_all_tags_are_used(metadata):
     """Ensure all tags are used in some filter."""
     tag_names = set(metadata.tags)
-    filter_args = set()
+    filter_arg_names = set()
     for location, _ in metadata.registered_locations:
         for filter_info in metadata.get_filter_infos(location):
-            for arg in filter_info.args:
-                if is_tag_argument(arg):
-                    filter_args.add(arg[1:])  # Don't include % in tag name
+            for filter_arg in filter_info.args:
+                if is_tag_argument(filter_arg):
+                    filter_arg_names.add(filter_arg[1:])  # Don't include % in tag name
 
-    unused_tags = tag_names - filter_args
-    if len(unused_tags) > 0:
+    unused_tags = tag_names - filter_arg_names
+    if unused_tags:
         raise GraphQLCompilationError(u'Found at least one unused @tag: {}.'.format(unused_tags))
 
 
