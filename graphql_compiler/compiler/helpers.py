@@ -242,6 +242,16 @@ def invert_dict(invertible_dict):
     return inverted
 
 
+def is_variable_argument(argument_name):
+    """Return True if the directive argument is a runtime variable, and False otherwise."""
+    return argument_name.startswith('$')
+
+
+def is_tag_argument(argument_name):
+    """Return True if the directive argument is a tagged value, and False otherwise."""
+    return argument_name.startswith('%')
+
+
 @total_ordering
 @six.add_metaclass(ABCMeta)
 class BaseLocation(object):
