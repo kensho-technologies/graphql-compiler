@@ -407,7 +407,7 @@ class SchemaGraph(object):
             self._subclass_sets[class_name] = frozenset(self._subclass_sets[class_name])
 
     def _split_classes_by_kind(self, class_name_to_definition):
-        """Assign each class to the vertex, edge or non-graph type sets based on its kind."""
+        """Assign each class to the vertex, edge or non-graph type sets exactd on its kind."""
         for class_name in class_name_to_definition:
             inheritance_set = self._inheritance_sets[class_name]
 
@@ -460,9 +460,9 @@ class SchemaGraph(object):
             abstract = _is_abstract(class_name_to_definition[class_name])
 
             # Set edge connections. (Abstract classes may have missing leaf links).
-            in_link = _try_get_base_link_from_superclasses(
+            in_link = _try_get_exact_link_from_superclasses(
                 class_name, EDGE_SOURCE_PROPERTY_NAME, links, abstract, self._inheritance_sets)
-            out_link = _try_get_base_link_from_superclasses(
+            out_link = _try_get_exact_link_from_superclasses(
                 class_name, EDGE_DESTINATION_PROPERTY_NAME, links, abstract, self._inheritance_sets)
             if in_link is not None:
                 elem.in_connections.add(in_link)
@@ -613,27 +613,27 @@ def _create_descriptor_from_orientdb_property_definition(
     return descriptor
 
 
-def _try_get_base_link_from_superclasses(class_name, link_direction, links, abstract,
-                                         inheritance_sets):
-    """Try to get the base link class of an edge's end. May be None if edge is abstract.
+def _try_get_exact_link_from_superclasses(class_name, link_direction, links, abstract,
+                                          inheritance_sets):
+    """Try to get the exact link class of an edge's end. May be None if edge is abstract.
 
     The elements of an end of an edge must be of only one class. We shall refer to this class as the
-    base link. The set of link classes is the set of classes that the base link must
+    exact link. The set of link classes is the set of classes that the exact link must
     implement and is defined by edge inheritance. Given the set of link classes of an edge's
-    end, we can reconstruct which is the base link by determining which class inherits from all
+    end, we can reconstruct which is the exact link by determining which class inherits from all
     other link classes.
 
     However, note that if the edge is abstract no link classes may be defined for either end. In
     this case, we return None.
     """
     links_in_direction_of_interest = links[link_direction]
-    base_link = None
+    exact_link = None
     for link in links_in_direction_of_interest:
         inheritance_set = inheritance_sets[link]
         if set(links_in_direction_of_interest).issubset(inheritance_set):
-            base_link = link
+            exact_link = link
 
-    if base_link is None:
+    if exact_link is None:
         if len(links_in_direction_of_interest) > 0:
             raise AssertionError(u'There exists no link class that is a subset of all'
                                  u'link classes for the link direction {} of edge {}.'.
@@ -641,7 +641,7 @@ def _try_get_base_link_from_superclasses(class_name, link_direction, links, abst
         if not abstract:
             raise AssertionError(u'There exists no link classes for the link direction {} of '
                                  u'non-abstract edge {}.'.format(link_direction, class_name))
-    return base_link
+    return exact_link
 
 
 def _is_abstract(class_definition):
