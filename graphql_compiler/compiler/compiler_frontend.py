@@ -731,7 +731,10 @@ def _validate_all_tags_are_used(metadata):
 
     unused_tags = tag_names - filter_arg_names
     if unused_tags:
-        raise GraphQLCompilationError(u'Found at least one unused @tag: {}.'.format(unused_tags))
+        raise GraphQLCompilationError(u'This GraphQL query contains @tag directives whose values '
+                                      u'are not used: {}. This is not allowed. Please either use '
+                                      u'them in a filter or remove them entirely.'
+                                      .format(unused_tags))
 
 
 def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
