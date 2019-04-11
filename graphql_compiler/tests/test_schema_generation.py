@@ -5,8 +5,7 @@ from frozendict import frozendict
 from graphql.type import GraphQLList, GraphQLString
 import six
 
-from graphql_compiler import get_graphql_schema_from_orientdb_schema_data
-
+from .. import get_graphql_schema_from_orientdb_schema_data
 from ..schema_generation.graphql_schema import _get_union_type_name
 from ..schema_generation.schema_graph import SchemaGraph
 from ..schema_generation.schema_properties import (
