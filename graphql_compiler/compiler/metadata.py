@@ -163,14 +163,21 @@ class QueryMetadataTable(object):
 
     @property
     def tags(self):
-        """Return a dict of tag name to TagInfo for the query."""
-        return self._tags
+        """Return an iterable of (tag_name, tag_info) tuples for all tags in the query."""
+        for tag_name, tag_info in six.iteritems(self._tags):
+            yield tag_name, tag_info
 
     def record_tag_info(self, tag_name, tag_info):
         """Record information about the tag."""
+        old_info = self._tags.get(tag_name, None)
+        if old_info is not None:
+            raise AssertionError(u'Attempting to define an already-defined tag {}. '
+                                 u'old info {}, new info {}'
+                                 .format(tag_name, old_info, tag_info))
         self._tags[tag_name] = tag_info
 
     def get_tag_info(self, tag_name):
+        """Get information about a tag."""
         return self._tags.get(tag_name, None)
 
     def record_filter_info(self, location, filter_info):
