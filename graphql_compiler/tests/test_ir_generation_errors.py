@@ -475,9 +475,6 @@ class IrGenerationErrorTests(unittest.TestCase):
             Animal @filter(op_name: "name_or_alias", value: ["$animal_name"]) {
                 name @tag(tag_name: "name'\\\\\\"")
                 uuid @output(out_name: "uuid")
-                in_Animal_ParentOf {
-                    name @filter(op_name: "!=", value: ["%name'\\\\\\""])
-                }
             }
         }''')
 
@@ -508,6 +505,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         unused_tag = (GraphQLCompilationError, '''{
             Animal {
                 name @tag(tag_name: "name")
+                uuid @output(out_name: "uuid")
             }
         }''')
 
