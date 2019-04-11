@@ -242,14 +242,19 @@ def invert_dict(invertible_dict):
     return inverted
 
 
-def is_variable_argument(argument_name):
+def is_variable_argument(argument):
     """Return True if the directive argument is a runtime variable, and False otherwise."""
-    return argument_name.startswith('$')
+    return argument.startswith('$')
 
 
-def is_tag_argument(argument_name):
+def is_tag_argument(argument):
     """Return True if the directive argument is a tagged value, and False otherwise."""
-    return argument_name.startswith('%')
+    return argument.startswith('%')
+
+
+def get_directive_argument_name(argument):
+    """Return the name of a variable or tag argument without the $ or %."""
+    return argument[1:]
 
 
 @total_ordering
