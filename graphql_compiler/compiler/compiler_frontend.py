@@ -85,12 +85,12 @@ from .directive_helpers import (
 )
 from .filters import process_filter_directive
 from .helpers import (
-    FoldScopeLocation, Location, get_ast_field_name, get_edge_direction_and_name,
-    get_field_type_from_schema, get_uniquely_named_objects_by_name, get_vertex_field_type,
-    invert_dict, is_vertex_field_name, strip_non_null_from_type, validate_output_name,
-    validate_safe_string
+    FoldScopeLocation, Location, get_ast_field_name, get_directive_argument_name,
+    get_edge_direction_and_name, get_field_type_from_schema, get_uniquely_named_objects_by_name,
+    get_vertex_field_type, invert_dict, is_tag_argument, is_vertex_field_name,
+    strip_non_null_from_type, validate_output_name, validate_safe_string
 )
-from .metadata import LocationInfo, QueryMetadataTable, RecurseInfo
+from .metadata import LocationInfo, QueryMetadataTable, RecurseInfo, TagInfo
 
 
 # LocationStackEntry contains the following:
@@ -292,6 +292,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
             'optional': is_in_optional_scope(context),
             'type': strip_non_null_from_type(current_schema_type),
         }
+        context['metadata'].record_tag_info(tag_name, TagInfo(location=location))
 
     output_directive = unique_local_directives.get('output', None)
     if output_directive:
@@ -718,6 +719,24 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     return basic_blocks
 
 
+def _validate_all_tags_are_used(metadata):
+    """Ensure all tags are used in some filter."""
+    tag_names = set([tag_name for tag_name, _ in metadata.tags])
+    filter_arg_names = set()
+    for location, _ in metadata.registered_locations:
+        for filter_info in metadata.get_filter_infos(location):
+            for filter_arg in filter_info.args:
+                if is_tag_argument(filter_arg):
+                    filter_arg_names.add(get_directive_argument_name(filter_arg))
+
+    unused_tags = tag_names - filter_arg_names
+    if unused_tags:
+        raise GraphQLCompilationError(u'This GraphQL query contains @tag directives whose values '
+                                      u'are not used: {}. This is not allowed. Please either use '
+                                      u'them in a filter or remove them entirely.'
+                                      .format(unused_tags))
+
+
 def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     """Compile a full GraphQL abstract syntax tree (AST) to intermediate representation.
 
@@ -818,6 +837,8 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     new_basic_blocks = _compile_ast_node_to_ir(
         schema, current_schema_type, base_ast, location, context)
     basic_blocks.extend(new_basic_blocks)
+
+    _validate_all_tags_are_used(context['metadata'])
 
     # All operations after this point affect the global query scope, and are not related to
     # the "current" location in the query produced by the sequence of Traverse/Backtrack blocks.

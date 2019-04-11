@@ -4,7 +4,7 @@ from collections import namedtuple
 
 import six
 
-from .helpers import FoldScopeLocation, Location
+from .helpers import Location
 
 
 LocationInfo = namedtuple(
@@ -23,6 +23,13 @@ LocationInfo = namedtuple(
     )
 )
 
+
+TagInfo = namedtuple(
+    'TagInfo',
+    (
+        'location',
+    )
+)
 
 FilterInfo = namedtuple(
     'FilterInfo',
@@ -154,11 +161,27 @@ class QueryMetadataTable(object):
                                  u'{}'.format(location))
         return location_info
 
+    @property
+    def tags(self):
+        """Return an iterable of (tag_name, tag_info) tuples for all tags in the query."""
+        for tag_name, tag_info in six.iteritems(self._tags):
+            yield tag_name, tag_info
+
+    def record_tag_info(self, tag_name, tag_info):
+        """Record information about the tag."""
+        old_info = self._tags.get(tag_name, None)
+        if old_info is not None:
+            raise AssertionError(u'Attempting to define an already-defined tag {}. '
+                                 u'old info {}, new info {}'
+                                 .format(tag_name, old_info, tag_info))
+        self._tags[tag_name] = tag_info
+
+    def get_tag_info(self, tag_name):
+        """Get information about a tag."""
+        return self._tags.get(tag_name, None)
+
     def record_filter_info(self, location, filter_info):
         """Record filter information about the location."""
-        if isinstance(location, FoldScopeLocation):
-            # NOTE(gurer): ignore filters inside the fold for now
-            return
         record_location = location.at_vertex()
         self._filter_infos.setdefault(record_location, []).append(filter_info)
 
