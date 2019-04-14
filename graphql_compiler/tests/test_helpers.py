@@ -7,11 +7,10 @@ from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
-from graphql_compiler import get_graphql_schema_from_orientdb_schema_data
-from graphql_compiler.schema_generation.schema_graph import SchemaGraph
-from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
-
+from .. import get_graphql_schema_from_orientdb_schema_data
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
+from ..schema_generation.schema_graph import SchemaGraph
+from ..schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
