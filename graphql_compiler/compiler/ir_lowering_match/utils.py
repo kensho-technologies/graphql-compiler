@@ -9,7 +9,7 @@ from ..expressions import (
     BinaryComposition, Expression, GlobalContextField, Literal, LocalField, NullLiteral,
     TrueLiteral, UnaryTransformation, ZeroLiteral
 )
-from ..helpers import Location, get_only_element_from_collection, is_vertex_field_name
+from ..helpers import get_only_element_from_collection, is_vertex_field_name
 
 
 def convert_coerce_type_to_instanceof_filter(coerce_type_block):
@@ -134,7 +134,8 @@ def filter_edge_field_non_existence(edge_expression):
     return BinaryComposition(u'||', field_null_check, field_size_check)
 
 
-def _filter_orientdb_simple_optional_edge(optional_edge_location, inner_location_name):
+def _filter_orientdb_simple_optional_edge(
+        query_metadata_table, optional_edge_location, inner_location_name):
     """Return an Expression that is False for rows that don't follow the @optional specification.
 
     OrientDB does not filter correctly within optionals. Namely, a result where the optional edge
@@ -162,6 +163,9 @@ def _filter_orientdb_simple_optional_edge(optional_edge_location, inner_location
         Here, the `optional_edge_location` is `Animal___1.out_Animal_ParentOf`.
 
     Args:
+        query_metadata_table: QueryMetadataTable object containing all metadata collected during
+                              query processing, including location metadata (e.g. which locations
+                              are folded or optional).
         optional_edge_location: Location object representing the optional edge field
         inner_location_name: string representing location within the corresponding optional traverse
 
@@ -171,13 +175,21 @@ def _filter_orientdb_simple_optional_edge(optional_edge_location, inner_location
     inner_local_field = LocalField(inner_location_name)
     inner_location_existence = BinaryComposition(u'!=', inner_local_field, NullLiteral)
 
-    edge_context_field = GlobalContextField(optional_edge_location)
+    # The optional_edge_location here is actually referring to the edge field itself.
+    # This is definitely non-standard, but required to get the proper semantics.
+    # To get its type, we construct the location of the vertex field on the other side of the edge.
+    vertex_location = (
+        optional_edge_location.at_vertex().navigate_to_subpath(optional_edge_location.field)
+    )
+    location_type = query_metadata_table.get_location_info(vertex_location).type
+
+    edge_context_field = GlobalContextField(optional_edge_location, location_type)
     edge_field_non_existence = filter_edge_field_non_existence(edge_context_field)
 
     return BinaryComposition(u'||', edge_field_non_existence, inner_location_existence)
 
 
-def construct_where_filter_predicate(simple_optional_root_info):
+def construct_where_filter_predicate(query_metadata_table, simple_optional_root_info):
     """Return an Expression that is True if and only if each simple optional filter is True.
 
     Construct filters for each simple optional, that are True if and only if `edge_field` does
@@ -186,6 +198,9 @@ def construct_where_filter_predicate(simple_optional_root_info):
     evaluate to True (conjunction).
 
     Args:
+        query_metadata_table: QueryMetadataTable object containing all metadata collected during
+                              query processing, including location metadata (e.g. which locations
+                              are folded or optional).
         simple_optional_root_info: dict mapping from simple_optional_root_location -> dict
                                    containing keys
                                    - 'inner_location_name': Location object correspoding to the
@@ -204,9 +219,9 @@ def construct_where_filter_predicate(simple_optional_root_info):
         inner_location_name = root_info_dict['inner_location_name']
         edge_field = root_info_dict['edge_field']
 
-        optional_edge_location = Location(root_location.query_path, field=edge_field)
+        optional_edge_location = root_location.navigate_to_field(edge_field)
         optional_edge_where_filter = _filter_orientdb_simple_optional_edge(
-            optional_edge_location, inner_location_name)
+            query_metadata_table, optional_edge_location, inner_location_name)
         inner_location_name_to_where_filter[inner_location_name] = optional_edge_where_filter
 
     # Sort expressions by inner_location_name to obtain deterministic order

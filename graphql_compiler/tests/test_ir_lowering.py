@@ -2,7 +2,7 @@
 from pprint import pformat
 import unittest
 
-from graphql import GraphQLString
+from graphql import GraphQLID, GraphQLString
 
 from ..compiler import ir_lowering_common, ir_lowering_gremlin, ir_lowering_match, ir_sanity_checks
 from ..compiler.blocks import (
@@ -18,7 +18,7 @@ from ..compiler.ir_lowering_common import OutputContextVertex
 from ..compiler.ir_lowering_match.utils import BetweenClause, CompoundMatchQuery
 from ..compiler.match_query import MatchQuery, convert_to_match_query
 from ..compiler.metadata import LocationInfo, QueryMetadataTable
-from ..schema import GraphQLDate
+from ..schema import GraphQLDate, GraphQLDateTime
 from .test_helpers import compare_ir_blocks, construct_location_types, get_schema
 
 
@@ -43,13 +43,14 @@ class CommonIrLoweringTests(unittest.TestCase):
     def setUp(self):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
+        self.schema = get_schema()
 
     def test_optimize_boolean_expression_comparisons(self):
         base_location = Location(('Animal',))
         equality_check = BinaryComposition(
-            u'=', ContextField(base_location), NullLiteral)
+            u'=', ContextField(base_location, self.schema.get_type('Animal')), NullLiteral)
         inequality_check = BinaryComposition(
-            u'!=', ContextField(base_location), NullLiteral)
+            u'!=', ContextField(base_location, self.schema.get_type('Animal')), NullLiteral)
 
         test_data = [
             # unaffected
@@ -127,13 +128,14 @@ class MatchIrLoweringTests(unittest.TestCase):
         expected_final_blocks[-1] = ConstructResult({
             'child_name': TernaryConditional(
                 BinaryComposition(u'!=',
-                                  OutputContextVertex(child_location),
+                                  OutputContextVertex(child_location, animal_graphql_type),
                                   NullLiteral),
                 OutputContextField(child_name_location, GraphQLString),
                 NullLiteral)
         })
 
-        final_blocks = ir_lowering_match.lower_context_field_existence(ir_blocks)
+        final_blocks = ir_lowering_match.lower_context_field_existence(
+            ir_blocks, query_metadata_table)
         check_test_data(self, expected_final_blocks, final_blocks)
 
     def test_context_field_existence_lowering_in_filter(self):
@@ -174,7 +176,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                     LocalField('name'),
                     TernaryConditional(
                         ContextFieldExistence(child_location),
-                        ContextField(child_name_location),
+                        ContextField(child_name_location, GraphQLString),
                         NullLiteral
                     )
                 )
@@ -203,10 +205,10 @@ class MatchIrLoweringTests(unittest.TestCase):
                     TernaryConditional(
                         BinaryComposition(
                             u'!=',
-                            ContextField(child_location),
+                            ContextField(child_location, animal_graphql_type),
                             NullLiteral
                         ),
-                        ContextField(child_name_location),
+                        ContextField(child_name_location, GraphQLString),
                         NullLiteral
                     )
                 )
@@ -217,7 +219,8 @@ class MatchIrLoweringTests(unittest.TestCase):
             })
         ]
 
-        final_blocks = ir_lowering_match.lower_context_field_existence(ir_blocks)
+        final_blocks = ir_lowering_match.lower_context_field_existence(
+            ir_blocks, query_metadata_table)
         check_test_data(self, expected_final_blocks, final_blocks)
 
     def test_backtrack_block_lowering_simple(self):
@@ -543,9 +546,12 @@ class MatchIrLoweringTests(unittest.TestCase):
             Backtrack(twice_revisited_base_location, optional=True),
             MarkLocation(thrice_revisited_base_location),
             ConstructResult({
-                'event_uuid': ContextField(event_location.navigate_to_field('uuid')),
-                'child_uuid': ContextField(child_location.navigate_to_field('uuid')),
-                'species_uuid': ContextField(species_location.navigate_to_field('uuid')),
+                'event_uuid': OutputContextField(
+                    event_location.navigate_to_field('uuid'), GraphQLID),
+                'child_uuid': OutputContextField(
+                    child_location.navigate_to_field('uuid'), GraphQLID),
+                'species_uuid': OutputContextField(
+                    species_location.navigate_to_field('uuid'), GraphQLID),
             }),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
@@ -580,9 +586,12 @@ class MatchIrLoweringTests(unittest.TestCase):
             Traverse('out', 'Animal_FedAt', optional=True),
             MarkLocation(event_location),
             ConstructResult({
-                'event_uuid': ContextField(event_location.navigate_to_field('uuid')),
-                'child_uuid': ContextField(child_location.navigate_to_field('uuid')),
-                'species_uuid': ContextField(species_location.navigate_to_field('uuid')),
+                'event_uuid': OutputContextField(
+                    event_location.navigate_to_field('uuid'), GraphQLID),
+                'child_uuid': OutputContextField(
+                    child_location.navigate_to_field('uuid'), GraphQLID),
+                'species_uuid': OutputContextField(
+                    species_location.navigate_to_field('uuid'), GraphQLID),
             }),
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
@@ -627,7 +636,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             ),
             MarkLocation(base_location),
             ConstructResult({
-                'animal_name': ContextField(base_name_location),
+                'animal_name': OutputContextField(base_name_location, GraphQLString),
             })
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
@@ -660,7 +669,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             ),
             MarkLocation(base_location),
             ConstructResult({
-                'animal_name': ContextField(base_name_location),
+                'animal_name': OutputContextField(base_name_location, GraphQLString),
             })
         ]
 
@@ -680,12 +689,19 @@ class MatchIrLoweringTests(unittest.TestCase):
                 TernaryConditional(
                     BinaryComposition(
                         u'!=',
-                        ContextField(other_parent_location.navigate_to_field('@rid')),
-                        ContextField(other_parent_fed_at_location.navigate_to_field('@rid'))),
+                        ContextField(
+                            other_parent_location.navigate_to_field('uuid'),
+                            GraphQLID
+                        ),
+                        ContextField(
+                            other_parent_fed_at_location.navigate_to_field('uuid'),
+                            GraphQLID
+                        )
+                    ),
                     BinaryComposition(
                         u'>=',
                         LocalField('event_date'),
-                        ContextField(other_parent_fed_at_tag)
+                        ContextField(other_parent_fed_at_tag, GraphQLDateTime)
                     ),
                     TrueLiteral
                 )
@@ -701,13 +717,20 @@ class MatchIrLoweringTests(unittest.TestCase):
                     TernaryConditional(
                         BinaryComposition(
                             u'!=',
-                            ContextField(other_parent_location.navigate_to_field('@rid')),
-                            ContextField(other_parent_fed_at_location.navigate_to_field('@rid'))),
+                            ContextField(
+                                other_parent_location.navigate_to_field('uuid'),
+                                GraphQLID
+                            ),
+                            ContextField(
+                                other_parent_fed_at_location.navigate_to_field('uuid'),
+                                GraphQLID
+                            )
+                        ),
                         TernaryConditional(
                             BinaryComposition(
                                 u'>=',
                                 LocalField('event_date'),
-                                ContextField(other_parent_fed_at_tag)
+                                ContextField(other_parent_fed_at_tag, GraphQLDateTime)
                             ),
                             TrueLiteral,
                             FalseLiteral
@@ -736,7 +759,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                     ContextFieldExistence(parent_location),
                     BinaryComposition(
                         u'has_substring',
-                        ContextField(parent_location.navigate_to_field('name')),
+                        ContextField(parent_location.navigate_to_field('name'), GraphQLString),
                         LocalField('name')
                     )
                 )
@@ -752,7 +775,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                     ContextFieldExistence(parent_location),
                     BinaryComposition(
                         u'LIKE',
-                        ContextField(parent_location.navigate_to_field('name')),
+                        ContextField(parent_location.navigate_to_field('name'), GraphQLString),
                         BinaryComposition(
                             u'+',
                             Literal('%'),
@@ -989,12 +1012,13 @@ class GremlinIrLoweringTests(unittest.TestCase):
             ConstructResult({
                 'child_name': TernaryConditional(
                     BinaryComposition(u'!=',
-                                      OutputContextVertex(child_location),
+                                      OutputContextVertex(child_location, animal_graphql_type),
                                       NullLiteral),
                     OutputContextField(child_name_location, GraphQLString),
                     NullLiteral)
             })
         )
 
-        final_blocks = ir_lowering_gremlin.lower_context_field_existence(ir_blocks)
+        final_blocks = ir_lowering_gremlin.lower_context_field_existence(
+            ir_blocks, query_metadata_table)
         check_test_data(self, expected_final_blocks, final_blocks)

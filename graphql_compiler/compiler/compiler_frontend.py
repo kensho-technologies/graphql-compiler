@@ -688,7 +688,8 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
 
             visitor_fn = expressions.make_type_replacement_visitor(
                 expressions.ContextField,
-                lambda context_field: expressions.GlobalContextField(context_field.location))
+                lambda context_field: expressions.GlobalContextField(
+                    context_field.location, context_field.field_type))
             filter_block = filter_block.visit_and_update_expressions(visitor_fn)
 
             set_fold_count_filter(context)

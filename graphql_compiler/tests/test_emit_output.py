@@ -4,16 +4,14 @@ import unittest
 from graphql import GraphQLString
 
 from ..compiler import emit_gremlin, emit_match
-from ..compiler.blocks import (
-    Backtrack, ConstructResult, Filter, GlobalOperationsStart, MarkLocation, QueryRoot, Traverse
-)
+from ..compiler.blocks import Backtrack, ConstructResult, Filter, MarkLocation, QueryRoot, Traverse
 from ..compiler.expressions import (
     BinaryComposition, ContextField, LocalField, NullLiteral, OutputContextField,
     TernaryConditional, Variable
 )
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common import OutputContextVertex
-from ..compiler.ir_lowering_match.utils import CompoundMatchQuery, construct_where_filter_predicate
+from ..compiler.ir_lowering_match.utils import CompoundMatchQuery
 from ..compiler.match_query import convert_to_match_query
 from ..schema import GraphQLDateTime
 from .test_helpers import compare_gremlin, compare_match
@@ -88,74 +86,6 @@ class EmitMatchTests(unittest.TestCase):
                     as: Foo___1
                 }}
                 RETURN $matches
-            )
-        '''
-
-        received_match = emit_match.emit_code_from_ir(compound_match_query, None)
-        compare_match(self, expected_match, received_match)
-
-    def test_output_inside_optional_traversal(self):
-        base_location = Location(('Foo',))
-
-        child_location = base_location.navigate_to_subpath('out_Foo_Bar')
-        child_location_name, _ = child_location.get_location_name()
-
-        child_name_location = child_location.navigate_to_field('name')
-
-        simple_optional_root_info = {
-            base_location: {'inner_location_name': child_location_name, 'edge_field': 'out_Foo_Bar'}
-        }
-
-        ir_blocks = [
-            QueryRoot({'Foo'}),
-            MarkLocation(base_location),
-            Traverse('out', 'Foo_Bar', optional=True),
-            MarkLocation(child_location),
-
-            QueryRoot({'Foo'}),
-            MarkLocation(base_location),
-            GlobalOperationsStart(),
-            Filter(construct_where_filter_predicate(simple_optional_root_info)),
-            ConstructResult({
-                'bar_name': TernaryConditional(
-                    BinaryComposition(
-                        u'!=',
-                        OutputContextVertex(child_location),
-                        NullLiteral
-                    ),
-                    OutputContextField(child_name_location, GraphQLString),
-                    NullLiteral)
-            }),
-        ]
-        match_query = convert_to_match_query(ir_blocks)
-        compound_match_query = CompoundMatchQuery(match_queries=[match_query])
-
-        expected_match = '''
-            SELECT if(
-                eval("(Foo__out_Foo_Bar___1 IS NOT null)"),
-                Foo__out_Foo_Bar___1.name,
-                null
-            ) AS `bar_name` FROM (
-                MATCH {{
-                    class: Foo,
-                    as: Foo___1
-                }}.out('Foo_Bar') {{
-                    optional: true,
-                    as: Foo__out_Foo_Bar___1
-                }} , {{
-                    class: Foo,
-                    as: Foo___1
-                }}
-                RETURN $matches
-            )
-            WHERE (
-                (
-                    (Foo___1.out_Foo_Bar IS null)
-                    OR
-                    (Foo___1.out_Foo_Bar.size() = 0)
-                )
-                OR
-                (Foo__out_Foo_Bar___1 IS NOT null)
             )
         '''
 
@@ -272,7 +202,7 @@ class EmitGremlinTests(unittest.TestCase):
             Filter(BinaryComposition(
                 u'=',
                 LocalField(u'name'),
-                ContextField(base_location.navigate_to_field(u'name')))),
+                ContextField(base_location.navigate_to_field(u'name'), GraphQLString))),
             MarkLocation(child_location),
             Backtrack(base_location),
             ConstructResult({
@@ -312,7 +242,10 @@ class EmitGremlinTests(unittest.TestCase):
                 'bar_name': TernaryConditional(
                     BinaryComposition(
                         u'!=',
-                        OutputContextVertex(child_location),
+                        # HACK(predrag): The type given to OutputContextVertex here is wrong,
+                        # but it shouldn't cause any trouble since it has absolutely nothing to do
+                        # with the code being tested.
+                        OutputContextVertex(child_location, GraphQLString),
                         NullLiteral),
                     OutputContextField(child_name_location, GraphQLString),
                     NullLiteral)

@@ -3,6 +3,7 @@
 
 from abc import ABCMeta, abstractmethod
 
+from graphql import is_type
 import six
 
 
@@ -43,9 +44,23 @@ class CompilerEntity(object):
     # pylint: disable=protected-access
     def __eq__(self, other):
         """Return True if the CompilerEntity objects are equal, and False otherwise."""
-        return (type(self) == type(other) and
-                self._print_args == other._print_args and
-                self._print_kwargs == other._print_kwargs)
+        if type(self) != type(other):
+            return False
+
+        if len(self._print_args) != len(other._print_args):
+            return False
+
+        # The args sometimes contain GraphQL type objects, which unfortunately do not define "==".
+        # We have to split them out and compare them using "is_same_type()" instead.
+        for self_arg, other_arg in six.moves.zip(self._print_args, other._print_args):
+            if is_type(self_arg):
+                if not self_arg.is_same_type(other_arg):
+                    return False
+            else:
+                if self_arg != other_arg:
+                    return False
+
+        return self._print_kwargs == other._print_kwargs
     # pylint: enable=protected-access
 
     def __ne__(self, other):
