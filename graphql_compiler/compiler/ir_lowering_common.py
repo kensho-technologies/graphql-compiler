@@ -53,18 +53,20 @@ class OutputContextVertex(ContextField):
         return mark_name
 
 
-def lower_context_field_existence(ir_blocks):
+def lower_context_field_existence(ir_blocks, query_metadata_table):
     """Lower ContextFieldExistence expressions into lower-level expressions."""
     def regular_visitor_fn(expression):
         """Expression visitor function that rewrites ContextFieldExistence expressions."""
         if not isinstance(expression, ContextFieldExistence):
             return expression
 
+        location_type = query_metadata_table.get_location_info(expression.location).type
+
         # Since this function is only used in blocks that aren't ConstructResult,
         # the location check is performed using a regular ContextField expression.
         return BinaryComposition(
             u'!=',
-            ContextField(expression.location),
+            ContextField(expression.location, location_type),
             NullLiteral)
 
     def construct_result_visitor_fn(expression):
@@ -72,11 +74,13 @@ def lower_context_field_existence(ir_blocks):
         if not isinstance(expression, ContextFieldExistence):
             return expression
 
+        location_type = query_metadata_table.get_location_info(expression.location).type
+
         # Since this function is only used in ConstructResult blocks,
         # the location check is performed using the special OutputContextVertex expression.
         return BinaryComposition(
             u'!=',
-            OutputContextVertex(expression.location),
+            OutputContextVertex(expression.location, location_type),
             NullLiteral)
 
     new_ir_blocks = []

@@ -4,10 +4,10 @@ from pyorient.constants import DB_TYPE_GRAPH
 from pyorient.ogm import Config, Graph
 
 
-ORIENTDB_SERVER = "localhost"
+ORIENTDB_SERVER = 'localhost'
 ORIENTDB_PORT = 2424
-ORIENTDB_USER = "root"
-ORIENTDB_PASSWORD = "root"
+ORIENTDB_USER = 'root'
+ORIENTDB_PASSWORD = 'root'
 
 
 def get_orientdb_url(database_name):

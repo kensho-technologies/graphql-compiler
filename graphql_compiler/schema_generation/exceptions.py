@@ -34,5 +34,5 @@ class IllegalSchemaStateError(SchemaError):
     """
 
 
-class IllegalGraphQLRepresentationError(SchemaError):
-    """Raised when an OrientDB class has no valid GraphQL representation."""
+class EmptySchemaError(SchemaError):
+    """Raised when there are no visible vertex types to import into the GraphQL schema object."""
