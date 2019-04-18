@@ -1,12 +1,11 @@
 # Copyright 2018-present Kensho Technologies, LLC.
-"""
-Lower GraphQL compiler IR to a SQL Tree representation.
+"""Lower GraphQL compiler IR to a SQL Tree representation.
 
 Two goals are accomplished in this lowering pass:
-1. All filters and outputs are associated with a unique query path, later allowing these filters and
-   outputs to be applied to the unique SQLAlchemy Table object at that query path.
-2. The parent/child tree structure of the IR blocks is constructed, allowing for a more natural
-   recursive Tree traversal algorithm to be used in the emit phase of the compiler.
+(1) All filters and outputs are associated with a unique query path, later allowing these filters and
+    outputs to be applied to the unique SQLAlchemy Table object at that query path.
+(2) The parent/child tree structure of the IR blocks is constructed, allowing for a more natural
+    recursive Tree traversal algorithm to be used in the emit phase of the compiler.
 
 For (1), the approach to lowering to SQLAlchemy as an intermediate representation taken here
 requires that all filters and outputs are associated with the correct Table objects. This is so that
