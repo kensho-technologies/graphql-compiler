@@ -1,5 +1,30 @@
 # Copyright 2018-present Kensho Technologies, LLC.
+"""
+Lower GraphQL compiler IR to a SQL Tree representation.
 
+Two goals are accomplished in this lowering pass:
+1. All filters and outputs are associated with a unique query path, later allowing these filters and
+   outputs to be applied to the unique SQLAlchemy Table object at that query path.
+2. The parent/child tree structure of the IR blocks is constructed, allowing for a more natural
+   recursive Tree traversal algorithm to be used in the emit phase of the compiler.
+
+For (1), the approach to lowering to SQLAlchemy as an intermediate representation taken here
+requires that all filters and outputs are associated with the correct Table objects. This is so that
+the emit step can use the columns of that Table object to create the correct SELECT/WHERE SQLAlchemy
+constructs. The rule here is that each query path is associated uniquely with a Table,
+meaning that a filter/output can be associated with the correct Table by finding the correct query
+path.
+
+Finding the query path for Filter blocks is done by finding the query path of the Traverse/QueryRoot
+block immediately preceding the Filter block. For outputs, since outputs occur in the final
+ConstructResult block of the IR, the Field information associated with an output supplies the
+correct query path.
+
+For (2), the query path captures the parent/child information necessary to construct a Tree. If the
+query path is ('A', 'B', 'C'), the parent of 'C' is the node at query path ('A', 'B'). This allows
+for correct parent/child relationships to be formed with each Traverse/QueryRoot block encountered
+in the IR.
+"""
 import six
 
 from .sql_tree import SqlNode, SqlQueryTree
