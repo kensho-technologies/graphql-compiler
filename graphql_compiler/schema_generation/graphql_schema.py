@@ -11,13 +11,54 @@ import six
 from ..schema import (
     DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 )
-from .exceptions import IllegalGraphQLRepresentationError
+from .exceptions import EmptySchemaError
 from .schema_properties import (
-    EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME, PROPERTY_TYPE_BOOLEAN_ID,
-    PROPERTY_TYPE_DATE_ID, PROPERTY_TYPE_DATETIME_ID, PROPERTY_TYPE_DECIMAL_ID,
-    PROPERTY_TYPE_DOUBLE_ID, PROPERTY_TYPE_EMBEDDED_LIST_ID, PROPERTY_TYPE_EMBEDDED_SET_ID,
-    PROPERTY_TYPE_FLOAT_ID, PROPERTY_TYPE_INTEGER_ID, PROPERTY_TYPE_STRING_ID
+    EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
+    PROPERTY_TYPE_BOOLEAN_ID, PROPERTY_TYPE_DATE_ID, PROPERTY_TYPE_DATETIME_ID,
+    PROPERTY_TYPE_DECIMAL_ID, PROPERTY_TYPE_DOUBLE_ID, PROPERTY_TYPE_EMBEDDED_LIST_ID,
+    PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_FLOAT_ID, PROPERTY_TYPE_INTEGER_ID,
+    PROPERTY_TYPE_STRING_ID
 )
+
+
+def _get_referenced_type_equivalences(graphql_types, type_equivalence_hints):
+    """Filter union types with no edges from the type equivalence hints dict."""
+    referenced_types = set()
+    for graphql_type in graphql_types.values():
+        if isinstance(graphql_type, (GraphQLObjectType, GraphQLInterfaceType)):
+            for _, field in graphql_type.fields.items():
+                if isinstance(field.type, GraphQLList):
+                    referenced_types.add(field.type.of_type.name)
+    return {
+        original: union
+        for original, union in type_equivalence_hints.items()
+        if union.name in referenced_types
+    }
+
+
+def _get_inherited_field_types(class_to_field_type_overrides, schema_graph):
+    """Return a dictionary describing the field type overrides in subclasses."""
+    inherited_field_type_overrides = dict()
+    for superclass_name, field_type_overrides in class_to_field_type_overrides.items():
+        for subclass_name in schema_graph.get_subclass_set(superclass_name):
+            inherited_field_type_overrides.setdefault(subclass_name, dict())
+            inherited_field_type_overrides[subclass_name].update(field_type_overrides)
+    return inherited_field_type_overrides
+
+
+def _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_type_overrides,
+                                                               schema_graph):
+    """Assert that the fields we want to override are not defined in superclasses."""
+    for class_name, field_type_overrides in six.iteritems(class_to_field_type_overrides):
+        for superclass_name in schema_graph.get_inheritance_set(class_name):
+            if superclass_name != class_name:
+                superclass = schema_graph.get_element_by_class_name(superclass_name)
+                for field_name in field_type_overrides:
+                    if field_name in superclass.properties:
+                        raise AssertionError(
+                            u'Attempting to override field "{}" from class "{}", but the field is '
+                            u'defined in superclass "{}"'
+                            .format(field_name, class_name, superclass_name))
 
 
 def _property_descriptor_to_graphql_type(property_obj):
@@ -184,61 +225,34 @@ def _create_union_types_specification(schema_graph, graphql_types, hidden_classe
     return types_spec
 
 
-def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides=None,
-                                         hidden_classes=None):
+def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
+                                         hidden_classes):
     """Return a GraphQL schema object corresponding to the schema of the given schema graph.
 
     Args:
         schema_graph: SchemaGraph
-        class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
-            (string -> {string -> GraphQLType}). Used to override the type of a field in the class
-            where it's first defined and all the the class's subclasses.
-        hidden_classes: optional set of Strings, classes to not include in the GraphQL schema.
+        class_to_field_type_overrides: dict, class name -> {field name -> field type},
+                                       (string -> {string -> GraphQLType}). Used to override the
+                                       type of a field in the class where it's first defined and all
+                                       the class's subclasses.
+        hidden_classes: set of strings, classes to not include in the GraphQL schema.
 
     Returns:
-        tuple (GraphQL schema object, GraphQL type equivalence hints dict), or (None, None)
-        if there is no schema data in the graph yet.
-        For example, the graph has no schema data if applying schema updates from the very
-        first update. We have to return None because the GraphQL library does not support
-        empty schema objects -- the root object must have some keys and values.
+        tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
+        The tuple is of type (GraphQLSchema, {GraphQLObjectType -> GraphQLUnionType}).
     """
-    if class_to_field_type_overrides is None:
-        class_to_field_type_overrides = dict()
-
-    # Assert that the fields we want to override are not defined in a superclass.
-    for class_name, field_type_overrides in six.iteritems(class_to_field_type_overrides):
-        for superclass_name in schema_graph.get_inheritance_set(class_name):
-            if superclass_name != class_name:
-                superclass = schema_graph.get_element_by_class_name(superclass_name)
-                for field_name in field_type_overrides:
-                    if field_name in superclass.properties:
-                        raise AssertionError(
-                            u'Attempting to override field "{}" from class "{}", but the field is '
-                            u'defined in superclass "{}"'
-                            .format(field_name, class_name, superclass_name))
+    _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_type_overrides,
+                                                               schema_graph)
 
     # The field types of subclasses must also be overridden.
     # Remember that the result returned by get_subclass_set(class_name) includes class_name itself.
-    inherited_field_type_overrides = dict()
-    for superclass_name, field_type_overrides in class_to_field_type_overrides.items():
-        for subclass_name in schema_graph.get_subclass_set(superclass_name):
-            inherited_field_type_overrides.setdefault(subclass_name, dict())
-            inherited_field_type_overrides[subclass_name].update(field_type_overrides)
+    inherited_field_type_overrides = _get_inherited_field_types(class_to_field_type_overrides,
+                                                                schema_graph)
 
-    if hidden_classes is None:
-        hidden_classes = dict()
-        # If user fails to input hidden types, assert that at all vertices have valid GraphQL reps.
-        for vertex_cls_name in schema_graph.vertex_class_names:
-            vertex_cls = schema_graph.get_element_by_class_name(vertex_cls_name)
-            if len(vertex_cls.properties) == 0:
-                raise IllegalGraphQLRepresentationError(
-                    u'Class "{}" does not have any properties. Therefore, it is not representable '
-                    u'in the Graph and must be explicitly added to the hidden classes.'
-                    .format(vertex_cls_name))
-    else:
-        for hidden_class_name in hidden_classes:
-            # Assert that hidden type exists in the schema
-            schema_graph.get_element_by_class_name_or_raise(hidden_class_name)
+    # We remove the base vertex class from the schema if it has no properties.
+    # If it has no properties, it's meaningless and makes the schema less syntactically sweet.
+    if not schema_graph.get_element_by_class_name(ORIENTDB_BASE_VERTEX_CLASS_NAME).properties:
+        hidden_classes.add(ORIENTDB_BASE_VERTEX_CLASS_NAME)
 
     graphql_types = OrderedDict()
     type_equivalence_hints = OrderedDict()
@@ -320,18 +334,21 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     for non_graph_cls_name in sorted(schema_graph.non_graph_class_names):
         if non_graph_cls_name in hidden_classes:
             continue
+        if not schema_graph.get_element_by_class_name(non_graph_cls_name).abstract:
+            continue
 
         cls_subclasses = schema_graph.get_subclass_set(non_graph_cls_name)
         # No need to add the possible abstract class if it doesn't have subclasses besides itself.
         if len(cls_subclasses) > 1:
             all_non_abstract_subclasses_are_vertices = True
 
-            # Check if class is abstract and all non-abstract subclasses are vertices.
+            # Check all non-abstract subclasses are vertices.
             for subclass_name in cls_subclasses:
                 subclass = schema_graph.get_element_by_class_name(subclass_name)
-                if not subclass.abstract and not subclass.is_vertex:
-                    all_non_abstract_subclasses_are_vertices = False
-                    break
+                if subclass_name != non_graph_cls_name:
+                    if not subclass.abstract and not subclass.is_vertex:
+                        all_non_abstract_subclasses_are_vertices = False
+                        break
 
             if all_non_abstract_subclasses_are_vertices:
                 # Add abstract class as an interface.
@@ -345,9 +362,8 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
                 graphql_types[non_graph_cls_name] = graphql_type
 
     if not graphql_types:
-        # After evaluating all subclasses of V, we weren't able to find any visible schema data
-        # to import into the GraphQL schema object.
-        return None, None
+        raise EmptySchemaError(u'After evaluating all subclasses of V, we were not able to find '
+                               u'visible schema data to import into the GraphQL schema object')
 
     # Create the root query GraphQL type. Consists of all non-union classes, i.e.
     # all non-abstract classes (as GraphQL types) and all abstract classes (as GraphQL interfaces).
@@ -358,4 +374,10 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     ]))
 
     schema = GraphQLSchema(RootSchemaQuery, directives=DIRECTIVES)
-    return schema, type_equivalence_hints
+
+    # Note that the GraphQLSchema reconstructs the set of types in the schema by recursively
+    # searching through the fields of the RootSchemaQuery. Since union types can only appear in the
+    # fields of other types as edges, union types with no in or out edges will not appear in the
+    # schema. Therefore, we remove these unions and their keys from the type equivalence hints.
+    return schema, _get_referenced_type_equivalences(graphql_types,
+                                                     type_equivalence_hints)

@@ -8,8 +8,8 @@ from graphql.type.definition import is_leaf_type
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from .helpers import (
-    get_uniquely_named_objects_by_name, is_vertex_field_name, is_vertex_field_type,
-    strip_non_null_from_type, validate_safe_string
+    get_uniquely_named_objects_by_name, is_tag_argument, is_variable_argument, is_vertex_field_name,
+    is_vertex_field_type, strip_non_null_from_type, validate_safe_string
 )
 from .metadata import FilterInfo
 
@@ -79,16 +79,6 @@ def takes_parameters(count):
     return decorator
 
 
-def _is_variable_argument(argument_name):
-    """Return True if the argument is a runtime variable, and False otherwise."""
-    return argument_name.startswith('$')
-
-
-def _is_tag_argument(argument_name):
-    """Return True if the argument is a tagged value, and False otherwise."""
-    return argument_name.startswith('%')
-
-
 def _represent_argument(directive_location, context, argument, inferred_type):
     """Return a two-element tuple that represents the argument to the directive being processed.
 
@@ -112,7 +102,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
     argument_name = argument[1:]
     validate_safe_string(argument_name)
 
-    if _is_variable_argument(argument):
+    if is_variable_argument(argument):
         existing_type = context['inputs'].get(argument_name, inferred_type)
         if not inferred_type.is_same_type(existing_type):
             raise GraphQLCompilationError(u'Incompatible types inferred for argument {}. '
@@ -122,7 +112,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
         context['inputs'][argument_name] = inferred_type
 
         return (expressions.Variable(argument, inferred_type), None)
-    elif _is_tag_argument(argument):
+    elif is_tag_argument(argument):
         argument_context = context['tags'].get(argument_name, None)
         if argument_context is None:
             raise GraphQLCompilationError(u'Undeclared argument used: {}'.format(argument))
@@ -158,7 +148,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
         if field_is_local:
             representation = expressions.LocalField(argument_name)
         else:
-            representation = expressions.ContextField(location)
+            representation = expressions.ContextField(location, tag_inferred_type)
 
         return (representation, non_existence_expression)
     else:
@@ -246,7 +236,7 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
                              u'"has_edge_degree" filter: {}'.format(filter_operation_info))
 
     argument = parameters[0]
-    if not _is_variable_argument(argument):
+    if not is_variable_argument(argument):
         raise GraphQLCompilationError(u'The "has_edge_degree" filter only supports runtime '
                                       u'variable arguments. Tagged values are not supported.'
                                       u'Argument name: {}'.format(argument))
