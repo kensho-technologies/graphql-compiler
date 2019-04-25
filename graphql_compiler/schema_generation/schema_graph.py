@@ -478,7 +478,7 @@ class SchemaGraph(object):
             # Freeze connections.
             elem.freeze()
 
-            # Store
+            # Store.
             self._elements[class_name] = elem
 
     def _set_up_vertex_elements(self, class_name_to_definition):
