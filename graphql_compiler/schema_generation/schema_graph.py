@@ -407,7 +407,7 @@ class SchemaGraph(object):
             self._subclass_sets[class_name] = frozenset(self._subclass_sets[class_name])
 
     def _split_classes_by_kind(self, class_name_to_definition):
-        """Assign each class to the vertex, edge or non-graph type sets exactd on its kind."""
+        """Assign each class to the vertex, edge or non-graph type sets based on its kind."""
         for class_name in class_name_to_definition:
             inheritance_set = self._inheritance_sets[class_name]
 
@@ -591,7 +591,6 @@ def _create_descriptor_from_orientdb_property_definition(
 
             qualifier = linked_type
         elif linked_class is not None and linked_type is None:
-            # No linked type, must be a linkz-graph user-defined type.
             if linked_class not in non_graph_class_names:
                 raise AssertionError(u'Property "{}" is an embedded collection but has '
                                      u'neither a linked class nor a linked type: '
