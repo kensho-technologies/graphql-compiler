@@ -622,8 +622,8 @@ def _try_get_exact_link_from_superclasses(class_name, link_direction, links, abs
     end, we can reconstruct which is the exact link by determining which class inherits from all
     other link classes.
 
-    However, note that if the edge is abstract no link classes may be defined for either end. In
-    this case, we return None.
+    However, note that if the edge is abstract, there is a possibility that no link classes may be
+    defined for the edge's end. In this case, we return None.
     """
     links_in_direction_of_interest = links[link_direction]
     exact_link = None
