@@ -93,7 +93,7 @@ def get_superclasses_from_class_definition(class_definition):
 @six.add_metaclass(ABCMeta)
 class SchemaElement(object):
 
-    def __init__(self, class_name, abstract, properties, class_fields):
+    def __init__(self, class_name, abstract, properties, class_fields, *args, **kwargs):
         """Create a new SchemaElement object.
 
         Args:
@@ -112,6 +112,9 @@ class SchemaElement(object):
         self._abstract = abstract
         self._properties = properties
         self._class_fields = class_fields
+
+        self._print_args = [class_name, abstract, properties, class_fields] + args
+        self._print_kwargs = kwargs
 
     @property
     def abstract(self):
@@ -147,6 +150,10 @@ class SchemaElement(object):
     def is_non_graph(self):
         """Return True if the schema element represents a non-graph type, and False otherwise."""
         return isinstance(self, NonGraphElement)
+
+    def freeze(self):
+        """Make the SchemaElement's connections immutable."""
+        pass
 
     def __str__(self):
         """Return a human-readable unicode representation of this SchemaElement."""
@@ -331,8 +338,7 @@ class SchemaGraph(object):
         # which other schema classes, then freeze all schema elements.
         self._link_vertex_and_edge_types()
         for element_name, element in six.iteritems(self._elements):
-            if element_name not in self._non_graph_class_names:
-                element.freeze()
+            element.freeze()
 
     def get_element_by_class_name(self, class_name):
         """Return the SchemaElement for the specified class name"""
