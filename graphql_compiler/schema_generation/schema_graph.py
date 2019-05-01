@@ -147,14 +147,22 @@ class SchemaElement(object):
         """Return True if the schema element represents a non-graph type, and False otherwise."""
         return isinstance(self, NonGraphElement)
 
-    @abstractmethod
     def __str__(self):
-        pass
+        """Return a human-readable unicode representation of this SchemaElement."""
+        printed_args = []
+        if self._print_args:
+            printed_args.append('{args}')
+        if self._print_kwargs:
+            printed_args.append('{kwargs}')
 
-    @abstractmethod
+        template = u'{cls_name}(' + u', '.join(printed_args) + u')'
+        return template.format(cls_name=type(self).__name__,
+                               args=self._print_args,
+                               kwargs=self._print_kwargs)
+
     def __repr__(self):
-        pass
-
+        """Return a human-readable str representation of the SchemaElement object."""
+        return self.__str__()
 
 class GraphElement(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields):
@@ -181,9 +189,9 @@ class GraphElement(SchemaElement):
         self.out_connections = frozenset(self.out_connections)
 
 
-class Vertex(GraphElement):
+class VertexType(GraphElement):
     def __init__(self, class_name, abstract, properties, class_fields):
-        super(Vertex, self).__init__(class_name, abstract, properties, class_fields)
+        super(VertexType, self).__init__(class_name, abstract, properties, class_fields)
 
         # Non-edges must not have properties like "in" or "out" defined, and
         # must not have properties of type "Link".
@@ -199,9 +207,9 @@ class Vertex(GraphElement):
     __repr__ = __str__
 
 
-class Edge(GraphElement):
+class EdgeType(GraphElement):
     def __init__(self, class_name, abstract, properties, class_fields):
-        super(Edge, self).__init__(class_name, abstract, properties, class_fields)
+        super(EdgeType, self).__init__(class_name, abstract, properties, class_fields)
 
         _validate_edges_do_not_have_extra_links(class_name, properties)
         if not abstract:
