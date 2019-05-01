@@ -92,7 +92,6 @@ def get_superclasses_from_class_definition(class_definition):
 @six.add_metaclass(ABCMeta)
 class SchemaElement(object):
 
-    @abstractmethod
     def __init__(self, class_name, abstract, properties, class_fields):
         """Create a new SchemaElement object.
 
