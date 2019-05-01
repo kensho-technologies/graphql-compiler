@@ -507,10 +507,6 @@ class SchemaGraph(object):
         allowed_duplicated_edge_property_names = frozenset({
             EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME
         })
-        orientdb_base_classes = frozenset({
-            ORIENTDB_BASE_VERTEX_CLASS_NAME,
-            ORIENTDB_BASE_EDGE_CLASS_NAME,
-        })
 
         for class_name in class_names:
             class_definition = class_name_to_definition[class_name]
@@ -520,14 +516,6 @@ class SchemaGraph(object):
                 # OrientDB likes to make empty collections be None instead.
                 # We convert this field back to an empty dict, for our general sanity.
                 class_fields = dict()
-
-            abstract = class_definition['abstract']
-            if class_name in orientdb_base_classes:
-                # Special-case the V and E base classes:
-                # OrientDB won't let us make them abstract, but we don't want to create
-                # any vertices or edges with those types either.
-                # Pretend they are marked abstract in OrientDB's schema.
-                abstract = True
 
             property_name_to_descriptor = {}
             all_property_lists = (
@@ -558,6 +546,8 @@ class SchemaGraph(object):
                     links[property_name].append(property_descriptor)
                 else:
                     property_name_to_descriptor[property_name] = property_descriptor
+
+            abstract = _is_abstract(class_definition)
 
             for link_direction in allowed_duplicated_edge_property_names:
                 exact_link = _try_get_exact_link_from_superclasses(
@@ -699,3 +689,10 @@ def _try_get_exact_link_from_superclasses(class_name, link_direction, links, abs
                                  u'non-abstract edge {}.'.format(link_direction, class_name))
     return exact_link
 
+def _is_abstract(class_definition):
+    """Return if the class is abstract. We pretend the V and E OrientDB classes are abstract."""
+    orientdb_base_classes = frozenset({
+        ORIENTDB_BASE_VERTEX_CLASS_NAME,
+        ORIENTDB_BASE_EDGE_CLASS_NAME,
+    })
+    return class_definition['name'] in orientdb_base_classes or class_definition['abstract']
