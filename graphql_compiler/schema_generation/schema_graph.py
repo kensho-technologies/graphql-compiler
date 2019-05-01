@@ -113,7 +113,7 @@ class SchemaElement(object):
         self._properties = properties
         self._class_fields = class_fields
 
-        self._print_args = [class_name, abstract, properties, class_fields] + args
+        self._print_args = (class_name, abstract, properties, class_fields) + args
         self._print_kwargs = kwargs
 
     @property
