@@ -510,12 +510,8 @@ class SchemaGraph(object):
 
         for class_name in class_names:
             class_definition = class_name_to_definition[class_name]
-
-            class_fields = class_definition.get('customFields')
-            if class_fields is None:
-                # OrientDB likes to make empty collections be None instead.
-                # We convert this field back to an empty dict, for our general sanity.
-                class_fields = dict()
+            class_fields = _get_class_fields(class_definition)
+            abstract = _is_abstract(class_definition)
 
             property_name_to_descriptor = {}
             all_property_lists = (
@@ -546,8 +542,6 @@ class SchemaGraph(object):
                     links[property_name].append(property_descriptor)
                 else:
                     property_name_to_descriptor[property_name] = property_descriptor
-
-            abstract = _is_abstract(class_definition)
 
             for link_direction in allowed_duplicated_edge_property_names:
                 exact_link = _try_get_exact_link_from_superclasses(
@@ -689,6 +683,7 @@ def _try_get_exact_link_from_superclasses(class_name, link_direction, links, abs
                                  u'non-abstract edge {}.'.format(link_direction, class_name))
     return exact_link
 
+
 def _is_abstract(class_definition):
     """Return if the class is abstract. We pretend the V and E OrientDB classes are abstract."""
     orientdb_base_classes = frozenset({
@@ -696,3 +691,13 @@ def _is_abstract(class_definition):
         ORIENTDB_BASE_EDGE_CLASS_NAME,
     })
     return class_definition['name'] in orientdb_base_classes or class_definition['abstract']
+
+
+def _get_class_fields(class_definition):
+    """Return the class fields."""
+    class_fields = class_definition.get('customFields')
+    if class_fields is None:
+        # OrientDB likes to make empty collections be None instead.
+        # We convert this field back to an empty dict, for our general sanity.
+        class_fields = dict()
+    return class_fields
