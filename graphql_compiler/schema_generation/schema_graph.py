@@ -89,6 +89,7 @@ def get_superclasses_from_class_definition(class_definition):
     return []
 
 
+@six.python_2_unicode_compatible
 @six.add_metaclass(ABCMeta)
 class SchemaElement(object):
 
