@@ -518,7 +518,7 @@ class SchemaGraph(object):
         self._edge_class_names = frozenset(self._edge_class_names)
         self._non_graph_class_names = frozenset(self._non_graph_class_names)
 
-    def _set_up_schema_elements_of_kind(self, class_name_to_definition, kind, class_names):
+    def _set_up_schema_elements_of_kind(self, class_name_to_definition, kind_cls, class_names):
         """Load all schema classes of the given kind. Used as part of __init__."""
         allowed_duplicated_edge_property_names = frozenset({
             EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME
@@ -559,7 +559,7 @@ class SchemaGraph(object):
                 # in the entire inheritance hierarchy of any schema class, of any kind.
                 duplication_allowed = all((
                     property_name in allowed_duplicated_edge_property_names,
-                    issubclass(kind, EdgeType)
+                    issubclass(kind_cls, EdgeType)
                 ))
 
                 if not duplication_allowed and property_name in property_name_to_descriptor:
@@ -595,12 +595,12 @@ class SchemaGraph(object):
                         property_name_to_descriptor[property_name] = property_descriptor
 
                 if (property_name not in property_name_to_descriptor and not abstract and
-                        issubclass(kind, EdgeType)):
+                        issubclass(kind_cls, EdgeType)):
                     raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
                                          u'no such subclass-of-all-elements exists.'
                                          .format(property_name, class_name))
 
-            self._elements[class_name] = kind(class_name, abstract, property_name_to_descriptor,
+            self._elements[class_name] = kind_cls(class_name, abstract, property_name_to_descriptor,
                                               class_fields)
 
     def _create_descriptor_from_property_definition(self, class_name, property_definition,
