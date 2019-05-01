@@ -136,12 +136,12 @@ class SchemaElement(object):
     @property
     def is_vertex(self):
         """Return True if the schema element represents a vertex type, and False otherwise."""
-        return isinstance(self, Vertex)
+        return isinstance(self, VertexType)
 
     @property
     def is_edge(self):
         """Return True if the schema element represents an edge type, and False otherwise."""
-        return isinstance(self, Edge)
+        return isinstance(self, EdgeType)
 
     @property
     def is_non_graph(self):
@@ -320,8 +320,8 @@ class SchemaGraph(object):
 
         kind_to_class_names = {
             NonGraphElement: self._non_graph_class_names,
-            Vertex: self._vertex_class_names,
-            Edge: self._edge_class_names,
+            VertexType: self._vertex_class_names,
+            EdgeType: self._edge_class_names,
         }
         for kind, class_names in six.iteritems(kind_to_class_names):
             self._set_up_schema_elements_of_kind(class_name_to_definition, kind, class_names)
