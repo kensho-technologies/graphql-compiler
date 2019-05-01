@@ -206,15 +206,6 @@ class VertexType(GraphElement):
         # must not have properties of type "Link".
         _validate_non_edges_do_not_have_edge_like_properties(class_name, properties)
 
-    def __str__(self):
-        return (
-            'Vertex({}, abstract={}, properties={}, in_conn={}, out_conn={})'
-            .format(self._class_name, self._abstract, self._properties,
-                    self.in_connections, self.out_connections)
-        )
-
-    __repr__ = __str__
-
 
 class EdgeType(GraphElement):
     def __init__(self, class_name, abstract, properties, class_fields):
@@ -224,15 +215,6 @@ class EdgeType(GraphElement):
         if not abstract:
             _validate_non_abstract_edge_has_defined_endpoint_types(class_name, properties)
 
-    def __str__(self):
-        return (
-            'Edge({}, abstract={}, properties={}, in_conn={}, out_conn={})'
-            .format(self._class_name, self._abstract, self._properties,
-                    self.in_connections, self.out_connections)
-        )
-
-    __repr__ = __str__
-
 
 class NonGraphElement(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields):
@@ -241,14 +223,6 @@ class NonGraphElement(SchemaElement):
         # Non-edges must not have properties like "in" or "out" defined, and
         # must not have properties of type "Link".
         _validate_non_edges_do_not_have_edge_like_properties(class_name, properties)
-
-    def __str__(self):
-        return (
-            'NonGraphElement({}, abstract={}, properties={})'
-            .format(self._class_name, self._abstract, self._properties)
-        )
-
-    __repr__ = __str__
 
 
 class SchemaGraph(object):
