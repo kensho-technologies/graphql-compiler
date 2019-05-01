@@ -516,9 +516,6 @@ class SchemaGraph(object):
 
     def _get_element_properties(self, abstract, class_name, class_name_to_definition, kind_cls):
         """Return the properties of a SchemaElement corresponding to an OrientDB class."""
-        allowed_duplicated_edge_property_names = frozenset({
-            EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME
-        })
         property_name_to_descriptor = {}
         all_property_lists = (
             class_name_to_definition[inherited_class_name]['properties']
@@ -531,10 +528,7 @@ class SchemaGraph(object):
             # The only properties we allow to be redefined are the in/out properties
             # of edge classes. All other properties may only be defined once
             # in the entire inheritance hierarchy of any schema class, of any kind.
-            duplication_allowed = all((
-                property_name in allowed_duplicated_edge_property_names,
-                issubclass(kind_cls, EdgeType)
-            ))
+            duplication_allowed = property_name in links and issubclass(kind_cls, EdgeType)
 
             if not duplication_allowed and property_name in property_name_to_descriptor:
                 raise AssertionError(u'The property "{}" on class "{}" is defined '
@@ -544,11 +538,11 @@ class SchemaGraph(object):
             property_descriptor = self._create_descriptor_from_property_definition(
                 class_name, property_definition, class_name_to_definition)
 
-            if property_name in allowed_duplicated_edge_property_names:
+            if property_name in links:
                 links[property_name].append(property_descriptor)
             else:
                 property_name_to_descriptor[property_name] = property_descriptor
-        for property_name in allowed_duplicated_edge_property_names:
+        for property_name in links:
             elements = {
                 property_descriptor.qualifier
                 for property_descriptor in links[property_name]
