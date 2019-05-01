@@ -504,53 +504,75 @@ class SchemaGraph(object):
 
     def _set_up_schema_elements_of_kind(self, class_name_to_definition, kind_cls, class_names):
         """Load all schema classes of the given kind. Used as part of __init__."""
-        allowed_duplicated_edge_property_names = frozenset({
-            EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME
-        })
-
         for class_name in class_names:
             class_definition = class_name_to_definition[class_name]
             class_fields = _get_class_fields(class_definition)
             abstract = _is_abstract(class_definition)
+            property_name_to_descriptor = self._get_element_properties(
+                abstract, class_name,class_name_to_definition, kind_cls)
 
-            property_name_to_descriptor = {}
-            all_property_lists = (
-                class_name_to_definition[inherited_class_name]['properties']
-                for inherited_class_name in self._inheritance_sets[class_name]
-            )
-            links = {EDGE_DESTINATION_PROPERTY_NAME: [], EDGE_SOURCE_PROPERTY_NAME: []}
-            for property_definition in chain.from_iterable(all_property_lists):
-                property_name = property_definition['name']
+            self._elements[class_name] = kind_cls(
+                class_name, abstract, property_name_to_descriptor, class_fields)
 
-                # The only properties we allow to be redefined are the in/out properties
-                # of edge classes. All other properties may only be defined once
-                # in the entire inheritance hierarchy of any schema class, of any kind.
-                duplication_allowed = all((
-                    property_name in allowed_duplicated_edge_property_names,
-                    issubclass(kind_cls, EdgeType)
-                ))
+    def _get_element_properties(self, abstract, class_name, class_name_to_definition, kind_cls):
+        """Return the properties of a SchemaElement corresponding to an OrientDB class."""
+        allowed_duplicated_edge_property_names = frozenset({
+            EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME
+        })
+        property_name_to_descriptor = {}
+        all_property_lists = (
+            class_name_to_definition[inherited_class_name]['properties']
+            for inherited_class_name in self._inheritance_sets[class_name]
+        )
+        links = {EDGE_DESTINATION_PROPERTY_NAME: [], EDGE_SOURCE_PROPERTY_NAME: []}
+        for property_definition in chain.from_iterable(all_property_lists):
+            property_name = property_definition['name']
 
-                if not duplication_allowed and property_name in property_name_to_descriptor:
-                    raise AssertionError(u'The property "{}" on class "{}" is defined '
-                                         u'more than once, this is not allowed!'
-                                         .format(property_name, class_name))
+            # The only properties we allow to be redefined are the in/out properties
+            # of edge classes. All other properties may only be defined once
+            # in the entire inheritance hierarchy of any schema class, of any kind.
+            duplication_allowed = all((
+                property_name in allowed_duplicated_edge_property_names,
+                issubclass(kind_cls, EdgeType)
+            ))
 
-                property_descriptor = self._create_descriptor_from_property_definition(
-                    class_name, property_definition, class_name_to_definition)
+            if not duplication_allowed and property_name in property_name_to_descriptor:
+                raise AssertionError(u'The property "{}" on class "{}" is defined '
+                                     u'more than once, this is not allowed!'
+                                     .format(property_name, class_name))
 
-                if property_name in allowed_duplicated_edge_property_names:
-                    links[property_name].append(property_descriptor)
-                else:
+            property_descriptor = self._create_descriptor_from_property_definition(
+                class_name, property_definition, class_name_to_definition)
+
+            if property_name in allowed_duplicated_edge_property_names:
+                links[property_name].append(property_descriptor)
+            else:
+                property_name_to_descriptor[property_name] = property_descriptor
+        for property_name in allowed_duplicated_edge_property_names:
+            elements = {
+                property_descriptor.qualifier
+                for property_descriptor in links[property_name]
+            }
+            # If there are multiple in/out properties, we choose to include the one that
+            # is a subclass of all the elements present in the in/out properties.
+            for property_descriptor in links[property_name]:
+                subclass_set = self._subclass_sets[property_descriptor.qualifier]
+                if len(elements.intersection(subclass_set)) == 1:
+                    current_descriptor = property_name_to_descriptor.get(property_name, None)
+                    if current_descriptor and current_descriptor != property_descriptor:
+                        raise AssertionError(u'There already exists property "{}" in addition '
+                                             u'to property "{}" which is a subclass of all '
+                                             u'in/out properties for class "{}".'
+                                             .format(current_descriptor,
+                                                     property_descriptor, class_name))
                     property_name_to_descriptor[property_name] = property_descriptor
 
-            for link_direction in allowed_duplicated_edge_property_names:
-                exact_link = _try_get_exact_link_from_superclasses(
-                    class_name, link_direction, links, abstract, self._inheritance_sets)
-                if exact_link:
-                    links[link_direction] = exact_link
-
-            self._elements[class_name] = kind_cls(class_name, abstract, property_name_to_descriptor,
-                                                  class_fields)
+            if (property_name not in property_name_to_descriptor and not abstract and
+                    issubclass(kind_cls, EdgeType)):
+                raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
+                                     u'no such subclass-of-all-elements exists.'
+                                     .format(property_name, class_name))
+        return property_name_to_descriptor
 
     def _create_descriptor_from_property_definition(self, class_name, property_definition,
                                                     class_name_to_definition):
@@ -651,37 +673,6 @@ class SchemaGraph(object):
                 to_schema_element = self._elements[to_class]
                 edge_schema_element.out_connections.add(to_class)
                 to_schema_element.in_connections.add(edge_class_name)
-
-
-def _try_get_exact_link_from_superclasses(class_name, link_direction, links, abstract,
-                                          inheritance_sets):
-    """Try to get the exact link class of an edge's end. May be None if edge is abstract.
-
-    The elements of an end of an edge must be of only one class. We shall refer to this class as the
-    exact link. The set of link classes is the set of classes that the exact link must
-    implement and is defined by edge inheritance. Given the set of link classes of an edge's
-    end, we can reconstruct which is the exact link by determining which class inherits from all
-    other link classes.
-
-    However, note that if the edge is abstract, there is a possibility that no link classes may be
-    defined for the edge's end. In this case, we return None.
-    """
-    links_in_direction_of_interest = links[link_direction]
-    exact_link = None
-    for link in links_in_direction_of_interest:
-        inheritance_set = inheritance_sets[link]
-        if set(links_in_direction_of_interest).issubset(inheritance_set):
-            exact_link = link
-
-    if exact_link is None:
-        if len(links_in_direction_of_interest) > 0:
-            raise AssertionError(u'There exists no link class that is a subset of all'
-                                 u'link classes for the link direction {} of edge {}.'.
-                                 format(link_direction, class_name))
-        if not abstract:
-            raise AssertionError(u'There exists no link classes for the link direction {} of '
-                                 u'non-abstract edge {}.'.format(link_direction, class_name))
-    return exact_link
 
 
 def _is_abstract(class_definition):
