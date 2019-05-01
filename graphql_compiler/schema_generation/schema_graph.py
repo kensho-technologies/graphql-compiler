@@ -89,10 +89,8 @@ def get_superclasses_from_class_definition(class_definition):
     return []
 
 
+@six.add_metaclass(ABCMeta)
 class SchemaElement(object):
-    # pylint: disable=metaclass-assignment
-    __metaclass__ = ABCMeta
-    # pylint: enable=metaclass-assignment
 
     @abstractmethod
     def __init__(self, class_name, abstract, properties, class_fields):
