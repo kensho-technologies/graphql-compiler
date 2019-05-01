@@ -509,13 +509,13 @@ class SchemaGraph(object):
             class_fields = _get_class_fields(class_definition)
             abstract = _is_abstract(class_definition)
             property_name_to_descriptor = self._get_element_properties(
-                abstract, class_name,class_name_to_definition, kind_cls)
+                abstract, class_name, class_name_to_definition, kind_cls)
 
             self._elements[class_name] = kind_cls(
                 class_name, abstract, property_name_to_descriptor, class_fields)
 
     def _get_element_properties(self, abstract, class_name, class_name_to_definition, kind_cls):
-        """Return the properties of a SchemaElement corresponding to an OrientDB class."""
+        """Return the properties of a SchemaElement from an OrientDB class definition."""
         property_name_to_descriptor = {}
         all_property_lists = (
             class_name_to_definition[inherited_class_name]['properties']
