@@ -315,7 +315,7 @@ class SchemaGraph(object):
         # Initialize the connections that show which schema classes can be connected to
         # which other schema classes, then freeze all schema elements.
         self._link_vertex_and_edge_types()
-        for element_name, element in six.iteritems(self._elements):
+        for element in six.itervalues(self._elements):
             element.freeze()
 
     def get_element_by_class_name(self, class_name):
@@ -579,7 +579,7 @@ class SchemaGraph(object):
                                          .format(property_name, class_name))
 
             self._elements[class_name] = kind_cls(class_name, abstract, property_name_to_descriptor,
-                                              class_fields)
+                                                  class_fields)
 
     def _create_descriptor_from_property_definition(self, class_name, property_definition,
                                                     class_name_to_definition):
