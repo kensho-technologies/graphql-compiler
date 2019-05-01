@@ -93,6 +93,7 @@ def get_superclasses_from_class_definition(class_definition):
 @six.add_metaclass(ABCMeta)
 class SchemaElement(object):
 
+    @abstractmethod
     def __init__(self, class_name, abstract, properties, class_fields, *args, **kwargs):
         """Create a new SchemaElement object.
 
@@ -174,6 +175,8 @@ class SchemaElement(object):
 
 
 class GraphElement(SchemaElement):
+
+    @abstractmethod
     def __init__(self, class_name, abstract, properties, class_fields):
         super(GraphElement, self).__init__(class_name, abstract, properties, class_fields)
 
