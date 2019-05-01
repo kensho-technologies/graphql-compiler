@@ -93,6 +93,9 @@ def get_superclasses_from_class_definition(class_definition):
 @six.add_metaclass(ABCMeta)
 class SchemaElement(object):
 
+    # Since an abstract class without any abstract methods can be instantiated, we make the
+    # init method abstract in order to make it impossible to instantiate this class.
+    # Inspiration came from: https://stackoverflow.com/questions/44800659/python-abstract-class.
     @abstractmethod
     def __init__(self, class_name, abstract, properties, class_fields, *args, **kwargs):
         """Create a new SchemaElement object.
@@ -176,6 +179,9 @@ class SchemaElement(object):
 
 class GraphElement(SchemaElement):
 
+    # Since an abstract class without any abstract methods can be instantiated, we make the
+    # init method abstract in order to make it impossible to instantiate this class.
+    # Inspiration came from: https://stackoverflow.com/questions/44800659/python-abstract-class.
     @abstractmethod
     def __init__(self, class_name, abstract, properties, class_fields):
         super(GraphElement, self).__init__(class_name, abstract, properties, class_fields)
