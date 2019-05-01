@@ -165,6 +165,7 @@ class SchemaElement(object):
         """Return a human-readable str representation of the SchemaElement object."""
         return self.__str__()
 
+
 class GraphElement(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields):
         super(GraphElement, self).__init__(class_name, abstract, properties, class_fields)
@@ -552,7 +553,7 @@ class SchemaGraph(object):
                 # in the entire inheritance hierarchy of any schema class, of any kind.
                 duplication_allowed = all((
                     property_name in allowed_duplicated_edge_property_names,
-                    kind == Edge
+                    issubclass(kind, EdgeType)
                 ))
 
                 if not duplication_allowed and property_name in property_name_to_descriptor:
@@ -588,7 +589,7 @@ class SchemaGraph(object):
                         property_name_to_descriptor[property_name] = property_descriptor
 
                 if (property_name not in property_name_to_descriptor and not abstract and
-                        kind == Edge):
+                        issubclass(kind, EdgeType)):
                     raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
                                          u'no such subclass-of-all-elements exists.'
                                          .format(property_name, class_name))
