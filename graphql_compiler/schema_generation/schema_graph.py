@@ -152,7 +152,7 @@ class SchemaElement(object):
         return isinstance(self, NonGraphElement)
 
     def freeze(self):
-        """Make the SchemaElement's connections immutable."""
+        """Do nothing."""
         pass
 
     def __str__(self):
@@ -194,6 +194,7 @@ class GraphElement(SchemaElement):
 
     def freeze(self):
         """Make the SchemaElement's connections immutable."""
+        super(GraphElement, self).freeze()
         self.in_connections = frozenset(self.in_connections)
         self.out_connections = frozenset(self.out_connections)
 
