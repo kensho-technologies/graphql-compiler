@@ -504,88 +504,69 @@ class SchemaGraph(object):
 
     def _set_up_schema_elements_of_kind(self, class_name_to_definition, kind_cls, class_names):
         """Load all schema classes of the given kind. Used as part of __init__."""
-        allowed_duplicated_edge_property_names = frozenset({
-            EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME
-        })
-        orientdb_base_classes = frozenset({
-            ORIENTDB_BASE_VERTEX_CLASS_NAME,
-            ORIENTDB_BASE_EDGE_CLASS_NAME,
-        })
-
         for class_name in class_names:
             class_definition = class_name_to_definition[class_name]
+            class_fields = _get_class_fields(class_definition)
+            abstract = _is_abstract(class_definition)
+            property_name_to_descriptor = self._get_element_properties(
+                abstract, class_name, class_name_to_definition, kind_cls)
 
-            class_fields = class_definition.get('customFields')
-            if class_fields is None:
-                # OrientDB likes to make empty collections be None instead.
-                # We convert this field back to an empty dict, for our general sanity.
-                class_fields = dict()
+            self._elements[class_name] = kind_cls(
+                class_name, abstract, property_name_to_descriptor, class_fields)
 
-            abstract = class_definition['abstract']
-            if class_name in orientdb_base_classes:
-                # Special-case the V and E base classes:
-                # OrientDB won't let us make them abstract, but we don't want to create
-                # any vertices or edges with those types either.
-                # Pretend they are marked abstract in OrientDB's schema.
-                abstract = True
+    def _get_element_properties(self, abstract, class_name, class_name_to_definition, kind_cls):
+        """Return the properties of a SchemaElement from an OrientDB class definition."""
+        property_name_to_descriptor = {}
+        all_property_lists = (
+            class_name_to_definition[inherited_class_name]['properties']
+            for inherited_class_name in self._inheritance_sets[class_name]
+        )
+        links = {EDGE_DESTINATION_PROPERTY_NAME: [], EDGE_SOURCE_PROPERTY_NAME: []}
+        for property_definition in chain.from_iterable(all_property_lists):
+            property_name = property_definition['name']
 
-            property_name_to_descriptor = {}
-            all_property_lists = (
-                class_name_to_definition[inherited_class_name]['properties']
-                for inherited_class_name in self._inheritance_sets[class_name]
-            )
-            links = {EDGE_DESTINATION_PROPERTY_NAME: [], EDGE_SOURCE_PROPERTY_NAME: []}
-            for property_definition in chain.from_iterable(all_property_lists):
-                property_name = property_definition['name']
+            # The only properties we allow to be redefined are the in/out properties
+            # of edge classes. All other properties may only be defined once
+            # in the entire inheritance hierarchy of any schema class, of any kind.
+            duplication_allowed = property_name in links and issubclass(kind_cls, EdgeType)
 
-                # The only properties we allow to be redefined are the in/out properties
-                # of edge classes. All other properties may only be defined once
-                # in the entire inheritance hierarchy of any schema class, of any kind.
-                duplication_allowed = all((
-                    property_name in allowed_duplicated_edge_property_names,
-                    issubclass(kind_cls, EdgeType)
-                ))
+            if not duplication_allowed and property_name in property_name_to_descriptor:
+                raise AssertionError(u'The property "{}" on class "{}" is defined '
+                                     u'more than once, this is not allowed!'
+                                     .format(property_name, class_name))
 
-                if not duplication_allowed and property_name in property_name_to_descriptor:
-                    raise AssertionError(u'The property "{}" on class "{}" is defined '
-                                         u'more than once, this is not allowed!'
-                                         .format(property_name, class_name))
+            property_descriptor = self._create_descriptor_from_property_definition(
+                class_name, property_definition, class_name_to_definition)
 
-                property_descriptor = self._create_descriptor_from_property_definition(
-                    class_name, property_definition, class_name_to_definition)
-
-                if property_name in allowed_duplicated_edge_property_names:
-                    links[property_name].append(property_descriptor)
-                else:
+            if property_name in links:
+                links[property_name].append(property_descriptor)
+            else:
+                property_name_to_descriptor[property_name] = property_descriptor
+        for property_name in links:
+            elements = {
+                property_descriptor.qualifier
+                for property_descriptor in links[property_name]
+            }
+            # If there are multiple in/out properties, we choose to include the one that
+            # is a subclass of all the elements present in the in/out properties.
+            for property_descriptor in links[property_name]:
+                subclass_set = self._subclass_sets[property_descriptor.qualifier]
+                if len(elements.intersection(subclass_set)) == 1:
+                    current_descriptor = property_name_to_descriptor.get(property_name, None)
+                    if current_descriptor and current_descriptor != property_descriptor:
+                        raise AssertionError(u'There already exists property "{}" in addition '
+                                             u'to property "{}" which is a subclass of all '
+                                             u'in/out properties for class "{}".'
+                                             .format(current_descriptor,
+                                                     property_descriptor, class_name))
                     property_name_to_descriptor[property_name] = property_descriptor
 
-            for property_name in allowed_duplicated_edge_property_names:
-                elements = {
-                    property_descriptor.qualifier
-                    for property_descriptor in links[property_name]
-                }
-                # If there are multiple in/out properties, we choose to include the one that
-                # is a subclass of all the elements present in the in/out properties.
-                for property_descriptor in links[property_name]:
-                    subclass_set = self._subclass_sets[property_descriptor.qualifier]
-                    if len(elements.intersection(subclass_set)) == 1:
-                        current_descriptor = property_name_to_descriptor.get(property_name, None)
-                        if current_descriptor and current_descriptor != property_descriptor:
-                            raise AssertionError(u'There already exists property "{}" in addition '
-                                                 u'to property "{}" which is a subclass of all '
-                                                 u'in/out properties for class "{}".'
-                                                 .format(current_descriptor,
-                                                         property_descriptor, class_name))
-                        property_name_to_descriptor[property_name] = property_descriptor
-
-                if (property_name not in property_name_to_descriptor and not abstract and
-                        issubclass(kind_cls, EdgeType)):
-                    raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
-                                         u'no such subclass-of-all-elements exists.'
-                                         .format(property_name, class_name))
-
-            self._elements[class_name] = kind_cls(class_name, abstract, property_name_to_descriptor,
-                                                  class_fields)
+            if (property_name not in property_name_to_descriptor and not abstract and
+                    issubclass(kind_cls, EdgeType)):
+                raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
+                                     u'no such subclass-of-all-elements exists.'
+                                     .format(property_name, class_name))
+        return property_name_to_descriptor
 
     def _create_descriptor_from_property_definition(self, class_name, property_definition,
                                                     class_name_to_definition):
@@ -686,3 +667,22 @@ class SchemaGraph(object):
                 to_schema_element = self._elements[to_class]
                 edge_schema_element.out_connections.add(to_class)
                 to_schema_element.in_connections.add(edge_class_name)
+
+
+def _is_abstract(class_definition):
+    """Return if the class is abstract. We pretend the V and E OrientDB classes are abstract."""
+    orientdb_base_classes = frozenset({
+        ORIENTDB_BASE_VERTEX_CLASS_NAME,
+        ORIENTDB_BASE_EDGE_CLASS_NAME,
+    })
+    return class_definition['name'] in orientdb_base_classes or class_definition['abstract']
+
+
+def _get_class_fields(class_definition):
+    """Return the class fields."""
+    class_fields = class_definition.get('customFields')
+    if class_fields is None:
+        # OrientDB likes to make empty collections be None instead.
+        # We convert this field back to an empty dict, for our general sanity.
+        class_fields = dict()
+    return class_fields
