@@ -322,7 +322,7 @@ class SchemaGraph(object):
         # which other schema classes, then freeze all schema elements.
         self._link_vertex_and_edge_types()
         for element_name, element in six.iteritems(self._elements):
-            if element_name in self._vertex_class_names or element_name in self._edge_class_names:
+            if element_name not in self._non_graph_class_names:
                 element.freeze()
 
     def get_element_by_class_name(self, class_name):
