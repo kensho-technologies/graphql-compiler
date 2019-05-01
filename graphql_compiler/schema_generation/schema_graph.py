@@ -1,4 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from abc import ABCMeta, abstractmethod
 from itertools import chain
 
 import six
@@ -88,19 +89,19 @@ def get_superclasses_from_class_definition(class_definition):
     return []
 
 
+@six.python_2_unicode_compatible
+@six.add_metaclass(ABCMeta)
 class SchemaElement(object):
-    ELEMENT_KIND_VERTEX = 'vertex'
-    ELEMENT_KIND_EDGE = 'edge'
-    ELEMENT_KIND_NON_GRAPH = 'non-graph'
 
-    def __init__(self, class_name, kind, abstract, properties, class_fields):
+    # Since an abstract class without any abstract methods can be instantiated, we make the
+    # init method abstract in order to make it impossible to instantiate this class.
+    # Inspiration came from: https://stackoverflow.com/questions/44800659/python-abstract-class.
+    @abstractmethod
+    def __init__(self, class_name, abstract, properties, class_fields, *args, **kwargs):
         """Create a new SchemaElement object.
 
         Args:
             class_name: string, the name of the schema element class.
-            kind: string, one of the values of ELEMENT_KIND_VERTEX, ELEMENT_KIND_EDGE or
-                  ELEMENT_KIND_NON_GRAPH. Describes whether the schema class is a vertex, edge,
-                  or non-graph class.
             abstract: bool, True if the class is abstract, and False otherwise.
             properties: dict, property name -> PropertyDescriptor describing the properties of
                         the schema element.
@@ -109,38 +110,15 @@ class SchemaElement(object):
         Returns:
             a SchemaElement with the given parameters
         """
-        if kind == SchemaElement.ELEMENT_KIND_EDGE:
-            _validate_edges_do_not_have_extra_links(class_name, properties)
-            if not abstract:
-                _validate_non_abstract_edge_has_defined_endpoint_types(class_name, properties)
-
-        else:
-            # Non-edges must not have properties like "in" or "out" defined, and
-            # must not have properties of type "Link".
-            _validate_non_edges_do_not_have_edge_like_properties(class_name, properties)
-
         _validate_property_names(class_name, properties)
 
         self._class_name = class_name
-        self._kind = kind
         self._abstract = abstract
         self._properties = properties
         self._class_fields = class_fields
 
-        # In the schema graph, both vertices and edges are represented with vertices.
-        # These dicts have the name of the adjacent schema vertex in the appropriate direction.
-        #
-        # For vertex classes:
-        #   in  = the edge is attached with its head / arrow side
-        #   out = the edge is attached with its tail side
-        #
-        # For edge classes:
-        #   in  = the tail side of the edge
-        #   out = the head / arrow side of the edge
-        #
-        # For non-graph classes, these properties are always empty sets.
-        self.in_connections = set()
-        self.out_connections = set()
+        self._print_args = (class_name, abstract, properties, class_fields) + args
+        self._print_kwargs = kwargs
 
     @property
     def abstract(self):
@@ -165,32 +143,96 @@ class SchemaElement(object):
     @property
     def is_vertex(self):
         """Return True if the schema element represents a vertex type, and False otherwise."""
-        return self._kind == SchemaElement.ELEMENT_KIND_VERTEX
+        return isinstance(self, VertexType)
 
     @property
     def is_edge(self):
         """Return True if the schema element represents an edge type, and False otherwise."""
-        return self._kind == SchemaElement.ELEMENT_KIND_EDGE
+        return isinstance(self, EdgeType)
 
     @property
     def is_non_graph(self):
         """Return True if the schema element represents a non-graph type, and False otherwise."""
-        return self._kind == SchemaElement.ELEMENT_KIND_NON_GRAPH
+        return isinstance(self, NonGraphElement)
+
+    def freeze(self):
+        """Do nothing."""
+        pass
+
+    def __str__(self):
+        """Return a human-readable unicode representation of this SchemaElement."""
+        printed_args = []
+        if self._print_args:
+            printed_args.append('{args}')
+        if self._print_kwargs:
+            printed_args.append('{kwargs}')
+
+        template = u'{cls_name}(' + u', '.join(printed_args) + u')'
+        return template.format(cls_name=type(self).__name__,
+                               args=self._print_args,
+                               kwargs=self._print_kwargs)
+
+    def __repr__(self):
+        """Return a human-readable str representation of the SchemaElement object."""
+        return self.__str__()
+
+
+class GraphElement(SchemaElement):
+
+    # Since an abstract class without any abstract methods can be instantiated, we make the
+    # init method abstract in order to make it impossible to instantiate this class.
+    # Inspiration came from: https://stackoverflow.com/questions/44800659/python-abstract-class.
+    @abstractmethod
+    def __init__(self, class_name, abstract, properties, class_fields):
+        super(GraphElement, self).__init__(class_name, abstract, properties, class_fields)
+
+        # In the schema graph, both vertices and edges are represented with vertices.
+        # These dicts have the name of the adjacent schema vertex in the appropriate direction.
+        #
+        # For vertex classes:
+        #   in  = the edge is attached with its head / arrow side
+        #   out = the edge is attached with its tail side
+        #
+        # For edge classes:
+        #   in  = the tail side of the edge
+        #   out = the head / arrow side of the edge
+        #
+        # For non-graph classes, these properties are always empty sets.
+        self.in_connections = set()
+        self.out_connections = set()
 
     def freeze(self):
         """Make the SchemaElement's connections immutable."""
+        super(GraphElement, self).freeze()
         self.in_connections = frozenset(self.in_connections)
         self.out_connections = frozenset(self.out_connections)
 
-    def __str__(self):
-        """Stringify the SchemaElement."""
-        return (
-            'SchemaElement({}, {}, abstract={}, properties={}, in_conn={}, out_conn={})'
-            .format(self._class_name, self._kind, self._abstract, self._properties,
-                    self.in_connections, self.out_connections)
-        )
 
-    __repr__ = __str__
+class VertexType(GraphElement):
+    def __init__(self, class_name, abstract, properties, class_fields):
+        super(VertexType, self).__init__(class_name, abstract, properties, class_fields)
+
+        # Non-edges must not have properties like "in" or "out" defined, and
+        # must not have properties of type "Link".
+        _validate_non_edges_do_not_have_edge_like_properties(class_name, properties)
+
+
+class EdgeType(GraphElement):
+    def __init__(self, class_name, abstract, properties, class_fields):
+        super(EdgeType, self).__init__(class_name, abstract, properties, class_fields)
+
+        _validate_edges_do_not_have_extra_links(class_name, properties)
+        if not abstract:
+            _validate_non_abstract_edge_has_defined_endpoint_types(class_name, properties)
+
+
+class NonGraphElement(SchemaElement):
+    def __init__(self, class_name, abstract, properties, class_fields):
+        super(NonGraphElement, self).__init__(class_name, abstract, properties, class_fields)
+
+        # Non-edges must not have properties like "in" or "out" defined, and
+        # must not have properties of type "Link".
+        _validate_non_edges_do_not_have_edge_like_properties(class_name, properties)
 
 
 class SchemaGraph(object):
@@ -269,9 +311,9 @@ class SchemaGraph(object):
         self._split_classes_by_kind(class_name_to_definition)
 
         kind_to_class_names = {
-            SchemaElement.ELEMENT_KIND_NON_GRAPH: self._non_graph_class_names,
-            SchemaElement.ELEMENT_KIND_VERTEX: self._vertex_class_names,
-            SchemaElement.ELEMENT_KIND_EDGE: self._edge_class_names,
+            NonGraphElement: self._non_graph_class_names,
+            VertexType: self._vertex_class_names,
+            EdgeType: self._edge_class_names,
         }
         for kind, class_names in six.iteritems(kind_to_class_names):
             self._set_up_schema_elements_of_kind(class_name_to_definition, kind, class_names)
@@ -460,7 +502,7 @@ class SchemaGraph(object):
         self._edge_class_names = frozenset(self._edge_class_names)
         self._non_graph_class_names = frozenset(self._non_graph_class_names)
 
-    def _set_up_schema_elements_of_kind(self, class_name_to_definition, kind, class_names):
+    def _set_up_schema_elements_of_kind(self, class_name_to_definition, kind_cls, class_names):
         """Load all schema classes of the given kind. Used as part of __init__."""
         allowed_duplicated_edge_property_names = frozenset({
             EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME
@@ -501,7 +543,7 @@ class SchemaGraph(object):
                 # in the entire inheritance hierarchy of any schema class, of any kind.
                 duplication_allowed = all((
                     property_name in allowed_duplicated_edge_property_names,
-                    kind == SchemaElement.ELEMENT_KIND_EDGE
+                    issubclass(kind_cls, EdgeType)
                 ))
 
                 if not duplication_allowed and property_name in property_name_to_descriptor:
@@ -523,8 +565,8 @@ class SchemaGraph(object):
                 if exact_link:
                     links[link_direction] = exact_link
 
-            self._elements[class_name] = SchemaElement(class_name, kind, abstract,
-                                                       property_name_to_descriptor, class_fields)
+            self._elements[class_name] = kind_cls(class_name, abstract, property_name_to_descriptor,
+                                                  class_fields)
 
     def _create_descriptor_from_property_definition(self, class_name, property_definition,
                                                     class_name_to_definition):
