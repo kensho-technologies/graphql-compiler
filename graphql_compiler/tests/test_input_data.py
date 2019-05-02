@@ -320,11 +320,11 @@ def filter_in_optional_and_count():
             name @output(out_name: "species_name")
 
             in_Animal_OfSpecies @optional {
-                 name @filter(op_name: "=", value: ["$animal_name"])
+                name @filter(op_name: "=", value: ["$animal_name"])
             }
 
             in_Species_Eats @fold {
-                 _x_count @filter(op_name: ">=", value: ["$predators"])
+                _x_count @filter(op_name: ">=", value: ["$predators"])
             }
         }
     }'''

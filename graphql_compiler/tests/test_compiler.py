@@ -678,21 +678,21 @@ class CompilerTests(unittest.TestCase):
                 RETURN $matches
             )
             LET $Species___1___in_Species_Eats = Species___1.in("Species_Eats").asList()
-                WHERE (
+            WHERE (
+                (
+                    $Species___1___in_Species_Eats.size() >= {predators}
+                ) AND (
                     (
-                        $Species___1___in_Species_Eats.size() >= {predators}
-                    ) AND (
                         (
-                            (
-                                Species___1.in_Animal_OfSpecies IS null
-                            ) OR (
-                                Species___1.in_Animal_OfSpecies.size() = 0
-                            )
+                            Species___1.in_Animal_OfSpecies IS null
                         ) OR (
-                            Species__in_Animal_OfSpecies___1 IS NOT null
+                            Species___1.in_Animal_OfSpecies.size() = 0
                         )
+                    ) OR (
+                        Species__in_Animal_OfSpecies___1 IS NOT null
                     )
                 )
+            )
         '''
         expected_gremlin = NotImplementedError
         expected_sql = NotImplementedError
