@@ -2,7 +2,7 @@
 from abc import ABCMeta, abstractmethod
 from itertools import chain
 
-import funcy
+from funcy.py3 import lsplit
 import six
 
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
@@ -524,7 +524,7 @@ class SchemaGraph(object):
             for inherited_class_name in self._inheritance_sets[class_name]
         ]
 
-        link_property_definitions, non_link_property_definitions = funcy.split(
+        link_property_definitions, non_link_property_definitions = lsplit(
             lambda x: x['name'] in link_property_names, chain.from_iterable(all_property_lists))
 
         property_name_to_descriptor = self._get_link_properties(
@@ -536,14 +536,13 @@ class SchemaGraph(object):
     def _get_link_properties(self, class_name, class_name_to_definition,
                              link_property_definitions, abstract, kind_cls):
         """Return the link properties of a SchemaElement."""
+        if len(link_property_definitions) > 0 and not issubclass(kind_cls, EdgeType):
+            raise AssertionError(u'There are links {} defined on non-edge class {}'
+                                 .format(link_property_definitions, class_name))
         property_name_to_descriptor = {}
         links = {EDGE_DESTINATION_PROPERTY_NAME: [], EDGE_SOURCE_PROPERTY_NAME: []}
 
         for property_definition in link_property_definitions:
-            if not issubclass(kind_cls, EdgeType):
-                raise AssertionError(u'There are links {} defined on non-edge class {}'
-                                     .format(link_property_definitions, class_name))
-
             property_name = property_definition['name']
             links[property_name].append(self._create_descriptor_from_property_definition(
                 class_name, property_definition, class_name_to_definition))
