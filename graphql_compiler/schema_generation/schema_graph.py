@@ -220,6 +220,7 @@ class NonGraphElement(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields):
         super(NonGraphElement, self).__init__(class_name, abstract, properties, class_fields)
 
+
 class SchemaGraph(object):
     """The SchemaGraph is a graph utility used to represent a OrientDB schema.
 
