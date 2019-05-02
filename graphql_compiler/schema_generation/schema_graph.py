@@ -511,6 +511,10 @@ class SchemaGraph(object):
             link_property_definitions, non_link_property_definitions = (
                 _get_link_and_non_link_properties(inherited_property_definitions))
 
+            if len(link_property_definitions) > 0:
+                raise AssertionError(u'There are links {} defined on non-edge class {}'
+                                     .format(link_property_definitions, class_name))
+
             property_name_to_descriptor = self._get_link_properties(
                 class_name, class_name_to_definition, link_property_definitions, abstract,
                 NonGraphElement)
@@ -553,6 +557,10 @@ class SchemaGraph(object):
             link_property_definitions, non_link_property_definitions = (
                 _get_link_and_non_link_properties(inherited_property_definitions))
 
+            if len(link_property_definitions) > 0:
+                raise AssertionError(u'There are links {} defined on non-edge class {}'
+                                     .format(link_property_definitions, class_name))
+
             property_name_to_descriptor = self._get_link_properties(
                 class_name, class_name_to_definition, link_property_definitions, abstract,
                 VertexType)
@@ -565,9 +573,6 @@ class SchemaGraph(object):
     def _get_link_properties(self, class_name, class_name_to_definition,
                              link_property_definitions, abstract, kind_cls):
         """Return the link properties of a SchemaElement."""
-        if len(link_property_definitions) > 0 and not issubclass(kind_cls, EdgeType):
-            raise AssertionError(u'There are links {} defined on non-edge class {}'
-                                 .format(link_property_definitions, class_name))
         property_name_to_descriptor = {}
         links = {EDGE_DESTINATION_PROPERTY_NAME: [], EDGE_SOURCE_PROPERTY_NAME: []}
 
