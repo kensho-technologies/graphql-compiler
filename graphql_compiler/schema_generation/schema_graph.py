@@ -14,6 +14,13 @@ from .schema_properties import (
 from .utils import toposort_classes
 
 
+def _validate_base_connections_dict_keys(class_name, base_connections):
+    """Validate that the only keys in the edge's base_connections dict are 'in' and 'out'"""
+    if not set(base_connections.keys()).issubset(EdgeType.EDGE_END_NAMES):
+        raise IllegalSchemaStateError(u'Found non-end key name(s) defined on the base connections '
+                                      u'of an edge {} {}'.format(class_name, base_connections))
+
+
 def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, base_connections):
     """Validate that the non-abstract edge has its in/out base connections defined."""
     edge_source = base_connections.get(EdgeType.EDGE_SOURCE_PROPERTY_NAME, None)
@@ -187,6 +194,7 @@ class VertexType(GraphElement):
 class EdgeType(GraphElement):
     EDGE_SOURCE_PROPERTY_NAME = 'out'
     EDGE_DESTINATION_PROPERTY_NAME = 'in'
+    EDGE_END_NAMES = {EDGE_SOURCE_PROPERTY_NAME , EDGE_DESTINATION_PROPERTY_NAME}
 
     def __init__(self, class_name, abstract, properties, class_fields, base_connections):
         """Create a new EdgeType object.
@@ -210,6 +218,7 @@ class EdgeType(GraphElement):
 
         if not abstract:
             _validate_non_abstract_edge_has_defined_endpoint_types(class_name, base_connections)
+        _validate_base_connections_dict_keys(class_name, base_connections)
         self._base_connections = base_connections
 
     @property
@@ -705,11 +714,7 @@ def _get_inherited_property_definitions(superclass_set, class_name_to_definition
 
 def _get_link_and_non_link_properties(property_definitions):
     """Return a class's link and non link OrientDB property definitions."""
-    link_property_names = {
-        EdgeType.EDGE_DESTINATION_PROPERTY_NAME,
-        EdgeType.EDGE_SOURCE_PROPERTY_NAME
-    }
-    return lsplit(lambda x: x['name'] in link_property_names, property_definitions)
+    return lsplit(lambda x: x['name'] in EdgeType.EDGE_END_NAMES, property_definitions)
 
 
 def _is_abstract(class_definition):
