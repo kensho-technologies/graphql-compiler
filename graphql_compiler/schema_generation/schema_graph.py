@@ -607,7 +607,7 @@ class SchemaGraph(object):
                     base_connections[link_direction] = linked_class
 
             if link_direction not in base_connections and not abstract:
-                raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
+                raise AssertionError(u'For link direction "{}" of non-abstract edge class "{}", '
                                      u'no such subclass-of-all-elements exists.'
                                      .format(link_direction, class_name))
         return base_connections
