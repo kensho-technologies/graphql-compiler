@@ -680,7 +680,7 @@ class CompilerTests(unittest.TestCase):
             LET $Species___1___in_Species_Eats = Species___1.in("Species_Eats").asList()
                 WHERE (
                     (
-                        $Species___2___in_Species_Eats.size() >= {predators}
+                        $Species___1___in_Species_Eats.size() >= {predators}
                     ) AND (
                         (
                             (
