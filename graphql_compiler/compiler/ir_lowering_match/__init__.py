@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import six
 
-from ..blocks import Filter, GlobalOperationsStart
+from ..blocks import Filter
 from ..ir_lowering_common import (extract_optional_location_root_info,
                                   extract_simple_optional_location_info,
                                   lower_context_field_existence, merge_consecutive_filter_clauses,
