@@ -509,29 +509,19 @@ class SchemaGraph(object):
             class_definition = class_name_to_definition[class_name]
             class_fields = _get_class_fields(class_definition)
             abstract = _is_abstract(class_definition)
-            property_name_to_descriptor = self._get_element_properties(
-                class_name, class_name_to_definition, abstract, kind_cls)
+
+            inherited_property_definitions = _get_inherited_property_definitions(
+                self._inheritance_sets[class_name], class_name_to_definition)
+            link_property_definitions, non_link_property_definitions = (
+                _get_link_and_non_link_properties(inherited_property_definitions))
+
+            property_name_to_descriptor = self._get_link_properties(
+                class_name, class_name_to_definition, link_property_definitions, abstract, kind_cls)
+            property_name_to_descriptor.update(self._get_non_link_properties(
+                class_name, class_name_to_definition, non_link_property_definitions))
 
             self._elements[class_name] = kind_cls(
                 class_name, abstract, property_name_to_descriptor, class_fields)
-
-    def _get_element_properties(self, class_name, class_name_to_definition, abstract, kind_cls):
-        """Return the properties of a SchemaElement from an OrientDB class definition."""
-        link_property_names = {EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME}
-
-        all_property_lists = [
-            class_name_to_definition[inherited_class_name]['properties']
-            for inherited_class_name in self._inheritance_sets[class_name]
-        ]
-
-        link_property_definitions, non_link_property_definitions = lsplit(
-            lambda x: x['name'] in link_property_names, chain.from_iterable(all_property_lists))
-
-        property_name_to_descriptor = self._get_link_properties(
-            class_name, class_name_to_definition, link_property_definitions, abstract, kind_cls)
-        property_name_to_descriptor.update(self._get_non_link_properties(
-            class_name, class_name_to_definition, non_link_property_definitions))
-        return property_name_to_descriptor
 
     def _get_link_properties(self, class_name, class_name_to_definition,
                              link_property_definitions, abstract, kind_cls):
@@ -690,6 +680,20 @@ class SchemaGraph(object):
                 to_schema_element = self._elements[to_class]
                 edge_schema_element.out_connections.add(to_class)
                 to_schema_element.in_connections.add(edge_class_name)
+
+
+def _get_inherited_property_definitions(superclass_set, class_name_to_definition):
+    """Return a class's inherited OrientDB property definitions."""
+    return list(chain.from_iterable(
+        class_name_to_definition[inherited_class_name]['properties']
+        for inherited_class_name in superclass_set
+    ))
+
+
+def _get_link_and_non_link_properties(property_definitions):
+    """Return a class's link and non link OrientDB property definitions."""
+    link_property_names = {EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME}
+    return lsplit(lambda x: x['name'] in link_property_names, property_definitions)
 
 
 def _is_abstract(class_definition):
