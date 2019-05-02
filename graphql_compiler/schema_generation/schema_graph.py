@@ -539,7 +539,7 @@ class SchemaGraph(object):
             link_property_definitions, non_link_property_definitions = (
                 _get_link_and_non_link_properties(inherited_property_definitions))
 
-            base_connections = self._get_link_properties(
+            base_connections = self._get_base_connections(
                 class_name, class_name_to_definition, link_property_definitions, abstract)
             property_name_to_descriptor = self._get_non_link_properties(
                 class_name, class_name_to_definition, non_link_property_definitions)
@@ -569,9 +569,9 @@ class SchemaGraph(object):
             self._elements[class_name] = VertexType(
                 class_name, abstract, property_name_to_descriptor, class_fields)
 
-    def _get_link_properties(self, class_name, class_name_to_definition,
-                             link_property_definitions, abstract):
-        """Return the link properties of a SchemaElement."""
+    def _get_base_connections(self, class_name, class_name_to_definition,
+                              link_property_definitions, abstract):
+        """Return the base connections of an EdgeType."""
         property_name_to_descriptor = {}
         links = {EDGE_DESTINATION_PROPERTY_NAME: [], EDGE_SOURCE_PROPERTY_NAME: []}
 
