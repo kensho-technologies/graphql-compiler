@@ -184,8 +184,9 @@ class GraphElement(SchemaElement):
     # init method abstract in order to make it impossible to instantiate this class.
     # Inspiration came from: https://stackoverflow.com/questions/44800659/python-abstract-class-init
     @abstractmethod
-    def __init__(self, class_name, abstract, properties, class_fields):
-        super(GraphElement, self).__init__(class_name, abstract, properties, class_fields)
+    def __init__(self, class_name, abstract, properties, class_fields, *args, **kwargs):
+        super(GraphElement, self).__init__(class_name, abstract, properties, class_fields, args,
+                                           kwargs)
 
         # In the schema graph, both vertices and edges are represented with vertices.
         # These dicts have the name of the adjacent schema vertex in the appropriate direction.
