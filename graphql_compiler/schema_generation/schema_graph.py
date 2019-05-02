@@ -25,21 +25,6 @@ def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, base_conn
                                                                                base_connections))
 
 
-def _validate_non_edges_do_not_have_edge_like_properties(class_name, properties):
-    """Validate that non-edges do not have the in/out properties defined."""
-    has_source = EDGE_SOURCE_PROPERTY_NAME in properties
-    has_destination = EDGE_DESTINATION_PROPERTY_NAME in properties
-
-    if has_source or has_destination:
-        raise IllegalSchemaStateError(u'Found a non-edge class that defines edge-like "in" or '
-                                      u'"out" properties: {} {}'.format(class_name, properties))
-
-    for property_name, property_descriptor in six.iteritems(properties):
-        if property_descriptor.type_id == PROPERTY_TYPE_LINK_ID:
-            raise IllegalSchemaStateError(u'Non-edge class "{}" has a property of type Link, this '
-                                          u'is not allowed: {}'.format(class_name, property_name))
-
-
 def _validate_edges_do_not_have_extra_links(class_name, properties):
     """Validate that edges do not have properties of Link type that aren't the edge endpoints."""
     for property_name, property_descriptor in six.iteritems(properties):
@@ -211,10 +196,6 @@ class VertexType(GraphElement):
     def __init__(self, class_name, abstract, properties, class_fields):
         super(VertexType, self).__init__(class_name, abstract, properties, class_fields)
 
-        # Non-edges must not have properties like "in" or "out" defined, and
-        # must not have properties of type "Link".
-        _validate_non_edges_do_not_have_edge_like_properties(class_name, properties)
-
 
 class EdgeType(GraphElement):
     def __init__(self, class_name, abstract, properties, class_fields, base_connections):
@@ -251,11 +232,6 @@ class EdgeType(GraphElement):
 class NonGraphElement(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields):
         super(NonGraphElement, self).__init__(class_name, abstract, properties, class_fields)
-
-        # Non-edges must not have properties like "in" or "out" defined, and
-        # must not have properties of type "Link".
-        _validate_non_edges_do_not_have_edge_like_properties(class_name, properties)
-
 
 class SchemaGraph(object):
     """The SchemaGraph is a graph utility used to represent a OrientDB schema.
