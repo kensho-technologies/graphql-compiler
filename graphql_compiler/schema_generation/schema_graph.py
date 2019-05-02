@@ -25,18 +25,6 @@ def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, base_conn
                                                                                base_connections))
 
 
-def _validate_edges_do_not_have_extra_links(class_name, properties):
-    """Validate that edges do not have properties of Link type that aren't the edge endpoints."""
-    for property_name, property_descriptor in six.iteritems(properties):
-        if property_name in {EDGE_SOURCE_PROPERTY_NAME, EDGE_DESTINATION_PROPERTY_NAME}:
-            continue
-
-        if property_descriptor.type_id == PROPERTY_TYPE_LINK_ID:
-            raise IllegalSchemaStateError(u'Edge class "{}" has a property of type Link that is '
-                                          u'not an edge endpoint, this is not allowed: '
-                                          u'{}'.format(class_name, property_name))
-
-
 def _validate_property_names(class_name, properties):
     """Validate that properties do not have names that may cause problems in the GraphQL schema."""
     for property_name in properties:
@@ -218,7 +206,6 @@ class EdgeType(GraphElement):
         super(EdgeType, self).__init__(class_name, abstract, properties, class_fields,
                                        base_connections)
 
-        _validate_edges_do_not_have_extra_links(class_name, base_connections)
         if not abstract:
             _validate_non_abstract_edge_has_defined_endpoint_types(class_name, base_connections)
         self._base_connections = base_connections
