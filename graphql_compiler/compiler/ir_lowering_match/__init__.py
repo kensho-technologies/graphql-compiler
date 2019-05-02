@@ -81,7 +81,8 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     # from simple optional match traverses (using a WHERE statement)
     if len(simple_optional_root_info) > 0:
         where_filter_predicate = construct_where_filter_predicate(simple_optional_root_info)
-        ir_blocks.insert(-1, GlobalOperationsStart())
+        # The GlobalOperationsStart block should already exist at this point. It is inserted
+        # in the compiler_frontend, and this function asserts that at the beginning.
         ir_blocks.insert(-1, Filter(where_filter_predicate))
 
     # These lowering / optimization passes work on IR blocks.

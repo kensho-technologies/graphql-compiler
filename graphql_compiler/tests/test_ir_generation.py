@@ -699,6 +699,57 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_filter_in_optional_and_count(self):
+        test_data = test_input_data.filter_in_optional_and_count()
+
+        base_location = helpers.Location(('Species',))
+        animal_location = base_location.navigate_to_subpath('in_Animal_OfSpecies')
+        base_revisit_1 = base_location.revisit()
+        fold_location = base_revisit_1.navigate_to_fold('in_Species_Eats')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Species'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('in', 'Animal_OfSpecies', optional=True),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'=',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$animal_name', GraphQLString)
+                )
+            ),
+            blocks.MarkLocation(animal_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, optional=True),
+            blocks.MarkLocation(base_revisit_1),
+            blocks.Fold(fold_location),
+            blocks.MarkLocation(fold_location),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.Filter(expressions.BinaryComposition(
+                u'>=',
+                expressions.FoldedContextField(
+                    fold_location.navigate_to_field(COUNT_META_FIELD_NAME),
+                    GraphQLInt
+                ),
+                expressions.Variable('$predators', GraphQLInt),
+            )),
+            blocks.ConstructResult({
+                'species_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString
+                ),
+            }),
+
+        ]
+        expected_location_types = {
+            base_location: 'Species',
+            animal_location: 'Animal',
+            base_revisit_1: 'Species',
+            fold_location: 'Species',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_between_filter_on_simple_scalar(self):
         test_data = test_input_data.between_filter_on_simple_scalar()
 
