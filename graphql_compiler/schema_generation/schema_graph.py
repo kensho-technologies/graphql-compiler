@@ -156,7 +156,7 @@ class SchemaElement(object):
         return isinstance(self, NonGraphElement)
 
     def freeze(self):
-        """Do nothing."""
+        """Make public mutable internal fields immutable."""
         pass
 
     def __str__(self):
