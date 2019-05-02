@@ -555,7 +555,7 @@ class SchemaGraph(object):
                 _get_link_and_non_link_properties(inherited_property_definitions))
 
             base_connections = self._get_base_connections(
-                class_name, link_property_definitions, abstract)
+                class_name, class_name_to_definition, link_property_definitions, abstract)
             property_name_to_descriptor = self._get_non_link_properties(
                 class_name, class_name_to_definition, non_link_property_definitions)
 
@@ -584,12 +584,14 @@ class SchemaGraph(object):
             self._elements[class_name] = VertexType(
                 class_name, abstract, property_name_to_descriptor, class_fields)
 
-    def _get_base_connections(self, class_name, link_property_definitions, abstract):
+    def _get_base_connections(self, class_name, class_name_to_definition,
+                              link_property_definitions, abstract):
         """Return the base connections of an EdgeType."""
         base_connections = {}
         links = {EDGE_DESTINATION_PROPERTY_NAME: set(), EDGE_SOURCE_PROPERTY_NAME: set()}
 
         for property_definition in link_property_definitions:
+            self._validate_link_definition(class_name_to_definition, property_definition)
             links[property_definition['name']].add(property_definition['linkedClass'])
 
         for link_direction, linked_classes in six.iteritems(links):
@@ -612,6 +614,30 @@ class SchemaGraph(object):
                                      u'no such subclass-of-all-elements exists.'
                                      .format(link_direction, class_name))
         return base_connections
+
+    def _validate_link_definition(self, class_name_to_definition, property_definition):
+        """Validate that property named either 'in' or 'out' is properly defined as a link."""
+        name = property_definition['name']
+        type_id = property_definition['type']
+        linked_class = property_definition['linkedClass']
+        if type_id != PROPERTY_TYPE_LINK_ID:
+            raise AssertionError(u'Expected property named "{}" to be of type Link: {}'
+                                 .format(name, property_definition))
+        if linked_class is None:
+            raise AssertionError(u'Property "{}" is declared with type Link but has no '
+                                 u'linked class: {}'.format(name, property_definition))
+        if linked_class not in self._vertex_class_names:
+            is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
+            all_subclasses_are_vertices = True
+            for subclass in self._subclass_sets[linked_class]:
+                if subclass != linked_class and subclass not in self.vertex_class_names:
+                    all_subclasses_are_vertices = False
+                    break
+            if not (is_linked_class_abstract and all_subclasses_are_vertices):
+                raise AssertionError(u'Property "{}" is declared as a Link to class {}, but '
+                                     u'that class is neither a vertex nor is it an '
+                                     u'abstract class whose subclasses are all vertices!'
+                                     .format(name, linked_class))
 
     def _get_non_link_properties(self, class_name, class_name_to_definition,
                                  non_link_property_definitions):
@@ -642,32 +668,8 @@ class SchemaGraph(object):
         validate_supported_property_type_id(name, type_id)
 
         if type_id == PROPERTY_TYPE_LINK_ID:
-            if class_name not in self._edge_class_names:
-                raise AssertionError(u'Found a property of type Link on a non-edge class: '
-                                     u'{} {}'.format(name, class_name))
-
-            if name not in {EDGE_SOURCE_PROPERTY_NAME, EDGE_DESTINATION_PROPERTY_NAME}:
-                raise AssertionError(u'Found a property of type Link with an unexpected name: '
-                                     u'{} {}'.format(name, class_name))
-
-            if linked_class is None:
-                raise AssertionError(u'Property "{}" is declared with type Link but has no '
-                                     u'linked class: {}'.format(name, property_definition))
-
-            if linked_class not in self._vertex_class_names:
-                is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
-                all_subclasses_are_vertices = True
-                for subclass in self._subclass_sets[linked_class]:
-                    if subclass != linked_class and subclass not in self.vertex_class_names:
-                        all_subclasses_are_vertices = False
-                        break
-                if not (is_linked_class_abstract and all_subclasses_are_vertices):
-                    raise AssertionError(u'Property "{}" is declared as a Link to class {}, but '
-                                         u'that class is neither a vertex nor is it an '
-                                         u'abstract class whose subclasses are all vertices!'
-                                         .format(name, linked_class))
-
-            qualifier = linked_class
+            raise AssertionError(u'Found a property of type Link on a non-edge class: '
+                                 u'{} {}'.format(name, class_name))
         elif type_id in COLLECTION_PROPERTY_TYPES:
             if linked_class is not None and linked_type is not None:
                 raise AssertionError(u'Property "{}" unexpectedly has both a linked class and '
