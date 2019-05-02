@@ -126,13 +126,13 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
         outbound_edges = (
             ('out_{}'.format(out_edge_name),
              schema_graph.get_element_by_class_name(out_edge_name).base_connections[
-                 EDGE_DESTINATION_PROPERTY_NAME].qualifier)
+                 EDGE_DESTINATION_PROPERTY_NAME])
             for out_edge_name in schema_element.out_connections
         )
         inbound_edges = (
             ('in_{}'.format(in_edge_name),
              schema_graph.get_element_by_class_name(in_edge_name).base_connections[
-                 EDGE_SOURCE_PROPERTY_NAME].qualifier)
+                 EDGE_SOURCE_PROPERTY_NAME])
             for in_edge_name in schema_element.in_connections
         )
         for field_name, to_type_name in chain(outbound_edges, inbound_edges):

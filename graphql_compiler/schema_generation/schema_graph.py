@@ -15,17 +15,14 @@ from .schema_properties import (
 from .utils import toposort_classes
 
 
-def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, properties):
-    """Validate that the non-abstract edge properties dict has defined in/out link properties."""
-    edge_source = properties.get(EDGE_SOURCE_PROPERTY_NAME, None)
-    edge_destination = properties.get(EDGE_DESTINATION_PROPERTY_NAME, None)
-    has_defined_endpoint_types = all((
-        edge_source is not None and edge_source.type_id == PROPERTY_TYPE_LINK_ID,
-        edge_destination is not None and edge_destination.type_id == PROPERTY_TYPE_LINK_ID,
-    ))
-    if not has_defined_endpoint_types:
+def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, base_connections):
+    """Validate that the non-abstract edge has its in/out base connections defined."""
+    edge_source = base_connections.get(EDGE_SOURCE_PROPERTY_NAME, None)
+    edge_destination = base_connections.get(EDGE_DESTINATION_PROPERTY_NAME, None)
+    if not edge_source and edge_destination:
         raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
-                                      u'in/out properties: {} {}'.format(class_name, properties))
+                                      u'in/out base_connections: {} {}'.format(class_name,
+                                                                               base_connections))
 
 
 def _validate_non_edges_do_not_have_edge_like_properties(class_name, properties):
@@ -540,7 +537,7 @@ class SchemaGraph(object):
                 _get_link_and_non_link_properties(inherited_property_definitions))
 
             base_connections = self._get_base_connections(
-                class_name, class_name_to_definition, link_property_definitions, abstract)
+                class_name, link_property_definitions, abstract)
             property_name_to_descriptor = self._get_non_link_properties(
                 class_name, class_name_to_definition, non_link_property_definitions)
 
@@ -569,42 +566,34 @@ class SchemaGraph(object):
             self._elements[class_name] = VertexType(
                 class_name, abstract, property_name_to_descriptor, class_fields)
 
-    def _get_base_connections(self, class_name, class_name_to_definition,
-                              link_property_definitions, abstract):
+    def _get_base_connections(self, class_name, link_property_definitions, abstract):
         """Return the base connections of an EdgeType."""
-        property_name_to_descriptor = {}
-        links = {EDGE_DESTINATION_PROPERTY_NAME: [], EDGE_SOURCE_PROPERTY_NAME: []}
+        base_connections = {}
+        links = {EDGE_DESTINATION_PROPERTY_NAME: set(), EDGE_SOURCE_PROPERTY_NAME: set()}
 
         for property_definition in link_property_definitions:
-            property_name = property_definition['name']
-            links[property_name].append(self._create_descriptor_from_property_definition(
-                class_name, property_definition, class_name_to_definition))
+            links[property_definition['name']].add(property_definition['linkedClass'])
 
-        for property_name in links:
-            elements = {
-                property_descriptor.qualifier
-                for property_descriptor in links[property_name]
-            }
-
+        for link_direction, linked_classes in six.iteritems(links):
             # If there are multiple in/out properties, we choose to include the one that
             # is a subclass of all the elements present in the in/out properties.
-            for property_descriptor in links[property_name]:
-                subclass_set = self._subclass_sets[property_descriptor.qualifier]
-                if len(elements.intersection(subclass_set)) == 1:
-                    current_descriptor = property_name_to_descriptor.get(property_name, None)
-                    if current_descriptor and current_descriptor != property_descriptor:
-                        raise AssertionError(u'There already exists property "{}" in addition '
-                                             u'to property "{}" which is a subclass of all '
-                                             u'in/out properties for class "{}".'
-                                             .format(current_descriptor,
-                                                     property_descriptor, class_name))
-                    property_name_to_descriptor[property_name] = property_descriptor
+            for linked_class in linked_classes:
+                subclass_set = self._subclass_sets[linked_class]
+                if len(linked_classes.intersection(subclass_set)) == 1:
+                    base_direction_connection = base_connections.get(link_direction, None)
+                    if base_direction_connection and base_direction_connection != linked_class:
+                        raise AssertionError(u'There already exists class "{}" in addition '
+                                             u'to class "{}" which is a subclass of all '
+                                             u'{} properties for class "{}".'
+                                             .format(base_direction_connection,
+                                                     linked_class, link_direction, class_name))
+                    base_connections[link_direction] = linked_class
 
-            if property_name not in property_name_to_descriptor and not abstract:
+            if link_direction not in base_connections and not abstract:
                 raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
                                      u'no such subclass-of-all-elements exists.'
-                                     .format(property_name, class_name))
-        return property_name_to_descriptor
+                                     .format(link_direction, class_name))
+        return base_connections
 
     def _get_non_link_properties(self, class_name, class_name_to_definition,
                                  non_link_property_definitions):
@@ -706,8 +695,8 @@ class SchemaGraph(object):
                     raise AssertionError(u'Found a non-abstract edge class with undefined '
                                          u'endpoint types: {}'.format(edge_element))
 
-            from_class_name = edge_element.base_connections[EDGE_SOURCE_PROPERTY_NAME].qualifier
-            to_class_name = edge_element.base_connections[EDGE_DESTINATION_PROPERTY_NAME].qualifier
+            from_class_name = edge_element.base_connections[EDGE_SOURCE_PROPERTY_NAME]
+            to_class_name = edge_element.base_connections[EDGE_DESTINATION_PROPERTY_NAME]
 
             edge_schema_element = self._elements[edge_class_name]
 

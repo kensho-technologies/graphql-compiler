@@ -202,7 +202,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         self.assertEqual(friends_property.qualifier, 'ExternalSource')
         self.assertEqual(friends_property.default, list())
 
-    def test_link_property(self):
+    def test_link_parsing(self):
         schema_data = [
             BASE_EDGE_SCHEMA_DATA,
             BASE_VERTEX_SCHEMA_DATA,
@@ -213,12 +213,10 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         ]
         schema_graph = SchemaGraph(schema_data)
         person_lives_in_edge = schema_graph.get_element_by_class_name('Person_LivesIn')
-        in_property = person_lives_in_edge.base_connections['in']
-        self.assertEqual(in_property.type_id, PROPERTY_TYPE_LINK_ID)
-        self.assertEqual(in_property.qualifier, 'Location')
-        out_property = person_lives_in_edge.base_connections['out']
-        self.assertEqual(out_property.type_id, PROPERTY_TYPE_LINK_ID)
-        self.assertEqual(out_property.qualifier, 'Person')
+        in_base_connection = person_lives_in_edge.base_connections['in']
+        self.assertEqual(in_base_connection, 'Location')
+        out_base_connection = person_lives_in_edge.base_connections['out']
+        self.assertEqual(out_base_connection, 'Person')
 
     def test_parsed_class_fields(self):
         schema_data = [
