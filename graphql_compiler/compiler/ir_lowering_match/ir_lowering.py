@@ -13,7 +13,7 @@ import six
 from ..blocks import Backtrack, CoerceType, MarkLocation, QueryRoot
 from ..expressions import (
     BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, FoldedContextField,
-    Literal, TernaryConditional, TrueLiteral
+    GlobalContextField, Literal, TernaryConditional, TrueLiteral
 )
 from ..helpers import FoldScopeLocation
 from .utils import convert_coerce_type_to_instanceof_filter
@@ -254,17 +254,24 @@ def _translate_equivalent_locations(match_query, location_translations):
 
     def visitor_fn(expression):
         """Expression visitor function used to rewrite expressions with updated Location data."""
-        if isinstance(expression, (ContextField, ContextFieldExistence)):
-            old_location = expression.location
+        if isinstance(expression, (ContextField, GlobalContextField)):
+            old_location = expression.location.at_vertex()
             new_location = location_translations.get(old_location, old_location)
+            if expression.location.field is not None:
+                new_location = new_location.navigate_to_field(expression.location.field)
 
             # The Expression could be one of many types, including:
             #   - ContextField
-            #   - ContextFieldExistence
+            #   - GlobalContextField
             # We determine its exact class to make sure we return an object of the same class
-            # as the replacement expression.
+            # as the expression being replaced.
             expression_cls = type(expression)
-            return expression_cls(new_location)
+            return expression_cls(new_location, expression.field_type)
+        elif isinstance(expression, ContextFieldExistence):
+            old_location = expression.location
+            new_location = location_translations.get(old_location, old_location)
+
+            return ContextFieldExistence(new_location)
         elif isinstance(expression, FoldedContextField):
             # Update the Location within FoldedContextField
             old_location = expression.fold_scope_location.base_location
@@ -322,8 +329,13 @@ def _translate_equivalent_locations(match_query, location_translations):
     # Rewrite the Locations in the ConstructResult output block.
     new_output_block = match_query.output_block.visit_and_update_expressions(visitor_fn)
 
+    # Rewrite the Locations in the global where block.
+    new_where_block = None
+    if match_query.where_block is not None:
+        new_where_block = match_query.where_block.visit_and_update_expressions(visitor_fn)
+
     return match_query._replace(match_traversals=new_match_traversals, folds=new_folds,
-                                output_block=new_output_block)
+                                output_block=new_output_block, where_block=new_where_block)
 
 
 def lower_folded_coerce_types_into_filter_blocks(folded_ir_blocks):

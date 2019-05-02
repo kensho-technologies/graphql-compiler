@@ -270,9 +270,9 @@ class LocalField(Expression):
 class GlobalContextField(Expression):
     """A field drawn from the global context, for use in a global operations WHERE statement."""
 
-    __slots__ = ('location',)
+    __slots__ = ('location', 'field_type')
 
-    def __init__(self, location):
+    def __init__(self, location, field_type):
         """Construct a new GlobalContextField object that references a field at a given location.
 
         Args:
@@ -281,8 +281,9 @@ class GlobalContextField(Expression):
         Returns:
             new GlobalContextField object
         """
-        super(GlobalContextField, self).__init__(location)
+        super(GlobalContextField, self).__init__(location, field_type)
         self.location = location
+        self.field_type = field_type
         self.validate()
 
     def validate(self):
@@ -294,6 +295,9 @@ class GlobalContextField(Expression):
         if self.location.field is None:
             raise AssertionError(u'Received Location without a field: {}'
                                  .format(self.location))
+
+        if not is_graphql_type(self.field_type):
+            raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
 
     def to_match(self):
         """Return a unicode object with the MATCH representation of this GlobalContextField."""
@@ -314,9 +318,9 @@ class GlobalContextField(Expression):
 class ContextField(Expression):
     """A field drawn from the global context, e.g. if selected earlier in the query."""
 
-    __slots__ = ('location',)
+    __slots__ = ('location', 'field_type')
 
-    def __init__(self, location):
+    def __init__(self, location, field_type):
         """Construct a new ContextField object that references a field from the global context.
 
         Args:
@@ -324,12 +328,14 @@ class ContextField(Expression):
                       to a vertex, the field refers to the data captured at the location vertex.
                       Otherwise, if the Location points to a property, the field refers to
                       the particular value of that property.
+            field_type: GraphQLType object, specifying the type of the field being output
 
         Returns:
             new ContextField object
         """
-        super(ContextField, self).__init__(location)
+        super(ContextField, self).__init__(location, field_type)
         self.location = location
+        self.field_type = field_type
         self.validate()
 
     def validate(self):
@@ -337,6 +343,9 @@ class ContextField(Expression):
         if not isinstance(self.location, Location):
             raise TypeError(u'Expected Location location, got: {} {}'.format(
                 type(self.location).__name__, self.location))
+
+        if not is_graphql_type(self.field_type):
+            raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
 
     def to_match(self):
         """Return a unicode object with the MATCH representation of this ContextField."""

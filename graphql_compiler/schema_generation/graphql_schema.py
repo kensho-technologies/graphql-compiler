@@ -13,11 +13,27 @@ from ..schema import (
 )
 from .exceptions import EmptySchemaError
 from .schema_properties import (
-    EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME, PROPERTY_TYPE_BOOLEAN_ID,
-    PROPERTY_TYPE_DATE_ID, PROPERTY_TYPE_DATETIME_ID, PROPERTY_TYPE_DECIMAL_ID,
-    PROPERTY_TYPE_DOUBLE_ID, PROPERTY_TYPE_EMBEDDED_LIST_ID, PROPERTY_TYPE_EMBEDDED_SET_ID,
-    PROPERTY_TYPE_FLOAT_ID, PROPERTY_TYPE_INTEGER_ID, PROPERTY_TYPE_STRING_ID
+    EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
+    PROPERTY_TYPE_BOOLEAN_ID, PROPERTY_TYPE_DATE_ID, PROPERTY_TYPE_DATETIME_ID,
+    PROPERTY_TYPE_DECIMAL_ID, PROPERTY_TYPE_DOUBLE_ID, PROPERTY_TYPE_EMBEDDED_LIST_ID,
+    PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_FLOAT_ID, PROPERTY_TYPE_INTEGER_ID,
+    PROPERTY_TYPE_STRING_ID
 )
+
+
+def _get_referenced_type_equivalences(graphql_types, type_equivalence_hints):
+    """Filter union types with no edges from the type equivalence hints dict."""
+    referenced_types = set()
+    for graphql_type in graphql_types.values():
+        if isinstance(graphql_type, (GraphQLObjectType, GraphQLInterfaceType)):
+            for _, field in graphql_type.fields.items():
+                if isinstance(field.type, GraphQLList):
+                    referenced_types.add(field.type.of_type.name)
+    return {
+        original: union
+        for original, union in type_equivalence_hints.items()
+        if union.name in referenced_types
+    }
 
 
 def _get_inherited_field_types(class_to_field_type_overrides, schema_graph):
@@ -43,16 +59,6 @@ def _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_ty
                             u'Attempting to override field "{}" from class "{}", but the field is '
                             u'defined in superclass "{}"'
                             .format(field_name, class_name, superclass_name))
-
-
-def _get_classes_with_no_properties(schema_graph):
-    """Return the set of classes that have no properties."""
-    classes_with_no_properties = set()
-    for vertex_cls_name in schema_graph.vertex_class_names:
-        vertex_cls = schema_graph.get_element_by_class_name(vertex_cls_name)
-        if len(vertex_cls.properties) == 0:
-            classes_with_no_properties.add(vertex_cls_name)
-    return classes_with_no_properties
 
 
 def _property_descriptor_to_graphql_type(property_obj):
@@ -219,7 +225,8 @@ def _create_union_types_specification(schema_graph, graphql_types, hidden_classe
     return types_spec
 
 
-def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides):
+def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
+                                         hidden_classes):
     """Return a GraphQL schema object corresponding to the schema of the given schema graph.
 
     Args:
@@ -228,11 +235,11 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
                                        (string -> {string -> GraphQLType}). Used to override the
                                        type of a field in the class where it's first defined and all
                                        the class's subclasses.
+        hidden_classes: set of strings, classes to not include in the GraphQL schema.
 
     Returns:
         tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
-        The tuple is of type (GraphQLSchema, GraphQLUnionType).
-        We hide classes with no properties in the schema since they're not representable in GraphQL.
+        The tuple is of type (GraphQLSchema, {GraphQLObjectType -> GraphQLUnionType}).
     """
     _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_type_overrides,
                                                                schema_graph)
@@ -242,8 +249,10 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     inherited_field_type_overrides = _get_inherited_field_types(class_to_field_type_overrides,
                                                                 schema_graph)
 
-    # Classes with no properties are not representable in GraphQL.
-    hidden_classes = _get_classes_with_no_properties(schema_graph)
+    # We remove the base vertex class from the schema if it has no properties.
+    # If it has no properties, it's meaningless and makes the schema less syntactically sweet.
+    if not schema_graph.get_element_by_class_name(ORIENTDB_BASE_VERTEX_CLASS_NAME).properties:
+        hidden_classes.add(ORIENTDB_BASE_VERTEX_CLASS_NAME)
 
     graphql_types = OrderedDict()
     type_equivalence_hints = OrderedDict()
@@ -365,4 +374,10 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     ]))
 
     schema = GraphQLSchema(RootSchemaQuery, directives=DIRECTIVES)
-    return schema, type_equivalence_hints
+
+    # Note that the GraphQLSchema reconstructs the set of types in the schema by recursively
+    # searching through the fields of the RootSchemaQuery. Since union types can only appear in the
+    # fields of other types as edges, union types with no in or out edges will not appear in the
+    # schema. Therefore, we remove these unions and their keys from the type equivalence hints.
+    return schema, _get_referenced_type_equivalences(graphql_types,
+                                                     type_equivalence_hints)

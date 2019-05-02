@@ -3,7 +3,7 @@ import unittest
 
 from . import test_input_data
 from ..compiler.compiler_frontend import graphql_to_ir
-from ..compiler.helpers import Location
+from ..compiler.helpers import FoldScopeLocation, Location
 from ..compiler.metadata import FilterInfo, RecurseInfo
 from .test_helpers import get_schema
 
@@ -66,8 +66,14 @@ class ExplainInfoTests(unittest.TestCase):
                    [])
 
     def test_coercion_filters_and_multiple_outputs_within_fold_scope(self):
+        loc = FoldScopeLocation(Location(('Animal',), None, 1), (('out', 'Entity_Related'),), None)
+        filters = [
+            FilterInfo(fields=('name',), op_name='has_substring', args=('$substring',)),
+            FilterInfo(fields=('birthday',), op_name='<=', args=('$latest',)),
+        ]
+
         self.check(test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope,
-                   [],
+                   [(loc, filters)],
                    [])
 
     def test_multiple_filters(self):
