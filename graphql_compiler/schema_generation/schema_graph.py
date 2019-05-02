@@ -27,8 +27,8 @@ def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, base_conn
     edge_destination = base_connections.get(EdgeType.EDGE_DESTINATION_PROPERTY_NAME, None)
     if not edge_source and edge_destination:
         raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
-                                      u'in/out base_connections: {} {}'.format(class_name,
-                                                                               base_connections))
+                                      u'in/out base_connection: {} {}'.format(class_name,
+                                                                              base_connections))
 
 
 def _validate_property_names(class_name, properties):
@@ -194,7 +194,7 @@ class VertexType(GraphElement):
 class EdgeType(GraphElement):
     EDGE_SOURCE_PROPERTY_NAME = 'out'
     EDGE_DESTINATION_PROPERTY_NAME = 'in'
-    EDGE_END_NAMES = {EDGE_SOURCE_PROPERTY_NAME , EDGE_DESTINATION_PROPERTY_NAME}
+    EDGE_END_NAMES = {EDGE_SOURCE_PROPERTY_NAME, EDGE_DESTINATION_PROPERTY_NAME}
 
     def __init__(self, class_name, abstract, properties, class_fields, base_connections):
         """Create a new EdgeType object.
