@@ -14,7 +14,7 @@ from .schema_properties import (
 from .utils import toposort_classes
 
 
-def _validate_base_connections_dict_keys(class_name, base_connections):
+def _validate_base_connections_contains_only_end_name_keys(class_name, base_connections):
     """Validate that the only keys in the edge's base_connections dict are 'in' and 'out'"""
     if not set(base_connections.keys()).issubset(EdgeType.EDGE_END_NAMES):
         raise IllegalSchemaStateError(u'Found non-end key name(s) defined on the base connections '
@@ -218,7 +218,7 @@ class EdgeType(GraphElement):
 
         if not abstract:
             _validate_non_abstract_edge_has_defined_base_connections(class_name, base_connections)
-        _validate_base_connections_dict_keys(class_name, base_connections)
+        _validate_base_connections_contains_only_end_name_keys(class_name, base_connections)
         self._base_connections = base_connections
 
     @property
@@ -567,23 +567,23 @@ class SchemaGraph(object):
             self._validate_link_definition(class_name_to_definition, property_definition)
             links[property_definition['name']].add(property_definition['linkedClass'])
 
-        for link_direction, linked_classes in six.iteritems(links):
+        for end_direction, linked_classes in six.iteritems(links):
             for linked_class in linked_classes:
                 subclass_set = self._subclass_sets[linked_class]
                 if len(linked_classes.intersection(subclass_set)) == 1:
-                    base_direction_connection = base_connections.get(link_direction, None)
+                    base_direction_connection = base_connections.get(end_direction, None)
                     if base_direction_connection and base_direction_connection != linked_class:
                         raise AssertionError(u'There already exists class "{}" in addition '
                                              u'to class "{}" which is a subclass of all '
                                              u'{} properties for class "{}".'
                                              .format(base_direction_connection,
-                                                     linked_class, link_direction, class_name))
-                    base_connections[link_direction] = linked_class
+                                                     linked_class, end_direction, class_name))
+                    base_connections[end_direction] = linked_class
 
-            if link_direction not in base_connections and not abstract:
-                raise AssertionError(u'For link direction "{}" of non-abstract edge class "{}", '
-                                     u'no such subclass-of-all-elements exists.'
-                                     .format(link_direction, class_name))
+            if end_direction not in base_connections and not abstract:
+                raise AssertionError(u'For edge end direction "{}" of non-abstract edge class '
+                                     u'"{}", no such subclass-of-all-elements exists.'
+                                     .format(end_direction, class_name))
         return base_connections
 
     def _validate_link_definition(self, class_name_to_definition, property_definition):
