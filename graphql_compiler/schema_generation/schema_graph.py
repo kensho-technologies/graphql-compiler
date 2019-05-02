@@ -247,6 +247,7 @@ class EdgeType(GraphElement):
         """Return the base connections of the edge."""
         return self._base_connections
 
+
 class NonGraphElement(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields):
         super(NonGraphElement, self).__init__(class_name, abstract, properties, class_fields)
