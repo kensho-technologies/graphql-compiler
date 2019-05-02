@@ -2,6 +2,7 @@
 from abc import ABCMeta, abstractmethod
 from itertools import chain
 
+from funcy.py3 import lsplit
 import six
 
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
@@ -509,44 +510,49 @@ class SchemaGraph(object):
             class_fields = _get_class_fields(class_definition)
             abstract = _is_abstract(class_definition)
             property_name_to_descriptor = self._get_element_properties(
-                abstract, class_name, class_name_to_definition, kind_cls)
+                class_name, class_name_to_definition, abstract, kind_cls)
 
             self._elements[class_name] = kind_cls(
                 class_name, abstract, property_name_to_descriptor, class_fields)
 
-    def _get_element_properties(self, abstract, class_name, class_name_to_definition, kind_cls):
+    def _get_element_properties(self, class_name, class_name_to_definition, abstract, kind_cls):
         """Return the properties of a SchemaElement from an OrientDB class definition."""
-        property_name_to_descriptor = {}
-        all_property_lists = (
+        link_property_names = {EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME}
+
+        all_property_lists = [
             class_name_to_definition[inherited_class_name]['properties']
             for inherited_class_name in self._inheritance_sets[class_name]
-        )
+        ]
+
+        link_property_definitions, non_link_property_definitions = lsplit(
+            lambda x: x['name'] in link_property_names, chain.from_iterable(all_property_lists))
+
+        property_name_to_descriptor = self._get_link_properties(
+            class_name, class_name_to_definition, link_property_definitions, abstract, kind_cls)
+        property_name_to_descriptor.update(self._get_non_link_properties(
+            class_name, class_name_to_definition, non_link_property_definitions))
+        return property_name_to_descriptor
+
+    def _get_link_properties(self, class_name, class_name_to_definition,
+                             link_property_definitions, abstract, kind_cls):
+        """Return the link properties of a SchemaElement."""
+        if len(link_property_definitions) > 0 and not issubclass(kind_cls, EdgeType):
+            raise AssertionError(u'There are links {} defined on non-edge class {}'
+                                 .format(link_property_definitions, class_name))
+        property_name_to_descriptor = {}
         links = {EDGE_DESTINATION_PROPERTY_NAME: [], EDGE_SOURCE_PROPERTY_NAME: []}
-        for property_definition in chain.from_iterable(all_property_lists):
+
+        for property_definition in link_property_definitions:
             property_name = property_definition['name']
+            links[property_name].append(self._create_descriptor_from_property_definition(
+                class_name, property_definition, class_name_to_definition))
 
-            # The only properties we allow to be redefined are the in/out properties
-            # of edge classes. All other properties may only be defined once
-            # in the entire inheritance hierarchy of any schema class, of any kind.
-            duplication_allowed = property_name in links and issubclass(kind_cls, EdgeType)
-
-            if not duplication_allowed and property_name in property_name_to_descriptor:
-                raise AssertionError(u'The property "{}" on class "{}" is defined '
-                                     u'more than once, this is not allowed!'
-                                     .format(property_name, class_name))
-
-            property_descriptor = self._create_descriptor_from_property_definition(
-                class_name, property_definition, class_name_to_definition)
-
-            if property_name in links:
-                links[property_name].append(property_descriptor)
-            else:
-                property_name_to_descriptor[property_name] = property_descriptor
         for property_name in links:
             elements = {
                 property_descriptor.qualifier
                 for property_descriptor in links[property_name]
             }
+
             # If there are multiple in/out properties, we choose to include the one that
             # is a subclass of all the elements present in the in/out properties.
             for property_descriptor in links[property_name]:
@@ -566,6 +572,23 @@ class SchemaGraph(object):
                 raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
                                      u'no such subclass-of-all-elements exists.'
                                      .format(property_name, class_name))
+        return property_name_to_descriptor
+
+    def _get_non_link_properties(self, class_name, class_name_to_definition,
+                                 non_link_property_definitions):
+        """Return the non-link properties of a SchemaElement."""
+        property_name_to_descriptor = {}
+        for property_definition in non_link_property_definitions:
+            property_name = property_definition['name']
+
+            if property_name in property_name_to_descriptor:
+                raise AssertionError(u'The property "{}" on class "{}" is defined '
+                                     u'more than once, this is not allowed!'
+                                     .format(property_name, class_name))
+
+            property_descriptor = self._create_descriptor_from_property_definition(
+                class_name, property_definition, class_name_to_definition)
+            property_name_to_descriptor[property_name] = property_descriptor
         return property_name_to_descriptor
 
     def _create_descriptor_from_property_definition(self, class_name, property_definition,
