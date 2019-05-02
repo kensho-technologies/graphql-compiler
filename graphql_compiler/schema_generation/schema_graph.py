@@ -220,18 +220,18 @@ class VertexType(GraphElement):
 
 
 class EdgeType(GraphElement):
-    def __init__(self, class_name, abstract, properties, class_fields, root_connections):
+    def __init__(self, class_name, abstract, properties, class_fields, base_connections):
         super(EdgeType, self).__init__(class_name, abstract, properties, class_fields,
-                                       root_connections)
+                                       base_connections)
 
-        _validate_edges_do_not_have_extra_links(class_name, root_connections)
+        _validate_edges_do_not_have_extra_links(class_name, base_connections)
         if not abstract:
-            _validate_non_abstract_edge_has_defined_endpoint_types(class_name, root_connections)
-        self._root_connections = root_connections
+            _validate_non_abstract_edge_has_defined_endpoint_types(class_name, base_connections)
+        self._base_connections = base_connections
 
     @property
-    def root_connections(self):
-        return self._root_connections
+    def base_connections(self):
+        return self._base_connections
 
 class NonGraphElement(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields):
@@ -539,13 +539,13 @@ class SchemaGraph(object):
             link_property_definitions, non_link_property_definitions = (
                 _get_link_and_non_link_properties(inherited_property_definitions))
 
-            root_connections = self._get_link_properties(
+            base_connections = self._get_link_properties(
                 class_name, class_name_to_definition, link_property_definitions, abstract)
             property_name_to_descriptor = self._get_non_link_properties(
                 class_name, class_name_to_definition, non_link_property_definitions)
 
             self._elements[class_name] = EdgeType(
-                class_name, abstract, property_name_to_descriptor, class_fields, root_connections)
+                class_name, abstract, property_name_to_descriptor, class_fields, base_connections)
 
     def _set_up_vertex_elements(self, class_name_to_definition):
         """Load all VertexTypes. Used as part of __init__."""
@@ -698,16 +698,16 @@ class SchemaGraph(object):
         for edge_class_name in self._edge_class_names:
             edge_element = self._elements[edge_class_name]
 
-            if (EDGE_SOURCE_PROPERTY_NAME not in edge_element.root_connections or
-                    EDGE_DESTINATION_PROPERTY_NAME not in edge_element.root_connections):
+            if (EDGE_SOURCE_PROPERTY_NAME not in edge_element.base_connections or
+                    EDGE_DESTINATION_PROPERTY_NAME not in edge_element.base_connections):
                 if edge_element.abstract:
                     continue
                 else:
                     raise AssertionError(u'Found a non-abstract edge class with undefined '
                                          u'endpoint types: {}'.format(edge_element))
 
-            from_class_name = edge_element.root_connections[EDGE_SOURCE_PROPERTY_NAME].qualifier
-            to_class_name = edge_element.root_connections[EDGE_DESTINATION_PROPERTY_NAME].qualifier
+            from_class_name = edge_element.base_connections[EDGE_SOURCE_PROPERTY_NAME].qualifier
+            to_class_name = edge_element.base_connections[EDGE_DESTINATION_PROPERTY_NAME].qualifier
 
             edge_schema_element = self._elements[edge_class_name]
 
