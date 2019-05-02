@@ -515,10 +515,7 @@ class SchemaGraph(object):
                 raise AssertionError(u'There are links {} defined on non-edge class {}'
                                      .format(link_property_definitions, class_name))
 
-            property_name_to_descriptor = self._get_link_properties(
-                class_name, class_name_to_definition, link_property_definitions, abstract,
-                NonGraphElement)
-            property_name_to_descriptor.update(self._get_non_link_properties(
+            property_name_to_descriptor = (self._get_non_link_properties(
                 class_name, class_name_to_definition, non_link_property_definitions))
 
             self._elements[class_name] = NonGraphElement(
@@ -537,8 +534,7 @@ class SchemaGraph(object):
                 _get_link_and_non_link_properties(inherited_property_definitions))
 
             property_name_to_descriptor = self._get_link_properties(
-                class_name, class_name_to_definition, link_property_definitions, abstract,
-                EdgeType)
+                class_name, class_name_to_definition, link_property_definitions, abstract)
             property_name_to_descriptor.update(self._get_non_link_properties(
                 class_name, class_name_to_definition, non_link_property_definitions))
 
@@ -561,17 +557,14 @@ class SchemaGraph(object):
                 raise AssertionError(u'There are links {} defined on non-edge class {}'
                                      .format(link_property_definitions, class_name))
 
-            property_name_to_descriptor = self._get_link_properties(
-                class_name, class_name_to_definition, link_property_definitions, abstract,
-                VertexType)
-            property_name_to_descriptor.update(self._get_non_link_properties(
-                class_name, class_name_to_definition, non_link_property_definitions))
+            property_name_to_descriptor = self._get_non_link_properties(
+                class_name, class_name_to_definition, non_link_property_definitions)
 
             self._elements[class_name] = VertexType(
                 class_name, abstract, property_name_to_descriptor, class_fields)
 
     def _get_link_properties(self, class_name, class_name_to_definition,
-                             link_property_definitions, abstract, kind_cls):
+                             link_property_definitions, abstract):
         """Return the link properties of a SchemaElement."""
         property_name_to_descriptor = {}
         links = {EDGE_DESTINATION_PROPERTY_NAME: [], EDGE_SOURCE_PROPERTY_NAME: []}
@@ -601,8 +594,7 @@ class SchemaGraph(object):
                                                      property_descriptor, class_name))
                     property_name_to_descriptor[property_name] = property_descriptor
 
-            if (property_name not in property_name_to_descriptor and not abstract and
-                    issubclass(kind_cls, EdgeType)):
+            if property_name not in property_name_to_descriptor and not abstract:
                 raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
                                      u'no such subclass-of-all-elements exists.'
                                      .format(property_name, class_name))
