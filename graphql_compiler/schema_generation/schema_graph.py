@@ -218,6 +218,22 @@ class VertexType(GraphElement):
 
 class EdgeType(GraphElement):
     def __init__(self, class_name, abstract, properties, class_fields, base_connections):
+        """Create a new EdgeType object.
+
+        Args:
+            class_name: string, the name of the schema element class.
+            abstract: bool, True if the class is abstract, and False otherwise.
+            properties: dict, property name -> PropertyDescriptor describing the properties of
+                        the schema element.
+            class_fields: dict, class field name -> class field value, both strings
+            base_connections: dict, string -> string. Maps a edge end, (one of 'in' or 'out'),
+                              to the class that is allowed at that edge end and is the superclass of
+                              all the classes allowed in that edge end. A base connection may
+                              be missing for either end if the edge is abstract.
+
+        Returns:
+            a EdgeType with the given parameters
+        """
         super(EdgeType, self).__init__(class_name, abstract, properties, class_fields,
                                        base_connections)
 
@@ -228,6 +244,7 @@ class EdgeType(GraphElement):
 
     @property
     def base_connections(self):
+        """Return the base connections of the edge."""
         return self._base_connections
 
 class NonGraphElement(SchemaElement):
