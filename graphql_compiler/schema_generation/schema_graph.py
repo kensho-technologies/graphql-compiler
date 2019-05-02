@@ -21,7 +21,7 @@ def _validate_base_connections_dict_keys(class_name, base_connections):
                                       u'of an edge {} {}'.format(class_name, base_connections))
 
 
-def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, base_connections):
+def _validate_non_abstract_edge_has_defined_base_connections(class_name, base_connections):
     """Validate that the non-abstract edge has its in/out base connections defined."""
     edge_source = base_connections.get(EdgeType.EDGE_SOURCE_PROPERTY_NAME, None)
     edge_destination = base_connections.get(EdgeType.EDGE_DESTINATION_PROPERTY_NAME, None)
@@ -217,7 +217,7 @@ class EdgeType(GraphElement):
                                        base_connections)
 
         if not abstract:
-            _validate_non_abstract_edge_has_defined_endpoint_types(class_name, base_connections)
+            _validate_non_abstract_edge_has_defined_base_connections(class_name, base_connections)
         _validate_base_connections_dict_keys(class_name, base_connections)
         self._base_connections = base_connections
 
