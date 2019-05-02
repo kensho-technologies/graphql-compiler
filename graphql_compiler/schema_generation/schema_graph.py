@@ -568,8 +568,6 @@ class SchemaGraph(object):
             links[property_definition['name']].add(property_definition['linkedClass'])
 
         for link_direction, linked_classes in six.iteritems(links):
-            # If there are multiple in/out properties, we choose to include the one that
-            # is a subclass of all the elements present in the in/out properties.
             for linked_class in linked_classes:
                 subclass_set = self._subclass_sets[linked_class]
                 if len(linked_classes.intersection(subclass_set)) == 1:
