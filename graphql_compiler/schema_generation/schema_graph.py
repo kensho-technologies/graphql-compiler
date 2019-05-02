@@ -7,18 +7,17 @@ import six
 
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
 from .schema_properties import (
-    COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME,
-    ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
-    PROPERTY_TYPE_LINK_ID, PropertyDescriptor, parse_default_property_value,
-    validate_supported_property_type_id
+    COLLECTION_PROPERTY_TYPES, ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME,
+    ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_LINK_ID, PropertyDescriptor,
+    parse_default_property_value, validate_supported_property_type_id
 )
 from .utils import toposort_classes
 
 
 def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, base_connections):
     """Validate that the non-abstract edge has its in/out base connections defined."""
-    edge_source = base_connections.get(EDGE_SOURCE_PROPERTY_NAME, None)
-    edge_destination = base_connections.get(EDGE_DESTINATION_PROPERTY_NAME, None)
+    edge_source = base_connections.get(EdgeType.EDGE_SOURCE_PROPERTY_NAME, None)
+    edge_destination = base_connections.get(EdgeType.EDGE_DESTINATION_PROPERTY_NAME, None)
     if not edge_source and edge_destination:
         raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
                                       u'in/out base_connections: {} {}'.format(class_name,
@@ -186,6 +185,9 @@ class VertexType(GraphElement):
 
 
 class EdgeType(GraphElement):
+    EDGE_SOURCE_PROPERTY_NAME = 'out'
+    EDGE_DESTINATION_PROPERTY_NAME = 'in'
+
     def __init__(self, class_name, abstract, properties, class_fields, base_connections):
         """Create a new EdgeType object.
 
@@ -326,11 +328,6 @@ class SchemaGraph(object):
             property_name: property_descriptor.default
             for property_name, property_descriptor in six.iteritems(schema_element.properties)
         }
-
-        if schema_element.is_edge:
-            # Remove the source/destination properties for edges, if they exist.
-            result.pop(EDGE_SOURCE_PROPERTY_NAME, None)
-            result.pop(EDGE_DESTINATION_PROPERTY_NAME, None)
 
         return result
 
@@ -552,7 +549,10 @@ class SchemaGraph(object):
                               link_property_definitions, abstract):
         """Return the base connections of an EdgeType."""
         base_connections = {}
-        links = {EDGE_DESTINATION_PROPERTY_NAME: set(), EDGE_SOURCE_PROPERTY_NAME: set()}
+        links = {
+            EdgeType.EDGE_DESTINATION_PROPERTY_NAME: set(),
+            EdgeType.EDGE_SOURCE_PROPERTY_NAME: set()
+        }
 
         for property_definition in link_property_definitions:
             self._validate_link_definition(class_name_to_definition, property_definition)
@@ -669,16 +669,16 @@ class SchemaGraph(object):
         for edge_class_name in self._edge_class_names:
             edge_element = self._elements[edge_class_name]
 
-            if (EDGE_SOURCE_PROPERTY_NAME not in edge_element.base_connections or
-                    EDGE_DESTINATION_PROPERTY_NAME not in edge_element.base_connections):
+            if (EdgeType.EDGE_SOURCE_PROPERTY_NAME not in edge_element.base_connections or
+                    EdgeType.EDGE_DESTINATION_PROPERTY_NAME not in edge_element.base_connections):
                 if edge_element.abstract:
                     continue
                 else:
                     raise AssertionError(u'Found a non-abstract edge class with undefined '
                                          u'endpoint types: {}'.format(edge_element))
 
-            from_class_name = edge_element.base_connections[EDGE_SOURCE_PROPERTY_NAME]
-            to_class_name = edge_element.base_connections[EDGE_DESTINATION_PROPERTY_NAME]
+            from_class_name = edge_element.base_connections[EdgeType.EDGE_SOURCE_PROPERTY_NAME]
+            to_class_name = edge_element.base_connections[EdgeType.EDGE_DESTINATION_PROPERTY_NAME]
 
             edge_schema_element = self._elements[edge_class_name]
 
@@ -705,7 +705,10 @@ def _get_inherited_property_definitions(superclass_set, class_name_to_definition
 
 def _get_link_and_non_link_properties(property_definitions):
     """Return a class's link and non link OrientDB property definitions."""
-    link_property_names = {EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME}
+    link_property_names = {
+        EdgeType.EDGE_DESTINATION_PROPERTY_NAME,
+        EdgeType.EDGE_SOURCE_PROPERTY_NAME
+    }
     return lsplit(lambda x: x['name'] in link_property_names, property_definitions)
 
 
