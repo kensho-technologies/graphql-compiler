@@ -660,6 +660,45 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
+    def test_filter_in_optional_and_count(self):
+        test_data = test_input_data.filter_in_optional_and_count()
+
+        expected_match = '''
+            SELECT
+                Species___1.name AS `species_name`
+            FROM (
+                MATCH {{
+                    class: Species,
+                    as: Species___1
+                }}.in('Animal_OfSpecies') {{
+                   where: ((name = {animal_name})),
+                   optional: true,
+                   as: Species__in_Animal_OfSpecies___1
+                }}
+                RETURN $matches
+            )
+            LET $Species___1___in_Species_Eats = Species___1.in("Species_Eats").asList()
+            WHERE (
+                (
+                    $Species___1___in_Species_Eats.size() >= {predators}
+                ) AND (
+                    (
+                        (
+                            Species___1.in_Animal_OfSpecies IS null
+                        ) OR (
+                            Species___1.in_Animal_OfSpecies.size() = 0
+                        )
+                    ) OR (
+                        Species__in_Animal_OfSpecies___1 IS NOT null
+                    )
+                )
+            )
+        '''
+        expected_gremlin = NotImplementedError
+        expected_sql = NotImplementedError
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
+
     def test_between_filter_on_simple_scalar(self):
         # The "between" filter emits different output depending on what the compared types are.
         # This test checks for correct code generation when the type is a simple scalar (a String).

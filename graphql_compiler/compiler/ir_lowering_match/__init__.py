@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import six
 
-from ..blocks import Filter, GlobalOperationsStart
+from ..blocks import Filter
 from ..ir_lowering_common import (extract_optional_location_root_info,
                                   extract_simple_optional_location_info,
                                   lower_context_field_existence, merge_consecutive_filter_clauses,
@@ -82,7 +82,8 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     if len(simple_optional_root_info) > 0:
         where_filter_predicate = construct_where_filter_predicate(
             query_metadata_table, simple_optional_root_info)
-        ir_blocks.insert(-1, GlobalOperationsStart())
+        # The GlobalOperationsStart block should already exist at this point. It is inserted
+        # in the compiler_frontend, and this function asserts that at the beginning.
         ir_blocks.insert(-1, Filter(where_filter_predicate))
 
     # These lowering / optimization passes work on IR blocks.
