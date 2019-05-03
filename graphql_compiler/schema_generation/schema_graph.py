@@ -18,21 +18,13 @@ from .schema_properties import (
 from .utils import toposort_classes
 
 
-def _validate_base_connections_contains_only_end_name_keys(class_name, base_connections):
-    """Validate that the only keys in the edge's base_connections dict are 'in' and 'out'"""
-    if not set(base_connections.keys()).issubset(EDGE_END_NAMES):
-        raise IllegalSchemaStateError(u'Found non-end key name(s) defined on the base connections '
-                                      u'of an edge {} {}'.format(class_name, base_connections))
-
-
-def _validate_non_abstract_edge_has_defined_base_connections(class_name, base_connections):
+def _validate_non_abstract_edge_has_defined_base_connections(
+        class_name, base_in_connection, base_out_connection):
     """Validate that the non-abstract edge has its in/out base connections defined."""
-    edge_source = base_connections.get(EDGE_SOURCE_PROPERTY_NAME, None)
-    edge_destination = base_connections.get(EDGE_DESTINATION_PROPERTY_NAME, None)
-    if not edge_source and edge_destination:
+    if not (base_in_connection and base_out_connection):
         raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
-                                      u'in/out base_connection: {} {}'.format(class_name,
-                                                                              base_connections))
+                                      u'in/out base_connection: {} {} {}'
+                                      .format(class_name, base_in_connection, base_out_connection))
 
 
 def _validate_property_names(class_name, properties):
@@ -196,7 +188,8 @@ class VertexType(GraphElement):
 
 
 class EdgeType(GraphElement):
-    def __init__(self, class_name, abstract, properties, class_fields, base_connections):
+    def __init__(self, class_name, abstract, properties, class_fields,
+                 base_in_connection=None, base_out_connection=None):
         """Create a new EdgeType object.
 
         Args:
@@ -205,26 +198,33 @@ class EdgeType(GraphElement):
             properties: dict, property name -> PropertyDescriptor describing the properties of
                         the schema element.
             class_fields: dict, class field name -> class field value, both strings
-            base_connections: dict, string -> string. Maps a edge end, (one of 'in' or 'out'),
-                              to the class that is allowed at that edge end and is the superclass of
-                              all the classes allowed in that edge end. A base connection may
-                              be missing for either end if the edge is abstract.
+            base_in_connection: optional string, the class allowed at tail end of the edge
+                                end and is a superclass of all the classes allowed in the tail end
+                                edge end. If the edge is abstract, the field may be None
+                                since such a class might not exist.
+            base_out_connection: optional string, similarly defined as base_in_connection.
 
         Returns:
             a EdgeType with the given parameters
         """
         super(EdgeType, self).__init__(class_name, abstract, properties, class_fields,
-                                       base_connections)
+                                       base_in_connection, base_out_connection)
 
         if not abstract:
-            _validate_non_abstract_edge_has_defined_base_connections(class_name, base_connections)
-        _validate_base_connections_contains_only_end_name_keys(class_name, base_connections)
-        self._base_connections = base_connections
+            _validate_non_abstract_edge_has_defined_base_connections(
+                class_name, base_in_connection, base_out_connection)
+        self._base_in_connection = base_in_connection
+        self._base_out_connection = base_out_connection
 
     @property
-    def base_connections(self):
-        """Return the base connections of the edge."""
-        return self._base_connections
+    def base_in_connection(self):
+        """Return the base in connection of the edge."""
+        return self._base_in_connection
+
+    @property
+    def base_out_connection(self):
+        """Return the base out connection of the edge."""
+        return self._base_out_connection
 
 
 class NonGraphElement(SchemaElement):
@@ -524,13 +524,14 @@ class SchemaGraph(object):
             link_property_definitions, non_link_property_definitions = (
                 _get_link_and_non_link_properties(inherited_property_definitions))
 
-            base_connections = self._get_base_connections(
+            maybe_base_in_connection, maybe_base_out_connection = self._try_get_base_connections(
                 class_name, class_name_to_definition, link_property_definitions, abstract)
             property_name_to_descriptor = self._get_element_properties(
                 class_name, non_link_property_definitions)
 
             self._elements[class_name] = EdgeType(
-                class_name, abstract, property_name_to_descriptor, class_fields, base_connections)
+                class_name, abstract, property_name_to_descriptor, class_fields,
+                maybe_base_in_connection, maybe_base_out_connection)
 
     def _set_up_vertex_elements(self, class_name_to_definition):
         """Load all VertexTypes. Used as part of __init__."""
@@ -554,13 +555,13 @@ class SchemaGraph(object):
             self._elements[class_name] = VertexType(
                 class_name, abstract, property_name_to_descriptor, class_fields)
 
-    def _get_base_connections(self, class_name, class_name_to_definition,
-                              link_property_definitions, abstract):
-        """Return the base connections of an EdgeType."""
+    def _try_get_base_connections(self, class_name, class_name_to_definition,
+                                  link_property_definitions, abstract):
+        """Return the base in/out connections of an EdgeType or None if it does not have one."""
         base_connections = {}
         links = {
+            EDGE_SOURCE_PROPERTY_NAME: set(),
             EDGE_DESTINATION_PROPERTY_NAME: set(),
-            EDGE_SOURCE_PROPERTY_NAME: set()
         }
 
         for property_definition in link_property_definitions:
@@ -584,7 +585,10 @@ class SchemaGraph(object):
                 raise AssertionError(u'For edge end direction "{}" of non-abstract edge class '
                                      u'"{}", no such subclass-of-all-elements exists.'
                                      .format(end_direction, class_name))
-        return base_connections
+        return (
+            base_connections.get(EDGE_SOURCE_PROPERTY_NAME, None),
+            base_connections.get(EDGE_DESTINATION_PROPERTY_NAME, None),
+        )
 
     def _validate_link_definition(self, class_name_to_definition, property_definition):
         """Validate that property named either 'in' or 'out' is properly defined as a link."""
@@ -676,16 +680,11 @@ class SchemaGraph(object):
         for edge_class_name in self._edge_class_names:
             edge_element = self._elements[edge_class_name]
 
-            if (EDGE_SOURCE_PROPERTY_NAME not in edge_element.base_connections or
-                    EDGE_DESTINATION_PROPERTY_NAME not in edge_element.base_connections):
-                if edge_element.abstract:
-                    continue
-                else:
-                    raise AssertionError(u'Found a non-abstract edge class with undefined '
-                                         u'endpoint types: {}'.format(edge_element))
+            from_class_name = edge_element.base_in_connection
+            to_class_name = edge_element.base_out_connection
 
-            from_class_name = edge_element.base_connections[EDGE_SOURCE_PROPERTY_NAME]
-            to_class_name = edge_element.base_connections[EDGE_DESTINATION_PROPERTY_NAME]
+            if not from_class_name or not to_class_name:
+                continue
 
             edge_schema_element = self._elements[edge_class_name]
 

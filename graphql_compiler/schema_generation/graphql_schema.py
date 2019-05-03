@@ -13,11 +13,10 @@ from ..schema import (
 )
 from .exceptions import EmptySchemaError
 from .schema_properties import (
-    EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
-    PROPERTY_TYPE_BOOLEAN_ID, PROPERTY_TYPE_DATE_ID, PROPERTY_TYPE_DATETIME_ID,
-    PROPERTY_TYPE_DECIMAL_ID, PROPERTY_TYPE_DOUBLE_ID, PROPERTY_TYPE_EMBEDDED_LIST_ID,
-    PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_FLOAT_ID, PROPERTY_TYPE_INTEGER_ID,
-    PROPERTY_TYPE_STRING_ID
+    ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_BOOLEAN_ID, PROPERTY_TYPE_DATE_ID,
+    PROPERTY_TYPE_DATETIME_ID, PROPERTY_TYPE_DECIMAL_ID, PROPERTY_TYPE_DOUBLE_ID,
+    PROPERTY_TYPE_EMBEDDED_LIST_ID, PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_FLOAT_ID,
+    PROPERTY_TYPE_INTEGER_ID, PROPERTY_TYPE_STRING_ID
 )
 
 
@@ -125,14 +124,12 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
     if not schema_element.is_non_graph:
         outbound_edges = (
             ('out_{}'.format(out_edge_name),
-             schema_graph.get_element_by_class_name(out_edge_name).base_connections[
-                 EDGE_DESTINATION_PROPERTY_NAME])
+             schema_graph.get_element_by_class_name(out_edge_name).base_out_connection)
             for out_edge_name in schema_element.out_connections
         )
         inbound_edges = (
             ('in_{}'.format(in_edge_name),
-             schema_graph.get_element_by_class_name(in_edge_name).base_connections[
-                 EDGE_SOURCE_PROPERTY_NAME])
+             schema_graph.get_element_by_class_name(in_edge_name).base_in_connection)
             for in_edge_name in schema_element.in_connections
         )
         for field_name, to_type_name in chain(outbound_edges, inbound_edges):

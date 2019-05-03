@@ -213,10 +213,8 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         ]
         schema_graph = SchemaGraph(schema_data)
         person_lives_in_edge = schema_graph.get_element_by_class_name('Person_LivesIn')
-        in_base_connection = person_lives_in_edge.base_connections['in']
-        self.assertEqual(in_base_connection, 'Location')
-        out_base_connection = person_lives_in_edge.base_connections['out']
-        self.assertEqual(out_base_connection, 'Person')
+        self.assertEqual(person_lives_in_edge.base_in_connection, 'Person')
+        self.assertEqual(person_lives_in_edge.base_out_connection, 'Location')
 
     def test_parsed_class_fields(self):
         schema_data = [
