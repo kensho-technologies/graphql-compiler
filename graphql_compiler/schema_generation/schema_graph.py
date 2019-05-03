@@ -5,54 +5,26 @@ from itertools import chain
 from funcy.py3 import lsplit
 import six
 
+from graphql_compiler.schema_generation.schema_properties import (
+    EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES, EDGE_SOURCE_PROPERTY_NAME
+)
+
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
 from .schema_properties import (
-    COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME,
-    ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
-    PROPERTY_TYPE_LINK_ID, PropertyDescriptor, parse_default_property_value,
-    validate_supported_property_type_id
+    COLLECTION_PROPERTY_TYPES, ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME,
+    ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_LINK_ID, PropertyDescriptor,
+    parse_default_property_value, validate_supported_property_type_id
 )
 from .utils import toposort_classes
 
 
-def _validate_non_abstract_edge_has_defined_endpoint_types(class_name, properties):
-    """Validate that the non-abstract edge properties dict has defined in/out link properties."""
-    edge_source = properties.get(EDGE_SOURCE_PROPERTY_NAME, None)
-    edge_destination = properties.get(EDGE_DESTINATION_PROPERTY_NAME, None)
-    has_defined_endpoint_types = all((
-        edge_source is not None and edge_source.type_id == PROPERTY_TYPE_LINK_ID,
-        edge_destination is not None and edge_destination.type_id == PROPERTY_TYPE_LINK_ID,
-    ))
-    if not has_defined_endpoint_types:
+def _validate_non_abstract_edge_has_defined_base_connections(
+        class_name, base_in_connection, base_out_connection):
+    """Validate that the non-abstract edge has its in/out base connections defined."""
+    if not (base_in_connection and base_out_connection):
         raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
-                                      u'in/out properties: {} {}'.format(class_name, properties))
-
-
-def _validate_non_edges_do_not_have_edge_like_properties(class_name, properties):
-    """Validate that non-edges do not have the in/out properties defined."""
-    has_source = EDGE_SOURCE_PROPERTY_NAME in properties
-    has_destination = EDGE_DESTINATION_PROPERTY_NAME in properties
-
-    if has_source or has_destination:
-        raise IllegalSchemaStateError(u'Found a non-edge class that defines edge-like "in" or '
-                                      u'"out" properties: {} {}'.format(class_name, properties))
-
-    for property_name, property_descriptor in six.iteritems(properties):
-        if property_descriptor.type_id == PROPERTY_TYPE_LINK_ID:
-            raise IllegalSchemaStateError(u'Non-edge class "{}" has a property of type Link, this '
-                                          u'is not allowed: {}'.format(class_name, property_name))
-
-
-def _validate_edges_do_not_have_extra_links(class_name, properties):
-    """Validate that edges do not have properties of Link type that aren't the edge endpoints."""
-    for property_name, property_descriptor in six.iteritems(properties):
-        if property_name in {EDGE_SOURCE_PROPERTY_NAME, EDGE_DESTINATION_PROPERTY_NAME}:
-            continue
-
-        if property_descriptor.type_id == PROPERTY_TYPE_LINK_ID:
-            raise IllegalSchemaStateError(u'Edge class "{}" has a property of type Link that is '
-                                          u'not an edge endpoint, this is not allowed: '
-                                          u'{}'.format(class_name, property_name))
+                                      u'in/out base_connection: {} {} {}'
+                                      .format(class_name, base_in_connection, base_out_connection))
 
 
 def _validate_property_names(class_name, properties):
@@ -184,8 +156,9 @@ class GraphElement(SchemaElement):
     # init method abstract in order to make it impossible to instantiate this class.
     # Inspiration came from: https://stackoverflow.com/questions/44800659/python-abstract-class-init
     @abstractmethod
-    def __init__(self, class_name, abstract, properties, class_fields):
-        super(GraphElement, self).__init__(class_name, abstract, properties, class_fields)
+    def __init__(self, class_name, abstract, properties, class_fields, *args, **kwargs):
+        super(GraphElement, self).__init__(class_name, abstract, properties, class_fields, args,
+                                           kwargs)
 
         # In the schema graph, both vertices and edges are represented with vertices.
         # These dicts have the name of the adjacent schema vertex in the appropriate direction.
@@ -213,27 +186,50 @@ class VertexType(GraphElement):
     def __init__(self, class_name, abstract, properties, class_fields):
         super(VertexType, self).__init__(class_name, abstract, properties, class_fields)
 
-        # Non-edges must not have properties like "in" or "out" defined, and
-        # must not have properties of type "Link".
-        _validate_non_edges_do_not_have_edge_like_properties(class_name, properties)
-
 
 class EdgeType(GraphElement):
-    def __init__(self, class_name, abstract, properties, class_fields):
-        super(EdgeType, self).__init__(class_name, abstract, properties, class_fields)
+    def __init__(self, class_name, abstract, properties, class_fields,
+                 base_in_connection=None, base_out_connection=None):
+        """Create a new EdgeType object.
 
-        _validate_edges_do_not_have_extra_links(class_name, properties)
+        Args:
+            class_name: string, the name of the schema element class.
+            abstract: bool, True if the class is abstract, and False otherwise.
+            properties: dict, property name -> PropertyDescriptor describing the properties of
+                        the schema element.
+            class_fields: dict, class field name -> class field value, both strings
+            base_in_connection: optional string, the class allowed at tail end of the edge
+                                end and is a superclass of all the classes allowed in the tail end
+                                edge end. If the edge is abstract, the field may be None
+                                since such a class might not exist.
+            base_out_connection: optional string, similarly defined as base_in_connection.
+
+        Returns:
+            a EdgeType with the given parameters
+        """
+        super(EdgeType, self).__init__(class_name, abstract, properties, class_fields,
+                                       base_in_connection, base_out_connection)
+
         if not abstract:
-            _validate_non_abstract_edge_has_defined_endpoint_types(class_name, properties)
+            _validate_non_abstract_edge_has_defined_base_connections(
+                class_name, base_in_connection, base_out_connection)
+        self._base_in_connection = base_in_connection
+        self._base_out_connection = base_out_connection
+
+    @property
+    def base_in_connection(self):
+        """Return the base in connection of the edge."""
+        return self._base_in_connection
+
+    @property
+    def base_out_connection(self):
+        """Return the base out connection of the edge."""
+        return self._base_out_connection
 
 
 class NonGraphElement(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields):
         super(NonGraphElement, self).__init__(class_name, abstract, properties, class_fields)
-
-        # Non-edges must not have properties like "in" or "out" defined, and
-        # must not have properties of type "Link".
-        _validate_non_edges_do_not_have_edge_like_properties(class_name, properties)
 
 
 class SchemaGraph(object):
@@ -341,11 +337,6 @@ class SchemaGraph(object):
             property_name: property_descriptor.default
             for property_name, property_descriptor in six.iteritems(schema_element.properties)
         }
-
-        if schema_element.is_edge:
-            # Remove the source/destination properties for edges, if they exist.
-            result.pop(EDGE_SOURCE_PROPERTY_NAME, None)
-            result.pop(EDGE_DESTINATION_PROPERTY_NAME, None)
 
         return result
 
@@ -511,11 +502,12 @@ class SchemaGraph(object):
             link_property_definitions, non_link_property_definitions = (
                 _get_link_and_non_link_properties(inherited_property_definitions))
 
-            property_name_to_descriptor = self._get_link_properties(
-                class_name, class_name_to_definition, link_property_definitions, abstract,
-                NonGraphElement)
-            property_name_to_descriptor.update(self._get_non_link_properties(
-                class_name, class_name_to_definition, non_link_property_definitions))
+            if len(link_property_definitions) > 0:
+                raise AssertionError(u'There are links {} defined on non-edge class {}'
+                                     .format(link_property_definitions, class_name))
+
+            property_name_to_descriptor = (self._get_element_properties(
+                class_name, non_link_property_definitions))
 
             self._elements[class_name] = NonGraphElement(
                 class_name, abstract, property_name_to_descriptor, class_fields)
@@ -532,14 +524,14 @@ class SchemaGraph(object):
             link_property_definitions, non_link_property_definitions = (
                 _get_link_and_non_link_properties(inherited_property_definitions))
 
-            property_name_to_descriptor = self._get_link_properties(
-                class_name, class_name_to_definition, link_property_definitions, abstract,
-                EdgeType)
-            property_name_to_descriptor.update(self._get_non_link_properties(
-                class_name, class_name_to_definition, non_link_property_definitions))
+            maybe_base_in_connection, maybe_base_out_connection = self._try_get_base_connections(
+                class_name, class_name_to_definition, link_property_definitions, abstract)
+            property_name_to_descriptor = self._get_element_properties(
+                class_name, non_link_property_definitions)
 
             self._elements[class_name] = EdgeType(
-                class_name, abstract, property_name_to_descriptor, class_fields)
+                class_name, abstract, property_name_to_descriptor, class_fields,
+                maybe_base_in_connection, maybe_base_out_connection)
 
     def _set_up_vertex_elements(self, class_name_to_definition):
         """Load all VertexTypes. Used as part of __init__."""
@@ -553,59 +545,77 @@ class SchemaGraph(object):
             link_property_definitions, non_link_property_definitions = (
                 _get_link_and_non_link_properties(inherited_property_definitions))
 
-            property_name_to_descriptor = self._get_link_properties(
-                class_name, class_name_to_definition, link_property_definitions, abstract,
-                VertexType)
-            property_name_to_descriptor.update(self._get_non_link_properties(
-                class_name, class_name_to_definition, non_link_property_definitions))
+            if len(link_property_definitions) > 0:
+                raise AssertionError(u'There are links {} defined on non-edge class {}'
+                                     .format(link_property_definitions, class_name))
+
+            property_name_to_descriptor = self._get_element_properties(
+                class_name, non_link_property_definitions)
 
             self._elements[class_name] = VertexType(
                 class_name, abstract, property_name_to_descriptor, class_fields)
 
-    def _get_link_properties(self, class_name, class_name_to_definition,
-                             link_property_definitions, abstract, kind_cls):
-        """Return the link properties of a SchemaElement."""
-        if len(link_property_definitions) > 0 and not issubclass(kind_cls, EdgeType):
-            raise AssertionError(u'There are links {} defined on non-edge class {}'
-                                 .format(link_property_definitions, class_name))
-        property_name_to_descriptor = {}
-        links = {EDGE_DESTINATION_PROPERTY_NAME: [], EDGE_SOURCE_PROPERTY_NAME: []}
+    def _try_get_base_connections(self, class_name, class_name_to_definition,
+                                  link_property_definitions, abstract):
+        """Return the base in/out connections of an EdgeType or None if it does not have one."""
+        base_connections = {}
+        links = {
+            EDGE_SOURCE_PROPERTY_NAME: set(),
+            EDGE_DESTINATION_PROPERTY_NAME: set(),
+        }
 
         for property_definition in link_property_definitions:
-            property_name = property_definition['name']
-            links[property_name].append(self._create_descriptor_from_property_definition(
-                class_name, property_definition, class_name_to_definition))
+            self._validate_link_definition(class_name_to_definition, property_definition)
+            links[property_definition['name']].add(property_definition['linkedClass'])
 
-        for property_name in links:
-            elements = {
-                property_descriptor.qualifier
-                for property_descriptor in links[property_name]
-            }
+        for end_direction, linked_classes in six.iteritems(links):
+            for linked_class in linked_classes:
+                subclass_set = self._subclass_sets[linked_class]
+                if len(linked_classes.intersection(subclass_set)) == 1:
+                    base_direction_connection = base_connections.get(end_direction, None)
+                    if base_direction_connection and base_direction_connection != linked_class:
+                        raise AssertionError(u'There already exists class "{}" in addition '
+                                             u'to class "{}" which is a subclass of all '
+                                             u'{} properties for class "{}".'
+                                             .format(base_direction_connection,
+                                                     linked_class, end_direction, class_name))
+                    base_connections[end_direction] = linked_class
 
-            # If there are multiple in/out properties, we choose to include the one that
-            # is a subclass of all the elements present in the in/out properties.
-            for property_descriptor in links[property_name]:
-                subclass_set = self._subclass_sets[property_descriptor.qualifier]
-                if len(elements.intersection(subclass_set)) == 1:
-                    current_descriptor = property_name_to_descriptor.get(property_name, None)
-                    if current_descriptor and current_descriptor != property_descriptor:
-                        raise AssertionError(u'There already exists property "{}" in addition '
-                                             u'to property "{}" which is a subclass of all '
-                                             u'in/out properties for class "{}".'
-                                             .format(current_descriptor,
-                                                     property_descriptor, class_name))
-                    property_name_to_descriptor[property_name] = property_descriptor
+            if end_direction not in base_connections and not abstract:
+                raise AssertionError(u'For edge end direction "{}" of non-abstract edge class '
+                                     u'"{}", no such subclass-of-all-elements exists.'
+                                     .format(end_direction, class_name))
+        return (
+            base_connections.get(EDGE_SOURCE_PROPERTY_NAME, None),
+            base_connections.get(EDGE_DESTINATION_PROPERTY_NAME, None),
+        )
 
-            if (property_name not in property_name_to_descriptor and not abstract and
-                    issubclass(kind_cls, EdgeType)):
-                raise AssertionError(u'For property "{}" of non-abstract edge class "{}", '
-                                     u'no such subclass-of-all-elements exists.'
-                                     .format(property_name, class_name))
-        return property_name_to_descriptor
+    def _validate_link_definition(self, class_name_to_definition, property_definition):
+        """Validate that property named either 'in' or 'out' is properly defined as a link."""
+        name = property_definition['name']
+        type_id = property_definition['type']
+        linked_class = property_definition['linkedClass']
+        if type_id != PROPERTY_TYPE_LINK_ID:
+            raise AssertionError(u'Expected property named "{}" to be of type Link: {}'
+                                 .format(name, property_definition))
+        if linked_class is None:
+            raise AssertionError(u'Property "{}" is declared with type Link but has no '
+                                 u'linked class: {}'.format(name, property_definition))
+        if linked_class not in self._vertex_class_names:
+            is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
+            all_subclasses_are_vertices = True
+            for subclass in self._subclass_sets[linked_class]:
+                if subclass != linked_class and subclass not in self.vertex_class_names:
+                    all_subclasses_are_vertices = False
+                    break
+            if not (is_linked_class_abstract and all_subclasses_are_vertices):
+                raise AssertionError(u'Property "{}" is declared as a Link to class {}, but '
+                                     u'that class is neither a vertex nor is it an '
+                                     u'abstract class whose subclasses are all vertices!'
+                                     .format(name, linked_class))
 
-    def _get_non_link_properties(self, class_name, class_name_to_definition,
-                                 non_link_property_definitions):
-        """Return the non-link properties of a SchemaElement."""
+    def _get_element_properties(self, class_name, non_link_property_definitions):
+        """Return the SchemaElement's properties from the OrientDB non-link property definitions."""
         property_name_to_descriptor = {}
         for property_definition in non_link_property_definitions:
             property_name = property_definition['name']
@@ -616,13 +626,12 @@ class SchemaGraph(object):
                                      .format(property_name, class_name))
 
             property_descriptor = self._create_descriptor_from_property_definition(
-                class_name, property_definition, class_name_to_definition)
+                class_name, property_definition)
             property_name_to_descriptor[property_name] = property_descriptor
         return property_name_to_descriptor
 
-    def _create_descriptor_from_property_definition(self, class_name, property_definition,
-                                                    class_name_to_definition):
-        """Return a PropertyDescriptor corresponding to the given OrientDB property definition."""
+    def _create_descriptor_from_property_definition(self, class_name, property_definition):
+        """Return a PropertyDescriptor corresponding to the non-link property definition."""
         name = property_definition['name']
         type_id = property_definition['type']
         linked_class = property_definition.get('linkedClass', None)
@@ -632,32 +641,8 @@ class SchemaGraph(object):
         validate_supported_property_type_id(name, type_id)
 
         if type_id == PROPERTY_TYPE_LINK_ID:
-            if class_name not in self._edge_class_names:
-                raise AssertionError(u'Found a property of type Link on a non-edge class: '
-                                     u'{} {}'.format(name, class_name))
-
-            if name not in {EDGE_SOURCE_PROPERTY_NAME, EDGE_DESTINATION_PROPERTY_NAME}:
-                raise AssertionError(u'Found a property of type Link with an unexpected name: '
-                                     u'{} {}'.format(name, class_name))
-
-            if linked_class is None:
-                raise AssertionError(u'Property "{}" is declared with type Link but has no '
-                                     u'linked class: {}'.format(name, property_definition))
-
-            if linked_class not in self._vertex_class_names:
-                is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
-                all_subclasses_are_vertices = True
-                for subclass in self._subclass_sets[linked_class]:
-                    if subclass != linked_class and subclass not in self.vertex_class_names:
-                        all_subclasses_are_vertices = False
-                        break
-                if not (is_linked_class_abstract and all_subclasses_are_vertices):
-                    raise AssertionError(u'Property "{}" is declared as a Link to class {}, but '
-                                         u'that class is neither a vertex nor is it an '
-                                         u'abstract class whose subclasses are all vertices!'
-                                         .format(name, linked_class))
-
-            qualifier = linked_class
+            raise AssertionError(u'Found a property of type Link on a non-edge class: '
+                                 u'{} {}'.format(name, class_name))
         elif type_id in COLLECTION_PROPERTY_TYPES:
             if linked_class is not None and linked_type is not None:
                 raise AssertionError(u'Property "{}" unexpectedly has both a linked class and '
@@ -695,16 +680,11 @@ class SchemaGraph(object):
         for edge_class_name in self._edge_class_names:
             edge_element = self._elements[edge_class_name]
 
-            if (EDGE_SOURCE_PROPERTY_NAME not in edge_element.properties or
-                    EDGE_DESTINATION_PROPERTY_NAME not in edge_element.properties):
-                if edge_element.abstract:
-                    continue
-                else:
-                    raise AssertionError(u'Found a non-abstract edge class with undefined '
-                                         u'endpoint types: {}'.format(edge_element))
+            from_class_name = edge_element.base_in_connection
+            to_class_name = edge_element.base_out_connection
 
-            from_class_name = edge_element.properties[EDGE_SOURCE_PROPERTY_NAME].qualifier
-            to_class_name = edge_element.properties[EDGE_DESTINATION_PROPERTY_NAME].qualifier
+            if not from_class_name or not to_class_name:
+                continue
 
             edge_schema_element = self._elements[edge_class_name]
 
@@ -731,8 +711,7 @@ def _get_inherited_property_definitions(superclass_set, class_name_to_definition
 
 def _get_link_and_non_link_properties(property_definitions):
     """Return a class's link and non link OrientDB property definitions."""
-    link_property_names = {EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME}
-    return lsplit(lambda x: x['name'] in link_property_names, property_definitions)
+    return lsplit(lambda x: x['name'] in EDGE_END_NAMES, property_definitions)
 
 
 def _is_abstract(class_definition):
