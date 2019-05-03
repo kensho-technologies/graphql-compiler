@@ -5,6 +5,10 @@ from itertools import chain
 from funcy.py3 import lsplit
 import six
 
+from graphql_compiler.schema_generation.schema_properties import (
+    EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES, EDGE_SOURCE_PROPERTY_NAME
+)
+
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME,
@@ -16,15 +20,15 @@ from .utils import toposort_classes
 
 def _validate_base_connections_contains_only_end_name_keys(class_name, base_connections):
     """Validate that the only keys in the edge's base_connections dict are 'in' and 'out'"""
-    if not set(base_connections.keys()).issubset(EdgeType.EDGE_END_NAMES):
+    if not set(base_connections.keys()).issubset(EDGE_END_NAMES):
         raise IllegalSchemaStateError(u'Found non-end key name(s) defined on the base connections '
                                       u'of an edge {} {}'.format(class_name, base_connections))
 
 
 def _validate_non_abstract_edge_has_defined_base_connections(class_name, base_connections):
     """Validate that the non-abstract edge has its in/out base connections defined."""
-    edge_source = base_connections.get(EdgeType.EDGE_SOURCE_PROPERTY_NAME, None)
-    edge_destination = base_connections.get(EdgeType.EDGE_DESTINATION_PROPERTY_NAME, None)
+    edge_source = base_connections.get(EDGE_SOURCE_PROPERTY_NAME, None)
+    edge_destination = base_connections.get(EDGE_DESTINATION_PROPERTY_NAME, None)
     if not edge_source and edge_destination:
         raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
                                       u'in/out base_connection: {} {}'.format(class_name,
@@ -192,10 +196,6 @@ class VertexType(GraphElement):
 
 
 class EdgeType(GraphElement):
-    EDGE_SOURCE_PROPERTY_NAME = 'out'
-    EDGE_DESTINATION_PROPERTY_NAME = 'in'
-    EDGE_END_NAMES = {EDGE_SOURCE_PROPERTY_NAME, EDGE_DESTINATION_PROPERTY_NAME}
-
     def __init__(self, class_name, abstract, properties, class_fields, base_connections):
         """Create a new EdgeType object.
 
@@ -559,8 +559,8 @@ class SchemaGraph(object):
         """Return the base connections of an EdgeType."""
         base_connections = {}
         links = {
-            EdgeType.EDGE_DESTINATION_PROPERTY_NAME: set(),
-            EdgeType.EDGE_SOURCE_PROPERTY_NAME: set()
+            EDGE_DESTINATION_PROPERTY_NAME: set(),
+            EDGE_SOURCE_PROPERTY_NAME: set()
         }
 
         for property_definition in link_property_definitions:
@@ -676,16 +676,16 @@ class SchemaGraph(object):
         for edge_class_name in self._edge_class_names:
             edge_element = self._elements[edge_class_name]
 
-            if (EdgeType.EDGE_SOURCE_PROPERTY_NAME not in edge_element.base_connections or
-                    EdgeType.EDGE_DESTINATION_PROPERTY_NAME not in edge_element.base_connections):
+            if (EDGE_SOURCE_PROPERTY_NAME not in edge_element.base_connections or
+                    EDGE_DESTINATION_PROPERTY_NAME not in edge_element.base_connections):
                 if edge_element.abstract:
                     continue
                 else:
                     raise AssertionError(u'Found a non-abstract edge class with undefined '
                                          u'endpoint types: {}'.format(edge_element))
 
-            from_class_name = edge_element.base_connections[EdgeType.EDGE_SOURCE_PROPERTY_NAME]
-            to_class_name = edge_element.base_connections[EdgeType.EDGE_DESTINATION_PROPERTY_NAME]
+            from_class_name = edge_element.base_connections[EDGE_SOURCE_PROPERTY_NAME]
+            to_class_name = edge_element.base_connections[EDGE_DESTINATION_PROPERTY_NAME]
 
             edge_schema_element = self._elements[edge_class_name]
 
@@ -712,7 +712,7 @@ def _get_inherited_property_definitions(superclass_set, class_name_to_definition
 
 def _get_link_and_non_link_properties(property_definitions):
     """Return a class's link and non link OrientDB property definitions."""
-    return lsplit(lambda x: x['name'] in EdgeType.EDGE_END_NAMES, property_definitions)
+    return lsplit(lambda x: x['name'] in EDGE_END_NAMES, property_definitions)
 
 
 def _is_abstract(class_definition):

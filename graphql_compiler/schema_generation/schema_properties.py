@@ -182,3 +182,6 @@ def parse_default_property_value(property_name, property_type_id, default_value_
 #              explicit value for this property. Set to None if no default is given in the schema.
 PropertyDescriptor = namedtuple('PropertyDescriptor',
                                 ('type_id', 'qualifier', 'default'))
+EDGE_SOURCE_PROPERTY_NAME = 'out'
+EDGE_DESTINATION_PROPERTY_NAME = 'in'
+EDGE_END_NAMES = {EDGE_SOURCE_PROPERTY_NAME, EDGE_DESTINATION_PROPERTY_NAME}
