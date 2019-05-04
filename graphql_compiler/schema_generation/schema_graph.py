@@ -623,10 +623,10 @@ class SchemaGraph(object):
                                      u'more than once, this is not allowed!'
                                      .format(property_name, class_name))
 
-            graphql_type = self._try_get_graphql_type(property_definition)
-            if graphql_type:
+            maybe_graphql_type = self._try_get_graphql_type(property_definition)
+            if maybe_graphql_type:
                 default_value = _get_default_value(class_name, property_definition)
-                property_descriptor = PropertyDescriptor(graphql_type, default_value)
+                property_descriptor = PropertyDescriptor(maybe_graphql_type, default_value)
                 property_name_to_descriptor[property_name] = property_descriptor
         return property_name_to_descriptor
 
@@ -647,17 +647,17 @@ class SchemaGraph(object):
             PROPERTY_TYPE_STRING_ID: GraphQLString,
         }
 
-        qraphql_type = None
+        maybe_graphql_type = None
         if type_id in COLLECTION_PROPERTY_TYPES:
             if linked_type:
                 if linked_type in scalar_types:
-                    qraphql_type = GraphQLList(scalar_types[linked_type])
+                    maybe_graphql_type = GraphQLList(scalar_types[linked_type])
             elif linked_class:
-                qraphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
+                maybe_graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
         elif type_id in scalar_types:
-            qraphql_type = scalar_types[type_id]
+            maybe_graphql_type = scalar_types[type_id]
 
-        return qraphql_type
+        return maybe_graphql_type
 
     def _validate_non_link_definition(self, class_name, property_definition):
         """Validate that a non-link OrientDB property definition is property constructed."""
