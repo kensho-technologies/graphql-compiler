@@ -67,9 +67,17 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
     properties = schema_graph.get_element_by_class_name(cls_name).properties
 
     # Add leaf GraphQL fields (class properties).
+    all_properties = {
+        property_name: property_obj.type
+        for property_name, property_obj in six.iteritems(properties)
+    }
+
+    # Filter collections of classes. They are currently not supported.
     result = {
-        property_name: property.type
-        for property_name, property in six.iteritems(properties)
+        property_name: graphql_type
+        for property_name, graphql_type in six.iteritems(all_properties)
+        if not (isinstance(graphql_type, GraphQLList) and
+                isinstance(graphql_type.of_type, GraphQLObjectType))
     }
 
     # Add edge GraphQL fields (edges to other vertex classes).
