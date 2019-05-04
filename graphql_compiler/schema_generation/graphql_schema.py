@@ -66,6 +66,7 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
     """Return a dict from field name to GraphQL field type, for the specified graph class."""
     properties = schema_graph.get_element_by_class_name(cls_name).properties
 
+    # Add leaf GraphQL fields (class properties).
     result = {
         property_name: property.type
         for property_name, property in six.iteritems(properties)
