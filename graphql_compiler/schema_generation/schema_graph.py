@@ -622,14 +622,14 @@ class SchemaGraph(object):
                                      u'more than once, this is not allowed!'
                                      .format(property_name, class_name))
 
-            maybe_graphql_type = self._try_get_graphql_type(property_definition)
+            maybe_graphql_type = self._try_get_graphql_type(class_name, property_definition)
             if maybe_graphql_type:
                 default_value = _get_default_value(class_name, property_definition)
                 property_descriptor = PropertyDescriptor(maybe_graphql_type, default_value)
                 property_name_to_descriptor[property_name] = property_descriptor
         return property_name_to_descriptor
 
-    def _try_get_graphql_type(self, property_definition):
+    def _try_get_graphql_type(self, class_name, property_definition):
         """Return the GraphQLType corresponding to the non-link property definition or None."""
         type_id = property_definition['type']
         linked_class = property_definition.get('linkedClass', None)
@@ -652,6 +652,16 @@ class SchemaGraph(object):
                 if linked_type in scalar_types:
                     maybe_graphql_type = GraphQLList(scalar_types[linked_type])
             elif linked_class:
+                if class_name in self._non_graph_class_names:
+                    raise AssertionError('Class {} is a non-graph class that contains a '
+                                         'collection property {}. Only graph classes are allowed '
+                                         'to have collections as properties.'
+                                         .format(class_name, property_definition))
+                if linked_class not in self._non_graph_class_names:
+                    raise AssertionError('Class {} contains a property {} that is a collection of '
+                                         'a graph class. Only non-graph classes are allowed in '
+                                         'collections.'
+                                         .format(class_name, property_definition))
                 maybe_graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
         elif type_id in scalar_types:
             maybe_graphql_type = scalar_types[type_id]
