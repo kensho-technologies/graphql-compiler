@@ -631,7 +631,7 @@ class SchemaGraph(object):
         return property_name_to_descriptor
 
     def _try_get_graphql_type(self, property_definition):
-        """Return the GraphQLType corresponding to the non-link property definition."""
+        """Return the GraphQLType corresponding to the non-link property definition or None."""
         type_id = property_definition['type']
         linked_class = property_definition.get('linkedClass', None)
         linked_type = property_definition.get('linkedType', None)
@@ -655,12 +655,12 @@ class SchemaGraph(object):
             elif linked_class:
                 qraphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
         elif type_id in scalar_types:
-            if type_id in scalar_types:
-                qraphql_type = scalar_types[type_id]
+            qraphql_type = scalar_types[type_id]
 
         return qraphql_type
 
     def _validate_non_link_definition(self, class_name, property_definition):
+        """Validate that a non-link OrientDB property definition is property constructed."""
         name = property_definition['name']
         type_id = property_definition['type']
         linked_class = property_definition.get('linkedClass', None)
@@ -751,6 +751,7 @@ def _get_class_fields(class_definition):
 
 
 def _get_default_value(class_name, property_definition):
+    """Return the default value of the OrientDB property."""
     default_value = None
     default_value_string = property_definition.get('defaultValue', None)
     if default_value_string is not None:
