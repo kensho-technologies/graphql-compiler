@@ -173,7 +173,7 @@ def parse_default_property_value(property_name, property_type_id, default_value_
 
 
 # A way to describe a property's type and associated information:
-#   - type_id: GraphQLType, the type of this property
+#   - type: GraphQLType, the type of this property
 #   - default: the default value for the property, used when a record is inserted without an
 #              explicit value for this property. Set to None if no default is given in the schema.
 PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
