@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
 from itertools import chain
+from functools import lru_cache
 
 from funcy.py3 import lsplit
 from graphql.type import (
@@ -662,6 +663,8 @@ class SchemaGraph(object):
                                          'a graph class. Only non-graph classes are allowed in '
                                          'collections.'
                                          .format(class_name, property_definition))
+                # Don't include the fields and implemented intefaces, this information is already
+                # stored in the SchemaGraph.
                 maybe_graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
         elif type_id in scalar_types:
             maybe_graphql_type = scalar_types[type_id]
@@ -776,3 +779,4 @@ def _get_default_value(class_name, property_definition):
                                           .format(class_name, property_definition))
 
     return default_value
+
