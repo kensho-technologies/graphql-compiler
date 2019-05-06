@@ -672,7 +672,7 @@ class SchemaGraph(object):
         return maybe_graphql_type
 
     def _validate_non_link_definition(self, class_name, property_definition):
-        """Validate that a non-link OrientDB property definition is property constructed."""
+        """Validate that a non-link OrientDB property definition is properly defined."""
         name = property_definition['name']
         type_id = property_definition['type']
         linked_class = property_definition.get('linkedClass', None)
