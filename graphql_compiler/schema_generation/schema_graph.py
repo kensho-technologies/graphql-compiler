@@ -1,7 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
 from itertools import chain
-from functools import lru_cache
 
 from funcy.py3 import lsplit
 from graphql.type import (
