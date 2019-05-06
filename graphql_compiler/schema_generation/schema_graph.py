@@ -663,7 +663,7 @@ class SchemaGraph(object):
                                          'a graph class. Only non-graph classes are allowed in '
                                          'collections.'
                                          .format(class_name, property_definition))
-                # Don't include the fields and implemented intefaces, this information is already
+                # Don't include the fields and implemented interfaces, this information is already
                 # stored in the SchemaGraph.
                 maybe_graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
         elif type_id in scalar_types:
