@@ -679,9 +679,11 @@ class SchemaGraph(object):
         linked_type = property_definition.get('linkedType', None)
 
         validate_supported_property_type_id(name, type_id)
+
         if type_id == PROPERTY_TYPE_LINK_ID:
-            raise AssertionError(u'Found a property of type Link on a non-edge class: '
-                                 u'{} {}'.format(name, class_name))
+            raise AssertionError(u'Found a improperly named property of type Link: '
+                                 u'{} {}. Links must be named either "in" or "out"'.
+                                 format(name, class_name))
         elif type_id in COLLECTION_PROPERTY_TYPES:
             if linked_class is not None and linked_type is not None:
                 raise AssertionError(u'Property "{}" unexpectedly has both a linked class and '
