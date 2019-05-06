@@ -557,7 +557,7 @@ class SchemaGraph(object):
 
     def _try_get_base_connections(self, class_name, class_name_to_definition,
                                   link_property_definitions, abstract):
-        """Return the base in/out connections of an EdgeType or None."""
+        """Return a tuple with the EdgeType's base connections. Each tuple element may be None."""
         base_connections = {}
         links = {
             EDGE_SOURCE_PROPERTY_NAME: set(),
