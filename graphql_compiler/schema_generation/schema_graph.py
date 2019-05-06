@@ -6,10 +6,11 @@ from funcy.py3 import lsplit
 from graphql.type import (
     GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLList, GraphQLObjectType, GraphQLString
 )
+import six
+
 from graphql_compiler.schema_generation.schema_properties import (
     EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES, EDGE_SOURCE_PROPERTY_NAME
 )
-import six
 
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
@@ -778,4 +779,3 @@ def _get_default_value(class_name, property_definition):
                                           .format(class_name, property_definition))
 
     return default_value
-

@@ -76,8 +76,8 @@ DATA_POINT_SCHEMA_DATA = frozendict({
             'linkedClass': 'ExternalSource',
             'defaultValue': '[]'
         }
-
-    ]
+    ],
+    'superClass': 'V',
 })
 
 PERSON_LIVES_IN_EDGE_SCHEMA_DATA = frozendict({
@@ -191,6 +191,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
 
     def test_class_collection_property(self):
         schema_data = [
+            BASE_VERTEX_SCHEMA_DATA,
             DATA_POINT_SCHEMA_DATA,
             EXTERNAL_SOURCE_SCHEMA_DATA,
         ]
