@@ -18,7 +18,7 @@ from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME,
     ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_BOOLEAN_ID, PROPERTY_TYPE_DATE_ID,
     PROPERTY_TYPE_DATETIME_ID, PROPERTY_TYPE_DECIMAL_ID, PROPERTY_TYPE_DOUBLE_ID,
-    PROPERTY_TYPE_FLOAT_ID, PROPERTY_TYPE_INTEGER_ID, PROPERTY_TYPE_LINK_ID,
+    PROPERTY_TYPE_FLOAT_ID, PROPERTY_TYPE_INTEGER_ID, PROPERTY_TYPE_LONG_ID, PROPERTY_TYPE_LINK_ID,
     PROPERTY_TYPE_STRING_ID, PropertyDescriptor, parse_default_property_value,
     validate_supported_property_type_id
 )
@@ -617,7 +617,6 @@ class SchemaGraph(object):
         for property_definition in non_link_property_definitions:
             property_name = property_definition['name']
 
-            self._validate_non_link_definition(class_name, property_definition)
             if property_name in property_name_to_descriptor:
                 raise AssertionError(u'The property "{}" on class "{}" is defined '
                                      u'more than once, this is not allowed!'
@@ -632,6 +631,7 @@ class SchemaGraph(object):
 
     def _try_get_graphql_type(self, class_name, property_definition):
         """Return the GraphQLType corresponding to the non-link property definition or None."""
+        name = property_definition['name']
         type_id = property_definition['type']
         linked_class = property_definition.get('linkedClass', None)
         linked_type = property_definition.get('linkedType', None)
@@ -644,42 +644,11 @@ class SchemaGraph(object):
             PROPERTY_TYPE_DOUBLE_ID: GraphQLFloat,
             PROPERTY_TYPE_FLOAT_ID: GraphQLFloat,
             PROPERTY_TYPE_INTEGER_ID: GraphQLInt,
+            PROPERTY_TYPE_LONG_ID: GraphQLInt,
             PROPERTY_TYPE_STRING_ID: GraphQLString,
         }
 
         maybe_graphql_type = None
-        if type_id in COLLECTION_PROPERTY_TYPES:
-            if linked_type:
-                if linked_type in scalar_types:
-                    maybe_graphql_type = GraphQLList(scalar_types[linked_type])
-            elif linked_class:
-                if class_name in self._non_graph_class_names:
-                    raise AssertionError('Class {} is a non-graph class that contains a '
-                                         'collection property {}. Only graph classes are allowed '
-                                         'to have collections as properties.'
-                                         .format(class_name, property_definition))
-                if linked_class not in self._non_graph_class_names:
-                    raise AssertionError('Class {} contains a property {} that is a collection of '
-                                         'a graph class. Only non-graph classes are allowed in '
-                                         'collections.'
-                                         .format(class_name, property_definition))
-                # Don't include the fields and implemented interfaces, this information is already
-                # stored in the SchemaGraph.
-                maybe_graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
-        elif type_id in scalar_types:
-            maybe_graphql_type = scalar_types[type_id]
-
-        return maybe_graphql_type
-
-    def _validate_non_link_definition(self, class_name, property_definition):
-        """Validate that a non-link OrientDB property definition is properly defined."""
-        name = property_definition['name']
-        type_id = property_definition['type']
-        linked_class = property_definition.get('linkedClass', None)
-        linked_type = property_definition.get('linkedType', None)
-
-        validate_supported_property_type_id(name, type_id)
-
         if type_id == PROPERTY_TYPE_LINK_ID:
             raise AssertionError(u'Found a improperly named property of type Link: '
                                  u'{} {}. Links must be named either "in" or "out"'.
@@ -691,20 +660,29 @@ class SchemaGraph(object):
             elif linked_type is not None and linked_class is None:
                 # No linked class, must be a linked native OrientDB type.
                 validate_supported_property_type_id(name + ' inner type', linked_type)
+                maybe_graphql_type = GraphQLList(scalar_types[linked_type])
             elif linked_class is not None and linked_type is None:
                 # No linked type, must be a linked non-graph user-defined type.
                 if linked_class not in self._non_graph_class_names:
                     raise AssertionError(u'Property "{}" is declared as the inner type of '
                                          u'an embedded collection, but is not a non-graph class: '
                                          u'{}'.format(name, linked_class))
+                if class_name in self._non_graph_class_names:
+                    raise AssertionError('Class {} is a non-graph class that contains a '
+                                         'collection property {}. Only graph classes are allowed '
+                                         'to have collections as properties.'
+                                         .format(class_name, property_definition))
+                # Don't include the fields and implemented interfaces, this information is already
+                # stored in the SchemaGraph.
+                maybe_graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
             else:
                 raise AssertionError(u'Property "{}" is an embedded collection but has '
                                      u'neither a linked class nor a linked type: '
                                      u'{}'.format(name, property_definition))
-        if linked_class or linked_type:
-            if type_id not in COLLECTION_PROPERTY_TYPES:
-                raise AssertionError('Linked class or type defined for non-collection type: {} {}'
-                                     .format(name, property_definition))
+        else:
+            maybe_graphql_type = scalar_types[type_id]
+
+        return maybe_graphql_type
 
     def _link_vertex_and_edge_types(self):
         """For each edge, link it to the vertex types it connects to each other."""
