@@ -269,8 +269,8 @@ GraphQLDecimal = GraphQLScalarType(
 
 GraphQLAny = GraphQLScalarType(
     name='Any',
-    description='The `Any` scalar type is used to represent any field type not representable '
-                'by any other GraphQL type.',
+    description='The `Any` scalar type is used to represent a scalar type not representable '
+                'by any other GraphQLScalar type.',
     serialize=str,
     parse_value=_unused_function,
     parse_literal=_unused_function,
