@@ -622,15 +622,14 @@ class SchemaGraph(object):
                                      u'more than once, this is not allowed!'
                                      .format(property_name, class_name))
 
-            maybe_graphql_type = self._try_get_graphql_type(class_name, property_definition)
-            if maybe_graphql_type:
-                default_value = _get_default_value(class_name, property_definition)
-                property_descriptor = PropertyDescriptor(maybe_graphql_type, default_value)
-                property_name_to_descriptor[property_name] = property_descriptor
+            graphql_type = self.get_graphql_type(class_name, property_definition)
+            default_value = _get_default_value(class_name, property_definition)
+            property_descriptor = PropertyDescriptor(graphql_type, default_value)
+            property_name_to_descriptor[property_name] = property_descriptor
         return property_name_to_descriptor
 
-    def _try_get_graphql_type(self, class_name, property_definition):
-        """Return the GraphQLType corresponding to the non-link property definition or None."""
+    def get_graphql_type(self, class_name, property_definition):
+        """Return the GraphQLType corresponding to the non-link property definition."""
         name = property_definition['name']
         type_id = property_definition['type']
         linked_class = property_definition.get('linkedClass', None)
@@ -648,7 +647,7 @@ class SchemaGraph(object):
             PROPERTY_TYPE_STRING_ID: GraphQLString,
         }
 
-        maybe_graphql_type = None
+        graphql_type = None
         if type_id == PROPERTY_TYPE_LINK_ID:
             raise AssertionError(u'Found a improperly named property of type Link: '
                                  u'{} {}. Links must be named either "in" or "out"'.
@@ -660,7 +659,7 @@ class SchemaGraph(object):
             elif linked_type is not None and linked_class is None:
                 # No linked class, must be a linked native OrientDB type.
                 validate_supported_property_type_id(name + ' inner type', linked_type)
-                maybe_graphql_type = GraphQLList(scalar_types[linked_type])
+                graphql_type = GraphQLList(scalar_types[linked_type])
             elif linked_class is not None and linked_type is None:
                 # No linked type, must be a linked non-graph user-defined type.
                 if linked_class not in self._non_graph_class_names:
@@ -674,15 +673,15 @@ class SchemaGraph(object):
                                          .format(class_name, property_definition))
                 # Don't include the fields and implemented interfaces, this information is already
                 # stored in the SchemaGraph.
-                maybe_graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
+                graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
             else:
                 raise AssertionError(u'Property "{}" is an embedded collection but has '
                                      u'neither a linked class nor a linked type: '
                                      u'{}'.format(name, property_definition))
         else:
-            maybe_graphql_type = scalar_types[type_id]
+            graphql_type = scalar_types[type_id]
 
-        return maybe_graphql_type
+        return graphql_type
 
     def _link_vertex_and_edge_types(self):
         """For each edge, link it to the vertex types it connects to each other."""
