@@ -292,8 +292,10 @@ This query is *invalid* for two separate reasons:
                 out_Animal_OfSpecies {
                     uuid @output(out_name: "species_id")
                 }
-                out_Animal_RelatedTo {
-                    name @output(out_name: "relative_name")
+                out_Entity_Related {
+                    ... on Animal {
+                        name @output(out_name: "relative_name")
+                    }
                 }
             }
         }
@@ -307,8 +309,10 @@ The following is a valid use of `@fold`:
         out_Animal_ParentOf @fold {
             in_Animal_ParentOf {
                 in_Animal_ParentOf {
-                    out_Animal_RelatedTo {
-                        name @output(out_name: "final_name")
+                    out_Entity_Related {
+                        ... on Animal {
+                            name @output(out_name: "final_name")
+                        }
                     }
                 }
             }
