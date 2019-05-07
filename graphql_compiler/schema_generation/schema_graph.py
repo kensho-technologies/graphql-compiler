@@ -616,13 +616,13 @@ class SchemaGraph(object):
                                      u'more than once, this is not allowed!'
                                      .format(property_name, class_name))
 
-            graphql_type = self.get_graphql_type(class_name, property_definition)
+            graphql_type = self._get_graphql_type(class_name, property_definition)
             default_value = _get_default_value(class_name, property_definition)
             property_descriptor = PropertyDescriptor(graphql_type, default_value)
             property_name_to_descriptor[property_name] = property_descriptor
         return property_name_to_descriptor
 
-    def get_graphql_type(self, class_name, property_definition):
+    def _get_graphql_type(self, class_name, property_definition):
         """Return the GraphQLType corresponding to the non-link property definition."""
         name = property_definition['name']
         type_id = property_definition['type']
@@ -632,8 +632,8 @@ class SchemaGraph(object):
         graphql_type = None
         if type_id == PROPERTY_TYPE_LINK_ID:
             raise AssertionError(u'Found a improperly named property of type Link: '
-                                 u'{} {}. Links must be named either "in" or "out"'.
-                                 format(name, class_name))
+                                 u'{} {}. Links must be named either "in" or "out"'
+                                 .format(name, class_name))
         elif type_id in COLLECTION_PROPERTY_TYPES:
             if linked_class is not None and linked_type is not None:
                 raise AssertionError(u'Property "{}" unexpectedly has both a linked class and '
