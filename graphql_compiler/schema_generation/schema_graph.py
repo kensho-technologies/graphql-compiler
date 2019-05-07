@@ -14,7 +14,7 @@ from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPrope
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME,
     ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_LINK_ID, PropertyDescriptor,
-    get_graphql_scalar_type, parse_default_property_value
+    get_graphql_scalar_type_or_raise, parse_default_property_value
 )
 from .utils import toposort_classes
 
@@ -640,7 +640,7 @@ class SchemaGraph(object):
                                      u'a linked type: {}'.format(name, property_definition))
             elif linked_type is not None and linked_class is None:
                 # No linked class, must be a linked native OrientDB type.
-                inner_type = get_graphql_scalar_type(name + ' inner type', linked_type)
+                inner_type = get_graphql_scalar_type_or_raise(name + ' inner type', linked_type)
                 graphql_type = GraphQLList(inner_type)
             elif linked_class is not None and linked_type is None:
                 # No linked type, must be a linked non-graph user-defined type.
@@ -661,7 +661,7 @@ class SchemaGraph(object):
                                      u'neither a linked class nor a linked type: '
                                      u'{}'.format(name, property_definition))
         else:
-            graphql_type = get_graphql_scalar_type(name, type_id)
+            graphql_type = get_graphql_scalar_type_or_raise(name, type_id)
 
         return graphql_type
 
