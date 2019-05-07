@@ -102,6 +102,25 @@ PERSON_LIVES_IN_EDGE_SCHEMA_DATA = frozendict({
     'superClass': ORIENTDB_BASE_EDGE_CLASS_NAME
 })
 
+
+BABY_LIVES_IN_EDGE_SCHEMA_DATA = frozendict({
+    'name': 'Baby_LivesIn',
+    'abstract': False,
+    'properties': [
+        {
+            'name': 'in',
+            'type': PROPERTY_TYPE_LINK_ID,
+            'linkedClass': 'Location',
+        },
+        {
+            'name': 'out',
+            'type': PROPERTY_TYPE_LINK_ID,
+            'linkedClass': 'Baby',
+        }
+    ],
+    'superClass': 'Person_LivesIn',
+})
+
 LOCATION_SCHEMA_DATA = frozendict({
     'name': 'Location',
     'abstract': False,
@@ -285,3 +304,20 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         schema_graph = SchemaGraph(schema_data)
         person_subclass_set = schema_graph.get_subclass_set('Person')
         self.assertIsNone(schema.get_type(_get_union_type_name(person_subclass_set)))
+
+    def test_edge_inheritance(self):
+        schema_data = [
+            BASE_EDGE_SCHEMA_DATA,
+            BABY_LIVES_IN_EDGE_SCHEMA_DATA,
+            BASE_VERTEX_SCHEMA_DATA,
+            BABY_SCHEMA_DATA,
+            ENTITY_SCHEMA_DATA,
+            LOCATION_SCHEMA_DATA,
+            PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
+            PERSON_SCHEMA_DATA,
+        ]
+
+        schema_graph = SchemaGraph(schema_data)
+        baby_lives_in_edge = schema_graph.get_element_by_class_name('Baby_LivesIn')
+        self.assertEqual('Baby', baby_lives_in_edge.base_in_connection)
+

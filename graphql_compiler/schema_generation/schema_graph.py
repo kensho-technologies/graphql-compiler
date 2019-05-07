@@ -576,7 +576,7 @@ class SchemaGraph(object):
             # if it exists, must be the class in linked_classes that is a subclass of all other
             # classes in linked_classes.
             for linked_class in linked_classes:
-                inheritance_set = self._subclass_sets[linked_class]
+                inheritance_set = self._inheritance_sets[linked_class]
                 if set(linked_classes).issubset(inheritance_set):
                     base_connections[end_direction] = linked_class
 
