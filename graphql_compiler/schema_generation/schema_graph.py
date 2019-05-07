@@ -557,7 +557,7 @@ class SchemaGraph(object):
 
     def _try_get_base_connections(self, class_name, class_name_to_definition,
                                   link_property_definitions, abstract):
-        """Return the base in/out connections of an EdgeType or None if it does not have one."""
+        """Return a tuple with the EdgeType's base connections. Each tuple element may be None."""
         base_connections = {}
         links = {
             EDGE_SOURCE_PROPERTY_NAME: set(),
@@ -569,16 +569,15 @@ class SchemaGraph(object):
             links[property_definition['name']].add(property_definition['linkedClass'])
 
         for end_direction, linked_classes in six.iteritems(links):
+            # The linked_classes set is the complete set of superclasses that a class must
+            # inherit from in order to be allowed in the edge end specified by end_direction.
+            # The base connection of an edge's end is the superclass of all classes allowed in the
+            # edge's end. Therefore, the base connection of the end specified by end_direction,
+            # if it exists, must be the class in linked_classes that is a subclass of all other
+            # classes in linked_classes.
             for linked_class in linked_classes:
-                subclass_set = self._subclass_sets[linked_class]
-                if len(linked_classes.intersection(subclass_set)) == 1:
-                    base_direction_connection = base_connections.get(end_direction, None)
-                    if base_direction_connection and base_direction_connection != linked_class:
-                        raise AssertionError(u'There already exists class "{}" in addition '
-                                             u'to class "{}" which is a subclass of all '
-                                             u'{} properties for class "{}".'
-                                             .format(base_direction_connection,
-                                                     linked_class, end_direction, class_name))
+                inheritance_set = self._inheritance_sets[linked_class]
+                if set(linked_classes).issubset(inheritance_set):
                     base_connections[end_direction] = linked_class
 
             if end_direction not in base_connections and not abstract:
