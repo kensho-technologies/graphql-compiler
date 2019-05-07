@@ -320,4 +320,3 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         schema_graph = SchemaGraph(schema_data)
         baby_lives_in_edge = schema_graph.get_element_by_class_name('Baby_LivesIn')
         self.assertEqual('Baby', baby_lives_in_edge.base_in_connection)
-
