@@ -3,24 +3,18 @@ from abc import ABCMeta, abstractmethod
 from itertools import chain
 
 from funcy.py3 import lsplit
-from graphql.type import (
-    GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLList, GraphQLObjectType, GraphQLString
-)
+from graphql.type import GraphQLList, GraphQLObjectType
 import six
 
 from graphql_compiler.schema_generation.schema_properties import (
     EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES, EDGE_SOURCE_PROPERTY_NAME
 )
 
-from ..schema import GraphQLAny, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME,
-    ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_ANY_ID, PROPERTY_TYPE_BOOLEAN_ID,
-    PROPERTY_TYPE_DATE_ID, PROPERTY_TYPE_DATETIME_ID, PROPERTY_TYPE_DECIMAL_ID,
-    PROPERTY_TYPE_DOUBLE_ID, PROPERTY_TYPE_FLOAT_ID, PROPERTY_TYPE_INTEGER_ID,
-    PROPERTY_TYPE_LONG_ID, PROPERTY_TYPE_LINK_ID, PROPERTY_TYPE_STRING_ID, PropertyDescriptor,
-    parse_default_property_value, get_graphql_scalar_type
+    ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_LINK_ID, PropertyDescriptor,
+    get_graphql_scalar_type, parse_default_property_value
 )
 from .utils import toposort_classes
 

@@ -1,14 +1,12 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from ..schema import GraphQLAny, GraphQLDate, GraphQLDateTime, GraphQLDecimal
-from graphql.type import (
-    GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLList, GraphQLObjectType, GraphQLString
-)
-
 import datetime
 import time
 
+from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLString
 import six
+
+from ..schema import GraphQLAny, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 
 
 EDGE_SOURCE_PROPERTY_NAME = 'out'
@@ -114,11 +112,12 @@ ORIENTDB_DATE_FORMAT = '%Y-%m-%d'
 
 
 def get_graphql_scalar_type(property_name, property_type_id):
-    """Ensure that the given property type_id is supported by the graph."""
+    """Return the matching scalar GraphQLScalarType for the OrientDB property type_id."""
     if property_type_id not in ORIENTDB_TO_GRAPHQL_SCALARS:
         raise AssertionError(u'Property "{}" has unsupported property type id: '
                              u'{}'.format(property_name, property_type_id))
     return ORIENTDB_TO_GRAPHQL_SCALARS[property_type_id]
+
 
 def _parse_bool_default_value(property_name, default_value_string):
     """Parse and return the default value for a boolean property."""
