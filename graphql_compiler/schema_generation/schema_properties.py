@@ -112,7 +112,7 @@ ORIENTDB_DATE_FORMAT = '%Y-%m-%d'
 
 
 def get_graphql_scalar_type(property_name, property_type_id):
-    """Return the matching scalar GraphQLScalarType for the OrientDB property type_id."""
+    """Return the matching GraphQLScalarType for the OrientDB property type_id."""
     if property_type_id not in ORIENTDB_TO_GRAPHQL_SCALARS:
         raise AssertionError(u'Property "{}" has unsupported property type id: '
                              u'{}'.format(property_name, property_type_id))
