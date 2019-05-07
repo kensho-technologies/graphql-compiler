@@ -12,15 +12,15 @@ from graphql_compiler.schema_generation.schema_properties import (
     EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES, EDGE_SOURCE_PROPERTY_NAME
 )
 
-from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ..schema import GraphQLAny, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME,
-    ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_BOOLEAN_ID, PROPERTY_TYPE_DATE_ID,
-    PROPERTY_TYPE_DATETIME_ID, PROPERTY_TYPE_DECIMAL_ID, PROPERTY_TYPE_DOUBLE_ID,
-    PROPERTY_TYPE_FLOAT_ID, PROPERTY_TYPE_INTEGER_ID, PROPERTY_TYPE_LONG_ID, PROPERTY_TYPE_LINK_ID,
-    PROPERTY_TYPE_STRING_ID, PropertyDescriptor, parse_default_property_value,
-    validate_supported_property_type_id
+    ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_ANY_ID, PROPERTY_TYPE_BOOLEAN_ID,
+    PROPERTY_TYPE_DATE_ID, PROPERTY_TYPE_DATETIME_ID, PROPERTY_TYPE_DECIMAL_ID,
+    PROPERTY_TYPE_DOUBLE_ID, PROPERTY_TYPE_FLOAT_ID, PROPERTY_TYPE_INTEGER_ID,
+    PROPERTY_TYPE_LONG_ID, PROPERTY_TYPE_LINK_ID, PROPERTY_TYPE_STRING_ID, PropertyDescriptor,
+    parse_default_property_value, get_graphql_scalar_type
 )
 from .utils import toposort_classes
 
@@ -635,18 +635,6 @@ class SchemaGraph(object):
         linked_class = property_definition.get('linkedClass', None)
         linked_type = property_definition.get('linkedType', None)
 
-        scalar_types = {
-            PROPERTY_TYPE_BOOLEAN_ID: GraphQLBoolean,
-            PROPERTY_TYPE_DATE_ID: GraphQLDate,
-            PROPERTY_TYPE_DATETIME_ID: GraphQLDateTime,
-            PROPERTY_TYPE_DECIMAL_ID: GraphQLDecimal,
-            PROPERTY_TYPE_DOUBLE_ID: GraphQLFloat,
-            PROPERTY_TYPE_FLOAT_ID: GraphQLFloat,
-            PROPERTY_TYPE_INTEGER_ID: GraphQLInt,
-            PROPERTY_TYPE_LONG_ID: GraphQLInt,
-            PROPERTY_TYPE_STRING_ID: GraphQLString,
-        }
-
         graphql_type = None
         if type_id == PROPERTY_TYPE_LINK_ID:
             raise AssertionError(u'Found a improperly named property of type Link: '
@@ -658,8 +646,8 @@ class SchemaGraph(object):
                                      u'a linked type: {}'.format(name, property_definition))
             elif linked_type is not None and linked_class is None:
                 # No linked class, must be a linked native OrientDB type.
-                validate_supported_property_type_id(name + ' inner type', linked_type)
-                graphql_type = GraphQLList(scalar_types[linked_type])
+                inner_type = get_graphql_scalar_type(name + ' inner type', linked_type)
+                graphql_type = GraphQLList(inner_type)
             elif linked_class is not None and linked_type is None:
                 # No linked type, must be a linked non-graph user-defined type.
                 if linked_class not in self._non_graph_class_names:
@@ -679,7 +667,7 @@ class SchemaGraph(object):
                                      u'neither a linked class nor a linked type: '
                                      u'{}'.format(name, property_definition))
         else:
-            graphql_type = scalar_types[type_id]
+            graphql_type = get_graphql_scalar_type(name, type_id)
 
         return graphql_type
 

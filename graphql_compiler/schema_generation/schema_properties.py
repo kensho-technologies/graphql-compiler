@@ -1,5 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
+from ..schema import GraphQLAny, GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from graphql.type import (
+    GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLList, GraphQLObjectType, GraphQLString
+)
+
 import datetime
 import time
 
@@ -90,16 +95,30 @@ PROPERTY_TYPE_ID_TO_NAME = {
     PROPERTY_TYPE_ANY_ID: PROPERTY_TYPE_ANY_NAME,
 }
 
+ORIENTDB_TO_GRAPHQL_SCALARS = {
+    PROPERTY_TYPE_ANY_ID: GraphQLAny,
+    PROPERTY_TYPE_BOOLEAN_ID: GraphQLBoolean,
+    PROPERTY_TYPE_DATE_ID: GraphQLDate,
+    PROPERTY_TYPE_DATETIME_ID: GraphQLDateTime,
+    PROPERTY_TYPE_DECIMAL_ID: GraphQLDecimal,
+    PROPERTY_TYPE_DOUBLE_ID: GraphQLFloat,
+    PROPERTY_TYPE_FLOAT_ID: GraphQLFloat,
+    PROPERTY_TYPE_INTEGER_ID: GraphQLInt,
+    PROPERTY_TYPE_LONG_ID: GraphQLInt,
+    PROPERTY_TYPE_STRING_ID: GraphQLString,
+}
+
+
 ORIENTDB_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 ORIENTDB_DATE_FORMAT = '%Y-%m-%d'
 
 
-def validate_supported_property_type_id(property_name, property_type_id):
+def get_graphql_scalar_type(property_name, property_type_id):
     """Ensure that the given property type_id is supported by the graph."""
-    if property_type_id not in PROPERTY_TYPE_ID_TO_NAME:
+    if property_type_id not in ORIENTDB_TO_GRAPHQL_SCALARS:
         raise AssertionError(u'Property "{}" has unsupported property type id: '
                              u'{}'.format(property_name, property_type_id))
-
+    return ORIENTDB_TO_GRAPHQL_SCALARS[property_type_id]
 
 def _parse_bool_default_value(property_name, default_value_string):
     """Parse and return the default value for a boolean property."""
