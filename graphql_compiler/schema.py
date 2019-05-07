@@ -267,6 +267,14 @@ GraphQLDecimal = GraphQLScalarType(
     parse_literal=_unused_function,  # We don't yet support parsing Decimal objects in literals.
 )
 
+GraphQLAny = GraphQLScalarType(
+    name='Any',
+    description= 'The `Any` scalar type is used to represent any field type not representable '
+                 'by any other GraphQL type.',
+    serialize=str,
+    parse_value=_unused_function,
+    parse_literal=_unused_function,
+)
 
 DIRECTIVES = (
     FilterDirective,
