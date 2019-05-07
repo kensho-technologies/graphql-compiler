@@ -12,7 +12,6 @@ def compute_subclass_sets(schema, type_equivalence_hints=None):
      - B is the same class as A
      - A is an interface and B implements it
      - A is equivalent to a union type (see type_equivalence_hints) and B is a member of it
-     - B is a subclass of C and C is a subclass of A
 
     Args:
         schema: GraphQL schema object, obtained from the graphql library
