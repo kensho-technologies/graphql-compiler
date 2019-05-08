@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from itertools import chain
 
 from funcy.py3 import lsplit
+from graphql.type import GraphQLList, GraphQLObjectType
 import six
 
 from graphql_compiler.schema_generation.schema_properties import (
@@ -13,7 +14,7 @@ from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPrope
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME,
     ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_LINK_ID, PropertyDescriptor,
-    parse_default_property_value, validate_supported_property_type_id
+    get_graphql_scalar_type_or_raise, parse_default_property_value
 )
 from .utils import toposort_classes
 
@@ -33,16 +34,6 @@ def _validate_property_names(class_name, properties):
         if not property_name or property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES):
             raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
                                           u'{}'.format(class_name, property_name))
-
-
-def _validate_collections_have_default_values(class_name, property_name, property_descriptor):
-    """Validate that if the property is of collection type, it has a specified default value."""
-    # We don't want properties of collection type having "null" values, since that may cause
-    # unexpected errors during GraphQL query execution and other operations.
-    if property_descriptor.type_id in COLLECTION_PROPERTY_TYPES:
-        if property_descriptor.default is None:
-            raise IllegalSchemaStateError(u'Class "{}" has a property "{}" of collection type with '
-                                          u'no default value.'.format(class_name, property_name))
 
 
 def get_superclasses_from_class_definition(class_definition):
@@ -624,55 +615,54 @@ class SchemaGraph(object):
                                      u'more than once, this is not allowed!'
                                      .format(property_name, class_name))
 
-            property_descriptor = self._create_descriptor_from_property_definition(
-                class_name, property_definition)
+            graphql_type = self._get_graphql_type(class_name, property_definition)
+            default_value = _get_default_value(class_name, property_definition)
+            property_descriptor = PropertyDescriptor(graphql_type, default_value)
             property_name_to_descriptor[property_name] = property_descriptor
         return property_name_to_descriptor
 
-    def _create_descriptor_from_property_definition(self, class_name, property_definition):
-        """Return a PropertyDescriptor corresponding to the non-link property definition."""
+    def _get_graphql_type(self, class_name, property_definition):
+        """Return the GraphQLType corresponding to the non-link property definition."""
         name = property_definition['name']
         type_id = property_definition['type']
         linked_class = property_definition.get('linkedClass', None)
         linked_type = property_definition.get('linkedType', None)
-        qualifier = None
 
-        validate_supported_property_type_id(name, type_id)
-
+        graphql_type = None
         if type_id == PROPERTY_TYPE_LINK_ID:
-            raise AssertionError(u'Found a property of type Link on a non-edge class: '
-                                 u'{} {}'.format(name, class_name))
+            raise AssertionError(u'Found a improperly named property of type Link: '
+                                 u'{} {}. Links must be named either "in" or "out"'
+                                 .format(name, class_name))
         elif type_id in COLLECTION_PROPERTY_TYPES:
             if linked_class is not None and linked_type is not None:
                 raise AssertionError(u'Property "{}" unexpectedly has both a linked class and '
                                      u'a linked type: {}'.format(name, property_definition))
             elif linked_type is not None and linked_class is None:
                 # No linked class, must be a linked native OrientDB type.
-                validate_supported_property_type_id(name + ' inner type', linked_type)
-
-                qualifier = linked_type
+                inner_type = get_graphql_scalar_type_or_raise(name + ' inner type', linked_type)
+                graphql_type = GraphQLList(inner_type)
             elif linked_class is not None and linked_type is None:
                 # No linked type, must be a linked non-graph user-defined type.
                 if linked_class not in self._non_graph_class_names:
                     raise AssertionError(u'Property "{}" is declared as the inner type of '
                                          u'an embedded collection, but is not a non-graph class: '
                                          u'{}'.format(name, linked_class))
-
-                qualifier = linked_class
+                if class_name in self._non_graph_class_names:
+                    raise AssertionError('Class {} is a non-graph class that contains a '
+                                         'collection property {}. Only graph classes are allowed '
+                                         'to have collections as properties.'
+                                         .format(class_name, property_definition))
+                # Don't include the fields and implemented interfaces, this information is already
+                # stored in the SchemaGraph.
+                graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
             else:
                 raise AssertionError(u'Property "{}" is an embedded collection but has '
                                      u'neither a linked class nor a linked type: '
                                      u'{}'.format(name, property_definition))
+        else:
+            graphql_type = get_graphql_scalar_type_or_raise(name, type_id)
 
-        default_value = None
-        default_value_string = property_definition.get('defaultValue', None)
-        if default_value_string is not None:
-            default_value = parse_default_property_value(name, type_id, default_value_string)
-
-        descriptor = PropertyDescriptor(type_id=type_id, qualifier=qualifier, default=default_value)
-        # Sanity-check the descriptor before returning it.
-        _validate_collections_have_default_values(class_name, name, descriptor)
-        return descriptor
+        return graphql_type
 
     def _link_vertex_and_edge_types(self):
         """For each edge, link it to the vertex types it connects to each other."""
@@ -730,3 +720,22 @@ def _get_class_fields(class_definition):
         # We convert this field back to an empty dict, for our general sanity.
         class_fields = dict()
     return class_fields
+
+
+def _get_default_value(class_name, property_definition):
+    """Return the default value of the OrientDB property."""
+    default_value = None
+    default_value_string = property_definition.get('defaultValue', None)
+    if default_value_string is not None:
+        default_value = parse_default_property_value(
+            property_definition['name'], property_definition['type'], default_value_string)
+
+    # We don't want properties of collection type having "null" values, since that may cause
+    # unexpected errors during GraphQL query execution and other operations.
+    if property_definition['type'] in COLLECTION_PROPERTY_TYPES:
+        if default_value is None:
+            raise IllegalSchemaStateError(u'Class "{}" has a property "{}" of collection type with '
+                                          u'no default value.'
+                                          .format(class_name, property_definition))
+
+    return default_value

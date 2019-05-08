@@ -3,7 +3,10 @@ from collections import namedtuple
 import datetime
 import time
 
+from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLString
 import six
+
+from ..schema import GraphQLAny, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 
 
 EDGE_SOURCE_PROPERTY_NAME = 'out'
@@ -90,15 +93,30 @@ PROPERTY_TYPE_ID_TO_NAME = {
     PROPERTY_TYPE_ANY_ID: PROPERTY_TYPE_ANY_NAME,
 }
 
+ORIENTDB_TO_GRAPHQL_SCALARS = {
+    PROPERTY_TYPE_ANY_ID: GraphQLAny,
+    PROPERTY_TYPE_BOOLEAN_ID: GraphQLBoolean,
+    PROPERTY_TYPE_DATE_ID: GraphQLDate,
+    PROPERTY_TYPE_DATETIME_ID: GraphQLDateTime,
+    PROPERTY_TYPE_DECIMAL_ID: GraphQLDecimal,
+    PROPERTY_TYPE_DOUBLE_ID: GraphQLFloat,
+    PROPERTY_TYPE_FLOAT_ID: GraphQLFloat,
+    PROPERTY_TYPE_INTEGER_ID: GraphQLInt,
+    PROPERTY_TYPE_LONG_ID: GraphQLInt,
+    PROPERTY_TYPE_STRING_ID: GraphQLString,
+}
+
+
 ORIENTDB_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 ORIENTDB_DATE_FORMAT = '%Y-%m-%d'
 
 
-def validate_supported_property_type_id(property_name, property_type_id):
-    """Ensure that the given property type_id is supported by the graph."""
-    if property_type_id not in PROPERTY_TYPE_ID_TO_NAME:
+def get_graphql_scalar_type_or_raise(property_name, property_type_id):
+    """Return the matching GraphQLScalarType for the property type id, asserting it exists."""
+    if property_type_id not in ORIENTDB_TO_GRAPHQL_SCALARS:
         raise AssertionError(u'Property "{}" has unsupported property type id: '
                              u'{}'.format(property_name, property_type_id))
+    return ORIENTDB_TO_GRAPHQL_SCALARS[property_type_id]
 
 
 def _parse_bool_default_value(property_name, default_value_string):
@@ -173,16 +191,7 @@ def parse_default_property_value(property_name, property_type_id, default_value_
 
 
 # A way to describe a property's type and associated information:
-#   - type_id: int, the OrientDB property type ID -- can be made human-readable
-#              using the above PROPERTY_TYPE_ID_TO_NAME map.
-#   - qualifier: dependent on the type_id
-#        - For Link properties, string -- the name of the class to which the Link points.
-#        - For EmbeddedSet and EmbeddedList, either:
-#              - int, the property type ID of the native OrientDB type, if the data in
-#                the collection is of a built-in OrientDB type, or
-#              - string, the name of the non-graph class representing the data in the collection.
-#        - For all other property types, None.
+#   - type: GraphQLType, the type of this property
 #   - default: the default value for the property, used when a record is inserted without an
 #              explicit value for this property. Set to None if no default is given in the schema.
-PropertyDescriptor = namedtuple('PropertyDescriptor',
-                                ('type_id', 'qualifier', 'default'))
+PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))

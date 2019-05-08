@@ -3,21 +3,14 @@ from collections import OrderedDict
 from itertools import chain
 
 from graphql.type import (
-    GraphQLBoolean, GraphQLField, GraphQLFloat, GraphQLInt, GraphQLInterfaceType, GraphQLList,
-    GraphQLObjectType, GraphQLSchema, GraphQLString, GraphQLUnionType
+    GraphQLField, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLSchema,
+    GraphQLUnionType
 )
 import six
 
-from ..schema import (
-    DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal
-)
+from ..schema import DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS
 from .exceptions import EmptySchemaError
-from .schema_properties import (
-    ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_BOOLEAN_ID, PROPERTY_TYPE_DATE_ID,
-    PROPERTY_TYPE_DATETIME_ID, PROPERTY_TYPE_DECIMAL_ID, PROPERTY_TYPE_DOUBLE_ID,
-    PROPERTY_TYPE_EMBEDDED_LIST_ID, PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_FLOAT_ID,
-    PROPERTY_TYPE_INTEGER_ID, PROPERTY_TYPE_STRING_ID
-)
+from .schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 
 
 def _get_referenced_type_equivalences(graphql_types, type_equivalence_hints):
@@ -60,41 +53,6 @@ def _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_ty
                             .format(field_name, class_name, superclass_name))
 
 
-def _property_descriptor_to_graphql_type(property_obj):
-    """Return the best GraphQL type representation for an OrientDB property descriptor."""
-    property_type = property_obj.type_id
-    scalar_types = {
-        PROPERTY_TYPE_BOOLEAN_ID: GraphQLBoolean,
-        PROPERTY_TYPE_DATE_ID: GraphQLDate,
-        PROPERTY_TYPE_DATETIME_ID: GraphQLDateTime,
-        PROPERTY_TYPE_DECIMAL_ID: GraphQLDecimal,
-        PROPERTY_TYPE_DOUBLE_ID: GraphQLFloat,
-        PROPERTY_TYPE_FLOAT_ID: GraphQLFloat,
-        PROPERTY_TYPE_INTEGER_ID: GraphQLInt,
-        PROPERTY_TYPE_STRING_ID: GraphQLString,
-    }
-
-    result = scalar_types.get(property_type, None)
-    if result:
-        return result
-
-    mapping_types = {
-        PROPERTY_TYPE_EMBEDDED_SET_ID: GraphQLList,
-        PROPERTY_TYPE_EMBEDDED_LIST_ID: GraphQLList,
-    }
-    wrapping_type = mapping_types.get(property_type, None)
-    if wrapping_type:
-        linked_property_obj = property_obj.qualifier
-        # There are properties that are embedded collections of non-primitive types,
-        # for example, ProxyEventSet.scalar_parameters.
-        # The GraphQL compiler does not currently support these.
-        if linked_property_obj in scalar_types:
-            return wrapping_type(scalar_types[linked_property_obj])
-
-    # We weren't able to represent this property in GraphQL, so we'll hide it instead.
-    return None
-
-
 def _get_union_type_name(type_names_to_union):
     """Construct a unique union type name based on the type names being unioned."""
     if not type_names_to_union:
@@ -110,13 +68,16 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
 
     # Add leaf GraphQL fields (class properties).
     all_properties = {
-        property_name: _property_descriptor_to_graphql_type(property_obj)
+        property_name: property_obj.type
         for property_name, property_obj in six.iteritems(properties)
     }
+
+    # Filter collections of classes. They are currently not supported.
     result = {
-        property_name: graphql_representation
-        for property_name, graphql_representation in six.iteritems(all_properties)
-        if graphql_representation is not None
+        property_name: graphql_type
+        for property_name, graphql_type in six.iteritems(all_properties)
+        if not (isinstance(graphql_type, GraphQLList) and
+                isinstance(graphql_type.of_type, GraphQLObjectType))
     }
 
     # Add edge GraphQL fields (edges to other vertex classes).
