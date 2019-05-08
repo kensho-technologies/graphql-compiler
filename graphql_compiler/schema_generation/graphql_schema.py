@@ -83,9 +83,10 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
 
     class_collection_properties = set(all_properties.keys()).difference(result.keys())
     if len(class_collection_properties) > 0:
-        warnings.warn('The fields {} of class {} were filtered since they are GraphQLLists of '
-                      'non-GraphQLScalarTypes, which are not currently supported in the '
-                      'GraphQLSchema.'.format(class_collection_properties, cls_name))
+        warnings.warn('The fields {} of class {} were ignored since they are GraphQLLists of '
+                      'non-GraphQLScalarTypes. GraphQLLists of non-GraphQLScalarTypes are not '
+                      'currently supported in the GraphQLSchema.'
+                      .format(class_collection_properties, cls_name))
 
     # Add edge GraphQL fields (edges to other vertex classes).
     schema_element = schema_graph.get_element_by_class_name(cls_name)
