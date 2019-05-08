@@ -290,7 +290,7 @@ def get_schema_graph():
 
 
 def get_schema_data():
-    """Return the OrientDB schema data."""
+    """Return the OrientDB schema data for testing."""
     with open(SCHEMA_DATA_JSON_FILE) as infile:
         return json.load(infile)
 
@@ -305,7 +305,7 @@ def generate_schema(graph_client):
 
 
 def generate_schema_graph(graph_client):
-    """Generate the SchemaGraph pyorient client"""
+    """Generate the SchemaGraph from a pyorient client"""
     return SchemaGraph(generate_schema_data(graph_client))
 
 
