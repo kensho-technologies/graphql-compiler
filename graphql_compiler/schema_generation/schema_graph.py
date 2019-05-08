@@ -298,6 +298,7 @@ class SchemaGraph(object):
         # Initialize the _vertex_class_names, _edge_class_names, and _non_graph_class_names sets.
         self._split_classes_by_kind(class_name_to_definition)
 
+        self._non_graph_class_to_graphql_rep = dict()
         self._set_up_non_graph_elements(class_name_to_definition)
         self._set_up_edge_elements(class_name_to_definition)
         self._set_up_vertex_elements(class_name_to_definition)
@@ -652,9 +653,20 @@ class SchemaGraph(object):
                                          'collection property {}. Only graph classes are allowed '
                                          'to have collections as properties.'
                                          .format(class_name, property_definition))
-                # Don't include the fields and implemented interfaces, this information is already
-                # stored in the SchemaGraph.
-                graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
+                if len(self._inheritance_sets[linked_class]) > 1:
+                    raise AssertionError('Class {} contains an invalid collection of class {} '
+                                         'elements. Inner classes are not allowed to have '
+                                         'multiple superclasses.'.format(class_name, linked_class))
+
+                if linked_class not in self._non_graph_class_to_graphql_rep:
+                    fields = {
+                        name: property_obj.type
+                        for property_obj in self._elements[linked_class].properties.items()
+                    }
+                    self._non_graph_class_to_graphql_rep[linked_class] = (
+                        GraphQLObjectType(linked_class, fields, []))
+
+                graphql_type = GraphQLList(self._non_graph_class_to_graphql_rep[linked_class])
             else:
                 raise AssertionError(u'Property "{}" is an embedded collection but has '
                                      u'neither a linked class nor a linked type: '
@@ -688,7 +700,6 @@ class SchemaGraph(object):
                 to_schema_element = self._elements[to_class]
                 edge_schema_element.out_connections.add(to_class)
                 to_schema_element.in_connections.add(edge_class_name)
-
 
 def _get_inherited_property_definitions(superclass_set, class_name_to_definition):
     """Return a class's inherited OrientDB property definitions."""
