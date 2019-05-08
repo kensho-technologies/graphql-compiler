@@ -1,10 +1,11 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import OrderedDict
 from itertools import chain
+import warnings
 
 from graphql.type import (
-    GraphQLField, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLSchema,
-    GraphQLUnionType
+    GraphQLField, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLScalarType,
+    GraphQLSchema, GraphQLUnionType
 )
 import six
 
@@ -77,8 +78,14 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
         property_name: graphql_type
         for property_name, graphql_type in six.iteritems(all_properties)
         if not (isinstance(graphql_type, GraphQLList) and
-                isinstance(graphql_type.of_type, GraphQLObjectType))
+                not isinstance(graphql_type.of_type, GraphQLScalarType))
     }
+
+    class_collection_properties = set(all_properties.keys()).difference(result.keys())
+    if len(class_collection_properties) > 0:
+        warnings.warn('The fields {} of class {} were filtered since they are GraphQLLists of '
+                      'non-GraphQLScalarTypes, which are not currently supported in the '
+                      'GraphQLSchema.'.format(class_collection_properties, cls_name))
 
     # Add edge GraphQL fields (edges to other vertex classes).
     schema_element = schema_graph.get_element_by_class_name(cls_name)
