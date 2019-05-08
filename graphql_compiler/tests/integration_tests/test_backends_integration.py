@@ -8,9 +8,10 @@ from parameterized import parameterized
 import pytest
 
 from graphql_compiler.tests import test_backend
-from graphql_compiler.tests.test_helpers import generate_schema
-
-from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
+from ..test_helpers import (
+    SCHEMA_TEXT, compare_ignoring_whitespace, get_schema, get_schema_data, generate_schema,
+    generate_schema_data, ordered
+)
 from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
 from .integration_test_helpers import (
     compile_and_run_match_query, compile_and_run_sql_query, sort_db_results
@@ -170,6 +171,11 @@ class IntegrationTests(TestCase):
             {'animal_name': 'Animal 3'},
         ]
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
+
+    @integration_fixtures
+    def test_snapshot_schema_data_from_orientdb_schema(self):
+        self.assertEqual(ordered(get_schema_data()),
+                         ordered(generate_schema_data(self.graph_client)))
 
     @integration_fixtures
     def test_snapshot_graphql_schema_from_orientdb_schema(self):

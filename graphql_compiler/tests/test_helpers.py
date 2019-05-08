@@ -1,16 +1,18 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Common test data and helper functions."""
+import json
 from pprint import pformat
 import re
+from collections import OrderedDict
 
 from graphql import GraphQLID, parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
-from graphql_compiler import get_graphql_schema_from_orientdb_schema_data
-from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
+from ..schema_generation.schema_graph import SchemaGraph
+from ..schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
+from ..schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 
-from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
@@ -281,14 +283,36 @@ def get_schema():
     return schema
 
 
+def get_schema_graph():
+    """Get a SchemaGraph object for testing."""
+    return SchemaGraph(get_schema_data())
+
+
+def get_schema_data():
+    """Return the OrientDB schema data."""
+    with open('test_data_tools/orientdb_schema_data.json') as infile:
+        return json.load(infile)
+
+
 def generate_schema(graph_client):
     """Generate schema and type equivalence dict from a pyorient client"""
-    schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
-    schema_data = [x.oRecordData for x in schema_records]
+    schema_graph = generate_schema_graph(graph_client)
     type_overrides = {
         'UniquelyIdentifiable': {'uuid': GraphQLID},
     }
-    return get_graphql_schema_from_orientdb_schema_data(schema_data, type_overrides)
+    return get_graphql_schema_from_schema_graph(schema_graph, type_overrides)
+
+
+def generate_schema_graph(graph_client):
+    """Generate the SchemaGraph pyorient client"""
+    return SchemaGraph(generate_schema_data(graph_client))
+
+
+def generate_schema_data(graph_client):
+    """Generate the OrientDB schema data from a pyorient client."""
+    schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+    return [x.oRecordData for x in schema_records]
+
 
 
 def construct_location_types(location_types_as_strings):
@@ -307,7 +331,11 @@ def get_empty_test_macro_registry():
     type_equivalence_hints = {
         schema.get_type('Event'): schema.get_type('Union__BirthEvent__Event__FeedingEvent'),
     }
-    subclass_sets = compute_subclass_sets(schema, type_equivalence_hints)
+    schema_graph = get_schema_graph()
+    subclass_sets = {
+        name: schema_graph.get_subclass_set(name)
+        for name in schema_graph.vertex_class_names
+    }
     macro_registry = create_macro_registry(schema, type_equivalence_hints, subclass_sets)
     return macro_registry
 
@@ -407,3 +435,13 @@ def get_test_macro_registry():
     for graphql, args in valid_macros:
         register_macro_edge(macro_registry, graphql, args)
     return macro_registry
+
+
+def ordered(obj):
+    """Return an ordered representation of a json-serializable object"""
+    if isinstance(obj, dict):
+        return OrderedDict(sorted([(k, ordered(v)) for k, v in obj.items()], key=str))
+    if isinstance(obj, list):
+        return sorted([ordered(x) for x in obj], key=str)
+    else:
+        return obj

@@ -91,8 +91,6 @@ from .helpers import (
     strip_non_null_from_type, validate_output_name, validate_safe_string
 )
 from .metadata import LocationInfo, QueryMetadataTable, RecurseInfo
-from .subclass import compute_subclass_sets
-
 
 # LocationStackEntry contains the following:
 # - location: Location object corresponding to an inserted MarkLocation block
