@@ -174,11 +174,19 @@ class IntegrationTests(TestCase):
 
     @integration_fixtures
     def test_snapshot_schema_data_from_orientdb_schema(self):
-        self.assertEqual(ordered(get_schema_data()),
-                         ordered(generate_schema_data(self.graph_client)))
+        schema_data = ordered(generate_schema_data(self.graph_client))
+
+        # To update run:
+        # import json
+        # from ..test_helpers import SCHEMA_DATA_JSON_FILE
+        # with open(SCHEMA_DATA_JSON_FILE, 'w') as outfile:
+        #     json.dump(generate_schema_data(self.graph_client), outfile, indent=4)
+
+        self.assertEqual(ordered(get_schema_data()), schema_data)
 
     @integration_fixtures
     def test_snapshot_graphql_schema_from_orientdb_schema(self):
+        # To update copy-paste schema string representation into SCHEMA_TEXT
         schema, _ = generate_schema(self.graph_client)
         compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
 

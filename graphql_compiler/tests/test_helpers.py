@@ -17,6 +17,7 @@ from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
 
+SCHEMA_DATA_JSON_FILE = 'test_data_tools/orientdb_schema_data.json'
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
 # so we can compare expected and produced emitted code irrespective of whitespace.
@@ -290,7 +291,7 @@ def get_schema_graph():
 
 def get_schema_data():
     """Return the OrientDB schema data."""
-    with open('test_data_tools/orientdb_schema_data.json') as infile:
+    with open(SCHEMA_DATA_JSON_FILE) as infile:
         return json.load(infile)
 
 
