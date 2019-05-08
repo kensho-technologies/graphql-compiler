@@ -92,6 +92,7 @@ from .helpers import (
 )
 from .metadata import LocationInfo, QueryMetadataTable, RecurseInfo
 
+
 # LocationStackEntry contains the following:
 # - location: Location object corresponding to an inserted MarkLocation block
 # - num_traverses: Int counter for the number of traverses inserted after the last MarkLocation

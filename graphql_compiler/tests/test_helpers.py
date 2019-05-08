@@ -1,21 +1,21 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Common test data and helper functions."""
+from collections import OrderedDict
 import json
 from pprint import pformat
 import re
-from collections import OrderedDict
 
 from graphql import GraphQLID, parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
-from ..schema_generation.schema_graph import SchemaGraph
-from ..schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
-from ..schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
+from ..schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
+from ..schema_generation.schema_graph import SchemaGraph
+from ..schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
+
 
 SCHEMA_DATA_JSON_FILE = 'test_data_tools/orientdb_schema_data.json'
 
@@ -313,7 +313,6 @@ def generate_schema_data(graph_client):
     """Generate the OrientDB schema data from a pyorient client."""
     schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     return [x.oRecordData for x in schema_records]
-
 
 
 def construct_location_types(location_types_as_strings):

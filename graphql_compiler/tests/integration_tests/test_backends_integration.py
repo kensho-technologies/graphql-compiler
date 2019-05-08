@@ -8,9 +8,10 @@ from parameterized import parameterized
 import pytest
 
 from graphql_compiler.tests import test_backend
+
 from ..test_helpers import (
-    SCHEMA_TEXT, compare_ignoring_whitespace, get_schema, get_schema_data, generate_schema,
-    generate_schema_data, ordered
+    SCHEMA_TEXT, compare_ignoring_whitespace, generate_schema, generate_schema_data, get_schema,
+    get_schema_data, ordered
 )
 from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
 from .integration_test_helpers import (
@@ -177,10 +178,10 @@ class IntegrationTests(TestCase):
         schema_data = ordered(generate_schema_data(self.graph_client))
 
         # To update run:
-        import json
-        from ..test_helpers import SCHEMA_DATA_JSON_FILE
-        with open(SCHEMA_DATA_JSON_FILE, 'w') as outfile:
-            json.dump(generate_schema_data(self.graph_client), outfile)
+        # import json
+        # from ..test_helpers import SCHEMA_DATA_JSON_FILE
+        # with open(SCHEMA_DATA_JSON_FILE, 'w') as outfile:
+        #     json.dump(generate_schema_data(self.graph_client), outfile)
 
         self.assertEqual(ordered(get_schema_data()), schema_data)
 
