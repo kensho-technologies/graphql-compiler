@@ -616,7 +616,7 @@ class SchemaGraph(object):
                                      .format(property_name, class_name))
 
             maybe_graphql_type = self._try_get_graphql_type(class_name, property_definition)
-            if maybe_graphql_type is None:
+            if maybe_graphql_type is not None:
                 default_value = _get_default_value(class_name, property_definition)
                 property_descriptor = PropertyDescriptor(maybe_graphql_type, default_value)
                 property_name_to_descriptor[property_name] = property_descriptor
@@ -641,7 +641,7 @@ class SchemaGraph(object):
             elif linked_type is not None and linked_class is None:
                 # No linked class, must be a linked native OrientDB type.
                 maybe_inner_type = try_get_graphql_scalar_type(name + ' inner type', linked_type)
-                if maybe_inner_type is None:
+                if maybe_inner_type is not None:
                     maybe_graphql_type = GraphQLList(maybe_inner_type)
             elif linked_class is not None and linked_type is None:
                 # No linked type, must be a linked non-graph user-defined type.
