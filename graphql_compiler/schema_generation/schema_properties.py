@@ -2,6 +2,7 @@
 from collections import namedtuple
 import datetime
 import time
+import warnings
 
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLString
 import six
@@ -111,12 +112,12 @@ ORIENTDB_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 ORIENTDB_DATE_FORMAT = '%Y-%m-%d'
 
 
-def get_graphql_scalar_type_or_raise(property_name, property_type_id):
-    """Return the matching GraphQLScalarType for the property type id, asserting it exists."""
+def try_get_graphql_scalar_type(property_name, property_type_id):
+    """Return the matching GraphQLScalarType for the property type id or None."""
     if property_type_id not in ORIENTDB_TO_GRAPHQL_SCALARS:
-        raise AssertionError(u'Property "{}" has unsupported property type id: '
-                             u'{}'.format(property_name, property_type_id))
-    return ORIENTDB_TO_GRAPHQL_SCALARS[property_type_id]
+        warnings.warn(u'Ignoring property "{}" with unsupported property type id: 'u'{}'
+                      .format(property_name, property_type_id))
+    return ORIENTDB_TO_GRAPHQL_SCALARS.get(property_type_id, None)
 
 
 def _parse_bool_default_value(property_name, default_value_string):

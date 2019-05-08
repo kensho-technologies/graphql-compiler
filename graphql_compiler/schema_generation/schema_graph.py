@@ -14,7 +14,7 @@ from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPrope
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, ILLEGAL_PROPERTY_NAME_PREFIXES, ORIENTDB_BASE_EDGE_CLASS_NAME,
     ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_LINK_ID, PropertyDescriptor,
-    get_graphql_scalar_type_or_raise, parse_default_property_value
+    parse_default_property_value, try_get_graphql_scalar_type
 )
 from .utils import toposort_classes
 
@@ -615,20 +615,21 @@ class SchemaGraph(object):
                                      u'more than once, this is not allowed!'
                                      .format(property_name, class_name))
 
-            graphql_type = self._get_graphql_type(class_name, property_definition)
-            default_value = _get_default_value(class_name, property_definition)
-            property_descriptor = PropertyDescriptor(graphql_type, default_value)
-            property_name_to_descriptor[property_name] = property_descriptor
+            maybe_graphql_type = self._try_get_graphql_type(class_name, property_definition)
+            if maybe_graphql_type:
+                default_value = _get_default_value(class_name, property_definition)
+                property_descriptor = PropertyDescriptor(maybe_graphql_type, default_value)
+                property_name_to_descriptor[property_name] = property_descriptor
         return property_name_to_descriptor
 
-    def _get_graphql_type(self, class_name, property_definition):
-        """Return the GraphQLType corresponding to the non-link property definition."""
+    def _try_get_graphql_type(self, class_name, property_definition):
+        """Return the GraphQLType corresponding to the non-link property definition or None."""
         name = property_definition['name']
         type_id = property_definition['type']
         linked_class = property_definition.get('linkedClass', None)
         linked_type = property_definition.get('linkedType', None)
 
-        graphql_type = None
+        maybe_graphql_type = None
         if type_id == PROPERTY_TYPE_LINK_ID:
             raise AssertionError(u'Found a improperly named property of type Link: '
                                  u'{} {}. Links must be named either "in" or "out"'
@@ -639,8 +640,9 @@ class SchemaGraph(object):
                                      u'a linked type: {}'.format(name, property_definition))
             elif linked_type is not None and linked_class is None:
                 # No linked class, must be a linked native OrientDB type.
-                inner_type = get_graphql_scalar_type_or_raise(name + ' inner type', linked_type)
-                graphql_type = GraphQLList(inner_type)
+                maybe_inner_type = try_get_graphql_scalar_type(name + ' inner type', linked_type)
+                if maybe_inner_type:
+                    maybe_graphql_type = GraphQLList(maybe_inner_type)
             elif linked_class is not None and linked_type is None:
                 # No linked type, must be a linked non-graph user-defined type.
                 if linked_class not in self._non_graph_class_names:
@@ -654,15 +656,15 @@ class SchemaGraph(object):
                                          .format(class_name, property_definition))
                 # Don't include the fields and implemented interfaces, this information is already
                 # stored in the SchemaGraph.
-                graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
+                maybe_graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
             else:
                 raise AssertionError(u'Property "{}" is an embedded collection but has '
                                      u'neither a linked class nor a linked type: '
                                      u'{}'.format(name, property_definition))
         else:
-            graphql_type = get_graphql_scalar_type_or_raise(name, type_id)
+            maybe_graphql_type = try_get_graphql_scalar_type(name, type_id)
 
-        return graphql_type
+        return maybe_graphql_type
 
     def _link_vertex_and_edge_types(self):
         """For each edge, link it to the vertex types it connects to each other."""
