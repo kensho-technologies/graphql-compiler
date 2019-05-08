@@ -701,6 +701,7 @@ class SchemaGraph(object):
                 edge_schema_element.out_connections.add(to_class)
                 to_schema_element.in_connections.add(edge_class_name)
 
+
 def _get_inherited_property_definitions(superclass_set, class_name_to_definition):
     """Return a class's inherited OrientDB property definitions."""
     return list(chain.from_iterable(
