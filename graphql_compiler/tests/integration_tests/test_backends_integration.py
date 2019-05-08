@@ -177,10 +177,10 @@ class IntegrationTests(TestCase):
         schema_data = ordered(generate_schema_data(self.graph_client))
 
         # To update run:
-        # import json
-        # from ..test_helpers import SCHEMA_DATA_JSON_FILE
-        # with open(SCHEMA_DATA_JSON_FILE, 'w') as outfile:
-        #     json.dump(generate_schema_data(self.graph_client), outfile, indent=4)
+        import json
+        from ..test_helpers import SCHEMA_DATA_JSON_FILE
+        with open(SCHEMA_DATA_JSON_FILE, 'w') as outfile:
+            json.dump(generate_schema_data(self.graph_client), outfile)
 
         self.assertEqual(ordered(get_schema_data()), schema_data)
 
