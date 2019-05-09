@@ -154,7 +154,8 @@ def get_orientdb_schema_graph(outer_schema_data):
                 link_property_definitions, non_link_property_definitions = (
                     _get_link_and_non_link_properties(inherited_property_definitions))
 
-                [self._validate_link_definition(class_name_to_definition, definition)
+                [_validate_link_definition(class_name_to_definition, definition,
+                                           self._vertex_class_names, self._subclass_sets)
                  for definition in link_property_definitions]
 
                 links = _get_end_direction_to_superclasses(link_property_definitions)
@@ -190,30 +191,6 @@ def get_orientdb_schema_graph(outer_schema_data):
 
                 self._elements[class_name] = VertexType(
                     class_name, abstract, property_name_to_descriptor, class_fields)
-
-        def _validate_link_definition(self, class_name_to_definition, property_definition):
-            """Validate that property named either 'in' or 'out' is properly defined as a link."""
-            name = property_definition['name']
-            type_id = property_definition['type']
-            linked_class = property_definition['linkedClass']
-            if type_id != PROPERTY_TYPE_LINK_ID:
-                raise AssertionError(u'Expected property named "{}" to be of type Link: {}'
-                                     .format(name, property_definition))
-            if linked_class is None:
-                raise AssertionError(u'Property "{}" is declared with type Link but has no '
-                                     u'linked class: {}'.format(name, property_definition))
-            if linked_class not in self._vertex_class_names:
-                is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
-                all_subclasses_are_vertices = True
-                for subclass in self._subclass_sets[linked_class]:
-                    if subclass != linked_class and subclass not in self._vertex_class_names:
-                        all_subclasses_are_vertices = False
-                        break
-                if not (is_linked_class_abstract and all_subclasses_are_vertices):
-                    raise AssertionError(u'Property "{}" is declared as a Link to class {}, but '
-                                         u'that class is neither a vertex nor is it an '
-                                         u'abstract class whose subclasses are all vertices!'
-                                         .format(name, linked_class))
 
         def _get_element_properties(self, class_name, non_link_property_definitions):
             """Return the SchemaElement's properties from the OrientDB non-link property definitions."""
@@ -440,3 +417,29 @@ def _get_end_direction_to_superclasses(link_property_definitions):
     for property_definition in link_property_definitions:
         links[property_definition['name']].add(property_definition['linkedClass'])
     return links
+
+
+def _validate_link_definition(class_name_to_definition, property_definition,
+                              vertex_class_names, subclass_sets):
+    """Validate that property named either 'in' or 'out' is properly defined as a link."""
+    name = property_definition['name']
+    type_id = property_definition['type']
+    linked_class = property_definition['linkedClass']
+    if type_id != PROPERTY_TYPE_LINK_ID:
+        raise AssertionError(u'Expected property named "{}" to be of type Link: {}'
+                             .format(name, property_definition))
+    if linked_class is None:
+        raise AssertionError(u'Property "{}" is declared with type Link but has no '
+                             u'linked class: {}'.format(name, property_definition))
+    if linked_class not in vertex_class_names:
+        is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
+        all_subclasses_are_vertices = True
+        for subclass in subclass_sets[linked_class]:
+            if subclass != linked_class and subclass not in vertex_class_names:
+                all_subclasses_are_vertices = False
+                break
+        if not (is_linked_class_abstract and all_subclasses_are_vertices):
+            raise AssertionError(u'Property "{}" is declared as a Link to class {}, but '
+                                 u'that class is neither a vertex nor is it an '
+                                 u'abstract class whose subclasses are all vertices!'
+                                 .format(name, linked_class))
