@@ -15,6 +15,12 @@ from .schema_properties import (
     EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES, EDGE_SOURCE_PROPERTY_NAME
 )
 from .utils import toposort_classes
+from enum import Enum
+
+class OrientDBType(Enum):
+    Vertex = 1
+    Edge = 2
+    NonGraph = 3
 
 
 def get_superclasses_from_class_definition(class_definition):
@@ -81,7 +87,6 @@ def get_orientdb_schema_graph(outer_schema_data):
     Returns:
         fully-constructed SchemaGraph object
     """
-
     class SchemaGraphBuilder(object):
         def __init__(self, schema_data):
             toposorted_schema_data = toposort_classes(schema_data)
@@ -89,10 +94,6 @@ def get_orientdb_schema_graph(outer_schema_data):
 
             self._inheritance_sets = dict()
             self._subclass_sets = dict()
-
-            self._vertex_class_names = set()
-            self._edge_class_names = set()
-            self._non_graph_class_names = set()
 
             self._set_up_inheritance_and_subclass_sets(toposorted_schema_data)
 
@@ -102,7 +103,9 @@ def get_orientdb_schema_graph(outer_schema_data):
             }
 
             # Initialize the _vertex_class_names, _edge_class_names, and _non_graph_class_names sets.
-            self._split_classes_by_kind(class_name_to_definition)
+            self._vertex_class_names, self._edge_class_names, self._non_graph_class_names = (
+                _split_classes_by_kind(self._inheritance_sets, class_name_to_definition)
+            )
 
             self._set_up_non_graph_elements(class_name_to_definition)
             self._set_up_edge_elements(class_name_to_definition)
@@ -153,29 +156,6 @@ def get_orientdb_schema_graph(outer_schema_data):
             # It's bad practice to mutate a dict while iterating over it.
             for class_name in list(six.iterkeys(self._subclass_sets)):
                 self._subclass_sets[class_name] = frozenset(self._subclass_sets[class_name])
-
-        def _split_classes_by_kind(self, class_name_to_definition):
-            """Assign each class to the vertex, edge or non-graph type sets based on its kind."""
-            for class_name in class_name_to_definition:
-                inheritance_set = self._inheritance_sets[class_name]
-
-                is_vertex = ORIENTDB_BASE_VERTEX_CLASS_NAME in inheritance_set
-                is_edge = ORIENTDB_BASE_EDGE_CLASS_NAME in inheritance_set
-
-                if is_vertex and is_edge:
-                    raise AssertionError(u'Class {} appears to be both a vertex and an edge class: '
-                                         u'{}'.format(class_name, inheritance_set))
-                elif is_vertex:
-                    self._vertex_class_names.add(class_name)
-                elif is_edge:
-                    self._edge_class_names.add(class_name)
-                else:
-                    self._non_graph_class_names.add(class_name)
-
-            # Freeze the classname sets so they cannot be modified again.
-            self._vertex_class_names = frozenset(self._vertex_class_names)
-            self._edge_class_names = frozenset(self._edge_class_names)
-            self._non_graph_class_names = frozenset(self._non_graph_class_names)
 
         def _set_up_non_graph_elements(self, class_name_to_definition):
             """Load all NonGraphElements. Used as part of __init__."""
@@ -394,6 +374,32 @@ def get_orientdb_schema_graph(outer_schema_data):
 
 
     return SchemaGraphBuilder(outer_schema_data).build()
+
+
+def _split_classes_by_kind(inheritance_sets, class_name_to_definition):
+    """Assign each class to the vertex, edge or non-graph type sets based on its kind."""
+    vertex_class_names = set()
+    edge_class_names = set()
+    non_graph_class_names = set()
+    for class_name in class_name_to_definition:
+        inheritance_set = inheritance_sets[class_name]
+
+        is_vertex = ORIENTDB_BASE_VERTEX_CLASS_NAME in inheritance_set
+        is_edge = ORIENTDB_BASE_EDGE_CLASS_NAME in inheritance_set
+
+        if is_vertex and is_edge:
+            raise AssertionError(u'Class {} appears to be both a vertex and an edge class: '
+                                 u'{}'.format(class_name, inheritance_set))
+        elif is_vertex:
+            vertex_class_names.add(class_name)
+        elif is_edge:
+            edge_class_names.add(class_name)
+        else:
+            non_graph_class_names.add(class_name)
+    # Freeze the classname sets so they cannot be modified again.
+    return (frozenset(names)
+            for names in (vertex_class_names, edge_class_names, non_graph_class_names))
+
 
 def _get_link_and_non_link_properties(property_definitions):
     """Return a class's link and non link OrientDB property definitions."""
