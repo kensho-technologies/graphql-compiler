@@ -6,7 +6,7 @@ import time
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLString
 import six
 
-from ..schema import GraphQLAny, GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from graphql_compiler.schema import GraphQLAny, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 
 
 EDGE_SOURCE_PROPERTY_NAME = 'out'
@@ -15,23 +15,6 @@ EDGE_END_NAMES = {EDGE_SOURCE_PROPERTY_NAME, EDGE_DESTINATION_PROPERTY_NAME}
 
 ORIENTDB_BASE_VERTEX_CLASS_NAME = 'V'
 ORIENTDB_BASE_EDGE_CLASS_NAME = 'E'
-
-ILLEGAL_PROPERTY_NAME_PREFIXES = (
-    # Prefixes that would make the GraphQL schema ambiguous,
-    # since this is how it represents adjacent vertices.
-    'out_',
-    'in_',
-
-    # Prefixes reserved for future extensions to the GraphQL schema,
-    # in case we want to, e.g., add edge-based traversals, or "both()"-style traversals.
-    'outE',
-    'inE',
-    'outV',
-    'inV',
-    'both_',
-    'bothE_',
-    'bothV_',
-)
 
 PROPERTY_TYPE_BOOLEAN_ID = 0
 PROPERTY_TYPE_BOOLEAN_NAME = 'Boolean'

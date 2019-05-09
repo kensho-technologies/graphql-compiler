@@ -36,3 +36,21 @@ class IllegalSchemaStateError(SchemaError):
 
 class EmptySchemaError(SchemaError):
     """Raised when there are no visible vertex types to import into the GraphQL schema object."""
+
+
+ILLEGAL_PROPERTY_NAME_PREFIXES = (
+    # Prefixes that would make the GraphQL schema ambiguous,
+    # since this is how it represents adjacent vertices.
+    'out_',
+    'in_',
+
+    # Prefixes reserved for future extensions to the GraphQL schema,
+    # in case we want to, e.g., add edge-based traversals, or "both()"-style traversals.
+    'outE',
+    'inE',
+    'outV',
+    'inV',
+    'both_',
+    'bothE_',
+    'bothV_',
+)
