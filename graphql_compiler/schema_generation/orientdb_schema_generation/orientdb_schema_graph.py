@@ -157,8 +157,8 @@ def get_orientdb_schema_graph(outer_schema_data):
                 links = self._get_end_direction_to_superclasses(
                     class_name_to_definition, link_property_definitions)
 
-                maybe_base_in_connection, maybe_base_out_connection = self._try_get_base_connections(
-                    class_name, links, abstract)
+                maybe_base_in_connection, maybe_base_out_connection = _try_get_base_connections(
+                    class_name, self._inheritance_sets, links, abstract)
 
                 property_name_to_descriptor = self._get_element_properties(
                     class_name, non_link_property_definitions)
@@ -189,31 +189,6 @@ def get_orientdb_schema_graph(outer_schema_data):
                 self._elements[class_name] = VertexType(
                     class_name, abstract, property_name_to_descriptor, class_fields)
 
-        def _try_get_base_connections(self, class_name, links, abstract):
-            """Return a tuple with the EdgeType's base connections. Each tuple element may be None."""
-            base_connections = {}
-
-            for end_direction, linked_classes in six.iteritems(links):
-                # The linked_classes set is the complete set of superclasses that a class must
-                # inherit from in order to be allowed in the edge end specified by end_direction.
-                # The base connection of an edge's end is the superclass of all classes allowed in the
-                # edge's end. Therefore, the base connection of the end specified by end_direction,
-                # if it exists, must be the class in linked_classes that is a subclass of all other
-                # classes in linked_classes.
-                for linked_class in linked_classes:
-                    inheritance_set = self._inheritance_sets[linked_class]
-                    if set(linked_classes).issubset(inheritance_set):
-                        base_connections[end_direction] = linked_class
-
-                if end_direction not in base_connections and not abstract:
-                    raise AssertionError(u'For edge end direction "{}" of non-abstract edge class '
-                                         u'"{}", no such subclass-of-all-elements exists.'
-                                         .format(end_direction, class_name))
-            return (
-                base_connections.get(EDGE_SOURCE_PROPERTY_NAME, None),
-                base_connections.get(EDGE_DESTINATION_PROPERTY_NAME, None),
-            )
-
         def _get_end_direction_to_superclasses(self, class_name_to_definition,
                                                link_property_definitions):
             links = {
@@ -240,7 +215,7 @@ def get_orientdb_schema_graph(outer_schema_data):
                 is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
                 all_subclasses_are_vertices = True
                 for subclass in self._subclass_sets[linked_class]:
-                    if subclass != linked_class and subclass not in self.vertex_class_names:
+                    if subclass != linked_class and subclass not in self._vertex_class_names:
                         all_subclasses_are_vertices = False
                         break
                 if not (is_linked_class_abstract and all_subclasses_are_vertices):
@@ -438,3 +413,29 @@ def _get_inheritance_sets_from_schema_data(schema_data):
         # Freeze the inheritance set so it can't ever be modified again.
         inheritance_sets[class_name] = frozenset(inheritance_set)
     return inheritance_sets
+
+
+def _try_get_base_connections(class_name, inheritance_sets, links, abstract):
+    """Return a tuple with the EdgeType's base connections. Each tuple element may be None."""
+    base_connections = {}
+
+    for end_direction, linked_classes in six.iteritems(links):
+        # The linked_classes set is the complete set of superclasses that a class must
+        # inherit from in order to be allowed in the edge end specified by end_direction.
+        # The base connection of an edge's end is the superclass of all classes allowed in the
+        # edge's end. Therefore, the base connection of the end specified by end_direction,
+        # if it exists, must be the class in linked_classes that is a subclass of all other
+        # classes in linked_classes.
+        for linked_class in linked_classes:
+            inheritance_set = inheritance_sets[linked_class]
+            if set(linked_classes).issubset(inheritance_set):
+                base_connections[end_direction] = linked_class
+
+        if end_direction not in base_connections and not abstract:
+            raise AssertionError(u'For edge end direction "{}" of non-abstract edge class '
+                                 u'"{}", no such subclass-of-all-elements exists.'
+                                 .format(end_direction, class_name))
+    return (
+        base_connections.get(EDGE_SOURCE_PROPERTY_NAME, None),
+        base_connections.get(EDGE_DESTINATION_PROPERTY_NAME, None),
+    )
