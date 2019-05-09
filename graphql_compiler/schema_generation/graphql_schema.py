@@ -9,6 +9,7 @@ from graphql.type import (
 )
 import six
 
+from ..compiler.helpers import strip_non_null_from_type
 from ..schema import DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS
 from .exceptions import EmptySchemaError
 from .schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
@@ -73,20 +74,25 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
         for property_name, property_obj in six.iteritems(properties)
     }
 
-    # Filter collections of classes. They are currently not supported.
-    result = {
-        property_name: graphql_type
+    collections_of_non_graphql_scalars = {
+        property_name
         for property_name, graphql_type in six.iteritems(all_properties)
-        if not (isinstance(graphql_type, GraphQLList) and
-                not isinstance(graphql_type.of_type, GraphQLScalarType))
+        if (isinstance(strip_non_null_from_type(graphql_type), GraphQLList) and
+            not isinstance(strip_non_null_from_type(graphql_type.of_type), GraphQLScalarType))
     }
 
-    class_collection_properties = set(all_properties.keys()).difference(result.keys())
-    if len(class_collection_properties) > 0:
+    if len(collections_of_non_graphql_scalars) > 0:
         warnings.warn('The fields {} of class {} were ignored since they are GraphQLLists of '
                       'non-GraphQLScalarTypes. GraphQLLists of non-GraphQLScalarTypes are not '
                       'currently supported in the GraphQLSchema.'
-                      .format(class_collection_properties, cls_name))
+                      .format(collections_of_non_graphql_scalars, cls_name))
+
+    # Filter collections of non-GraphQLScalarTypes. They are currently not supported.
+    result = {
+        property_name: graphql_type
+        for property_name, graphql_type in six.iteritems(all_properties)
+        if property_name not in collections_of_non_graphql_scalars
+    }
 
     # Add edge GraphQL fields (edges to other vertex classes).
     schema_element = schema_graph.get_element_by_class_name(cls_name)
