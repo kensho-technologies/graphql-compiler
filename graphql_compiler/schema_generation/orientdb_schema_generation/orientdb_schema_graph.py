@@ -154,8 +154,12 @@ def get_orientdb_schema_graph(outer_schema_data):
                 link_property_definitions, non_link_property_definitions = (
                     _get_link_and_non_link_properties(inherited_property_definitions))
 
+                links = self._get_end_direction_to_superclasses(
+                    class_name_to_definition, link_property_definitions)
+
                 maybe_base_in_connection, maybe_base_out_connection = self._try_get_base_connections(
-                    class_name, class_name_to_definition, link_property_definitions, abstract)
+                    class_name, links, abstract)
+
                 property_name_to_descriptor = self._get_element_properties(
                     class_name, non_link_property_definitions)
 
@@ -185,18 +189,9 @@ def get_orientdb_schema_graph(outer_schema_data):
                 self._elements[class_name] = VertexType(
                     class_name, abstract, property_name_to_descriptor, class_fields)
 
-        def _try_get_base_connections(self, class_name, class_name_to_definition,
-                                      link_property_definitions, abstract):
+        def _try_get_base_connections(self, class_name, links, abstract):
             """Return a tuple with the EdgeType's base connections. Each tuple element may be None."""
             base_connections = {}
-            links = {
-                EDGE_SOURCE_PROPERTY_NAME: set(),
-                EDGE_DESTINATION_PROPERTY_NAME: set(),
-            }
-
-            for property_definition in link_property_definitions:
-                self._validate_link_definition(class_name_to_definition, property_definition)
-                links[property_definition['name']].add(property_definition['linkedClass'])
 
             for end_direction, linked_classes in six.iteritems(links):
                 # The linked_classes set is the complete set of superclasses that a class must
@@ -218,6 +213,17 @@ def get_orientdb_schema_graph(outer_schema_data):
                 base_connections.get(EDGE_SOURCE_PROPERTY_NAME, None),
                 base_connections.get(EDGE_DESTINATION_PROPERTY_NAME, None),
             )
+
+        def _get_end_direction_to_superclasses(self, class_name_to_definition,
+                                               link_property_definitions):
+            links = {
+                EDGE_SOURCE_PROPERTY_NAME: set(),
+                EDGE_DESTINATION_PROPERTY_NAME: set(),
+            }
+            for property_definition in link_property_definitions:
+                self._validate_link_definition(class_name_to_definition, property_definition)
+                links[property_definition['name']].add(property_definition['linkedClass'])
+            return links
 
         def _validate_link_definition(self, class_name_to_definition, property_definition):
             """Validate that property named either 'in' or 'out' is properly defined as a link."""
