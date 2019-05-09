@@ -107,9 +107,14 @@ def get_orientdb_schema_graph(outer_schema_data):
                 _split_classes_by_kind(self._inheritance_sets, class_name_to_definition)
             )
 
-            self._set_up_non_graph_elements(class_name_to_definition)
-            self._set_up_edge_elements(class_name_to_definition)
-            self._set_up_vertex_elements(class_name_to_definition)
+            self._elements = _set_up_non_graph_elements(
+                class_name_to_definition, self._non_graph_class_names, self._inheritance_sets)
+            self._elements.update(_set_up_edge_elements(
+                class_name_to_definition, self._edge_class_names, self._inheritance_sets,
+                self._subclass_sets, self._vertex_class_names, self._non_graph_class_names))
+            self._elements.update(_set_up_vertex_elements(
+                class_name_to_definition, self._vertex_class_names, self._inheritance_sets,
+                self._non_graph_class_names))
 
             # Initialize the connections that show which schema classes can be connected to
             # which other schema classes, then freeze all schema elements.
@@ -119,79 +124,6 @@ def get_orientdb_schema_graph(outer_schema_data):
 
         def build(self):
             return SchemaGraph(self._elements, self._inheritance_sets)
-
-        def _set_up_non_graph_elements(self, class_name_to_definition):
-            """Load all NonGraphElements. Used as part of __init__."""
-            for class_name in self._non_graph_class_names:
-                class_definition = class_name_to_definition[class_name]
-                class_fields = _get_class_fields(class_definition)
-                abstract = _is_abstract(class_definition)
-
-                inherited_property_definitions = _get_inherited_property_definitions(
-                    self._inheritance_sets[class_name], class_name_to_definition)
-                link_property_definitions, non_link_property_definitions = (
-                    _get_link_and_non_link_properties(inherited_property_definitions))
-
-                if len(link_property_definitions) > 0:
-                    raise AssertionError(u'There are links {} defined on non-edge class {}'
-                                         .format(link_property_definitions, class_name))
-
-                property_name_to_descriptor = _get_element_properties(
-                    class_name, non_link_property_definitions, self._non_graph_class_names)
-
-                self._elements[class_name] = NonGraphElement(
-                    class_name, abstract, property_name_to_descriptor, class_fields)
-
-        def _set_up_edge_elements(self, class_name_to_definition):
-            """Load all EdgeTypes. Used as part of __init__."""
-            for class_name in self._edge_class_names:
-                class_definition = class_name_to_definition[class_name]
-                class_fields = _get_class_fields(class_definition)
-                abstract = _is_abstract(class_definition)
-
-                inherited_property_definitions = _get_inherited_property_definitions(
-                    self._inheritance_sets[class_name], class_name_to_definition)
-                link_property_definitions, non_link_property_definitions = (
-                    _get_link_and_non_link_properties(inherited_property_definitions))
-
-                [_validate_link_definition(class_name_to_definition, definition,
-                                           self._vertex_class_names, self._subclass_sets)
-                 for definition in link_property_definitions]
-
-                links = _get_end_direction_to_superclasses(link_property_definitions)
-
-                maybe_base_in_connection, maybe_base_out_connection = _try_get_base_connections(
-                    class_name, self._inheritance_sets, links, abstract)
-
-                property_name_to_descriptor = _get_element_properties(
-                    class_name, non_link_property_definitions, self._non_graph_class_names)
-
-                self._elements[class_name] = EdgeType(
-                    class_name, abstract, property_name_to_descriptor, class_fields,
-                    maybe_base_in_connection, maybe_base_out_connection)
-
-        def _set_up_vertex_elements(self, class_name_to_definition):
-            """Load all VertexTypes. Used as part of __init__."""
-            for class_name in self._vertex_class_names:
-                class_definition = class_name_to_definition[class_name]
-                class_fields = _get_class_fields(class_definition)
-                abstract = _is_abstract(class_definition)
-
-                inherited_property_definitions = _get_inherited_property_definitions(
-                    self._inheritance_sets[class_name], class_name_to_definition)
-                link_property_definitions, non_link_property_definitions = (
-                    _get_link_and_non_link_properties(inherited_property_definitions))
-
-                if len(link_property_definitions) > 0:
-                    raise AssertionError(u'There are links {} defined on non-edge class {}'
-                                         .format(link_property_definitions, class_name))
-
-                property_name_to_descriptor = _get_element_properties(
-                    class_name, non_link_property_definitions, self._non_graph_class_names)
-
-                self._elements[class_name] = VertexType(
-                    class_name, abstract, property_name_to_descriptor, class_fields)
-
     return SchemaGraphBuilder(outer_schema_data).build()
 
 
@@ -447,3 +379,86 @@ def _get_inherited_property_definitions(superclass_set, class_name_to_definition
         class_name_to_definition[inherited_class_name]['properties']
         for inherited_class_name in superclass_set
     ))
+
+
+def _set_up_non_graph_elements(class_name_to_definition, non_graph_class_names, inheritance_sets):
+    """Load all NonGraphElements. Used as part of __init__."""
+    non_graph_elements = dict()
+    for class_name in non_graph_class_names:
+        class_definition = class_name_to_definition[class_name]
+        class_fields = _get_class_fields(class_definition)
+        abstract = _is_abstract(class_definition)
+
+        inherited_property_definitions = _get_inherited_property_definitions(
+            inheritance_sets[class_name], class_name_to_definition)
+        link_property_definitions, non_link_property_definitions = (
+            _get_link_and_non_link_properties(inherited_property_definitions))
+
+        if len(link_property_definitions) > 0:
+            raise AssertionError(u'There are links {} defined on non-edge class {}'
+                                 .format(link_property_definitions, class_name))
+
+        property_name_to_descriptor = _get_element_properties(
+            class_name, non_link_property_definitions, non_graph_class_names)
+
+        non_graph_elements[class_name] = NonGraphElement(
+            class_name, abstract, property_name_to_descriptor, class_fields)
+    return non_graph_elements
+
+
+def _set_up_edge_elements(class_name_to_definition, edge_class_names, inheritance_sets,
+                          subclass_sets, vertex_class_names, non_graph_class_names):
+    """Load all EdgeTypes. Used as part of __init__."""
+    edge_elements = dict()
+    for class_name in edge_class_names:
+        class_definition = class_name_to_definition[class_name]
+        class_fields = _get_class_fields(class_definition)
+        abstract = _is_abstract(class_definition)
+
+        inherited_property_definitions = _get_inherited_property_definitions(
+            inheritance_sets[class_name], class_name_to_definition)
+        link_property_definitions, non_link_property_definitions = (
+            _get_link_and_non_link_properties(inherited_property_definitions))
+
+        [_validate_link_definition(class_name_to_definition, definition,
+                                   vertex_class_names, subclass_sets)
+         for definition in link_property_definitions]
+
+        links = _get_end_direction_to_superclasses(link_property_definitions)
+
+        maybe_base_in_connection, maybe_base_out_connection = _try_get_base_connections(
+            class_name, inheritance_sets, links, abstract)
+
+        property_name_to_descriptor = _get_element_properties(
+            class_name, non_link_property_definitions, non_graph_class_names)
+
+        edge_elements[class_name] = EdgeType(
+            class_name, abstract, property_name_to_descriptor, class_fields,
+            maybe_base_in_connection, maybe_base_out_connection)
+    return edge_elements
+
+
+def _set_up_vertex_elements(class_name_to_definition, vertex_class_names,
+                            inheritance_sets, non_graph_class_names):
+    """Load all VertexTypes. Used as part of __init__."""
+    vertex_elements = dict()
+    for class_name in vertex_class_names:
+        class_definition = class_name_to_definition[class_name]
+        class_fields = _get_class_fields(class_definition)
+        abstract = _is_abstract(class_definition)
+
+        inherited_property_definitions = _get_inherited_property_definitions(
+            inheritance_sets[class_name], class_name_to_definition)
+        link_property_definitions, non_link_property_definitions = (
+            _get_link_and_non_link_properties(inherited_property_definitions))
+
+        if len(link_property_definitions) > 0:
+            raise AssertionError(u'There are links {} defined on non-edge class {}'
+                                 .format(link_property_definitions, class_name))
+
+        property_name_to_descriptor = _get_element_properties(
+            class_name, non_link_property_definitions, non_graph_class_names)
+
+        vertex_elements[class_name] = VertexType(
+            class_name, abstract, property_name_to_descriptor, class_fields)
+    return vertex_elements
