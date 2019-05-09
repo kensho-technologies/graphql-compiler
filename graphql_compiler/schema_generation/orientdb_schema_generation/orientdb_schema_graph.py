@@ -136,8 +136,8 @@ def get_orientdb_schema_graph(outer_schema_data):
                     raise AssertionError(u'There are links {} defined on non-edge class {}'
                                          .format(link_property_definitions, class_name))
 
-                property_name_to_descriptor = (self._get_element_properties(
-                    class_name, non_link_property_definitions))
+                property_name_to_descriptor = _get_element_properties(
+                    class_name, non_link_property_definitions, self._non_graph_class_names)
 
                 self._elements[class_name] = NonGraphElement(
                     class_name, abstract, property_name_to_descriptor, class_fields)
@@ -163,8 +163,8 @@ def get_orientdb_schema_graph(outer_schema_data):
                 maybe_base_in_connection, maybe_base_out_connection = _try_get_base_connections(
                     class_name, self._inheritance_sets, links, abstract)
 
-                property_name_to_descriptor = self._get_element_properties(
-                    class_name, non_link_property_definitions)
+                property_name_to_descriptor = _get_element_properties(
+                    class_name, non_link_property_definitions, self._non_graph_class_names)
 
                 self._elements[class_name] = EdgeType(
                     class_name, abstract, property_name_to_descriptor, class_fields,
@@ -186,29 +186,11 @@ def get_orientdb_schema_graph(outer_schema_data):
                     raise AssertionError(u'There are links {} defined on non-edge class {}'
                                          .format(link_property_definitions, class_name))
 
-                property_name_to_descriptor = self._get_element_properties(
-                    class_name, non_link_property_definitions)
+                property_name_to_descriptor = _get_element_properties(
+                    class_name, non_link_property_definitions, self._non_graph_class_names)
 
                 self._elements[class_name] = VertexType(
                     class_name, abstract, property_name_to_descriptor, class_fields)
-
-        def _get_element_properties(self, class_name, non_link_property_definitions):
-            """Return the SchemaElement's properties from the OrientDB non-link property definitions."""
-            property_name_to_descriptor = {}
-            for property_definition in non_link_property_definitions:
-                property_name = property_definition['name']
-
-                if property_name in property_name_to_descriptor:
-                    raise AssertionError(u'The property "{}" on class "{}" is defined '
-                                         u'more than once, this is not allowed!'
-                                         .format(property_name, class_name))
-
-                graphql_type = _get_graphql_type(class_name, property_definition,
-                                                 self._non_graph_class_names)
-                default_value = _get_default_value(class_name, property_definition)
-                property_descriptor = PropertyDescriptor(graphql_type, default_value)
-                property_name_to_descriptor[property_name] = property_descriptor
-            return property_name_to_descriptor
 
         def _link_vertex_and_edge_types(self):
             """For each edge, link it to the vertex types it connects to each other."""
@@ -444,3 +426,23 @@ def _get_graphql_type(class_name, property_definition, non_graph_class_names):
         graphql_type = get_graphql_scalar_type_or_raise(name, type_id)
 
     return graphql_type
+
+
+def _get_element_properties(class_name, non_link_property_definitions,
+                            non_graph_class_names):
+    """Return the SchemaElement's properties from the OrientDB non-link property definitions."""
+    property_name_to_descriptor = {}
+    for property_definition in non_link_property_definitions:
+        property_name = property_definition['name']
+
+        if property_name in property_name_to_descriptor:
+            raise AssertionError(u'The property "{}" on class "{}" is defined '
+                                 u'more than once, this is not allowed!'
+                                 .format(property_name, class_name))
+
+        graphql_type = _get_graphql_type(class_name, property_definition,
+                                         non_graph_class_names)
+        default_value = _get_default_value(class_name, property_definition)
+        property_descriptor = PropertyDescriptor(graphql_type, default_value)
+        property_name_to_descriptor[property_name] = property_descriptor
+    return property_name_to_descriptor
