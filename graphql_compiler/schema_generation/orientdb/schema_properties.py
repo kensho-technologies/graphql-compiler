@@ -6,7 +6,7 @@ import time
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLString
 import six
 
-from graphql_compiler.schema import GraphQLAny, GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ...schema import GraphQLAny, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 
 
 EDGE_SOURCE_PROPERTY_NAME = 'out'
