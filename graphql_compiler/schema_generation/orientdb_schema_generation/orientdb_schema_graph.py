@@ -19,7 +19,8 @@ from .schema_properties import (
 from .utils import toposort_classes
 from enum import Enum
 
-class OrientDBType(Enum):
+
+class Kind(Enum):
     Vertex = 1
     Edge = 2
     NonGraph = 3
@@ -93,41 +94,28 @@ def get_orientdb_schema_graph(schema_data):
     toposorted_schema_data = toposort_classes(schema_data)
 
     inheritance_sets = _get_inheritance_sets_from_schema_data(toposorted_schema_data)
-    subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
 
     class_name_to_definition = {
         class_definition['name']: class_definition
         for class_definition in toposorted_schema_data
     }
 
-    # Initialize the _vertex_class_names, _edge_class_names, and _non_graph_class_names sets.
-    vertex_class_names, edge_class_names, non_graph_class_names = (
-        _split_classes_by_kind(inheritance_sets)
-    )
-
-    elements = _get_non_graph_elements(
-        class_name_to_definition, non_graph_class_names, inheritance_sets)
-    elements.update(_get_edge_elements(
-        class_name_to_definition, edge_class_names, inheritance_sets,
-        subclass_sets, vertex_class_names, non_graph_class_names))
-    elements.update(_get_vertex_elements(
-        class_name_to_definition, vertex_class_names, inheritance_sets,
-        non_graph_class_names))
+    elements = _get_non_graph_elements(class_name_to_definition, inheritance_sets)
+    elements.update(_get_edge_elements(class_name_to_definition, inheritance_sets))
+    elements.update(_get_vertex_elements(class_name_to_definition, inheritance_sets))
 
     # Initialize the connections that show which schema classes can be connected to
     # which other schema classes, then freeze all schema elements.
-    _link_vertex_and_edge_types(edge_class_names, elements, subclass_sets)
+    _link_vertex_and_edge_types(elements, inheritance_sets)
     for element in six.itervalues(elements):
         element.freeze()
 
     return SchemaGraph(elements, inheritance_sets)
 
 
-def _split_classes_by_kind(inheritance_sets):
-    """Assign each class to the vertex, edge or non-graph type sets based on its kind."""
-    vertex_class_names = set()
-    edge_class_names = set()
-    non_graph_class_names = set()
+def _get_class_names_of_kind(inheritance_sets, kind):
+    """Return the classes of the certain kind"""
+    class_names = set()
     for class_name, inheritance_set in six.iteritems(inheritance_sets):
         inheritance_set = inheritance_sets[class_name]
 
@@ -137,15 +125,17 @@ def _split_classes_by_kind(inheritance_sets):
         if is_vertex and is_edge:
             raise AssertionError(u'Class {} appears to be both a vertex and an edge class: '
                                  u'{}'.format(class_name, inheritance_set))
-        elif is_vertex:
-            vertex_class_names.add(class_name)
+
+        if is_vertex:
+            if kind == Kind.Vertex:
+                class_names.add(class_name)
         elif is_edge:
-            edge_class_names.add(class_name)
+            if kind == Kind.Edge:
+                class_names.add(class_name)
         else:
-            non_graph_class_names.add(class_name)
-    # Freeze the classname sets so they cannot be modified again.
-    return (frozenset(names)
-            for names in (vertex_class_names, edge_class_names, non_graph_class_names))
+            if kind == Kind.NonGraph:
+                class_names.add(class_name)
+    return class_names
 
 
 def _get_link_and_non_link_properties(property_definitions):
@@ -279,6 +269,7 @@ def _validate_link_definition(class_name_to_definition, property_definition,
                                  u'abstract class whose subclasses are all vertices!'
                                  .format(name, linked_class))
 
+
 def _get_graphql_type(class_name, property_definition, non_graph_class_names):
     """Return the GraphQLType corresponding to the non-link property definition."""
     name = property_definition['name']
@@ -323,8 +314,7 @@ def _get_graphql_type(class_name, property_definition, non_graph_class_names):
     return graphql_type
 
 
-def _get_element_properties(class_name, non_link_property_definitions,
-                            non_graph_class_names):
+def _get_element_properties(class_name, non_link_property_definitions, non_graph_class_names):
     """Return the SchemaElement's properties from the OrientDB non-link property definitions."""
     property_name_to_descriptor = {}
     for property_definition in non_link_property_definitions:
@@ -343,8 +333,11 @@ def _get_element_properties(class_name, non_link_property_definitions,
     return property_name_to_descriptor
 
 
-def _link_vertex_and_edge_types(edge_class_names, elements, subclass_sets):
+def _link_vertex_and_edge_types(elements, inheritance_sets):
     """For each edge, link it to the vertex types it connects to each other."""
+    subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
+    edge_class_names = _get_class_names_of_kind(inheritance_sets, Kind.Edge)
+
     for edge_class_name in edge_class_names:
         edge_element = elements[edge_class_name]
 
@@ -377,9 +370,10 @@ def _get_inherited_property_definitions(superclass_set, class_name_to_definition
     ))
 
 
-def _get_non_graph_elements(class_name_to_definition, non_graph_class_names, inheritance_sets):
+def _get_non_graph_elements(class_name_to_definition, inheritance_sets):
     """Load all NonGraphElements. Used as part of __init__."""
     non_graph_elements = dict()
+    non_graph_class_names = _get_class_names_of_kind(inheritance_sets, Kind.NonGraph)
     for class_name in non_graph_class_names:
         class_definition = class_name_to_definition[class_name]
         class_fields = _get_class_fields(class_definition)
@@ -402,10 +396,15 @@ def _get_non_graph_elements(class_name_to_definition, non_graph_class_names, inh
     return non_graph_elements
 
 
-def _get_edge_elements(class_name_to_definition, edge_class_names, inheritance_sets,
-                          subclass_sets, vertex_class_names, non_graph_class_names):
+def _get_edge_elements(class_name_to_definition, inheritance_sets):
     """Load all EdgeTypes. Used as part of __init__."""
     edge_elements = dict()
+    subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
+
+    edge_class_names = _get_class_names_of_kind(inheritance_sets, Kind.Edge)
+    vertex_class_names = _get_class_names_of_kind(inheritance_sets, Kind.Vertex)
+    non_graph_class_names = _get_class_names_of_kind(inheritance_sets, Kind.NonGraph)
+
     for class_name in edge_class_names:
         class_definition = class_name_to_definition[class_name]
         class_fields = _get_class_fields(class_definition)
@@ -434,10 +433,13 @@ def _get_edge_elements(class_name_to_definition, edge_class_names, inheritance_s
     return edge_elements
 
 
-def _get_vertex_elements(class_name_to_definition, vertex_class_names,
-                            inheritance_sets, non_graph_class_names):
+def _get_vertex_elements(class_name_to_definition, inheritance_sets):
     """Load all VertexTypes. Used as part of __init__."""
     vertex_elements = dict()
+
+    vertex_class_names = _get_class_names_of_kind(inheritance_sets, Kind.Vertex)
+    non_graph_class_names = _get_class_names_of_kind(inheritance_sets, Kind.NonGraph)
+
     for class_name in vertex_class_names:
         class_definition = class_name_to_definition[class_name]
         class_fields = _get_class_fields(class_definition)
