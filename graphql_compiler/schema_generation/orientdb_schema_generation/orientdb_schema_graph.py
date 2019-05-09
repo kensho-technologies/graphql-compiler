@@ -102,7 +102,7 @@ def get_orientdb_schema_graph(schema_data):
 
     # Initialize the _vertex_class_names, _edge_class_names, and _non_graph_class_names sets.
     vertex_class_names, edge_class_names, non_graph_class_names = (
-        _split_classes_by_kind(inheritance_sets, class_name_to_definition)
+        _split_classes_by_kind(inheritance_sets)
     )
 
     elements = _get_non_graph_elements(
@@ -123,12 +123,12 @@ def get_orientdb_schema_graph(schema_data):
     return SchemaGraph(elements, inheritance_sets)
 
 
-def _split_classes_by_kind(inheritance_sets, class_name_to_definition):
+def _split_classes_by_kind(inheritance_sets):
     """Assign each class to the vertex, edge or non-graph type sets based on its kind."""
     vertex_class_names = set()
     edge_class_names = set()
     non_graph_class_names = set()
-    for class_name in class_name_to_definition:
+    for class_name, inheritance_set in six.iteritems(inheritance_sets):
         inheritance_set = inheritance_sets[class_name]
 
         is_vertex = ORIENTDB_BASE_VERTEX_CLASS_NAME in inheritance_set
