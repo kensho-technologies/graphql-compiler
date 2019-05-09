@@ -7,7 +7,7 @@ import warnings
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLString
 import six
 
-from ..schema import GraphQLAny, GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 
 
 EDGE_SOURCE_PROPERTY_NAME = 'out'
@@ -95,7 +95,6 @@ PROPERTY_TYPE_ID_TO_NAME = {
 }
 
 ORIENTDB_TO_GRAPHQL_SCALARS = {
-    PROPERTY_TYPE_ANY_ID: GraphQLAny,
     PROPERTY_TYPE_BOOLEAN_ID: GraphQLBoolean,
     PROPERTY_TYPE_DATE_ID: GraphQLDate,
     PROPERTY_TYPE_DATETIME_ID: GraphQLDateTime,
