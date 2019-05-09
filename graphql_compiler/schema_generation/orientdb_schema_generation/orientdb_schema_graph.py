@@ -94,10 +94,8 @@ def get_orientdb_schema_graph(outer_schema_data):
             toposorted_schema_data = toposort_classes(schema_data)
             self._elements = dict()
 
-            self._inheritance_sets = dict()
-            self._subclass_sets = dict()
-
-            self._set_up_inheritance_and_subclass_sets(toposorted_schema_data)
+            self._inheritance_sets = _get_inheritance_sets_from_schema_data(toposorted_schema_data)
+            self._subclass_sets = get_subclass_sets_from_inheritance_sets(self._inheritance_sets)
 
             class_name_to_definition = {
                 class_definition['name']: class_definition
@@ -121,32 +119,6 @@ def get_orientdb_schema_graph(outer_schema_data):
 
         def build(self):
             return SchemaGraph(self._elements, self._inheritance_sets)
-
-        def _set_up_inheritance_and_subclass_sets(self, schema_data):
-            """Load all inheritance data from the OrientDB schema. Used as part of __init__."""
-            # For each class name, construct its inheritance set:
-            # itself + the set of class names from which it inherits.
-            for class_definition in schema_data:
-                class_name = class_definition['name']
-                immediate_superclass_names = get_superclasses_from_class_definition(
-                    class_definition)
-
-                inheritance_set = set(immediate_superclass_names)
-                inheritance_set.add(class_name)
-
-                # Since the input data must be in topological order, the superclasses of
-                # the current class should have already been processed.
-                # A KeyError on the following line would mean that the input
-                # was not topologically sorted.
-                inheritance_set.update(chain.from_iterable(
-                    self._inheritance_sets[superclass_name]
-                    for superclass_name in immediate_superclass_names
-                ))
-
-                # Freeze the inheritance set so it can't ever be modified again.
-                self._inheritance_sets[class_name] = frozenset(inheritance_set)
-
-            self._subclass_sets = get_subclass_sets_from_inheritance_sets(self._inheritance_sets)
 
         def _set_up_non_graph_elements(self, class_name_to_definition):
             """Load all NonGraphElements. Used as part of __init__."""
@@ -434,3 +406,29 @@ def _get_default_value(class_name, property_definition):
 
     return default_value
 
+
+def _get_inheritance_sets_from_schema_data(schema_data):
+    """Load all inheritance data from the OrientDB schema. Used as part of __init__."""
+    # For each class name, construct its inheritance set:
+    # itself + the set of class names from which it inherits.
+    inheritance_sets = dict()
+    for class_definition in schema_data:
+        class_name = class_definition['name']
+        immediate_superclass_names = get_superclasses_from_class_definition(
+            class_definition)
+
+        inheritance_set = set(immediate_superclass_names)
+        inheritance_set.add(class_name)
+
+        # Since the input data must be in topological order, the superclasses of
+        # the current class should have already been processed.
+        # A KeyError on the following line would mean that the input
+        # was not topologically sorted.
+        inheritance_set.update(chain.from_iterable(
+            inheritance_sets[superclass_name]
+            for superclass_name in immediate_superclass_names
+        ))
+
+        # Freeze the inheritance set so it can't ever be modified again.
+        inheritance_sets[class_name] = frozenset(inheritance_set)
+    return inheritance_sets
