@@ -43,7 +43,7 @@ def get_superclasses_from_class_definition(class_definition):
 
 
 def get_orientdb_schema_graph(schema_data):
-    """Create a new SchemaGraph from the OrientDB schema.
+    """Create a new SchemaGraph from the OrientDB schema data.
 
     Args:
         schema_data: list of dicts describing the classes in the OrientDB schema. The following
@@ -113,7 +113,7 @@ def get_orientdb_schema_graph(schema_data):
 
 
 def _get_inheritance_sets_from_schema_data(schema_data):
-    """Load all inheritance data from the OrientDB schema. Used as part of __init__."""
+    """Return the inheritance sets from the OrientDB schema data."""
     # For each class name, construct its inheritance set:
     # itself + the set of class names from which it inherits.
     inheritance_sets = dict()
@@ -140,7 +140,7 @@ def _get_inheritance_sets_from_schema_data(schema_data):
 
 
 def _get_non_graph_elements(class_name_to_definition, inheritance_sets):
-    """Load all NonGraphElements. Used as part of __init__."""
+    """Return a dict mapping class name to NonGraphElement."""
     non_graph_elements = dict()
     non_graph_class_names = _get_class_names_of_kind(inheritance_sets, Kind.NonGraph)
     for class_name in non_graph_class_names:
@@ -166,7 +166,7 @@ def _get_non_graph_elements(class_name_to_definition, inheritance_sets):
 
 
 def _get_edge_elements(class_name_to_definition, inheritance_sets):
-    """Load all EdgeTypes. Used as part of __init__."""
+    """Return a dict mapping class name to EdgeType."""
     edge_elements = dict()
     subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
 
@@ -203,7 +203,7 @@ def _get_edge_elements(class_name_to_definition, inheritance_sets):
 
 
 def _get_vertex_elements(class_name_to_definition, inheritance_sets):
-    """Load all VertexTypes. Used as part of __init__."""
+    """Return a dict mapping class name to VertexType."""
     vertex_elements = dict()
 
     vertex_class_names = _get_class_names_of_kind(inheritance_sets, Kind.Vertex)
@@ -232,7 +232,7 @@ def _get_vertex_elements(class_name_to_definition, inheritance_sets):
 
 
 def _get_class_names_of_kind(inheritance_sets, kind):
-    """Return the classes of the certain kind"""
+    """Return the classes of a certain kind."""
     class_names = set()
     for class_name, inheritance_set in six.iteritems(inheritance_sets):
         inheritance_set = inheritance_sets[class_name]
@@ -397,6 +397,7 @@ def _validate_link_definition(class_name_to_definition, property_definition,
 
 
 def _get_end_direction_to_superclasses(link_property_definitions):
+    """Return the set of superclasses of the 'in' and 'out' directions of an edge."""
     links = {
         EDGE_SOURCE_PROPERTY_NAME: set(),
         EDGE_DESTINATION_PROPERTY_NAME: set(),

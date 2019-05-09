@@ -8,7 +8,7 @@ from graphql.type import (
 )
 import six
 
-from graphql_compiler.schema_generation.orientdb_schema_generation.schema_properties import (
+from graphql_compiler.schema_generation.orientdb.schema_properties import (
     ORIENTDB_BASE_VERTEX_CLASS_NAME
 )
 

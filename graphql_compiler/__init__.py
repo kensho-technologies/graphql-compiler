@@ -18,7 +18,7 @@ from .schema import (  # noqa
     insert_meta_fields_into_existing_schema, is_meta_field
 )
 from .schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-from .schema_generation.orientdb_schema_generation.orientdb_schema_graph import (
+from .schema_generation.orientdb.get_orientdb_schema_graph import (
     get_orientdb_schema_graph
 )
 

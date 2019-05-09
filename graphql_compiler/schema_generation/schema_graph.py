@@ -204,48 +204,15 @@ class SchemaGraph(object):
     """
 
     def __init__(self, elements, inheritance_sets):
-        """Create a new SchemaGraph from the OrientDB schema.
+        """Create a new SchemaGraph.
 
         Args:
-            schema_data: list of dicts describing the classes in the OrientDB schema. The following
-                         format is the way the data is structured in OrientDB 2. See
-                         the README.md file for an example of how to query this data.
-                         Each dict has the following string fields:
-                            - name: string, the name of the class.
-                            - superClasses (optional): list of strings, the name of the class's
-                                                       superclasses.
-                            - superClass (optional): string, the name of the class's superclass. May
-                                                     be used instead of superClasses if there is
-                                                     only one superClass. Used for backwards
-                                                     compatibility with OrientDB.
-                            - customFields (optional): dict, string -> string, data defined on the
-                                                       class instead of instances of the class.
-                            - abstract: bool, true if the class is abstract.
-                            - properties: list of dicts, describing the class's properties.
-                                          Each property dictionary has the following string fields:
-                                             - name: string, the name of the property.
-                                             - type: int, builtin OrientDB type ID of the field.
-                                                     See schema_properties.py for the mapping.
-                                             - linkedType (optional): int, if the property is a
-                                                                      collection of builtin
-                                                                      OrientDB objects, then it
-                                                                      indicates their type ID.
-                                             - linkedClass (optional): string, if the property is a
-                                                                       collection of class
-                                                                       instances, then it indicates
-                                                                       the name of the class. If
-                                                                       class is an edge class, and
-                                                                       the field name is either
-                                                                       'in' or 'out', then it
-                                                                       describes the name of an
-                                                                       endpoint of the edge.
-                                             - defaultValue: string, the textual representation
-                                                             of the default value for the
-                                                             property, as returned by OrientDB's
-                                                             schema introspection code, e.g.,
-                                                             '{}' for the embedded set type. Note
-                                                             that if the property is a collection
-                                                             type, it must have a default value.
+            elements: a dict, string -> SchemaElement, mapping each class in the schema to its
+                      corresponding SchemaElement object.
+            inheritance_sets: a dict, string -> set of strings, mapping each class to its
+                              superclasses. The set of superclasses includes the class itself and
+                              the transitive superclasses. For instance, if A is a superclass of B,
+                              and B is a superclass of C, then C's inheritance set is {'A', 'B'}.
 
         Returns:
             fully-constructed SchemaGraph object
@@ -257,12 +224,6 @@ class SchemaGraph(object):
         self._vertex_class_names = self._get_element_names_of_class(VertexType)
         self._edge_class_names = self._get_element_names_of_class(EdgeType)
         self._non_graph_class_names = self._get_element_names_of_class(NonGraphElement)
-
-    def _set_up_subclass_sets(self):
-        for subclass_name, superclass_names in six.iteritems(self._inheritance_sets):
-            for superclass_name in superclass_names:
-                self._subclass_sets.setdefault(
-                    superclass_name, set()).add(subclass_name)
 
     def get_element_by_class_name(self, class_name):
         """Return the SchemaElement for the specified class name"""
@@ -378,6 +339,7 @@ class SchemaGraph(object):
         return self._non_graph_class_names
 
     def _get_element_names_of_class(self, cls):
+        """Return a dict mapping an element name to """
         return {
             name: element
             for name, element in self._elements.items()
@@ -386,6 +348,7 @@ class SchemaGraph(object):
 
 
 def get_subclass_sets_from_inheritance_sets(inheritance_sets):
+    """Return a dict mapping each class to its set of subclasses."""
     subclass_sets = dict()
     for subclass_name, superclass_names in six.iteritems(inheritance_sets):
         for superclass_name in superclass_names:
