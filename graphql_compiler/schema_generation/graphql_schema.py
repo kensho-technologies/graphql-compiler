@@ -9,6 +9,7 @@ from graphql.type import (
 )
 import six
 
+from ..compiler.helpers import strip_non_null_from_type
 from ..schema import DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS
 from .exceptions import EmptySchemaError
 from .schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
@@ -77,8 +78,8 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
     result = {
         property_name: graphql_type
         for property_name, graphql_type in six.iteritems(all_properties)
-        if not (isinstance(graphql_type, GraphQLList) and
-                not isinstance(graphql_type.of_type, GraphQLScalarType))
+        if not (isinstance(strip_non_null_from_type(graphql_type), GraphQLList) and
+                not isinstance(strip_non_null_from_type(graphql_type.of_type), GraphQLScalarType))
     }
 
     class_collection_properties = set(all_properties.keys()).difference(result.keys())
