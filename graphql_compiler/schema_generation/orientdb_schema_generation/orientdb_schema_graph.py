@@ -5,7 +5,9 @@ from funcy.py3 import lsplit
 from graphql.type import GraphQLList, GraphQLObjectType
 import six
 
-from ..schema_graph import VertexType, EdgeType, NonGraphElement, SchemaGraph
+from ..schema_graph import (
+    VertexType, EdgeType, NonGraphElement, SchemaGraph, get_subclass_sets_from_inheritance_sets
+)
 
 from ..exceptions import IllegalSchemaStateError
 from .schema_properties import (
@@ -144,18 +146,7 @@ def get_orientdb_schema_graph(outer_schema_data):
                 # Freeze the inheritance set so it can't ever be modified again.
                 self._inheritance_sets[class_name] = frozenset(inheritance_set)
 
-            # For each class name, construct its subclass set:
-            # itself + the set of class names that inherit from it.
-            for subclass_name, superclass_names in six.iteritems(self._inheritance_sets):
-                for superclass_name in superclass_names:
-                    self._subclass_sets.setdefault(
-                        superclass_name, set()).add(subclass_name)
-
-            # Freeze all subclass sets so they can never be modified again,
-            # making a list of all keys before modifying any of their values.
-            # It's bad practice to mutate a dict while iterating over it.
-            for class_name in list(six.iterkeys(self._subclass_sets)):
-                self._subclass_sets[class_name] = frozenset(self._subclass_sets[class_name])
+            self._subclass_sets = get_subclass_sets_from_inheritance_sets(self._inheritance_sets)
 
         def _set_up_non_graph_elements(self, class_name_to_definition):
             """Load all NonGraphElements. Used as part of __init__."""
@@ -442,3 +433,4 @@ def _get_default_value(class_name, property_definition):
                                           .format(class_name, property_definition))
 
     return default_value
+

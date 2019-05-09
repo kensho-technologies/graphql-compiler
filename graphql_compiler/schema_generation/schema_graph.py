@@ -248,8 +248,7 @@ class SchemaGraph(object):
         """
         self._elements = elements
         self._inheritance_sets = inheritance_sets
-        self._subclass_sets = dict()
-        self._set_up_subclass_sets()
+        self._subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
 
         self._vertex_class_names = self._get_element_names_of_class(VertexType)
         self._edge_class_names = self._get_element_names_of_class(EdgeType)
@@ -380,3 +379,19 @@ class SchemaGraph(object):
             for name, element in self._elements.items()
             if isinstance(element, cls)
         }
+
+
+def get_subclass_sets_from_inheritance_sets(inheritance_sets):
+    subclass_sets = dict()
+    for subclass_name, superclass_names in six.iteritems(inheritance_sets):
+        for superclass_name in superclass_names:
+            subclass_sets.setdefault(
+                superclass_name, set()).add(subclass_name)
+
+    # Freeze all subclass sets so they can never be modified again,
+    # making a list of all keys before modifying any of their values.
+    # It's bad practice to mutate a dict while iterating over it.
+    for class_name in list(six.iterkeys(subclass_sets)):
+        subclass_sets[class_name] = frozenset(subclass_sets[class_name])
+
+    return subclass_sets
