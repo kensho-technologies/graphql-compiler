@@ -42,7 +42,7 @@ def get_superclasses_from_class_definition(class_definition):
     return []
 
 
-def get_orientdb_schema_graph(outer_schema_data):
+def get_orientdb_schema_graph(schema_data):
     """Create a new SchemaGraph from the OrientDB schema.
 
     Args:
@@ -89,42 +89,38 @@ def get_orientdb_schema_graph(outer_schema_data):
     Returns:
         fully-constructed SchemaGraph object
     """
-    class SchemaGraphBuilder(object):
-        def __init__(self, schema_data):
-            toposorted_schema_data = toposort_classes(schema_data)
-            self._elements = dict()
 
-            self._inheritance_sets = _get_inheritance_sets_from_schema_data(toposorted_schema_data)
-            self._subclass_sets = get_subclass_sets_from_inheritance_sets(self._inheritance_sets)
+    toposorted_schema_data = toposort_classes(schema_data)
 
-            class_name_to_definition = {
-                class_definition['name']: class_definition
-                for class_definition in toposorted_schema_data
-            }
+    inheritance_sets = _get_inheritance_sets_from_schema_data(toposorted_schema_data)
+    subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
 
-            # Initialize the _vertex_class_names, _edge_class_names, and _non_graph_class_names sets.
-            self._vertex_class_names, self._edge_class_names, self._non_graph_class_names = (
-                _split_classes_by_kind(self._inheritance_sets, class_name_to_definition)
-            )
+    class_name_to_definition = {
+        class_definition['name']: class_definition
+        for class_definition in toposorted_schema_data
+    }
 
-            self._elements = _set_up_non_graph_elements(
-                class_name_to_definition, self._non_graph_class_names, self._inheritance_sets)
-            self._elements.update(_set_up_edge_elements(
-                class_name_to_definition, self._edge_class_names, self._inheritance_sets,
-                self._subclass_sets, self._vertex_class_names, self._non_graph_class_names))
-            self._elements.update(_set_up_vertex_elements(
-                class_name_to_definition, self._vertex_class_names, self._inheritance_sets,
-                self._non_graph_class_names))
+    # Initialize the _vertex_class_names, _edge_class_names, and _non_graph_class_names sets.
+    vertex_class_names, edge_class_names, non_graph_class_names = (
+        _split_classes_by_kind(inheritance_sets, class_name_to_definition)
+    )
 
-            # Initialize the connections that show which schema classes can be connected to
-            # which other schema classes, then freeze all schema elements.
-            _link_vertex_and_edge_types(self._edge_class_names, self._elements, self._subclass_sets)
-            for element in six.itervalues(self._elements):
-                element.freeze()
+    elements = _set_up_non_graph_elements(
+        class_name_to_definition, non_graph_class_names, inheritance_sets)
+    elements.update(_set_up_edge_elements(
+        class_name_to_definition, edge_class_names, inheritance_sets,
+        subclass_sets, vertex_class_names, non_graph_class_names))
+    elements.update(_set_up_vertex_elements(
+        class_name_to_definition, vertex_class_names, inheritance_sets,
+        non_graph_class_names))
 
-        def build(self):
-            return SchemaGraph(self._elements, self._inheritance_sets)
-    return SchemaGraphBuilder(outer_schema_data).build()
+    # Initialize the connections that show which schema classes can be connected to
+    # which other schema classes, then freeze all schema elements.
+    _link_vertex_and_edge_types(edge_class_names, elements, subclass_sets)
+    for element in six.itervalues(elements):
+        element.freeze()
+
+    return SchemaGraph(elements, inheritance_sets)
 
 
 def _split_classes_by_kind(inheritance_sets, class_name_to_definition):
