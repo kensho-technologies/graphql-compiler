@@ -8,9 +8,12 @@ from graphql.type import (
 )
 import six
 
+from graphql_compiler.schema_generation.orientdb_schema_generation.schema_properties import (
+    ORIENTDB_BASE_VERTEX_CLASS_NAME
+)
+
 from ..schema import DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS
 from .exceptions import EmptySchemaError
-from graphql_compiler.schema_generation.orientdb_schema_generation.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 
 
 def _get_referenced_type_equivalences(graphql_types, type_equivalence_hints):

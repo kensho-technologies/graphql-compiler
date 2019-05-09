@@ -1,9 +1,12 @@
 from abc import ABCMeta, abstractmethod
 
 import six
+
 from .exceptions import (
-    InvalidClassError, InvalidPropertyError, IllegalSchemaStateError, ILLEGAL_PROPERTY_NAME_PREFIXES
+    ILLEGAL_PROPERTY_NAME_PREFIXES, IllegalSchemaStateError, InvalidClassError,
+    InvalidPropertyError
 )
+
 
 def _validate_non_abstract_edge_has_defined_base_connections(
         class_name, base_in_connection, base_out_connection):
@@ -190,6 +193,7 @@ class EdgeType(GraphElement):
 class NonGraphElement(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields):
         super(NonGraphElement, self).__init__(class_name, abstract, properties, class_fields)
+
 
 class SchemaGraph(object):
     """The SchemaGraph is a graph utility used to represent a OrientDB schema.

@@ -9,11 +9,11 @@ import six
 
 from .. import get_graphql_schema_from_orientdb_schema_data
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
-from ..schema_generation.schema_graph import SchemaGraph
-from ..schema_generation.orientdb_schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 from ..schema_generation.orientdb_schema_generation.orientdb_schema_graph import (
     get_orientdb_schema_graph
 )
+from ..schema_generation.orientdb_schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
+
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
 # so we can compare expected and produced emitted code irrespective of whitespace.
