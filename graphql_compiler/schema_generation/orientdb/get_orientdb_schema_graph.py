@@ -25,23 +25,6 @@ class Kind(Enum):
     NonGraph = 3
 
 
-def get_superclasses_from_class_definition(class_definition):
-    """Extract a list of all superclass names from a class definition dict."""
-    # New-style superclasses definition, supporting multiple-inheritance.
-    superclasses = class_definition.get('superClasses', None)
-
-    if superclasses:
-        return list(superclasses)
-
-    # Old-style superclass definition, single inheritance only.
-    superclass = class_definition.get('superClass', None)
-    if superclass:
-        return [superclass]
-
-    # No superclasses are present.
-    return []
-
-
 def get_orientdb_schema_graph(schema_data):
     """Create a new SchemaGraph from the OrientDB schema data.
 
@@ -139,10 +122,28 @@ def _get_inheritance_sets_from_schema_data(schema_data):
     return inheritance_sets
 
 
+def get_superclasses_from_class_definition(class_definition):
+    """Extract a list of all superclass names from a class definition dict."""
+    # New-style superclasses definition, supporting multiple-inheritance.
+    superclasses = class_definition.get('superClasses', None)
+
+    if superclasses:
+        return list(superclasses)
+
+    # Old-style superclass definition, single inheritance only.
+    superclass = class_definition.get('superClass', None)
+    if superclass:
+        return [superclass]
+
+    # No superclasses are present.
+    return []
+
+
 def _get_non_graph_elements(class_name_to_definition, inheritance_sets):
     """Return a dict mapping class name to NonGraphElement."""
     non_graph_elements = dict()
     non_graph_class_names = _get_class_names_of_kind(inheritance_sets, Kind.NonGraph)
+
     for class_name in non_graph_class_names:
         class_definition = class_name_to_definition[class_name]
         class_fields = _get_class_fields(class_definition)
@@ -234,6 +235,7 @@ def _get_vertex_elements(class_name_to_definition, inheritance_sets):
 def _get_class_names_of_kind(inheritance_sets, kind):
     """Return the classes of a certain kind."""
     class_names = set()
+
     for class_name, inheritance_set in six.iteritems(inheritance_sets):
         inheritance_set = inheritance_sets[class_name]
 
@@ -397,7 +399,7 @@ def _validate_link_definition(class_name_to_definition, property_definition,
 
 
 def _get_end_direction_to_superclasses(link_property_definitions):
-    """Return the set of superclasses of the 'in' and 'out' directions of an edge."""
+    """Return the set of superclasses that classes at each edge end must inherit from."""
     links = {
         EDGE_SOURCE_PROPERTY_NAME: set(),
         EDGE_DESTINATION_PROPERTY_NAME: set(),
