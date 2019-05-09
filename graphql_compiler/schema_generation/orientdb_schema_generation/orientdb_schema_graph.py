@@ -113,7 +113,7 @@ def get_orientdb_schema_graph(outer_schema_data):
 
             # Initialize the connections that show which schema classes can be connected to
             # which other schema classes, then freeze all schema elements.
-            self._link_vertex_and_edge_types()
+            _link_vertex_and_edge_types(self._edge_class_names, self._elements, self._subclass_sets)
             for element in six.itervalues(self._elements):
                 element.freeze()
 
@@ -191,39 +191,6 @@ def get_orientdb_schema_graph(outer_schema_data):
 
                 self._elements[class_name] = VertexType(
                     class_name, abstract, property_name_to_descriptor, class_fields)
-
-        def _link_vertex_and_edge_types(self):
-            """For each edge, link it to the vertex types it connects to each other."""
-            for edge_class_name in self._edge_class_names:
-                edge_element = self._elements[edge_class_name]
-
-                from_class_name = edge_element.base_in_connection
-                to_class_name = edge_element.base_out_connection
-
-                if not from_class_name or not to_class_name:
-                    continue
-
-                edge_schema_element = self._elements[edge_class_name]
-
-                # Link from_class_name with edge_class_name
-                for from_class in self._subclass_sets[from_class_name]:
-                    from_schema_element = self._elements[from_class]
-                    from_schema_element.out_connections.add(edge_class_name)
-                    edge_schema_element.in_connections.add(from_class)
-
-                # Link edge_class_name with to_class_name
-                for to_class in self._subclass_sets[to_class_name]:
-                    to_schema_element = self._elements[to_class]
-                    edge_schema_element.out_connections.add(to_class)
-                    to_schema_element.in_connections.add(edge_class_name)
-
-    def _get_inherited_property_definitions(superclass_set, class_name_to_definition):
-        """Return a class's inherited OrientDB property definitions."""
-        return list(chain.from_iterable(
-            class_name_to_definition[inherited_class_name]['properties']
-            for inherited_class_name in superclass_set
-        ))
-
 
     return SchemaGraphBuilder(outer_schema_data).build()
 
@@ -446,3 +413,37 @@ def _get_element_properties(class_name, non_link_property_definitions,
         property_descriptor = PropertyDescriptor(graphql_type, default_value)
         property_name_to_descriptor[property_name] = property_descriptor
     return property_name_to_descriptor
+
+
+def _link_vertex_and_edge_types(edge_class_names, elements, subclass_sets):
+    """For each edge, link it to the vertex types it connects to each other."""
+    for edge_class_name in edge_class_names:
+        edge_element = elements[edge_class_name]
+
+        from_class_name = edge_element.base_in_connection
+        to_class_name = edge_element.base_out_connection
+
+        if not from_class_name or not to_class_name:
+            continue
+
+        edge_schema_element = elements[edge_class_name]
+
+        # Link from_class_name with edge_class_name
+        for from_class in subclass_sets[from_class_name]:
+            from_schema_element = elements[from_class]
+            from_schema_element.out_connections.add(edge_class_name)
+            edge_schema_element.in_connections.add(from_class)
+
+        # Link edge_class_name with to_class_name
+        for to_class in subclass_sets[to_class_name]:
+            to_schema_element = elements[to_class]
+            edge_schema_element.out_connections.add(to_class)
+            to_schema_element.in_connections.add(edge_class_name)
+
+
+def _get_inherited_property_definitions(superclass_set, class_name_to_definition):
+    """Return a class's inherited OrientDB property definitions."""
+    return list(chain.from_iterable(
+        class_name_to_definition[inherited_class_name]['properties']
+        for inherited_class_name in superclass_set
+    ))
