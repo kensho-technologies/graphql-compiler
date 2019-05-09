@@ -105,12 +105,12 @@ def get_orientdb_schema_graph(schema_data):
         _split_classes_by_kind(inheritance_sets, class_name_to_definition)
     )
 
-    elements = _set_up_non_graph_elements(
+    elements = _get_non_graph_elements(
         class_name_to_definition, non_graph_class_names, inheritance_sets)
-    elements.update(_set_up_edge_elements(
+    elements.update(_get_edge_elements(
         class_name_to_definition, edge_class_names, inheritance_sets,
         subclass_sets, vertex_class_names, non_graph_class_names))
-    elements.update(_set_up_vertex_elements(
+    elements.update(_get_vertex_elements(
         class_name_to_definition, vertex_class_names, inheritance_sets,
         non_graph_class_names))
 
@@ -377,7 +377,7 @@ def _get_inherited_property_definitions(superclass_set, class_name_to_definition
     ))
 
 
-def _set_up_non_graph_elements(class_name_to_definition, non_graph_class_names, inheritance_sets):
+def _get_non_graph_elements(class_name_to_definition, non_graph_class_names, inheritance_sets):
     """Load all NonGraphElements. Used as part of __init__."""
     non_graph_elements = dict()
     for class_name in non_graph_class_names:
@@ -402,7 +402,7 @@ def _set_up_non_graph_elements(class_name_to_definition, non_graph_class_names, 
     return non_graph_elements
 
 
-def _set_up_edge_elements(class_name_to_definition, edge_class_names, inheritance_sets,
+def _get_edge_elements(class_name_to_definition, edge_class_names, inheritance_sets,
                           subclass_sets, vertex_class_names, non_graph_class_names):
     """Load all EdgeTypes. Used as part of __init__."""
     edge_elements = dict()
@@ -434,7 +434,7 @@ def _set_up_edge_elements(class_name_to_definition, edge_class_names, inheritanc
     return edge_elements
 
 
-def _set_up_vertex_elements(class_name_to_definition, vertex_class_names,
+def _get_vertex_elements(class_name_to_definition, vertex_class_names,
                             inheritance_sets, non_graph_class_names):
     """Load all VertexTypes. Used as part of __init__."""
     vertex_elements = dict()
