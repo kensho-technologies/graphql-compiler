@@ -670,7 +670,7 @@ class SchemaGraph(object):
                     self._non_graph_class_to_graphql_rep[linked_class] = (
                         GraphQLObjectType(linked_class, fields, []))
 
-                graphql_type = GraphQLList(self._non_graph_class_to_graphql_rep[linked_class])
+                maybe_graphql_type = GraphQLList(self._non_graph_class_to_graphql_rep[linked_class])
             else:
                 raise AssertionError(u'Property "{}" is an embedded collection but has '
                                      u'neither a linked class nor a linked type: '
