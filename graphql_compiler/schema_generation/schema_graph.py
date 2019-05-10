@@ -10,21 +10,156 @@ from .exceptions import (
 )
 
 
-def _validate_non_abstract_edge_has_defined_base_connections(
-        class_name, base_in_connection, base_out_connection):
-    """Validate that the non-abstract edge has its in/out base connections defined."""
-    if not (base_in_connection and base_out_connection):
-        raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
-                                      u'in/out base_connection: {} {} {}'
-                                      .format(class_name, base_in_connection, base_out_connection))
+class SchemaGraph(object):
+    """The SchemaGraph is a graph utility used to represent a OrientDB schema.
 
+    The SchemaGraph contains a representation of all vertex and edge types in the graph,
+    as well as their possible connections. This is useful when working with with paths
+    on the graph. It also holds a fully denormalized schema for the graph.
+    """
 
-def _validate_property_names(class_name, properties):
-    """Validate that properties do not have names that may cause problems in the GraphQL schema."""
-    for property_name in properties:
-        if not property_name or property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES):
-            raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
-                                          u'{}'.format(class_name, property_name))
+    def __init__(self, elements, inheritance_sets):
+        """Create a new SchemaGraph.
+
+        Args:
+            elements: a dict, string -> SchemaElement, mapping each class in the schema to its
+                      corresponding SchemaElement object.
+            inheritance_sets: a dict, string -> set of strings, mapping each class to its
+                              superclasses. The set of superclasses includes the class itself and
+                              the transitive superclasses. For instance, if A is a superclass of B,
+                              and B is a superclass of C, then C's inheritance set is {'A', 'B'}.
+
+        Returns:
+            fully-constructed SchemaGraph object
+        """
+        self._elements = elements
+        self._inheritance_sets = inheritance_sets
+        self._subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
+
+        self._vertex_class_names = self._get_element_names_of_class(VertexType)
+        self._edge_class_names = self._get_element_names_of_class(EdgeType)
+        self._non_graph_class_names = self._get_element_names_of_class(NonGraphElement)
+
+    def get_element_by_class_name(self, class_name):
+        """Return the SchemaElement for the specified class name"""
+        return self._elements[class_name]
+
+    def get_inheritance_set(self, cls):
+        """Return all class names that the given class inherits from, including itself."""
+        return self._inheritance_sets[cls]
+
+    def get_subclass_set(self, cls):
+        """Return all class names that inherit from this class, including itself."""
+        return self._subclass_sets[cls]
+
+    def get_default_property_values(self, classname):
+        """Return a dict with default values for all properties declared on this class."""
+        schema_element = self.get_element_by_class_name(classname)
+
+        result = {
+            property_name: property_descriptor.default
+            for property_name, property_descriptor in six.iteritems(schema_element.properties)
+        }
+
+        return result
+
+    def _get_property_values_with_defaults(self, classname, property_values):
+        """Return the property values for the class, with default values applied where needed."""
+        # To uphold OrientDB semantics, make a new dict with all property values set
+        # to their default values, which are None if no default was set.
+        # Then, overwrite its data with the supplied property values.
+        final_values = self.get_default_property_values(classname)
+        final_values.update(property_values)
+        return final_values
+
+    def get_element_by_class_name_or_raise(self, class_name):
+        """Return the SchemaElement for the specified class name, asserting that it exists."""
+        if class_name not in self._elements:
+            raise InvalidClassError(u'Class does not exist: {}'.format(class_name))
+
+        return self._elements[class_name]
+
+    def get_vertex_schema_element_or_raise(self, vertex_classname):
+        """Return the schema element with the given name, asserting that it's of vertex type."""
+        schema_element = self.get_element_by_class_name_or_raise(vertex_classname)
+
+        if not schema_element.is_vertex:
+            raise InvalidClassError(u'Non-vertex class provided: {}'.format(vertex_classname))
+
+        return schema_element
+
+    def get_edge_schema_element_or_raise(self, edge_classname):
+        """Return the schema element with the given name, asserting that it's of edge type."""
+        schema_element = self.get_element_by_class_name_or_raise(edge_classname)
+
+        if not schema_element.is_edge:
+            raise InvalidClassError(u'Non-edge class provided: {}'.format(edge_classname))
+
+        return schema_element
+
+    def validate_is_vertex_type(self, vertex_classname):
+        """Validate that a vertex classname indeed corresponds to a vertex class."""
+        self.get_vertex_schema_element_or_raise(vertex_classname)
+
+    def validate_is_edge_type(self, edge_classname):
+        """Validate that a edge classname indeed corresponds to a edge class."""
+        self.get_edge_schema_element_or_raise(edge_classname)
+
+    def validate_is_non_abstract_vertex_type(self, vertex_classname):
+        """Validate that a vertex classname corresponds to a non-abstract vertex class."""
+        element = self.get_vertex_schema_element_or_raise(vertex_classname)
+
+        if element.abstract:
+            raise InvalidClassError(u'Expected a non-abstract vertex class, but {} is abstract'
+                                    .format(vertex_classname))
+
+    def validate_is_non_abstract_edge_type(self, edge_classname):
+        """Validate that a edge classname corresponds to a non-abstract edge class."""
+        element = self.get_edge_schema_element_or_raise(edge_classname)
+
+        if element.abstract:
+            raise InvalidClassError(u'Expected a non-abstract vertex class, but {} is abstract'
+                                    .format(edge_classname))
+
+    def validate_properties_exist(self, classname, property_names):
+        """Validate that the specified property names are indeed defined on the given class."""
+        schema_element = self.get_element_by_class_name(classname)
+
+        requested_properties = set(property_names)
+        available_properties = set(schema_element.properties.keys())
+        non_existent_properties = requested_properties - available_properties
+        if non_existent_properties:
+            raise InvalidPropertyError(
+                u'Class "{}" does not have definitions for properties "{}": '
+                u'{}'.format(classname, non_existent_properties, property_names))
+
+    @property
+    def class_names(self):
+        """Return the set of all class names"""
+        return set(six.iterkeys(self._elements))
+
+    @property
+    def vertex_class_names(self):
+        """Return the set of vertex class names in the SchemaGraph."""
+        return self._vertex_class_names
+
+    @property
+    def edge_class_names(self):
+        """Return the set of edge class names in the SchemaGraph."""
+        return self._edge_class_names
+
+    @property
+    def non_graph_class_names(self):
+        """Return the set of non-graph class names in the SchemaGraph."""
+        return self._non_graph_class_names
+
+    def _get_element_names_of_class(self, cls):
+        """Return a dict mapping an element name to """
+        return {
+            name: element
+            for name, element in self._elements.items()
+            if isinstance(element, cls)
+        }
 
 
 @six.python_2_unicode_compatible
@@ -197,156 +332,21 @@ class NonGraphElement(SchemaElement):
         super(NonGraphElement, self).__init__(class_name, abstract, properties, class_fields)
 
 
-class SchemaGraph(object):
-    """The SchemaGraph is a graph utility used to represent a OrientDB schema.
+def _validate_non_abstract_edge_has_defined_base_connections(
+        class_name, base_in_connection, base_out_connection):
+    """Validate that the non-abstract edge has its in/out base connections defined."""
+    if not (base_in_connection and base_out_connection):
+        raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
+                                      u'in/out base_connection: {} {} {}'
+                                      .format(class_name, base_in_connection, base_out_connection))
 
-    The SchemaGraph contains a representation of all vertex and edge types in the graph,
-    as well as their possible connections. This is useful when working with with paths
-    on the graph. It also holds a fully denormalized schema for the graph.
-    """
 
-    def __init__(self, elements, inheritance_sets):
-        """Create a new SchemaGraph.
-
-        Args:
-            elements: a dict, string -> SchemaElement, mapping each class in the schema to its
-                      corresponding SchemaElement object.
-            inheritance_sets: a dict, string -> set of strings, mapping each class to its
-                              superclasses. The set of superclasses includes the class itself and
-                              the transitive superclasses. For instance, if A is a superclass of B,
-                              and B is a superclass of C, then C's inheritance set is {'A', 'B'}.
-
-        Returns:
-            fully-constructed SchemaGraph object
-        """
-        self._elements = elements
-        self._inheritance_sets = inheritance_sets
-        self._subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
-
-        self._vertex_class_names = self._get_element_names_of_class(VertexType)
-        self._edge_class_names = self._get_element_names_of_class(EdgeType)
-        self._non_graph_class_names = self._get_element_names_of_class(NonGraphElement)
-
-    def get_element_by_class_name(self, class_name):
-        """Return the SchemaElement for the specified class name"""
-        return self._elements[class_name]
-
-    def get_inheritance_set(self, cls):
-        """Return all class names that the given class inherits from, including itself."""
-        return self._inheritance_sets[cls]
-
-    def get_subclass_set(self, cls):
-        """Return all class names that inherit from this class, including itself."""
-        return self._subclass_sets[cls]
-
-    def get_default_property_values(self, classname):
-        """Return a dict with default values for all properties declared on this class."""
-        schema_element = self.get_element_by_class_name(classname)
-
-        result = {
-            property_name: property_descriptor.default
-            for property_name, property_descriptor in six.iteritems(schema_element.properties)
-        }
-
-        return result
-
-    def _get_property_values_with_defaults(self, classname, property_values):
-        """Return the property values for the class, with default values applied where needed."""
-        # To uphold OrientDB semantics, make a new dict with all property values set
-        # to their default values, which are None if no default was set.
-        # Then, overwrite its data with the supplied property values.
-        final_values = self.get_default_property_values(classname)
-        final_values.update(property_values)
-        return final_values
-
-    def get_element_by_class_name_or_raise(self, class_name):
-        """Return the SchemaElement for the specified class name, asserting that it exists."""
-        if class_name not in self._elements:
-            raise InvalidClassError(u'Class does not exist: {}'.format(class_name))
-
-        return self._elements[class_name]
-
-    def get_vertex_schema_element_or_raise(self, vertex_classname):
-        """Return the schema element with the given name, asserting that it's of vertex type."""
-        schema_element = self.get_element_by_class_name_or_raise(vertex_classname)
-
-        if not schema_element.is_vertex:
-            raise InvalidClassError(u'Non-vertex class provided: {}'.format(vertex_classname))
-
-        return schema_element
-
-    def get_edge_schema_element_or_raise(self, edge_classname):
-        """Return the schema element with the given name, asserting that it's of edge type."""
-        schema_element = self.get_element_by_class_name_or_raise(edge_classname)
-
-        if not schema_element.is_edge:
-            raise InvalidClassError(u'Non-edge class provided: {}'.format(edge_classname))
-
-        return schema_element
-
-    def validate_is_vertex_type(self, vertex_classname):
-        """Validate that a vertex classname indeed corresponds to a vertex class."""
-        self.get_vertex_schema_element_or_raise(vertex_classname)
-
-    def validate_is_edge_type(self, edge_classname):
-        """Validate that a edge classname indeed corresponds to a edge class."""
-        self.get_edge_schema_element_or_raise(edge_classname)
-
-    def validate_is_non_abstract_vertex_type(self, vertex_classname):
-        """Validate that a vertex classname corresponds to a non-abstract vertex class."""
-        element = self.get_vertex_schema_element_or_raise(vertex_classname)
-
-        if element.abstract:
-            raise InvalidClassError(u'Expected a non-abstract vertex class, but {} is abstract'
-                                    .format(vertex_classname))
-
-    def validate_is_non_abstract_edge_type(self, edge_classname):
-        """Validate that a edge classname corresponds to a non-abstract edge class."""
-        element = self.get_edge_schema_element_or_raise(edge_classname)
-
-        if element.abstract:
-            raise InvalidClassError(u'Expected a non-abstract vertex class, but {} is abstract'
-                                    .format(edge_classname))
-
-    def validate_properties_exist(self, classname, property_names):
-        """Validate that the specified property names are indeed defined on the given class."""
-        schema_element = self.get_element_by_class_name(classname)
-
-        requested_properties = set(property_names)
-        available_properties = set(schema_element.properties.keys())
-        non_existent_properties = requested_properties - available_properties
-        if non_existent_properties:
-            raise InvalidPropertyError(
-                u'Class "{}" does not have definitions for properties "{}": '
-                u'{}'.format(classname, non_existent_properties, property_names))
-
-    @property
-    def class_names(self):
-        """Return the set of all class names"""
-        return set(six.iterkeys(self._elements))
-
-    @property
-    def vertex_class_names(self):
-        """Return the set of vertex class names in the SchemaGraph."""
-        return self._vertex_class_names
-
-    @property
-    def edge_class_names(self):
-        """Return the set of edge class names in the SchemaGraph."""
-        return self._edge_class_names
-
-    @property
-    def non_graph_class_names(self):
-        """Return the set of non-graph class names in the SchemaGraph."""
-        return self._non_graph_class_names
-
-    def _get_element_names_of_class(self, cls):
-        """Return a dict mapping an element name to """
-        return {
-            name: element
-            for name, element in self._elements.items()
-            if isinstance(element, cls)
-        }
+def _validate_property_names(class_name, properties):
+    """Validate that properties do not have names that may cause problems in the GraphQL schema."""
+    for property_name in properties:
+        if not property_name or property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES):
+            raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
+                                          u'{}'.format(class_name, property_name))
 
 
 def get_subclass_sets_from_inheritance_sets(inheritance_sets):

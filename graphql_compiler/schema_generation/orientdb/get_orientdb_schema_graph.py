@@ -9,13 +9,12 @@ import six
 from ..exceptions import IllegalSchemaStateError
 from ..schema_graph import (
     EdgeType, NonGraphElement, PropertyDescriptor, SchemaGraph, VertexType,
-    get_subclass_sets_from_inheritance_sets,
+    get_subclass_sets_from_inheritance_sets
 )
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES,
     EDGE_SOURCE_PROPERTY_NAME, ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
-    PROPERTY_TYPE_LINK_ID, get_graphql_scalar_type_or_raise,
-    parse_default_property_value
+    PROPERTY_TYPE_LINK_ID, get_graphql_scalar_type_or_raise, parse_default_property_value
 )
 from .utils import toposort_classes
 
