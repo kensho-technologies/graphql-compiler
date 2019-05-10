@@ -653,7 +653,7 @@ class SchemaGraph(object):
                                          'collection property {}. Only graph classes are allowed '
                                          'to have collections as properties.'
                                          .format(class_name, property_definition))
-                if len(self._inheritance_sets[linked_class]) > 1:
+                if self._inheritance_sets[linked_class] != {linked_class}:
                     raise AssertionError('Class {} contains an invalid collection of class {} '
                                          'elements. Inner classes are not allowed to have '
                                          'multiple superclasses.'.format(class_name, linked_class))
