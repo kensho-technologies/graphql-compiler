@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
+from collections import namedtuple
 
 import six
 
@@ -363,3 +364,10 @@ def get_subclass_sets_from_inheritance_sets(inheritance_sets):
         subclass_sets[class_name] = frozenset(subclass_sets[class_name])
 
     return subclass_sets
+
+
+# A way to describe a property's type and associated information:
+#   - type: GraphQLType, the type of this property
+#   - default: the default value for the property, used when a record is inserted without an
+#              explicit value for this property. Set to None if no default is given in the schema.
+PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
