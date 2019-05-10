@@ -298,6 +298,7 @@ class SchemaGraph(object):
         # Initialize the _vertex_class_names, _edge_class_names, and _non_graph_class_names sets.
         self._split_classes_by_kind(class_name_to_definition)
 
+        self._non_graph_class_to_graphql_rep = dict()
         self._set_up_non_graph_elements(class_name_to_definition)
         self._set_up_edge_elements(class_name_to_definition)
         self._set_up_vertex_elements(class_name_to_definition)
@@ -654,9 +655,22 @@ class SchemaGraph(object):
                                          'collection property {}. Only graph classes are allowed '
                                          'to have collections as properties.'
                                          .format(class_name, property_definition))
-                # Don't include the fields and implemented interfaces, this information is already
-                # stored in the SchemaGraph.
-                maybe_graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
+                if self._inheritance_sets[linked_class] != {linked_class}:
+                    raise AssertionError('Class {} contains an invalid collection of class {} '
+                                         'elements. An inner collection class is not allowed to '
+                                         'have any superclass other than itself. Each class is a '
+                                         'superclass/subclass of itself.'
+                                         .format(class_name, linked_class))
+
+                if linked_class not in self._non_graph_class_to_graphql_rep:
+                    fields = {
+                        name: property_obj.type
+                        for property_obj in self._elements[linked_class].properties.items()
+                    }
+                    self._non_graph_class_to_graphql_rep[linked_class] = (
+                        GraphQLObjectType(linked_class, fields, []))
+
+                maybe_graphql_type = GraphQLList(self._non_graph_class_to_graphql_rep[linked_class])
             else:
                 raise AssertionError(u'Property "{}" is an embedded collection but has '
                                      u'neither a linked class nor a linked type: '
