@@ -655,8 +655,10 @@ class SchemaGraph(object):
                                          .format(class_name, property_definition))
                 if self._inheritance_sets[linked_class] != {linked_class}:
                     raise AssertionError('Class {} contains an invalid collection of class {} '
-                                         'elements. Inner classes are not allowed to have '
-                                         'multiple superclasses.'.format(class_name, linked_class))
+                                         'elements. An inner collection class is not allowed to '
+                                         'have any superclass other than itself. Each class is a '
+                                         'superclass/subclass of itself.'
+                                         .format(class_name, linked_class))
 
                 if linked_class not in self._non_graph_class_to_graphql_rep:
                     fields = {
