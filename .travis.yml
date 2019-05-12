@@ -23,6 +23,10 @@ matrix:
     script:
       - pipenv run ./scripts/copyright_line_check.sh
       - pipenv run ./scripts/lint.sh
+  - name: "Bandit"
+    python: "3.6"
+    script:
+      - pipenv run ./scripts/bandit.sh
   - name: "Python 2.7 unit tests"
     python: "2.7"
     script:
