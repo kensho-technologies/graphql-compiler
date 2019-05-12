@@ -19,7 +19,6 @@ pip install graphql-compiler
 Through the GraphQL compiler, users can write powerful queries that uncover 
 deep relationships in the data while not having to worry about the underlying database query 
 language. The GraphQL compiler turns read-only queries written in GraphQL syntax to different 
-query languages. 
 
 Furthermore, the GraphQL compiler validates queries through the use of a GraphQL schema 
 that specifies the underlying schema of the database. We can currently autogenerate a 
