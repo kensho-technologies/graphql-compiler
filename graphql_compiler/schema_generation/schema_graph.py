@@ -9,7 +9,6 @@ from .exceptions import (
     InvalidPropertyError
 )
 
-from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
 
 class SchemaGraph(object):
     """The SchemaGraph is a graph utility used to represent a OrientDB schema.
