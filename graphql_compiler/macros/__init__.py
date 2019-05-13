@@ -75,40 +75,41 @@ def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
         macro_edge_args: dict mapping strings to any type, containing any arguments the macro edge
                          requires in order to function.
     """
-    class_name, macro_edge_name, macro_descriptor = make_macro_edge_descriptor(
+    new_macro_edge_class_name, macro_edge_name, macro_descriptor = make_macro_edge_descriptor(
         macro_registry.schema_without_macros, macro_edge_graphql, macro_edge_args,
         type_equivalence_hints=macro_registry.type_equivalence_hints)
 
     # Ensure this new macro edge does not conflict with any previous descriptor.
-    macro_edges_for_class = macro_registry.macro_edges.get(class_name, dict())
+    macro_edges_for_class = macro_registry.macro_edges.get(new_macro_edge_class_name, dict())
     existing_descriptor = macro_edges_for_class.get(macro_edge_name, None)
 
     if existing_descriptor is not None:
         raise AssertionError(
             u'Attempting to redefine an already registered macro edge: '
             u'class {}, macro edge {}, new GraphQL descriptor {}, new args {}.'
-            .format(class_name, macro_edge_name, macro_edge_graphql, macro_edge_args))
+            .format(new_macro_edge_class_name, macro_edge_name, macro_edge_graphql, macro_edge_args))
 
     # Ensure there's no conflict with macro edges defined on subclasses and superclasses.
     class_sets_to_check = (
-        ('subclass', macro_registry.subclass_sets[class_name]),
+        ('subclass', macro_registry.subclass_sets[new_macro_edge_class_name]),
         ('superclass', {
-            cls
-            for cls, cls_subclasses in six.iteritems(macro_registry.subclass_sets)
-            if class_name in cls_subclasses
+            class_name
+            for class_name, class_subclasses in six.iteritems(macro_registry.subclass_sets)
+            if new_macro_edge_class_name in class_subclasses
         }),
     )
-    for relationship, classes in class_sets_to_check:
-        for cls in classes:
-            macros_on_cls = macro_registry.macro_edges.get(cls, dict())
-            if macro_edge_name in macros_on_cls:
+    for relationship, class_names in class_sets_to_check:
+        for class_name in class_names:
+            macros_on_class = macro_registry.macro_edges.get(class_name, dict())
+            if macro_edge_name in macros_on_class:
                 raise GraphQLInvalidMacroError(
                     u'A macro edge with name {} already exists on {}, which is'
                     u'a {} of {}. new GraphQL descriptor {}, new args {}'
-                    .format(macro_edge_name, class_name, relationship, cls,
-                            class_name, macro_edge_graphql, macro_edge_args))
+                    .format(macro_edge_name, class_name, relationship,
+                            new_macro_edge_class_name, macro_edge_graphql, macro_edge_args))
 
-    macro_registry.macro_edges.setdefault(class_name, dict())[macro_edge_name] = macro_descriptor
+    macro_registry.macro_edges.setdefault(
+        new_macro_edge_class_name, dict())[macro_edge_name] = macro_descriptor
 
 
 def get_schema_with_macros(macro_registry):
