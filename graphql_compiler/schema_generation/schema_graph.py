@@ -9,6 +9,7 @@ from .exceptions import (
     InvalidPropertyError
 )
 
+from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
 
 class SchemaGraph(object):
     """The SchemaGraph is a graph utility used to represent a OrientDB schema.
@@ -347,7 +348,6 @@ def _validate_property_names(class_name, properties):
         if not property_name or property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES):
             raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
                                           u'{}'.format(class_name, property_name))
-
 
 def get_subclass_sets_from_inheritance_sets(inheritance_sets):
     """Return a dict mapping each class to its set of subclasses."""

@@ -2,7 +2,7 @@
 from enum import Enum
 from itertools import chain
 
-from funcy.py3 import lsplit
+from funcy.py3 import lsplit, memoize
 from graphql.type import GraphQLList, GraphQLObjectType
 import six
 
@@ -14,7 +14,7 @@ from ..schema_graph import (
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES,
     EDGE_SOURCE_PROPERTY_NAME, ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
-    PROPERTY_TYPE_LINK_ID, get_graphql_scalar_type_or_raise, parse_default_property_value
+    PROPERTY_TYPE_LINK_ID, try_get_graphql_scalar_type, parse_default_property_value
 )
 from .utils import toposort_classes
 
@@ -82,9 +82,10 @@ def get_orientdb_schema_graph(schema_data):
         for class_definition in toposorted_schema_data
     }
 
-    elements = _get_non_graph_elements(class_name_to_definition, inheritance_sets)
-    elements.update(_get_edge_elements(class_name_to_definition, inheritance_sets))
-    elements.update(_get_vertex_elements(class_name_to_definition, inheritance_sets))
+    elements = {}
+    elements.update(_get_non_graph_elements(class_name_to_definition, inheritance_sets, elements))
+    elements.update(_get_edge_elements(class_name_to_definition, inheritance_sets, elements))
+    elements.update(_get_vertex_elements(class_name_to_definition, inheritance_sets, elements))
 
     # Initialize the connections that show which schema classes can be connected to
     # which other schema classes, then freeze all schema elements.
@@ -139,7 +140,7 @@ def get_superclasses_from_class_definition(class_definition):
     return []
 
 
-def _get_non_graph_elements(class_name_to_definition, inheritance_sets):
+def _get_non_graph_elements(class_name_to_definition, inheritance_sets, elements):
     """Return a dict mapping class name to NonGraphElement."""
     non_graph_elements = dict()
     non_graph_class_names = _get_class_names_of_kind(inheritance_sets, Kind.NonGraph)
@@ -159,14 +160,15 @@ def _get_non_graph_elements(class_name_to_definition, inheritance_sets):
                                  .format(link_property_definitions, class_name))
 
         property_name_to_descriptor = _get_element_properties(
-            class_name, non_link_property_definitions, non_graph_class_names)
+            class_name, non_link_property_definitions, non_graph_class_names, inheritance_sets,
+            elements)
 
         non_graph_elements[class_name] = NonGraphElement(
             class_name, abstract, property_name_to_descriptor, class_fields)
     return non_graph_elements
 
 
-def _get_edge_elements(class_name_to_definition, inheritance_sets):
+def _get_edge_elements(class_name_to_definition, inheritance_sets, elements):
     """Return a dict mapping class name to EdgeType."""
     edge_elements = dict()
     subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
@@ -195,7 +197,8 @@ def _get_edge_elements(class_name_to_definition, inheritance_sets):
             class_name, inheritance_sets, links, abstract)
 
         property_name_to_descriptor = _get_element_properties(
-            class_name, non_link_property_definitions, non_graph_class_names)
+            class_name, non_link_property_definitions, non_graph_class_names, inheritance_sets,
+            elements)
 
         edge_elements[class_name] = EdgeType(
             class_name, abstract, property_name_to_descriptor, class_fields,
@@ -203,7 +206,7 @@ def _get_edge_elements(class_name_to_definition, inheritance_sets):
     return edge_elements
 
 
-def _get_vertex_elements(class_name_to_definition, inheritance_sets):
+def _get_vertex_elements(class_name_to_definition, inheritance_sets, elements):
     """Return a dict mapping class name to VertexType."""
     vertex_elements = dict()
 
@@ -225,7 +228,8 @@ def _get_vertex_elements(class_name_to_definition, inheritance_sets):
                                  .format(link_property_definitions, class_name))
 
         property_name_to_descriptor = _get_element_properties(
-            class_name, non_link_property_definitions, non_graph_class_names)
+            class_name, non_link_property_definitions, non_graph_class_names, inheritance_sets,
+            elements)
 
         vertex_elements[class_name] = VertexType(
             class_name, abstract, property_name_to_descriptor, class_fields)
@@ -290,7 +294,8 @@ def _get_link_and_non_link_properties(property_definitions):
     return lsplit(lambda x: x['name'] in EDGE_END_NAMES, property_definitions)
 
 
-def _get_element_properties(class_name, non_link_property_definitions, non_graph_class_names):
+def _get_element_properties(class_name, non_link_property_definitions, non_graph_class_names,
+                            inheritance_sets, elements):
     """Return the SchemaElement's properties from the OrientDB non-link property definitions."""
     property_name_to_descriptor = {}
     for property_definition in non_link_property_definitions:
@@ -301,22 +306,25 @@ def _get_element_properties(class_name, non_link_property_definitions, non_graph
                                  u'more than once, this is not allowed!'
                                  .format(property_name, class_name))
 
-        graphql_type = _get_graphql_type(class_name, property_definition,
-                                         non_graph_class_names)
-        default_value = _get_default_value(class_name, property_definition)
-        property_descriptor = PropertyDescriptor(graphql_type, default_value)
-        property_name_to_descriptor[property_name] = property_descriptor
+        maybe_graphql_type = _try_get_graphql_type(class_name, property_definition,
+                                                   non_graph_class_names, inheritance_sets,
+                                                   elements)
+        if maybe_graphql_type is not None:
+            default_value = _get_default_value(class_name, property_definition)
+            property_descriptor = PropertyDescriptor(maybe_graphql_type, default_value)
+            property_name_to_descriptor[property_name] = property_descriptor
     return property_name_to_descriptor
 
 
-def _get_graphql_type(class_name, property_definition, non_graph_class_names):
+def _try_get_graphql_type(class_name, property_definition, non_graph_class_names,
+                          inheritance_sets, elements):
     """Return the GraphQLType corresponding to the non-link property definition."""
     name = property_definition['name']
     type_id = property_definition['type']
     linked_class = property_definition.get('linkedClass', None)
     linked_type = property_definition.get('linkedType', None)
 
-    graphql_type = None
+    maybe_graphql_type = None
     if type_id == PROPERTY_TYPE_LINK_ID:
         raise AssertionError(u'Found a improperly named property of type Link: '
                              u'{} {}. Links must be named either "in" or "out"'
@@ -327,8 +335,9 @@ def _get_graphql_type(class_name, property_definition, non_graph_class_names):
                                  u'a linked type: {}'.format(name, property_definition))
         elif linked_type is not None and linked_class is None:
             # No linked class, must be a linked native OrientDB type.
-            inner_type = get_graphql_scalar_type_or_raise(name + ' inner type', linked_type)
-            graphql_type = GraphQLList(inner_type)
+            maybe_inner_type = try_get_graphql_scalar_type(name + ' inner type', linked_type)
+            if maybe_inner_type is not None:
+                maybe_graphql_type = GraphQLList(maybe_inner_type)
         elif linked_class is not None and linked_type is None:
             # No linked type, must be a linked non-graph user-defined type.
             if linked_class not in non_graph_class_names:
@@ -340,17 +349,23 @@ def _get_graphql_type(class_name, property_definition, non_graph_class_names):
                                      'collection property {}. Only graph classes are allowed '
                                      'to have collections as properties.'
                                      .format(class_name, property_definition))
-            # Don't include the fields and implemented interfaces, this information is already
-            # stored in the SchemaGraph.
-            graphql_type = GraphQLList(GraphQLObjectType(linked_class, {}, []))
+            if inheritance_sets[linked_class] != {linked_class}:
+                raise AssertionError('Class {} contains an invalid collection of class {} '
+                                     'elements. An inner collection class is not allowed to '
+                                     'have any superclass other than itself. Each class is a '
+                                     'superclass/subclass of itself.'
+                                     .format(class_name, linked_class))
+
+            element = elements[linked_class]
+            maybe_graphql_type = GraphQLList(_get_graphql_rep_of_non_graph_element(element))
         else:
             raise AssertionError(u'Property "{}" is an embedded collection but has '
                                  u'neither a linked class nor a linked type: '
                                  u'{}'.format(name, property_definition))
     else:
-        graphql_type = get_graphql_scalar_type_or_raise(name, type_id)
+        maybe_graphql_type = try_get_graphql_scalar_type(name, type_id)
 
-    return graphql_type
+    return maybe_graphql_type
 
 
 def _get_default_value(class_name, property_definition):
@@ -462,3 +477,13 @@ def _link_vertex_and_edge_types(elements, inheritance_sets):
             to_schema_element = elements[to_class]
             edge_schema_element.out_connections.add(to_class)
             to_schema_element.in_connections.add(edge_class_name)
+
+
+@memoize
+def _get_graphql_rep_of_non_graph_element(non_graph_element):
+    """Return the GraphQL Object corresponding to a NonGraphElement with no superclasses."""
+    fields = {
+        name: property_obj.type
+        for name, property_obj in non_graph_element.properties.items()
+    }
+    return GraphQLObjectType(non_graph_element.class_name, fields, [])
