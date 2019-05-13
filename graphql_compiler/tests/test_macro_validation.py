@@ -416,7 +416,6 @@ class MacroValidationTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             register_macro_edge(macro_registry, duplicate_query, args)
 
-    @pytest.mark.skip(reason='not implemented')
     def test_macro_edge_dulpicate_definition_on_subclass(self):
         query = '''{
             Entity @macro_edge_definition(name: "out__RelatedOfRelated") {
@@ -441,13 +440,13 @@ class MacroValidationTests(unittest.TestCase):
         # Try registering on the superclass first
         macro_registry = get_empty_test_macro_registry()
         register_macro_edge(macro_registry, query, args)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, query_on_subclass, args)
 
         # Try registering on the subclass first
         macro_registry = get_empty_test_macro_registry()
         register_macro_edge(macro_registry, query_on_subclass, args)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, query, args)
 
     @pytest.mark.skip(reason='not implemented')
