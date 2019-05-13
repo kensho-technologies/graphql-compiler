@@ -86,7 +86,8 @@ def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
         raise AssertionError(
             u'Attempting to redefine an already registered macro edge: '
             u'class {}, macro edge {}, new GraphQL descriptor {}, new args {}.'
-            .format(new_macro_edge_class_name, macro_edge_name, macro_edge_graphql, macro_edge_args))
+            .format(new_macro_edge_class_name, macro_edge_name,
+                    macro_edge_graphql, macro_edge_args))
 
     # Ensure there's no conflict with macro edges defined on subclasses and superclasses.
     class_sets_to_check = (
