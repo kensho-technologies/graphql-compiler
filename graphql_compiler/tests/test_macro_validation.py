@@ -178,8 +178,7 @@ class MacroValidationTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, query, args)
 
-    @pytest.mark.skip(reason='not implemented')
-    def test_macro_edge_invalid_target_directive(self):
+    def test_macro_edge_target_directive_starting_with_coercion_disallowed(self):
         query = '''{
             Animal @macro_edge_definition(name: "out_Animal_AvailableFood_Invalid") {
                 out_Animal_LivesIn {
@@ -196,6 +195,30 @@ class MacroValidationTests(unittest.TestCase):
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, query, args)
+
+    def test_macro_edge_target_directive_on_union_type_disallowed(self):
+        query_on_union = '''{
+            Species @macro_edge_definition(name: "out_Species_Eats_Macro") {
+                out_Species_Eats @macro_edge_target {
+                    uuid
+                }
+            }
+        }'''
+        query_with_coercion = '''{
+            Species @macro_edge_definition(name: "out_Species_Eats_Macro_With_Coercion") {
+                out_Species_Eats {
+                    ... on Food @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }'''
+        args = {}
+
+        macro_registry = get_empty_test_macro_registry()
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, query_on_union, args)
+        register_macro_edge(macro_registry, query_with_coercion, args)
 
     def test_macro_edge_invalid_no_op_1(self):
         query = '''{
