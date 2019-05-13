@@ -256,7 +256,7 @@ class MacroExpansionTests(unittest.TestCase):
         query = '''{
             Animal {
                 out_Animal_GrandparentOf {
-                    ... on Animal @filter(op_name: "name_or_alias", value: "$wanted") {
+                    ... on Animal @filter(op_name: "name_or_alias", value: ["$wanted"]) {
                         name @output(out_name: "grandkid")
                     }
                 }
@@ -270,7 +270,7 @@ class MacroExpansionTests(unittest.TestCase):
             Animal {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf {
-                        ... on Animal @filter(op_name: "name_or_alias", value: "$wanted") {
+                        ... on Animal @filter(op_name: "name_or_alias", value: ["$wanted"]) {
                             name @output(out_name: "grandkid")
                         }
                     }
@@ -289,7 +289,7 @@ class MacroExpansionTests(unittest.TestCase):
         query = '''{
             Animal {
                 out_Animal_RelatedEntity {
-                   ... on Food @filter(op_name: "name_or_alias", value: "$wanted") {
+                   ... on Food @filter(op_name: "name_or_alias", value: ["$wanted"]) {
                        name @output(out_name: "animal")
                    }
                 }
@@ -302,7 +302,7 @@ class MacroExpansionTests(unittest.TestCase):
         expected_query = '''{
             Animal {
                 in_Entity_Related {
-                    ... on Food @filter(op_name: "name_or_alias", value: "$wanted"){
+                    ... on Food @filter(op_name: "name_or_alias", value: ["$wanted"]){
                         name @output(out_name: "animal")
                     }
                 }
@@ -426,10 +426,11 @@ class MacroExpansionTests(unittest.TestCase):
             Animal {
                 net_worth @tag(tag_name: "parent_net_worth")
                 in_Animal_ParentOf {
-                    net_worth @tag(tag_name: "parent_net_worth_1")
-                    out_Animal_ParentOf @macro_edge_target {
-                        net_worth @filter(op_name: ">", value: ["%parent_net_worth_1"])
+                    net_worth @tag(tag_name: "parent_net_worth_macro_edge_0")
+                    out_Animal_ParentOf {
+                        net_worth @filter(op_name: ">", value: ["%parent_net_worth_macro_edge_0"])
                                   @filter(op_name: ">", value: ["%parent_net_worth"])
+                        name @output(out_name: "sibling")
                     }
                 }
             }
@@ -460,8 +461,48 @@ class MacroExpansionTests(unittest.TestCase):
                     event_date @tag(tag_name: "birthday")
                 }
                 in_Animal_ParentOf {
-                    out_Animal_ParentOf @macro_edge_target {
+                    out_Animal_ParentOf {
                         net_worth @filter(op_name: ">", value: ["%animal_net_worth"])
+                                  @filter(op_name: "<", value: ["%animal_net_worth"])
+                                  @output(out_name: "sibling_net_worth")
+                        out_Animal_BornAt {
+                            event_date @filter(op_name: "<", value: ["%birthday"])
+                        }
+                    }
+                }
+            }
+        }'''
+        expected_args = {}
+
+        expanded_query, new_args = perform_macro_expansion(
+            self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
+    @pytest.mark.skip(reason='not implemented')
+    def test_macro_edge_colocated_tags_with_same_name(self):
+        query = '''{
+            Animal {
+                net_worth @tag(tag_name: "net_worth")
+                out_Animal_RichYoungerSiblings {
+                    net_worth @filter(op_name: "<", value: ["%net_worth"])
+                              @output(out_name: "sibling_net_worth")
+                }
+            }
+        }'''
+        args = {}
+
+        expected_query = '''{
+            Animal {
+                net_worth @tag(tag_name: "net_worth")
+                out_Animal_BornAt {
+                    event_date @tag(tag_name: "birthday")
+                }
+                in_Animal_ParentOf {
+                    out_Animal_ParentOf {
+                        net_worth @filter(op_name: ">", value: ["%net_worth"])
+                                  @filter(op_name: "<", value: ["%net_worth"])
+                                  @output(out_name: "sibling_net_worth")
                         out_Animal_BornAt {
                             event_date @filter(op_name: "<", value: ["%birthday"])
                         }
