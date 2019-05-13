@@ -72,7 +72,6 @@ def _validate_macro_ast_directives(ast, inside_fold_scope=False):
     - @output and @output_source are disallowed
     - @macro_edge_target is not allowed to be inside a @fold scope
     - @macro_edge_target is not allowed to begin with a coercion
-    - @macro_edge_target cannot be on a union type
 
     Args:
         ast: GraphQL AST describing a subtree of the macro
