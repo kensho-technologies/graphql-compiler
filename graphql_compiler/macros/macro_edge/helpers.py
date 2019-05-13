@@ -1,10 +1,17 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 
-from graphql.language.ast import Field, InlineFragment, OperationDefinition, SelectionSet
+from graphql.language.ast import (
+    Argument, Field, InlineFragment, ListValue, Name, OperationDefinition, SelectionSet,
+    StringValue
+)
 
 from ...ast_manipulation import get_ast_field_name
-from ...compiler.helpers import get_field_type_from_schema, get_vertex_field_type
+from ...compiler.helpers import (
+    get_directive_argument_name, get_field_type_from_schema, get_vertex_field_type,
+    is_tag_argument, is_variable_argument
+)
+from ...schema import FilterDirective, TagDirective
 from ..macro_edge.directives import MacroEdgeTargetDirective
 
 
@@ -53,6 +60,136 @@ def get_directives_for_ast(ast):
     return result
 
 
+def get_all_tag_names(ast):
+    """Return a set of strings containing tag names that appear in the query.
+    Args:
+        ast: GraphQL query AST object
+    """
+    return {
+        # Schema validation has ensured this exists
+        directive.arguments[0].value.value
+        for ast, directive in _yield_ast_nodes_with_directives(ast)
+        if directive.name.value == TagDirective.name
+    }
+
+
+def _replace_tag_names_in_tag_directive(name_change_map, tag_directive):
+    """Return the new directive, and whether it is different from the old."""
+    current_name = tag_directive.arguments[0].value.value
+    new_name = name_change_map[current_name]
+    renamed_tag_directive = copy(tag_directive)
+    renamed_tag_directive.arguments = [Argument(Name('tag_name'), StringValue(new_name))]
+    return renamed_tag_directive, new_name != current_name
+
+
+def _replace_tag_names_in_filter_directive(name_change_map, filter_directive):
+    """Return the new directive, and whether it is different from the old."""
+    made_changes = False
+    filter_with_renamed_args = copy(filter_directive)
+    filter_with_renamed_args.arguments = []
+    for argument in filter_directive.arguments:
+        if argument.name.value == 'op_name':
+            filter_with_renamed_args.arguments.append(argument)
+        elif argument.name.value == 'value':
+            new_value_list = []
+            for value in argument.value.values:
+                if is_tag_argument(value.value):
+                    current_name = get_directive_argument_name(value.value)
+                    new_name = name_change_map[current_name]
+                    if new_name != current_name:
+                        made_changes = True
+                    new_value_list.append(StringValue('%' + new_name))
+                elif is_variable_argument(value.value):
+                    new_value_list.append(value)
+                else:
+                    raise AssertionError(u'Value was neither tag nor filter: {} {}'
+                                         .format(ast, value.value))
+            filter_with_renamed_args.arguments.append(
+                Argument(Name('value'), value=ListValue(new_value_list)))
+        else:
+            raise AssertionError(u'Unknown argument name {} in filter'
+                                 .format(argument.name.value))
+    return filter_with_renamed_args, made_changes
+
+
+def _replace_tag_names_at_current_node(name_change_map, ast):
+    """Replace tag names that are already in use at the root of the AST."""
+    # Rename tag names in @tag and @filter directives, and record if we made changes
+    made_changes = False
+    new_directives = []
+    for directive in ast.directives:
+        if directive.name.value == TagDirective.name:
+            renamed_tag_directive, made_changes_to_tag = _replace_tag_names_in_tag_directive(
+                name_change_map, directive)
+            made_changes = made_changes or made_changes_to_tag
+            new_directives.append(renamed_tag_directive)
+        elif directive.name.value == FilterDirective.name:
+            filter_with_renamed_args, made_changes_to_filter = (
+                _replace_tag_names_in_filter_directive(name_change_map, directive))
+            made_changes = made_changes or made_changes_to_filter
+            new_directives.append(filter_with_renamed_args)
+        else:
+            new_directives.append(directive)
+    return made_changes, new_directives
+
+
+def replace_tag_names(name_change_map, ast):
+    """Replace tag names that are already in use in the whole AST."""
+    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+        return ast
+
+    made_changes = False
+
+    # Recurse
+    new_selection_set = None
+    if ast.selection_set is not None:
+        new_selections = []
+        for selection_ast in ast.selection_set.selections:
+            new_selection_ast = replace_tag_names(name_change_map, selection_ast)
+
+            if selection_ast is not new_selection_ast:
+                # Since we did not get the exact same object as the input, changes were made.
+                # That means this call will also need to make changes and return a new object.
+                made_changes = True
+
+            new_selections.append(new_selection_ast)
+        new_selection_set = SelectionSet(new_selections)
+
+    # Process the current node
+    made_changes_at_this_node, new_directives = _replace_tag_names_at_current_node(
+        name_change_map, ast)
+    made_changes = made_changes or made_changes_at_this_node
+
+    if not made_changes:
+        # We didn't change anything, return the original input object.
+        return ast
+
+    new_ast = copy(ast)
+    new_ast.selection_set = new_selection_set
+    new_ast.directives = new_directives
+    return new_ast
+
+
+def generate_disambiguations(existing_names, new_names):
+    """Return a dict mapping the new names to similar names not conflicting with existing names.
+    Args:
+        existing_names: set of strings, the names that are already taken
+        new_names: set of strings, the names that might coincide with exisitng names
+    Returns:
+        dict mapping the new names to other unique names not present in existing_names
+    """
+    name_mapping = dict()
+    for name in new_names:
+        # We try adding different suffixes to disambiguate from the existing names.
+        disambiguation = name
+        index = 0
+        while disambiguation in existing_names or disambiguation in name_mapping:
+            disambiguation = disambiguation + '_macro_edge_' + str(index)
+            index += 1
+        name_mapping[name] = disambiguation
+    return name_mapping
+
+
 def remove_directives_from_ast(ast, directive_names_to_omit):
     """Return an equivalent AST to the input, but with instances of the named directives omitted.
 
@@ -70,7 +207,7 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
 
     made_changes = False
 
-    new_selections = None
+    new_selection_set = None
     if ast.selection_set is not None:
         new_selections = []
         for selection_ast in ast.selection_set.selections:
@@ -82,6 +219,7 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
                 made_changes = True
 
             new_selections.append(new_selection_ast)
+        new_selection_set = SelectionSet(new_selections)
 
     directives_to_keep = [
         directive
@@ -96,7 +234,7 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
         return ast
 
     new_ast = copy(ast)
-    new_ast.selection_set = SelectionSet(new_selections)
+    new_ast.selection_set = new_selection_set
     new_ast.directives = directives_to_keep
     return new_ast
 
