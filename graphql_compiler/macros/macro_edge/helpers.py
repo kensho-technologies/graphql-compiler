@@ -75,6 +75,7 @@ def get_all_tag_names(ast):
 
 def _replace_tag_names_in_tag_directive(name_change_map, tag_directive):
     """Return the new directive, and whether it is different from the old."""
+    # Schema validation has ensured this exists
     current_name = tag_directive.arguments[0].value.value
     new_name = name_change_map[current_name]
     renamed_tag_directive = copy(tag_directive)
