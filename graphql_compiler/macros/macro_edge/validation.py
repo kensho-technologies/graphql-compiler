@@ -251,8 +251,6 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     _, input_metadata, _, _ = ast_to_ir(schema, _get_minimal_query_ast_from_macro_ast(ast),
                                         type_equivalence_hints=type_equivalence_hints)
     ensure_arguments_are_provided(input_metadata, macro_edge_args)
-    # TODO(bojanserafimov): Check all the provided arguments were necessary
-    # TODO(bojanserafimov): Check the arguments have the correct types
     # TODO(bojanserafimov): @macro_edge_target is not on a union type
     # TODO(bojanserafimov): @macro_edge_target does not begin with a coercion
 
