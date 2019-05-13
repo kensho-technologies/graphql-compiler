@@ -2,14 +2,15 @@
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 
+from graphql.type import GraphQLList, GraphQLObjectType
 import six
 
+from ..compiler.helpers import strip_non_null_from_type
 from .exceptions import (
     ILLEGAL_PROPERTY_NAME_PREFIXES, IllegalSchemaStateError, InvalidClassError,
     InvalidPropertyError
 )
 
-from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
 
 class SchemaGraph(object):
     """The SchemaGraph is a graph utility used to represent a OrientDB schema.
@@ -40,6 +41,8 @@ class SchemaGraph(object):
         self._vertex_class_names = self._get_element_names_of_class(VertexType)
         self._edge_class_names = self._get_element_names_of_class(EdgeType)
         self._non_graph_class_names = self._get_element_names_of_class(NonGraphElement)
+
+        self._validate_collection_classes()
 
     def get_element_by_class_name(self, class_name):
         """Return the SchemaElement for the specified class name"""
@@ -161,6 +164,32 @@ class SchemaGraph(object):
             for name, element in self._elements.items()
             if isinstance(element, cls)
         }
+
+    def _validate_collection_classes(self):
+        """Validate the collections of classes defined in the SchemaGraph.."""
+        for element_name, element_obj in six.iteritems(self._elements):
+            for property_name, property_obj in six.iteritems(element_obj.properties):
+                graphql_type = property_obj.type
+                if isinstance(strip_non_null_from_type(graphql_type), GraphQLList):
+                    inner_type = strip_non_null_from_type(graphql_type.of_type)
+                    if isinstance(inner_type, GraphQLObjectType):
+                        inner_class = inner_type.name
+                        if inner_class not in self._non_graph_class_names:
+                            raise AssertionError(u'Property "{}" is of element {} is declared as '
+                                                 u'the inner type a GraphQLList, but is not a '
+                                                 u'non-graph schema element: {}'
+                                                 .format(property_name, element_name, inner_class))
+                        if element_name in self.non_graph_class_names:
+                            raise AssertionError('Class {} is a non-graph class that contains a '
+                                                 'collection property {}. Only graph classes are '
+                                                 'allowed to have collections as properties.'
+                                                 .format(element_name, property_name))
+                        if self._inheritance_sets[inner_class] != {inner_class}:
+                            raise AssertionError('Class {} contains an invalid collection of '
+                                                 'class {} elements. An inner collection class '
+                                                 'is not allowed to have any superclass other '
+                                                 'than itself. Each class is a superclass/subclass '
+                                                 'of itself.'.format(element_name, inner_class))
 
 
 @six.python_2_unicode_compatible
@@ -348,6 +377,7 @@ def _validate_property_names(class_name, properties):
         if not property_name or property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES):
             raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
                                           u'{}'.format(class_name, property_name))
+
 
 def get_subclass_sets_from_inheritance_sets(inheritance_sets):
     """Return a dict mapping each class to its set of subclasses."""
