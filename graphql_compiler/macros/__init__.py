@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
+from itertools import chain
 import six
 
 from graphql.language.ast import (FieldDefinition, Name, NamedType,
@@ -16,7 +17,7 @@ from .macro_edge import make_macro_edge_descriptor
 from .macro_edge.helpers import get_type_at_macro_edge_target
 from .macro_edge.directives import MacroEdgeDirective
 from .macro_expansion import expand_macros_in_query_ast
-from ..exceptions import GraphQLValidationError
+from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
 
 
 MacroRegistry = namedtuple(
@@ -88,11 +89,24 @@ def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
             u'class {}, macro edge {}, new GraphQL descriptor {}, new args {}.'
             .format(class_name, macro_edge_name, macro_edge_graphql, macro_edge_args))
 
-    # TODO(predrag): Write a more stringent check that makes sure that two types A and B,
-    #                where A is a superclass of B, cannot define the same macro edge.
-    #                Right now, both A and B can independently define a macro edge out_Foo,
-    #                which would result in an illegal schema as B would be required to have
-    #                two different descriptors for the same out_Foo edge.
+    # Ensure there's no conflict with macro edges defined on subclasses and superclasses.
+    class_sets_to_check = (
+        ('subclass', macro_registry.subclass_sets[class_name]),
+        ('superclass', {
+            cls
+            for cls, cls_subclasses in six.iteritems(macro_registry.subclass_sets)
+            if class_name in cls_subclasses
+        }),
+    )
+    for relationship, classes in class_sets_to_check:
+        for cls in classes:
+            macros_on_cls = macro_registry.macro_edges.get(cls, dict())
+            if macro_edge_name in macros_on_cls:
+                raise GraphQLInvalidMacroError(
+                    u'A macro edge with name {} already exists on {}, which is'
+                    u'a {} of {}. new GraphQL descriptor {}, new args {}'
+                    .format(macro_edge_name, class_name, relationship, cls,
+                            class_name, macro_edge_graphql, macro_edge_args))
 
     macro_registry.macro_edges.setdefault(class_name, dict())[macro_edge_name] = macro_descriptor
 
