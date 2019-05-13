@@ -8,8 +8,8 @@ from graphql.language.ast import (
 
 from ...ast_manipulation import get_ast_field_name
 from ...compiler.helpers import (
-    get_directive_argument_name, get_field_type_from_schema, get_vertex_field_type,
-    is_tag_argument, is_variable_argument
+    get_directive_argument_name, get_field_type_from_schema, get_vertex_field_type, is_tag_argument,
+    is_variable_argument
 )
 from ...schema import FilterDirective, TagDirective
 from ..macro_edge.directives import MacroEdgeTargetDirective
@@ -104,7 +104,7 @@ def _replace_tag_names_in_filter_directive(name_change_map, filter_directive):
                     new_value_list.append(value)
                 else:
                     raise AssertionError(u'Value was neither tag nor filter: {} {}'
-                                         .format(ast, value.value))
+                                         .format(filter_directive, value.value))
             filter_with_renamed_args.arguments.append(
                 Argument(Name('value'), value=ListValue(new_value_list)))
         else:
