@@ -1,6 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from itertools import chain
 import six
 
 from graphql.language.ast import (FieldDefinition, Name, NamedType,
