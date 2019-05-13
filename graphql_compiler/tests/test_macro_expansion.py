@@ -426,9 +426,9 @@ class MacroExpansionTests(unittest.TestCase):
             Animal {
                 net_worth @tag(tag_name: "parent_net_worth")
                 in_Animal_ParentOf {
-                    net_worth @tag(tag_name: "parent_net_worth_1")
+                    net_worth @tag(tag_name: "parent_net_worth_macro_edge_0")
                     out_Animal_ParentOf {
-                        net_worth @filter(op_name: ">", value: ["%parent_net_worth_1"])
+                        net_worth @filter(op_name: ">", value: ["%parent_net_worth_macro_edge_0"])
                                   @filter(op_name: ">", value: ["%parent_net_worth"])
                         name @output(out_name: "sibling")
                     }
