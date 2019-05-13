@@ -10,7 +10,7 @@ from ..ast_manipulation import (
 )
 from ..compiler.helpers import get_uniquely_named_objects_by_name, get_vertex_field_type
 from ..exceptions import GraphQLCompilationError, GraphQLInvalidMacroError
-from ..schema import is_vertex_field_name
+from ..schema import FilterDirective, is_vertex_field_name, FoldDirective, OutputSourceDirective
 from .macro_edge.directives import MacroEdgeTargetDirective
 from .macro_edge.helpers import find_target_and_copy_path_to_it, get_type_at_macro_edge_target
 
@@ -273,8 +273,21 @@ def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
                 if field_name in macro_edges_at_this_type:
                     macro_edge_descriptor = macro_edges_at_this_type[field_name]
 
-                    # TODO(bojanserafimov): Disallow @optional on macro expansion.
-                    # TODO(bojanserafimov): Disallow @recurse on macro expansion.
+                    # Disallow unsupported directives like @optional, @recurse
+                    directives_supported_at_macro_expansion = frozenset({
+                        FilterDirective.name,
+                        OutputSourceDirective.name,
+                        FoldDirective.name,
+                    })
+                    for directive in selection_ast.directives:
+                        directive_name = directive.name.value
+                        if directive_name not in directives_supported_at_macro_expansion:
+                            raise GraphQLCompilationError(
+                                u'Macro expansion for {} contains a {} directive, which is '
+                                u'not supported by the macro system. supported_directives: {}'
+                                .format(field_name, directive_name,
+                                        directives_supported_at_macro_expansion))
+
                     new_selection_ast, extra_selections = _expand_specific_macro_edge(
                         schema, macro_edge_descriptor.expansion_ast, selection_ast,
                         subclass_sets=subclass_sets)
