@@ -17,9 +17,10 @@ from .schema import (  # noqa
     DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal,
     insert_meta_fields_into_existing_schema, is_meta_field
 )
-from .schema_generation.schema_graph import SchemaGraph
 from .schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-
+from .schema_generation.orientdb.orientdb_schema_graph_builder import (
+    get_orientdb_schema_graph
+)
 
 __package_name__ = 'graphql-compiler'
 __version__ = '1.10.0'
@@ -194,6 +195,6 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
     if hidden_classes is None:
         hidden_classes = set()
 
-    schema_graph = SchemaGraph(schema_data)
+    schema_graph = get_orientdb_schema_graph(schema_data)
     return get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
                                                 hidden_classes)

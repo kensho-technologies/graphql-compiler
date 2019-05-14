@@ -1,5 +1,4 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import namedtuple
 import datetime
 import time
 import warnings
@@ -7,7 +6,7 @@ import warnings
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLString
 import six
 
-from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 
 
 EDGE_SOURCE_PROPERTY_NAME = 'out'
@@ -16,23 +15,6 @@ EDGE_END_NAMES = {EDGE_SOURCE_PROPERTY_NAME, EDGE_DESTINATION_PROPERTY_NAME}
 
 ORIENTDB_BASE_VERTEX_CLASS_NAME = 'V'
 ORIENTDB_BASE_EDGE_CLASS_NAME = 'E'
-
-ILLEGAL_PROPERTY_NAME_PREFIXES = (
-    # Prefixes that would make the GraphQL schema ambiguous,
-    # since this is how it represents adjacent vertices.
-    'out_',
-    'in_',
-
-    # Prefixes reserved for future extensions to the GraphQL schema,
-    # in case we want to, e.g., add edge-based traversals, or "both()"-style traversals.
-    'outE',
-    'inE',
-    'outV',
-    'inV',
-    'both_',
-    'bothE_',
-    'bothV_',
-)
 
 PROPERTY_TYPE_BOOLEAN_ID = 0
 PROPERTY_TYPE_BOOLEAN_NAME = 'Boolean'
@@ -189,10 +171,3 @@ def parse_default_property_value(property_name, property_type_id, default_value_
     else:
         raise AssertionError(u'Unsupported default value for property "{}" with type id {}: '
                              u'{}'.format(property_name, property_type_id, default_value_string))
-
-
-# A way to describe a property's type and associated information:
-#   - type: GraphQLType, the type of this property
-#   - default: the default value for the property, used when a record is inserted without an
-#              explicit value for this property. Set to None if no default is given in the schema.
-PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))

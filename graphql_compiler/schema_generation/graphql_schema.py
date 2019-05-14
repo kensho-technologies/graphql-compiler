@@ -12,7 +12,7 @@ import six
 from ..compiler.helpers import strip_non_null_from_type
 from ..schema import DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS
 from .exceptions import EmptySchemaError
-from .schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
+from .orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 
 
 def _get_referenced_type_equivalences(graphql_types, type_equivalence_hints):
