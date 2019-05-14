@@ -348,13 +348,13 @@ def _validate_property_names(class_name, properties):
             raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
                                           u'{}'.format(class_name, property_name))
 
+
 def get_subclass_sets_from_inheritance_sets(inheritance_sets):
     """Return a dict mapping each class to its set of subclasses."""
     subclass_sets = dict()
     for subclass_name, superclass_names in six.iteritems(inheritance_sets):
         for superclass_name in superclass_names:
-            subclass_sets.setdefault(
-                superclass_name, set()).add(subclass_name)
+            subclass_sets.setdefault(superclass_name, set()).add(subclass_name)
 
     # Freeze all subclass sets so they can never be modified again,
     # making a list of all keys before modifying any of their values.

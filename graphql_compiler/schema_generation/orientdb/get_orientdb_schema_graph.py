@@ -2,7 +2,7 @@
 from enum import Enum
 from itertools import chain
 
-from funcy.py3 import lsplit, memoize
+from funcy.py3 import lsplit
 from graphql.type import GraphQLList, GraphQLObjectType
 import six
 
