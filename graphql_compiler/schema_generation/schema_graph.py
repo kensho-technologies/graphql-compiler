@@ -4,9 +4,24 @@ from collections import namedtuple
 
 import six
 
-from .exceptions import (
-    ILLEGAL_PROPERTY_NAME_PREFIXES, IllegalSchemaStateError, InvalidClassError,
-    InvalidPropertyError
+from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
+
+
+ILLEGAL_PROPERTY_NAME_PREFIXES = (
+    # Prefixes that would make the GraphQL schema ambiguous,
+    # since this is how it represents adjacent vertices.
+    'out_',
+    'in_',
+
+    # Prefixes reserved for future extensions to the GraphQL schema,
+    # in case we want to, e.g., add edge-based traversals, or "both()"-style traversals.
+    'outE',
+    'inE',
+    'outV',
+    'inV',
+    'both_',
+    'bothE_',
+    'bothV_',
 )
 
 
