@@ -1,5 +1,4 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from enum import Enum
 from itertools import chain
 
 from funcy.py3 import lsplit
@@ -17,12 +16,6 @@ from .schema_properties import (
     PROPERTY_TYPE_LINK_ID, parse_default_property_value, try_get_graphql_scalar_type
 )
 from .utils import toposort_classes
-
-
-class Kind(Enum):
-    Vertex = 1
-    Edge = 2
-    NonGraph = 3
 
 
 def get_orientdb_schema_graph(schema_data):
@@ -148,7 +141,7 @@ def get_superclasses_from_class_definition(class_definition):
 def _get_non_graph_elements(class_name_to_definition, inheritance_sets):
     """Return a dict mapping class name to NonGraphElement."""
     non_graph_elements = dict()
-    non_graph_class_names = _get_class_names_of_kind(inheritance_sets, Kind.NonGraph)
+    _, _, non_graph_class_names = _get_vertex_edge_and_non_graph_class_names(inheritance_sets)
 
     for class_name in non_graph_class_names:
         class_definition = class_name_to_definition[class_name]
@@ -177,9 +170,8 @@ def _get_edge_elements(class_name_to_definition, inheritance_sets, inner_collect
     edge_elements = dict()
     subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
 
-    edge_class_names = _get_class_names_of_kind(inheritance_sets, Kind.Edge)
-    vertex_class_names = _get_class_names_of_kind(inheritance_sets, Kind.Vertex)
-    non_graph_class_names = _get_class_names_of_kind(inheritance_sets, Kind.NonGraph)
+    vertex_class_names, edge_class_names, non_graph_class_names = (
+        _get_vertex_edge_and_non_graph_class_names(inheritance_sets))
 
     for class_name in edge_class_names:
         class_definition = class_name_to_definition[class_name]
@@ -213,8 +205,8 @@ def _get_vertex_elements(class_name_to_definition, inheritance_sets, inner_colle
     """Return a dict mapping class name to VertexType."""
     vertex_elements = dict()
 
-    vertex_class_names = _get_class_names_of_kind(inheritance_sets, Kind.Vertex)
-    non_graph_class_names = _get_class_names_of_kind(inheritance_sets, Kind.NonGraph)
+    vertex_class_names, _, non_graph_class_names = (
+        _get_vertex_edge_and_non_graph_class_names(inheritance_sets))
 
     for class_name in vertex_class_names:
         class_definition = class_name_to_definition[class_name]
@@ -238,30 +230,27 @@ def _get_vertex_elements(class_name_to_definition, inheritance_sets, inner_colle
     return vertex_elements
 
 
-def _get_class_names_of_kind(inheritance_sets, kind):
-    """Return the classes of a certain kind."""
-    class_names = set()
+def _get_vertex_edge_and_non_graph_class_names(inheritance_sets):
+    """Return the vertex, edge and non-graph class names."""
+    vertex_class_names = set()
+    edge_class_names = set()
+    non_graph_class_names = set()
 
     for class_name, inheritance_set in six.iteritems(inheritance_sets):
-        inheritance_set = inheritance_sets[class_name]
-
         is_vertex = ORIENTDB_BASE_VERTEX_CLASS_NAME in inheritance_set
         is_edge = ORIENTDB_BASE_EDGE_CLASS_NAME in inheritance_set
 
         if is_vertex and is_edge:
             raise AssertionError(u'Class {} appears to be both a vertex and an edge class: '
                                  u'{}'.format(class_name, inheritance_set))
-
-        if is_vertex:
-            if kind == Kind.Vertex:
-                class_names.add(class_name)
+        elif is_vertex:
+            vertex_class_names.add(class_name)
         elif is_edge:
-            if kind == Kind.Edge:
-                class_names.add(class_name)
+            edge_class_names.add(class_name)
         else:
-            if kind == Kind.NonGraph:
-                class_names.add(class_name)
-    return class_names
+            non_graph_class_names.add(class_name)
+
+    return vertex_class_names, edge_class_names, non_graph_class_names
 
 
 def _get_class_fields(class_definition):
@@ -449,7 +438,7 @@ def _try_get_base_connections(class_name, inheritance_sets, links, abstract):
 def _link_vertex_and_edge_types(elements, inheritance_sets):
     """For each edge, link it to the vertex types it connects to each other."""
     subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
-    edge_class_names = _get_class_names_of_kind(inheritance_sets, Kind.Edge)
+    _, edge_class_names, _ = _get_vertex_edge_and_non_graph_class_names(inheritance_sets)
 
     for edge_class_name in edge_class_names:
         edge_element = elements[edge_class_name]
