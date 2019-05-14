@@ -10,7 +10,7 @@ from ..ast_manipulation import (
 )
 from ..compiler.helpers import get_uniquely_named_objects_by_name, get_vertex_field_type
 from ..exceptions import GraphQLCompilationError, GraphQLInvalidMacroError
-from ..schema import FilterDirective, is_vertex_field_name, FoldDirective, OutputSourceDirective
+from ..schema import FilterDirective, FoldDirective, OutputSourceDirective, is_vertex_field_name
 from .macro_edge.directives import MacroEdgeTargetDirective
 from .macro_edge.helpers import find_target_and_copy_path_to_it, get_type_at_macro_edge_target
 
