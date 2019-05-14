@@ -9,7 +9,7 @@ import six
 
 from .. import get_graphql_schema_from_orientdb_schema_data
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
-from ..schema_generation.orientdb.get_orientdb_schema_graph import get_orientdb_schema_graph
+from ..schema_generation.orientdb.orientdb_schema_graph_builder import get_orientdb_schema_graph
 from ..schema_generation.orientdb.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 
 

@@ -7,7 +7,7 @@ import six
 
 from .. import get_graphql_schema_from_orientdb_schema_data
 from ..schema_generation.graphql_schema import _get_union_type_name
-from ..schema_generation.orientdb.get_orientdb_schema_graph import get_orientdb_schema_graph
+from ..schema_generation.orientdb.orientdb_schema_graph_builder import get_orientdb_schema_graph
 from ..schema_generation.orientdb.schema_properties import (
     ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_EMBEDDED_LIST_ID,
     PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_LINK_ID, PROPERTY_TYPE_STRING_ID
