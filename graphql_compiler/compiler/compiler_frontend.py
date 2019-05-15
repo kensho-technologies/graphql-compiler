@@ -764,6 +764,10 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     # Validation passed, so the base_start_type must exist as a field of the root query.
     current_schema_type = get_field_type_from_schema(schema.get_query_type(), base_start_type)
 
+    # Allow list types at the query root in the schema.
+    if isinstance(current_schema_type, GraphQLList):
+        current_schema_type = current_schema_type.of_type
+
     # Construct the start location of the query and its associated metadata.
     location = Location((base_start_type,))
     base_location_info = LocationInfo(
