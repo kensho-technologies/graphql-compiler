@@ -185,7 +185,7 @@ def generate_disambiguations(existing_names, new_names):
         disambiguation = name
         index = 0
         while disambiguation in existing_names or disambiguation in name_mapping:
-            disambiguation = disambiguation + '_macro_edge_' + str(index)
+            disambiguation = name + '_macro_edge_' + str(index)
             index += 1
         name_mapping[name] = disambiguation
     return name_mapping
