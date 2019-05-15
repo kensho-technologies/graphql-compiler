@@ -71,6 +71,7 @@ def _validate_macro_ast_directives(ast, inside_fold_scope=False):
     Restrictions on use of directives:
     - @output and @output_source are disallowed
     - @macro_edge_target is not allowed to be inside a @fold scope
+    - @macro_edge_target is not allowed to begin with a coercion
 
     Args:
         ast: GraphQL AST describing a subtree of the macro
@@ -101,6 +102,15 @@ def _validate_macro_ast_directives(ast, inside_fold_scope=False):
             if inside_fold_scope:
                 raise GraphQLInvalidMacroError(
                     u'The @macro_edge_target cannot be inside a fold scope.')
+
+            # Check that the target doesn't begin with a coercion. This also implicitly
+            # checks that the macro is not on a union type, because union types always
+            # start with a coercion.
+            for selection in ast.selection_set.selections:
+                if isinstance(selection, InlineFragment):
+                    raise GraphQLInvalidMacroError(u'The @macro_edge_target cannot begin directly'
+                                                   u'with a coercion. Please put the directive on'
+                                                   u'the coercion block itself.')
         else:
             raise AssertionError(u'Unexpected directive name found: {} {}'
                                  .format(directive.name.value, directive))
@@ -251,8 +261,6 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     _, input_metadata, _, _ = ast_to_ir(schema, _get_minimal_query_ast_from_macro_ast(ast),
                                         type_equivalence_hints=type_equivalence_hints)
     ensure_arguments_are_provided(input_metadata, macro_edge_args)
-    # TODO(bojanserafimov): @macro_edge_target is not on a union type
-    # TODO(bojanserafimov): @macro_edge_target does not begin with a coercion
 
     _validate_class_selection_ast(
         get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast)
