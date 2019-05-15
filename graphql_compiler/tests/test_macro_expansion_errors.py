@@ -118,3 +118,29 @@ class MacroExpansionTests(unittest.TestCase):
 
         with self.assertRaises(GraphQLValidationError):
             perform_macro_expansion(self.macro_registry, query, args)
+
+    def test_recurse_at_expansion_is_not_supported(self):
+        query = '''{
+            Animal {
+                out_Animal_GrandparentOf @recurse(depth: 3) {
+                    name @output(out_name: "grandkid")
+                }
+            }
+        }'''
+        args = {}
+
+        with self.assertRaises(GraphQLCompilationError):
+            perform_macro_expansion(self.macro_registry, query, args)
+
+    def test_optional_at_expansion_is_not_supported(self):
+        query = '''{
+            Animal {
+                out_Animal_GrandparentOf @optional {
+                    name @output(out_name: "grandkid")
+                }
+            }
+        }'''
+        args = {}
+
+        with self.assertRaises(GraphQLCompilationError):
+            perform_macro_expansion(self.macro_registry, query, args)

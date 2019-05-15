@@ -10,7 +10,7 @@ from ..ast_manipulation import (
 )
 from ..compiler.helpers import get_uniquely_named_objects_by_name, get_vertex_field_type
 from ..exceptions import GraphQLCompilationError, GraphQLInvalidMacroError
-from ..schema import is_vertex_field_name
+from ..schema import FilterDirective, FoldDirective, OutputSourceDirective, is_vertex_field_name
 from .macro_edge.directives import MacroEdgeTargetDirective
 from .macro_edge.helpers import (
     find_target_and_copy_path_to_it, generate_disambiguations, get_all_tag_names,
@@ -228,6 +228,24 @@ def _expand_specific_macro_edge(schema, macro_ast, selection_ast, subclass_sets=
     return replacement_selection_ast, extra_selections
 
 
+def _check_that_expansion_directives_are_supported(macro_edge_field):
+    """Raise GraphQLCompilationError if an unsupported directive is used at expansion."""
+    macro_name = get_ast_field_name(macro_edge_field)
+    directives_supported_at_macro_expansion = frozenset({
+        FilterDirective.name,
+        OutputSourceDirective.name,
+        FoldDirective.name,
+    })
+    for directive in macro_edge_field.directives:
+        directive_name = directive.name.value
+        if directive_name not in directives_supported_at_macro_expansion:
+            raise GraphQLCompilationError(
+                u'Macro expansion for {} contains a {} directive, which is '
+                u'not supported by the macro system. supported_directives: {}'
+                .format(macro_name, directive_name,
+                        directives_supported_at_macro_expansion))
+
+
 def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
                                 current_schema_type, ast, query_args, tag_names):
     """Return (new_ast, new_query_args) containing the AST after macro expansion.
@@ -275,6 +293,7 @@ def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
             if is_vertex_field_name(field_name):
                 # Check if this is a macro edge.
                 if field_name in macro_edges_at_this_type:
+                    _check_that_expansion_directives_are_supported(selection_ast)
                     macro_edge_descriptor = macro_edges_at_this_type[field_name]
 
                     # Sanitize the macro, making sure it doesn't use any taken tag names.
@@ -284,8 +303,6 @@ def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
                     sanitized_macro_ast = replace_tag_names(
                         name_change_map, macro_edge_descriptor.expansion_ast)
 
-                    # TODO(bojanserafimov): Disallow @optional on macro expansion.
-                    # TODO(bojanserafimov): Disallow @recurse on macro expansion.
                     new_selection_ast, extra_selections = _expand_specific_macro_edge(
                         schema, sanitized_macro_ast, selection_ast, subclass_sets=subclass_sets)
                     extra_selection_set = _merge_selection_sets(

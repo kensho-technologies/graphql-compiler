@@ -582,3 +582,82 @@ class MacroExpansionTests(unittest.TestCase):
         expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
+
+    def test_macro_expansion_with_fold_directive(self):
+        query = '''{
+            Animal {
+                out_Animal_GrandparentOf @fold {
+                    name @output(out_name: "grandkid")
+                }
+            }
+        }'''
+        args = {}
+
+        expected_query = '''{
+            Animal {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf @fold {
+                        name @output(out_name: "grandkid")
+                    }
+                }
+            }
+        } '''
+        expected_args = {}
+
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
+    def test_macro_expansion_with_output_source_directive(self):
+        query = '''{
+            Animal {
+                out_Animal_GrandparentOf @output_source {
+                    name @output(out_name: "grandkid")
+                }
+            }
+        }'''
+        args = {}
+
+        expected_query = '''{
+            Animal {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf @output_source {
+                        name @output(out_name: "grandkid")
+                    }
+                }
+            }
+        } '''
+        expected_args = {}
+
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
+    def test_macro_expansion_with_filter_directive(self):
+        query = '''{
+            Animal {
+                out_Animal_GrandparentOf @filter(op_name: "name_or_alias", value: ["$wanted"]) {
+                    name @output(out_name: "grandkid")
+                }
+            }
+        }'''
+        args = {
+            'wanted': 'Larry'
+        }
+
+        expected_query = '''{
+            Animal {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"]) {
+                        name @output(out_name: "grandkid")
+                    }
+                }
+            }
+        }'''
+        expected_args = {
+            'wanted': 'Larry'
+        }
+
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
