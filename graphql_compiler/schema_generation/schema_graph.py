@@ -205,6 +205,22 @@ class SchemaElement(object):
         self._properties = properties
         self._class_fields = class_fields
 
+        # In the schema graph, both vertices and edges are represented with vertices.
+        # These dicts have the name of the adjacent schema vertex in the appropriate direction.
+        #
+        # For vertex classes:
+        #   in  = the edge is attached with its head / arrow side
+        #   out = the edge is attached with its tail side
+        #
+        # For edge classes and non-graph classes:
+        #   in  = the tail side of the edge
+        #   out = the head / arrow side of the edge
+        #
+        # A non-graph class may only have connections if it's abstract and all of its non-abstract
+        # subclasses are vertices.
+        self.in_connections = set()
+        self.out_connections = set()
+
         self._print_args = (class_name, abstract, properties, class_fields) + args
         self._print_kwargs = kwargs
 
@@ -244,8 +260,9 @@ class SchemaElement(object):
         return isinstance(self, NonGraphElement)
 
     def freeze(self):
-        """Make public mutable internal fields immutable."""
-        pass
+        """Make the SchemaElement's connections immutable."""
+        self.in_connections = frozenset(self.in_connections)
+        self.out_connections = frozenset(self.out_connections)
 
     def __str__(self):
         """Return a human-readable unicode representation of this SchemaElement."""
@@ -265,44 +282,12 @@ class SchemaElement(object):
         return self.__str__()
 
 
-class GraphElement(SchemaElement):
-
-    # Since an abstract class without any abstract methods can be instantiated, we make the
-    # init method abstract in order to make it impossible to instantiate this class.
-    # Inspiration came from: https://stackoverflow.com/questions/44800659/python-abstract-class-init
-    @abstractmethod
-    def __init__(self, class_name, abstract, properties, class_fields, *args, **kwargs):
-        super(GraphElement, self).__init__(class_name, abstract, properties, class_fields, args,
-                                           kwargs)
-
-        # In the schema graph, both vertices and edges are represented with vertices.
-        # These dicts have the name of the adjacent schema vertex in the appropriate direction.
-        #
-        # For vertex classes:
-        #   in  = the edge is attached with its head / arrow side
-        #   out = the edge is attached with its tail side
-        #
-        # For edge classes:
-        #   in  = the tail side of the edge
-        #   out = the head / arrow side of the edge
-        #
-        # For non-graph classes, these properties are always empty sets.
-        self.in_connections = set()
-        self.out_connections = set()
-
-    def freeze(self):
-        """Make the SchemaElement's connections immutable."""
-        super(GraphElement, self).freeze()
-        self.in_connections = frozenset(self.in_connections)
-        self.out_connections = frozenset(self.out_connections)
-
-
-class VertexType(GraphElement):
+class VertexType(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields):
         super(VertexType, self).__init__(class_name, abstract, properties, class_fields)
 
 
-class EdgeType(GraphElement):
+class EdgeType(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields,
                  base_in_connection=None, base_out_connection=None):
         """Create a new EdgeType object.
