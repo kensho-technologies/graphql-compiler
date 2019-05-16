@@ -1300,9 +1300,6 @@ CREATE VIEW animal AS
 At this point, the `animal` view can be used in the SQLAlchemy Table for the purposes of compiling.
 
 ## Macro System
-Commonly used patterns in queries can be made into macros and reused. This can be used to make
-complicated queries easy to read, and make the schema more discoverable. Currently we have one
-kind of macros, macro edges.
 
 ### Macro Edges
 Macro edges define a new edge in the schema by specifying how to compute it.
@@ -1327,7 +1324,7 @@ As an example, consider the following query:
     }
 }
 ```
-Let's introduce a macro for `out_Animal_GrandparentOf` and simplify our query:
+Let's introduce the `out_Animal_GrandparentOf` macro to simplify our query:
 ```graphql
 {
     Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
@@ -1371,7 +1368,7 @@ Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings") {
 }
 ```
 
-Macro definitions and macro uses are type checked. If a macro is invalid, or is used incorrectly,
+Macro definitions and macro uses are type checked. If a macro is invalid or is used incorrectly,
 the macro system will complain, rather than create an invalid query.
 
 #### Constraints for macro definitions
@@ -1410,7 +1407,7 @@ def example(schema, type_equivalence_hints):
         }
     }'''
     macro_args = {}
-    macros.register_macro_edge(macro_registry, macro_graphq, macro_args)
+    macros.register_macro_edge(macro_registry, macro_graphql, macro_args)
     
     # Use our macro registry in a query
     query = '''{
@@ -1424,7 +1421,7 @@ def example(schema, type_equivalence_hints):
     args = {}
     expanded_query, new_args = macros.perform_macro_expansion(macro_registry, query, args)
     
-    # Verify
+    # Verify that macro expansion worked
     print(expanded_query)
     # Prints out the following query:
     # {
