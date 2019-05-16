@@ -221,7 +221,14 @@ class SchemaElement(object):
         self.in_connections = set()
         self.out_connections = set()
 
-        self._print_args = (class_name, abstract, properties, class_fields) + args
+        self._print_args = (
+                               class_name,
+                               abstract,
+                               properties,
+                               class_fields,
+                               self.in_connections,
+                               self.out_connections
+                           ) + args
         self._print_kwargs = kwargs
 
     @property
