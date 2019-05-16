@@ -1367,6 +1367,9 @@ Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings") {
     }
 }
 ```
+Macro edges can also use runtime parameters. The values for the parameters are provided when
+the macro is registered, and not when it is used. See the section below to see how to use
+runtime parameters.
 
 Macro definitions and macro uses are type checked. If a macro is invalid or is used incorrectly,
 the macro system will complain, rather than create an invalid query.
@@ -1398,23 +1401,26 @@ def example(schema, type_equivalence_hints):
 
     # Add a macro to the registry
     macro_graphql = '''{
-        Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+        Animal @macro_edge_definition(name: "out_Animal_GrandchildrenCalledNate") {
             out_Animal_ParentOf {
-                out_Animal_ParentOf @macro_edge_target {
+                out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$nate_name"])
+                                    @macro_edge_target {
                     uuid
                 }
             }
         }
     }'''
-    macro_args = {}
+    macro_args = {
+        'nate_name': 'Nate',
+    }
     macros.register_macro_edge(macro_registry, macro_graphql, macro_args)
     
     # Use our macro registry in a query
     query = '''{
         Animal {
             name @output(out_name: "animal_name")
-            out_Animal_GrandparentOf {
-                name @output(out_name: "grandchild")
+            out_Animal_GrandchildrenCalledNate {
+                uuid @output(out_name: "grandchild")
             }
         }
     }'''
@@ -1433,6 +1439,12 @@ def example(schema, type_equivalence_hints):
     #             }
     #         }
     #     }
+    # }
+
+    print(new_args)
+    # Prints out the following:
+    # {
+    #     'nate_name': 'Nate'
     # }
 ```
 
