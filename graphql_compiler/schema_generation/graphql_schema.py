@@ -94,47 +94,46 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
         if property_name not in collections_of_non_graphql_scalars
     }
 
-    # Add edge GraphQL fields (edges to other vertex classes).
+    # Add edge GraphQL fields.
     schema_element = schema_graph.get_element_by_class_name(cls_name)
-    if not schema_element.is_non_graph:
-        outbound_edges = (
-            ('out_{}'.format(out_edge_name),
-             schema_graph.get_element_by_class_name(out_edge_name).base_out_connection)
-            for out_edge_name in schema_element.out_connections
-        )
-        inbound_edges = (
-            ('in_{}'.format(in_edge_name),
-             schema_graph.get_element_by_class_name(in_edge_name).base_in_connection)
-            for in_edge_name in schema_element.in_connections
-        )
-        for field_name, to_type_name in chain(outbound_edges, inbound_edges):
-            edge_endpoint_type_name = None
-            subclasses = schema_graph.get_subclass_set(to_type_name)
+    outbound_edges = (
+        ('out_{}'.format(out_edge_name),
+         schema_graph.get_element_by_class_name(out_edge_name).base_out_connection)
+        for out_edge_name in schema_element.out_connections
+    )
+    inbound_edges = (
+        ('in_{}'.format(in_edge_name),
+         schema_graph.get_element_by_class_name(in_edge_name).base_in_connection)
+        for in_edge_name in schema_element.in_connections
+    )
+    for field_name, to_type_name in chain(outbound_edges, inbound_edges):
+        edge_endpoint_type_name = None
+        subclasses = schema_graph.get_subclass_set(to_type_name)
 
-            to_type_abstract = schema_graph.get_element_by_class_name(to_type_name).abstract
-            if not to_type_abstract and len(subclasses) > 1:
-                # If the edge endpoint type has no subclasses, it can't be coerced into any other
-                # type. If the edge endpoint type is abstract (an interface type), we can already
-                # coerce it to the proper type with a GraphQL fragment. However, if the endpoint
-                # type is non-abstract and has subclasses, we need to return its subclasses as an
-                # union type. This is because GraphQL fragments cannot be applied on concrete
-                # types, and GraphQL does not support inheritance of concrete types.
-                type_names_to_union = [
-                    subclass
-                    for subclass in subclasses
-                    if subclass not in hidden_classes
-                ]
-                if type_names_to_union:
-                    edge_endpoint_type_name = _get_union_type_name(type_names_to_union)
-            else:
-                if to_type_name not in hidden_classes:
-                    edge_endpoint_type_name = to_type_name
+        to_type_abstract = schema_graph.get_element_by_class_name(to_type_name).abstract
+        if not to_type_abstract and len(subclasses) > 1:
+            # If the edge endpoint type has no subclasses, it can't be coerced into any other
+            # type. If the edge endpoint type is abstract (an interface type), we can already
+            # coerce it to the proper type with a GraphQL fragment. However, if the endpoint
+            # type is non-abstract and has subclasses, we need to return its subclasses as an
+            # union type. This is because GraphQL fragments cannot be applied on concrete
+            # types, and GraphQL does not support inheritance of concrete types.
+            type_names_to_union = [
+                subclass
+                for subclass in subclasses
+                if subclass not in hidden_classes
+            ]
+            if type_names_to_union:
+                edge_endpoint_type_name = _get_union_type_name(type_names_to_union)
+        else:
+            if to_type_name not in hidden_classes:
+                edge_endpoint_type_name = to_type_name
 
-            if edge_endpoint_type_name is not None:
-                # If we decided to not hide this edge due to its endpoint type being
-                # non-representable, represent the edge field as the GraphQL type
-                # List(edge_endpoint_type_name).
-                result[field_name] = GraphQLList(graphql_types[edge_endpoint_type_name])
+        if edge_endpoint_type_name is not None:
+            # If we decided to not hide this edge due to its endpoint type being
+            # non-representable, represent the edge field as the GraphQL type
+            # List(edge_endpoint_type_name).
+            result[field_name] = GraphQLList(graphql_types[edge_endpoint_type_name])
 
     for field_name, field_type in six.iteritems(field_type_overrides):
         if field_name not in result:
