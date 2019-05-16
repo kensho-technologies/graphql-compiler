@@ -169,12 +169,12 @@ class SchemaGraph(object):
         return self._non_graph_class_names
 
     def _get_element_names_of_class(self, cls):
-        """Return a dict mapping an element name to """
-        return {
-            name: element
+        """Return a frozenset of the names of the elements are instances of the class.."""
+        return frozenset({
+            name
             for name, element in self._elements.items()
             if isinstance(element, cls)
-        }
+        })
 
 
 @six.python_2_unicode_compatible
