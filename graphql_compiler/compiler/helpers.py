@@ -242,18 +242,22 @@ def invert_dict(invertible_dict):
     return inverted
 
 
-def is_variable_argument(argument):
-    """Return True if the directive argument is a runtime variable, and False otherwise."""
+def is_runtime_parameter(argument):
+    """Return True if the directive argument defines a runtime parameter, and False otherwise."""
     return argument.startswith('$')
 
 
-def is_tag_argument(argument):
-    """Return True if the directive argument is a tagged value, and False otherwise."""
+def is_tagged_parameter(argument):
+    """Return True if the directive argument defines a tagged parameter, and False otherwise."""
     return argument.startswith('%')
 
 
-def get_directive_argument_name(argument):
-    """Return the name of a variable or tag argument without the $ or %."""
+def get_parameter_name(argument):
+    """Return the name of the parameter without the leading prefix."""
+    if argument[0] not in {'$', '%'}:
+        raise AssertionError(u'Unexpectedly received an unprefixed parameter name, unable to '
+                             u'determine whether it is a runtime or tagged parameter: {}'
+                             .format(argument))
     return argument[1:]
 
 
