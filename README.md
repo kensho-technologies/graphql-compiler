@@ -1353,7 +1353,26 @@ Now let's use this macro to rewrite our query:
     }
 }
 ```
-Macro edges can make use of tags, filters, etc, to define more complicated macros.
+Macro edges can make use of tags, filters, etc, to define more complicated macros like this one
+```graphql
+Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings") {
+    net_worth @tag(tag_name: "net_worth")
+    out_Animal_BornAt {
+        event_date @tag(tag_name: "birthday")
+    }
+    in_Animal_ParentOf {
+        out_Animal_ParentOf @macro_edge_target {
+            net_worth @filter(op_name: ">", value: ["%net_worth"])
+            out_Animal_BornAt {
+                event_date @filter(op_name: "<", value: ["%birthday"])
+            }
+        }
+    }
+}
+```
+
+Macro definitions and macro uses are type checked. If a macro is invalid, or is used incorrectly,
+the macro system will complain, rather than create an invalid query.
 
 #### Constraints for macro definitions
 - Macro definitions cannot use other macros as part of their definition.
@@ -1366,6 +1385,59 @@ the `@macro_edge_target` on the type coercion itself, instead of before it.
 
 #### Constraints for macro usage
 - The `@optional` and `@recurse` directives cannot be used on macro edges.
+
+### Using the macro registry
+This example demonstrates how to define a macro and use it. It assumes you already know
+how to construct a GraphQL schema.
+
+```python
+from graphql_compiler import macros
+from graphql_compiler.compiler.subclass import compute_subclass_sets
+
+def example(schema, type_equivalence_hints):
+    # Create a macro registry based on the schema
+    subclass_sets = compute_subclass_sets(schema, type_equivalence_hints)
+    macro_registry = macros.create_macro_registry(schema, type_equivalence_hints, subclass_sets)
+
+    # Add a macro to the registry
+    macro_graphql = '''{
+        Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+            out_Animal_ParentOf {
+                out_Animal_ParentOf @macro_edge_target {
+                    uuid
+                }
+            }
+        }
+    }'''
+    macro_args = {}
+    register_macro_edge(macro_registry, macro_graphq, macro_args)
+    
+    # Use our macro registry in a query
+    query = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_GrandparentOf {
+                name @output(out_name: "grandchild")
+            }
+        }
+    }'''
+    args = {}
+    expanded_query, new_args = perform_macro_expansion(macro_registry, query, args)
+    
+    # Verify
+    print(expanded_query)
+    # Prints out the following query:
+    # {
+    #     Animal {
+    #         name @output(out_name: "animal_name")
+    #         out_Animal_ParentOf {
+    #             out_Animal_ParentOf {
+    #                 name @output(out_name: "grandchild")
+    #             }
+    #         }
+    #     }
+    # }
+```
 
 ## Miscellaneous
 
