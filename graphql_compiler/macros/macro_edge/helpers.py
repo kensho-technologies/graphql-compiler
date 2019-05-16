@@ -62,8 +62,12 @@ def get_directives_for_ast(ast):
 
 def get_all_tag_names(ast):
     """Return a set of strings containing tag names that appear in the query.
+
     Args:
         ast: GraphQL query AST object
+
+    Returns:
+        set of strings containing tag names that appear in the query
     """
     return {
         # Schema validation has ensured this exists
@@ -83,7 +87,7 @@ def _replace_tag_names_in_tag_directive(name_change_map, tag_directive):
     return renamed_tag_directive, new_name != current_name
 
 
-def _replace_tag_names_in_filter_directive(name_change_map, filter_directive):
+def _replace_tag_names_in_filter_directive(name_change_map, filter_directive, ast):
     """Return the new directive, and whether it is different from the old."""
     made_changes = False
     filter_with_renamed_args = copy(filter_directive)
@@ -108,13 +112,13 @@ def _replace_tag_names_in_filter_directive(name_change_map, filter_directive):
             filter_with_renamed_args.arguments.append(
                 Argument(Name('value'), value=ListValue(new_value_list)))
         else:
-            raise AssertionError(u'Unknown argument name {} in filter'
-                                 .format(argument.name.value))
+            raise AssertionError(u'Unknown argument name {} in filter: {}'
+                                 .format(argument.name.value, ast))
     return filter_with_renamed_args, made_changes
 
 
 def _replace_tag_names_at_current_node(name_change_map, ast):
-    """Replace tag names that are already in use at the root of the AST."""
+    """Return a new ast with tag names replaced according to the name_change_map."""
     # Rename tag names in @tag and @filter directives, and record if we made changes
     made_changes = False
     new_directives = []
@@ -126,12 +130,12 @@ def _replace_tag_names_at_current_node(name_change_map, ast):
             new_directives.append(renamed_tag_directive)
         elif directive.name.value == FilterDirective.name:
             filter_with_renamed_args, made_changes_to_filter = (
-                _replace_tag_names_in_filter_directive(name_change_map, directive))
+                _replace_tag_names_in_filter_directive(name_change_map, directive, ast))
             made_changes = made_changes or made_changes_to_filter
             new_directives.append(filter_with_renamed_args)
         else:
             new_directives.append(directive)
-    return made_changes, new_directives
+    return new_directives, made_changes
 
 
 def replace_tag_names(name_change_map, ast):
@@ -157,7 +161,7 @@ def replace_tag_names(name_change_map, ast):
         new_selection_set = SelectionSet(new_selections)
 
     # Process the current node
-    made_changes_at_this_node, new_directives = _replace_tag_names_at_current_node(
+    new_directives, made_changes_at_this_node = _replace_tag_names_at_current_node(
         name_change_map, ast)
     made_changes = made_changes or made_changes_at_this_node
 
@@ -173,9 +177,11 @@ def replace_tag_names(name_change_map, ast):
 
 def generate_disambiguations(existing_names, new_names):
     """Return a dict mapping the new names to similar names not conflicting with existing names.
+
     Args:
         existing_names: set of strings, the names that are already taken
         new_names: set of strings, the names that might coincide with exisitng names
+
     Returns:
         dict mapping the new names to other unique names not present in existing_names
     """
@@ -185,7 +191,7 @@ def generate_disambiguations(existing_names, new_names):
         disambiguation = name
         index = 0
         while disambiguation in existing_names or disambiguation in name_mapping:
-            disambiguation = name + '_macro_edge_' + str(index)
+            disambiguation = '{}_macro_edge_{}'.format(name, index)
             index += 1
         name_mapping[name] = disambiguation
     return name_mapping

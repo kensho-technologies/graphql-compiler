@@ -299,7 +299,7 @@ def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
                     # Sanitize the macro, making sure it doesn't use any taken tag names.
                     macro_tag_names = get_all_tag_names(macro_edge_descriptor.expansion_ast)
                     name_change_map = generate_disambiguations(tag_names, macro_tag_names)
-                    tag_names |= set(name_change_map.values())
+                    tag_names.update(name_change_map.values())
                     sanitized_macro_ast = replace_tag_names(
                         name_change_map, macro_edge_descriptor.expansion_ast)
 
