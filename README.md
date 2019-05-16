@@ -55,7 +55,7 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
      * [Configuring the SQL Database to Match the GraphQL Schema](#configuring-the-sql-database-to-match-the-graphql-schema)
   * [Macro System](#macro-system)
      * [Macro Edges](#macro-edges)
-     * [Macro Directives](#macro-directives)
+     * [Using the macro registry](#using-the-macro-registry)
   * [Miscellaneous](#miscellaneous)
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
