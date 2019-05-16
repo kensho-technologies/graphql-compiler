@@ -23,7 +23,7 @@ from .schema_generation.orientdb.schema_graph_builder import (
 )
 
 __package_name__ = 'graphql-compiler'
-__version__ = '1.10.0'
+__version__ = '1.10.1'
 
 
 def graphql_to_match(schema, graphql_query, parameters, type_equivalence_hints=None):

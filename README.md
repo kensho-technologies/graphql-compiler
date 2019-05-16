@@ -85,7 +85,7 @@ from graphql_compiler.schema_generation.orientdb.utils import ORIENTDB_SCHEMA_RE
 from graphql_compiler.tests.conftest import init_integration_graph_client
 
 # The following code is meant to serve as a mock example and will not run
-# unless you are in the development enviroment outlined by CONTRIBUTING.md.
+# unless you are in the development environment outlined by CONTRIBUTING.md.
 
 # Step 1: Initialize dummy OrientDB database and get pyorient OrientDB client
 client = init_integration_graph_client()
@@ -292,8 +292,10 @@ This query is *invalid* for two separate reasons:
                 out_Animal_OfSpecies {
                     uuid @output(out_name: "species_id")
                 }
-                out_Animal_RelatedTo {
-                    name @output(out_name: "relative_name")
+                out_Entity_Related {
+                    ... on Animal {
+                        name @output(out_name: "relative_name")
+                    }
                 }
             }
         }
@@ -307,8 +309,10 @@ The following is a valid use of `@fold`:
         out_Animal_ParentOf @fold {
             in_Animal_ParentOf {
                 in_Animal_ParentOf {
-                    out_Animal_RelatedTo {
-                        name @output(out_name: "final_name")
+                    out_Entity_Related {
+                        ... on Animal {
+                            name @output(out_name: "final_name")
+                        }
                     }
                 }
             }
@@ -389,7 +393,7 @@ Consider the following query:
 ```
 It returns one row for every `Animal` that has a color equal to `$animal_color`,
 containing the animal's name in a column named `animal_name`. The parameter `$animal_color` is
-a runtime parameter -- the user must pass in a value (e.g. `{"$animal_color": "blue"}`) that
+a runtime parameter -- the user must pass in a value (e.g. `{"animal_color": "blue"}`) that
 will be inserted into the query before querying the database.
 
 **Tagged parameters** are represented with a `%` prefix (e.g. `%foo`) and denote parameters
