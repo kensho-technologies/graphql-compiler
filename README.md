@@ -53,6 +53,9 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
      * [Configuring SQLAlchemy](#configuring-sqlalchemy)
      * [End-To-End SQL Example](#end-to-end-sql-example)
      * [Configuring the SQL Database to Match the GraphQL Schema](#configuring-the-sql-database-to-match-the-graphql-schema)
+  * [Macro System](#macro-system)
+     * [Macro Edges](#macro-edges)
+     * [Macro Directives](#macro-directives)
   * [Miscellaneous](#miscellaneous)
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
@@ -1295,6 +1298,74 @@ CREATE VIEW animal AS
     FROM animal_table
 ```
 At this point, the `animal` view can be used in the SQLAlchemy Table for the purposes of compiling.
+
+## Macro System
+Commonly used patterns in queries can be made into macros and reused. This can be used to make
+complicated queries easy to read, and make the schema more discoverable. Currently we have one
+kind of macros, macro edges.
+
+### Macro Edges
+Macro edges define a new edge in the schema by specifying how to compute it.
+Macro edges are similar to views in SQL. However, there's a few differences:
+- Macros are stored in a macro registry, that does not necessarily live inside the database. This has
+two avantages:
+  - Macros can be created locally by clients without database access.
+  - Macros work even on schemas that have been stitched from the schemas of multiple backends.
+- When a query with macros is compiled, a preprocessing step generates an equivalent query without
+macros by expanding.
+
+As an example, consider the following query:
+```graphql
+{
+    Animal {
+        name @output(out_name: "animal_name")
+        out_Animal_ParentOf {
+            out_Animal_ParentOf {
+                name @output(out_name: "grandchild_name")
+            }
+        }
+    }
+}
+```
+Let's introduce a macro for `out_Animal_GrandparentOf` and simplify our query:
+```graphql
+{
+    Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+        out_Animal_ParentOf {
+            out_Animal_ParentOf @macro_edge_target {
+                uuid
+            }
+        }
+    }
+}
+```
+The directive `@macro_edge_definition` declares that this is a macro, and gives it a name.
+To use it as any other edge, we will refer to it by the name given here.
+The directive `@macro_edge_target` specifies where the grandchild of the animal is.
+Now let's use this macro to rewrite our query:
+```graphql
+{
+    Animal {
+        name @output(out_name: "animal_name")
+        out_Animal_GrandparentOf {
+            name @output(out_name: "grandchild_name")
+        }
+    }
+}
+```
+Macro edges can make use of tags, filters, etc, to define more complicated macros.
+
+#### Constraints for macro definitions
+- Macro definitions cannot use other macros as part of their definition.
+- A macro requires exactly one `@macro_edge_definition` and one `@macro_edge_target` directive.
+Additionally, these directives can only be used inside macro definitions.
+- The `@macro_edge_target` cannot be inside a `@fold` scope.
+- The `@macro_edge_target` cannot begin with a type coercion. If that is what you want, put
+the `@macro_edge_target` on the type coercion itself, instead of before it.
+- Macros cannot use `@output` or `@output_source`.
+
+#### Constraints for macro usage
+- The `@optional` and `@recurse` directives cannot be used on macro edges.
 
 ## Miscellaneous
 
