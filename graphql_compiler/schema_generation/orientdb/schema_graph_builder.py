@@ -87,7 +87,7 @@ def get_orientdb_schema_graph(schema_data):
 
     # Initialize the connections that show which schema classes can be connected to
     # which other schema classes, then freeze all schema elements.
-    _link_vertex_and_edge_types(elements, inheritance_sets)
+    _link_schema_elements(elements, inheritance_sets)
     for element in six.itervalues(elements):
         element.freeze()
 
@@ -435,8 +435,8 @@ def _try_get_base_connections(class_name, inheritance_sets, links, abstract):
     )
 
 
-def _link_vertex_and_edge_types(elements, inheritance_sets):
-    """For each edge, link it to the vertex types it connects to each other."""
+def _link_schema_elements(elements, inheritance_sets):
+    """For each edge, link the schema elements it connects to each other."""
     subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
     _, edge_class_names, _ = _get_vertex_edge_and_non_graph_class_names(inheritance_sets)
 
