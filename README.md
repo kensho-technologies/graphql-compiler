@@ -1410,7 +1410,7 @@ def example(schema, type_equivalence_hints):
         }
     }'''
     macro_args = {}
-    register_macro_edge(macro_registry, macro_graphq, macro_args)
+    macros.register_macro_edge(macro_registry, macro_graphq, macro_args)
     
     # Use our macro registry in a query
     query = '''{
@@ -1422,7 +1422,7 @@ def example(schema, type_equivalence_hints):
         }
     }'''
     args = {}
-    expanded_query, new_args = perform_macro_expansion(macro_registry, query, args)
+    expanded_query, new_args = macros.perform_macro_expansion(macro_registry, query, args)
     
     # Verify
     print(expanded_query)
