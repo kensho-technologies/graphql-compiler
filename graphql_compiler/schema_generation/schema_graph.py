@@ -78,7 +78,7 @@ class SchemaGraph(object):
 
         return result
 
-    def _get_property_values_with_defaults(self, classname, property_values):
+    def get_property_values_with_defaults(self, classname, property_values):
         """Return the property values for the class, with default values applied where needed."""
         # To uphold OrientDB semantics, make a new dict with all property values set
         # to their default values, which are None if no default was set.
