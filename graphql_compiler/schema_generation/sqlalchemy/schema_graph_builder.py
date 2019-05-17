@@ -40,11 +40,11 @@ def _validate_sql_to_graphql_is_toposorted_by_class_inheritance():
     """Validate that SQL_SCALAR_CLASS_TO_GRAPHQL_TYPE dict is toposorted by class inheritance."""
     sql_classes = list(SQL_CLASS_TO_GRAPHQL_TYPE.keys())
     for i, class_ in enumerate(sql_classes):
-        for other_class_ in sql_classes[i + 1:]:
-            if issubclass(other_class_, class_):
-                raise AssertionError("SQL_CLASS_TO_GRAPHQL_TYPE is not toposorted by class "
-                                     "inheritance. Class {} is a subclass of {} but is appears  "
-                                     "later in the OrderedDict.")
+        for other_class in sql_classes[i + 1:]:
+            if issubclass(other_class, class_):
+                raise AssertionError('SQL_CLASS_TO_GRAPHQL_TYPE is not toposorted by class '
+                                     'inheritance. Class {} is a subclass of {} but appears '
+                                     'later in the OrderedDict.'.format(other_class, class_))
 
 
 def _try_get_graphql_scalar_type(column_name, column_type):
