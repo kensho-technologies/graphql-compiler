@@ -21,6 +21,7 @@ from .schema_generation.graphql_schema import get_graphql_schema_from_schema_gra
 from .schema_generation.orientdb.schema_graph_builder import (
     get_orientdb_schema_graph
 )
+from .schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 
 __package_name__ = 'graphql-compiler'
 __version__ = '1.10.1'
@@ -137,8 +138,11 @@ def graphql_to_gremlin(schema, graphql_query, parameters, type_equivalence_hints
         query=insert_arguments_into_query(compilation_result, parameters))
 
 
-def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_type_overrides=None,
-                                                 hidden_classes=None):
+def get_graphql_schema_from_orientdb_schema_data(
+        schema_data,
+        class_to_field_type_overrides=None,
+        hidden_classes=frozenset(ORIENTDB_BASE_VERTEX_CLASS_NAME)
+):
     """Construct a GraphQL schema from an OrientDB schema.
 
     Args:
@@ -184,7 +188,9 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
                                        (string -> {string -> GraphQLType}). Used to override the
                                        type of a field in the class where it's first defined and all
                                        the class's subclasses.
-        hidden_classes: optional set of strings, classes to not include in the GraphQL schema.
+        hidden_classes: set of strings, classes to not include in the GraphQL schema.
+                        By default we hide the base OrientDB vertex class to make the schema
+                        more syntactically sweet.
 
     Returns:
         tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
@@ -192,8 +198,6 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
     """
     if class_to_field_type_overrides is None:
         class_to_field_type_overrides = dict()
-    if hidden_classes is None:
-        hidden_classes = set()
 
     schema_graph = get_orientdb_schema_graph(schema_data)
     return get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,

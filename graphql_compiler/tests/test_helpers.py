@@ -10,6 +10,7 @@ import six
 from .. import get_graphql_schema_from_orientdb_schema_data
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
+from ..schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ..schema_generation.orientdb.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 
 
@@ -279,6 +280,10 @@ def generate_schema_graph(graph_client):
 
 def generate_schema(graph_client, class_to_field_type_overrides=None, hidden_classes=None):
     """Generate schema and type equivalence dict from a pyorient client"""
+    if class_to_field_type_overrides is None:
+        class_to_field_type_overrides = dict()
+    if hidden_classes is None:
+        hidden_classes = set()
     schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
     return get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_type_overrides,
