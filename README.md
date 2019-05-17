@@ -1368,8 +1368,9 @@ Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings") {
 }
 ```
 Macro edges can also use runtime parameters. The values for the parameters are provided when
-the macro is registered, and not when it is used. See the section below to see how to use
-runtime parameters.
+the macro is registered, and not when it is used. See the section on
+[using the macro registry](#using-the-macro-registry) for an example of how to use macros
+with runtime parameters.
 
 Macro definitions and macro uses are type checked. If a macro is invalid or is used incorrectly,
 the macro system will complain, rather than create an invalid query.
@@ -1428,7 +1429,6 @@ def example(schema, type_equivalence_hints):
     args = {}
     expanded_query, new_args = macros.perform_macro_expansion(macro_registry, query, args)
     
-    # Verify that macro expansion worked
     print(expanded_query)
     # Prints out the following query:
     # {
