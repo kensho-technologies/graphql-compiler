@@ -7,6 +7,7 @@ from graphql.utils.schema_printer import print_schema
 from parameterized import parameterized
 import pytest
 
+from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...tests import test_backend
 from ...tests.test_helpers import generate_schema, generate_schema_graph
 from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
@@ -176,7 +177,8 @@ class IntegrationTests(TestCase):
             'UniquelyIdentifiable': {'uuid': GraphQLID}
         }
         schema, _ = generate_schema(self.graph_client,
-                                    class_to_field_type_overrides=class_to_field_type_overrides)
+                                    class_to_field_type_overrides=class_to_field_type_overrides,
+                                    hidden_classes={ORIENTDB_BASE_VERTEX_CLASS_NAME})
         compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
 
     @integration_fixtures

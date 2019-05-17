@@ -33,23 +33,23 @@ class SchemaGraph(object):
     on the graph. It also holds a fully denormalized schema for the graph.
     """
 
-    def __init__(self, elements, inheritance_sets):
+    def __init__(self, elements, superclass_sets):
         """Create a new SchemaGraph.
 
         Args:
             elements: a dict, string -> SchemaElement, mapping each class in the schema to its
                       corresponding SchemaElement object.
-            inheritance_sets: a dict, string -> set of strings, mapping each class to its
+            superclass_sets: a dict, string -> set of strings, mapping each class to its
                               superclasses. The set of superclasses includes the class itself and
                               the transitive superclasses. For instance, if A is a superclass of B,
-                              and B is a superclass of C, then C's inheritance set is {'A', 'B'}.
+                              and B is a superclass of C, then C's superclass set is {'A', 'B'}.
 
         Returns:
             fully-constructed SchemaGraph object
         """
         self._elements = elements
-        self._inheritance_sets = inheritance_sets
-        self._subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
+        self._superclass_sets = superclass_sets
+        self._subclass_sets = get_subclass_sets_from_superclass_sets(superclass_sets)
 
         self._vertex_class_names = _get_element_names_of_class(self._elements, VertexType)
         self._edge_class_names = _get_element_names_of_class(self._elements, EdgeType)
@@ -59,9 +59,9 @@ class SchemaGraph(object):
         """Return the SchemaElement for the specified class name"""
         return self._elements[class_name]
 
-    def get_inheritance_set(self, cls):
+    def get_superclass_set(self, cls):
         """Return all class names that the given class inherits from, including itself."""
-        return self._inheritance_sets[cls]
+        return self._superclass_sets[cls]
 
     def get_subclass_set(self, cls):
         """Return all class names that inherit from this class, including itself."""
@@ -357,10 +357,10 @@ def _get_element_names_of_class(elements, cls):
     })
 
 
-def get_subclass_sets_from_inheritance_sets(inheritance_sets):
+def get_subclass_sets_from_superclass_sets(superclass_sets):
     """Return a dict mapping each class to its set of subclasses."""
     subclass_sets = dict()
-    for subclass_name, superclass_names in six.iteritems(inheritance_sets):
+    for subclass_name, superclass_names in six.iteritems(superclass_sets):
         for superclass_name in superclass_names:
             subclass_sets.setdefault(superclass_name, set()).add(subclass_name)
 

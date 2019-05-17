@@ -12,7 +12,6 @@ import six
 from ..compiler.helpers import strip_non_null_from_type
 from ..schema import DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS
 from .exceptions import EmptySchemaError
-from .orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 
 
 def _get_referenced_type_equivalences(graphql_types, type_equivalence_hints):
@@ -44,7 +43,7 @@ def _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_ty
                                                                schema_graph):
     """Assert that the fields we want to override are not defined in superclasses."""
     for class_name, field_type_overrides in six.iteritems(class_to_field_type_overrides):
-        for superclass_name in schema_graph.get_inheritance_set(class_name):
+        for superclass_name in schema_graph.get_superclass_set(class_name):
             if superclass_name != class_name:
                 superclass = schema_graph.get_element_by_class_name(superclass_name)
                 for field_name in field_type_overrides:
@@ -166,16 +165,16 @@ def _create_interface_specification(schema_graph, graphql_types, hidden_classes,
     """Return a function that specifies the interfaces implemented by the given type."""
     def interface_spec():
         """Return a list of GraphQL interface types implemented by the type named 'cls_name'."""
-        abstract_inheritance_set = (
+        abstract_superclass_set = (
             superclass_name
-            for superclass_name in sorted(list(schema_graph.get_inheritance_set(cls_name)))
+            for superclass_name in sorted(list(schema_graph.get_superclass_set(cls_name)))
             if (superclass_name not in hidden_classes and
                 schema_graph.get_element_by_class_name(superclass_name).abstract)
         )
 
         return [
             graphql_types[x]
-            for x in abstract_inheritance_set
+            for x in abstract_superclass_set
             if x not in hidden_classes
         ]
 
@@ -221,11 +220,6 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     # Remember that the result returned by get_subclass_set(class_name) includes class_name itself.
     inherited_field_type_overrides = _get_inherited_field_types(class_to_field_type_overrides,
                                                                 schema_graph)
-
-    # We remove the base vertex class from the schema if it has no properties.
-    # If it has no properties, it's meaningless and makes the schema less syntactically sweet.
-    if not schema_graph.get_element_by_class_name(ORIENTDB_BASE_VERTEX_CLASS_NAME).properties:
-        hidden_classes.add(ORIENTDB_BASE_VERTEX_CLASS_NAME)
 
     graphql_types = OrderedDict()
     type_equivalence_hints = OrderedDict()
