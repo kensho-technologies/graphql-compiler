@@ -164,7 +164,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         schema_data = [BASE_VERTEX_SCHEMA_DATA]
         schema_graph = get_orientdb_schema_graph(schema_data)
         self.assertEqual({ORIENTDB_BASE_VERTEX_CLASS_NAME},
-                         schema_graph.get_inheritance_set(ORIENTDB_BASE_VERTEX_CLASS_NAME))
+                         schema_graph.get_superclass_set(ORIENTDB_BASE_VERTEX_CLASS_NAME))
 
     def test_parsed_superclass_field(self):
         schema_data = [
@@ -177,7 +177,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         ]
         schema_graph = get_orientdb_schema_graph(schema_data)
         self.assertEqual({'Person_LivesIn', ORIENTDB_BASE_EDGE_CLASS_NAME},
-                         schema_graph.get_inheritance_set('Person_LivesIn'))
+                         schema_graph.get_superclass_set('Person_LivesIn'))
 
     def test_parsed_superclasses_field(self):
         schema_data = [
@@ -186,7 +186,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         ]
         schema_graph = get_orientdb_schema_graph(schema_data)
         self.assertEqual({'Entity', ORIENTDB_BASE_VERTEX_CLASS_NAME},
-                         schema_graph.get_inheritance_set('Entity'))
+                         schema_graph.get_superclass_set('Entity'))
 
     def test_parsed_property(self):
         schema_data = [
