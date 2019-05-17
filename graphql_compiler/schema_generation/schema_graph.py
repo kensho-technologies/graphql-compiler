@@ -373,13 +373,6 @@ def get_subclass_sets_from_inheritance_sets(inheritance_sets):
     return subclass_sets
 
 
-# A way to describe a property's type and associated information:
-#   - type: GraphQLType, the type of this property
-#   - default: the default value for the property, used when a record is inserted without an
-#              explicit value for this property. Set to None if no default is given in the schema.
-PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
-
-
 def link_schema_elements(elements, inheritance_sets):
     """For each edge, link the schema elements it connects to each other."""
     subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
@@ -406,3 +399,10 @@ def link_schema_elements(elements, inheritance_sets):
             to_schema_element = elements[to_class]
             edge_schema_element.out_connections.add(to_class)
             to_schema_element.in_connections.add(edge_class_name)
+
+
+# A way to describe a property's type and associated information:
+#   - type: GraphQLType, the type of this property
+#   - default: the default value for the property, used when a record is inserted without an
+#              explicit value for this property. Set to None if no default is given in the schema.
+PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
