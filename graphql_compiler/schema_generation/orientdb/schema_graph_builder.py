@@ -76,7 +76,7 @@ def get_orientdb_schema_graph(schema_data):
     }
 
     non_graph_elements = _get_non_graph_elements(class_name_to_definition, superclass_sets)
-    inner_collection_objs = _get_graphql_rep_of_non_graph_elements(
+    inner_collection_objs = _get_graphql_representation_of_non_graph_elements(
         non_graph_elements, superclass_sets)
 
     elements = non_graph_elements
@@ -435,7 +435,7 @@ def _try_get_base_connections(class_name, superclass_sets, links, abstract):
     )
 
 
-def _get_graphql_rep_of_non_graph_elements(non_graph_elements, superclass_sets):
+def _get_graphql_representation_of_non_graph_elements(non_graph_elements, superclass_sets):
     """Return a dict mapping name to GraphQL Object for non graph elements without superclasses."""
     graphql_reps = {}
     for element_name, element in six.iteritems(non_graph_elements):
