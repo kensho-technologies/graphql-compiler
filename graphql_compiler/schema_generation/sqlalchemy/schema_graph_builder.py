@@ -42,7 +42,7 @@ def _validate_sql_to_graphql_is_toposorted_by_class_inheritance():
             assert not issubclass(other_class_, class_)
 
 
-def try_get_graphql_scalar_type(column_name, column_type):
+def _try_get_graphql_scalar_type(column_name, column_type):
     """Return the most precise GraphQLScalarType for the SQL datatype class.
 
     For instance, if class of the column_type is the Numeric class we return GraphQLDecimal.
@@ -70,7 +70,7 @@ def _get_vertex_type_from_sqlalchemy_table(table):
     for column in table.get_children():
         name = column.key
         default = None
-        maybe_property_type = try_get_graphql_scalar_type(name, column.type)
+        maybe_property_type = _try_get_graphql_scalar_type(name, column.type)
         if maybe_property_type:
             properties[name] = PropertyDescriptor(maybe_property_type, default)
     return VertexType(table.name, False, properties, {})
