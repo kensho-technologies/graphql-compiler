@@ -78,7 +78,18 @@ def get_all_tag_names(ast):
 
 
 def _replace_tag_names_in_tag_directive(name_change_map, tag_directive):
-    """Return the new directive, and whether it is different from the old."""
+    """Return the new directive, and whether it is different from the old.
+
+    Args:
+        name_change_map: Dict[str, str] mapping tag names to new names
+        tag_directive: GraphQL library directive whose name is in the name_change_map
+
+    Returns:
+        pair containing:
+        - GraphQL library directive, equivalent to the input one, with its name changed
+          according to the name_change_map
+        - bool, whether the output is different from the input
+    """
     # Schema validation has ensured this exists
     current_name = tag_directive.arguments[0].value.value
     new_name = name_change_map[current_name]
@@ -88,7 +99,19 @@ def _replace_tag_names_in_tag_directive(name_change_map, tag_directive):
 
 
 def _replace_tag_names_in_filter_directive(name_change_map, filter_directive, ast):
-    """Return the new directive, and whether it is different from the old."""
+    """Return the new directive, and whether it is different from the old.
+
+    Args:
+        name_change_map: Dict[str, str] mapping tag names to new names
+        tag_directive: GraphQL library filter directive that potentially uses tagged parameters.
+                       all such tagged parameters should be in the name_change_map.
+
+    Returns:
+        pair containing:
+        - GraphQL library directive, equivalent to the input one, with any tagged parameters it
+          uses replaced according to the name_change_map
+        - bool, whether the output is different from the input
+    """
     made_changes = False
     filter_with_renamed_args = copy(filter_directive)
     filter_with_renamed_args.arguments = []
@@ -118,7 +141,18 @@ def _replace_tag_names_in_filter_directive(name_change_map, filter_directive, as
 
 
 def _replace_tag_names_at_current_node(name_change_map, ast):
-    """Return a new ast with tag names replaced according to the name_change_map."""
+    """Return a new ast with tag names replaced according to the name_change_map.
+
+    Args:
+        name_change_map: Dict[str, str] mapping all tag names in the ast to new names
+        ast: GraphQL library AST object, such as a Field, InlineFragment, or OperationDefinition
+
+    Returns:
+        pair containing:
+        - GraphQL library AST object, equivalent to the input one, with all tag names at its root
+          node replaced according to the name_change_map.
+        - bool, whether the output is different from the input
+    """
     # Rename tag names in @tag and @filter directives, and record if we made changes
     made_changes = False
     new_directives = []
@@ -139,7 +173,16 @@ def _replace_tag_names_at_current_node(name_change_map, ast):
 
 
 def replace_tag_names(name_change_map, ast):
-    """Replace tag names that are already in use in the whole AST."""
+    """Return a new ast with tag names replaced according to the name_change_map.
+
+    Args:
+        name_change_map: Dict[str, str] mapping all tag names in the ast to new names
+        ast: GraphQL library AST object, such as a Field, InlineFragment, or OperationDefinition
+
+    Returns:
+        GraphQL library AST object, equivalent to the input one, with all tag names replaced
+        according to the name_change_map.
+    """
     if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
         return ast
 
