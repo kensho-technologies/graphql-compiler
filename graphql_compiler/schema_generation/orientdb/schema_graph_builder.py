@@ -8,7 +8,7 @@ import six
 from ..exceptions import IllegalSchemaStateError
 from ..schema_graph import (
     EdgeType, NonGraphElement, PropertyDescriptor, SchemaGraph, VertexType,
-    get_subclass_sets_from_inheritance_sets, link_schema_elements
+    get_subclass_sets_from_superclass_sets, link_schema_elements
 )
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES,

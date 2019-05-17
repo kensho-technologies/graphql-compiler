@@ -373,9 +373,9 @@ def get_subclass_sets_from_superclass_sets(superclass_sets):
     return subclass_sets
 
 
-def link_schema_elements(elements, inheritance_sets):
+def link_schema_elements(elements, superclass_sets):
     """For each edge, link the schema elements it connects to each other."""
-    subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
+    subclass_sets = get_subclass_sets_from_superclass_sets(superclass_sets)
 
     for edge_class_name in _get_element_names_of_class(elements, EdgeType):
         edge_element = elements[edge_class_name]
