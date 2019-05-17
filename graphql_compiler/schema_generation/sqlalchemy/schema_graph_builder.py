@@ -11,15 +11,15 @@ from ..schema_graph import PropertyDescriptor, SchemaGraph, VertexType
 
 # TODO(pmantica1): Add scalar mapping for the following classes: Interval, and Time.
 # We do not currently plan to add a mapping for JSON and Binary objects.
-SQL_CLASS_TO_GRAPHQL_TYPE = OrderedDict({
-    sqltypes.String: GraphQLString,
-    sqltypes.Integer: GraphQLInt,
-    sqltypes.Float: GraphQLFloat,
-    sqltypes.Numeric: GraphQLDecimal,
-    sqltypes.DateTime: GraphQLDateTime,
-    sqltypes.Date: GraphQLDate,
-    sqltypes.Boolean: GraphQLBoolean,
-})
+SQL_CLASS_TO_GRAPHQL_TYPE = OrderedDict([
+    (sqltypes.String, GraphQLString),
+    (sqltypes.Integer, GraphQLInt),
+    (sqltypes.Float, GraphQLFloat),
+    (sqltypes.Numeric, GraphQLDecimal),
+    (sqltypes.DateTime, GraphQLDateTime),
+    (sqltypes.Date, GraphQLDate),
+    (sqltypes.Boolean, GraphQLBoolean),
+])
 
 
 # TODO(pmantica1): Map foreign keys to edges.
@@ -41,7 +41,10 @@ def _validate_sql_to_graphql_is_toposorted_by_class_inheritance():
     sql_classes = list(SQL_CLASS_TO_GRAPHQL_TYPE.keys())
     for i, class_ in enumerate(sql_classes):
         for other_class_ in sql_classes[i + 1:]:
-            assert not issubclass(other_class_, class_)
+            if issubclass(other_class_, class_):
+                raise AssertionError("SQL_CLASS_TO_GRAPHQL_TYPE is not toposorted by class "
+                                     "inheritance. Class {} is a subclass of {} but is appears  "
+                                     "later in the OrderedDict.")
 
 
 def _try_get_graphql_scalar_type(column_name, column_type):
