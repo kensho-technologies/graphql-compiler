@@ -1,3 +1,4 @@
+# Copyright 2019-present Kensho Technologies, LLC.
 from collections import OrderedDict
 import warnings
 
