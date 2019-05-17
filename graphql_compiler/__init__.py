@@ -138,8 +138,8 @@ def graphql_to_gremlin(schema, graphql_query, parameters, type_equivalence_hints
         query=insert_arguments_into_query(compilation_result, parameters))
 
 
-def get_graphql_schema_from_orientdb_schema_data(
-        schema_data, class_to_field_type_overrides=None, hidden_classes=None):
+def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_type_overrides=None,
+                                                 hidden_classes=None):
     """Construct a GraphQL schema from an OrientDB schema.
 
     Args:
