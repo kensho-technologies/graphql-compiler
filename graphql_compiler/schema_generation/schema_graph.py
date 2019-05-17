@@ -349,7 +349,7 @@ def _validate_property_names(class_name, properties):
 
 
 def _get_element_names_of_class(elements, cls):
-    """Return a frozenset of the names of the elements are instances of the class."""
+    """Return a frozenset of the names of the elements that are instances of the class."""
     return frozenset({
         name
         for name, element in elements.items()
