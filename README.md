@@ -53,6 +53,9 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
      * [Configuring SQLAlchemy](#configuring-sqlalchemy)
      * [End-To-End SQL Example](#end-to-end-sql-example)
      * [Configuring the SQL Database to Match the GraphQL Schema](#configuring-the-sql-database-to-match-the-graphql-schema)
+  * [Macro System](#macro-system)
+     * [Macro Edges](#macro-edges)
+     * [Using the macro registry](#using-the-macro-registry)
   * [Miscellaneous](#miscellaneous)
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
@@ -1295,6 +1298,156 @@ CREATE VIEW animal AS
     FROM animal_table
 ```
 At this point, the `animal` view can be used in the SQLAlchemy Table for the purposes of compiling.
+
+## Macro System
+
+### Macro Edges
+Macro edges define a new edge in the schema by specifying how to compute it.
+Macro edges are similar to views in SQL. However, there's a few differences:
+- Macros are stored in a macro registry, that does not necessarily live inside the database. This has
+two avantages:
+  - Macros can be created locally by clients without database access.
+  - Macros work even on schemas that have been stitched from the schemas of multiple backends.
+- When a query with macros is compiled, a preprocessing step generates an equivalent query without
+macros by expanding.
+
+As an example, consider the following query:
+```graphql
+{
+    Animal {
+        name @output(out_name: "animal_name")
+        out_Animal_ParentOf {
+            out_Animal_ParentOf {
+                name @output(out_name: "grandchild_name")
+            }
+        }
+    }
+}
+```
+Let's introduce the `out_Animal_GrandparentOf` macro to simplify our query:
+```graphql
+{
+    Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+        out_Animal_ParentOf {
+            out_Animal_ParentOf @macro_edge_target {
+                uuid
+            }
+        }
+    }
+}
+```
+The directive `@macro_edge_definition` declares that this is a macro, and gives it a name.
+To use it as any other edge, we will refer to it by the name given here.
+The directive `@macro_edge_target` specifies where the grandchild of the animal is.
+Now let's use this macro to rewrite our query:
+```graphql
+{
+    Animal {
+        name @output(out_name: "animal_name")
+        out_Animal_GrandparentOf {
+            name @output(out_name: "grandchild_name")
+        }
+    }
+}
+```
+Macro edges can make use of tags, filters, etc, to define more complicated macros like this one
+```graphql
+Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings") {
+    net_worth @tag(tag_name: "net_worth")
+    out_Animal_BornAt {
+        event_date @tag(tag_name: "birthday")
+    }
+    in_Animal_ParentOf {
+        out_Animal_ParentOf @macro_edge_target {
+            net_worth @filter(op_name: ">", value: ["%net_worth"])
+            out_Animal_BornAt {
+                event_date @filter(op_name: "<", value: ["%birthday"])
+            }
+        }
+    }
+}
+```
+Macro edges can also use runtime parameters. The values for the parameters are provided when
+the macro is registered, and not when it is used. See the section on
+[using the macro registry](#using-the-macro-registry) for an example of how to use macros
+with runtime parameters.
+
+Macro definitions and macro uses are type checked. If a macro is invalid or is used incorrectly,
+the macro system will complain, rather than create an invalid query.
+
+#### Constraints for macro definitions
+- Macro definitions cannot use other macros as part of their definition.
+- A macro requires exactly one `@macro_edge_definition` and one `@macro_edge_target` directive.
+Additionally, these directives can only be used inside macro definitions.
+- The `@macro_edge_target` cannot be inside a `@fold` scope.
+- The `@macro_edge_target` cannot begin with a type coercion. If that is what you want, put
+the `@macro_edge_target` on the type coercion itself, instead of before it, like this:
+`in_Entity_Related { ... on Animal @macro_edge_target {uuid} }`.
+- Macros cannot use `@output` or `@output_source`.
+
+#### Constraints for macro usage
+- The `@optional` and `@recurse` directives cannot be used on macro edges.
+
+### Using the macro registry
+This example demonstrates how to define a macro and use it. It assumes you already know
+how to construct a GraphQL schema.
+
+```python
+from graphql_compiler import macros
+from graphql_compiler.compiler.subclass import compute_subclass_sets
+
+def example(schema, type_equivalence_hints):
+    # Create a macro registry based on the schema
+    subclass_sets = compute_subclass_sets(schema, type_equivalence_hints)
+    macro_registry = macros.create_macro_registry(schema, type_equivalence_hints, subclass_sets)
+
+    # Add a macro to the registry
+    macro_graphql = '''{
+        Animal @macro_edge_definition(name: "out_Animal_GrandchildrenCalledNate") {
+            out_Animal_ParentOf {
+                out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$nate_name"])
+                                    @macro_edge_target {
+                    uuid
+                }
+            }
+        }
+    }'''
+    macro_args = {
+        'nate_name': 'Nate',
+    }
+    macros.register_macro_edge(macro_registry, macro_graphql, macro_args)
+    
+    # Use our macro registry in a query
+    query = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_GrandchildrenCalledNate {
+                uuid @output(out_name: "grandchild")
+            }
+        }
+    }'''
+    args = {}
+    expanded_query, new_args = macros.perform_macro_expansion(macro_registry, query, args)
+    
+    print(expanded_query)
+    # Prints out the following query:
+    # {
+    #     Animal {
+    #         name @output(out_name: "animal_name")
+    #         out_Animal_ParentOf {
+    #             out_Animal_ParentOf {
+    #                 name @output(out_name: "grandchild")
+    #             }
+    #         }
+    #     }
+    # }
+
+    print(new_args)
+    # Prints out the following:
+    # {
+    #     'nate_name': 'Nate'
+    # }
+```
 
 ## Miscellaneous
 
