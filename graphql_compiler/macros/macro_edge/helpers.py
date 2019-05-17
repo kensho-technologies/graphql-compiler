@@ -185,7 +185,8 @@ def replace_tag_names(name_change_map, ast):
 
     Returns:
         GraphQL library AST object, equivalent to the input one, with all tag names replaced
-        according to the name_change_map.
+        according to the name_change_map. If no changes were made, this is the same object
+        as the input.
     """
     if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
         return ast
