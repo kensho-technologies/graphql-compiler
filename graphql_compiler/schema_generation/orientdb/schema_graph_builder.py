@@ -87,7 +87,7 @@ def get_orientdb_schema_graph(schema_data):
 
     # Initialize the connections that show which schema classes can be connected to
     # which other schema classes, then freeze all schema elements.
-    link_schema_elements(elements, inheritance_sets)
+    link_schema_elements(elements, superclass_sets)
     for element in six.itervalues(elements):
         element.freeze()
 
