@@ -1,20 +1,20 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import unittest
 
+from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLString
 from sqlalchemy import Column, Date, DateTime, MetaData, Numeric, String, Table
-from graphql.type import (
-    GraphQLFloat, GraphQLString, GraphQLInt, GraphQLBoolean, GraphQLEnumType
+from sqlalchemy.types import (
+    ARRAY, BLOB, CHAR, CLOB, JSON, NCHAR, NVARCHAR, REAL, TIMESTAMP, VARBINARY, BigInteger, Binary,
+    Boolean, Enum, Float, Integer, Interval, LargeBinary, NullType, PickleType, SmallInteger, Text,
+    Time, Unicode, UnicodeText
 )
+
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ..schema_generation.schema_graph import VertexType
 from ..schema_generation.sqlalchemy.schema_graph_builder import (
     get_schema_graph_from_sql_alchemy_metadata
 )
-from ..schema_generation.schema_graph import VertexType
-from sqlalchemy.types import (
-    Text, Unicode, UnicodeText, Integer, SmallInteger, BigInteger, Float, Boolean, Time, Binary,
-    LargeBinary, Enum, PickleType, Interval, NullType, JSON, ARRAY, REAL, TIMESTAMP, CLOB, NVARCHAR,
-    CHAR, NCHAR, BLOB, VARBINARY,
-)
+
 
 SUPPORTED_SQL_TYPE_TUPLES = (
     ('string', String(), GraphQLString),
@@ -35,6 +35,7 @@ SUPPORTED_SQL_TYPE_TUPLES = (
     ('clob', CLOB(), GraphQLString),
     ('nvarchar', NVARCHAR(), GraphQLString),
     ('char', CHAR(), GraphQLString),
+    ('nchar', NCHAR(), GraphQLString)
 )
 
 NON_SUPPORTED_SQL_TYPE_TUPLES = (
@@ -63,9 +64,10 @@ def _get_sql_metadata():
     )
 
     # Table A contains columns with all builtin types currently not supported
-    Table('B',
-          metadata,
-          *(Column(name, type_) for name, type_ in NON_SUPPORTED_SQL_TYPE_TUPLES)
+    Table(
+        'B',
+        metadata,
+        *(Column(name, type_) for name, type_ in NON_SUPPORTED_SQL_TYPE_TUPLES)
     )
 
     return metadata

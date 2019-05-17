@@ -1,10 +1,12 @@
 from collections import OrderedDict
-from ..schema_graph import SchemaGraph, PropertyDescriptor, VertexType
-from ...schema import GraphQLDateTime, GraphQLDate, GraphQLDecimal
-import sqlalchemy.sql.sqltypes as sqltypes
-from graphql.type import *
 import warnings
+
+from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLString
 import six
+import sqlalchemy.sql.sqltypes as sqltypes
+
+from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ..schema_graph import PropertyDescriptor, SchemaGraph, VertexType
 
 
 # TODO(pmantica1): Add scalar mapping for the following classes: Interval, and Time.
@@ -38,7 +40,7 @@ def _validate_sql_to_graphql_is_toposorted_by_class_inheritance():
     """Validate that SQL_SCALAR_CLASS_TO_GRAPHQL_TYPE dict is toposorted by class inheritance."""
     sql_classes = list(SQL_CLASS_TO_GRAPHQL_TYPE.keys())
     for i, class_ in enumerate(sql_classes):
-        for other_class_ in sql_classes[i+1:]:
+        for other_class_ in sql_classes[i + 1:]:
             assert not issubclass(other_class_, class_)
 
 
