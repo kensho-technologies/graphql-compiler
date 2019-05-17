@@ -1381,7 +1381,7 @@ Additionally, these directives can only be used inside macro definitions.
 - The `@macro_edge_target` cannot be inside a `@fold` scope.
 - The `@macro_edge_target` cannot begin with a type coercion. If that is what you want, put
 the `@macro_edge_target` on the type coercion itself, instead of before it, like this:
-`in_Entity_Related { ... on Entity @macro_edge_target {uuid} }`.
+`in_Entity_Related { ... on Animal @macro_edge_target {uuid} }`.
 - Macros cannot use `@output` or `@output_source`.
 
 #### Constraints for macro usage
