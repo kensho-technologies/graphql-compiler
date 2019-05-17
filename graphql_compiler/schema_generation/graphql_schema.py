@@ -12,7 +12,6 @@ import six
 from ..compiler.helpers import strip_non_null_from_type
 from ..schema import DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS
 from .exceptions import EmptySchemaError
-from .orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 
 
 def _get_referenced_type_equivalences(graphql_types, type_equivalence_hints):
@@ -221,11 +220,6 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     # Remember that the result returned by get_subclass_set(class_name) includes class_name itself.
     inherited_field_type_overrides = _get_inherited_field_types(class_to_field_type_overrides,
                                                                 schema_graph)
-
-    # We remove the base vertex class from the schema if it has no properties.
-    # If it has no properties, it's meaningless and makes the schema less syntactically sweet.
-    if not schema_graph.get_element_by_class_name(ORIENTDB_BASE_VERTEX_CLASS_NAME).properties:
-        hidden_classes.add(ORIENTDB_BASE_VERTEX_CLASS_NAME)
 
     graphql_types = OrderedDict()
     type_equivalence_hints = OrderedDict()
