@@ -51,9 +51,9 @@ class SchemaGraph(object):
         self._inheritance_sets = inheritance_sets
         self._subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
 
-        self._vertex_class_names = self._get_element_names_of_class(VertexType)
-        self._edge_class_names = self._get_element_names_of_class(EdgeType)
-        self._non_graph_class_names = self._get_element_names_of_class(NonGraphElement)
+        self._vertex_class_names = _get_element_names_of_class(self._elements, VertexType)
+        self._edge_class_names = _get_element_names_of_class(self._elements, EdgeType)
+        self._non_graph_class_names = _get_element_names_of_class(self._elements, NonGraphElement)
 
     def get_element_by_class_name(self, class_name):
         """Return the SchemaElement for the specified class name"""
@@ -167,14 +167,6 @@ class SchemaGraph(object):
     def non_graph_class_names(self):
         """Return the set of non-graph class names in the SchemaGraph."""
         return self._non_graph_class_names
-
-    def _get_element_names_of_class(self, cls):
-        """Return a frozenset of the names of the elements are instances of the class."""
-        return frozenset({
-            name
-            for name, element in self._elements.items()
-            if isinstance(element, cls)
-        })
 
 
 @six.python_2_unicode_compatible
@@ -356,6 +348,15 @@ def _validate_property_names(class_name, properties):
                                           u'{}'.format(class_name, property_name))
 
 
+def _get_element_names_of_class(elements, cls):
+    """Return a frozenset of the names of the elements are instances of the class."""
+    return frozenset({
+        name
+        for name, element in elements.items()
+        if isinstance(element, cls)
+    })
+
+
 def get_subclass_sets_from_inheritance_sets(inheritance_sets):
     """Return a dict mapping each class to its set of subclasses."""
     subclass_sets = dict()
@@ -377,3 +378,31 @@ def get_subclass_sets_from_inheritance_sets(inheritance_sets):
 #   - default: the default value for the property, used when a record is inserted without an
 #              explicit value for this property. Set to None if no default is given in the schema.
 PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
+
+
+def link_schema_elements(elements, inheritance_sets):
+    """For each edge, link the schema elements it connects to each other."""
+    subclass_sets = get_subclass_sets_from_inheritance_sets(inheritance_sets)
+
+    for edge_class_name in _get_element_names_of_class(elements, EdgeType):
+        edge_element = elements[edge_class_name]
+
+        from_class_name = edge_element.base_in_connection
+        to_class_name = edge_element.base_out_connection
+
+        if not from_class_name or not to_class_name:
+            continue
+
+        edge_schema_element = elements[edge_class_name]
+
+        # Link from_class_name with edge_class_name
+        for from_class in subclass_sets[from_class_name]:
+            from_schema_element = elements[from_class]
+            from_schema_element.out_connections.add(edge_class_name)
+            edge_schema_element.in_connections.add(from_class)
+
+        # Link edge_class_name with to_class_name
+        for to_class in subclass_sets[to_class_name]:
+            to_schema_element = elements[to_class]
+            edge_schema_element.out_connections.add(to_class)
+            to_schema_element.in_connections.add(edge_class_name)
