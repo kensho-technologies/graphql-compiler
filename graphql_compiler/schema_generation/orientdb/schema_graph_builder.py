@@ -434,7 +434,8 @@ def _try_get_base_connections(class_name, superclass_sets, links, abstract):
         base_connections.get(EDGE_DESTINATION_PROPERTY_NAME, None),
     )
 
-def _get_graphql_rep_of_non_graph_elements(non_graph_elements, inheritance_sets):
+
+def _get_graphql_rep_of_non_graph_elements(non_graph_elements, superclass_sets):
     """Return a dict mapping name to GraphQL Object for non graph elements without superclasses."""
     graphql_reps = {}
     for element_name, element in six.iteritems(non_graph_elements):
