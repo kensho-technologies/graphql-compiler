@@ -4,7 +4,7 @@ import unittest
 from graphql.type import GraphQLString
 import pytest
 from sqlalchemy import Column, MetaData, Table
-from sqlalchemy.types import Binary, String
+from sqlalchemy.types import Binary, Integer, String
 
 from ..schema_generation.schema_graph import VertexType
 from ..schema_generation.sqlalchemy.schema_graph_builder import (
@@ -21,6 +21,7 @@ def _get_sql_metadata():
         metadata,
         Column('supported_type', String()),
         Column('non_supported_type', Binary()),
+        Column('default', Integer(), default=42)
     )
 
     return metadata
@@ -45,3 +46,7 @@ class SQLALchemyGraphqlSchemaGenerationTests(unittest.TestCase):
     def test_warn_when_type_is_not_supported(self):
         with pytest.warns(Warning):
             _try_get_graphql_scalar_type('binary', Binary)
+
+    def test_default_value_parsing(self):
+        a_vertex = self.schema_graph.get_element_by_class_name('A')
+        self.assertEqual(a_vertex.properties['default'].default, 42)
