@@ -86,7 +86,7 @@ def _replace_tag_names_in_tag_directive(name_change_map, tag_directive):
                        This ast is not mutated.
 
     Returns:
-        pair containing:
+        tuple containing:
         - GraphQL library directive, equivalent to the input one, with its name changed
           according to the name_change_map
         - bool, whether the output is different from the input
@@ -109,7 +109,7 @@ def _replace_tag_names_in_filter_directive(name_change_map, filter_directive, as
                           directive is not mutated.
 
     Returns:
-        pair containing:
+        tuple containing:
         - GraphQL library directive, equivalent to the input one, with any tagged parameters it
           uses replaced according to the name_change_map
         - bool, whether the output is different from the input
@@ -143,17 +143,17 @@ def _replace_tag_names_in_filter_directive(name_change_map, filter_directive, as
 
 
 def _replace_tag_names_at_current_node(name_change_map, ast):
-    """Return a new ast with tag names replaced according to the name_change_map.
+    """Return directives with tag names replaced according to the name_change_map.
 
     Args:
         name_change_map: Dict[str, str] mapping all tag names in the ast to new names
-        ast: GraphQL library AST object, such as a Field, InlineFragment, or OperationDefinition.
-             This ast is not mutated.
+        ast: GraphQL library AST object, such as a Field, InlineFragment, or OperationDefinition
+             whose directives we want to replace tag names in. This ast is not mutated.
 
     Returns:
-        pair containing:
-        - GraphQL library AST object, equivalent to the input one, with all tag names at its root
-          node replaced according to the name_change_map.
+        tuple containing:
+        - list of directives equivalent to the ones in the input ast, with all tag names replaced
+          according to the name_change_map.
         - bool, whether the output is different from the input
     """
     # Rename tag names in @tag and @filter directives, and record if we made changes
@@ -304,7 +304,7 @@ def find_target_and_copy_path_to_it(ast):
         ast: GraphQL library AST object
 
     Returns:
-        pair containing:
+        tuple containing:
         - GraphQL library AST object equal to the input. Objects on the path to the @target
           directive are shallow copied.
         - GraphQL library AST object at the @target directive of the resulting AST, or None
