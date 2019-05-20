@@ -72,7 +72,7 @@ def get_schema_graph_from_sql_alchemy_metadata(sqlalchemy_metadata):
 def _try_get_graphql_scalar_type(column_name, column_type):
     """Return the matching GraphQLScalarType for the SQL datatype or None if none is found."""
     maybe_graphql_type = SQL_CLASS_TO_GRAPHQL_TYPE.get(type(column_type), None)
-    if not maybe_graphql_type:
+    if maybe_graphql_type is None:
         # Trying to get the string representation of the SQLAlchemy JSON and ARRAY types
         # will lead to an error. We therefore use repr instead.
         warnings.warn(u'Ignoring column "{}" with unsupported SQL datatype class: {}'
@@ -92,6 +92,6 @@ def _get_vertex_type_from_sqlalchemy_table(table):
         name = column.key
         default = None
         maybe_property_type = _try_get_graphql_scalar_type(name, column.type)
-        if maybe_property_type:
+        if maybe_property_type is not None:
             properties[name] = PropertyDescriptor(maybe_property_type, default)
     return VertexType(table.name, False, properties, {})
