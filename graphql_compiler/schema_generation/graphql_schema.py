@@ -1,24 +1,17 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import OrderedDict
 from itertools import chain
+import warnings
 
 from graphql.type import (
-    GraphQLBoolean, GraphQLField, GraphQLFloat, GraphQLInt, GraphQLInterfaceType, GraphQLList,
-    GraphQLObjectType, GraphQLSchema, GraphQLString, GraphQLUnionType
+    GraphQLField, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLScalarType,
+    GraphQLSchema, GraphQLUnionType
 )
 import six
 
-from ..schema import (
-    DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal
-)
+from ..compiler.helpers import strip_non_null_from_type
+from ..schema import DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS
 from .exceptions import EmptySchemaError
-from .schema_properties import (
-    EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
-    PROPERTY_TYPE_BOOLEAN_ID, PROPERTY_TYPE_DATE_ID, PROPERTY_TYPE_DATETIME_ID,
-    PROPERTY_TYPE_DECIMAL_ID, PROPERTY_TYPE_DOUBLE_ID, PROPERTY_TYPE_EMBEDDED_LIST_ID,
-    PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_FLOAT_ID, PROPERTY_TYPE_INTEGER_ID,
-    PROPERTY_TYPE_STRING_ID
-)
 
 
 def _get_referenced_type_equivalences(graphql_types, type_equivalence_hints):
@@ -50,7 +43,7 @@ def _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_ty
                                                                schema_graph):
     """Assert that the fields we want to override are not defined in superclasses."""
     for class_name, field_type_overrides in six.iteritems(class_to_field_type_overrides):
-        for superclass_name in schema_graph.get_inheritance_set(class_name):
+        for superclass_name in schema_graph.get_superclass_set(class_name):
             if superclass_name != class_name:
                 superclass = schema_graph.get_element_by_class_name(superclass_name)
                 for field_name in field_type_overrides:
@@ -59,41 +52,6 @@ def _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_ty
                             u'Attempting to override field "{}" from class "{}", but the field is '
                             u'defined in superclass "{}"'
                             .format(field_name, class_name, superclass_name))
-
-
-def _property_descriptor_to_graphql_type(property_obj):
-    """Return the best GraphQL type representation for an OrientDB property descriptor."""
-    property_type = property_obj.type_id
-    scalar_types = {
-        PROPERTY_TYPE_BOOLEAN_ID: GraphQLBoolean,
-        PROPERTY_TYPE_DATE_ID: GraphQLDate,
-        PROPERTY_TYPE_DATETIME_ID: GraphQLDateTime,
-        PROPERTY_TYPE_DECIMAL_ID: GraphQLDecimal,
-        PROPERTY_TYPE_DOUBLE_ID: GraphQLFloat,
-        PROPERTY_TYPE_FLOAT_ID: GraphQLFloat,
-        PROPERTY_TYPE_INTEGER_ID: GraphQLInt,
-        PROPERTY_TYPE_STRING_ID: GraphQLString,
-    }
-
-    result = scalar_types.get(property_type, None)
-    if result:
-        return result
-
-    mapping_types = {
-        PROPERTY_TYPE_EMBEDDED_SET_ID: GraphQLList,
-        PROPERTY_TYPE_EMBEDDED_LIST_ID: GraphQLList,
-    }
-    wrapping_type = mapping_types.get(property_type, None)
-    if wrapping_type:
-        linked_property_obj = property_obj.qualifier
-        # There are properties that are embedded collections of non-primitive types,
-        # for example, ProxyEventSet.scalar_parameters.
-        # The GraphQL compiler does not currently support these.
-        if linked_property_obj in scalar_types:
-            return wrapping_type(scalar_types[linked_property_obj])
-
-    # We weren't able to represent this property in GraphQL, so we'll hide it instead.
-    return None
 
 
 def _get_union_type_name(type_names_to_union):
@@ -111,27 +69,40 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
 
     # Add leaf GraphQL fields (class properties).
     all_properties = {
-        property_name: _property_descriptor_to_graphql_type(property_obj)
+        property_name: property_obj.type
         for property_name, property_obj in six.iteritems(properties)
     }
-    result = {
-        property_name: graphql_representation
-        for property_name, graphql_representation in six.iteritems(all_properties)
-        if graphql_representation is not None
+
+    collections_of_non_graphql_scalars = {
+        property_name
+        for property_name, graphql_type in six.iteritems(all_properties)
+        if (isinstance(strip_non_null_from_type(graphql_type), GraphQLList) and
+            not isinstance(strip_non_null_from_type(graphql_type.of_type), GraphQLScalarType))
     }
 
-    # Add edge GraphQL fields (edges to other vertex classes).
+    if len(collections_of_non_graphql_scalars) > 0:
+        warnings.warn('The fields {} of class {} were ignored since they are GraphQLLists of '
+                      'non-GraphQLScalarTypes. GraphQLLists of non-GraphQLScalarTypes are not '
+                      'currently supported in the GraphQLSchema.'
+                      .format(collections_of_non_graphql_scalars, cls_name))
+
+    # Filter collections of non-GraphQLScalarTypes. They are currently not supported.
+    result = {
+        property_name: graphql_type
+        for property_name, graphql_type in six.iteritems(all_properties)
+        if property_name not in collections_of_non_graphql_scalars
+    }
+
+    # Add edge GraphQL fields.
     schema_element = schema_graph.get_element_by_class_name(cls_name)
     outbound_edges = (
         ('out_{}'.format(out_edge_name),
-         schema_graph.get_element_by_class_name(out_edge_name).properties[
-             EDGE_DESTINATION_PROPERTY_NAME].qualifier)
+         schema_graph.get_element_by_class_name(out_edge_name).base_out_connection)
         for out_edge_name in schema_element.out_connections
     )
     inbound_edges = (
         ('in_{}'.format(in_edge_name),
-         schema_graph.get_element_by_class_name(in_edge_name).properties[
-             EDGE_SOURCE_PROPERTY_NAME].qualifier)
+         schema_graph.get_element_by_class_name(in_edge_name).base_in_connection)
         for in_edge_name in schema_element.in_connections
     )
     for field_name, to_type_name in chain(outbound_edges, inbound_edges):
@@ -140,12 +111,12 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
 
         to_type_abstract = schema_graph.get_element_by_class_name(to_type_name).abstract
         if not to_type_abstract and len(subclasses) > 1:
-            # If the edge endpoint type has no subclasses, it can't be coerced into any other type.
-            # If the edge endpoint type is abstract (an interface type), we can already
-            # coerce it to the proper type with a GraphQL fragment. However, if the endpoint type
-            # is non-abstract and has subclasses, we need to return its subclasses as an union type.
-            # This is because GraphQL fragments cannot be applied on concrete types, and
-            # GraphQL does not support inheritance of concrete types.
+            # If the edge endpoint type has no subclasses, it can't be coerced into any other
+            # type. If the edge endpoint type is abstract (an interface type), we can already
+            # coerce it to the proper type with a GraphQL fragment. However, if the endpoint
+            # type is non-abstract and has subclasses, we need to return its subclasses as an
+            # union type. This is because GraphQL fragments cannot be applied on concrete
+            # types, and GraphQL does not support inheritance of concrete types.
             type_names_to_union = [
                 subclass
                 for subclass in subclasses
@@ -158,8 +129,9 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
                 edge_endpoint_type_name = to_type_name
 
         if edge_endpoint_type_name is not None:
-            # If we decided to not hide this edge due to its endpoint type being non-representable,
-            # represent the edge field as the GraphQL type List(edge_endpoint_type_name).
+            # If we decided to not hide this edge due to its endpoint type being
+            # non-representable, represent the edge field as the GraphQL type
+            # List(edge_endpoint_type_name).
             result[field_name] = GraphQLList(graphql_types[edge_endpoint_type_name])
 
     for field_name, field_type in six.iteritems(field_type_overrides):
@@ -193,16 +165,16 @@ def _create_interface_specification(schema_graph, graphql_types, hidden_classes,
     """Return a function that specifies the interfaces implemented by the given type."""
     def interface_spec():
         """Return a list of GraphQL interface types implemented by the type named 'cls_name'."""
-        abstract_inheritance_set = (
+        abstract_superclass_set = (
             superclass_name
-            for superclass_name in sorted(list(schema_graph.get_inheritance_set(cls_name)))
+            for superclass_name in sorted(list(schema_graph.get_superclass_set(cls_name)))
             if (superclass_name not in hidden_classes and
                 schema_graph.get_element_by_class_name(superclass_name).abstract)
         )
 
         return [
             graphql_types[x]
-            for x in abstract_inheritance_set
+            for x in abstract_superclass_set
             if x not in hidden_classes
         ]
 
@@ -248,11 +220,6 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     # Remember that the result returned by get_subclass_set(class_name) includes class_name itself.
     inherited_field_type_overrides = _get_inherited_field_types(class_to_field_type_overrides,
                                                                 schema_graph)
-
-    # We remove the base vertex class from the schema if it has no properties.
-    # If it has no properties, it's meaningless and makes the schema less syntactically sweet.
-    if not schema_graph.get_element_by_class_name(ORIENTDB_BASE_VERTEX_CLASS_NAME).properties:
-        hidden_classes.add(ORIENTDB_BASE_VERTEX_CLASS_NAME)
 
     graphql_types = OrderedDict()
     type_equivalence_hints = OrderedDict()
