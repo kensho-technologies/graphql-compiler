@@ -81,9 +81,11 @@ def get_orientdb_schema_graph(schema_data):
 
     elements = non_graph_elements
     elements.update(
-        _get_edge_elements(class_name_to_definition, inheritance_structure, inner_collection_objs))
+        _get_edge_elements(class_name_to_definition, inheritance_structure, inner_collection_objs)
+    )
     elements.update(
-        _get_vertex_elements(class_name_to_definition, inheritance_structure, inner_collection_objs))
+        _get_vertex_elements(class_name_to_definition, inheritance_structure, inner_collection_objs)
+    )
 
     # Initialize the connections that show which schema classes can be connected to
     # which other schema classes, then freeze all schema elements.
