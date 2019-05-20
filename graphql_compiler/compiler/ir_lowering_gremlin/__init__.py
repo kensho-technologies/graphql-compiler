@@ -39,7 +39,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     """
     sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
-    ir_blocks = lower_context_field_existence(ir_blocks)
+    ir_blocks = lower_context_field_existence(ir_blocks, query_metadata_table)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
 
     if type_equivalence_hints:

@@ -570,7 +570,8 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.BinaryComposition(
                         u'=',
                         expressions.LocalField('name'),
-                        expressions.ContextField(child_fed_at_location.navigate_to_field('name'))
+                        expressions.ContextField(
+                            child_fed_at_location.navigate_to_field('name'), GraphQLString)
                     )
                 )
             ),
@@ -623,12 +624,14 @@ class IrGenerationTests(unittest.TestCase):
                         expressions.BinaryComposition(
                             u'=',
                             expressions.LocalField('name'),
-                            expressions.ContextField(parent_location.navigate_to_field('name'))
+                            expressions.ContextField(
+                                parent_location.navigate_to_field('name'), GraphQLString)
                         ),
                         expressions.BinaryComposition(
                             u'contains',
                             expressions.LocalField('alias'),
-                            expressions.ContextField(parent_location.navigate_to_field('name'))
+                            expressions.ContextField(
+                                parent_location.navigate_to_field('name'), GraphQLString)
                         )
                     )
                 )
@@ -695,6 +698,57 @@ class IrGenerationTests(unittest.TestCase):
             base_location: 'Animal',
             animal_parent_location: 'Animal',
             revisited_base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_filter_in_optional_and_count(self):
+        test_data = test_input_data.filter_in_optional_and_count()
+
+        base_location = helpers.Location(('Species',))
+        animal_location = base_location.navigate_to_subpath('in_Animal_OfSpecies')
+        base_revisit_1 = base_location.revisit()
+        fold_location = base_revisit_1.navigate_to_fold('in_Species_Eats')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Species'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('in', 'Animal_OfSpecies', optional=True),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'=',
+                    expressions.LocalField('name'),
+                    expressions.Variable('$animal_name', GraphQLString)
+                )
+            ),
+            blocks.MarkLocation(animal_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, optional=True),
+            blocks.MarkLocation(base_revisit_1),
+            blocks.Fold(fold_location),
+            blocks.MarkLocation(fold_location),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.Filter(expressions.BinaryComposition(
+                u'>=',
+                expressions.FoldedContextField(
+                    fold_location.navigate_to_field(COUNT_META_FIELD_NAME),
+                    GraphQLInt
+                ),
+                expressions.Variable('$predators', GraphQLInt),
+            )),
+            blocks.ConstructResult({
+                'species_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString
+                ),
+            }),
+
+        ]
+        expected_location_types = {
+            base_location: 'Species',
+            animal_location: 'Animal',
+            base_revisit_1: 'Species',
+            fold_location: 'Species',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
@@ -995,7 +1049,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.BinaryComposition(
                         u'=',
                         expressions.LocalField('name'),
-                        expressions.ContextField(child_fed_at_event_tag),
+                        expressions.ContextField(child_fed_at_event_tag, GraphQLString),
                     )
                 )
             ),
@@ -1012,7 +1066,7 @@ class IrGenerationTests(unittest.TestCase):
                         expressions.BinaryComposition(
                             u'>=',
                             expressions.LocalField('event_date'),
-                            expressions.ContextField(other_parent_fed_at_tag)
+                            expressions.ContextField(other_parent_fed_at_tag, GraphQLDateTime)
                         )
                     ),
                     expressions.BinaryComposition(
@@ -1025,7 +1079,7 @@ class IrGenerationTests(unittest.TestCase):
                         expressions.BinaryComposition(
                             u'<=',
                             expressions.LocalField('event_date'),
-                            expressions.ContextField(child_fed_at_tag)
+                            expressions.ContextField(child_fed_at_tag, GraphQLDateTime)
                         )
                     )
                 )
@@ -1133,7 +1187,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.BinaryComposition(
                         u'=',
                         expressions.LocalField('name'),
-                        expressions.ContextField(child_fed_at_event_tag),
+                        expressions.ContextField(child_fed_at_event_tag, GraphQLString),
                     )
                 )
             ),
@@ -1150,7 +1204,7 @@ class IrGenerationTests(unittest.TestCase):
                         expressions.BinaryComposition(
                             u'>=',
                             expressions.LocalField('event_date'),
-                            expressions.ContextField(other_parent_fed_at_tag)
+                            expressions.ContextField(other_parent_fed_at_tag, GraphQLDateTime)
                         )
                     ),
                     expressions.BinaryComposition(
@@ -1163,7 +1217,7 @@ class IrGenerationTests(unittest.TestCase):
                         expressions.BinaryComposition(
                             u'<=',
                             expressions.LocalField('event_date'),
-                            expressions.ContextField(child_fed_at_tag)
+                            expressions.ContextField(child_fed_at_tag, GraphQLDateTime)
                         )
                     )
                 )
@@ -1815,7 +1869,10 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Filter(
                 expressions.BinaryComposition(
                     u'contains',
-                    expressions.ContextField(base_location.navigate_to_field('alias')),
+                    expressions.ContextField(
+                        base_location.navigate_to_field('alias'),
+                        GraphQLList(GraphQLString)
+                    ),
                     expressions.LocalField('name')
                 )
             ),
@@ -1863,7 +1920,10 @@ class IrGenerationTests(unittest.TestCase):
                     ),
                     expressions.BinaryComposition(
                         u'contains',
-                        expressions.ContextField(parent_location.navigate_to_field('alias')),
+                        expressions.ContextField(
+                            parent_location.navigate_to_field('alias'),
+                            GraphQLList(GraphQLString)
+                        ),
                         expressions.LocalField('name')
                     )
                 )
@@ -1926,7 +1986,10 @@ class IrGenerationTests(unittest.TestCase):
                 expressions.BinaryComposition(
                     u'intersects',
                     expressions.LocalField('alias'),
-                    expressions.ContextField(base_location.navigate_to_field('alias'))
+                    expressions.ContextField(
+                        base_location.navigate_to_field('alias'),
+                        GraphQLList(GraphQLString)
+                    )
                 )
             ),
             blocks.MarkLocation(child_location),
@@ -1974,7 +2037,10 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.BinaryComposition(
                         u'intersects',
                         expressions.LocalField('alias'),
-                        expressions.ContextField(parent_location.navigate_to_field('alias'))
+                        expressions.ContextField(
+                            parent_location.navigate_to_field('alias'),
+                            GraphQLList(GraphQLString)
+                        )
                     )
                 )
             ),
@@ -2036,7 +2102,10 @@ class IrGenerationTests(unittest.TestCase):
                 expressions.BinaryComposition(
                     u'contains',
                     expressions.LocalField('alias'),
-                    expressions.ContextField(base_location.navigate_to_field('name')),
+                    expressions.ContextField(
+                        base_location.navigate_to_field('name'),
+                        GraphQLString
+                    ),
                 )
             ),
             blocks.MarkLocation(parent_location),
@@ -2084,7 +2153,10 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.BinaryComposition(
                         u'contains',
                         expressions.LocalField('alias'),
-                        expressions.ContextField(parent_location.navigate_to_field('name'))
+                        expressions.ContextField(
+                            parent_location.navigate_to_field('name'),
+                            GraphQLString
+                        )
                     )
                 )
             ),
@@ -2162,7 +2234,10 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.BinaryComposition(
                         u'has_substring',
                         expressions.LocalField('name'),
-                        expressions.ContextField(parent_location.navigate_to_field('name'))
+                        expressions.ContextField(
+                            parent_location.navigate_to_field('name'),
+                            GraphQLString
+                        )
                     )
                 )
             ),
@@ -3274,7 +3349,10 @@ class IrGenerationTests(unittest.TestCase):
                         parent_fold.navigate_to_field(COUNT_META_FIELD_NAME),
                         GraphQLInt
                     ),
-                    expressions.GlobalContextField(species_location.navigate_to_field('limbs'))
+                    expressions.GlobalContextField(
+                        species_location.navigate_to_field('limbs'),
+                        GraphQLInt
+                    )
                 )
             ),
             blocks.ConstructResult({
@@ -3871,7 +3949,10 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.BinaryComposition(
                         u'=',
                         expressions.LocalField('name'),
-                        expressions.ContextField(fed_at_location.navigate_to_field('name'))
+                        expressions.ContextField(
+                            fed_at_location.navigate_to_field('name'),
+                            GraphQLString
+                        )
                     )
                 )
             ),
@@ -3929,12 +4010,18 @@ class IrGenerationTests(unittest.TestCase):
                         expressions.BinaryComposition(
                             u'=',
                             expressions.LocalField('name'),
-                            expressions.ContextField(grandchild_location.navigate_to_field('name'))
+                            expressions.ContextField(
+                                grandchild_location.navigate_to_field('name'),
+                                GraphQLString
+                            )
                         ),
                         expressions.BinaryComposition(
                             u'contains',
                             expressions.LocalField('alias'),
-                            expressions.ContextField(grandchild_location.navigate_to_field('name'))
+                            expressions.ContextField(
+                                grandchild_location.navigate_to_field('name'),
+                                GraphQLString
+                            )
                         )
                     )
                 )
@@ -4026,7 +4113,7 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.BinaryComposition(
                         u'=',
                         expressions.LocalField('name'),
-                        expressions.ContextField(parent_fed_at_event_tag),
+                        expressions.ContextField(parent_fed_at_event_tag, GraphQLString),
                     )
                 )
             ),
@@ -4043,7 +4130,7 @@ class IrGenerationTests(unittest.TestCase):
                         expressions.BinaryComposition(
                             u'>=',
                             expressions.LocalField('event_date'),
-                            expressions.ContextField(other_child_fed_at_tag)
+                            expressions.ContextField(other_child_fed_at_tag, GraphQLDateTime)
                         )
                     ),
                     expressions.BinaryComposition(
@@ -4056,7 +4143,7 @@ class IrGenerationTests(unittest.TestCase):
                         expressions.BinaryComposition(
                             u'<=',
                             expressions.LocalField('event_date'),
-                            expressions.ContextField(parent_fed_at_tag)
+                            expressions.ContextField(parent_fed_at_tag, GraphQLDateTime)
                         )
                     )
                 )
@@ -4445,7 +4532,10 @@ class IrGenerationTests(unittest.TestCase):
                 expressions.BinaryComposition(
                     u'has_substring',
                     expressions.LocalField('name'),
-                    expressions.ContextField(base_location.navigate_to_field('name')),
+                    expressions.ContextField(
+                        base_location.navigate_to_field('name'),
+                        GraphQLString
+                    ),
                 ),
             ),
             blocks.MarkLocation(related_location),

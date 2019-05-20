@@ -18,7 +18,7 @@ python3 --version | grep 'Python 3'
 
 # Delete the existing lockfiles.
 echo 'Deleting old lockfiles...'
-rm Pipfile.lock Pipfile.py2.lock
+rm Pipfile.lock Pipfile.py2.lock || true  # Don't error if the lockfiles weren't there to start.
 
 echo 'Creating Python 2 lockfile...'
 pipenv --rm || true  # Don't error if there is no virtualenv yet.

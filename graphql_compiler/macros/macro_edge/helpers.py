@@ -8,8 +8,8 @@ from graphql.language.ast import (
 
 from ...ast_manipulation import get_ast_field_name
 from ...compiler.helpers import (
-    get_directive_argument_name, get_field_type_from_schema, get_vertex_field_type, is_tag_argument,
-    is_variable_argument
+    get_field_type_from_schema, get_parameter_name, get_vertex_field_type, is_runtime_parameter,
+    is_tagged_parameter
 )
 from ...schema import FilterDirective, TagDirective
 from ..macro_edge.directives import MacroEdgeTargetDirective
@@ -123,13 +123,13 @@ def _replace_tag_names_in_filter_directive(name_change_map, filter_directive, as
         elif argument.name.value == 'value':
             new_value_list = []
             for value in argument.value.values:
-                if is_tag_argument(value.value):
-                    current_name = get_directive_argument_name(value.value)
+                if is_tagged_parameter(value.value):
+                    current_name = get_parameter_name(value.value)
                     new_name = name_change_map[current_name]
                     if new_name != current_name:
                         made_changes = True
                     new_value_list.append(StringValue('%' + new_name))
-                elif is_variable_argument(value.value):
+                elif is_runtime_parameter(value.value):
                     new_value_list.append(value)
                 else:
                     raise AssertionError(u'Value was neither tag nor filter: {} {}'

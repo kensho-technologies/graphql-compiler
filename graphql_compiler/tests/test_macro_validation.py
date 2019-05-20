@@ -178,8 +178,7 @@ class MacroValidationTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, query, args)
 
-    @pytest.mark.skip(reason='not implemented')
-    def test_macro_edge_invalid_target_directive(self):
+    def test_macro_edge_target_directive_starting_with_coercion_disallowed(self):
         query = '''{
             Animal @macro_edge_definition(name: "out_Animal_AvailableFood_Invalid") {
                 out_Animal_LivesIn {
