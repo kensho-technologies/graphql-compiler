@@ -14,17 +14,25 @@ Turn complex GraphQL queries into optimized database queries.
 pip install graphql-compiler
 ```
 
+## Quick Overview 
+
+Through the GraphQL compiler, users can write powerful queries that uncover 
+deep relationships in the data while not having to worry about the underlying database query 
+language. The GraphQL compiler turns read-only queries written in GraphQL syntax to different 
+query languages. 
+
+Furthermore, the GraphQL compiler validates queries through the use of a GraphQL schema 
+that specifies the underlying schema of the database. We can currently autogenerate a 
+GraphQL schema by introspecting an OrientDB database, (see [Querying OrientDB with GraphQL](#querying-orientdb-with-graphql)). 
+
+In the near future, we plan to add schema autogeneration from SQLAlchemy metadata as well. 
+
 For a more detailed overview and getting started guide, please see
 [our blog post](https://blog.kensho.com/compiled-graphql-as-a-database-query-language-72e106844282).
 
-To pretty-print GraphQL queries, use the included pretty-printer:
-```
-python -m graphql_compiler.tool <input_file.graphql >output_file.graphql
-```
-It's modeled after Python's `json.tool`, reading from stdin and writing to stdout.
-
 ## Table of contents
-  * [FAQ](#faq)
+  * [Features](#features)
+  * [Querying OrientDB with GraphQL](#querying-orientdb-with-graphql)
   * [Definitions](#definitions)
   * [Directives](#directives)
      * [@optional](#optional)
@@ -57,66 +65,71 @@ It's modeled after Python's `json.tool`, reading from stdin and writing to stdou
      * [Macro Edges](#macro-edges)
      * [Using the macro registry](#using-the-macro-registry)
   * [Miscellaneous](#miscellaneous)
+     * [Pretty-Printing GraphQL Queries](#pretty-printing-graphql-queries)
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
+  * [FAQ](#faq)
   * [License](#license)
 
-## FAQ
-
-**Q: Does the compiler support all GraphQL language features?**
-
-A: No. We prioritized and implemented a subset of all functionality supported by the
-   GraphQL language. We hope to add more functionality over time.
-
-**Q: Do you really use GraphQL, or do you just use GraphQL-like syntax?**
-
-A: We really use GraphQL. Any query that the compiler will accept is entirely valid GraphQL,
-   and we actually use the Python port of the GraphQL core library for parsing and type checking.
-   However, since the database queries produced by compiling GraphQL are subject to the limitations
-   of the database system they run on, our execution model is somewhat different compared to
-   the one described in the standard GraphQL specification. See the
-   [Execution model](#execution-model) section for more details.
-
-**Q: Does this project come with a GraphQL server implementation?**
-
-A: No -- there are many existing frameworks for running a web server. We simply built a tool
-   that takes GraphQL query strings (and their parameters) and returns a query string you can
-   use with your database. The compiler does not execute the query string against the database,
-   nor does it deserialize the results. Therefore, it is agnostic to the choice of
-   server framework and database client library used.
-
-**Q: What databases and query languages does the compiler support?**
-
-A: We currently support a single graph database, OrientDB version 2.2.28+, and two query languages
-   that OrientDB supports: the OrientDB dialect of `gremlin`, and OrientDB's own custom SQL-like
-   query language that we refer to as `MATCH`, after the name of its graph traversal operator.
-   With OrientDB, `MATCH` should be the preferred choice for most users, since it tends to run
-   faster than `gremlin`, and has other desirable properties. See the
-   [Execution model](#execution-model) section for more details.
+## Features
+* **Databases and Query Languages:** We currently support a single database, OrientDB version 2.2.28+, and two query languages that OrientDB supports: the OrientDB dialect of gremlin, and OrientDB's own custom SQL-like query language that we refer to as MATCH, after the name of its graph traversal operator. With OrientDB, MATCH should be the preferred choice for most users, since it tends to run faster than gremlin, and has other desirable properties. See the Execution model section for more details.
    
    Support for relational databases including PostgreSQL, MySQL, SQLite,
    and Microsoft SQL Server is a work in progress. A subset of compiler features are available for
    these databases. See the [SQL](#sql) section for more details.
+* **GraphQL Language Features:**  We prioritized and implemented a subset of all functionality supported by the GraphQL language. We hope to add more functionality over time.
 
-**Q: Do you plan to support other databases / more GraphQL features in the future?**
+## Querying OrientDB with GraphQL
+```python3
+from graphql_compiler import (
+    get_graphql_schema_from_orientdb_schema_data, graphql_to_match
+)
+from graphql_compiler.schema_generation.orientdb.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
+from graphql_compiler.tests.conftest import init_integration_graph_client
 
-A: We'd love to, and we could really use your help! Please consider contributing to this project
-   by opening issues, opening pull requests, or participating in discussions.
+# The following code is meant to serve as a mock example and will not run
+# unless you are in the development environment outlined by CONTRIBUTING.md.
 
-**Q: I think I found a bug, what do I do?**
+# Step 1: Initialize dummy OrientDB database and get pyorient OrientDB client
+client = init_integration_graph_client()
 
-A: Please check if an issue has already been created for the bug, and open a new one if not.
-   Make sure to describe the bug in as much detail as possible, including any stack traces or
-   error messages you may have seen, which database you're using, and what query you compiled.
+# Step 2: Generate GraphQL schema from queried OrientDB schema records
+schema_records = client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+schema_data = [x.oRecordData for x in schema_records]
+schema, type_equivalence_hints = get_graphql_schema_from_orientdb_schema_data(schema_data)
 
-**Q: I think I found a security vulnerability, what do I do?**
+# Step 3: Write GraphQL query to get the names of all animals with a particular net worth
+# Note that we prefix net_worth with '$' and surround it with quotes to indicate it's a parameter
+graphql_query = '''
+{
+    Animal {
+        name @output(out_name: "animal_name")
+        net_worth @filter(op_name: "=", value: ["$net_worth"])
+    }
+}
+'''
+parameters = {
+    'net_worth': '100',
+}
 
-A: Please reach out to us at
-[graphql-compiler-maintainer@kensho.com](mailto:graphql-compiler-maintainer@kensho.com)
-so we can triage the issue and take appropriate action.
+# Step 4: Use autogenerated GraphQL schema to compile query into Match, an OrientDB query language
+compilation_result = graphql_to_match(schema, graphql_query, parameters, type_equivalence_hints)
 
+# Step 5: Run query in OrientDB
+query = compilation_result.query
+results = [row.oRecordData for row in client.command(query)]
+assert results == [{'animal_name': 'Animal 1'}]
+```
 ## Definitions
-
+- **GraphQLSchema object**- To be able to compile GraphQL, the first thing you will need is a GraphQLSchema object describing 
+the underlying database. To build it you can use `get_graphql_schema_from_orientdb_schema_data` as 
+demonstrated in the code example below. 
+```python
+# Generate GraphQL schema from queried OrientDB schema records
+schema_records = client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+schema_data = [x.oRecordData for x in schema_records]
+schema, type_equivalence_hints = get_graphql_schema_from_orientdb_schema_data(schema_data)
+```
 - **Vertex field**: A field corresponding to a vertex in the graph. In the below example, `Animal`
   and `out_Entity_Related` are vertex fields. The `Animal` field is the field at which querying
   starts, and is therefore the **root vertex field**. In any scope, fields with the prefix `out_`
@@ -282,8 +295,10 @@ This query is *invalid* for two separate reasons:
                 out_Animal_OfSpecies {
                     uuid @output(out_name: "species_id")
                 }
-                out_Animal_RelatedTo {
-                    name @output(out_name: "relative_name")
+                out_Entity_Related {
+                    ... on Animal {
+                        name @output(out_name: "relative_name")
+                    }
                 }
             }
         }
@@ -297,8 +312,10 @@ The following is a valid use of `@fold`:
         out_Animal_ParentOf @fold {
             in_Animal_ParentOf {
                 in_Animal_ParentOf {
-                    out_Animal_RelatedTo {
-                        name @output(out_name: "final_name")
+                    out_Entity_Related {
+                        ... on Animal {
+                            name @output(out_name: "final_name")
+                        }
                     }
                 }
             }
@@ -379,7 +396,7 @@ Consider the following query:
 ```
 It returns one row for every `Animal` that has a color equal to `$animal_color`,
 containing the animal's name in a column named `animal_name`. The parameter `$animal_color` is
-a runtime parameter -- the user must pass in a value (e.g. `{"$animal_color": "blue"}`) that
+a runtime parameter -- the user must pass in a value (e.g. `{"animal_color": "blue"}`) that
 will be inserted into the query before querying the database.
 
 **Tagged parameters** are represented with a `%` prefix (e.g. `%foo`) and denote parameters
@@ -1451,6 +1468,15 @@ def example(schema, type_equivalence_hints):
 
 ## Miscellaneous
 
+### Pretty-Printing GraphQL Queries
+
+To pretty-print GraphQL queries, use the included pretty-printer:
+```
+python -m graphql_compiler.tool <input_file.graphql >output_file.graphql
+```
+It's modeled after Python's `json.tool`, reading from stdin and writing to stdout.
+
+
 ### Expanding [`@optional`](#optional) vertex fields
 Including an optional statement in GraphQL has no performance issues on its own,
 but if you continue expanding vertex fields within an optional scope,
@@ -1638,6 +1664,45 @@ would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`
     }
 }
 ```
+
+## FAQ
+
+**Q: Do you really use GraphQL, or do you just use GraphQL-like syntax?**
+
+A: We really use GraphQL. Any query that the compiler will accept is entirely valid GraphQL,
+   and we actually use the Python port of the GraphQL core library for parsing and type checking.
+   However, since the database queries produced by compiling GraphQL are subject to the limitations
+   of the database system they run on, our execution model is somewhat different compared to
+   the one described in the standard GraphQL specification. See the
+   [Execution model](#execution-model) section for more details.
+
+**Q: Does this project come with a GraphQL server implementation?**
+
+A: No -- there are many existing frameworks for running a web server. We simply built a tool
+   that takes GraphQL query strings (and their parameters) and returns a query string you can
+   use with your database. The compiler does not execute the query string against the database,
+   nor does it deserialize the results. Therefore, it is agnostic to the choice of
+   server framework and database client library used.
+
+**Q: Do you plan to support other databases / more GraphQL features in the future?**
+
+A: We'd love to, and we could really use your help! Please consider contributing to this project
+   by opening issues, opening pull requests, or participating in discussions.
+
+**Q: I think I found a bug, what do I do?**
+
+A: Please check if an issue has already been created for the bug, and open a new one if not.
+   Make sure to describe the bug in as much detail as possible, including any stack traces or
+   error messages you may have seen, which database you're using, and what query you compiled.
+
+**Q: I think I found a security vulnerability, what do I do?**
+
+A: Please reach out to us at
+[graphql-compiler-maintainer@kensho.com](mailto:graphql-compiler-maintainer@kensho.com)
+so we can triage the issue and take appropriate action.
+
+
+
 
 ## License
 

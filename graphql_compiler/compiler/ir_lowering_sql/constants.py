@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
 
-from graphql_compiler.compiler import blocks, expressions
+from ...compiler import blocks, expressions
 
 
 UNSUPPORTED_META_FIELDS = {

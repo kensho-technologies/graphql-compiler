@@ -212,6 +212,25 @@ def invert_dict(invertible_dict):
     return inverted
 
 
+def is_runtime_parameter(argument):
+    """Return True if the directive argument defines a runtime parameter, and False otherwise."""
+    return argument.startswith('$')
+
+
+def is_tagged_parameter(argument):
+    """Return True if the directive argument defines a tagged parameter, and False otherwise."""
+    return argument.startswith('%')
+
+
+def get_parameter_name(argument):
+    """Return the name of the parameter without the leading prefix."""
+    if argument[0] not in {'$', '%'}:
+        raise AssertionError(u'Unexpectedly received an unprefixed parameter name, unable to '
+                             u'determine whether it is a runtime or tagged parameter: {}'
+                             .format(argument))
+    return argument[1:]
+
+
 @total_ordering
 @six.add_metaclass(ABCMeta)
 class BaseLocation(object):

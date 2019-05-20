@@ -57,12 +57,12 @@ setup(
     license='Apache 2.0',
     packages=find_packages(exclude=['tests*']),
     install_requires=[
-        'arrow>=0.7.0',
-        'funcy>=1.6',
-        'graphql-core==2.1',
+        'arrow>=0.7.0,<1',
+        'funcy>=1.6,<2',
+        'graphql-core>=2.1,<3',
         'pytz>=2016.10',
         'six>=1.10.0',
-        'sqlalchemy>=1.2.1,<1.3',
+        'sqlalchemy>=1.3.0,<2',
     ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
