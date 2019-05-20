@@ -375,9 +375,9 @@ def get_subclass_sets_from_superclass_sets(superclass_sets):
 PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
 
 # A way to describe a schema's normalized inheritance structure.
-#   -superclass_sets: a dict, string -> set of strings, mapping each class to its
-#                     superclasses. The set of superclasses includes the class itself and
-#                     the transitive superclasses. For instance, if A is a superclass of B,
-#                     and B is a superclass of C, then C's superclass set is {'A', 'B'}.
-#   -subclass_sets: a dict, string -> set of strings, that is similarly defined.
+#   - superclass_sets: a dict, string -> set of strings, mapping each class to its
+#                      superclasses. The set of superclasses includes the class itself and
+#                      the transitive superclasses. For instance, if A is a superclass of B,
+#                      and B is a superclass of C, then C's superclass set is {'A', 'B'}.
+#   - subclass_sets: a dict, string -> set of strings, that is similarly defined.
 InheritanceStructure = namedtuple('InheritanceStructure', ('superclass_sets', 'subclass_sets'))
