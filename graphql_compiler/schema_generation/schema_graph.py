@@ -380,6 +380,6 @@ PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
 #   - superclass_sets: a dict, string -> set of strings, mapping each class to its
 #                      superclasses. The set of superclasses includes the class itself and
 #                      the transitive superclasses. For instance, if A is a superclass of B,
-#                      and B is a superclass of C, then C's superclass set is {'A', 'B'}.
+#                      and B is a superclass of C, then C's superclass set is {'A', 'B', 'C'}.
 #   - subclass_sets: a dict, string -> set of strings, that is similarly defined.
 InheritanceStructure = namedtuple('InheritanceStructure', ('superclass_sets', 'subclass_sets'))
