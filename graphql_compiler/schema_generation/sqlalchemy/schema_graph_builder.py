@@ -1,26 +1,60 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import OrderedDict
 import warnings
 
-from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLString
+from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLString
 import six
 import sqlalchemy.sql.sqltypes as sqltypes
 
-from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
 from ..schema_graph import PropertyDescriptor, SchemaGraph, VertexType
 
 
-# TODO(pmantica1): Add scalar mapping for the following classes: Interval, and Time.
+# TODO(pmantica1): Add scalar mapping for the following classes: Interval.
 # We do not currently plan to add a mapping for JSON and Binary objects.
-SQL_CLASS_TO_GRAPHQL_TYPE = OrderedDict([
-    (sqltypes.String, GraphQLString),
-    (sqltypes.Integer, GraphQLInt),
-    (sqltypes.Float, GraphQLFloat),
-    (sqltypes.Numeric, GraphQLDecimal),
-    (sqltypes.DateTime, GraphQLDateTime),
-    (sqltypes.Date, GraphQLDate),
-    (sqltypes.Boolean, GraphQLBoolean),
-])
+SQL_CLASS_TO_GRAPHQL_TYPE = {
+    sqltypes.BIGINT: GraphQLInt,
+    sqltypes.BigInteger: GraphQLInt,
+    sqltypes.Boolean: GraphQLBoolean,
+    sqltypes.CHAR: GraphQLString,
+    sqltypes.CLOB: GraphQLString,
+    sqltypes.Date: GraphQLDate,
+    sqltypes.DATE: GraphQLDate,
+    sqltypes.DateTime: GraphQLDateTime,
+    sqltypes.DATETIME: GraphQLDateTime,
+    sqltypes.Enum: GraphQLString,
+    sqltypes.Float: GraphQLFloat,
+    sqltypes.FLOAT: GraphQLFloat,
+    sqltypes.INT: GraphQLInt,
+    sqltypes.Integer: GraphQLInt,
+    sqltypes.INTEGER: GraphQLInt,
+    sqltypes.NCHAR: GraphQLString,
+    sqltypes.Numeric: GraphQLDecimal,
+    sqltypes.NUMERIC: GraphQLDecimal,
+    sqltypes.NVARCHAR: GraphQLString,
+    sqltypes.REAL: GraphQLFloat,
+    sqltypes.SMALLINT: GraphQLInt,
+    sqltypes.SmallInteger: GraphQLInt,
+    sqltypes.String: GraphQLString,
+    sqltypes.Text: GraphQLString,
+    sqltypes.TEXT: GraphQLString,
+    sqltypes.Time: GraphQLDateTime,
+    sqltypes.TIME: GraphQLDateTime,
+    sqltypes.TIMESTAMP: GraphQLDateTime,
+    sqltypes.Unicode: GraphQLString,
+    sqltypes.UnicodeText: GraphQLString,
+    sqltypes.VARCHAR: GraphQLString,
+}
+
+UNSUPPORTED_PRIMITIVE_TYPES = frozenset({
+    sqltypes.ARRAY,
+    sqltypes.Binary,
+    sqltypes.BINARY,
+    sqltypes.Interval,
+    sqltypes.JSON,
+    sqltypes.LargeBinary,
+    sqltypes.PickleType,
+    sqltypes.VARBINARY,
+})
 
 
 # TODO(pmantica1): Map foreign keys to edges.
@@ -29,7 +63,6 @@ SQL_CLASS_TO_GRAPHQL_TYPE = OrderedDict([
 # TODO(pmantica1): Map arrays to GraphQLLists.
 def get_schema_graph_from_sql_alchemy_metadata(sqlalchemy_metadata):
     """Return the matching SchemaGraph for the SQLAlchemy Metadata object"""
-    _validate_sql_to_graphql_is_toposorted_by_class_inheritance()
     elements = dict()
     for table_name, table in six.iteritems(sqlalchemy_metadata.tables):
         elements[table_name] = _get_vertex_type_from_sqlalchemy_table(table)
@@ -37,32 +70,13 @@ def get_schema_graph_from_sql_alchemy_metadata(sqlalchemy_metadata):
     return SchemaGraph(elements, inheritance_sets)
 
 
-def _validate_sql_to_graphql_is_toposorted_by_class_inheritance():
-    """Validate that SQL_SCALAR_CLASS_TO_GRAPHQL_TYPE dict is toposorted by class inheritance."""
-    sql_classes = list(SQL_CLASS_TO_GRAPHQL_TYPE.keys())
-    for i, class_ in enumerate(sql_classes):
-        for other_class in sql_classes[i + 1:]:
-            if issubclass(other_class, class_):
-                raise AssertionError('SQL_CLASS_TO_GRAPHQL_TYPE is not toposorted by class '
-                                     'inheritance. Class {} is a subclass of {} but appears '
-                                     'later in the OrderedDict.'.format(other_class, class_))
-
-
 def _try_get_graphql_scalar_type(column_name, column_type):
-    """Return the most precise GraphQLScalarType for the SQL datatype class.
-
-    For instance, if class of the column_type is the Numeric class we return GraphQLDecimal.
-    If the class of the column_type is Float, a subclass of Numeric, we return GraphQLFloat.
-    """
-    maybe_graphql_type = None
-    for sql_class, graphql_type in SQL_CLASS_TO_GRAPHQL_TYPE.items():
-        if isinstance(column_type, sql_class):
-            maybe_graphql_type = graphql_type
-            break
+    """Return the matching GraphQLScalarType for the SQL datatype or None if none is found."""
+    maybe_graphql_type = SQL_CLASS_TO_GRAPHQL_TYPE.get(type(column_type), None)
     if not maybe_graphql_type:
-        # Try get the string representation of SQLAlchemy JSON and ARRAY types
+        # Trying to get the string representation of the SQLAlchemy JSON and ARRAY types
         # will lead to an error. We therefore use repr instead.
-        warnings.warn(u'Ignoring column "{}" with unsupported SQL datatype class: 'u'{}'
+        warnings.warn(u'Ignoring column "{}" with unsupported SQL datatype class: {}'
                       .format(column_name, repr(column_type)))
     return maybe_graphql_type
 
