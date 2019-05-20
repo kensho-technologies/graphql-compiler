@@ -368,7 +368,7 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     # Create the root query GraphQL type. Consists of all non-union classes, i.e.
     # all non-abstract classes (as GraphQL types) and all abstract classes (as GraphQL interfaces).
     RootSchemaQuery = GraphQLObjectType('RootSchemaQuery', OrderedDict([
-        (name, GraphQLField(value))
+        (name, GraphQLField(GraphQLList(value)))
         for name, value in sorted(six.iteritems(graphql_types), key=lambda x: x[0])
         if not isinstance(value, GraphQLUnionType)
     ]))
