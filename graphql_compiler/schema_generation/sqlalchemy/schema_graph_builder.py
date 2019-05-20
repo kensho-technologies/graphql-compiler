@@ -10,7 +10,13 @@ from ..schema_graph import PropertyDescriptor, SchemaGraph, VertexType
 
 
 # TODO(pmantica1): Add scalar mapping for the following classes: Interval.
-# We do not currently plan to add a mapping for JSON and Binary objects.
+# The following quote from https://docs.sqlalchemy.org/en/13/core/type_basics.html
+# explains what makes the all-cap classes particular:
+# "This category of types refers to types that are either part of the SQL standard, or are
+# potentially found within a subset of database backends. Unlike the “generic” types, the SQL
+# standard/multi-vendor types have no guarantee of working on all backends, and will only work
+# on those backends that explicitly support them by name. That is, the type will always emit its
+# exact name in DDL with CREATE TABLE is issued."
 SQL_CLASS_TO_GRAPHQL_TYPE = {
     sqltypes.BIGINT: GraphQLInt,
     sqltypes.BigInteger: GraphQLInt,
@@ -45,6 +51,7 @@ SQL_CLASS_TO_GRAPHQL_TYPE = {
     sqltypes.VARCHAR: GraphQLString,
 }
 
+# We do not currently plan to add a mapping for JSON and Binary objects.
 UNSUPPORTED_PRIMITIVE_TYPES = frozenset({
     sqltypes.ARRAY,
     sqltypes.Binary,
@@ -65,8 +72,8 @@ def get_schema_graph_from_sql_alchemy_metadata(sqlalchemy_metadata):
     elements = dict()
     for table_name, table in six.iteritems(sqlalchemy_metadata.tables):
         elements[table_name] = _get_vertex_type_from_sqlalchemy_table(table)
-    inheritance_sets = {element_name: {element_name} for element_name in elements}
-    return SchemaGraph(elements, inheritance_sets)
+    superclass_sets = {element_name: {element_name} for element_name in elements}
+    return SchemaGraph(elements, superclass_sets)
 
 
 def _try_get_graphql_scalar_type(column_name, column_type):
