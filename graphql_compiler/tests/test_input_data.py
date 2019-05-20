@@ -314,6 +314,34 @@ def filter_in_optional_block():
         type_equivalence_hints=None)
 
 
+def filter_in_optional_and_count():
+    graphql_input = '''{
+        Species {
+            name @output(out_name: "species_name")
+
+            in_Animal_OfSpecies @optional {
+                name @filter(op_name: "=", value: ["$animal_name"])
+            }
+
+            in_Species_Eats @fold {
+                _x_count @filter(op_name: ">=", value: ["$predators"])
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'species_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'animal_name': GraphQLString,
+        'predators': GraphQLInt,
+    }
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def between_filter_on_simple_scalar():
     # The "between" filter emits different output depending on what the compared types are.
     # This test checks for correct code generation when the type is a simple scalar (a String).

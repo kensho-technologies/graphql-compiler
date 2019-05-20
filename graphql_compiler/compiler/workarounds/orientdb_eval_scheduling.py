@@ -16,13 +16,13 @@ from ..expressions import (
 )
 
 
-def workaround_lowering_pass(ir_blocks):
+def workaround_lowering_pass(ir_blocks, query_metadata_table):
     """Extract locations from TernaryConditionals and rewrite their Filter blocks as necessary."""
     new_ir_blocks = []
 
     for block in ir_blocks:
         if isinstance(block, Filter):
-            new_block = _process_filter_block(block)
+            new_block = _process_filter_block(query_metadata_table, block)
         else:
             new_block = block
         new_ir_blocks.append(new_block)
@@ -30,7 +30,7 @@ def workaround_lowering_pass(ir_blocks):
     return new_ir_blocks
 
 
-def _process_filter_block(block):
+def _process_filter_block(query_metadata_table, block):
     """Rewrite the provided Filter block if necessary."""
     # For a given Filter block with BinaryComposition predicate expression X,
     # let L be the set of all Locations referenced in any TernaryConditional
@@ -85,7 +85,7 @@ def _process_filter_block(block):
                                  u'{} {}'.format(ternary, return_value))
 
     tautologies = [
-        _create_tautological_expression_for_location(location)
+        _create_tautological_expression_for_location(query_metadata_table, location)
         for location in problematic_locations
     ]
 
@@ -98,8 +98,12 @@ def _process_filter_block(block):
     return Filter(final_predicate)
 
 
-def _create_tautological_expression_for_location(location):
+def _create_tautological_expression_for_location(query_metadata_table, location):
     """For a given location, create a BinaryComposition that always evaluates to 'true'."""
-    location_exists = BinaryComposition(u'!=', ContextField(location), NullLiteral)
-    location_does_not_exist = BinaryComposition(u'=', ContextField(location), NullLiteral)
+    location_type = query_metadata_table.get_location_info(location).type
+
+    location_exists = BinaryComposition(
+        u'!=', ContextField(location, location_type), NullLiteral)
+    location_does_not_exist = BinaryComposition(
+        u'=', ContextField(location, location_type), NullLiteral)
     return BinaryComposition(u'||', location_exists, location_does_not_exist)

@@ -7,12 +7,12 @@ from graphql import GraphQLID, parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
-from graphql_compiler import get_graphql_schema_from_orientdb_schema_data
-from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
-
+from .. import get_graphql_schema_from_orientdb_schema_data
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import create_macro_registry, register_macro_edge
+from ..schema_generation.schema_graph import SchemaGraph
+from ..schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 from ..query_formatting.graphql_formatting import pretty_print_graphql
 
 
@@ -29,7 +29,7 @@ SKIP_TEST = 'SKIP'
 # without requiring a massive number of types and interfaces.
 SCHEMA_TEXT = '''
     schema {
-      query: RootSchemaQuery
+        query: RootSchemaQuery
     }
 
     directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
@@ -47,38 +47,38 @@ SCHEMA_TEXT = '''
     directive @fold on FIELD
 
     type Animal implements Entity, UniquelyIdentifiable {
-      _x_count: Int
-      alias: [String]
-      birthday: Date
-      color: String
-      description: String
-      in_Animal_ParentOf: [Animal]
-      in_Entity_Related: [Entity]
-      name: String
-      net_worth: Decimal
-      out_Animal_BornAt: [BirthEvent]
-      out_Animal_FedAt: [FeedingEvent]
-      out_Animal_ImportantEvent: [Union__BirthEvent__Event__FeedingEvent]
-      out_Animal_LivesIn: [Location]
-      out_Animal_OfSpecies: [Species]
-      out_Animal_ParentOf: [Animal]
-      out_Entity_Related: [Entity]
-      uuid: ID
+        _x_count: Int
+        alias: [String]
+        birthday: Date
+        color: String
+        description: String
+        in_Animal_ParentOf: [Animal]
+        in_Entity_Related: [Entity]
+        name: String
+        net_worth: Decimal
+        out_Animal_BornAt: [BirthEvent]
+        out_Animal_FedAt: [FeedingEvent]
+        out_Animal_ImportantEvent: [Union__BirthEvent__Event__FeedingEvent]
+        out_Animal_LivesIn: [Location]
+        out_Animal_OfSpecies: [Species]
+        out_Animal_ParentOf: [Animal]
+        out_Entity_Related: [Entity]
+        uuid: ID
     }
 
     type BirthEvent implements Entity, UniquelyIdentifiable {
-      _x_count: Int
-      alias: [String]
-      description: String
-      event_date: DateTime
-      in_Animal_BornAt: [Animal]
-      in_Animal_ImportantEvent: [Animal]
-      in_Entity_Related: [Entity]
-      in_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
-      name: String
-      out_Entity_Related: [Entity]
-      out_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
-      uuid: ID
+        _x_count: Int
+        alias: [String]
+        description: String
+        event_date: DateTime
+        in_Animal_BornAt: [Animal]
+        in_Animal_ImportantEvent: [Animal]
+        in_Entity_Related: [Entity]
+        in_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
+        name: String
+        out_Entity_Related: [Entity]
+        out_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
+        uuid: ID
     }
 
     scalar Date
@@ -88,102 +88,102 @@ SCHEMA_TEXT = '''
     scalar Decimal
 
     interface Entity {
-      _x_count: Int
-      alias: [String]
-      description: String
-      in_Entity_Related: [Entity]
-      name: String
-      out_Entity_Related: [Entity]
-      uuid: ID
+        _x_count: Int
+        alias: [String]
+        description: String
+        in_Entity_Related: [Entity]
+        name: String
+        out_Entity_Related: [Entity]
+        uuid: ID
     }
 
     type Event implements Entity, UniquelyIdentifiable {
-      _x_count: Int
-      alias: [String]
-      description: String
-      event_date: DateTime
-      in_Animal_ImportantEvent: [Animal]
-      in_Entity_Related: [Entity]
-      in_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
-      name: String
-      out_Entity_Related: [Entity]
-      out_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
-      uuid: ID
+        _x_count: Int
+        alias: [String]
+        description: String
+        event_date: DateTime
+        in_Animal_ImportantEvent: [Animal]
+        in_Entity_Related: [Entity]
+        in_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
+        name: String
+        out_Entity_Related: [Entity]
+        out_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
+        uuid: ID
     }
 
     type FeedingEvent implements Entity, UniquelyIdentifiable {
-      _x_count: Int
-      alias: [String]
-      description: String
-      event_date: DateTime
-      in_Animal_FedAt: [Animal]
-      in_Animal_ImportantEvent: [Animal]
-      in_Entity_Related: [Entity]
-      in_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
-      name: String
-      out_Entity_Related: [Entity]
-      out_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
-      uuid: ID
+        _x_count: Int
+        alias: [String]
+        description: String
+        event_date: DateTime
+        in_Animal_FedAt: [Animal]
+        in_Animal_ImportantEvent: [Animal]
+        in_Entity_Related: [Entity]
+        in_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
+        name: String
+        out_Entity_Related: [Entity]
+        out_Event_RelatedEvent: [Union__BirthEvent__Event__FeedingEvent]
+        uuid: ID
     }
 
     type Food implements Entity, UniquelyIdentifiable {
-      _x_count: Int
-      alias: [String]
-      description: String
-      in_Entity_Related: [Entity]
-      in_Species_Eats: [Species]
-      name: String
-      out_Entity_Related: [Entity]
-      uuid: ID
+        _x_count: Int
+        alias: [String]
+        description: String
+        in_Entity_Related: [Entity]
+        in_Species_Eats: [Species]
+        name: String
+        out_Entity_Related: [Entity]
+        uuid: ID
     }
 
     type FoodOrSpecies implements Entity, UniquelyIdentifiable {
-      _x_count: Int
-      alias: [String]
-      description: String
-      in_Entity_Related: [Entity]
-      in_Species_Eats: [Species]
-      name: String
-      out_Entity_Related: [Entity]
-      uuid: ID
+        _x_count: Int
+        alias: [String]
+        description: String
+        in_Entity_Related: [Entity]
+        in_Species_Eats: [Species]
+        name: String
+        out_Entity_Related: [Entity]
+        uuid: ID
     }
 
     type Location implements Entity, UniquelyIdentifiable {
-      _x_count: Int
-      alias: [String]
-      description: String
-      in_Animal_LivesIn: [Animal]
-      in_Entity_Related: [Entity]
-      name: String
-      out_Entity_Related: [Entity]
-      uuid: ID
+        _x_count: Int
+        alias: [String]
+        description: String
+        in_Animal_LivesIn: [Animal]
+        in_Entity_Related: [Entity]
+        name: String
+        out_Entity_Related: [Entity]
+        uuid: ID
     }
 
     type RootSchemaQuery {
-      Animal: Animal
-      BirthEvent: BirthEvent
-      Entity: Entity
-      Event: Event
-      FeedingEvent: FeedingEvent
-      Food: Food
-      FoodOrSpecies: FoodOrSpecies
-      Location: Location
-      Species: Species
-      UniquelyIdentifiable: UniquelyIdentifiable
+        Animal: Animal
+        BirthEvent: BirthEvent
+        Entity: Entity
+        Event: Event
+        FeedingEvent: FeedingEvent
+        Food: Food
+        FoodOrSpecies: FoodOrSpecies
+        Location: Location
+        Species: Species
+        UniquelyIdentifiable: UniquelyIdentifiable
     }
 
     type Species implements Entity, UniquelyIdentifiable {
-      _x_count: Int
-      alias: [String]
-      description: String
-      in_Animal_OfSpecies: [Animal]
-      in_Entity_Related: [Entity]
-      in_Species_Eats: [Species]
-      limbs: Int
-      name: String
-      out_Entity_Related: [Entity]
-      out_Species_Eats: [Union__Food__FoodOrSpecies__Species]
-      uuid: ID
+        _x_count: Int
+        alias: [String]
+        description: String
+        in_Animal_OfSpecies: [Animal]
+        in_Entity_Related: [Entity]
+        in_Species_Eats: [Species]
+        limbs: Int
+        name: String
+        out_Entity_Related: [Entity]
+        out_Species_Eats: [Union__Food__FoodOrSpecies__Species]
+        uuid: ID
     }
 
     union Union__BirthEvent__Event__FeedingEvent = BirthEvent | Event | FeedingEvent
@@ -191,8 +191,8 @@ SCHEMA_TEXT = '''
     union Union__Food__FoodOrSpecies__Species = Food | FoodOrSpecies | Species
 
     interface UniquelyIdentifiable {
-      _x_count: Int
-      uuid: ID
+        _x_count: Int
+        uuid: ID
     }
 '''
 
@@ -281,14 +281,19 @@ def get_schema():
     return schema
 
 
-def generate_schema(graph_client):
+def generate_schema_graph(graph_client):
+    """Generate SchemaGraph from a pyorient client"""
+    schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+    schema_data = [x.oRecordData for x in schema_records]
+    return SchemaGraph(schema_data)
+
+
+def generate_schema(graph_client, class_to_field_type_overrides=None, hidden_classes=None):
     """Generate schema and type equivalence dict from a pyorient client"""
     schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
-    type_overrides = {
-        'UniquelyIdentifiable': {'uuid': GraphQLID},
-    }
-    return get_graphql_schema_from_orientdb_schema_data(schema_data, type_overrides)
+    return get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_type_overrides,
+                                                        hidden_classes)
 
 
 def construct_location_types(location_types_as_strings):

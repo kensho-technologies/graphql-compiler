@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import six
 
-from ..blocks import Filter, GlobalOperationsStart
+from ..blocks import Filter
 from ..ir_lowering_common import (extract_optional_location_root_info,
                                   extract_simple_optional_location_info,
                                   lower_context_field_existence, merge_consecutive_filter_clauses,
@@ -80,17 +80,19 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     # Append global operation block(s) to filter out incorrect results
     # from simple optional match traverses (using a WHERE statement)
     if len(simple_optional_root_info) > 0:
-        where_filter_predicate = construct_where_filter_predicate(simple_optional_root_info)
-        ir_blocks.insert(-1, GlobalOperationsStart())
+        where_filter_predicate = construct_where_filter_predicate(
+            query_metadata_table, simple_optional_root_info)
+        # The GlobalOperationsStart block should already exist at this point. It is inserted
+        # in the compiler_frontend, and this function asserts that at the beginning.
         ir_blocks.insert(-1, Filter(where_filter_predicate))
 
     # These lowering / optimization passes work on IR blocks.
-    ir_blocks = lower_context_field_existence(ir_blocks)
+    ir_blocks = lower_context_field_existence(ir_blocks, query_metadata_table)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
     ir_blocks = rewrite_binary_composition_inside_ternary_conditional(ir_blocks)
     ir_blocks = merge_consecutive_filter_clauses(ir_blocks)
     ir_blocks = lower_has_substring_binary_compositions(ir_blocks)
-    ir_blocks = orientdb_eval_scheduling.workaround_lowering_pass(ir_blocks)
+    ir_blocks = orientdb_eval_scheduling.workaround_lowering_pass(ir_blocks, query_metadata_table)
 
     # Here, we lower from raw IR blocks into a MatchQuery object.
     # From this point on, the lowering / optimization passes work on the MatchQuery representation.
