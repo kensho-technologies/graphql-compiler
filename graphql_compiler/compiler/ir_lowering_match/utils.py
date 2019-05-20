@@ -10,7 +10,7 @@ from ..expressions import (
     BinaryComposition, Expression, GlobalContextField, Literal, LocalField, NullLiteral,
     TrueLiteral, UnaryTransformation, ZeroLiteral
 )
-from ..helpers import get_only_element_from_collection, is_vertex_field_name
+from ..helpers import get_only_element_from_collection
 
 
 def convert_coerce_type_to_instanceof_filter(coerce_type_block):

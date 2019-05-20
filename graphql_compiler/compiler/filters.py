@@ -9,8 +9,8 @@ from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from ..schema import is_vertex_field_name
 from .helpers import (
-    get_uniquely_named_objects_by_name, is_tag_argument, is_variable_argument, is_vertex_field_name,
-    is_vertex_field_type, strip_non_null_from_type, validate_safe_string
+    get_uniquely_named_objects_by_name, is_tag_argument, is_variable_argument, is_vertex_field_type,
+    strip_non_null_from_type, validate_safe_string
 )
 from .metadata import FilterInfo
 

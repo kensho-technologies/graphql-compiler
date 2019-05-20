@@ -3,7 +3,7 @@
 from pprint import pformat
 import re
 
-from graphql import GraphQLID, parse
+from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
@@ -11,9 +11,9 @@ from .. import get_graphql_schema_from_orientdb_schema_data
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import create_macro_registry, register_macro_edge
+from ..query_formatting.graphql_formatting import pretty_print_graphql
 from ..schema_generation.schema_graph import SchemaGraph
 from ..schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
-from ..query_formatting.graphql_formatting import pretty_print_graphql
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
