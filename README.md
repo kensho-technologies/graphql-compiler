@@ -84,11 +84,11 @@ For a more detailed overview and getting started guide, please see
 from graphql_compiler import (
     get_graphql_schema_from_orientdb_schema_data, graphql_to_match
 )
-from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
+from graphql_compiler.schema_generation.orientdb.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 from graphql_compiler.tests.conftest import init_integration_graph_client
 
 # The following code is meant to serve as a mock example and will not run
-# unless you are in the development enviroment outlined by CONTRIBUTING.md.
+# unless you are in the development environment outlined by CONTRIBUTING.md.
 
 # Step 1: Initialize dummy OrientDB database and get pyorient OrientDB client
 client = init_integration_graph_client()
@@ -396,7 +396,7 @@ Consider the following query:
 ```
 It returns one row for every `Animal` that has a color equal to `$animal_color`,
 containing the animal's name in a column named `animal_name`. The parameter `$animal_color` is
-a runtime parameter -- the user must pass in a value (e.g. `{"$animal_color": "blue"}`) that
+a runtime parameter -- the user must pass in a value (e.g. `{"animal_color": "blue"}`) that
 will be inserted into the query before querying the database.
 
 **Tagged parameters** are represented with a `%` prefix (e.g. `%foo`) and denote parameters

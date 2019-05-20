@@ -12,8 +12,8 @@ from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
-from ..schema_generation.schema_graph import SchemaGraph
-from ..schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
+from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
+from ..schema_generation.orientdb.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
@@ -285,7 +285,7 @@ def generate_schema_graph(graph_client):
     """Generate SchemaGraph from a pyorient client"""
     schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
-    return SchemaGraph(schema_data)
+    return get_orientdb_schema_graph(schema_data)
 
 
 def generate_schema(graph_client, class_to_field_type_overrides=None, hidden_classes=None):

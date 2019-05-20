@@ -281,7 +281,6 @@ GraphQLDecimal = GraphQLScalarType(
     parse_literal=_unused_function,  # We don't yet support parsing Decimal objects in literals.
 )
 
-
 DIRECTIVES = (
     FilterDirective,
     TagDirective,
