@@ -2,6 +2,14 @@
 
 ## Current development version
 
+## v1.10.1
+
+- Fix `_x_count` and optional filter creating duplicate GlobalOperationsStart IR blocks. [#253](https://github.com/kensho-technologies/graphql-compiler/pull/253).
+- Raise error for unused @tag directives [#224](https://github.com/kensho-technologies/graphql-compiler/pull/224).
+- Much documentation cleanup and many maintainer quality-of-life improvements.
+
+Thanks to `bojanserafimov`, `evantey14`, `jeremy.meulemans`, and `pmantica1` for their contributions.
+
 ## v1.10.0
 
 - **BREAKING**: Rename the `__count` meta field to `_x_count`, to avoid GraphQL schema parsing issues with other GraphQL libraries. [#176](https://github.com/kensho-technologies/graphql-compiler/pull/176)
