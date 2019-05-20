@@ -60,7 +60,7 @@ UNSUPPORTED_PRIMITIVE_TYPES = frozenset({
 # TODO(pmantica1): Map foreign keys to edges.
 # TODO(pmantica1): Represent table inheritance in SchemaGraph.
 # TODO(pmantica1): Add option to map tables to EdgeTypes instead of VertexTypes.
-# TODO(pmantica1): Map arrays to GraphQLLists.
+# TODO(pmantica1): Map arrays to GraphQLLists once the compiler is able to handle them.
 def get_schema_graph_from_sql_alchemy_metadata(sqlalchemy_metadata):
     """Return the matching SchemaGraph for the SQLAlchemy Metadata object"""
     elements = dict()
