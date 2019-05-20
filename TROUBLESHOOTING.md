@@ -48,3 +48,15 @@ Then, make sure that `clang` is able to find it by adding the following line to 
 ```
 export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/opt/openssl/lib/
 ```
+
+## Issues starting PostgreSQL: Port already in use 
+
+While running `docker-compose up -d`, an already existing PostgreSQL service causes port conflicts with `graphqlcompiler_postgres_1`. Try stopping the PostgreSQL service by executing 
+```
+brew services stop postgresql
+```
+on OSX or
+```
+systemctl stop postgresql
+```
+on Ubuntu.
