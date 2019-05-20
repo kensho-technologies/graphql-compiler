@@ -39,7 +39,9 @@ class SchemaGraph(object):
         Args:
             elements: a dict, string -> SchemaElement, mapping each class in the schema to its
                       corresponding SchemaElement object.
-            inheritance_structure: InheritanceStructure
+            inheritance_structure: InheritanceStructure, (namedtuple with subclass_sets and
+                                   superclass_sets fields), describing the inheritance structure
+                                   of the SchemaGraph.
 
         Returns:
             fully-constructed SchemaGraph object
