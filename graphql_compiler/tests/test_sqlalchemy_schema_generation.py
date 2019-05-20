@@ -43,5 +43,5 @@ class SQLALchemyGraphqlSchemaGenerationTests(unittest.TestCase):
         self.assertNotIn('non_supported_type', a_vertex.properties)
 
     def test_warn_when_type_is_not_supported(self):
-        with pytest.warns(UserWarning):
+        with pytest.warns(Warning):
             _try_get_graphql_scalar_type('binary', Binary)
