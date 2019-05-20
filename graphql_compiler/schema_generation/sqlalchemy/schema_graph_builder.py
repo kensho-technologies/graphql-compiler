@@ -60,7 +60,6 @@ UNSUPPORTED_PRIMITIVE_TYPES = frozenset({
 # TODO(pmantica1): Map foreign keys to edges.
 # TODO(pmantica1): Represent table inheritance in SchemaGraph.
 # TODO(pmantica1): Add option to map tables to EdgeTypes instead of VertexTypes.
-# TODO(pmantica1): Map arrays to GraphQLLists once the compiler is able to handle them.
 def get_schema_graph_from_sql_alchemy_metadata(sqlalchemy_metadata):
     """Return the matching SchemaGraph for the SQLAlchemy Metadata object"""
     elements = dict()
@@ -84,6 +83,8 @@ def _try_get_graphql_scalar_type(column_name, column_type):
 # TODO(pmantica1): Address nullable types.
 # TODO(pmantica1): Address default values of columns.
 # TODO(pmantica1): Map Enum to the GraphQL Enum type.
+# TODO(pmantica1): Map arrays to GraphQLLists once the compiler is able to handle them.
+# TODO(pmantica1): Possibly add a GraphQLInt64 type for SQL BigIntegers.
 def _get_vertex_type_from_sqlalchemy_table(table):
     """Return the VertexType corresponding to the SQLALchemyTable object."""
     properties = dict()
