@@ -8,6 +8,7 @@ import six
 
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 
+
 # The naming stems from OrientDB naming conventions for builtin link properties for edges.
 EDGE_SOURCE_PROPERTY_NAME = 'out'
 EDGE_DESTINATION_PROPERTY_NAME = 'in'
