@@ -8,10 +8,7 @@ import six
 
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 
-# The following variable assignment stems from confusing OrientDB conventions.
-# In the following url, the 'out' link of Owns edge is the source class Person and the 'in'
-# link is the destination class Car.
-# https://orientdb.com/orientdb-using-schemas-with-graphs-part-1/
+# The naming stems from OrientDB naming conventions for builtin link properties for edges.
 EDGE_SOURCE_PROPERTY_NAME = 'out'
 EDGE_DESTINATION_PROPERTY_NAME = 'in'
 
