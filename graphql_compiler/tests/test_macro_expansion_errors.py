@@ -1,8 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import unittest
 
-import pytest
-
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from ..macros import perform_macro_expansion
 from .test_helpers import get_test_macro_registry
@@ -87,22 +85,6 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         with self.assertRaises(GraphQLValidationError):
-            perform_macro_expansion(self.macro_registry, query, args)
-
-    @pytest.mark.skip(reason='not implemented')
-    def test_macro_edge_target_on_union_type(self):
-        query = '''{
-            Animal @macro_edge_definition(name: "out_Animal_RelatedEvent") {
-                in_Entity_Related @macro_edge_target {
-                    ... on Event {
-                        uuid
-                    }
-                }
-            }
-        }'''
-        args = {}
-
-        with self.assertRaises(GraphQLCompilationError):
             perform_macro_expansion(self.macro_registry, query, args)
 
     def test_incorrect_schema_usage(self):
