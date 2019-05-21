@@ -1,10 +1,17 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 
-from graphql.language.ast import Field, InlineFragment, OperationDefinition, SelectionSet
+from graphql.language.ast import (
+    Argument, Field, InlineFragment, ListValue, Name, OperationDefinition, SelectionSet,
+    StringValue
+)
 
 from ...ast_manipulation import get_ast_field_name
-from ...compiler.helpers import get_field_type_from_schema, get_vertex_field_type
+from ...compiler.helpers import (
+    get_field_type_from_schema, get_parameter_name, get_vertex_field_type, is_runtime_parameter,
+    is_tagged_parameter
+)
+from ...schema import FilterDirective, TagDirective
 from ..macro_edge.directives import MacroEdgeTargetDirective
 
 
@@ -53,6 +60,195 @@ def get_directives_for_ast(ast):
     return result
 
 
+def get_all_tag_names(ast):
+    """Return a set of strings containing tag names that appear in the query.
+
+    Args:
+        ast: GraphQL query AST object
+
+    Returns:
+        set of strings containing tag names that appear in the query
+    """
+    return {
+        # Schema validation has ensured this exists
+        directive.arguments[0].value.value
+        for ast, directive in _yield_ast_nodes_with_directives(ast)
+        if directive.name.value == TagDirective.name
+    }
+
+
+def _replace_tag_names_in_tag_directive(name_change_map, tag_directive):
+    """Return the new directive, and whether it is different from the old.
+
+    Args:
+        name_change_map: Dict[str, str] mapping tag names to new names
+        tag_directive: GraphQL library tag directive whose name is in the name_change_map.
+                       This ast is not mutated.
+
+    Returns:
+        tuple containing:
+        - GraphQL library directive, equivalent to the input one, with its name changed
+          according to the name_change_map
+        - bool, whether the output is different from the input
+    """
+    # Schema validation has ensured this exists
+    current_name = tag_directive.arguments[0].value.value
+    new_name = name_change_map[current_name]
+    renamed_tag_directive = copy(tag_directive)
+    renamed_tag_directive.arguments = [Argument(Name('tag_name'), StringValue(new_name))]
+    return renamed_tag_directive, new_name != current_name
+
+
+def _replace_tag_names_in_filter_directive(name_change_map, filter_directive, ast):
+    """Return the new directive, and whether it is different from the old.
+
+    Args:
+        name_change_map: Dict[str, str] mapping tag names to new names
+        filter_directive: GraphQL library filter directive that potentially uses tagged parameters.
+                          all such tagged parameters should be in the name_change_map. This
+                          directive is not mutated.
+        ast: Ast where the filter directive was found. Only used for context in error messages.
+
+    Returns:
+        tuple containing:
+        - GraphQL library directive, equivalent to the input one, with any tagged parameters it
+          uses replaced according to the name_change_map
+        - bool, whether the output is different from the input
+    """
+    made_changes = False
+    filter_with_renamed_args = copy(filter_directive)
+    filter_with_renamed_args.arguments = []
+    for argument in filter_directive.arguments:
+        if argument.name.value == 'op_name':
+            filter_with_renamed_args.arguments.append(argument)
+        elif argument.name.value == 'value':
+            new_value_list = []
+            for value in argument.value.values:
+                parameter = value.value
+                if is_tagged_parameter(parameter):
+                    current_name = get_parameter_name(parameter)
+                    new_name = name_change_map[current_name]
+                    if new_name != current_name:
+                        made_changes = True
+                    new_value_list.append(StringValue('%' + new_name))
+                elif is_runtime_parameter(parameter):
+                    new_value_list.append(value)
+                else:
+                    raise AssertionError(u'Parameter {} used in directive {} is expected to '
+                                         u'be a tagged parameter (starting with %) or a runtime '
+                                         u'parameter (starting with $), but it was neither. {}'
+                                         .format(parameter, filter_directive, ast))
+            filter_with_renamed_args.arguments.append(
+                Argument(Name('value'), value=ListValue(new_value_list)))
+        else:
+            raise AssertionError(u'Unknown argument name {} in filter {}: {}'
+                                 .format(argument.name.value, filter_directive, ast))
+    return filter_with_renamed_args, made_changes
+
+
+def _replace_tag_names_at_current_node(name_change_map, ast):
+    """Return directives with tag names replaced according to the name_change_map.
+
+    Args:
+        name_change_map: Dict[str, str] mapping all tag names in the ast to new names
+        ast: GraphQL library AST object, such as a Field, InlineFragment, or OperationDefinition
+             whose directives we want to replace tag names in. This ast is not mutated.
+
+    Returns:
+        tuple containing:
+        - list of directives equivalent to the ones in the input ast, with all tag names replaced
+          according to the name_change_map.
+        - bool, whether the output is different from the input
+    """
+    # Rename tag names in @tag and @filter directives, and record if we made changes
+    made_changes = False
+    new_directives = []
+    for directive in ast.directives:
+        if directive.name.value == TagDirective.name:
+            renamed_tag_directive, made_changes_to_tag = _replace_tag_names_in_tag_directive(
+                name_change_map, directive)
+            made_changes = made_changes or made_changes_to_tag
+            new_directives.append(renamed_tag_directive)
+        elif directive.name.value == FilterDirective.name:
+            filter_with_renamed_args, made_changes_to_filter = (
+                _replace_tag_names_in_filter_directive(name_change_map, directive, ast))
+            made_changes = made_changes or made_changes_to_filter
+            new_directives.append(filter_with_renamed_args)
+        else:
+            new_directives.append(directive)
+    return new_directives, made_changes
+
+
+def replace_tag_names(name_change_map, ast):
+    """Return a new ast with tag names replaced according to the name_change_map.
+
+    Args:
+        name_change_map: Dict[str, str] mapping all tag names in the ast to new names
+        ast: GraphQL library AST object, such as a Field, InlineFragment, or OperationDefinition
+             This ast is not mutated.
+
+    Returns:
+        GraphQL library AST object, equivalent to the input one, with all tag names replaced
+        according to the name_change_map. If no changes were made, this is the same object
+        as the input.
+    """
+    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+        return ast
+
+    made_changes = False
+
+    # Recurse
+    new_selection_set = None
+    if ast.selection_set is not None:
+        new_selections = []
+        for selection_ast in ast.selection_set.selections:
+            new_selection_ast = replace_tag_names(name_change_map, selection_ast)
+
+            if selection_ast is not new_selection_ast:
+                # Since we did not get the exact same object as the input, changes were made.
+                # That means this call will also need to make changes and return a new object.
+                made_changes = True
+
+            new_selections.append(new_selection_ast)
+        new_selection_set = SelectionSet(new_selections)
+
+    # Process the current node
+    new_directives, made_changes_at_this_node = _replace_tag_names_at_current_node(
+        name_change_map, ast)
+    made_changes = made_changes or made_changes_at_this_node
+
+    if not made_changes:
+        # We didn't change anything, return the original input object.
+        return ast
+
+    new_ast = copy(ast)
+    new_ast.selection_set = new_selection_set
+    new_ast.directives = new_directives
+    return new_ast
+
+
+def generate_disambiguations(existing_names, new_names):
+    """Return a dict mapping the new names to similar names not conflicting with existing names.
+
+    Args:
+        existing_names: set of strings, the names that are already taken
+        new_names: set of strings, the names that might coincide with exisitng names
+
+    Returns:
+        dict mapping the new names to other unique names not present in existing_names
+    """
+    name_mapping = dict()
+    for name in new_names:
+        # We try adding different suffixes to disambiguate from the existing names.
+        disambiguation = name
+        index = 0
+        while disambiguation in existing_names or disambiguation in name_mapping:
+            disambiguation = '{}_macro_edge_{}'.format(name, index)
+            index += 1
+        name_mapping[name] = disambiguation
+    return name_mapping
+
+
 def remove_directives_from_ast(ast, directive_names_to_omit):
     """Return an equivalent AST to the input, but with instances of the named directives omitted.
 
@@ -70,7 +266,7 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
 
     made_changes = False
 
-    new_selections = None
+    new_selection_set = None
     if ast.selection_set is not None:
         new_selections = []
         for selection_ast in ast.selection_set.selections:
@@ -82,6 +278,7 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
                 made_changes = True
 
             new_selections.append(new_selection_ast)
+        new_selection_set = SelectionSet(new_selections)
 
     directives_to_keep = [
         directive
@@ -96,7 +293,7 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
         return ast
 
     new_ast = copy(ast)
-    new_ast.selection_set = SelectionSet(new_selections)
+    new_ast.selection_set = new_selection_set
     new_ast.directives = directives_to_keep
     return new_ast
 
@@ -111,7 +308,7 @@ def find_target_and_copy_path_to_it(ast):
         ast: GraphQL library AST object
 
     Returns:
-        pair containing:
+        tuple containing:
         - GraphQL library AST object equal to the input. Objects on the path to the @target
           directive are shallow copied.
         - GraphQL library AST object at the @target directive of the resulting AST, or None
