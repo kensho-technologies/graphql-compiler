@@ -136,8 +136,8 @@ def _replace_tag_names_in_filter_directive(name_change_map, filter_directive, as
                 else:
                     raise AssertionError(u'Parameter {} used in directive {} is expected to '
                                          u'be a tagged parameter (starting with %) or a runtime '
-                                         u'parameter (starting with $), but it was neither. {}',
-                                         parameter, filter_directive, ast)
+                                         u'parameter (starting with $), but it was neither. {}'
+                                         .format(parameter, filter_directive, ast))
             filter_with_renamed_args.arguments.append(
                 Argument(Name('value'), value=ListValue(new_value_list)))
         else:
