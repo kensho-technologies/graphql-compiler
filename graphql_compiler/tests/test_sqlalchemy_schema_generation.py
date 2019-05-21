@@ -3,7 +3,7 @@ import unittest
 
 from graphql.type import GraphQLString
 import pytest
-from sqlalchemy import Column, MetaData, Table
+from sqlalchemy import Column, MetaData, Table, ForeignKey
 from sqlalchemy.types import Binary, Integer, String
 
 from ..schema_generation.schema_graph import VertexType
@@ -21,7 +21,14 @@ def _get_sql_metadata():
         metadata,
         Column('supported_type', String()),
         Column('non_supported_type', Binary()),
-        Column('default', Integer(), default=42)
+        Column('default', Integer(), default=42),
+        Column('edge_from_a_to_b', String(), ForeignKey('B.primary_key'))
+    )
+
+    Table(
+        'B',
+        metadata,
+        Column('primary_key', String(), primary_key=True)
     )
 
     return metadata
@@ -55,3 +62,14 @@ class SQLALchemyGraphqlSchemaGenerationTests(unittest.TestCase):
         # Tests that a class is in its own subclass/superclass set.
         self.assertEqual(self.schema_graph.get_subclass_set('A'), {'A'})
         self.assertEqual(self.schema_graph.get_superclass_set('A'), {'A'})
+
+    def test_edge_generation(self):
+        a_vertex = self.schema_graph.get_element_by_class_name('A')
+        b_vertex = self.schema_graph.get_element_by_class_name('B')
+        edge_from_a_to_b = self.schema_graph.get_element_by_class_name('edge_from_a_to_b')
+        self.assertEqual(a_vertex.out_connections, {'edge_from_a_to_b'})
+        self.assertEqual(b_vertex.in_connections, {'edge_from_a_to_b'})
+        self.assertEqual(edge_from_a_to_b.base_in_connection, 'A')
+        self.assertEqual(edge_from_a_to_b.base_out_connection, 'B')
+        self.assertEqual(edge_from_a_to_b.in_connections, {'A'})
+        self.assertEqual(edge_from_a_to_b.out_connections, {'B'})

@@ -4,11 +4,12 @@ import warnings
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLString
 import six
 import sqlalchemy.sql.sqltypes as sqltypes
+from sqlalchemy import Column
 
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
 from ..schema_graph import (
-    InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType,
-    get_subclass_sets_from_superclass_sets
+    InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType, EdgeType,
+    get_subclass_sets_from_superclass_sets, link_schema_elements
 )
 
 
@@ -67,16 +68,22 @@ UNSUPPORTED_PRIMITIVE_TYPES = frozenset({
 })
 
 
-# TODO(pmantica1): Map foreign keys to edges.
 # TODO(pmantica1): Represent table inheritance in SchemaGraph.
 # TODO(pmantica1): Add option to map tables to EdgeTypes instead of VertexTypes.
 def get_schema_graph_from_sql_alchemy_metadata(sqlalchemy_metadata):
     """Return the matching SchemaGraph for the SQLAlchemy Metadata object"""
     elements = dict()
-    for table_name, table in six.iteritems(sqlalchemy_metadata.tables):
-        elements[table_name] = _get_vertex_type_from_sqlalchemy_table(table)
+    for table in six.itervalues(sqlalchemy_metadata.tables):
+        elements[table.name] = _get_vertex_type_from_sqlalchemy_table(table)
+        for column in table.get_children():
+            for foreign_key in column.foreign_keys:
+                outgoing_table = foreign_key.column.table
+                elements[column.key] = EdgeType(
+                    column.key, False, {}, {}, table.name, outgoing_table.name)
     superclass_sets = {element_name: {element_name} for element_name in elements}
     subclass_sets = get_subclass_sets_from_superclass_sets(superclass_sets)
+    inheritance_structure = InheritanceStructure(superclass_sets, subclass_sets)
+    link_schema_elements(elements, inheritance_structure)
     return SchemaGraph(elements, InheritanceStructure(superclass_sets, subclass_sets))
 
 
