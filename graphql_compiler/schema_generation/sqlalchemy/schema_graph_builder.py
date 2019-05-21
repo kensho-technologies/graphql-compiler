@@ -88,7 +88,6 @@ def _try_get_graphql_scalar_type(column_name, column_type):
 
 
 # TODO(pmantica1): Address nullable types.
-# TODO(pmantica1): Address default values of columns.
 # TODO(pmantica1): Map Enum to the GraphQL Enum type.
 # TODO(pmantica1): Map arrays to GraphQLLists once the compiler is able to handle them.
 # TODO(pmantica1): Possibly add a GraphQLInt64 type for SQL BigIntegers.
@@ -97,7 +96,7 @@ def _get_vertex_type_from_sqlalchemy_table(table):
     properties = dict()
     for column in table.get_children():
         name = column.key
-        default = None
+        default = column.default.arg if column.default is not None else None
         maybe_property_type = _try_get_graphql_scalar_type(name, column.type)
         if maybe_property_type is not None:
             properties[name] = PropertyDescriptor(maybe_property_type, default)
