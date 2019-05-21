@@ -1,15 +1,17 @@
 # Troubleshooting Guide
 
-## Issues starting MySQL with docker-compose
+## Issues starting MySQL or PostgreSQL with docker-compose
 
-If you have any trouble starting the MySQL database, make sure the MySQL service is not already
-running outside of docker. You can stop the MySQL service in OSX with:
+If you have any trouble starting the MySQL/PostgreSQL database, make sure any database service is not already
+running outside of docker. On OSX, you can stop the MySQL and PostgreSQL services by executing:
 ```bash
 brew services stop mysql
+brew services stop postgresql
 ```
-or on Ubuntu with
+or on Ubuntu with:
 ```bash
 service mysql stop
+service postgresql stop
 ```
 
 ## Issues installing the Python MySQL package
