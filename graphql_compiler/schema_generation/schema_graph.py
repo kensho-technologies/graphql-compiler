@@ -33,23 +33,21 @@ class SchemaGraph(object):
     on the graph. It also holds a fully denormalized schema for the graph.
     """
 
-    def __init__(self, elements, superclass_sets):
+    def __init__(self, elements, inheritance_structure):
         """Create a new SchemaGraph.
 
         Args:
             elements: a dict, string -> SchemaElement, mapping each class in the schema to its
                       corresponding SchemaElement object.
-            superclass_sets: a dict, string -> set of strings, mapping each class to its
-                              superclasses. The set of superclasses includes the class itself and
-                              the transitive superclasses. For instance, if A is a superclass of B,
-                              and B is a superclass of C, then C's superclass set is {'A', 'B'}.
+            inheritance_structure: InheritanceStructure, (namedtuple with subclass_sets and
+                                   superclass_sets fields), describing the inheritance structure
+                                   of the SchemaGraph.
 
         Returns:
             fully-constructed SchemaGraph object
         """
         self._elements = elements
-        self._superclass_sets = superclass_sets
-        self._subclass_sets = get_subclass_sets_from_superclass_sets(superclass_sets)
+        self._inheritance_structure = inheritance_structure
 
         self._vertex_class_names = self._get_element_names_of_class(VertexType)
         self._edge_class_names = self._get_element_names_of_class(EdgeType)
@@ -61,11 +59,11 @@ class SchemaGraph(object):
 
     def get_superclass_set(self, cls):
         """Return all class names that the given class inherits from, including itself."""
-        return self._superclass_sets[cls]
+        return self._inheritance_structure.superclass_sets[cls]
 
     def get_subclass_set(self, cls):
         """Return all class names that inherit from this class, including itself."""
-        return self._subclass_sets[cls]
+        return self._inheritance_structure.subclass_sets[cls]
 
     def get_default_property_values(self, classname):
         """Return a dict with default values for all properties declared on this class."""
@@ -377,3 +375,11 @@ def get_subclass_sets_from_superclass_sets(superclass_sets):
 #   - default: the default value for the property, used when a record is inserted without an
 #              explicit value for this property. Set to None if no default is given in the schema.
 PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
+
+# A way to describe a schema's normalized inheritance structure.
+#   - superclass_sets: a dict, string -> set of strings, mapping each class to its
+#                      superclasses. The set of superclasses includes the class itself and
+#                      the transitive superclasses. For instance, if A is a superclass of B,
+#                      and B is a superclass of C, then C's superclass set is {'A', 'B', 'C'}.
+#   - subclass_sets: a dict, string -> set of strings, that is similarly defined.
+InheritanceStructure = namedtuple('InheritanceStructure', ('superclass_sets', 'subclass_sets'))
