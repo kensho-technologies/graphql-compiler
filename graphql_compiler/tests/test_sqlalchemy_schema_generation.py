@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import unittest
 
-from graphql.type import GraphQLString
+from graphql.type import GraphQLNonNull, GraphQLString
 import pytest
 from sqlalchemy import Column, MetaData, Table
 from sqlalchemy.types import Binary, String
@@ -21,6 +21,7 @@ def _get_sql_metadata():
         metadata,
         Column('supported_type', String()),
         Column('non_supported_type', Binary()),
+        Column('non_nullable', String(), nullable=False)
     )
 
     return metadata
@@ -45,3 +46,9 @@ class SQLALchemyGraphqlSchemaGenerationTests(unittest.TestCase):
     def test_warn_when_type_is_not_supported(self):
         with pytest.warns(Warning):
             _try_get_graphql_scalar_type('binary', Binary)
+
+    def test_non_nullable(self):
+        a_vertex = self.schema_graph.get_element_by_class_name('A')
+        non_null_graphql_string = GraphQLNonNull(GraphQLString)
+        non_null_property = a_vertex.properties['non_nullable']
+        self.assertTrue(non_null_property.type.is_same_type(non_null_graphql_string))

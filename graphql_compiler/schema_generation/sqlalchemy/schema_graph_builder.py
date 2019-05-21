@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import warnings
 
-from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLString
+from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLNonNull, GraphQLString
 import six
 import sqlalchemy.sql.sqltypes as sqltypes
 
@@ -87,7 +87,6 @@ def _try_get_graphql_scalar_type(column_name, column_type):
     return maybe_graphql_type
 
 
-# TODO(pmantica1): Address nullable types.
 # TODO(pmantica1): Address default values of columns.
 # TODO(pmantica1): Map Enum to the GraphQL Enum type.
 # TODO(pmantica1): Map arrays to GraphQLLists once the compiler is able to handle them.
@@ -100,5 +99,7 @@ def _get_vertex_type_from_sqlalchemy_table(table):
         default = None
         maybe_property_type = _try_get_graphql_scalar_type(name, column.type)
         if maybe_property_type is not None:
+            if not column.nullable:
+                maybe_property_type = GraphQLNonNull(maybe_property_type)
             properties[name] = PropertyDescriptor(maybe_property_type, default)
     return VertexType(table.name, False, properties, {})
