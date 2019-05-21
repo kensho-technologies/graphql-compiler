@@ -107,6 +107,7 @@ def _replace_tag_names_in_filter_directive(name_change_map, filter_directive, as
         filter_directive: GraphQL library filter directive that potentially uses tagged parameters.
                           all such tagged parameters should be in the name_change_map. This
                           directive is not mutated.
+        ast: Ast where the filter directive was found. Only used for context in error messages.
 
     Returns:
         tuple containing:
@@ -123,22 +124,25 @@ def _replace_tag_names_in_filter_directive(name_change_map, filter_directive, as
         elif argument.name.value == 'value':
             new_value_list = []
             for value in argument.value.values:
-                if is_tagged_parameter(value.value):
-                    current_name = get_parameter_name(value.value)
+                parameter = value.value
+                if is_tagged_parameter(parameter):
+                    current_name = get_parameter_name(parameter)
                     new_name = name_change_map[current_name]
                     if new_name != current_name:
                         made_changes = True
                     new_value_list.append(StringValue('%' + new_name))
-                elif is_runtime_parameter(value.value):
+                elif is_runtime_parameter(parameter):
                     new_value_list.append(value)
                 else:
-                    raise AssertionError(u'Value was neither tag nor filter: {} {}'
-                                         .format(filter_directive, value.value))
+                    raise AssertionError(u'Parameter {} used in directive {} is expected to '
+                                         u'be a tagged parameter (starting with %) or a runtime '
+                                         u'parameter (starting with $), but it was neither. {}',
+                                         parameter, filter_directive, ast)
             filter_with_renamed_args.arguments.append(
                 Argument(Name('value'), value=ListValue(new_value_list)))
         else:
-            raise AssertionError(u'Unknown argument name {} in filter: {}'
-                                 .format(argument.name.value, ast))
+            raise AssertionError(u'Unknown argument name {} in filter {}: {}'
+                                 .format(argument.name.value, filter_directive, ast))
     return filter_with_renamed_args, made_changes
 
 
