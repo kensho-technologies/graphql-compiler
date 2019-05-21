@@ -8,7 +8,7 @@ import six
 from ..exceptions import IllegalSchemaStateError
 from ..schema_graph import (
     EdgeType, InheritanceStructure, NonGraphElement, PropertyDescriptor, SchemaGraph, VertexType,
-    get_subclass_sets_from_superclass_sets
+    get_subclass_sets_from_superclass_sets, link_schema_elements
 )
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES,
@@ -76,7 +76,7 @@ def get_orientdb_schema_graph(schema_data):
     }
 
     non_graph_elements = _get_non_graph_elements(class_name_to_definition, inheritance_structure)
-    inner_collection_objs = _get_graphql_rep_of_non_graph_elements(
+    inner_collection_objs = _get_graphql_representation_of_non_graph_elements(
         non_graph_elements, inheritance_structure)
 
     elements = non_graph_elements
@@ -89,7 +89,7 @@ def get_orientdb_schema_graph(schema_data):
 
     # Initialize the connections that show which schema classes can be connected to
     # which other schema classes, then freeze all schema elements.
-    _link_schema_elements(elements, inheritance_structure)
+    link_schema_elements(elements, inheritance_structure)
     for element in six.itervalues(elements):
         element.freeze()
 
@@ -437,35 +437,7 @@ def _try_get_base_connections(class_name, inheritance_structure, links, abstract
     )
 
 
-def _link_schema_elements(elements, inheritance_structure):
-    """For each edge, link the schema elements it connects to each other."""
-    _, edge_class_names, _ = _get_vertex_edge_and_non_graph_class_names(inheritance_structure)
-
-    for edge_class_name in edge_class_names:
-        edge_element = elements[edge_class_name]
-
-        from_class_name = edge_element.base_in_connection
-        to_class_name = edge_element.base_out_connection
-
-        if not from_class_name or not to_class_name:
-            continue
-
-        edge_schema_element = elements[edge_class_name]
-
-        # Link from_class_name with edge_class_name
-        for from_class in inheritance_structure.subclass_sets[from_class_name]:
-            from_schema_element = elements[from_class]
-            from_schema_element.out_connections.add(edge_class_name)
-            edge_schema_element.in_connections.add(from_class)
-
-        # Link edge_class_name with to_class_name
-        for to_class in inheritance_structure.subclass_sets[to_class_name]:
-            to_schema_element = elements[to_class]
-            edge_schema_element.out_connections.add(to_class)
-            to_schema_element.in_connections.add(edge_class_name)
-
-
-def _get_graphql_rep_of_non_graph_elements(non_graph_elements, inheritance_structure):
+def _get_graphql_representation_of_non_graph_elements(non_graph_elements, inheritance_structure):
     """Return a dict mapping name to GraphQL Object for non graph elements without superclasses."""
     graphql_reps = {}
     for element_name, element in six.iteritems(non_graph_elements):
