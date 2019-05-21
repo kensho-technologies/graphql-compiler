@@ -157,16 +157,16 @@ SCHEMA_TEXT = '''
     }
 
     type RootSchemaQuery {
-        Animal: Animal
-        BirthEvent: BirthEvent
-        Entity: Entity
-        Event: Event
-        FeedingEvent: FeedingEvent
-        Food: Food
-        FoodOrSpecies: FoodOrSpecies
-        Location: Location
-        Species: Species
-        UniquelyIdentifiable: UniquelyIdentifiable
+        Animal: [Animal]
+        BirthEvent: [BirthEvent]
+        Entity: [Entity]
+        Event: [Event]
+        FeedingEvent: [FeedingEvent]
+        Food: [Food]
+        FoodOrSpecies: [FoodOrSpecies]
+        Location: [Location]
+        Species: [Species]
+        UniquelyIdentifiable: [UniquelyIdentifiable]
     }
 
     type Species implements Entity, UniquelyIdentifiable {
