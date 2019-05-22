@@ -33,7 +33,7 @@ class SchemaGraph(object):
     on the graph. It also holds a fully denormalized schema for the graph.
     """
 
-    def __init__(self, elements, inheritance_structure, indexes):
+    def __init__(self, elements, inheritance_structure, all_indexes):
         """Create a new SchemaGraph.
 
         Args:
@@ -42,14 +42,14 @@ class SchemaGraph(object):
             inheritance_structure: InheritanceStructure, (namedtuple with subclass_sets and
                                    superclass_sets fields), describing the inheritance structure
                                    of the SchemaGraph.
-            indexes: set of IndexDefinitions, describing the indexes defined on the schema.
+            all_indexes: set of IndexDefinitions, describing the indexes defined on the schema.
 
         Returns:
             fully-constructed SchemaGraph object
         """
         self._elements = elements
         self._inheritance_structure = inheritance_structure
-        self._indexes = indexes
+        self._all_indexes = all_indexes
         self._class_to_indexes = self._get_class_to_indexes()
 
         self._vertex_class_names = _get_element_names_of_class(elements, VertexType)
@@ -117,7 +117,7 @@ class SchemaGraph(object):
         """Return a frozenset of IndexDefinitions of unique indexes that apply to this class."""
         return frozenset({
             index_definition
-            for index_definition in self.get_indexes_for_class(cls)
+            for index_definition in self.get_all_indexes_for_class(cls)
             if index_definition.unique
         })
 
@@ -153,7 +153,7 @@ class SchemaGraph(object):
 
         return covered_props
 
-    def get_indexes_for_class(self, cls):
+    def get_all_indexes_for_class(self, cls):
         """Return a frozenset of all IndexDefinitions (unique or not) that apply to this class."""
         return self._class_to_indexes.get(cls, frozenset())
 
@@ -214,16 +214,16 @@ class SchemaGraph(object):
         return self._non_graph_class_names
 
     @property
-    def indexes(self):
+    def all_indexes(self):
         """Return the set of all indexes in the graph."""
-        return self._indexes
+        return self._all_indexes
 
     @property
     def unique_indexes(self):
         """Return the set of all unique indexes in the graph."""
         return frozenset({
             index_definition
-            for index_definition in self._indexes
+            for index_definition in self._all_indexes
             if index_definition.unique
         })
 
@@ -231,7 +231,7 @@ class SchemaGraph(object):
         """Return a dict mapping class name to the set of indexes the class encompasses."""
         # Record the fact that the index applies to all subclasses of the index base class.
         indexes_per_class = {}
-        for index in self._indexes:
+        for index in self._all_indexes:
             for subclass_name in self.get_subclass_set(index.base_classname):
                 indexes_per_class.setdefault(subclass_name, []).append(index)
 
