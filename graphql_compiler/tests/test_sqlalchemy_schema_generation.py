@@ -50,3 +50,8 @@ class SQLALchemyGraphqlSchemaGenerationTests(unittest.TestCase):
     def test_default_value_parsing(self):
         a_vertex = self.schema_graph.get_element_by_class_name('A')
         self.assertEqual(a_vertex.properties['default'].default, 42)
+
+    def test_sql_self_inheritance(self):
+        # Tests that a class is in its own subclass/superclass set.
+        self.assertEqual(self.schema_graph.get_subclass_set('A'), {'A'})
+        self.assertEqual(self.schema_graph.get_superclass_set('A'), {'A'})
