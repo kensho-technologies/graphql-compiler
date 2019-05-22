@@ -168,6 +168,11 @@ class QueryMetadataTable(object):
                                  u'{}'.format(location))
         return location_info
 
+    @property
+    def outputs(self):
+        for output_name, output_info in six.iteritems(self._outputs):
+            yield output_name, output_info
+
     def record_output_info(self, output_name, output_info):
         """Record information about the output."""
         old_info = self._outputs.get(output_name, None)

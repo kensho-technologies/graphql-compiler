@@ -4,7 +4,7 @@ import unittest
 from . import test_input_data
 from ..compiler.compiler_frontend import graphql_to_ir
 from ..compiler.helpers import FoldScopeLocation, Location
-from ..compiler.metadata import FilterInfo, RecurseInfo
+from ..compiler.metadata import FilterInfo, OutputInfo, RecurseInfo
 from .test_helpers import get_schema
 
 
@@ -15,13 +15,16 @@ class ExplainInfoTests(unittest.TestCase):
         """Initialize the test schema once for all tests."""
         self.schema = get_schema()
 
-    def check(self, graphql_test, expected_filters, expected_recurses):
+    def check(self, graphql_test, expected_filters, expected_recurses, expected_outputs):
         """Verify query produces expected explain infos."""
         ir_and_metadata = graphql_to_ir(self.schema, graphql_test().graphql_input)
         meta = ir_and_metadata.query_metadata_table
+
         # Unfortunately literal dicts don't accept Location() as keys
         expected_filters = dict(expected_filters)
         expected_recurses = dict(expected_recurses)
+        expected_outputs = dict(expected_outputs)
+
         for location, _ in meta.registered_locations:
             # Do filters match with expected for this location?
             filters = meta.get_filter_infos(location)
@@ -33,19 +36,30 @@ class ExplainInfoTests(unittest.TestCase):
             self.assertEqual(expected_recurses.get(location, []), recurse)
             if recurse:
                 del expected_recurses[location]
+
+        for output_name, output_info in meta.outputs:
+            # Does output info match with expected?
+            self.assertEqual(expected_outputs.get(output_name, None), output_info)
+            if output_info:
+                del expected_outputs[output_name]
+
         # Any expected infos missing?
         self.assertEqual(0, len(expected_filters))
         self.assertEqual(0, len(expected_recurses))
+        self.assertEqual(0, len(expected_outputs))
 
     def test_traverse_filter_and_output(self):
         loc = Location(('Animal', 'out_Animal_ParentOf'), None, 1)
         filters = [
             FilterInfo(fields=('name', 'alias'), op_name='name_or_alias', args=('$wanted',)),
         ]
+        out_name = 'parent_name'
+        out_info = OutputInfo(location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1))
 
         self.check(test_input_data.traverse_filter_and_output,
                    [(loc, filters)],
-                   [])
+                   [],
+                   [(out_name, out_info)])
 
     def test_complex_optional_traversal_variables(self):
         loc1 = Location(('Animal',), None, 1)
@@ -60,10 +74,25 @@ class ExplainInfoTests(unittest.TestCase):
                        op_name='between',
                        args=('%other_child_fed_at', '%parent_fed_at')),
         ]
+        out_name1 = 'parent_fed_at'
+        out_loc1 = Location(('Animal', 'out_Animal_ParentOf', 'out_Animal_FedAt'), 'event_date', 1)
+        out_info1 = OutputInfo(location=out_loc1)
+
+        out_name2 = 'other_child_fed_at'
+        out_loc2 = Location(
+            ('Animal', 'out_Animal_ParentOf', 'in_Animal_ParentOf', 'out_Animal_FedAt'),
+            'event_date', 1
+        )
+        out_info2 = OutputInfo(location=out_loc2)
+
+        out_name3 = 'grandchild_fed_at'
+        out_loc3 = Location(('Animal', 'in_Animal_ParentOf', 'out_Animal_FedAt'), 'event_date', 1)
+        out_info3 = OutputInfo(location=out_loc3)
 
         self.check(test_input_data.complex_optional_traversal_variables,
                    [(loc1, filters1), (loc2, filters2)],
-                   [])
+                   [],
+                   [(out_name1, out_info1), (out_name2, out_info2), (out_name3, out_info3)])
 
     def test_coercion_filters_and_multiple_outputs_within_fold_scope(self):
         loc = FoldScopeLocation(Location(('Animal',), None, 1), (('out', 'Entity_Related'),), None)
@@ -72,9 +101,26 @@ class ExplainInfoTests(unittest.TestCase):
             FilterInfo(fields=('birthday',), op_name='<=', args=('$latest',)),
         ]
 
+        out_name1 = 'name'
+        out_info1 = OutputInfo(location=Location(('Animal',), 'name', 1))
+
+        out_name2 = 'related_animals'
+        out_loc2 = FoldScopeLocation(
+            Location(('Animal',), None, 1), (('out', 'Entity_Related'),), 'name'
+        )
+        out_info2 = OutputInfo(location=out_loc2)
+
+        out_name3 = 'related_birthdays'
+        out_loc3 = FoldScopeLocation(
+            Location(('Animal',), None, 1), (('out', 'Entity_Related'),), 'birthday'
+        )
+        out_info3 = OutputInfo(location=out_loc3)
+
+
         self.check(test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope,
                    [(loc, filters)],
-                   [])
+                   [],
+                   [(out_name1, out_info1), (out_name2, out_info2), (out_name3, out_info3)])
 
     def test_multiple_filters(self):
         loc = Location(('Animal',), None, 1)
@@ -83,9 +129,13 @@ class ExplainInfoTests(unittest.TestCase):
             FilterInfo(fields=('name',), op_name='<', args=('$upper_bound',))
         ]
 
+        out_name = 'animal_name'
+        out_info = OutputInfo(location=Location(('Animal',), 'name', 1))
+
         self.check(test_input_data.multiple_filters,
                    [(loc, filters)],
-                   [])
+                   [],
+                   [(out_name, out_info)])
 
     def test_has_edge_degree_op_filter(self):
         loc = Location(('Animal',), None, 1)
@@ -95,9 +145,16 @@ class ExplainInfoTests(unittest.TestCase):
                        args=('$child_count',))
         ]
 
+        out_name1 = 'animal_name'
+        out_info1 = OutputInfo(location=Location(('Animal',), 'name', 1))
+
+        out_name2 = 'child_name'
+        out_info2 = OutputInfo(location=Location(('Animal', 'in_Animal_ParentOf'), 'name', 1))
+
         self.check(test_input_data.has_edge_degree_op_filter,
                    [(loc, filters)],
-                   [])
+                   [],
+                   [(out_name1, out_info1), (out_name2, out_info2)])
 
     def test_simple_recurse(self):
         loc = Location(('Animal',), None, 1)
@@ -105,9 +162,13 @@ class ExplainInfoTests(unittest.TestCase):
             RecurseInfo(edge_direction='out', edge_name='Animal_ParentOf', depth=1)
         ]
 
+        out_name = 'relation_name'
+        out_info = OutputInfo(location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1))
+
         self.check(test_input_data.simple_recurse,
                    [],
-                   [(loc, recurses)])
+                   [(loc, recurses)],
+                   [(out_name, out_info)])
 
     def test_two_consecutive_recurses(self):
         loc = Location(('Animal',), None, 1)
@@ -121,9 +182,29 @@ class ExplainInfoTests(unittest.TestCase):
             RecurseInfo(edge_direction='in', edge_name='Animal_ParentOf', depth=2)
         ]
 
+        out_name1 = 'animal_name'
+        out_info1 = OutputInfo(location=Location(('Animal',), 'name', 1))
+
+        out_name2 = 'important_event'
+        out_loc2 = Location(('Animal', 'out_Animal_ImportantEvent'), 'name', 1)
+        out_info2 = OutputInfo(location=out_loc2)
+
+        out_name3 = 'ancestor_name'
+        out_info3 = OutputInfo(location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1))
+
+        out_name4 = 'descendent_name'
+        out_loc4 = Location(('Animal', 'in_Animal_ParentOf'), 'name', 1)
+        out_info4 = OutputInfo(location=Location(('Animal', 'in_Animal_ParentOf'), 'name', 1))
+
+        expected_outputs = [
+            (out_name1, out_info1), (out_name2, out_info2), (out_name3, out_info3),
+            (out_name4, out_info4)
+        ]
+
         self.check(test_input_data.two_consecutive_recurses,
                    [(loc, filters)],
-                   [(loc, recurses)])
+                   [(loc, recurses)],
+                   expected_outputs)
 
     def test_filter_on_optional_traversal_name_or_alias(self):
         loc = Location(('Animal', 'out_Animal_ParentOf'), None, 1)
@@ -133,6 +214,10 @@ class ExplainInfoTests(unittest.TestCase):
                        args=('%grandchild_name',))
         ]
 
+        out_name = 'parent_name'
+        out_info = OutputInfo(location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1))
+
         self.check(test_input_data.filter_on_optional_traversal_name_or_alias,
                    [(loc, filters)],
-                   [])
+                   [],
+                   [(out_name, out_info)])
