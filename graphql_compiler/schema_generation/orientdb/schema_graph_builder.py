@@ -522,5 +522,4 @@ def _get_indexes(index_data, elements):
         )
         all_indexes.add(definition)
 
-    frozenset(all_indexes)
-    return all_indexes
+    return frozenset(all_indexes)
