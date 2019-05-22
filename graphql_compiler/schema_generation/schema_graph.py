@@ -43,6 +43,7 @@ class SchemaGraph(object):
                                    superclass_sets fields), describing the inheritance structure
                                    of the SchemaGraph.
             all_indexes: set of IndexDefinitions, describing the indexes defined on the schema.
+
         Returns:
             fully-constructed SchemaGraph object
         """
