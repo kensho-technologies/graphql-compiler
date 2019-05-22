@@ -19,7 +19,7 @@ from .schema_properties import (
 from .utils import toposort_classes
 
 
-def get_orientdb_schema_graph(schema_data, index_data=None):
+def get_orientdb_schema_graph(schema_data, index_data):
     """Create a new SchemaGraph from the OrientDB schema data.
 
     Args:
@@ -62,7 +62,7 @@ def get_orientdb_schema_graph(schema_data, index_data=None):
                                                          '{}' for the embedded set type. Note
                                                          that if the property is a collection
                                                          type, it must have a default value.
-        index_data: optional list of dicts describing the schema indexes. Each dict must have
+        index_data: list of dicts describing the schema indexes. Each dict must have
                     the following string fields:
                         - name: string, the name of the index.
                         - type: string, specifying the type of the index. It must be one of:
@@ -486,17 +486,9 @@ def _get_indexes(index_data, elements):
         index_base_classname = index_definition['className']
         index_ignore_nulls = index_definition['nullValuesIgnored']
 
-        # Exclude indexes on non-graph classes (e.g. OUser).
+        # Exclude indexes on OrientDB metadata classes (e.g. OUser).
         if index_base_classname not in all_class_names:
             continue
-
-        is_edge_index = isinstance(elements[index_base_classname], EdgeType)
-        if is_edge_index:
-            # OrientDB sometimes decides to make edge indexes ignore nulls.
-            # This is not something we want to allow, hard-code it to False.
-            # While this makes us diverge from OrientDB's schema,
-            # it's safe to be *more strict* than OrientDB.
-            index_ignore_nulls = False
 
         # Index fields can be specified in one of two ways:
         #   - directly on the "indexDefinition" dict, if only a single field is covered;

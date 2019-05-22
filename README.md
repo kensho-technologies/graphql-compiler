@@ -1246,7 +1246,7 @@ directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMEN
 directive @output(out_name: String!) on FIELD
 
 type Animal {
-    name: String
+    name: Stringgen
 }
 '''
 schema = build_ast_schema(parse(schema_text))
