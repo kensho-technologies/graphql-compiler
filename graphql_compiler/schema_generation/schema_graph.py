@@ -494,6 +494,7 @@ InheritanceStructure = namedtuple('InheritanceStructure', ('superclass_sets', 's
 # A way to describe a schema index:
 #   - name: string, the name of the index.
 #   - base_classname: string, the name on which the index is defined.
+#   - fields: set of strings, the set of fields which the index encompasses.
 #   - unique: bool, indicating whether this index is unique.
 #   - ignore_nulls: bool, indicating if the index ignore null values.
 #   - ordered: bool, indicating whether this index is ordered.

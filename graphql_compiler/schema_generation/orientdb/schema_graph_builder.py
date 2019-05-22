@@ -66,17 +66,19 @@ def get_orientdb_schema_graph(schema_data, index_data=None):
                     the following string fields:
                         - name: string, the name of the index.
                         - type: string, specifying the type of the index. It must be one of:
-                                        'UNIQUE', 'NOTUNIQUE', 'UNIQUE_HASH_INDEX', and
+                                        'UNIQUE', 'NOTUNIQUE', 'UNIQUE_HASH_INDEX', or
                                         'NOTUNIQUE_HASH_INDEX'.
                         - indexDefinition: dict, defining the index. It must contain one of two
                                            string keys:
-                                           - field: string, the name of the field on which the
-                                                    index is defined.
-                                           - indexDefinitions: list of dicts, with field string
-                                                               keys, specifying on which fields
-                                                               is the index defined.
-                        - className: string, the base class name on which the index is defined.
-                        - nullValuesIgnored: bool, indicating if the index ignore null values.
+                                           - field: string, the name of the field which the index
+                                                    encompasses.
+                                           - indexDefinitions: list of dicts. Each one of these
+                                                               dicts must contain a string field
+                                                               key. These specify the
+                                                               set of fields which the index
+                                                               encompasses.
+                        - className: string, the name of the class on which the index is defined.
+                        - nullValuesIgnored: bool, indicating if the index ignores null values.
 
     Returns:
         fully-constructed SchemaGraph object
@@ -468,14 +470,14 @@ def _get_graphql_representation_of_non_graph_elements(non_graph_elements, inheri
     return graphql_reps
 
 
-def _get_indexes(index_query_result, elements):
-    """Return all IndexDefinitions from the graph."""
+def _get_indexes(index_data, elements):
+    """Return a set of IndexDefinitions describing the indexes defined in the OrientDB database."""
     all_indexes = set()
 
     # Get indexes from OrientDB.
     all_class_names = set(elements.keys())
 
-    for index in index_query_result:
+    for index in index_data:
         index_name = index['name']
         index_type = index['type']
         index_unique = index_type in UNIQUE_INDEX_TYPES
