@@ -520,12 +520,11 @@ def _get_indexes(index_query_result, elements):
 
         definition = IndexDefinition(
             name=index_name,
-            type=index_type,
             base_classname=index_base_classname,
             fields=index_fields,
             unique=index_unique,
-            ordered=index_ordered,
             ignore_nulls=index_ignore_nulls,
+            ordered=index_ordered,
         )
         all_indexes.add(definition)
 

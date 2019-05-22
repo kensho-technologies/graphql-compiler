@@ -122,6 +122,38 @@ class SchemaGraph(object):
             if index_definition.unique
         })
 
+    def get_properties_covered_by_index(self, index_definition, classname, props):
+        """Return the dict of values captured by the index, or None if the index does not apply.
+
+        Args:
+            index_definition: IndexDefinition describing the index to be checked for coverage
+            classname: string, the class to check for index coverage
+            props: dict, the properties on the vertex or edge being checked for coverage
+                   under the index
+
+        Returns:
+            dict or None:
+                - dict of the key-value pairs covered by the index, if the index applies, or
+                - None, if the index does not cover the specified class and properties
+        """
+        indexed_classes = self.get_subclass_set(index_definition.base_classname)
+        if classname not in indexed_classes:
+            return None
+
+        covered_props = {
+            field_name: props[field_name]
+            for field_name in index_definition.fields
+        }
+
+        if index_definition.ignore_nulls:
+            for value in six.itervalues(covered_props):
+                if value is None:
+                    # We found a None value in a null-ignoring index.
+                    # The index does not apply.
+                    return None
+
+        return covered_props
+
     def get_all_indexes_for_class(self, cls):
         """Return a frozenset of all IndexDefinitions (unique or not) that apply to this class."""
         return self._all_indexes_for_class.get(cls, frozenset())
@@ -201,7 +233,7 @@ class SchemaGraph(object):
         # Record the fact that the index applies to all subclasses of the index base class.
         indexes_per_class = {}
         for index in self._all_indexes:
-            for subclass_name in self.get_subclass_set(index.base_class_name):
+            for subclass_name in self.get_subclass_set(index.base_classname):
                 indexes_per_class.setdefault(subclass_name, []).append(index)
 
         # Convert the lists into frozensets and assign to the property value.
@@ -449,7 +481,8 @@ def link_schema_elements(elements, inheritance_structure):
 #              explicit value for this property. Set to None if no default is given in the schema.
 PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
 
-# A way to describe a schema's normalized inheritance structure.
+
+# A way to describe a schema's normalized inheritance structure:
 #   - superclass_sets: a dict, string -> set of strings, mapping each class to its
 #                      superclasses. The set of superclasses includes the class itself and
 #                      the transitive superclasses. For instance, if A is a superclass of B,
@@ -458,6 +491,12 @@ PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
 InheritanceStructure = namedtuple('InheritanceStructure', ('superclass_sets', 'subclass_sets'))
 
 
+# A way to describe a schema index:
+#   - name: string, the name of the index.
+#   - base_classname: string, the name on which the index is defined.
+#   - unique: bool, indicating whether this index is unique.
+#   - ignore_nulls: bool, indicating if the index ignore null values.
+#   - ordered: bool, indicating whether this index is ordered.
 IndexDefinition = namedtuple(
     'IndexDefinition',
-    ('name', 'type', 'base_classname', 'fields', 'unique', 'ordered', 'ignore_nulls'))
+    ('name', 'base_classname', 'fields', 'unique', 'ignore_nulls', 'ordered'))
