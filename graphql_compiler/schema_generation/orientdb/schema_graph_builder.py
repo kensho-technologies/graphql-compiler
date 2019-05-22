@@ -110,10 +110,10 @@ def get_orientdb_schema_graph(schema_data, index_data=None):
     for element in six.itervalues(elements):
         element.freeze()
     if index_data is None:
-        all_indexes = set()
+        indexes = set()
     else:
-        all_indexes = _get_indexes(index_data, elements)
-    return SchemaGraph(elements, inheritance_structure, all_indexes)
+        indexes = _get_indexes(index_data, elements)
+    return SchemaGraph(elements, inheritance_structure, indexes)
 
 
 def _get_inheritance_structure_from_schema_data(schema_data):
@@ -472,7 +472,7 @@ def _get_graphql_representation_of_non_graph_elements(non_graph_elements, inheri
 
 def _get_indexes(index_data, elements):
     """Return a set of IndexDefinitions describing the indexes defined in the OrientDB database."""
-    all_indexes = set()
+    indexes = set()
 
     # Get indexes from OrientDB.
     all_class_names = set(elements.keys())
@@ -528,7 +528,7 @@ def _get_indexes(index_data, elements):
             ignore_nulls=index_ignore_nulls,
             ordered=index_ordered,
         )
-        all_indexes.add(definition)
+        indexes.add(definition)
 
-    frozenset(all_indexes)
-    return all_indexes
+    frozenset(indexes)
+    return indexes
