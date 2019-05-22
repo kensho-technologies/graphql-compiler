@@ -66,14 +66,19 @@ def get_orientdb_schema_graph(schema_data):
         fully-constructed SchemaGraph object
     """
 
+    class_name_to_definition = {
+        class_definition['name']: class_definition
+        for class_definition in schema_data
+    }
+
+    class_to_immediate_superclasses = {
+        class_name: get_superclasses_from_class_definition(class_definition)
+        for class_name, class_definition in six.iteritems(class_name_to_definition)
+    }
+
     toposorted_schema_data = toposort_classes(schema_data)
 
     inheritance_structure = _get_inheritance_structure_from_schema_data(toposorted_schema_data)
-
-    class_name_to_definition = {
-        class_definition['name']: class_definition
-        for class_definition in toposorted_schema_data
-    }
 
     non_graph_elements = _get_non_graph_elements(class_name_to_definition, inheritance_structure)
     inner_collection_objs = _get_graphql_representation_of_non_graph_elements(
@@ -94,7 +99,6 @@ def get_orientdb_schema_graph(schema_data):
         element.freeze()
 
     return SchemaGraph(elements, inheritance_structure)
-
 
 def _get_inheritance_structure_from_schema_data(schema_data):
     """Return the superclass sets from the OrientDB schema data."""
