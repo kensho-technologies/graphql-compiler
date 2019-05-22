@@ -90,7 +90,7 @@ from .helpers import (
     get_vertex_field_type, invert_dict, is_tagged_parameter, is_vertex_field_name,
     strip_non_null_from_type, validate_output_name, validate_safe_string
 )
-from .metadata import LocationInfo, QueryMetadataTable, RecurseInfo, TagInfo
+from .metadata import LocationInfo, OutputInfo, QueryMetadataTable, RecurseInfo, TagInfo
 
 
 # LocationStackEntry contains the following:
@@ -318,6 +318,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
             'type': graphql_type,
             'fold': context.get('fold', None),
         }
+        context['metadata'].record_output_info(output_name, OutputInfo(location=location))
 
 
 def _get_recurse_directive_depth(field_name, field_directives):

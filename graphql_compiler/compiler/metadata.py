@@ -24,6 +24,13 @@ LocationInfo = namedtuple(
 )
 
 
+OutputInfo = namedtuple(
+    'OutputInfo',
+    (
+        'location',
+    )
+)
+
 TagInfo = namedtuple(
     'TagInfo',
     (
@@ -160,6 +167,19 @@ class QueryMetadataTable(object):
             raise AssertionError(u'Attempted to get the location info of an unregistered location: '
                                  u'{}'.format(location))
         return location_info
+
+    def record_output_info(self, output_name, output_info):
+        """Record information about the output."""
+        old_info = self._outputs.get(output_name, None)
+        if old_info is not None:
+            raise AssertionError(u'Attempting to reuse an already-defined output name {}. '
+                                 u'old info {}, new info {}.'
+                                 .format(output_name, old_info, output_info))
+        self._outputs[output_name] = output_info
+
+    def get_output_info(self, output_name):
+        """Get information about an output."""
+        return self._outputs.get(output_name, None)
 
     @property
     def tags(self):
