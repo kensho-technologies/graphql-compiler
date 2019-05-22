@@ -49,7 +49,7 @@ class SchemaGraph(object):
         self._elements = elements
         self._inheritance_structure = inheritance_structure
         self._all_indexes = all_indexes
-        self._all_indexes_for_class = self._get_class_to_indexes_dict()
+        self._class_to_indexes = self._get_class_to_indexes()
 
         self._vertex_class_names = _get_element_names_of_class(elements, VertexType)
         self._edge_class_names = _get_element_names_of_class(elements, EdgeType)
@@ -154,7 +154,7 @@ class SchemaGraph(object):
 
     def get_all_indexes_for_class(self, cls):
         """Return a frozenset of all IndexDefinitions (unique or not) that apply to this class."""
-        return self._all_indexes_for_class.get(cls, frozenset())
+        return self._class_to_indexes.get(cls, frozenset())
 
     def validate_is_vertex_type(self, vertex_classname):
         """Validate that a vertex classname indeed corresponds to a vertex class."""
@@ -226,7 +226,7 @@ class SchemaGraph(object):
             if index_definition.unique
         })
 
-    def _get_class_to_indexes_dict(self):
+    def _get_class_to_indexes(self):
         """Return a dict mapping class name to the set of indexes the class encompasses."""
         # Record the fact that the index applies to all subclasses of the index base class.
         indexes_per_class = {}
@@ -235,12 +235,12 @@ class SchemaGraph(object):
                 indexes_per_class.setdefault(subclass_name, []).append(index)
 
         # Convert the lists into frozensets and assign to the property value.
-        all_indexes_for_class = {
+        class_to_indexes = {
             classname: frozenset(definitions)
             for classname, definitions in six.iteritems(indexes_per_class)
         }
 
-        return all_indexes_for_class
+        return class_to_indexes
 
 
 @six.python_2_unicode_compatible
