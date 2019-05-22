@@ -48,6 +48,32 @@ class ExplainInfoTests(unittest.TestCase):
         self.assertEqual(0, len(expected_recurses))
         self.assertEqual(0, len(expected_outputs))
 
+    def test_immediate_output(self):
+        out_name = 'animal_name'
+        out_info = OutputInfo(location=Location(('Animal',), 'name', 1))
+
+        self.check(test_input_data.immediate_output,
+                   [],
+                   [],
+                   [(out_name, out_info)])
+
+    def test_output_source_and_complex_output(self):
+        loc = Location(('Animal',), None, 1)
+        filters = [
+            FilterInfo(fields=('name',), op_name='=', args=('$wanted',)),
+        ]
+
+        out_name1 = 'animal_name'
+        out_info1 = OutputInfo(location=Location(('Animal',), 'name', 1))
+
+        out_name2 = 'parent_name'
+        out_info2 = OutputInfo(location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1))
+
+        self.check(test_input_data.output_source_and_complex_output,
+                   [(loc, filters)],
+                   [],
+                   [(out_name1, out_info1), (out_name2, out_info2)])
+
     def test_traverse_filter_and_output(self):
         loc = Location(('Animal', 'out_Animal_ParentOf'), None, 1)
         filters = [
@@ -115,7 +141,6 @@ class ExplainInfoTests(unittest.TestCase):
             Location(('Animal',), None, 1), (('out', 'Entity_Related'),), 'birthday'
         )
         out_info3 = OutputInfo(location=out_loc3)
-
 
         self.check(test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope,
                    [(loc, filters)],
@@ -193,7 +218,6 @@ class ExplainInfoTests(unittest.TestCase):
         out_info3 = OutputInfo(location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1))
 
         out_name4 = 'descendent_name'
-        out_loc4 = Location(('Animal', 'in_Animal_ParentOf'), 'name', 1)
         out_info4 = OutputInfo(location=Location(('Animal', 'in_Animal_ParentOf'), 'name', 1))
 
         expected_outputs = [
