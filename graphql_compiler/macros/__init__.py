@@ -19,9 +19,7 @@ from .macro_edge.helpers import get_type_at_macro_edge_target
 from .macro_edge.directives import MacroEdgeDirective
 from .macro_expansion import expand_macros_in_query_ast
 from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
-from .macro_edge.directives import (
-    MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
-)
+from .macro_edge.directives import MACRO_EDGE_DEFINITION_DIRECTIVES
 
 
 MacroRegistry = namedtuple(
@@ -182,12 +180,10 @@ def get_schema_for_macro_definition(schema):
         GraphQLSchema usable for writing macros
     """
 
-    required_macro_directives = (MacroEdgeDefinitionDirective, MacroEdgeTargetDirective)
-
     # pylint: disable=protected-access
     schema_for_macro_definition = copy(schema)
-    schema_for_macro_definition._directives = list(chain(
-        schema_for_macro_definition._directives, required_macro_directives))
+    schema_for_macro_definition._directives = list(set(chain(
+        schema_for_macro_definition._directives, MACRO_EDGE_DEFINITION_DIRECTIVES)))
     # pylint: enable=protected-access
 
     return schema_for_macro_definition

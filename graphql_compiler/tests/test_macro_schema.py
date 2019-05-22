@@ -5,9 +5,8 @@ from graphql.type import GraphQLList
 from graphql.utils.schema_printer import print_schema
 
 from ..macros import get_schema_for_macro_definition, get_schema_with_macros
-from .test_helpers import (
-    get_empty_test_macro_registry, get_required_macro_edge_directives, get_test_macro_registry
-)
+from ..macros.macro_edge.directives import MACRO_EDGE_DEFINITION_DIRECTIVES
+from .test_helpers import get_empty_test_macro_registry, get_test_macro_registry
 
 
 class MacroSchemaTests(unittest.TestCase):
@@ -40,11 +39,8 @@ class MacroSchemaTests(unittest.TestCase):
         original_printed_schema = print_schema(original_schema)
         macro_definition_schema = get_schema_for_macro_definition(original_schema)
         macro_definition_printed_schema = print_schema(macro_definition_schema)
-        required_directives = get_required_macro_edge_directives()
-        # pylint: disable=protected-access
-        for directive in required_directives:
-            self.assertTrue(directive in macro_definition_schema._directives)
-        # pylint: enable=protected-access
+        for directive in MACRO_EDGE_DEFINITION_DIRECTIVES:
+            self.assertTrue(directive in macro_definition_schema.get_directives())
         self.assertNotEqual(original_printed_schema, macro_definition_printed_schema)
 
     def test_get_schema_for_macro_definition_basic(self):
@@ -52,9 +48,6 @@ class MacroSchemaTests(unittest.TestCase):
         printed_schema_with_macros = print_schema(schema_with_macros)
         macro_definition_schema = get_schema_for_macro_definition(schema_with_macros)
         macro_definition_printed_schema = print_schema(macro_definition_schema)
-        required_directives = get_required_macro_edge_directives()
-        # pylint: disable=protected-access
-        for directive in required_directives:
-            self.assertTrue(directive in macro_definition_schema._directives)
-        # pylint: enable=protected-access
+        for directive in MACRO_EDGE_DEFINITION_DIRECTIVES:
+            self.assertTrue(directive in macro_definition_schema.get_directives())
         self.assertNotEqual(printed_schema_with_macros, macro_definition_printed_schema)

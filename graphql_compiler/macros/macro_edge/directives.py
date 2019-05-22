@@ -5,6 +5,11 @@ from graphql import (
     DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLNonNull, GraphQLString
 )
 
+from ...schema import (
+    FilterDirective, OptionalDirective, OutputDirective, OutputSourceDirective, RecurseDirective,
+    TagDirective
+)
+
 
 MacroEdgeDirective = GraphQLDirective(
     name='macro_edge',
@@ -36,9 +41,26 @@ MacroEdgeTargetDirective = GraphQLDirective(
     ],
 )
 
-
 MACRO_EDGE_DIRECTIVES = (
     MacroEdgeDirective,
     MacroEdgeDefinitionDirective,
     MacroEdgeTargetDirective,
 )
+
+MACRO_EDGE_ALLOWED_SUBDIRECTIVES = frozenset({
+    FilterDirective.name,
+    TagDirective.name,
+    OptionalDirective.name,
+    RecurseDirective.name,
+    MacroEdgeDefinitionDirective.name,
+})
+
+MACRO_EDGE_DISALLOWED_SUBDIRECTIVES = frozenset({
+    OutputDirective.name,
+    OutputSourceDirective.name,
+})
+
+MACRO_EDGE_DEFINITION_DIRECTIVES = frozenset({
+    MacroEdgeDefinitionDirective,
+    MacroEdgeTargetDirective
+})
