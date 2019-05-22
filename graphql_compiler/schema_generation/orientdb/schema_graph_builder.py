@@ -490,6 +490,14 @@ def _get_indexes(index_data, elements):
         if index_base_classname not in all_class_names:
             continue
 
+        is_edge_index = isinstance(elements[index_base_classname], EdgeType)
+        if is_edge_index:
+            # OrientDB sometimes decides to make edge indexes ignore nulls.
+            # This is not something we want to allow, hard-code it to False.
+            # While this makes us diverge from OrientDB's schema,
+            # it's safe to be *more strict* than OrientDB.
+            index_ignore_nulls = False
+
         # Index fields can be specified in one of two ways:
         #   - directly on the "indexDefinition" dict, if only a single field is covered;
         #   - within a nested "indexDefinitions" dict inside
