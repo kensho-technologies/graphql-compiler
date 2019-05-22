@@ -1,5 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
+from copy import copy
+from itertools import chain
 import six
 
 from graphql.language.ast import (FieldDefinition, Name, NamedType,
@@ -17,6 +19,9 @@ from .macro_edge.helpers import get_type_at_macro_edge_target
 from .macro_edge.directives import MacroEdgeDirective
 from .macro_expansion import expand_macros_in_query_ast
 from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
+from .macro_edge.directives import (
+    MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
+)
 
 
 MacroRegistry = namedtuple(
@@ -167,7 +172,7 @@ def get_schema_for_macro_definition(schema):
     """Returns a schema with macro directives.
 
     This returned schema can be used to validate macro definitions, and support GraphQL
-    macro editors, enabling them to autocomplete one the @macro_edge_definition and
+    macro editors, enabling them to autocomplete on the @macro_edge_definition and
     @macro_edge_target directives.
 
     Args:
@@ -176,7 +181,16 @@ def get_schema_for_macro_definition(schema):
     Returns:
         GraphQLSchema usable for writing macros
     """
-    raise NotImplementedError()  # TODO(bojanserafimov): Implement
+
+    required_macro_directives = (MacroEdgeDefinitionDirective, MacroEdgeTargetDirective)
+
+    # pylint: disable=protected-access
+    schema_for_macro_definition = copy(schema)
+    schema_for_macro_definition._directives = list(chain(
+        schema_for_macro_definition._directives, required_macro_directives))
+    # pylint: enable=protected-access
+
+    return schema_for_macro_definition
 
 
 def perform_macro_expansion(macro_registry, graphql_with_macro, graphql_args):

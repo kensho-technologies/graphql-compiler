@@ -13,6 +13,7 @@ from graphql_compiler.schema_generation.utils import ORIENTDB_SCHEMA_RECORDS_QUE
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import create_macro_registry, register_macro_edge
+from ..macros.macro_edge.directives import MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
 from ..query_formatting.graphql_formatting import pretty_print_graphql
 
 
@@ -407,3 +408,8 @@ def get_test_macro_registry():
     for graphql, args in valid_macros:
         register_macro_edge(macro_registry, graphql, args)
     return macro_registry
+
+
+def get_required_macro_edge_directives():
+    """Return a tuple containing the directives necessary for defining a macro edge"""
+    return (MacroEdgeDefinitionDirective, MacroEdgeTargetDirective)
