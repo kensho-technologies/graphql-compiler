@@ -74,15 +74,21 @@ def get_schema_graph_from_sql_alchemy_metadata(sqlalchemy_metadata):
     """Return the matching SchemaGraph for the SQLAlchemy Metadata object"""
     elements = dict()
     for table in six.itervalues(sqlalchemy_metadata.tables):
+        if table.name in elements:
+            raise AssertionError("Multiple schema elements share the same name.")
         elements[table.name] = _get_vertex_type_from_sqlalchemy_table(table)
         for column in table.get_children():
             for foreign_key in column.foreign_keys:
+                if column.key in elements:
+                    raise AssertionError("Multiple schema elements share the same name.")
                 outgoing_table = foreign_key.column.table
                 elements[column.key] = EdgeType(
                     column.key, False, {}, {}, table.name, outgoing_table.name)
+
     superclass_sets = {element_name: {element_name} for element_name in elements}
     subclass_sets = get_subclass_sets_from_superclass_sets(superclass_sets)
     inheritance_structure = InheritanceStructure(superclass_sets, subclass_sets)
+
     link_schema_elements(elements, inheritance_structure)
     return SchemaGraph(elements, InheritanceStructure(superclass_sets, subclass_sets))
 
