@@ -42,16 +42,14 @@ class SchemaGraph(object):
             inheritance_structure: InheritanceStructure, (namedtuple with subclass_sets and
                                    superclass_sets fields), describing the inheritance structure
                                    of the SchemaGraph.
-            all_indexes: set of IndexDefinitions, describing the indexes defined on the
-                         SchemaGraph.
-
+            all_indexes: set of IndexDefinitions, describing the indexes defined on the schema.
         Returns:
             fully-constructed SchemaGraph object
         """
         self._elements = elements
         self._inheritance_structure = inheritance_structure
         self._all_indexes = all_indexes
-        self._all_indexes_for_class = self._get_class_to_indexes()
+        self._all_indexes_for_class = self._get_class_to_indexes_dict()
 
         self._vertex_class_names = _get_element_names_of_class(elements, VertexType)
         self._edge_class_names = _get_element_names_of_class(elements, EdgeType)
@@ -228,8 +226,8 @@ class SchemaGraph(object):
             if index_definition.unique
         })
 
-    def _get_class_to_indexes(self):
-        """Return a dict mapping class name to the set of indexes defined on that class."""
+    def _get_class_to_indexes_dict(self):
+        """Return a dict mapping class name to the set of indexes the class encompasses."""
         # Record the fact that the index applies to all subclasses of the index base class.
         indexes_per_class = {}
         for index in self._all_indexes:
@@ -491,12 +489,12 @@ PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
 InheritanceStructure = namedtuple('InheritanceStructure', ('superclass_sets', 'subclass_sets'))
 
 
-# A way to describe a schema index:
+# A way to describe an index:
 #   - name: string, the name of the index.
-#   - base_classname: string, the name on which the index is defined.
+#   - base_classname: string, the name of the class on which the index is defined.
 #   - fields: set of strings, the set of fields which the index encompasses.
 #   - unique: bool, indicating whether this index is unique.
-#   - ignore_nulls: bool, indicating if the index ignore null values.
+#   - ignore_nulls: bool, indicating if the index ignores null values.
 #   - ordered: bool, indicating whether this index is ordered.
 IndexDefinition = namedtuple(
     'IndexDefinition',
