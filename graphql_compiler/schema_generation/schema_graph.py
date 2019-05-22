@@ -228,7 +228,7 @@ class SchemaGraph(object):
         })
 
     def _get_class_to_indexes(self):
-        """Return a dict mapping class name to the set of indexes the class encompasses."""
+        """Return a dict mapping class name to the class indexes."""
         # Record the fact that the index applies to all subclasses of the index base class.
         indexes_per_class = {}
         for index in self._all_indexes:
