@@ -33,7 +33,7 @@ class SchemaGraph(object):
     on the graph. It also holds a fully denormalized schema for the graph.
     """
 
-    def __init__(self, elements, inheritance_structure):
+    def __init__(self, elements, inheritance_structure, all_indexes):
         """Create a new SchemaGraph.
 
         Args:
@@ -42,12 +42,16 @@ class SchemaGraph(object):
             inheritance_structure: InheritanceStructure, (namedtuple with subclass_sets and
                                    superclass_sets fields), describing the inheritance structure
                                    of the SchemaGraph.
+            all_indexes: set of IndexDefinitions, describing the indexes defined on the
+                         SchemaGraph.
 
         Returns:
             fully-constructed SchemaGraph object
         """
         self._elements = elements
         self._inheritance_structure = inheritance_structure
+        self._all_indexes = all_indexes
+        self._all_indexes_for_class = self._get_class_to_indexes()
 
         self._vertex_class_names = _get_element_names_of_class(elements, VertexType)
         self._edge_class_names = _get_element_names_of_class(elements, EdgeType)
@@ -110,6 +114,18 @@ class SchemaGraph(object):
 
         return schema_element
 
+    def get_unique_indexes_for_class(self, cls):
+        """Return a frozenset of IndexDefinitions of unique indexes that apply to this class."""
+        return frozenset({
+            index_definition
+            for index_definition in self.get_all_indexes_for_class(cls)
+            if index_definition.unique
+        })
+
+    def get_all_indexes_for_class(self, cls):
+        """Return a frozenset of all IndexDefinitions (unique or not) that apply to this class."""
+        return self._all_indexes_for_class.get(cls, frozenset())
+
     def validate_is_vertex_type(self, vertex_classname):
         """Validate that a vertex classname indeed corresponds to a vertex class."""
         self.get_vertex_schema_element_or_raise(vertex_classname)
@@ -165,6 +181,36 @@ class SchemaGraph(object):
     def non_graph_class_names(self):
         """Return the set of non-graph class names in the SchemaGraph."""
         return self._non_graph_class_names
+
+    @property
+    def all_indexes(self):
+        """Return the set of all indexes in the graph."""
+        return self._all_indexes
+
+    @property
+    def unique_indexes(self):
+        """Return the set of all unique indexes in the graph."""
+        return frozenset({
+            index_definition
+            for index_definition in self._all_indexes
+            if index_definition.unique
+        })
+
+    def _get_class_to_indexes(self):
+        """Return a dict mapping class name to the set of indexes defined on that class."""
+        # Record the fact that the index applies to all subclasses of the index base class.
+        indexes_per_class = {}
+        for index in self._all_indexes:
+            for subclass_name in self.get_subclass_set(index.base_class_name):
+                indexes_per_class.setdefault(subclass_name, []).append(index)
+
+        # Convert the lists into frozensets and assign to the property value.
+        all_indexes_for_class = {
+            classname: frozenset(definitions)
+            for classname, definitions in six.iteritems(indexes_per_class)
+        }
+
+        return all_indexes_for_class
 
 
 @six.python_2_unicode_compatible
@@ -410,3 +456,8 @@ PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
 #                      and B is a superclass of C, then C's superclass set is {'A', 'B', 'C'}.
 #   - subclass_sets: a dict, string -> set of strings, that is similarly defined.
 InheritanceStructure = namedtuple('InheritanceStructure', ('superclass_sets', 'subclass_sets'))
+
+
+IndexDefinition = namedtuple(
+    'IndexDefinition',
+    ('name', 'type', 'base_classname', 'fields', 'unique', 'ordered', 'ignore_nulls'))

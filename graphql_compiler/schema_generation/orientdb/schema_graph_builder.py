@@ -7,18 +7,19 @@ import six
 
 from ..exceptions import IllegalSchemaStateError
 from ..schema_graph import (
-    EdgeType, InheritanceStructure, NonGraphElement, PropertyDescriptor, SchemaGraph, VertexType,
-    get_subclass_sets_from_superclass_sets, link_schema_elements
+    EdgeType, IndexDefinition, InheritanceStructure, NonGraphElement, PropertyDescriptor,
+    SchemaGraph, VertexType, get_subclass_sets_from_superclass_sets, link_schema_elements
 )
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES,
-    EDGE_SOURCE_PROPERTY_NAME, ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
-    PROPERTY_TYPE_LINK_ID, parse_default_property_value, try_get_graphql_scalar_type
+    EDGE_SOURCE_PROPERTY_NAME, ORDERED_INDEX_TYPES, ORIENTDB_BASE_EDGE_CLASS_NAME,
+    ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_LINK_ID, UNIQUE_INDEX_TYPES,
+    parse_default_property_value, try_get_graphql_scalar_type
 )
 from .utils import toposort_classes
 
 
-def get_orientdb_schema_graph(schema_data):
+def get_orientdb_schema_graph(schema_data, index_data=None):
     """Create a new SchemaGraph from the OrientDB schema data.
 
     Args:
@@ -61,11 +62,25 @@ def get_orientdb_schema_graph(schema_data):
                                                          '{}' for the embedded set type. Note
                                                          that if the property is a collection
                                                          type, it must have a default value.
+        index_data: optional list of dicts describing the schema indexes. Each dict must have
+                    the following string fields:
+                        - name: string, the name of the index.
+                        - type: string, specifying the type of the index. It must be one of:
+                                        'UNIQUE', 'NOTUNIQUE', 'UNIQUE_HASH_INDEX', and
+                                        'NOTUNIQUE_HASH_INDEX'.
+                        - indexDefinition: dict, defining the index. It must contain one of two
+                                           string keys:
+                                           - field: string, the name of the field on which the
+                                                    index is defined.
+                                           - indexDefinitions: list of dicts, with field string
+                                                               keys, specifying on which fields
+                                                               is the index defined.
+                        - className: string, the base class name on which the index is defined.
+                        - nullValuesIgnored: bool, indicating if the index ignore null values.
 
     Returns:
         fully-constructed SchemaGraph object
     """
-
     toposorted_schema_data = toposort_classes(schema_data)
 
     inheritance_structure = _get_inheritance_structure_from_schema_data(toposorted_schema_data)
@@ -92,8 +107,11 @@ def get_orientdb_schema_graph(schema_data):
     link_schema_elements(elements, inheritance_structure)
     for element in six.itervalues(elements):
         element.freeze()
-
-    return SchemaGraph(elements, inheritance_structure)
+    if index_data is None:
+        all_indexes = set()
+    else:
+        all_indexes = _get_indexes(index_data, elements)
+    return SchemaGraph(elements, inheritance_structure, all_indexes)
 
 
 def _get_inheritance_structure_from_schema_data(schema_data):
@@ -448,3 +466,68 @@ def _get_graphql_representation_of_non_graph_elements(non_graph_elements, inheri
             }
             graphql_reps[element_name] = GraphQLObjectType(element_name, fields, [])
     return graphql_reps
+
+
+def _get_indexes(index_query_result, elements):
+    """Return all IndexDefinitions from the graph."""
+    all_indexes = set()
+
+    # Get indexes from OrientDB.
+    all_class_names = set(elements.keys())
+
+    for index in index_query_result:
+        index_name = index['name']
+        index_type = index['type']
+        index_unique = index_type in UNIQUE_INDEX_TYPES
+        index_ordered = index_type in ORDERED_INDEX_TYPES
+        index_definition = index['indexDefinition']
+        index_base_classname = index_definition['className']
+        index_ignore_nulls = index_definition['nullValuesIgnored']
+
+        # Exclude indexes on non-graph classes (e.g. OUser).
+        if index_base_classname not in all_class_names:
+            continue
+
+        is_edge_index = isinstance(elements[index_base_classname], EdgeType)
+        if is_edge_index:
+            # OrientDB sometimes decides to make edge indexes ignore nulls.
+            # This is not something we want to allow, hard-code it to False.
+            # While this makes us diverge from OrientDB's schema,
+            # it's safe to be *more strict* than OrientDB.
+            index_ignore_nulls = False
+
+        # Index fields can be specified in one of two ways:
+        #   - directly on the "indexDefinition" dict, if only a single field is covered;
+        #   - within a nested "indexDefinitions" dict inside
+        #     the top-level "indexDefinition" dict, if multiple fields are covered.
+        single_field = index_definition.get('field', None)
+        if single_field is not None:
+            index_fields = frozenset((single_field,))
+        else:
+            index_fields = frozenset(
+                subdefinition['field']
+                for subdefinition in index_definition['indexDefinitions']
+            )
+
+        if not index_fields:
+            raise AssertionError(u'Unable to load index fields for index: {}'.format(index))
+
+        if index_ignore_nulls and len(index_fields) != 1:
+            raise AssertionError(
+                u'Index {} ignores nulls, but covers more than one field. '
+                u'We don\'t know how OrientDB handles such indexes, so they are not allowed. '
+                u'{}'.format(index_name, index))
+
+        definition = IndexDefinition(
+            name=index_name,
+            type=index_type,
+            base_classname=index_base_classname,
+            fields=index_fields,
+            unique=index_unique,
+            ordered=index_ordered,
+            ignore_nulls=index_ignore_nulls,
+        )
+        all_indexes.add(definition)
+
+    frozenset(all_indexes)
+    return all_indexes
