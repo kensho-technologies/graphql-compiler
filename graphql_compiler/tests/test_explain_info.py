@@ -1,10 +1,13 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import unittest
 
+from graphql import GraphQLList, GraphQLString
+
 from . import test_input_data
 from ..compiler.compiler_frontend import graphql_to_ir
 from ..compiler.helpers import FoldScopeLocation, Location
 from ..compiler.metadata import FilterInfo, OutputInfo, RecurseInfo
+from ..schema import GraphQLDate, GraphQLDateTime
 from .test_helpers import get_schema
 
 
@@ -14,6 +17,13 @@ class ExplainInfoTests(unittest.TestCase):
     def setUp(self):
         """Initialize the test schema once for all tests."""
         self.schema = get_schema()
+
+    def compare_output_info(self, expected, received):
+        """Compare two OutputInfo objects, using proper GraphQL type comparison operators."""
+        self.assertEqual(expected.location, received.location)
+        self.assertTrue((expected.type).is_same_type(received.type))
+        self.assertEqual(expected.optional, received.optional)
+        self.assertEqual(expected.fold, received.fold)
 
     def check(self, graphql_test, expected_filters, expected_recurses, expected_outputs):
         """Verify query produces expected explain infos."""
@@ -39,7 +49,7 @@ class ExplainInfoTests(unittest.TestCase):
 
         for output_name, output_info in meta.outputs:
             # Does output info match with expected?
-            self.assertEqual(expected_outputs.get(output_name, None), output_info)
+            self.compare_output_info(expected_outputs.get(output_name, None), output_info)
             if output_info:
                 del expected_outputs[output_name]
 
@@ -50,7 +60,12 @@ class ExplainInfoTests(unittest.TestCase):
 
     def test_immediate_output(self):
         out_name = 'animal_name'
-        out_info = OutputInfo(location=Location(('Animal',), 'name', 1))
+        out_info = OutputInfo(
+            location=Location(('Animal',), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         self.check(test_input_data.immediate_output,
                    [],
@@ -64,10 +79,20 @@ class ExplainInfoTests(unittest.TestCase):
         ]
 
         out_name1 = 'animal_name'
-        out_info1 = OutputInfo(location=Location(('Animal',), 'name', 1))
+        out_info1 = OutputInfo(
+            location=Location(('Animal',), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         out_name2 = 'parent_name'
-        out_info2 = OutputInfo(location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1))
+        out_info2 = OutputInfo(
+            location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         self.check(test_input_data.output_source_and_complex_output,
                    [(loc, filters)],
@@ -80,7 +105,12 @@ class ExplainInfoTests(unittest.TestCase):
             FilterInfo(fields=('name', 'alias'), op_name='name_or_alias', args=('$wanted',)),
         ]
         out_name = 'parent_name'
-        out_info = OutputInfo(location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1))
+        out_info = OutputInfo(
+            location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         self.check(test_input_data.traverse_filter_and_output,
                    [(loc, filters)],
@@ -102,18 +132,33 @@ class ExplainInfoTests(unittest.TestCase):
         ]
         out_name1 = 'parent_fed_at'
         out_loc1 = Location(('Animal', 'out_Animal_ParentOf', 'out_Animal_FedAt'), 'event_date', 1)
-        out_info1 = OutputInfo(location=out_loc1)
+        out_info1 = OutputInfo(
+            location=out_loc1,
+            type=GraphQLDateTime,
+            optional=True,
+            fold=None,
+        )
 
         out_name2 = 'other_child_fed_at'
         out_loc2 = Location(
             ('Animal', 'out_Animal_ParentOf', 'in_Animal_ParentOf', 'out_Animal_FedAt'),
             'event_date', 1
         )
-        out_info2 = OutputInfo(location=out_loc2)
+        out_info2 = OutputInfo(
+            location=out_loc2,
+            type=GraphQLDateTime,
+            optional=True,
+            fold=None
+        )
 
         out_name3 = 'grandchild_fed_at'
         out_loc3 = Location(('Animal', 'in_Animal_ParentOf', 'out_Animal_FedAt'), 'event_date', 1)
-        out_info3 = OutputInfo(location=out_loc3)
+        out_info3 = OutputInfo(
+            location=out_loc3,
+            type=GraphQLDateTime,
+            optional=False,
+            fold=None
+        )
 
         self.check(test_input_data.complex_optional_traversal_variables,
                    [(loc1, filters1), (loc2, filters2)],
@@ -128,19 +173,34 @@ class ExplainInfoTests(unittest.TestCase):
         ]
 
         out_name1 = 'name'
-        out_info1 = OutputInfo(location=Location(('Animal',), 'name', 1))
+        out_info1 = OutputInfo(
+            location=Location(('Animal',), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         out_name2 = 'related_animals'
         out_loc2 = FoldScopeLocation(
             Location(('Animal',), None, 1), (('out', 'Entity_Related'),), 'name'
         )
-        out_info2 = OutputInfo(location=out_loc2)
+        out_info2 = OutputInfo(
+            location=out_loc2,
+            type=GraphQLList(GraphQLString),
+            optional=False,
+            fold=loc,
+        )
 
         out_name3 = 'related_birthdays'
         out_loc3 = FoldScopeLocation(
             Location(('Animal',), None, 1), (('out', 'Entity_Related'),), 'birthday'
         )
-        out_info3 = OutputInfo(location=out_loc3)
+        out_info3 = OutputInfo(
+            location=out_loc3,
+            type=GraphQLList(GraphQLDate),
+            optional=False,
+            fold=loc,
+        )
 
         self.check(test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope,
                    [(loc, filters)],
@@ -155,7 +215,12 @@ class ExplainInfoTests(unittest.TestCase):
         ]
 
         out_name = 'animal_name'
-        out_info = OutputInfo(location=Location(('Animal',), 'name', 1))
+        out_info = OutputInfo(
+            location=Location(('Animal',), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         self.check(test_input_data.multiple_filters,
                    [(loc, filters)],
@@ -171,10 +236,20 @@ class ExplainInfoTests(unittest.TestCase):
         ]
 
         out_name1 = 'animal_name'
-        out_info1 = OutputInfo(location=Location(('Animal',), 'name', 1))
+        out_info1 = OutputInfo(
+            location=Location(('Animal',), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         out_name2 = 'child_name'
-        out_info2 = OutputInfo(location=Location(('Animal', 'in_Animal_ParentOf'), 'name', 1))
+        out_info2 = OutputInfo(
+            location=Location(('Animal', 'in_Animal_ParentOf'), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         self.check(test_input_data.has_edge_degree_op_filter,
                    [(loc, filters)],
@@ -188,7 +263,12 @@ class ExplainInfoTests(unittest.TestCase):
         ]
 
         out_name = 'relation_name'
-        out_info = OutputInfo(location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1))
+        out_info = OutputInfo(
+            location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         self.check(test_input_data.simple_recurse,
                    [],
@@ -208,17 +288,36 @@ class ExplainInfoTests(unittest.TestCase):
         ]
 
         out_name1 = 'animal_name'
-        out_info1 = OutputInfo(location=Location(('Animal',), 'name', 1))
+        out_info1 = OutputInfo(
+            location=Location(('Animal',), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         out_name2 = 'important_event'
-        out_loc2 = Location(('Animal', 'out_Animal_ImportantEvent'), 'name', 1)
-        out_info2 = OutputInfo(location=out_loc2)
+        out_info2 = OutputInfo(
+            location=Location(('Animal', 'out_Animal_ImportantEvent'), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         out_name3 = 'ancestor_name'
-        out_info3 = OutputInfo(location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1))
+        out_info3 = OutputInfo(
+            location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         out_name4 = 'descendent_name'
-        out_info4 = OutputInfo(location=Location(('Animal', 'in_Animal_ParentOf'), 'name', 1))
+        out_info4 = OutputInfo(
+            location=Location(('Animal', 'in_Animal_ParentOf'), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         expected_outputs = [
             (out_name1, out_info1), (out_name2, out_info2), (out_name3, out_info3),
@@ -239,7 +338,12 @@ class ExplainInfoTests(unittest.TestCase):
         ]
 
         out_name = 'parent_name'
-        out_info = OutputInfo(location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1))
+        out_info = OutputInfo(
+            location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1),
+            type=GraphQLString,
+            optional=False,
+            fold=None,
+        )
 
         self.check(test_input_data.filter_on_optional_traversal_name_or_alias,
                    [(loc, filters)],

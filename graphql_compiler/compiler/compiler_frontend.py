@@ -298,7 +298,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
     if output_directive:
         # Schema validation has ensured that the fields below exist.
         output_name = output_directive.arguments[0].value.value
-        if output_name in context['outputs']:
+        if context['metadata'].get_output_info(output_name):
             raise GraphQLCompilationError(u'Cannot reuse output name: '
                                           u'{}, {}'.format(output_name, context))
         validate_safe_string(output_name)
@@ -312,13 +312,13 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
             if location.field != COUNT_META_FIELD_NAME:
                 graphql_type = GraphQLList(graphql_type)
 
-        context['outputs'][output_name] = {
-            'location': location,
-            'optional': is_in_optional_scope(context),
-            'type': graphql_type,
-            'fold': context.get('fold', None),
-        }
-        context['metadata'].record_output_info(output_name, OutputInfo(location=location))
+        output_info = OutputInfo(
+            location=location,
+            type=graphql_type,
+            optional=is_in_optional_scope(context),
+            fold=context.get('fold', None),
+        )
+        context['metadata'].record_output_info(output_name, output_info)
 
 
 def _get_recurse_directive_depth(field_name, field_directives):
@@ -525,7 +525,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         if edge_traversal_is_folded:
             has_count_filter = has_fold_count_filter(context)
             _validate_fold_has_outputs_or_count_filter(
-                get_context_fold_info(context), has_count_filter, context['outputs'])
+                get_context_fold_info(context), has_count_filter, context['metadata'])
             basic_blocks.append(blocks.Unfold())
             unmark_context_fold_scope(context)
             if has_count_filter:
@@ -561,7 +561,9 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     return basic_blocks
 
 
-def _validate_fold_has_outputs_or_count_filter(fold_scope_location, fold_has_count_filter, outputs):
+def _validate_fold_has_outputs_or_count_filter(
+    fold_scope_location, fold_has_count_filter, metadata
+):
     """Ensure the @fold scope has at least one output, or filters on the size of the fold."""
     # This function makes sure that the @fold scope has an effect.
     # Folds either output data, or filter the data enclosing the fold based on the size of the fold.
@@ -571,8 +573,8 @@ def _validate_fold_has_outputs_or_count_filter(fold_scope_location, fold_has_cou
 
     # At least one output in the outputs list must point to the fold_scope_location,
     # or the scope corresponding to fold_scope_location had no @outputs and is illegal.
-    for output in six.itervalues(outputs):
-        if output['fold'] == fold_scope_location:
+    for _, output_info in metadata.outputs:
+        if output_info.fold == fold_scope_location:
             return True
 
     raise GraphQLCompilationError(u'Found a @fold scope that has no effect on the query. '
@@ -799,13 +801,6 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         # query processing, but apply to the global query scope and should be appended to the
         # IR blocks only after the GlobalOperationsStart block has been emitted.
         'global_filters': [],
-        # 'outputs' is a dict mapping each output name to another dict which contains
-        #  - location: Location where to output from
-        #  - optional: boolean representing whether the output was defined within an @optional scope
-        #  - type: GraphQLType of the output
-        #  - fold: FoldScopeLocation object if the current output was defined within a fold scope,
-        #          and None otherwise
-        'outputs': dict(),
         # 'inputs' is a dict mapping input parameter names to their respective expected GraphQL
         # types, as automatically inferred by inspecting the query structure
         'inputs': dict(),
@@ -854,11 +849,10 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     basic_blocks.extend(context['global_filters'])
 
     # Based on the outputs context data, add an output step and construct the output metadata.
-    outputs_context = context['outputs']
-    basic_blocks.append(_compile_output_step(outputs_context))
+    basic_blocks.append(_compile_output_step(context['metadata']))
     output_metadata = {
-        name: OutputMetadata(type=value['type'], optional=value['optional'])
-        for name, value in six.iteritems(outputs_context)
+        name: OutputMetadata(type=info.type, optional=info.optional)
+        for name, info in context['metadata'].outputs
     }
 
     return IrAndMetadata(
@@ -868,26 +862,26 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         query_metadata_table=context['metadata'])
 
 
-def _compile_output_step(outputs):
+def _compile_output_step(metadata):
     """Construct the final ConstructResult basic block that defines the output format of the query.
 
     Args:
-        outputs: dict, output name (string) -> output data dict, specifying the location
-                 from where to get the data, and whether the data is optional (and therefore
-                 may be missing); missing optional data is replaced with 'null'
+        metadata: QueryMetadataTable object, part of which specifies the location from where to get
+                  the output, and whether the output is optional (and therefore may be missing);
+                  missing optional data is replaced with 'null'
 
     Returns:
         a ConstructResult basic block that constructs appropriate outputs for the query
     """
-    if not outputs:
+    if next(metadata.outputs, None) is None:
         raise GraphQLCompilationError(u'No fields were selected for output! Please mark at least '
                                       u'one field with the @output directive.')
 
     output_fields = {}
-    for output_name, output_context in six.iteritems(outputs):
-        location = output_context['location']
-        optional = output_context['optional']
-        graphql_type = output_context['type']
+    for output_name, output_info in metadata.outputs:
+        location = output_info.location
+        optional = output_info.optional
+        graphql_type = output_info.type
 
         expression = None
         existence_check = None
@@ -895,7 +889,7 @@ def _compile_output_step(outputs):
         if isinstance(location, FoldScopeLocation):
             if optional:
                 raise AssertionError(u'Unreachable state reached, optional in fold: '
-                                     u'{}'.format(output_context))
+                                     u'{}'.format(output_info))
 
             if location.field == COUNT_META_FIELD_NAME:
                 expression = expressions.FoldCountContextField(location)

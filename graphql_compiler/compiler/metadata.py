@@ -27,7 +27,11 @@ LocationInfo = namedtuple(
 OutputInfo = namedtuple(
     'OutputInfo',
     (
-        'location',
+        'location',     # Location/FoldScopeLocation, where to output from
+        'type',         # GraphQLType of the output
+        'optional',     # boolean, whether the output was defined within an @optional scope
+        'fold',         # FoldScopeLocation object if the output was defined within a fold scope and
+                        # None otherwise
     )
 )
 
