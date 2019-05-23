@@ -15,12 +15,11 @@ from ...ast_manipulation import (
 from ...compiler.compiler_frontend import ast_to_ir
 from ...exceptions import GraphQLInvalidMacroError
 from ...query_formatting.common import ensure_arguments_are_provided
-from ...schema import (
-    VERTEX_FIELD_PREFIXES, FilterDirective, FoldDirective, OptionalDirective, OutputDirective,
-    OutputSourceDirective, RecurseDirective, TagDirective, is_vertex_field_name
-)
+from ...schema import VERTEX_FIELD_PREFIXES, FoldDirective, is_vertex_field_name
 from .directives import (
-    MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
+    MACRO_EDGE_DEFINITION_ALLOWED_DIRECTIVES, MACRO_EDGE_DEFINITION_DISALLOWED_DIRECTIVES,
+    MACRO_EDGE_DEFINITION_REQUIRED_DIRECTIVES, MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective,
+    MacroEdgeTargetDirective
 )
 from .helpers import get_directives_for_ast, remove_directives_from_ast
 
@@ -38,12 +37,10 @@ def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
             u'Unexpectedly found variable definitions at the top level of the GraphQL input. '
             u'This is not supported. Variable definitions: {}'.format(ast.variable_definitions))
 
-    required_macro_directives = (MacroEdgeDefinitionDirective, MacroEdgeTargetDirective)
-
     # pylint: disable=protected-access
     schema_with_macro_directives = copy(schema)
     schema_with_macro_directives._directives = list(chain(
-        schema_with_macro_directives._directives, required_macro_directives))
+        schema_with_macro_directives._directives, MACRO_EDGE_DEFINITION_REQUIRED_DIRECTIVES))
     # pylint: enable=protected-access
 
     validation_errors = validate(schema_with_macro_directives, ast)
@@ -51,7 +48,7 @@ def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
         raise GraphQLInvalidMacroError(
             u'Macro edge failed validation: {}'.format(validation_errors))
 
-    for directive_definition in required_macro_directives:
+    for directive_definition in MACRO_EDGE_DEFINITION_REQUIRED_DIRECTIVES:
         macro_data = macro_directives.get(directive_definition.name, None)
         if not macro_data:
             raise GraphQLInvalidMacroError(
@@ -78,22 +75,13 @@ def _validate_macro_ast_directives(ast, inside_fold_scope=False):
         inside_fold_scope: bool, whether the subtree is within a @fold scope
     """
     subselection_inside_fold_scope = inside_fold_scope
-    directives_with_no_restrictions = frozenset({
-        FilterDirective.name,
-        TagDirective.name,
-        OptionalDirective.name,
-        RecurseDirective.name,
-        MacroEdgeDefinitionDirective.name,
-    })
-    disallowed_directives = frozenset({
-        OutputDirective.name,
-        OutputSourceDirective.name,
-    })
     for directive in ast.directives:
         name = directive.name.value
-        if name in directives_with_no_restrictions:
+        if name in MACRO_EDGE_DEFINITION_ALLOWED_DIRECTIVES:
             pass
-        elif name in disallowed_directives:
+        elif name == MacroEdgeDefinitionDirective.name:
+            pass
+        elif name in MACRO_EDGE_DEFINITION_DISALLOWED_DIRECTIVES:
             raise GraphQLInvalidMacroError(u'Macros are not allowed to use the {} directive. '
                                            u'Found usage {}'.format(name, directive))
         elif name == FoldDirective.name:
