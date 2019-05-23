@@ -497,8 +497,8 @@ def _get_transitive_superclass_sets(toposorted_direct_superclass_sets):
     # For each class name, construct its superclass set:
     # itself + the set of class names from which it inherits.
     superclass_sets = dict()
-    for class_name, immediate_superclass_names in six.iteritems(toposorted_direct_superclass_sets):
-        superclass_set = set(immediate_superclass_names)
+    for class_name, direct_superclass_set in six.iteritems(toposorted_direct_superclass_sets):
+        superclass_set = set(direct_superclass_set)
         superclass_set.add(class_name)
 
         # Since the input data must be in topological order, the superclasses of
@@ -507,7 +507,7 @@ def _get_transitive_superclass_sets(toposorted_direct_superclass_sets):
         # was not topologically sorted.
         superclass_set.update(chain.from_iterable(
             superclass_sets[superclass_name]
-            for superclass_name in immediate_superclass_names
+            for superclass_name in direct_superclass_set
         ))
 
         # Freeze the superclass set so it can't ever be modified again.
