@@ -119,20 +119,20 @@ def get_orientdb_schema_graph(schema_data, index_data):
 
 
 def get_superclasses_from_class_definition(class_definition):
-    """Extract a set of all superclass names from a class definition dict."""
+    """Extract a list of all superclass names from a class definition dict."""
     # New-style superclasses definition, supporting multiple-inheritance.
     superclasses = class_definition.get('superClasses', None)
 
     if superclasses:
-        return set(superclasses)
+        return superclasses
 
     # Old-style superclass definition, single inheritance only.
     superclass = class_definition.get('superClass', None)
     if superclass:
-        return {superclass}
+        return [superclass]
 
     # No superclasses are present.
-    return set()
+    return []
 
 
 def _get_non_graph_elements(class_name_to_definition, inheritance_structure):

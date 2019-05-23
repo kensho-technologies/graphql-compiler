@@ -451,10 +451,16 @@ class InheritanceStructure(object):
         return self._subclass_sets
 
 
-def _get_toposorted_direct_superclass_sets(name_to_superclasses):
-    """Return a toposorted OrderedDict mapping each class to its direct superclasses.
+def _get_toposorted_direct_superclass_sets(direct_superclass_sets):
+    """Return a topologically sorted OrderedDict that maps each class to its direct superclasses.
 
-    The OrderedDict its toposorted by the class inheritance. Each class is before its subclasses."""
+    Args:
+        direct_superclass_sets: dict, string -> set of strings, mapping a class
+                                to its direct superclasses.
+
+    Return:
+        an OrderedDict toposorted by class inheritance. Each class appears before its subclasses.
+    """
     def get_class_topolist(class_name, processed_classes, current_trace):
         """Return a topologically sorted list of this class's superclasses and the class itself.
 
@@ -477,7 +483,7 @@ def _get_toposorted_direct_superclass_sets(name_to_superclasses):
         class_list = []
         # Recursively process superclasses
         current_trace.add(class_name)
-        for superclass_name in name_to_superclasses[class_name]:
+        for superclass_name in direct_superclass_sets[class_name]:
             class_list.extend(get_class_topolist(superclass_name, processed_classes, current_trace))
         current_trace.remove(class_name)
         # Do the bookkeeping
@@ -487,9 +493,10 @@ def _get_toposorted_direct_superclass_sets(name_to_superclasses):
         return class_list
 
     toposorted = []
-    for name in name_to_superclasses.keys():
+    for name in direct_superclass_sets.keys():
         toposorted.extend(get_class_topolist(name, set(), set()))
-    return OrderedDict((class_name, name_to_superclasses[class_name]) for class_name in toposorted)
+    return OrderedDict((class_name, direct_superclass_sets[class_name])
+                       for class_name in toposorted)
 
 
 def _get_transitive_superclass_sets(toposorted_direct_superclass_sets):
