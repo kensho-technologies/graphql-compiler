@@ -434,9 +434,11 @@ class InheritanceStructure(object):
 
 
 def _toposort_classes(name_to_superclasses):
-    """Return OrderedDict of class to superclasses where each class is before its subclasses."""
+    """Return a toposorted OrderedDict mapping each class to its superclasses.
+
+    The OrderedDict its toposorted by the class inheritance. Each class is before its subclasses."""
     def get_class_topolist(class_name, processed_classes, current_trace):
-        """Return a topologically sorted list of this class's dependencies and class itself
+        """Return a topologically sorted list of this class's superclasses and class itself
 
         Args:
             class_name: string, name of the class to process
@@ -469,12 +471,11 @@ def _toposort_classes(name_to_superclasses):
     toposorted = []
     for name in name_to_superclasses.keys():
         toposorted.extend(get_class_topolist(name, set(), set()))
-    return OrderedDict((class_name, name_to_superclasses[class_name])
-                       for class_name in toposorted)
+    return OrderedDict((class_name, name_to_superclasses[class_name]) for class_name in toposorted)
 
 
 def _get_transitive_superclass_sets(toposorted_class_to_direct_superclasses):
-    """Return the transitive superclass sets from the toposorted class to superclass OrderedDict."""
+    """Return the transitive superclass sets from the toposorted OrderedDict."""
     # For each class name, construct its superclass set:
     # itself + the set of class names from which it inherits.
     superclass_sets = dict()
