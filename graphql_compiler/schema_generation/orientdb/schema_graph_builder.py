@@ -15,7 +15,7 @@ from .schema_properties import (
     EDGE_SOURCE_PROPERTY_NAME, ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
     PROPERTY_TYPE_LINK_ID, parse_default_property_value, try_get_graphql_scalar_type
 )
-from .utils import toposort_classes
+from .utils import toposort_classes, toposort_classes
 
 
 def get_orientdb_schema_graph(schema_data):
@@ -76,9 +76,10 @@ def get_orientdb_schema_graph(schema_data):
         for class_name, class_definition in six.iteritems(class_name_to_definition)
     }
 
-    toposorted_schema_data = toposort_classes(schema_data)
+    toposorted_class_to_immediate_superclasses = toposort_classes(class_to_immediate_superclasses)
 
-    inheritance_structure = _get_inheritance_structure_from_schema_data(toposorted_schema_data)
+    inheritance_structure = _get_inheritance_structure_from_schema_data(
+        toposorted_class_to_immediate_superclasses)
 
     non_graph_elements = _get_non_graph_elements(class_name_to_definition, inheritance_structure)
     inner_collection_objs = _get_graphql_representation_of_non_graph_elements(
@@ -100,16 +101,14 @@ def get_orientdb_schema_graph(schema_data):
 
     return SchemaGraph(elements, inheritance_structure)
 
-def _get_inheritance_structure_from_schema_data(schema_data):
+
+def _get_inheritance_structure_from_schema_data(toposorted_class_to_immediate_superclasses):
     """Return the superclass sets from the OrientDB schema data."""
     # For each class name, construct its superclass set:
     # itself + the set of class names from which it inherits.
     superclass_sets = dict()
-    for class_definition in schema_data:
-        class_name = class_definition['name']
-        immediate_superclass_names = get_superclasses_from_class_definition(
-            class_definition)
-
+    for class_name, immediate_superclass_names in six.iteritems(
+            toposorted_class_to_immediate_superclasses):
         superclass_set = set(immediate_superclass_names)
         superclass_set.add(class_name)
 
@@ -129,20 +128,20 @@ def _get_inheritance_structure_from_schema_data(schema_data):
 
 
 def get_superclasses_from_class_definition(class_definition):
-    """Extract a list of all superclass names from a class definition dict."""
+    """Extract a set of all superclass names from a class definition dict."""
     # New-style superclasses definition, supporting multiple-inheritance.
     superclasses = class_definition.get('superClasses', None)
 
     if superclasses:
-        return list(superclasses)
+        return set(superclasses)
 
     # Old-style superclass definition, single inheritance only.
     superclass = class_definition.get('superClass', None)
     if superclass:
-        return [superclass]
+        return {superclass}
 
     # No superclasses are present.
-    return []
+    return set()
 
 
 def _get_non_graph_elements(class_name_to_definition, inheritance_structure):
