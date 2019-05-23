@@ -319,7 +319,7 @@ def get_test_macro_registry():
         ('''{
             Entity @macro_edge_definition(name: "out_Entity_AlmostRelated") {
                 out_Entity_Related {
-                    out_Entity_Related @macro_edge_tMACRO_EDGE_DEFINITION_DIRECTIVESarget{
+                    out_Entity_Related @macro_edge_target{
                         uuid
                     }
                 }

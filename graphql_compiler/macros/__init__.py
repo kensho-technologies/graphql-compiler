@@ -19,7 +19,8 @@ from .macro_edge.helpers import get_type_at_macro_edge_target
 from .macro_edge.directives import MacroEdgeDirective
 from .macro_expansion import expand_macros_in_query_ast
 from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
-from .macro_edge.directives import MACRO_EDGE_DEFINITION_DIRECTIVES
+from .macro_edge.directives import (MACRO_EDGE_DEFINITION_DIRECTIVES,
+                                    MACRO_EDGE_DISALLOWED_SUBDIRECTIVES)
 
 
 MacroRegistry = namedtuple(
@@ -171,7 +172,7 @@ def get_schema_for_macro_definition(schema):
 
     This returned schema can be used to validate macro definitions, and support GraphQL
     macro editors, enabling them to autocomplete on the @macro_edge_definition and
-    @macro_edge_target directives.
+    @macro_edge_target directives.*
 
     Args:
         schema: GraphQLSchema over which we want to write macros
@@ -180,13 +181,15 @@ def get_schema_for_macro_definition(schema):
         GraphQLSchema usable for writing macros
     """
 
+    macro_definition_schema = copy(schema)
+    macro_definition_schema_directives_set = set(chain(macro_definition_schema.get_directives(),
+                                                       MACRO_EDGE_DEFINITION_DIRECTIVES))
+    macro_definition_schema_directives_set -= MACRO_EDGE_DISALLOWED_SUBDIRECTIVES
     # pylint: disable=protected-access
-    schema_for_macro_definition = copy(schema)
-    schema_for_macro_definition._directives = list(set(chain(
-        schema_for_macro_definition._directives, MACRO_EDGE_DEFINITION_DIRECTIVES)))
+    macro_definition_schema._directives = list(macro_definition_schema_directives_set)
     # pylint: enable=protected-access
 
-    return schema_for_macro_definition
+    return macro_definition_schema
 
 
 def perform_macro_expansion(macro_registry, graphql_with_macro, graphql_args):
