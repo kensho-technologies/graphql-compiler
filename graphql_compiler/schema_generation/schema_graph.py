@@ -429,7 +429,7 @@ def _toposort_classes(name_to_superclasses):
 
         Args:
             class_name: string, name of the class to process
-            processed_classes: dict, class_name -> descriptor
+            processed_classes: set of strings, a set of classes that have already been processed
             current_trace: list of strings, list of classes traversed during the recursion
 
         Returns:
