@@ -406,6 +406,23 @@ class NonGraphElement(SchemaElement):
         super(NonGraphElement, self).__init__(class_name, abstract, properties, class_fields)
 
 
+def _validate_non_abstract_edge_has_defined_base_connections(
+        class_name, base_in_connection, base_out_connection):
+    """Validate that the non-abstract edge has its in/out base connections defined."""
+    if not (base_in_connection and base_out_connection):
+        raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
+                                      u'in/out base_connection: {} {} {}'
+                                      .format(class_name, base_in_connection, base_out_connection))
+
+
+def _validate_property_names(class_name, properties):
+    """Validate that properties do not have names that may cause problems in the GraphQL schema."""
+    for property_name in properties:
+        if not property_name or property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES):
+            raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
+                                          u'{}'.format(class_name, property_name))
+
+
 class InheritanceStructure(object):
 
     def __init__(self, class_to_direct_superclasses):
@@ -512,23 +529,6 @@ def _get_subclass_sets_from_superclass_sets(superclass_sets):
         subclass_sets[class_name] = frozenset(subclass_sets[class_name])
 
     return subclass_sets
-
-
-def _validate_non_abstract_edge_has_defined_base_connections(
-        class_name, base_in_connection, base_out_connection):
-    """Validate that the non-abstract edge has its in/out base connections defined."""
-    if not (base_in_connection and base_out_connection):
-        raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
-                                      u'in/out base_connection: {} {} {}'
-                                      .format(class_name, base_in_connection, base_out_connection))
-
-
-def _validate_property_names(class_name, properties):
-    """Validate that properties do not have names that may cause problems in the GraphQL schema."""
-    for property_name in properties:
-        if not property_name or property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES):
-            raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
-                                          u'{}'.format(class_name, property_name))
 
 
 def _get_element_names_of_class(elements, cls):
