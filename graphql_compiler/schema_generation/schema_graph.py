@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
-from collections import namedtuple
+from collections import OrderedDict, namedtuple
+from itertools import chain
 
 import six
 
@@ -39,8 +40,8 @@ class SchemaGraph(object):
         Args:
             elements: a dict, string -> SchemaElement, mapping each class in the schema to its
                       corresponding SchemaElement object.
-            inheritance_structure: InheritanceStructure, (namedtuple with subclass_sets and
-                                   superclass_sets fields), describing the inheritance structure
+            inheritance_structure: InheritanceStructure object, (with superclass_sets and
+                                   subclass_sets properties), describing the inheritance structure
                                    of the SchemaGraph.
             all_indexes: set of IndexDefinitions, describing the indexes defined on the schema.
 
@@ -423,7 +424,105 @@ def _validate_property_names(class_name, properties):
                                           u'{}'.format(class_name, property_name))
 
 
-def get_subclass_sets_from_superclass_sets(superclass_sets):
+class InheritanceStructure(object):
+
+    def __init__(self, direct_superclass_sets):
+        """Create a new InheritanceStructure object.
+
+        Args:
+            direct_superclass_sets: dict, string -> set of strings, mapping a class
+                                    to its direct superclasses.
+
+        Returns:
+            an InheritanceStructure object.
+        """
+        direct_superclass_sets = _get_toposorted_direct_superclass_sets(direct_superclass_sets)
+        self._superclass_sets = _get_transitive_superclass_sets(direct_superclass_sets)
+        self._subclass_sets = _get_subclass_sets_from_superclass_sets(self._superclass_sets)
+
+    @property
+    def superclass_sets(self):
+        """Return a dict mapping each class to all classes it inherit from, including itself."""
+        return self._superclass_sets
+
+    @property
+    def subclass_sets(self):
+        """Return a dict mapping each class to all classes that inherit it, including itself."""
+        return self._subclass_sets
+
+
+def _get_toposorted_direct_superclass_sets(direct_superclass_sets):
+    """Return a topologically sorted OrderedDict that maps each class to its direct superclasses.
+
+    Args:
+        direct_superclass_sets: dict, string -> set of strings, mapping a class
+                                to its direct superclasses.
+
+    Return:
+        an OrderedDict toposorted by class inheritance. Each class appears before its subclasses.
+    """
+    def get_class_topolist(class_name, processed_classes, current_trace):
+        """Return a topologically sorted list of this class's superclasses and the class itself.
+
+        Args:
+            class_name: string, name of the class to process.
+            processed_classes: set of strings, a set of classes that have already been processed.
+            current_trace: list of strings, list of classes traversed during the recursion.
+
+        Returns:
+            list of dicts, list of class names sorted in topological order.
+        """
+        # Check if this class has already been handled
+        if class_name in processed_classes:
+            return []
+
+        if class_name in current_trace:
+            raise AssertionError(
+                'Encountered self-reference in dependency chain of {}'.format(class_name))
+
+        class_list = []
+        # Recursively process superclasses
+        current_trace.add(class_name)
+        for superclass_name in direct_superclass_sets[class_name]:
+            class_list.extend(get_class_topolist(superclass_name, processed_classes, current_trace))
+        current_trace.remove(class_name)
+        # Do the bookkeeping
+        class_list.append(class_name)
+        processed_classes.add(class_name)
+
+        return class_list
+
+    toposorted = []
+    for name in direct_superclass_sets.keys():
+        toposorted.extend(get_class_topolist(name, set(), set()))
+    return OrderedDict((class_name, direct_superclass_sets[class_name])
+                       for class_name in toposorted)
+
+
+def _get_transitive_superclass_sets(toposorted_direct_superclass_sets):
+    """Return the transitive superclass sets from the toposorted direct superclass sets."""
+    # For each class name, construct its superclass set:
+    # itself + the set of class names from which it inherits.
+    superclass_sets = dict()
+    for class_name, direct_superclass_set in six.iteritems(toposorted_direct_superclass_sets):
+        superclass_set = set(direct_superclass_set)
+        superclass_set.add(class_name)
+
+        # Since the input data must be in topological order, the superclasses of
+        # the current class should have already been processed.
+        # A KeyError on the following line would mean that the input
+        # was not topologically sorted.
+        superclass_set.update(chain.from_iterable(
+            superclass_sets[superclass_name]
+            for superclass_name in direct_superclass_set
+        ))
+
+        # Freeze the superclass set so it can't ever be modified again.
+        superclass_sets[class_name] = frozenset(superclass_set)
+    return superclass_sets
+
+
+def _get_subclass_sets_from_superclass_sets(superclass_sets):
     """Return a dict mapping each class to its set of subclasses."""
     subclass_sets = dict()
     for subclass_name, superclass_names in six.iteritems(superclass_sets):
@@ -480,13 +579,6 @@ def link_schema_elements(elements, inheritance_structure):
 #              explicit value for this property. Set to None if no default is given in the schema.
 PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
 
-# A way to describe a schema's normalized inheritance structure.
-#   - superclass_sets: a dict, string -> set of strings, mapping each class to its
-#                      superclasses. The set of superclasses includes the class itself and
-#                      the transitive superclasses. For instance, if A is a superclass of B,
-#                      and B is a superclass of C, then C's superclass set is {'A', 'B', 'C'}.
-#   - subclass_sets: a dict, string -> set of strings, that is similarly defined.
-InheritanceStructure = namedtuple('InheritanceStructure', ('superclass_sets', 'subclass_sets'))
 
 # A way to describe an index:
 #   - name: string, the name of the index.
