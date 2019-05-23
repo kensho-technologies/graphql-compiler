@@ -87,12 +87,12 @@ def get_orientdb_schema_graph(schema_data, index_data):
         for class_definition in schema_data
     }
 
-    class_to_direct_superclasses = {
+    direct_superclass_sets = {
         class_name: get_superclasses_from_class_definition(class_definition)
         for class_name, class_definition in six.iteritems(class_name_to_definition)
     }
 
-    inheritance_structure = InheritanceStructure(class_to_direct_superclasses)
+    inheritance_structure = InheritanceStructure(direct_superclass_sets)
 
     non_graph_elements = _get_non_graph_elements(class_name_to_definition, inheritance_structure)
     inner_collection_objs = _get_graphql_representation_of_non_graph_elements(

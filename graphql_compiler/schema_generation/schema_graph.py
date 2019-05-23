@@ -40,7 +40,8 @@ class SchemaGraph(object):
         Args:
             elements: a dict, string -> SchemaElement, mapping each class in the schema to its
                       corresponding SchemaElement object.
-            inheritance_structure: InheritanceStructure object describing the inheritance structure
+            inheritance_structure: InheritanceStructure object, (with superclass_sets and
+                                   subclass_sets properties), describing the inheritance structure
                                    of the SchemaGraph.
             all_indexes: set of IndexDefinitions, describing the indexes defined on the schema.
 
@@ -425,18 +426,18 @@ def _validate_property_names(class_name, properties):
 
 class InheritanceStructure(object):
 
-    def __init__(self, class_to_direct_superclasses):
+    def __init__(self, direct_superclass_sets):
         """Create a new InheritanceStructure object.
 
         Args:
-            class_to_direct_superclasses: dict, string -> set of strings, mapping a class
-                                          to its direct superclasses.
+            direct_superclass_sets: dict, string -> set of strings, mapping a class
+                                    to its direct superclasses.
 
         Returns:
             an InheritanceStructure object.
         """
-        class_to_direct_superclasses = _toposort_classes(class_to_direct_superclasses)
-        self._superclass_sets = _get_transitive_superclass_sets(class_to_direct_superclasses)
+        direct_superclass_sets = _get_toposorted_direct_superclass_sets(direct_superclass_sets)
+        self._superclass_sets = _get_transitive_superclass_sets(direct_superclass_sets)
         self._subclass_sets = _get_subclass_sets_from_superclass_sets(self._superclass_sets)
 
     @property
@@ -450,8 +451,8 @@ class InheritanceStructure(object):
         return self._subclass_sets
 
 
-def _toposort_classes(name_to_superclasses):
-    """Return a toposorted OrderedDict mapping each class to its superclasses.
+def _get_toposorted_direct_superclass_sets(name_to_superclasses):
+    """Return a toposorted OrderedDict mapping each class to its direct superclasses.
 
     The OrderedDict its toposorted by the class inheritance. Each class is before its subclasses."""
     def get_class_topolist(class_name, processed_classes, current_trace):
@@ -491,13 +492,13 @@ def _toposort_classes(name_to_superclasses):
     return OrderedDict((class_name, name_to_superclasses[class_name]) for class_name in toposorted)
 
 
-def _get_transitive_superclass_sets(toposorted_class_to_direct_superclasses):
-    """Return the transitive superclass sets from the toposorted OrderedDict."""
+def _get_transitive_superclass_sets(toposorted_direct_superclass_sets):
+    """Return the transitive superclass sets from the toposorted direct superclass sets."""
     # For each class name, construct its superclass set:
     # itself + the set of class names from which it inherits.
     superclass_sets = dict()
     for class_name, immediate_superclass_names in six.iteritems(
-            toposorted_class_to_direct_superclasses):
+            toposorted_direct_superclass_sets):
         superclass_set = set(immediate_superclass_names)
         superclass_set.add(class_name)
 
