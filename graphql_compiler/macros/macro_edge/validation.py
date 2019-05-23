@@ -63,7 +63,7 @@ def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
 
 
 def _validate_macro_ast_directives(ast, inside_fold_scope=False):
-    """Check that the macro is using non-macro direcives properly.
+    """Check that the macro is using non-macro directives properly.
 
     Restrictions on use of directives:
     - @output and @output_source are disallowed
