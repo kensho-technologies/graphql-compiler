@@ -456,15 +456,15 @@ def _get_toposorted_direct_superclass_sets(name_to_superclasses):
 
     The OrderedDict its toposorted by the class inheritance. Each class is before its subclasses."""
     def get_class_topolist(class_name, processed_classes, current_trace):
-        """Return a topologically sorted list of this class's superclasses and class itself
+        """Return a topologically sorted list of this class's superclasses and the class itself.
 
         Args:
-            class_name: string, name of the class to process
-            processed_classes: set of strings, a set of classes that have already been processed
-            current_trace: list of strings, list of classes traversed during the recursion
+            class_name: string, name of the class to process.
+            processed_classes: set of strings, a set of classes that have already been processed.
+            current_trace: list of strings, list of classes traversed during the recursion.
 
         Returns:
-            list of dicts, list of class names sorted in topological order
+            list of dicts, list of class names sorted in topological order.
         """
         # Check if this class has already been handled
         if class_name in processed_classes:
@@ -497,8 +497,7 @@ def _get_transitive_superclass_sets(toposorted_direct_superclass_sets):
     # For each class name, construct its superclass set:
     # itself + the set of class names from which it inherits.
     superclass_sets = dict()
-    for class_name, immediate_superclass_names in six.iteritems(
-            toposorted_direct_superclass_sets):
+    for class_name, immediate_superclass_names in six.iteritems(toposorted_direct_superclass_sets):
         superclass_set = set(immediate_superclass_names)
         superclass_set.add(class_name)
 
