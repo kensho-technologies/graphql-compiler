@@ -172,7 +172,7 @@ def get_schema_for_macro_definition(schema):
 
     This returned schema can be used to validate macro definitions, and support GraphQL
     macro editors, enabling them to autocomplete on the @macro_edge_definition and
-    @macro_edge_target directives.*
+    @macro_edge_target directives.
 
     Args:
         schema: GraphQLSchema over which we want to write macros
