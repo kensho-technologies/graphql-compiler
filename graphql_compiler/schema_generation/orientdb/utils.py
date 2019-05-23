@@ -7,6 +7,13 @@ ORIENTDB_SCHEMA_RECORDS_QUERY = (
     '\'ORIDs\', \'OUser\', \'OIdentity\', \'OSchedule\', \'OFunction\']'
 )
 
+ORIENTDB_INDEX_RECORDS_QUERY = (
+    'SELECT name, type, indexDefinition, metadata FROM ('
+    'SELECT expand(indexes) FROM metadata:indexmanager'
+    ') WHERE type IN '
+    '[\'UNIQUE\', \'NOTUNIQUE\', \'UNIQUE_HASH_INDEX\', \'NOTUNIQUE_HASH_INDEX\']'
+)
+
 
 def toposort_classes(classes):
     """Sort class metadatas so that a superclass is always before the subclass"""
