@@ -407,75 +407,6 @@ class NonGraphElement(SchemaElement):
         super(NonGraphElement, self).__init__(class_name, abstract, properties, class_fields)
 
 
-def _validate_non_abstract_edge_has_defined_base_connections(
-        class_name, base_in_connection, base_out_connection):
-    """Validate that the non-abstract edge has its in/out base connections defined."""
-    if not (base_in_connection and base_out_connection):
-        raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
-                                      u'in/out base_connection: {} {} {}'
-                                      .format(class_name, base_in_connection, base_out_connection))
-
-
-def _validate_property_names(class_name, properties):
-    """Validate that properties do not have names that may cause problems in the GraphQL schema."""
-    for property_name in properties:
-        if not property_name or property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES):
-            raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
-                                          u'{}'.format(class_name, property_name))
-
-
-def _get_subclass_sets_from_superclass_sets(superclass_sets):
-    """Return a dict mapping each class to its set of subclasses."""
-    subclass_sets = dict()
-    for subclass_name, superclass_names in six.iteritems(superclass_sets):
-        for superclass_name in superclass_names:
-            subclass_sets.setdefault(superclass_name, set()).add(subclass_name)
-
-    # Freeze all subclass sets so they can never be modified again,
-    # making a list of all keys before modifying any of their values.
-    # It's bad practice to mutate a dict while iterating over it.
-    for class_name in list(six.iterkeys(subclass_sets)):
-        subclass_sets[class_name] = frozenset(subclass_sets[class_name])
-
-    return subclass_sets
-
-
-def _get_element_names_of_class(elements, cls):
-    """Return a frozenset of the names of the elements are instances of the class."""
-    return frozenset({
-        name
-        for name, element in elements.items()
-        if isinstance(element, cls)
-    })
-
-
-def link_schema_elements(elements, inheritance_structure):
-    """For each edge, link the schema elements it connects to each other."""
-    for edge_class_name in _get_element_names_of_class(elements, EdgeType):
-        edge_element = elements[edge_class_name]
-
-        from_class_name = edge_element.base_in_connection
-        to_class_name = edge_element.base_out_connection
-
-        if not from_class_name or not to_class_name:
-            continue
-
-        edge_schema_element = elements[edge_class_name]
-
-        # Link from_class_name with edge_class_name
-        for from_class in inheritance_structure.subclass_sets[from_class_name]:
-            from_schema_element = elements[from_class]
-            from_schema_element.out_connections.add(edge_class_name)
-            edge_schema_element.in_connections.add(from_class)
-
-        # Link edge_class_name with to_class_name
-        for to_class in inheritance_structure.subclass_sets[to_class_name]:
-            to_schema_element = elements[to_class]
-            edge_schema_element.out_connections.add(to_class)
-            to_schema_element.in_connections.add(edge_class_name)
-
-
-
 class InheritanceStructure(object):
     def __init__(self, class_to_immediate_superclasses):
         toposorted_immediate_superclasses =_toposort_classes(class_to_immediate_superclasses)
@@ -498,7 +429,7 @@ def _toposort_classes(name_to_superclasses):
 
         Args:
             class_name: string, name of the class to process
-            name_to_class: dict, class_name -> descriptor
+            processed_classes: dict, class_name -> descriptor
             current_trace: list of strings, list of classes traversed during the recursion
 
         Returns:
@@ -553,6 +484,74 @@ def _get_transitive_superclass_sets(toposorted_class_to_immediate_superclasses):
         # Freeze the superclass set so it can't ever be modified again.
         superclass_sets[class_name] = frozenset(superclass_set)
     return superclass_sets
+
+
+def _get_subclass_sets_from_superclass_sets(superclass_sets):
+    """Return a dict mapping each class to its set of subclasses."""
+    subclass_sets = dict()
+    for subclass_name, superclass_names in six.iteritems(superclass_sets):
+        for superclass_name in superclass_names:
+            subclass_sets.setdefault(superclass_name, set()).add(subclass_name)
+
+    # Freeze all subclass sets so they can never be modified again,
+    # making a list of all keys before modifying any of their values.
+    # It's bad practice to mutate a dict while iterating over it.
+    for class_name in list(six.iterkeys(subclass_sets)):
+        subclass_sets[class_name] = frozenset(subclass_sets[class_name])
+
+    return subclass_sets
+
+
+def _validate_non_abstract_edge_has_defined_base_connections(
+        class_name, base_in_connection, base_out_connection):
+    """Validate that the non-abstract edge has its in/out base connections defined."""
+    if not (base_in_connection and base_out_connection):
+        raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
+                                      u'in/out base_connection: {} {} {}'
+                                      .format(class_name, base_in_connection, base_out_connection))
+
+
+def _validate_property_names(class_name, properties):
+    """Validate that properties do not have names that may cause problems in the GraphQL schema."""
+    for property_name in properties:
+        if not property_name or property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES):
+            raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
+                                          u'{}'.format(class_name, property_name))
+
+
+def _get_element_names_of_class(elements, cls):
+    """Return a frozenset of the names of the elements are instances of the class."""
+    return frozenset({
+        name
+        for name, element in elements.items()
+        if isinstance(element, cls)
+    })
+
+
+def link_schema_elements(elements, inheritance_structure):
+    """For each edge, link the schema elements it connects to each other."""
+    for edge_class_name in _get_element_names_of_class(elements, EdgeType):
+        edge_element = elements[edge_class_name]
+
+        from_class_name = edge_element.base_in_connection
+        to_class_name = edge_element.base_out_connection
+
+        if not from_class_name or not to_class_name:
+            continue
+
+        edge_schema_element = elements[edge_class_name]
+
+        # Link from_class_name with edge_class_name
+        for from_class in inheritance_structure.subclass_sets[from_class_name]:
+            from_schema_element = elements[from_class]
+            from_schema_element.out_connections.add(edge_class_name)
+            edge_schema_element.in_connections.add(from_class)
+
+        # Link edge_class_name with to_class_name
+        for to_class in inheritance_structure.subclass_sets[to_class_name]:
+            to_schema_element = elements[to_class]
+            edge_schema_element.out_connections.add(to_class)
+            to_schema_element.in_connections.add(edge_class_name)
 
 
 # A way to describe a property's type and associated information:
