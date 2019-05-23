@@ -174,6 +174,7 @@ class QueryMetadataTable(object):
 
     @property
     def outputs(self):
+        """Return an iterable of (output_name, output_info) tuples for all outputs in the query."""
         for output_name, output_info in six.iteritems(self._outputs):
             yield output_name, output_info
 
