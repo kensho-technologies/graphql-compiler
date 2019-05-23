@@ -5,10 +5,7 @@ from graphql import (
     DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLNonNull, GraphQLString
 )
 
-from ...schema import (
-    FilterDirective, OptionalDirective, OutputDirective, OutputSourceDirective, RecurseDirective,
-    TagDirective
-)
+from ...schema import FilterDirective, OptionalDirective, RecurseDirective, TagDirective
 
 
 MacroEdgeDirective = GraphQLDirective(
@@ -49,21 +46,15 @@ MACRO_EDGE_DIRECTIVES = (
 )
 
 # Directives required present in a macro edge definition
-MACRO_EDGE_DEFINITION_REQUIRED_DIRECTIVES = frozenset({
+DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION = frozenset({
     MacroEdgeDefinitionDirective,
     MacroEdgeTargetDirective
 })
 
 # Directives tolerated without restrictions within a macro edge definition
-MACRO_EDGE_DEFINITION_ALLOWED_DIRECTIVES = frozenset({
+DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION = frozenset({
     FilterDirective.name,
     TagDirective.name,
     OptionalDirective.name,
     RecurseDirective.name,
-})
-
-# Directives forbidden within a macro edge definition
-MACRO_EDGE_DEFINITION_DISALLOWED_DIRECTIVES = frozenset({
-    OutputDirective.name,
-    OutputSourceDirective.name,
 })
