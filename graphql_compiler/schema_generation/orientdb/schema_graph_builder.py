@@ -117,6 +117,7 @@ def get_orientdb_schema_graph(schema_data, index_data):
         all_indexes = _get_indexes(index_data, elements)
     return SchemaGraph(elements, inheritance_structure, all_indexes)
 
+
 def get_superclasses_from_class_definition(class_definition):
     """Extract a set of all superclass names from a class definition dict."""
     # New-style superclasses definition, supporting multiple-inheritance.
