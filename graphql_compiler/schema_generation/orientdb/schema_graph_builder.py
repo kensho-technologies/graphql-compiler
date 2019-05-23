@@ -8,7 +8,7 @@ import six
 from ..exceptions import IllegalSchemaStateError
 from ..schema_graph import (
     EdgeType, IndexDefinition, InheritanceStructure, NonGraphElement, PropertyDescriptor,
-    SchemaGraph, VertexType, get_subclass_sets_from_superclass_sets, link_schema_elements
+    SchemaGraph, VertexType, link_schema_elements
 )
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES,
@@ -16,7 +16,6 @@ from .schema_properties import (
     ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_LINK_ID, UNIQUE_INDEX_TYPES,
     parse_default_property_value, try_get_graphql_scalar_type
 )
-from .utils import toposort_classes
 
 
 def get_orientdb_schema_graph(schema_data, index_data):
@@ -83,14 +82,17 @@ def get_orientdb_schema_graph(schema_data, index_data):
     Returns:
         fully-constructed SchemaGraph object
     """
-    toposorted_schema_data = toposort_classes(schema_data)
-
-    inheritance_structure = _get_inheritance_structure_from_schema_data(toposorted_schema_data)
-
     class_name_to_definition = {
         class_definition['name']: class_definition
-        for class_definition in toposorted_schema_data
+        for class_definition in schema_data
     }
+
+    direct_superclass_sets = {
+        class_name: get_superclasses_from_class_definition(class_definition)
+        for class_name, class_definition in six.iteritems(class_name_to_definition)
+    }
+
+    inheritance_structure = InheritanceStructure(direct_superclass_sets)
 
     non_graph_elements = _get_non_graph_elements(class_name_to_definition, inheritance_structure)
     inner_collection_objs = _get_graphql_representation_of_non_graph_elements(
@@ -114,34 +116,6 @@ def get_orientdb_schema_graph(schema_data, index_data):
     else:
         all_indexes = _get_indexes(index_data, elements)
     return SchemaGraph(elements, inheritance_structure, all_indexes)
-
-
-def _get_inheritance_structure_from_schema_data(schema_data):
-    """Return the superclass sets from the OrientDB schema data."""
-    # For each class name, construct its superclass set:
-    # itself + the set of class names from which it inherits.
-    superclass_sets = dict()
-    for class_definition in schema_data:
-        class_name = class_definition['name']
-        immediate_superclass_names = get_superclasses_from_class_definition(
-            class_definition)
-
-        superclass_set = set(immediate_superclass_names)
-        superclass_set.add(class_name)
-
-        # Since the input data must be in topological order, the superclasses of
-        # the current class should have already been processed.
-        # A KeyError on the following line would mean that the input
-        # was not topologically sorted.
-        superclass_set.update(chain.from_iterable(
-            superclass_sets[superclass_name]
-            for superclass_name in immediate_superclass_names
-        ))
-
-        # Freeze the superclass set so it can't ever be modified again.
-        superclass_sets[class_name] = frozenset(superclass_set)
-    subclass_sets = get_subclass_sets_from_superclass_sets(superclass_sets)
-    return InheritanceStructure(superclass_sets, subclass_sets)
 
 
 def get_superclasses_from_class_definition(class_definition):
