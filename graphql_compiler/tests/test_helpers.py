@@ -274,7 +274,7 @@ def generate_schema_graph(graph_client):
     """Generate SchemaGraph from a pyorient client"""
     schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
-    return get_orientdb_schema_graph(schema_data)
+    return get_orientdb_schema_graph(schema_data, set())
 
 
 def generate_schema(graph_client, class_to_field_type_overrides=None, hidden_classes=None):
