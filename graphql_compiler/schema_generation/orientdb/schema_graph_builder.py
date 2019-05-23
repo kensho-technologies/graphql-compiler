@@ -124,7 +124,7 @@ def get_superclasses_from_class_definition(class_definition):
     superclasses = class_definition.get('superClasses', None)
 
     if superclasses:
-        return superclasses
+        return list(superclasses)
 
     # Old-style superclass definition, single inheritance only.
     superclass = class_definition.get('superClass', None)
