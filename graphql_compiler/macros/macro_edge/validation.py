@@ -17,7 +17,7 @@ from ...exceptions import GraphQLInvalidMacroError
 from ...query_formatting.common import ensure_arguments_are_provided
 from ...schema import VERTEX_FIELD_PREFIXES, FoldDirective, is_vertex_field_name
 from .directives import (
-    DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
+    DIRECTIVES_OPTIONAL_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
     MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
 )
 from .helpers import get_directives_for_ast, remove_directives_from_ast
@@ -75,14 +75,13 @@ def _validate_macro_ast_directives(ast, inside_fold_scope=False):
     """
     subselection_inside_fold_scope = inside_fold_scope
     for directive in ast.directives:
-        name = directive.name.value
-        if name in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION:
+        if directive in DIRECTIVES_OPTIONAL_IN_MACRO_EDGE_DEFINITION:
             pass
-        elif name == MacroEdgeDefinitionDirective.name:
+        elif directive == MacroEdgeDefinitionDirective:
             pass
-        elif name == FoldDirective.name:
+        elif directive == FoldDirective:
             subselection_inside_fold_scope = True
-        elif name == MacroEdgeTargetDirective.name:
+        elif directive == MacroEdgeTargetDirective:
             if inside_fold_scope:
                 raise GraphQLInvalidMacroError(
                     u'The @macro_edge_target cannot be inside a fold scope.')

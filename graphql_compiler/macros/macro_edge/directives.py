@@ -51,10 +51,11 @@ DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION = frozenset({
     MacroEdgeTargetDirective
 })
 
-# Directives tolerated without restrictions within a macro edge definition
-DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION = frozenset({
-    FilterDirective.name,
-    TagDirective.name,
-    OptionalDirective.name,
-    RecurseDirective.name,
+# Directives (excluding MACRO_EDGE_DIRECTIVES) tolerated without restrictions within a macro
+# edge definition
+DIRECTIVES_OPTIONAL_IN_MACRO_EDGE_DEFINITION = frozenset({
+    FilterDirective,
+    TagDirective,
+    OptionalDirective,
+    RecurseDirective,
 })
