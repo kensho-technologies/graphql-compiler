@@ -23,7 +23,7 @@ def create_lookup_counts(count_data):
 class CostEstimationTests(unittest.TestCase):
     """Test the cost estimation module using standard input data when possible."""
 
-    #TODO: These tests can be sped up by having an existing test SchemaGraph object.
+    # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures('graph_client')
     def test_root_count(self):
         """"Ensure we correctly estimate the cardinality of the query root."""
