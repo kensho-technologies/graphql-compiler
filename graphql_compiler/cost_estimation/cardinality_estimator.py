@@ -71,10 +71,10 @@ def _estimate_child_edges_per_parent(
     # Get direction and name of edge between parent and child location and its base endpoint names.
     edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     edge_element = schema_graph.get_edge_schema_element_or_raise(edge_name)
-    if edge_direction == EDGE_SOURCE_PROPERTY_NAME:
+    if edge_direction == EDGE_DESTINATION_PROPERTY_NAME:
         parent_name_from_edge = edge_element.base_out_connection
         child_name_from_edge = edge_element.base_in_connection
-    elif edge_direction == EDGE_DESTINATION_PROPERTY_NAME:
+    elif edge_direction == EDGE_SOURCE_PROPERTY_NAME:
         parent_name_from_edge = edge_element.base_in_connection
         child_name_from_edge = edge_element.base_out_connection
 
@@ -202,6 +202,11 @@ def estimate_query_result_cardinality(
         the expected number of result sets per full expansion of a root vertex.
     """
     # TODO(evan): replace lookup_class_counts with statistics class so we can use more stats
+    if class_to_field_type_overrides is None:
+        class_to_field_type_overrides = dict()
+    if hidden_classes is None:
+        hidden_classes = set()
+
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(
         schema_graph, class_to_field_type_overrides, hidden_classes
     )
