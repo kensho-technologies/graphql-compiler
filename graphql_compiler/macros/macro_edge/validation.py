@@ -74,14 +74,18 @@ def _validate_macro_ast_directives(ast, inside_fold_scope=False):
         inside_fold_scope: bool, whether the subtree is within a @fold scope
     """
     subselection_inside_fold_scope = inside_fold_scope
+    optional_directive_names = [directive.name for directive in
+                                DIRECTIVES_OPTIONAL_IN_MACRO_EDGE_DEFINITION]
+
     for directive in ast.directives:
-        if directive in DIRECTIVES_OPTIONAL_IN_MACRO_EDGE_DEFINITION:
+        name = directive.name.value
+        if name in optional_directive_names:
             pass
-        elif directive == MacroEdgeDefinitionDirective:
+        elif name == MacroEdgeDefinitionDirective.name:
             pass
-        elif directive == FoldDirective:
+        elif name == FoldDirective.name:
             subselection_inside_fold_scope = True
-        elif directive == MacroEdgeTargetDirective:
+        elif name == MacroEdgeTargetDirective.name:
             if inside_fold_scope:
                 raise GraphQLInvalidMacroError(
                     u'The @macro_edge_target cannot be inside a fold scope.')
@@ -96,7 +100,7 @@ def _validate_macro_ast_directives(ast, inside_fold_scope=False):
                                                    u'the coercion block itself.')
         else:
             raise GraphQLInvalidMacroError(u'Unexpected directive name found: {} {}'
-                                           .format(directive.name.value, directive))
+                                           .format(name, directive))
 
     if isinstance(ast, (Field, InlineFragment, OperationDefinition)):
         if ast.selection_set is not None:
