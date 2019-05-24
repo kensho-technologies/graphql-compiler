@@ -24,6 +24,15 @@ LocationInfo = namedtuple(
 )
 
 
+OutputInfo = namedtuple(
+    'OutputInfo',
+    (
+        'location',     # Location/FoldScopeLocation, where to output from
+        'type',         # GraphQLType of the output
+        'optional',     # boolean, whether the output was defined within an @optional scope
+    )
+)
+
 TagInfo = namedtuple(
     'TagInfo',
     (
@@ -160,6 +169,25 @@ class QueryMetadataTable(object):
             raise AssertionError(u'Attempted to get the location info of an unregistered location: '
                                  u'{}'.format(location))
         return location_info
+
+    @property
+    def outputs(self):
+        """Return an iterable of (output_name, output_info) tuples for all outputs in the query."""
+        for output_name, output_info in six.iteritems(self._outputs):
+            yield output_name, output_info
+
+    def record_output_info(self, output_name, output_info):
+        """Record information about the output."""
+        old_info = self._outputs.get(output_name, None)
+        if old_info is not None:
+            raise AssertionError(u'Attempting to reuse an already-defined output name {}. '
+                                 u'old info {}, new info {}.'
+                                 .format(output_name, old_info, output_info))
+        self._outputs[output_name] = output_info
+
+    def get_output_info(self, output_name):
+        """Get information about an output."""
+        return self._outputs.get(output_name, None)
 
     @property
     def tags(self):
