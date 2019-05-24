@@ -469,3 +469,239 @@ class CostEstimationTests(unittest.TestCase):
         # filters are not currently implemented.
         expected_cardinality_estimate = 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_optional_and_filter(self):
+        """Test an optional and filter on the same Location."""
+        schema_graph = generate_schema_graph(self.graph_client)
+        graphql_input = '''{
+            Animal {
+                out_Animal_BornAt @optional {
+                    uuid @filter(op_name: "=", value:["$uuid"])
+                    out_Event_RelatedEvent {
+                        ... on FeedingEvent {
+                            name @output(out_name: "feeding_event")
+                        }
+                    }
+                }
+            }
+        }'''
+        params = {
+            'uuid': '00000000-0000-0000-0000-000000000000',
+        }
+
+        count_data = {
+            'Animal': 5,
+            'Animal_BornAt': 2,
+            'Event_RelatedEvent': 11,
+            'Event': 7,
+            'FeedingEvent': 6,
+        }
+        lookup_counts = create_lookup_counts(count_data)
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, lookup_counts, graphql_input, params
+        )
+
+        # For each Animal, we expect exactly 1 BirthEvent (rather than 2.0 / 5.0). For each of
+        # these, we expect (11.0 / 7.0) * (6.0 / 7.0) FeedingEvents. In general, we would have
+        # expected (2.0 / 5.0) * (11.0 / 7.0) * (6.0 / 7.0) = .54 result sets per Animal, which the
+        # optional would've converted into a 1. Now, we expect (11.0 / 5.0) * (6.0 / 7.0) = 1.35
+        # result sets per Animal, avoiding the optional.
+        expected_cardinality_estimate = 5.0 * 1.0 * (11.0 / 7.0) * (6.0 / 7.0)
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_optional_then_filter(self):
+        """Test a filter within an optional scope."""
+        schema_graph = generate_schema_graph(self.graph_client)
+        graphql_input = '''{
+            Animal {
+                out_Animal_BornAt @optional {
+                    out_Event_RelatedEvent {
+                        ... on FeedingEvent {
+                            uuid @filter(op_name: "=", value:["$uuid"])
+                            name @output(out_name: "feeding_event")
+                        }
+                    }
+                }
+            }
+        }'''
+        params = {
+            'uuid': '00000000-0000-0000-0000-000000000000',
+        }
+
+        # Test that a filter correctly triggers the optional check for <1 subexpansion result.
+        count_data = {
+            'Animal': 5,
+            'Animal_BornAt': 3,
+            'Event_RelatedEvent': 23,
+            'Event': 7,
+            'FeedingEvent': 6,
+        }
+        lookup_counts = create_lookup_counts(count_data)
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, lookup_counts, graphql_input, params
+        )
+
+        # For each Animal, we expect exactly 2.0 / 5.0 BirthEvents. In general, for each of
+        # these, we expect (23.0 / 7.0) * (6.0 / 7.0) FeedingEvents. Together this is 1.13
+        # subexpansion results, but since there's a filter on FeedingEvents, we expect exactly 1,
+        # giving 2.0 / 5.0 * 1.0 = .4 subexpansion results. Since this is optional, we raise it to
+        # 1.0 and expect 5.0 * 1.0 = 5.0 results total.
+        expected_cardinality_estimate = 5.0 * 1.0
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_fold_and_filter(self):
+        """Test an fold and filter on the same Location."""
+        schema_graph = generate_schema_graph(self.graph_client)
+        graphql_input = '''{
+            Animal {
+                out_Animal_BornAt @fold {
+                    uuid @filter(op_name: "=", value:["$uuid"])
+                    out_Event_RelatedEvent {
+                        ... on FeedingEvent {
+                            name @output(out_name: "feeding_event")
+                        }
+                    }
+                }
+            }
+        }'''
+        params = {
+            'uuid': '00000000-0000-0000-0000-000000000000',
+        }
+
+        count_data = {
+            'Animal': 5,
+            'Animal_BornAt': 2,
+            'Event_RelatedEvent': 11,
+            'Event': 7,
+            'FeedingEvent': 6,
+        }
+        lookup_counts = create_lookup_counts(count_data)
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, lookup_counts, graphql_input, params
+        )
+
+        # For each Animal, we expect exactly 1 BirthEvent (rather than 2.0 / 5.0). For each of
+        # these, we expect (11.0 / 7.0) * (6.0 / 7.0) FeedingEvents. In general, we would have
+        # expected (2.0 / 5.0) * (11.0 / 7.0) * (6.0 / 7.0) = .54 result sets per Animal, which the
+        # fold would've converted into a 1. Now, we expect (11.0 / 5.0) * (6.0 / 7.0) = 1.35 result
+        # sets per Animal, avoiding the fold.
+        expected_cardinality_estimate = 5.0 * 1.0 * (11.0 / 7.0) * (6.0 / 7.0)
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_fold_then_filter(self):
+        """Test a filter within an fold scope."""
+        schema_graph = generate_schema_graph(self.graph_client)
+        graphql_input = '''{
+            Animal {
+                out_Animal_BornAt @fold {
+                    out_Event_RelatedEvent {
+                        ... on FeedingEvent {
+                            uuid @filter(op_name: "=", value:["$uuid"])
+                            name @output(out_name: "feeding_event")
+                        }
+                    }
+                }
+            }
+        }'''
+        params = {
+            'uuid': '00000000-0000-0000-0000-000000000000',
+        }
+
+        # Test that a filter correctly triggers the fold check for <1 subexpansion result.
+        count_data = {
+            'Animal': 5,
+            'Animal_BornAt': 3,
+            'Event_RelatedEvent': 23,
+            'Event': 7,
+            'FeedingEvent': 6,
+        }
+        lookup_counts = create_lookup_counts(count_data)
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, lookup_counts, graphql_input, params
+        )
+
+        # For each Animal, we expect exactly 2.0 / 5.0 BirthEvents. In general, for each of these,
+        # we expect (23.0 / 7.0) * (6.0 / 7.0) FeedingEvents. Together this is 1.13 subexpansion
+        # results, but since there's a filter on FeedingEvents, we expect exactly 1, giving 2.0 /
+        # 5.0 * 1.0 = .4 subexpansion results. Since this is fold, we raise it to 1.0 and expect 5.0
+        # * 1.0 = 5.0 results total.
+        expected_cardinality_estimate = 5.0 * 1.0
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_recurse_and_filter(self):
+        """Test a filter that immediately follows a recursed edge."""
+        schema_graph = generate_schema_graph(self.graph_client)
+        graphql_input = '''{
+            Animal {
+                out_Animal_ParentOf @recurse(depth: 2){
+                    uuid @filter(op_name: "=", value:["$uuid"])
+                    out_Animal_BornAt {
+                        name @output(out_name: "birth_event")
+                    }
+                }
+            }
+        }'''
+        params = {
+            'uuid': '00000000-0000-0000-0000-000000000000',
+        }
+
+        count_data = {
+            'Animal': 7,
+            'Animal_ParentOf': 11,
+            'Animal_BornAt': 13,
+        }
+        lookup_counts = create_lookup_counts(count_data)
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, lookup_counts, graphql_input, params
+        )
+
+        # For each Animal, we expect 11.0 / 7.0 + 1 "child" Animals due to the recurse. Since
+        # there's a filter immediately following, we only expect 1 Animal to pass. We expect this to
+        # have 13.0 / 7.0 Animal_BornAt edges, giving a total of 7.0 * (13.0 / 7.0) results.
+        expected_cardinality_estimate = 7.0 * 1.0 * (13.0 / 7.0)
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_recurse_then_filter(self):
+        """Test a filter that immediately follows a recursed edge."""
+        schema_graph = generate_schema_graph(self.graph_client)
+        graphql_input = '''{
+            Animal {
+                out_Animal_ParentOf @recurse(depth: 2){
+                    out_Animal_BornAt {
+                        uuid @filter(op_name: "=", value:["$uuid"])
+                        name @output(out_name: "birth_event")
+                    }
+                }
+            }
+        }'''
+        params = {
+            'uuid': '00000000-0000-0000-0000-000000000000',
+        }
+
+        count_data = {
+            'Animal': 7,
+            'Animal_ParentOf': 11,
+            'Animal_BornAt': 13,
+        }
+        lookup_counts = create_lookup_counts(count_data)
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, lookup_counts, graphql_input, params
+        )
+
+        # For each Animal, we expect 11.0 / 7.0 + 1 "child" Animals due to the recurse. Since
+        # there's a filter immediately following, we only expect 1 Animal to pass. We expect this to
+        # have 13.0 / 7.0 Animal_BornAt edges, giving a total of 7.0 * (13.0 / 7.0) results.
+        expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1.0) * 1.0
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
