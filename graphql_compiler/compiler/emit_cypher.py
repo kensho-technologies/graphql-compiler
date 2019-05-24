@@ -1,7 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 """Convert lowered IR basic blocks to Cypher query strings."""
 from .blocks import Fold, QueryRoot, Recurse, Traverse
-from .helpers import get_only_element_from_collection
 
 
 def _emit_code_from_cypher_step(cypher_step):
@@ -78,6 +77,14 @@ def _emit_code_from_cypher_step(cypher_step):
     pattern += u'\n'
 
     return pattern % template_data
+
+
+def _emit_with_clause(cypher_steps):
+    """Emit a Cypher WITH clause with the provided Cypher steps."""
+    if cypher_steps:
+        raise NotImplementedError()
+    else:
+        return ''
 
 
 ##############

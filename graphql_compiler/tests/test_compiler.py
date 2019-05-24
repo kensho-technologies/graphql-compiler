@@ -743,8 +743,10 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_gremlin = NotImplementedError
         expected_sql = NotImplementedError
+        expected_cypher = NotImplementedError
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
+                        expected_cypher)
 
     def test_between_filter_on_simple_scalar(self):
         # The "between" filter emits different output depending on what the compared types are.

@@ -335,7 +335,6 @@ class GlobalContextField(Expression):
                              u'should not be called.')
 
 
-
 class ContextField(Expression):
     """A field drawn from the global context, e.g. if selected earlier in the query."""
 

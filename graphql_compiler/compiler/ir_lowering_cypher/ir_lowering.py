@@ -1,8 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from functools import partial
 
-from ..blocks import CoerceType, Filter, Fold, MarkLocation, QueryRoot, Traverse
-from ..expressions import ContextField, LocalField
+from ..blocks import CoerceType, Filter, Fold, MarkLocation, QueryRoot, Recurse, Traverse
+from ..expressions import ContextField, FoldedContextField, LocalField
 from ..ir_lowering_common.location_renaming import (
     make_location_rewriter_visitor_fn, make_revisit_location_translations
 )
@@ -13,7 +13,7 @@ from ..helpers import FoldScopeLocation
 ##################################
 
 def insert_explicit_type_bounds(ir_blocks, query_metadata_table, type_equivalence_hints=None):
-    """Add a CoerceType block after every Traverse and Fold, to hint to the Cypher scheduler."""
+    """Add a CoerceType block after every Traverse/Fold/Recurse, to hint to the Cypher scheduler."""
     # Cypher might not be aware of the fact that all our edges' endpoints are strictly typed,
     # so we expose the implicit types of edges' endpoints explicitly, by adding CoerceType blocks.
     new_ir_blocks = []
@@ -21,7 +21,7 @@ def insert_explicit_type_bounds(ir_blocks, query_metadata_table, type_equivalenc
     for current_index, block in enumerate(ir_blocks):
         new_ir_blocks.append(block)
 
-        if isinstance(block, (Traverse, Fold)):
+        if isinstance(block, (Traverse, Fold, Recurse)):
             # We need to add an explicit CoerceType immediately after this block, if one is not
             # already present. If one is present, we do nothing. Since filtering happens before
             # location-marking, if we find a MarkLocation without finding a CoerceType, we know
@@ -83,6 +83,8 @@ def remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_tabl
 
 def _get_field_type(location):
     """Not implemented yet."""
+    # from graphql import GraphQLString, GraphQLList
+    # return GraphQLList(GraphQLString)
     raise NotImplementedError()
 
 
@@ -94,11 +96,11 @@ def replace_local_fields_with_context_fields(ir_blocks):
             return expression
 
         location_at_field = location.navigate_to_field(expression.field_name)
+        field_type = _get_field_type(location_at_field)
         if isinstance(location, FoldScopeLocation):
-            field_type = _get_field_type(location_at_field)
             return FoldedContextField(location_at_field, field_type)
         else:
-            return ContextField(location_at_field)
+            return ContextField(location_at_field, field_type)
 
     new_ir_blocks = []
     blocks_to_be_rewritten = []

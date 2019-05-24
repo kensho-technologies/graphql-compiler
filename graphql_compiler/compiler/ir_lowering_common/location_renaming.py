@@ -2,10 +2,6 @@
 """Utilities for rewriting IR to replace one set of locations with another."""
 import six
 
-from ..expressions import (
-    ContextField, ContextFieldExistence, FoldedContextField,
-    Literal, OutputContextField
-)
 from ..helpers import FoldScopeLocation, Location
 
 

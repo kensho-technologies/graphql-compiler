@@ -49,7 +49,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
         type_equivalence_hints=type_equivalence_hints)
 
     ir_blocks = remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_table)
-    ir_blocks = lower_context_field_existence(ir_blocks)
+    ir_blocks = lower_context_field_existence(ir_blocks, query_metadata_table)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
     ir_blocks = merge_consecutive_filter_clauses(ir_blocks)
     ir_blocks = replace_local_fields_with_context_fields(ir_blocks)
