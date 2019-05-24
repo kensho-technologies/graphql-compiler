@@ -4,7 +4,13 @@ import unittest
 import pytest
 
 from . import test_input_data
+from ..compiler.metadata import FilterInfo
 from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
+from ..cost_estimation.filter_selectivity_utils import (
+    ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity, _combine_filter_selectivities,
+    _get_filter_selectivity
+)
+
 from .test_helpers import generate_schema_graph
 
 
@@ -705,3 +711,90 @@ class CostEstimationTests(unittest.TestCase):
         # have 13.0 / 7.0 Animal_BornAt edges, giving a total of 7.0 * (13.0 / 7.0) results.
         expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1.0) * 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+class FilterSelectivityUtilsTests(unittest.TestCase):
+    def test_combine_filter_selectivities(self):
+        """Test filter combination function."""
+        # When there are no selectivities (e.g. there are no filters at a location, we should return
+        # a dummy selectivity that doesn't affect the counts
+        selectivities = []
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, _combine_filter_selectivities(selectivities))
+
+        # When there's a single selectivity, we should return that selectivity.
+        fractional_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=0.5)
+        self.assertEqual(
+            fractional_selectivity, _combine_filter_selectivities([fractional_selectivity])
+        )
+
+        absolute_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=5.0)
+        self.assertEqual(
+            absolute_selectivity, _combine_filter_selectivities([absolute_selectivity])
+        )
+
+        # When there are multiple fractional selectivities, multiply the values.
+        fractional_selectivity1 = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=0.5)
+        fractional_selectivity2 = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=0.6)
+        selectivities = [fractional_selectivity1, fractional_selectivity2]
+
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=0.3)
+        self.assertEqual(expected_selectivity, _combine_filter_selectivities(selectivities))
+
+        # When there are multiple absolute selectivities, use the lowest value
+        absolute_selectivity1 = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=2.0)
+        absolute_selectivity2 = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
+        selectivities = [absolute_selectivity1, absolute_selectivity2]
+
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=2.0)
+        self.assertEqual(expected_selectivity, _combine_filter_selectivities(selectivities))
+
+        # When there are mixed selectivities, use the lowest absolute-kind value.
+        absolute_selectivity1 = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=4.0)
+        fractional_selectivity1 = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=0.5)
+        absolute_selectivity2 = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=2.0)
+        fractional_selectivity2 = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=0.6)
+        absolute_selectivity3 = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
+        selectivities = [
+            absolute_selectivity1, fractional_selectivity1, absolute_selectivity2,
+            fractional_selectivity2, absolute_selectivity3
+        ]
+
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=2.0)
+        self.assertEqual(expected_selectivity, _combine_filter_selectivities(selectivities))
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_get_filter_selectivity(self):
+        schema_graph = generate_schema_graph(self.graph_client)
+        classname = 'Animal'
+
+        def empty_lookup_counts(classname):
+            """Dummy function to pass into get_filter_selectivity."""
+            return 100
+
+        params = dict()
+
+        # If we '='-filter on a property that isn't an index, do nothing.
+        filter_on_nonindex = FilterInfo(
+            fields=('description',), op_name='=', args=('$description',)
+        )
+        selectivity = _get_filter_selectivity(
+            schema_graph, empty_lookup_counts, filter_on_nonindex, params, classname
+        )
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        # If we '='-filter on a property that's non-uniquely indexed, do nothing.
+        nonunique_filter = FilterInfo(fields=('birthday',), op_name='=', args=('$birthday',))
+        selectivity = _get_filter_selectivity(
+            schema_graph, empty_lookup_counts, nonunique_filter, params, classname
+        )
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        # If we '='-filter on a property that is uniquely indexed, expect exactly 1 result.
+        unique_filter = FilterInfo(fields=('uuid',), op_name='=', args=('$uuid',))
+        selectivity = _get_filter_selectivity(
+            schema_graph, empty_lookup_counts, unique_filter, params, classname
+        )
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, selectivity)
