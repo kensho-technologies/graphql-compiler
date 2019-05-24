@@ -562,7 +562,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
 
 def _validate_fold_has_outputs_or_count_filter(
-    fold_scope_location, fold_has_count_filter, metadata
+    fold_scope_location, fold_has_count_filter, query_metadata_table
 ):
     """Ensure the @fold scope has at least one output, or filters on the size of the fold."""
     # This function makes sure that the @fold scope has an effect.
@@ -573,7 +573,7 @@ def _validate_fold_has_outputs_or_count_filter(
 
     # At least one output in the outputs list must point to the fold_scope_location,
     # or the scope corresponding to fold_scope_location had no @outputs and is illegal.
-    for _, output_info in metadata.outputs:
+    for _, output_info in query_metadata_table.outputs:
         if output_info.fold == fold_scope_location:
             return True
 
