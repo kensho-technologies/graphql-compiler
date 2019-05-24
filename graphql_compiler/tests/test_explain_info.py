@@ -23,7 +23,6 @@ class ExplainInfoTests(unittest.TestCase):
         self.assertEqual(expected.location, received.location)
         self.assertTrue((expected.type).is_same_type(received.type))
         self.assertEqual(expected.optional, received.optional)
-        self.assertEqual(expected.fold, received.fold)
 
     def check(self, graphql_test, expected_filters, expected_recurses, expected_outputs):
         """Verify query produces expected explain infos."""
@@ -64,7 +63,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal',), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         self.check(test_input_data.immediate_output,
@@ -83,7 +81,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal',), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         out_name2 = 'parent_name'
@@ -91,7 +88,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         self.check(test_input_data.output_source_and_complex_output,
@@ -109,7 +105,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         self.check(test_input_data.traverse_filter_and_output,
@@ -136,7 +131,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=out_loc1,
             type=GraphQLDateTime,
             optional=True,
-            fold=None,
         )
 
         out_name2 = 'other_child_fed_at'
@@ -148,7 +142,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=out_loc2,
             type=GraphQLDateTime,
             optional=True,
-            fold=None
         )
 
         out_name3 = 'grandchild_fed_at'
@@ -157,7 +150,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=out_loc3,
             type=GraphQLDateTime,
             optional=False,
-            fold=None
         )
 
         self.check(test_input_data.complex_optional_traversal_variables,
@@ -177,7 +169,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal',), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         out_name2 = 'related_animals'
@@ -188,7 +179,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=out_loc2,
             type=GraphQLList(GraphQLString),
             optional=False,
-            fold=loc,
         )
 
         out_name3 = 'related_birthdays'
@@ -199,7 +189,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=out_loc3,
             type=GraphQLList(GraphQLDate),
             optional=False,
-            fold=loc,
         )
 
         self.check(test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope,
@@ -219,7 +208,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal',), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         self.check(test_input_data.multiple_filters,
@@ -240,7 +228,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal',), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         out_name2 = 'child_name'
@@ -248,7 +235,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal', 'in_Animal_ParentOf'), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         self.check(test_input_data.has_edge_degree_op_filter,
@@ -267,7 +253,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         self.check(test_input_data.simple_recurse,
@@ -292,7 +277,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal',), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         out_name2 = 'important_event'
@@ -300,7 +284,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal', 'out_Animal_ImportantEvent'), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         out_name3 = 'ancestor_name'
@@ -308,7 +291,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         out_name4 = 'descendent_name'
@@ -316,7 +298,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal', 'in_Animal_ParentOf'), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         expected_outputs = [
@@ -342,7 +323,6 @@ class ExplainInfoTests(unittest.TestCase):
             location=Location(('Animal', 'out_Animal_ParentOf'), 'name', 1),
             type=GraphQLString,
             optional=False,
-            fold=None,
         )
 
         self.check(test_input_data.filter_on_optional_traversal_name_or_alias,

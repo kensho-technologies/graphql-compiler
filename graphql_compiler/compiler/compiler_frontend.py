@@ -316,7 +316,6 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
             location=location,
             type=graphql_type,
             optional=is_in_optional_scope(context),
-            fold=context.get('fold', None),
         )
         context['metadata'].record_output_info(output_name, output_info)
 
@@ -561,6 +560,16 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     return basic_blocks
 
 
+def _are_locations_in_same_fold(first_location, second_location):
+    """Returns True if locations are contained in the same fold scope."""
+    return (
+        isinstance(first_location, FoldScopeLocation) and
+        isinstance(second_location, FoldScopeLocation) and
+        first_location.base_location == second_location.base_location and
+        first_location.get_first_folded_edge() == second_location.get_first_folded_edge()
+    )
+
+
 def _validate_fold_has_outputs_or_count_filter(
     fold_scope_location, fold_has_count_filter, query_metadata_table
 ):
@@ -574,7 +583,7 @@ def _validate_fold_has_outputs_or_count_filter(
     # At least one output in the outputs list must point to the fold_scope_location,
     # or the scope corresponding to fold_scope_location had no @outputs and is illegal.
     for _, output_info in query_metadata_table.outputs:
-        if output_info.fold == fold_scope_location:
+        if _are_locations_in_same_fold(output_info.location, fold_scope_location):
             return True
 
     raise GraphQLCompilationError(u'Found a @fold scope that has no effect on the query. '
