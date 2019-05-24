@@ -111,10 +111,8 @@ def get_orientdb_schema_graph(schema_data, index_data):
     link_schema_elements(elements, inheritance_structure)
     for element in six.itervalues(elements):
         element.freeze()
-    if index_data is None:
-        all_indexes = set()
-    else:
-        all_indexes = _get_indexes(index_data, elements)
+
+    all_indexes = _get_indexes(index_data, elements)
     return SchemaGraph(elements, inheritance_structure, all_indexes)
 
 
