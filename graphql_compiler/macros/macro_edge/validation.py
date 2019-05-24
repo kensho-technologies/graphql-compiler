@@ -17,8 +17,9 @@ from ...exceptions import GraphQLInvalidMacroError
 from ...query_formatting.common import ensure_arguments_are_provided
 from ...schema import VERTEX_FIELD_PREFIXES, FoldDirective, is_vertex_field_name
 from .directives import (
-    DIRECTIVES_OPTIONAL_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
-    MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
+    DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION, MACRO_EDGE_DIRECTIVES,
+    OPTIONAL_DIRECTIVES_UNRESTRICTED_IN_MACRO_EDGE_DEFINITION, MacroEdgeDefinitionDirective,
+    MacroEdgeTargetDirective
 )
 from .helpers import get_directives_for_ast, remove_directives_from_ast
 
@@ -74,8 +75,9 @@ def _validate_macro_ast_directives(ast, inside_fold_scope=False):
         inside_fold_scope: bool, whether the subtree is within a @fold scope
     """
     subselection_inside_fold_scope = inside_fold_scope
-    optional_directive_names = [directive.name for directive in
-                                DIRECTIVES_OPTIONAL_IN_MACRO_EDGE_DEFINITION]
+    optional_directive_names = [directive.name
+                                for directive in
+                                OPTIONAL_DIRECTIVES_UNRESTRICTED_IN_MACRO_EDGE_DEFINITION]
 
     for directive in ast.directives:
         name = directive.name.value
