@@ -21,8 +21,8 @@ def _emit_code_from_cypher_step(cypher_step):
     if has_where_block and is_optional_step:
         raise AssertionError(u'Received an illegal CypherStep containing an optional step together '
                              u'with a "where" Filter block. This is a bug in the lowering code, as '
-                             u'it should have moved the filtering to the global operations section.'
-                             u'{}'.format(cypher_step))
+                             u'it should have moved the filtering to the global operations '
+                             u'section. {}'.format(cypher_step))
 
     step_location = cypher_step.as_block.location
     step_location_name, _ = step_location.get_location_name()

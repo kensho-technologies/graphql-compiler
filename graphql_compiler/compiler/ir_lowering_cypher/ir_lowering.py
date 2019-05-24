@@ -1,7 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from functools import partial
 
-from ..blocks import CoerceType, Filter, Fold, MarkLocation, QueryRoot, Recurse, Traverse
+from ..blocks import (
+    Backtrack, CoerceType, Filter, Fold, GlobalOperationsStart, MarkLocation, QueryRoot, Recurse,
+    Traverse
+)
 from ..expressions import ContextField, FoldedContextField, LocalField
 from ..ir_lowering_common.location_renaming import (
     make_location_rewriter_visitor_fn, make_revisit_location_translations
@@ -83,8 +86,10 @@ def remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_tabl
 
 def _get_field_type(location):
     """Not implemented yet."""
-    # from graphql import GraphQLString, GraphQLList
-    # return GraphQLList(GraphQLString)
+    # HACK(predrag): This allows more of the code to be exercised during tests.
+    #                Will solve this before merging.
+    from graphql import GraphQLString, GraphQLList
+    return GraphQLList(GraphQLString)
     raise NotImplementedError()
 
 
@@ -124,5 +129,56 @@ def replace_local_fields_with_context_fields(ir_blocks):
     if len(ir_blocks) != len(new_ir_blocks):
         raise AssertionError(u'The number of IR blocks unexpectedly changed, {} vs {}: {} {}'
                              .format(len(ir_blocks), len(new_ir_blocks), ir_blocks, new_ir_blocks))
+
+    return new_ir_blocks
+
+
+def move_filters_in_optional_locations_to_global_operations(ir_blocks, query_metadata_table):
+    """Move Filter blocks found within @optional traversals to the global operations section.
+
+    This transformation is necessary to uphold the compiler's chosen semantics around filters
+    within optional traversals: if the edge exists but the filter fails to match, we can't pretend
+    the edge didn't exist. The Cypher specification chooses the opposite approach. The
+    transformation implemented here allows us to address this inconsistency: we apply the
+    "optional edge" semantics, then materialize the result, and *then* apply the filters that
+    applied to any locations within optional traversals.
+
+    This function assumes that all LocalField expressions have been suitably replaced with ones
+    that explicitly reference the context of the field (whether folded or not).
+
+    Args:
+        ir_blocks: list of IR blocks to rewrite
+        query_metadata_table: QueryMetadataTable object that captures information about the query
+
+    Returns:
+        list of IR blocks with all Filter blocks affecting optional traversals moved to after the
+        GlobalOperationsStart block
+    """
+    new_ir_blocks = []
+    global_filters = []
+    within_optional_scope = False
+    for block in ir_blocks:
+        new_block = block
+
+        if within_optional_scope and isinstance(block, Filter):
+            global_filters.append(block)
+            new_block = None  # Do not append the block in its original location.
+        elif isinstance(block, Traverse) and block.optional:
+            within_optional_scope = True
+        elif isinstance(block, Backtrack):
+            location_info = query_metadata_table.get_location_info(block.location)
+            within_optional_scope = location_info.optional_scopes_depth > 0
+        else:
+            # No changes or special behaviors for any other blocks.
+            pass
+
+        if new_block is not None:
+            new_ir_blocks.append(new_block)
+
+        if isinstance(block, GlobalOperationsStart):
+            # We just appended the block that signals the start of the global operations section.
+            # This is where all the global filters go.
+            new_ir_blocks.extend(global_filters)
+            global_filters = []
 
     return new_ir_blocks

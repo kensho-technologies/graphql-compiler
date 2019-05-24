@@ -5,8 +5,8 @@ from ..ir_lowering_common.common import (
     optimize_boolean_expression_comparisons
 )
 from .ir_lowering import (
-    insert_explicit_type_bounds, remove_mark_location_after_optional_backtrack,
-    replace_local_fields_with_context_fields
+    insert_explicit_type_bounds, move_filters_in_optional_locations_to_global_operations,
+    remove_mark_location_after_optional_backtrack, replace_local_fields_with_context_fields
 )
 from ..cypher_query import convert_to_cypher_query
 
@@ -50,9 +50,11 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
 
     ir_blocks = remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_table)
     ir_blocks = lower_context_field_existence(ir_blocks, query_metadata_table)
+    ir_blocks = replace_local_fields_with_context_fields(ir_blocks)
+    ir_blocks = move_filters_in_optional_locations_to_global_operations(
+        ir_blocks, query_metadata_table)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
     ir_blocks = merge_consecutive_filter_clauses(ir_blocks)
-    ir_blocks = replace_local_fields_with_context_fields(ir_blocks)
 
     cypher_query = convert_to_cypher_query(
         ir_blocks, query_metadata_table, type_equivalence_hints=type_equivalence_hints)

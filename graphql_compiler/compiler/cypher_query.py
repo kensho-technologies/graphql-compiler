@@ -4,13 +4,22 @@
 from collections import namedtuple
 
 from .blocks import (
-    Backtrack, CoerceType, ConstructResult, EndOptional, Filter, Fold, GlobalOperationsStart,
+    Backtrack, CoerceType, ConstructResult, EndOptional, Filter, GlobalOperationsStart,
     MarkLocation, OutputSource, QueryRoot, Recurse, Traverse, Unfold
 )
 from .helpers import get_only_element_from_collection
 from .ir_lowering_common.common import extract_folds_from_ir_blocks
 
 
+##
+# A CypherQuery object is the full representation of a query in the Cypher language, containing:
+#   - steps: list of CypherStep objects, each describing a component of the graph pattern matching
+#            clause of the query
+#   - folds: dict of FoldScopeLocation -> list of IR blocks corresponding to that @fold scope.
+#   - global_where_block: optional Filter block that specifies any post-filtering that needs to be
+#                         applied after pattern matching to uphold the compiler's semantics, or
+#                         None if no post-filtering is required
+#   - output_block: ConstructResult block that describes the outputs returned by the query
 CypherQuery = namedtuple(
     'CypherQuery',
     ('steps', 'folds', 'global_where_block', 'output_block'))
