@@ -74,14 +74,13 @@ def check_test_data(
         compare_input_metadata(test_case, test_data.expected_input_metadata,
                                result.input_metadata)
 
-    if expected_cypher == NotImplementedError:
+    if expected_cypher == SKIP_TEST:
+        pass
+    elif expected_cypher == NotImplementedError:
         with test_case.assertRaises(NotImplementedError):
             compile_graphql_to_cypher(
                 test_case.schema, test_data.graphql_input,
                 type_equivalence_hints=schema_based_type_equivalence_hints)
-
-            # HACK(predrag): Only used to highlight bugs for now. Delete before merging.
-            raise NotImplementedError()
     else:
         result = compile_graphql_to_cypher(
             test_case.schema, test_data.graphql_input,
@@ -126,7 +125,11 @@ class CompilerTests(unittest.TestCase):
             FROM
                 animal AS animal_1
         '''
-        expected_cypher = NotImplementedError
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            RETURN Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -161,7 +164,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 animal AS animal_1
         '''
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -197,7 +200,7 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 animal_1.net_worth >= :min_worth
         '''
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -226,7 +229,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = SKIP_TEST  # Not implemented
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -274,8 +277,15 @@ class CompilerTests(unittest.TestCase):
                 FROM
                     animal AS animal_1
                 WHERE
-                    animal_1.name %s :wanted
-            ''' % (operator,)  # nosec, the operators are hardcoded above
+                    animal_1.name %(operator)s :wanted
+            ''' % {'operator': operator}  # nosec, the operators are hardcoded above
+
+            expected_cypher = '''
+                CYPHER 9
+                MATCH (Animal___1:Animal)
+                    WHERE (Animal___1.name %(operator)s $wanted)
+                RETURN Animal___1.name AS `animal_name`
+            ''' % {'operator': operator}  # nosec, the operators are hardcoded above
 
             expected_output_metadata = {
                 'animal_name': OutputMetadata(type=GraphQLString, optional=False),
@@ -283,13 +293,11 @@ class CompilerTests(unittest.TestCase):
             expected_input_metadata = {
                 'wanted': GraphQLString,
             }
-
             test_data = test_input_data.CommonTestData(
                 graphql_input=graphql_input,
                 expected_output_metadata=expected_output_metadata,
                 expected_input_metadata=expected_input_metadata,
                 type_equivalence_hints=None)
-            expected_cypher = NotImplementedError
 
             check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                             expected_cypher)
@@ -327,7 +335,15 @@ class CompilerTests(unittest.TestCase):
                 animal_1.name >= :lower_bound
                 AND animal_1.name < :upper_bound
         '''
-        expected_cypher = NotImplementedError
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+                WHERE (
+                    (Animal___1.name >= $lower_bound) AND
+                    (Animal___1.name < $upper_bound)
+                )
+            RETURN Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -360,7 +376,12 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            RETURN Animal__out_Animal_ParentOf___1.name AS `parent_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -416,7 +437,20 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Animal_OfSpecies]->(Animal__out_Animal_OfSpecies___1:Species)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            RETURN
+                (
+                    CASE WHEN (Animal__out_Animal_ParentOf___1 IS NOT null)
+                    THEN Animal__out_Animal_ParentOf___1.name
+                    ELSE null
+                    END
+                ) AS `child_name`,
+                Animal__out_Animal_OfSpecies___1.name AS `species_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -450,7 +484,16 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE (
+                    (Animal__out_Animal_ParentOf___1.name = $wanted) OR
+                    ($wanted IN Animal__out_Animal_ParentOf___1.alias)
+                )
+            RETURN Animal__out_Animal_ParentOf___1.name AS `parent_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -484,7 +527,16 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
+                WHERE (
+                    (Animal__out_Entity_Related___1.name = $wanted) OR
+                    ($wanted IN Animal__out_Entity_Related___1.alias)
+                )
+            RETURN Animal__out_Entity_Related___1.name AS `related_entity`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -519,7 +571,15 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+                WHERE (Animal___1.name = $wanted)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            RETURN
+                Animal___1.name AS `animal_name`,
+                Animal__out_Animal_ParentOf___1.name AS `parent_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -584,7 +644,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -649,7 +709,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -702,7 +762,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -743,7 +803,7 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_gremlin = NotImplementedError
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -782,7 +842,7 @@ class CompilerTests(unittest.TestCase):
                 animal_1.name >= :lower
                 AND animal_1.name <= :upper
         '''
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -827,7 +887,7 @@ class CompilerTests(unittest.TestCase):
                 animal_1.birthday >= :lower
                 AND animal_1.birthday <= :upper
         '''
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -873,7 +933,7 @@ class CompilerTests(unittest.TestCase):
                 event_1.event_date >= :lower
                 AND event_1.event_date <= :upper
         '''
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -912,7 +972,7 @@ class CompilerTests(unittest.TestCase):
                 animal_1.name <= :upper
                 AND animal_1.name >= :lower
         '''
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -967,7 +1027,7 @@ class CompilerTests(unittest.TestCase):
                 AND animal_1.name IN ([EXPANDING_fauna])
                 AND animal_1.name >= :lower
         '''
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1005,7 +1065,7 @@ class CompilerTests(unittest.TestCase):
                 AND animal_1.name >= :lower0
                 AND animal_1.name >= :lower1
         '''
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1177,7 +1237,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1347,7 +1407,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1392,7 +1452,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1427,7 +1487,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1456,7 +1516,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1493,7 +1553,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1546,7 +1606,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1609,7 +1669,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1688,7 +1748,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1738,7 +1798,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1779,7 +1839,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1822,7 +1882,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1865,7 +1925,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1901,7 +1961,7 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 animal_1.name IN ([EXPANDING_wanted])
         '''
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1935,7 +1995,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1995,7 +2055,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2024,7 +2084,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2058,7 +2118,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2119,7 +2179,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2149,7 +2209,7 @@ class CompilerTests(unittest.TestCase):
         '''
         # the alias list valued column is not yet supported by the SQL backend
         expected_sql = SKIP_TEST
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2183,7 +2243,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2245,7 +2305,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2281,7 +2341,7 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 (animal_1.name LIKE '%' || :wanted || '%')
         '''
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2334,7 +2394,7 @@ class CompilerTests(unittest.TestCase):
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
             type_equivalence_hints=None)
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2386,7 +2446,7 @@ class CompilerTests(unittest.TestCase):
             type_equivalence_hints=None)
 
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2466,7 +2526,7 @@ class CompilerTests(unittest.TestCase):
             type_equivalence_hints=None)
 
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2509,7 +2569,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2576,7 +2636,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2679,7 +2739,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2732,7 +2792,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2768,7 +2828,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2806,7 +2866,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2860,7 +2920,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2897,7 +2957,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2948,7 +3008,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3004,7 +3064,7 @@ class CompilerTests(unittest.TestCase):
             type_equivalence_hints=type_equivalence_hints)
 
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3145,7 +3205,7 @@ class CompilerTests(unittest.TestCase):
             type_equivalence_hints=None)
 
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3180,7 +3240,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3224,7 +3284,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3269,7 +3329,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3317,7 +3377,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3370,7 +3430,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3412,7 +3472,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3467,7 +3527,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3520,7 +3580,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3599,7 +3659,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3646,7 +3706,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3685,7 +3745,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3722,7 +3782,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3764,7 +3824,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3811,7 +3871,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3851,7 +3911,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3889,7 +3949,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3935,7 +3995,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3973,7 +4033,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4031,7 +4091,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4098,7 +4158,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4124,7 +4184,7 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = NotImplementedError
 
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4151,7 +4211,7 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = NotImplementedError
 
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4181,7 +4241,7 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = NotImplementedError
 
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4209,7 +4269,7 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = NotImplementedError
 
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4241,7 +4301,7 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = NotImplementedError
 
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4268,7 +4328,7 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = NotImplementedError
 
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4340,7 +4400,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4416,7 +4476,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4505,7 +4565,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4595,7 +4655,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4762,7 +4822,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4885,7 +4945,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4964,7 +5024,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -5065,7 +5125,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -5163,7 +5223,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -5387,7 +5447,7 @@ class CompilerTests(unittest.TestCase):
            }
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -5469,7 +5529,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -5556,7 +5616,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -5615,7 +5675,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -5674,7 +5734,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -5757,7 +5817,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -5834,7 +5894,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -5881,7 +5941,7 @@ class CompilerTests(unittest.TestCase):
                 AND animal_1.uuid <= :uuid_upper
                 AND animal_1.birthday >= :earliest_modified_date
         '''
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -5924,7 +5984,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -6033,7 +6093,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -6123,7 +6183,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -6159,7 +6219,7 @@ class CompilerTests(unittest.TestCase):
                 related_event_name: m.BirthEvent__out_Event_RelatedEvent___1.name ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = NotImplementedError
+        expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
