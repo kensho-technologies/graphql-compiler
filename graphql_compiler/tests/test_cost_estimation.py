@@ -311,3 +311,160 @@ class CostEstimationTests(unittest.TestCase):
         # Animal->Food->Species result sets, so we expect 3.0 * 1.74  results.
         expected_cardinality_estimate = 3.0 * (23.0 / 11.0) * (7.0 / 11.0) * (17.0 / 13.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_recurse(self):
+        """Ensure we handle recursion correctly."""
+        schema_graph = generate_schema_graph(self.graph_client)
+        graphql_input = '''{
+            Animal {
+                out_Animal_ParentOf @recurse(depth: 2){
+                    name @output(out_name: "animal")
+                }
+            }
+        }'''
+
+        count_data = {
+            'Animal': 7,
+            'Animal_ParentOf': 11,
+        }
+        lookup_counts = create_lookup_counts(count_data)
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, lookup_counts, graphql_input, dict()
+        )
+
+        # For each Animal, we expect 11.0 / 7.0 "child" Animals. Since recurse first explores
+        # depth=0, we add 1 to account for the parent. At the moment, we don't account for depths
+        # greater than 1, so we expect 7.0 * (11.0 / 7.0 + 1) results.
+        expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1)
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_recurse_and_traverse(self):
+        """Ensure we handle traversals inside recurses correctly."""
+        schema_graph = generate_schema_graph(self.graph_client)
+        graphql_input = '''{
+            Animal {
+                out_Animal_ParentOf @recurse(depth: 2){
+                    name @output(out_name: "animal")
+                    out_Animal_BornAt {
+                        name @output(out_name: "birth_event")
+                    }
+                }
+            }
+        }'''
+
+        count_data = {
+            'Animal': 7,
+            'Animal_ParentOf': 11,
+            'Animal_BornAt': 13,
+        }
+        lookup_counts = create_lookup_counts(count_data)
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, lookup_counts, graphql_input, dict()
+        )
+
+        # For each Animal, we expect 11.0 / 7.0 "child" Animals. Since recurse first explores
+        # depth=0, we add 1 to account for the parent. At the moment, we don't account for depths
+        # greater than 1, so we exepct 11.0 / 7.0 + 1 total children, each of which has 13.0 / 7.0
+        # Animal_BornAt edges.
+        expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1) * (13.0 / 7.0)
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_single_filter(self):
+        """Ensure we handle filters correctly."""
+        # TODO: eventually, we should ensure other fractional/absolute selectivies work.
+        schema_graph = generate_schema_graph(self.graph_client)
+        graphql_input = '''{
+            Animal {
+                uuid @filter(op_name: "=", value:["$uuid"])
+                name @output(out_name: "name")
+            }
+        }'''
+        params = {
+            'uuid': '00000000-0000-0000-0000-000000000000',
+        }
+
+        count_data = {
+            'Animal': 3,
+        }
+        lookup_counts = create_lookup_counts(count_data)
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, lookup_counts, graphql_input, params
+        )
+
+        # When '='-filtering on a field that's uniquely indexed, expect exactly 1 result.
+        expected_cardinality_estimate = 1.0
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_traverse_and_filter(self):
+        """Ensure we filters work correctly below the root location."""
+        schema_graph = generate_schema_graph(self.graph_client)
+        graphql_input = '''{
+            Animal {
+                out_Animal_BornAt {
+                    uuid @filter(op_name: "=", value:["$uuid"])
+                    out_Event_RelatedEvent {
+                        ... on FeedingEvent {
+                            name @output(out_name: "feeding_event")
+                        }
+                    }
+                }
+            }
+        }'''
+        params = {
+            'uuid': '00000000-0000-0000-0000-000000000000',
+        }
+
+        count_data = {
+            'Animal': 3,
+            'Animal_BornAt': 5,
+            'Event_RelatedEvent': 7,
+            'Event': 17,
+            'FeedingEvent': 11,
+        }
+        lookup_counts = create_lookup_counts(count_data)
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, lookup_counts, graphql_input, params
+        )
+
+        # For each Animal, we expect exactly 1 BirthEvent. For each of these, we expect (7.0 / 17.0)
+        # * (11.0 / 17.0) connected FeedingEvents.
+        expected_cardinality_estimate = 3.0 * 1.0 * (7.0 / 17.0) * (11.0 / 17.0)
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_multiple_filters(self):
+        """Ensure we handle multiple filters correctly."""
+        schema_graph = generate_schema_graph(self.graph_client)
+        graphql_input = '''{
+            Animal @filter(op_name: "name_or_alias", value: ["$name"]) {
+                uuid @filter(op_name: "=", value:["$uuid"])
+                net_worth @filter(op_name: ">", value: ["$worth"])
+                name @output(out_name: "name")
+            }
+        }'''
+        params = {
+            'uuid': '00000000-0000-0000-0000-000000000000',
+            'worth': 100.0,
+        }
+
+        count_data = {
+            'Animal': 3,
+        }
+        lookup_counts = create_lookup_counts(count_data)
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, lookup_counts, graphql_input, params
+        )
+
+        # When '='-filtering on a field that's uniquely indexed, expect exactly 1 result. All other
+        # filters are not currently implemented.
+        expected_cardinality_estimate = 1.0
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
