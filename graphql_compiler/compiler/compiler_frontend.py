@@ -525,7 +525,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         if edge_traversal_is_folded:
             has_count_filter = has_fold_count_filter(context)
             _validate_fold_has_outputs_or_count_filter(
-                get_context_fold_info(context), has_count_filter, context['metadata'])
+                get_context_fold_info(context), has_count_filter, query_metadata_table)
             basic_blocks.append(blocks.Unfold())
             unmark_context_fold_scope(context)
             if has_count_filter:
@@ -849,10 +849,10 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     basic_blocks.extend(context['global_filters'])
 
     # Based on the outputs context data, add an output step and construct the output metadata.
-    basic_blocks.append(_compile_output_step(context['metadata']))
+    basic_blocks.append(_compile_output_step(query_metadata_table))
     output_metadata = {
         name: OutputMetadata(type=info.type, optional=info.optional)
-        for name, info in context['metadata'].outputs
+        for name, info in query_metadata_table.outputs
     }
 
     return IrAndMetadata(
@@ -862,23 +862,24 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         query_metadata_table=context['metadata'])
 
 
-def _compile_output_step(metadata):
+def _compile_output_step(query_metadata_table):
     """Construct the final ConstructResult basic block that defines the output format of the query.
 
     Args:
-        metadata: QueryMetadataTable object, part of which specifies the location from where to get
-                  the output, and whether the output is optional (and therefore may be missing);
-                  missing optional data is replaced with 'null'
+        query_metadata_table: QueryMetadataTable object, part of which specifies the location from
+                              where to get the output, and whether the output is optional (and
+                              therefore may be missing); missing optional data is replaced with
+                              'null'
 
     Returns:
         a ConstructResult basic block that constructs appropriate outputs for the query
     """
-    if next(metadata.outputs, None) is None:
+    if next(query_metadata_table.outputs, None) is None:
         raise GraphQLCompilationError(u'No fields were selected for output! Please mark at least '
                                       u'one field with the @output directive.')
 
     output_fields = {}
-    for output_name, output_info in metadata.outputs:
+    for output_name, output_info in query_metadata_table.outputs:
         location = output_info.location
         optional = output_info.optional
         graphql_type = output_info.type
