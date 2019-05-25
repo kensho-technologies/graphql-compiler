@@ -5,6 +5,10 @@ from graphql import (
     DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLNonNull, GraphQLString
 )
 
+from ...schema import (
+    FilterDirective, FoldDirective, OptionalDirective, RecurseDirective, TagDirective
+)
+
 
 MacroEdgeDirective = GraphQLDirective(
     name='macro_edge',
@@ -36,9 +40,26 @@ MacroEdgeTargetDirective = GraphQLDirective(
     ],
 )
 
-
+# Directives reserved for macro edges
 MACRO_EDGE_DIRECTIVES = (
     MacroEdgeDirective,
     MacroEdgeDefinitionDirective,
     MacroEdgeTargetDirective,
 )
+
+# Directives required present in a macro edge definition
+DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION = frozenset({
+    MacroEdgeDefinitionDirective,
+    MacroEdgeTargetDirective
+})
+
+# Directives allowed within a macro edge definition
+DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION = frozenset({
+    FoldDirective,
+    FilterDirective,
+    MacroEdgeDefinitionDirective,
+    MacroEdgeTargetDirective,
+    OptionalDirective,
+    TagDirective,
+    RecurseDirective,
+})
