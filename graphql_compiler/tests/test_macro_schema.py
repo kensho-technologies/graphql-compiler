@@ -1,10 +1,13 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import unittest
 
+from graphql import parse
 from graphql.type import GraphQLList
 from graphql.utils.schema_printer import print_schema
 
-from ..macros import get_schema_with_macros
+from ..macros import get_schema_for_macro_definition, get_schema_with_macros
+from ..macros.macro_edge.directives import DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
+from ..macros.macro_edge.validation import get_and_validate_macro_edge_info
 from .test_helpers import get_empty_test_macro_registry, get_test_macro_registry
 
 
@@ -32,3 +35,27 @@ class MacroSchemaTests(unittest.TestCase):
             'Animal').fields['out_Animal_RelatedFood'].type
         self.assertTrue(isinstance(related_food_target_type, GraphQLList))
         self.assertEqual('Food', related_food_target_type.of_type.name)
+
+    def test_get_schema_for_macro_definition_addition(self):
+        original_schema = self.macro_registry.schema_without_macros
+        macro_definition_schema = get_schema_for_macro_definition(original_schema)
+        for directive in DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION:
+            self.assertTrue(directive in macro_definition_schema.get_directives())
+
+    def test_get_schema_for_macro_definition_removal(self):
+        schema_with_macros = get_schema_with_macros(self.macro_registry)
+        macro_definition_schema = get_schema_for_macro_definition(schema_with_macros)
+        for directive in macro_definition_schema.get_directives():
+            self.assertTrue(directive.name != '@output')
+            self.assertTrue(directive.name != '@output_source')
+
+    def test_get_schema_for_macro_definition_validation(self):
+        schema_with_macros = get_schema_with_macros(self.macro_registry)
+        macro_definition_schema = get_schema_for_macro_definition(schema_with_macros)
+        args = {}
+
+        # TODO: validate macro edges using the generated schema
+
+        # get_and_validate_macro_edge_info(macro_definition_schema, schema_ast, args,
+        #     self.macro_registry.type_equivalence_hints)
+

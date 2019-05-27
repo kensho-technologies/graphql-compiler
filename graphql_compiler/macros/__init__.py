@@ -16,6 +16,7 @@ from ..ast_manipulation import safe_parse_graphql
 from .macro_edge import make_macro_edge_descriptor
 from .macro_edge.helpers import get_type_at_macro_edge_target
 from .macro_edge.directives import (MacroEdgeDirective,
+                                    DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION,
                                     DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION)
 from .macro_expansion import expand_macros_in_query_ast
 from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
@@ -168,9 +169,6 @@ def get_schema_with_macros(macro_registry):
 def get_schema_for_macro_definition(schema):
     """Returns a schema with macro directives.
 
-    Preconditions:
-    1. Only default directives are present in the given schema.
-
     This returned schema can be used to validate macro definitions, and support GraphQL
     macro editors, enabling them to autocomplete on the @macro_edge_definition and
     @macro_edge_target directives. Some directives that are disallowed in macro edge definitions,
@@ -183,8 +181,10 @@ def get_schema_for_macro_definition(schema):
         GraphQLSchema usable for writing macros
     """
     macro_definition_schema = copy(schema)
-    macro_definition_schema_directives_set = macro_definition_schema.get_directives() + \
-        DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
+    macro_definition_schema_directives_set = set(macro_definition_schema.get_directives()).union(
+        DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION)
+    # Exclude disallowed directives
+    macro_definition_schema_directives_set &= DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION
 
     # pylint: disable=protected-access
     macro_definition_schema._directives = list(macro_definition_schema_directives_set)
