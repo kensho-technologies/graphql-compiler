@@ -49,6 +49,7 @@ class MacroSchemaTests(unittest.TestCase):
             self.assertTrue(directive.name != '@output')
             self.assertTrue(directive.name != '@output_source')
 
+	@pytest.mark.skip(reason="unimplemented test")
     def test_get_schema_for_macro_definition_validation(self):
         schema_with_macros = get_schema_with_macros(self.macro_registry)
         macro_definition_schema = get_schema_for_macro_definition(schema_with_macros)
