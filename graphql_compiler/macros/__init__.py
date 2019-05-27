@@ -184,8 +184,7 @@ def get_schema_for_macro_definition(schema):
     """
     macro_definition_schema = copy(schema)
     macro_definition_schema_directives_set = macro_definition_schema.get_directives() + \
-    	DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
-        
+        DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
 
     # pylint: disable=protected-access
     macro_definition_schema._directives = list(macro_definition_schema_directives_set)
