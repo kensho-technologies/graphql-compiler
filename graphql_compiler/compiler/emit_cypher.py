@@ -41,7 +41,7 @@ def _emit_code_from_cypher_step(cypher_step):
     else:
         pattern = (
             u'MATCH (%(linked_location)s)'
-            u'%(left_edge_mark)s-[%(quantifier)s:%(edge_type)s]-%(right_edge_mark)s' +
+            u'%(left_edge_mark)s-[:%(edge_type)s%(quantifier)s]-%(right_edge_mark)s' +
             step_vertex_pattern
         )
         linked_location_name, _ = cypher_step.linked_location.get_location_name()
