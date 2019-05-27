@@ -57,9 +57,7 @@ DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION = frozenset({
 DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION = frozenset({
     FoldDirective,
     FilterDirective,
-    MacroEdgeDefinitionDirective,
-    MacroEdgeTargetDirective,
     OptionalDirective,
     TagDirective,
     RecurseDirective,
-})
+}.union(DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION))
