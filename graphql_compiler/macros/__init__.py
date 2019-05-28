@@ -14,10 +14,12 @@ from graphql.utils.schema_printer import print_schema
 from ..compiler.compiler_frontend import validate_schema_and_ast
 from ..ast_manipulation import safe_parse_graphql
 from .macro_edge import make_macro_edge_descriptor
-from .macro_edge.helpers import get_type_at_macro_edge_target
-from .macro_edge.directives import (MacroEdgeDirective,
-                                    DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION,
-                                    DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION)
+from .macro_edge.helpers import (
+    exclude_disallowed_directives_in_macros, include_required_macro_directives,
+    get_type_at_macro_edge_target
+)
+from .macro_edge.directives import (MacroEdgeDirective)
+from ..schema import _check_for_nondefault_macro_directives
 from .macro_expansion import expand_macros_in_query_ast
 from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
 
@@ -169,9 +171,6 @@ def get_schema_with_macros(macro_registry):
 def get_schema_for_macro_definition(schema):
     """Returns a schema with macro directives.
 
-    Preconditions:
-    1. No user-created directives are in schema.
-    
     This returned schema can be used to validate macro definitions, and support GraphQL
     macro editors, enabling them to autocomplete on the @macro_edge_definition and
     @macro_edge_target directives. Some directives that are disallowed in macro edge definitions,
@@ -185,15 +184,15 @@ def get_schema_for_macro_definition(schema):
     """
 
     macro_definition_schema = copy(schema)
-    macro_definition_schema_directives_set = set(macro_definition_schema.get_directives())
-
-    # Include required directives
-    macro_definition_schema_directives_set |= set(DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION)
-    # Exclude disallowed directives
-    macro_definition_schema_directives_set &= set(DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION)
+    macro_definition_schema_directives = schema.get_directives()
+    _check_for_nondefault_macro_directives(macro_definition_schema_directives)
+    macro_definition_schema_directives = include_required_macro_directives(
+        macro_definition_schema_directives)
+    macro_definition_schema_directives = exclude_disallowed_directives_in_macros(
+        macro_definition_schema_directives)
 
     # pylint: disable=protected-access
-    macro_definition_schema._directives = list(macro_definition_schema_directives_set)
+    macro_definition_schema._directives = macro_definition_schema_directives
     # pylint: enable=protected-access
     return macro_definition_schema
 

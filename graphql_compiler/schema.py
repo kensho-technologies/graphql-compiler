@@ -349,3 +349,15 @@ def insert_meta_fields_into_existing_schema(graphql_schema):
                                      .format(meta_field_name))
 
             type_obj.fields[meta_field_name] = meta_field
+
+
+def _check_for_nondefault_macro_directives(directives):
+    """Check if any user-created directives are present"""
+    deprecated_directive_names = {'deprecated', 'skip', 'include'}
+    default_directive_names = {d.name for d in DIRECTIVES}
+    expected_directive_names = deprecated_directive_names | default_directive_names
+    nondefault_directive_names_found = {directive.name for directive in directives} - \
+        expected_directive_names
+    if nondefault_directive_names_found != set():
+        raise AssertionError(u'Unexpected non-default directive found: {}'.format(
+            [directive.name for directive in nondefault_directive_names_found]))
