@@ -422,7 +422,7 @@ The database captures the value of the parent animal's name as the `parent_name`
 value is then used as the `%parent_name` tagged parameter in the child animal's `@filter`.
 
 We considered and **rejected** the idea of allowing literal values (e.g. `123`)
-as `@filter` parameters, for several r thanreasons:
+as `@filter` parameters, for several reasons:
 - The GraphQL type of the `@filter` directive's `value` field cannot reasonably encompass
   all the different types of arguments that people might supply. Even counting scalar types only,
   there's already `ID, Int, Float, Boolean, String, Date, DateTime...` -- way too many to include.
