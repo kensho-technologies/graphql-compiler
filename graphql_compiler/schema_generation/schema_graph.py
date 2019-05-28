@@ -27,7 +27,7 @@ ILLEGAL_PROPERTY_NAME_PREFIXES = (
 
 
 ILLEGAL_PROPERTY_NAMES = (
-    # Names we reserve for referencing base connections in IndexDefinition fields.
+    # Names we reserve for referencing base connections as fields of an IndexDefinition object.
     'out',
     'in',
 )
