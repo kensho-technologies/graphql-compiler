@@ -10,6 +10,7 @@ from graphql import parse
 from graphql.language.printer import print_ast
 from graphql.utils.build_ast_schema import build_ast_schema
 from graphql.utils.schema_printer import print_schema
+from graphql_compiler.schema import DIRECTIVES
 
 from ..compiler.compiler_frontend import validate_schema_and_ast
 from ..ast_manipulation import safe_parse_graphql
@@ -19,7 +20,7 @@ from .macro_edge.directives import (MacroEdgeDirective,
                                     DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION,
                                     DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION)
 from .macro_expansion import expand_macros_in_query_ast
-from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
+from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError, GraphQLCompilationError
 
 
 MacroRegistry = namedtuple(
@@ -169,6 +170,9 @@ def get_schema_with_macros(macro_registry):
 def get_schema_for_macro_definition(schema):
     """Returns a schema with macro directives.
 
+    Precondition:
+    1. No user-created directives are in schema.
+
     This returned schema can be used to validate macro definitions, and support GraphQL
     macro editors, enabling them to autocomplete on the @macro_edge_definition and
     @macro_edge_target directives. Some directives that are disallowed in macro edge definitions,
@@ -180,11 +184,15 @@ def get_schema_for_macro_definition(schema):
     Returns:
         GraphQLSchema usable for writing macros
     """
+
     macro_definition_schema = copy(schema)
-    macro_definition_schema_directives_set = set(macro_definition_schema.get_directives()).union(
-        DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION)
+    macro_definition_schema_directives_set = set(macro_definition_schema.get_directives())
+    # Include required directives
+    macro_definition_schema_directives_set += DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
     # Exclude disallowed directives
-    macro_definition_schema_directives_set &= DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION
+    for directive in macro_definition_schema_directives_set:
+        if directive.name not in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION:
+            macro_definition_schema_directives_set.remove(directive)
 
     # pylint: disable=protected-access
     macro_definition_schema._directives = list(macro_definition_schema_directives_set)
