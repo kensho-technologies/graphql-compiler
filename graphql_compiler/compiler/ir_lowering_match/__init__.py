@@ -2,10 +2,12 @@
 import six
 
 from ..blocks import Filter
-from ..ir_lowering_common import (extract_optional_location_root_info,
-                                  extract_simple_optional_location_info,
-                                  lower_context_field_existence, merge_consecutive_filter_clauses,
-                                  optimize_boolean_expression_comparisons, remove_end_optionals)
+from ..ir_lowering_common.common import (extract_optional_location_root_info,
+                                         extract_simple_optional_location_info,
+                                         lower_context_field_existence,
+                                         merge_consecutive_filter_clauses,
+                                         optimize_boolean_expression_comparisons,
+                                         remove_end_optionals)
 from .ir_lowering import (lower_backtrack_blocks,
                           lower_folded_coerce_types_into_filter_blocks,
                           lower_has_substring_binary_compositions,
@@ -100,7 +102,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
 
     match_query = lower_comparisons_to_between(match_query)
 
-    match_query = lower_backtrack_blocks(match_query, location_types)
+    match_query = lower_backtrack_blocks(match_query, query_metadata_table)
     match_query = truncate_repeated_single_step_traversals(match_query)
     match_query = orientdb_class_with_while.workaround_type_coercions_in_recursions(match_query)
 
