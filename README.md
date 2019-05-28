@@ -128,7 +128,8 @@ compilation_result = graphql_to_match(schema, graphql_query, parameters, type_eq
 # Step 5: Run compiled compiled query.
 query = compilation_result.query
 results = [row.oRecordData for row in client.command(query)]
-assert results == [{'animal_name': 'Animal 1'}]
+print(results)
+# [{'animal_name': 'Animal 1'}]
 ```
 ## Definitions
 - **Vertex field**: A field corresponding to a vertex in the graph. In the below example, `Animal`
