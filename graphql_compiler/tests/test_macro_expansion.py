@@ -142,6 +142,43 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
+    def test_macro_edge_tag_filter_order(self):
+        # Tags should appear before filters. Test that this is not violated during expansion.
+        query = '''{
+            Animal {
+                out_Animal_RichYoungerSiblings_2 {
+                    uuid
+                }
+            }
+        }'''
+        args = {
+            'net_worth_upper_bound': 5,
+        }
+
+        expected_query = '''{
+            Animal {
+                net_worth @tag(tag_name: "net_worth")
+                in_Animal_ParentOf {
+                    out_Animal_ParentOf @macro_edge_target {
+                        net_worth @filter(op_name: ">", value: ["%net_worth"])
+                        out_Animal_BornAt {
+                            event_date @tag(tag_name: "birthday")
+                        }
+                    }
+                }
+                out_Animal_BornAt {
+                    event_date @filter(op_name: ">", value: ["%birthday"])
+                }
+            }
+        }'''
+        expected_args = {
+            'net_worth_upper_bound': 5,
+        }
+
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
     def test_macro_edge_target_coercion_0(self):
         query = '''{
             Animal {
