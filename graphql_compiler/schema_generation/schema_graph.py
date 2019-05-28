@@ -26,6 +26,13 @@ ILLEGAL_PROPERTY_NAME_PREFIXES = (
 )
 
 
+ILLEGAL_PROPERTY_NAMES = (
+    # Names we reserve for referencing base connections in IndexDefinition fields.
+    'out',
+    'in',
+)
+
+
 class SchemaGraph(object):
     """The SchemaGraph is a graph utility used to represent a OrientDB schema.
 
@@ -419,7 +426,12 @@ def _validate_non_abstract_edge_has_defined_base_connections(
 def _validate_property_names(class_name, properties):
     """Validate that properties do not have names that may cause problems in the GraphQL schema."""
     for property_name in properties:
-        if not property_name or property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES):
+        is_illegal_name = (
+            not property_name or
+            property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES) or
+            property_name in ILLEGAL_PROPERTY_NAMES
+        )
+        if is_illegal_name:
             raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
                                           u'{}'.format(class_name, property_name))
 
@@ -583,7 +595,9 @@ PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
 # A way to describe an index:
 #   - name: string, the name of the index.
 #   - base_classname: string, the name of the class on which the index is defined.
-#   - fields: set of strings, the set of fields which the index encompasses.
+#   - fields: set of strings, indicating which objects the index encompasses.
+#             The 'in' and 'out' strings refer to the base connections.
+#             All other strings reference the base class's properties.
 #   - unique: bool, indicating whether this index is unique.
 #   - ordered: bool, indicating whether this index is ordered.
 #   - ignore_nulls: bool, indicating if the index ignores null values.
