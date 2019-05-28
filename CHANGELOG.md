@@ -7,7 +7,7 @@
 - Add indexes to the SchemaGraph and OrientDB index parsing. [#312](https://github.com/kensho-technologies/graphql-compiler/pull/312)
 - Allow list types in RootSchemaQuery. 
 - Refactor the SchemaGraph to use GraphQL's type system, separate each SchemaElement kind into it's own class and removed links as properties. [#292](https://github.com/kensho-technologies/graphql-compiler/pull/292)
-- Clean up README.md typos and update troubleshooting documentation.
+- Clean up README.md and update troubleshooting documentation.
 - Many mantainer quality-of-life improvements.
 
 Thanks to `0xflotus`, `pmantica1`, `bojanserafimov`, `evantey`, and `Vladimir Maksimovski` for their contributions.
