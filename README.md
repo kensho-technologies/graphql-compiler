@@ -72,7 +72,7 @@ For a more detailed overview and getting started guide, please see
 * **GraphQL Language Features:**  We prioritized and implemented a subset of all functionality supported by the GraphQL language. We hope to add more functionality over time.
 
 ## Getting Started
-The first thing you'll need is to a GraphQL schema. The GraphQL schema is a GraphQL 
+The first thing you'll need is a GraphQL schema. The GraphQL schema is a GraphQL 
 representation of the database schema that we use to validate and compile GraphQL 
 queries. For more information on how the GraphQL schema is defined please see: 
 [The GraphQL schema](#the-graphql-schema). 
