@@ -802,7 +802,8 @@ class BinaryComposition(Expression):
         intersects_operator_format = '(%(operator)s(%(left)s, %(right)s).asList().size() > 0)'
         # pylint: enable=unused-variable
 
-        # Null literals use 'is/is not' as (in)equality operators, while other values use '=/<>'.
+        # Null literals use the OrientDB 'IS/IS NOT' (in)equality operators,
+        # while other values use the OrientDB '=/<>' operators.
         if self.left == NullLiteral or self.right == NullLiteral:
             translation_table = {
                 u'=': (u'IS', regular_operator_format),
