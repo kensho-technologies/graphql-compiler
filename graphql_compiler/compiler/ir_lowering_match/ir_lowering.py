@@ -13,7 +13,7 @@ import six
 from ..blocks import Backtrack, CoerceType, MarkLocation, QueryRoot
 from ..expressions import BinaryComposition, FalseLiteral, Literal, TernaryConditional, TrueLiteral
 from ..ir_lowering_common.location_renaming import (
-    make_revisit_location_translations, make_location_rewriter_visitor_fn,
+    make_location_rewriter_visitor_fn, make_revisit_location_translations,
     translate_potential_location
 )
 from .utils import convert_coerce_type_to_instanceof_filter

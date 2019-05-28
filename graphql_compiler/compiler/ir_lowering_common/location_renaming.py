@@ -50,6 +50,7 @@ def make_location_rewriter_visitor_fn(location_translations):
         # All CompilerEntity objects store their exact constructor input args/kwargs.
         # To minimize the chances that we forget to update a location somewhere in an expression,
         # we rewrite all locations that we find as arguments to expression constructors.
+        # pylint: disable=protected-access
         new_args = [
             translate_potential_location(location_translations, arg)
             for arg in expression._print_args
@@ -58,6 +59,7 @@ def make_location_rewriter_visitor_fn(location_translations):
             kwarg_name: translate_potential_location(location_translations, kwarg_value)
             for kwarg_name, kwarg_value in six.iteritems(expression._print_kwargs)
         }
+        # pylint: enable=protected-access
 
         expression_cls = type(expression)
         return expression_cls(*new_args, **new_kwargs)

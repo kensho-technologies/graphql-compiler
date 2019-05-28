@@ -14,9 +14,7 @@ import six
 
 from ...exceptions import GraphQLCompilationError
 from ...schema import GraphQLDate, GraphQLDateTime
-from ..blocks import (
-    Backtrack, CoerceType, ConstructResult, Filter, GlobalOperationsStart, MarkLocation, Traverse
-)
+from ..blocks import Backtrack, CoerceType, Filter, GlobalOperationsStart, MarkLocation, Traverse
 from ..compiler_entities import Expression
 from ..expressions import (
     BinaryComposition, FoldedContextField, Literal, LocalField, NullLiteral,
