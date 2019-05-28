@@ -171,6 +171,7 @@ def get_schema_for_macro_definition(schema):
 
     Preconditions:
     1. No user-created directives are in schema.
+    
     This returned schema can be used to validate macro definitions, and support GraphQL
     macro editors, enabling them to autocomplete on the @macro_edge_definition and
     @macro_edge_target directives. Some directives that are disallowed in macro edge definitions,
