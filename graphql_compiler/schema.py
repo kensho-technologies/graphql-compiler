@@ -292,6 +292,7 @@ DIRECTIVES = (
     FoldDirective,
 )
 
+
 TYPENAME_META_FIELD_NAME = '__typename'  # This meta field is built-in.
 COUNT_META_FIELD_NAME = '_x_count'
 
