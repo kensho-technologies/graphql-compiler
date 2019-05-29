@@ -1514,9 +1514,13 @@ would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`
 
 ## Schema Generation
 To generate a GraphQL schema, we first map a database schema into an intermediate representation:
-the `SchemaGraph`.
+the `SchemaGraph`. 
 
 #### SchemaGraph
+The `SchemaGraph` is a python object representing the schema in the most convenient way for 
+introspection. It is also able to encode parts of the schema, (such as the schema's 
+indexes), that cannot be encoded in the GraphQL schema.
+
 * `SchemaGraph`
     * Keeps track of a schema's transitive inheritance structure.
     * Keeps track of a schema's indexes. Indexes are not used in the GraphQL schema generation and 
