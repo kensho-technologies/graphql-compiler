@@ -9,6 +9,7 @@ from graphql import (
     GraphQLInterfaceType, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLScalarType,
     GraphQLString
 )
+from graphql.type.directives import specified_directives
 import six
 
 
@@ -291,7 +292,6 @@ DIRECTIVES = (
     FoldDirective,
 )
 
-
 TYPENAME_META_FIELD_NAME = '__typename'  # This meta field is built-in.
 COUNT_META_FIELD_NAME = '_x_count'
 
@@ -351,15 +351,17 @@ def insert_meta_fields_into_existing_schema(graphql_schema):
             type_obj.fields[meta_field_name] = meta_field
 
 
-def _check_for_nondefault_directives(directives):
+def _check_for_nondefault_directive_names(directives):
     """Check if any user-created directives are present"""
-    deprecated_directive_names = {'deprecated', 'skip', 'include'}
-    default_directive_names = {directive.name for directive in DIRECTIVES}
-    expected_directive_names = deprecated_directive_names | default_directive_names
-    nondefault_directive_names_found = {
+    # Include compiler-supported directives, and the default directives graphql defines.
+    expected_directive_names = {
         directive.name
-        for directive in directives
-    } - expected_directive_names
-    if nondefault_directive_names_found != set():
+        for directive in DIRECTIVES + tuple(specified_directives)
+    }
+
+    directive_names = {directive.name for directive in directives}
+
+    nondefault_directives_found = directive_names - expected_directive_names
+    if nondefault_directives_found != set():
         raise AssertionError(u'Unexpected non-default directives found: {}'.format(
-            nondefault_directive_names_found))
+            nondefault_directives_found))

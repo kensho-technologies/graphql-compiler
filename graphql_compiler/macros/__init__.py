@@ -17,7 +17,7 @@ from .macro_edge import make_macro_edge_descriptor
 from .macro_edge.helpers import get_type_at_macro_edge_target
 from .macro_edge.directives import (MacroEdgeDirective, DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION,
                                     DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION)
-from ..schema import _check_for_nondefault_directives
+from ..schema import _check_for_nondefault_directive_names
 from .macro_expansion import expand_macros_in_query_ast
 from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
 
@@ -169,6 +169,9 @@ def get_schema_with_macros(macro_registry):
 def get_schema_for_macro_definition(schema):
     """Returns a schema with macro directives.
 
+    Preconditions:
+    1. All compiler-supported and graphql-default directives have their default behavior.
+
     This returned schema can be used to validate macro definitions, and support GraphQL
     macro editors, enabling them to autocomplete on the @macro_edge_definition and
     @macro_edge_target directives. Some directives that are disallowed in macro edge definitions,
@@ -181,11 +184,11 @@ def get_schema_for_macro_definition(schema):
         GraphQLSchema usable for writing macros. Modifying this schema is undefined behavior.
 
     Raises:
-        AssertionError, if the schema contains directives that are non-default.
+        AssertionError, if the schema contains directive names that are non-default.
     """
     macro_definition_schema = copy(schema)
     macro_definition_schema_directives = schema.get_directives()
-    _check_for_nondefault_directives(macro_definition_schema_directives)
+    _check_for_nondefault_directive_names(macro_definition_schema_directives)
     macro_definition_schema_directives += DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
     # Remove disallowed directives from directives list
     macro_definition_schema_directives = list(set(macro_definition_schema_directives) &
