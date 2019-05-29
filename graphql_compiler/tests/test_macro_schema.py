@@ -10,6 +10,7 @@ from ..macros import get_schema_for_macro_definition, get_schema_with_macros
 from ..macros.macro_edge.directives import (
     DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
 )
+from ..schema import OutputDirective, OutputSourceDirective
 from .test_helpers import VALID_MACROS_TEXT, get_empty_test_macro_registry, get_test_macro_registry
 
 
@@ -55,8 +56,8 @@ class MacroSchemaTests(unittest.TestCase):
         schema_with_macros = get_schema_with_macros(self.macro_registry)
         macro_definition_schema = get_schema_for_macro_definition(schema_with_macros)
         for directive in macro_definition_schema.get_directives():
-            self.assertTrue(directive.name != 'output')
-            self.assertTrue(directive.name != 'output_source')
+            self.assertTrue(directive.name != OutputDirective.name)
+            self.assertTrue(directive.name != OutputSourceDirective.name)
 
     def test_get_schema_for_macro_definition_validation(self):
         macro_definition_schema = get_schema_for_macro_definition(
