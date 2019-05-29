@@ -9,6 +9,7 @@ from graphql import (
     GraphQLInterfaceType, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLScalarType,
     GraphQLString
 )
+from graphql.type.directives import specified_directives
 import six
 
 
@@ -349,3 +350,19 @@ def insert_meta_fields_into_existing_schema(graphql_schema):
                                      .format(meta_field_name))
 
             type_obj.fields[meta_field_name] = meta_field
+
+
+def _check_for_nondefault_directive_names(directives):
+    """Check if any user-created directives are present"""
+    # Include compiler-supported directives, and the default directives graphql defines.
+    expected_directive_names = {
+        directive.name
+        for directive in DIRECTIVES + tuple(specified_directives)
+    }
+
+    directive_names = {directive.name for directive in directives}
+
+    nondefault_directives_found = directive_names - expected_directive_names
+    if nondefault_directives_found != set():
+        raise AssertionError(u'Unexpected non-default directives found: {}'.format(
+            nondefault_directives_found))
