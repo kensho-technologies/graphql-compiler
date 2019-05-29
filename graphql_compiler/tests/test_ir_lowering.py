@@ -14,14 +14,14 @@ from ..compiler.expressions import (
     ZeroLiteral
 )
 from ..compiler.helpers import Location
-from ..compiler.ir_lowering_common.common import (OutputContextVertex,
-                                                  merge_consecutive_filter_clauses,
-                                                  optimize_boolean_expression_comparisons)
+from ..compiler.ir_lowering_common.common import (
+    OutputContextVertex, merge_consecutive_filter_clauses, optimize_boolean_expression_comparisons
+)
 from ..compiler.ir_lowering_match.utils import BetweenClause, CompoundMatchQuery
 from ..compiler.match_query import MatchQuery, convert_to_match_query
 from ..compiler.metadata import LocationInfo, QueryMetadataTable
 from ..schema import GraphQLDate, GraphQLDateTime
-from .test_helpers import compare_ir_blocks, construct_location_types, get_schema
+from .test_helpers import compare_ir_blocks, get_schema
 
 
 def check_test_data(test_case, expected_object, received_object):
@@ -92,7 +92,6 @@ class MatchIrLoweringTests(unittest.TestCase):
         schema = get_schema()
 
         base_location = Location(('Animal',))
-        revisited_base_location = base_location.revisit()
         child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         child_name_location = child_location.navigate_to_field('name')
 
@@ -103,9 +102,7 @@ class MatchIrLoweringTests(unittest.TestCase):
         query_metadata_table.register_location(
             child_location,
             LocationInfo(base_location, animal_graphql_type, None, 1, 0, False))
-        query_metadata_table.register_location(
-            revisited_base_location,
-            LocationInfo(None, animal_graphql_type, None, 0, 0, False))
+        revisited_base_location = query_metadata_table.revisit_location(base_location)
 
         ir_blocks = [
             QueryRoot({'Animal'}),
@@ -145,10 +142,8 @@ class MatchIrLoweringTests(unittest.TestCase):
 
         base_location = Location(('Animal',))
         base_name_location = base_location.navigate_to_field('name')
-        revisited_base_location = base_location.revisit()
         child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         child_name_location = child_location.navigate_to_field('name')
-        second_child_location = revisited_base_location.navigate_to_subpath('in_Animal_ParentOf')
 
         animal_graphql_type = schema.get_type('Animal')
         base_location_info = LocationInfo(None, animal_graphql_type, None, 0, 0, False)
@@ -157,9 +152,9 @@ class MatchIrLoweringTests(unittest.TestCase):
         query_metadata_table.register_location(
             child_location,
             LocationInfo(base_location, animal_graphql_type, None, 1, 0, False))
-        query_metadata_table.register_location(
-            revisited_base_location,
-            LocationInfo(None, animal_graphql_type, None, 0, 0, False))
+        revisited_base_location = query_metadata_table.revisit_location(base_location)
+
+        second_child_location = revisited_base_location.navigate_to_subpath('in_Animal_ParentOf')
         query_metadata_table.register_location(
             second_child_location,
             LocationInfo(base_location, animal_graphql_type, None, 0, 0, False))
@@ -839,7 +834,6 @@ class MatchIrLoweringTests(unittest.TestCase):
         query_metadata_table.register_location(
             child_fed_at_location,
             LocationInfo(child_location, event_graphql_type, None, 1, 0, False))
-
         revisited_base_location = query_metadata_table.revisit_location(base_location)
 
         ir_blocks = [
@@ -936,7 +930,6 @@ class GremlinIrLoweringTests(unittest.TestCase):
         schema = get_schema()
 
         base_location = Location(('Animal',))
-        revisited_base_location = base_location.revisit()
         child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
         child_name_location = child_location.navigate_to_field('name')
 
@@ -947,8 +940,7 @@ class GremlinIrLoweringTests(unittest.TestCase):
         query_metadata_table.register_location(
             child_location,
             LocationInfo(base_location, animal_graphql_type, None, 1, 0, False))
-        query_metadata_table.register_location(
-            revisited_base_location, base_location_info)
+        revisited_base_location = query_metadata_table.revisit_location(base_location)
 
         ir_blocks = [
             QueryRoot({'Animal'}),

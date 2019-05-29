@@ -140,7 +140,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             BASE_VERTEX_SCHEMA_DATA,
             ENTITY_SCHEMA_DATA,
         ]
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertTrue(schema_graph.get_element_by_class_name('Entity').is_vertex)
 
     def test_parsed_edge(self):
@@ -152,17 +152,17 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
             PERSON_SCHEMA_DATA,
         ]
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertTrue(schema_graph.get_element_by_class_name('Person_LivesIn').is_edge)
 
     def test_parsed_non_graph_class(self):
         schema_data = [EXTERNAL_SOURCE_SCHEMA_DATA]
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertTrue(schema_graph.get_element_by_class_name('ExternalSource').is_non_graph)
 
     def test_no_superclass(self):
         schema_data = [BASE_VERTEX_SCHEMA_DATA]
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertEqual({ORIENTDB_BASE_VERTEX_CLASS_NAME},
                          schema_graph.get_superclass_set(ORIENTDB_BASE_VERTEX_CLASS_NAME))
 
@@ -175,7 +175,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
             PERSON_SCHEMA_DATA,
         ]
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertEqual({'Person_LivesIn', ORIENTDB_BASE_EDGE_CLASS_NAME},
                          schema_graph.get_superclass_set('Person_LivesIn'))
 
@@ -184,7 +184,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             BASE_VERTEX_SCHEMA_DATA,
             ENTITY_SCHEMA_DATA,
         ]
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertEqual({'Entity', ORIENTDB_BASE_VERTEX_CLASS_NAME},
                          schema_graph.get_superclass_set('Entity'))
 
@@ -193,7 +193,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             BASE_VERTEX_SCHEMA_DATA,
             ENTITY_SCHEMA_DATA,
         ]
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         name_property = schema_graph.get_element_by_class_name('Entity').properties['name']
         self.assertTrue(name_property.type.is_same_type(GraphQLString))
 
@@ -203,7 +203,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             ENTITY_SCHEMA_DATA,
             PERSON_SCHEMA_DATA,
         ]
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         alias_property = schema_graph.get_element_by_class_name('Person').properties['alias']
         self.assertTrue(alias_property.type.is_same_type(GraphQLList(GraphQLString)))
         self.assertEqual(alias_property.default, set())
@@ -214,7 +214,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             DATA_POINT_SCHEMA_DATA,
             EXTERNAL_SOURCE_SCHEMA_DATA,
         ]
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         friends_property = schema_graph.get_element_by_class_name('DataPoint').properties[
             'data_source']
         self.assertTrue(friends_property.type.is_same_type(
@@ -230,7 +230,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
             PERSON_SCHEMA_DATA,
         ]
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         person_lives_in_edge = schema_graph.get_element_by_class_name('Person_LivesIn')
         self.assertEqual(person_lives_in_edge.base_in_connection, 'Person')
         self.assertEqual(person_lives_in_edge.base_out_connection, 'Location')
@@ -244,7 +244,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
             PERSON_SCHEMA_DATA,
         ]
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         person_lives_in_edge = schema_graph.get_element_by_class_name('Person_LivesIn')
         self.assertEqual(PERSON_LIVES_IN_EDGE_SCHEMA_DATA['customFields'],
                          person_lives_in_edge.class_fields)
@@ -262,7 +262,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         schema, type_equivalence_dicts = get_graphql_schema_from_orientdb_schema_data(schema_data)
 
         # Sanity check
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         person_subclass_set = schema_graph.get_subclass_set('Person')
         self.assertIsNotNone(schema.get_type(_get_union_type_name(person_subclass_set)))
 
@@ -301,7 +301,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         # from the type equivalence dict since it is not discoverable by the GraphQL Schema.
         self.assertEqual(0, len(type_equivalence_dicts))
         # Sanity check
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         person_subclass_set = schema_graph.get_subclass_set('Person')
         self.assertIsNone(schema.get_type(_get_union_type_name(person_subclass_set)))
 
@@ -317,6 +317,6 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             PERSON_SCHEMA_DATA,
         ]
 
-        schema_graph = get_orientdb_schema_graph(schema_data, set())
+        schema_graph = get_orientdb_schema_graph(schema_data, [])
         baby_lives_in_edge = schema_graph.get_element_by_class_name('Baby_LivesIn')
         self.assertEqual('Baby', baby_lives_in_edge.base_in_connection)

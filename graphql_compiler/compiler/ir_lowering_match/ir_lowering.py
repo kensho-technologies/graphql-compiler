@@ -13,7 +13,7 @@ import six
 from ..blocks import Backtrack, CoerceType, MarkLocation, QueryRoot
 from ..expressions import BinaryComposition, FalseLiteral, Literal, TernaryConditional, TrueLiteral
 from ..ir_lowering_common.location_renaming import (
-    make_revisit_location_translations, make_location_rewriter_visitor_fn,
+    make_location_rewriter_visitor_fn, make_revisit_location_translations,
     translate_potential_location
 )
 from .utils import convert_coerce_type_to_instanceof_filter
@@ -181,6 +181,7 @@ def lower_backtrack_blocks(match_query, query_metadata_table):
     #   4. Rewrite all expressions that reference such revisit locations, making them refer to
     #      the revisit origin location instead.
     new_match_traversals = []
+
     locations_needing_translation = set()
 
     for current_match_traversal in match_query.match_traversals:
@@ -219,6 +220,7 @@ def lower_backtrack_blocks(match_query, query_metadata_table):
     new_match_query = match_query._replace(match_traversals=new_match_traversals)
 
     location_translations = make_revisit_location_translations(query_metadata_table)
+
     if locations_needing_translation != set(six.iterkeys(location_translations)):
         raise AssertionError(u'Unexpectedly, the revisit location translations table computed from '
                              u'the query metadata table did not match the locations needing '

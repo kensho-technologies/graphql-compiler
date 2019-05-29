@@ -14,9 +14,7 @@ import six
 
 from ...exceptions import GraphQLCompilationError
 from ...schema import GraphQLDate, GraphQLDateTime
-from ..blocks import (
-    Backtrack, CoerceType, ConstructResult, Filter, GlobalOperationsStart, MarkLocation, Traverse
-)
+from ..blocks import Backtrack, CoerceType, Filter, GlobalOperationsStart, MarkLocation, Traverse
 from ..compiler_entities import Expression
 from ..expressions import (
     BinaryComposition, FoldedContextField, Literal, LocalField, NullLiteral,
@@ -153,18 +151,19 @@ class GremlinFoldedContextField(Expression):
                     u'Allowed types are {}.'
                     .format(type(block), self.folded_ir_blocks, allowed_block_types))
 
-        if isinstance(self.field_type, GraphQLList):
-            inner_type = strip_non_null_from_type(self.field_type.of_type)
+        bare_field_type = strip_non_null_from_type(self.field_type)
+        if isinstance(bare_field_type, GraphQLList):
+            inner_type = strip_non_null_from_type(bare_field_type.of_type)
             if isinstance(inner_type, GraphQLList):
                 raise GraphQLCompilationError(
                     u'Outputting list-valued fields in a @fold context is currently not supported: '
-                    u'{} {}'.format(self.fold_scope_location, self.field_type.of_type))
-        elif GraphQLInt.is_same_type(self.field_type):
+                    u'{} {}'.format(self.fold_scope_location, bare_field_type.of_type))
+        elif GraphQLInt.is_same_type(bare_field_type):
             # This needs to be implemented for @fold _x_count support.
             raise NotImplementedError()
         else:
-            raise ValueError(u'Invalid value of "field_type", expected a list or int type but got: '
-                             u'{}'.format(self.field_type))
+            raise ValueError(u'Invalid value of "field_type", expected a (possibly non-null) '
+                             u'list or int type but got: {}'.format(self.field_type))
 
     def to_match(self):
         """Must never be called."""

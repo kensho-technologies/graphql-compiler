@@ -206,6 +206,8 @@ class Variable(Expression):
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this expression."""
+        self.validate()
+
         # We can't directly pass a Date or a DateTime object, so we have to pass it as a string
         # and then parse it inline. For date format parameter meanings, see:
         # http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html
@@ -671,11 +673,11 @@ class FoldCountContextField(Expression):
         return template % template_data
 
     def to_gremlin(self):
-        """Not implemented yet."""
+        """Not supported yet."""
         raise NotImplementedError()
 
     def to_cypher(self):
-        """Not implemented yet."""
+        """Not supported yet."""
         raise NotImplementedError()
 
 
@@ -864,7 +866,8 @@ class BinaryComposition(Expression):
         intersects_operator_format = '(%(operator)s(%(left)s, %(right)s).asList().size() > 0)'
         # pylint: enable=unused-variable
 
-        # Null literals use 'is/is not' as (in)equality operators, while other values use '=/<>'.
+        # Null literals use the OrientDB 'IS/IS NOT' (in)equality operators,
+        # while other values use the OrientDB '=/<>' operators.
         if self.left == NullLiteral or self.right == NullLiteral:
             translation_table = {
                 u'=': (u'IS', regular_operator_format),
