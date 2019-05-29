@@ -1543,12 +1543,12 @@ the `SchemaGraph`.
                 * `base_in_connection`/`base_out_connection`, which are the classes allowed at each 
                   edge end that are the superclass of all other classes allowed at the edge end.
 
-### Mapping an OrientDB schema to the SchemaGraph. 
+#### Mapping an OrientDB schema to the SchemaGraph. 
 * We map classes that inherit from the base OrientDB vertex and edge classes to `VertexTypes` and 
   `EdgeTypes` respectively. 
 * We map the remaining set of classes to `NonGraphElements`.
 
-### Mapping the SchemaGraph to the GraphQLSchema
+#### Mapping the SchemaGraph to the GraphQLSchema
 * We map non-abstract `VertexTypes` to `GraphQLObjects`.
 * We map abstract `VertexType` to `GraphQLInterfaces`. If the class is a non-abstract `VertexType` 
   we also create a `GraphQLUnion` that encompasses it and all its subclasses.
