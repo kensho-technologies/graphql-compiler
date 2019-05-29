@@ -1536,9 +1536,9 @@ the `SchemaGraph`.
                       the set of edges connected to the `SchemaElement`. A `NonGraphElement` may 
                       only have connections if it's abstract and all its non-abstract subclasses 
                       are `VertexTypes`. 
-            * `EdgeType` objects may also also have:
+            * `EdgeType` objects also have:
                 * `base_in_connection`/`base_out_connection`, which are the class allowed at each 
-                  edge end that is the superclass of all other classes allowed at end edge's end.
+                  edge end that is the superclass of all other classes allowed at the edge end.
     * Keeps track of a schema's transitive inheritance structure.
     * Keeps track of a schema's indexes. Indexes are not used in the GraphQL schema generation and 
       have a provisional API.
@@ -1556,7 +1556,7 @@ the `SchemaGraph`.
   `EdgeType` named Eats between Animal and Food `VertexTypes`. The corresponding Animal and Food 
   `GraphQLObjects` will then have `out_Eats: [Food]` and `in_Eats: [Animal]` fields.
 * We represent abstract `NonGraphElements` as GraphQLInterfaces iff all their non-abstract 
-  subclasses are vertices.
+  subclasses are `VertexTypes`.
 
 ## FAQ
 
