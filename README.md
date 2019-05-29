@@ -1512,6 +1512,52 @@ would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`
 }
 ```
 
+## Schema Generation
+To generate a GraphQL schema we first map database schemas into an intermediate representation:
+the `SchemaGraph`.
+
+#### SchemaGraph
+* `SchemaGraph`
+    * Represents a database's schema through `SchemaElement` objects.
+        * `SchemaElement`
+            * Can be one of three kinds:
+                * `EdgeType`
+                * `VertexType`
+                * `NonGraphElement`.
+            * Have the following attributes:
+                * `name`
+                * `abstract`
+                * `properties`, which are represented using GraphQLTypes.
+                * `in_connections`/`out_connections`, which represent the set of possible adjacent 
+                  `SchemaElements`.
+                    * For an `EdgeType`, its connections represent the set of allowed `EdgeTypes` 
+                      and `NonGraphElements` allowed at each end of the edge.
+                    * For `VertexType` and `NonGraphElement` objects, their connections represent
+                      the set of edges connected to the `SchemaElement`. A `NonGraphElement` may 
+                      only have connections if it's abstract and all its non-abstract subclasses 
+                      are `VertexTypes`. 
+            * `EdgeType` objects may also also have:
+                * `base_in_connection`/`base_out_connection`, which are the class allowed at each 
+                  edge end that is the superclass of all other classes allowed at end edge's end.
+    * Keeps track of a schema's transitive inheritance structure.
+    * Keeps track of a schema's indexes. Indexes are not used in the GraphQL schema generation and 
+      have a provisional API.
+
+### Mapping an OrientDB schema to the SchemaGraph. 
+* We map classes that inherit from the base OrientDB vertex and edge classes to `VertexTypes` and 
+  `EdgeTypes` respectively. 
+* We map the remaining set of classes to `NonGraphElements`.
+
+### Mapping the SchemaGraph to the GraphQLSchema
+* We map non-abstract `VertexTypes` to `GraphQLObjects`.
+* We map abstract `VertexType` to `GraphQLInterfaces`. If the class is a non-abstract `VertexType` 
+  we also create a `GraphQLUnion` that encompasses it and all its subclasses.
+* We represent `EdgeType` through `GraphQLLists` at each end type. For instance, suppose we have an 
+  `EdgeType` named Eats between Animal and Food `VertexTypes`. The corresponding Animal and Food 
+  `GraphQLObjects` will then have `out_Eats: [Food]` and `in_Eats: [Animal]` fields.
+* We represent abstract `NonGraphElements` as GraphQLInterfaces iff all their non-abstract 
+  subclasses are vertices.
+
 ## FAQ
 
 **Q: Do you really use GraphQL, or do you just use GraphQL-like syntax?**
