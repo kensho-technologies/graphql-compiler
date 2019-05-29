@@ -14,12 +14,10 @@ from graphql.utils.schema_printer import print_schema
 from ..compiler.compiler_frontend import validate_schema_and_ast
 from ..ast_manipulation import safe_parse_graphql
 from .macro_edge import make_macro_edge_descriptor
-from .macro_edge.helpers import (
-    exclude_disallowed_directives_in_macros, include_required_macro_directives,
-    get_type_at_macro_edge_target
-)
-from .macro_edge.directives import (MacroEdgeDirective)
-from ..schema import _check_for_nondefault_macro_directives
+from .macro_edge.helpers import get_type_at_macro_edge_target
+from .macro_edge.directives import (MacroEdgeDirective, DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION,
+                                    DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION)
+from ..schema import _check_for_nondefault_directives
 from .macro_expansion import expand_macros_in_query_ast
 from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
 
@@ -181,22 +179,24 @@ def get_schema_for_macro_definition(schema):
         schema: GraphQLSchema over which we want to write macros
 
     Returns:
-        GraphQLSchema usable for writing macros
-    """
+        GraphQLSchema usable for writing macros. Modifying this schema is undefined behavior.
 
+    Raises:
+        AssertionError, if the schema contains directives that are non-default.
+    """
     macro_definition_schema = copy(schema)
     macro_definition_schema_directives = schema.get_directives()
-    _check_for_nondefault_macro_directives(macro_definition_schema_directives)
-    macro_definition_schema_directives = include_required_macro_directives(
-        macro_definition_schema_directives)
-    macro_definition_schema_directives = exclude_disallowed_directives_in_macros(
-        macro_definition_schema_directives)
+    _check_for_nondefault_directives(macro_definition_schema_directives)
+    macro_definition_schema_directives += DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
+    # Remove disallowed directives from directives list
+    macro_definition_schema_directives = list(set(macro_definition_schema_directives) &
+                                              set(DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION))
 
     # pylint: disable=protected-access
     macro_definition_schema._directives = macro_definition_schema_directives
     # pylint: enable=protected-access
     return macro_definition_schema
-
+`
 
 def perform_macro_expansion(macro_registry, graphql_with_macro, graphql_args):
     """Return a new GraphQL query string and args, after expanding any encountered macros.

@@ -12,10 +12,7 @@ from ...compiler.helpers import (
     is_tagged_parameter
 )
 from ...schema import FilterDirective, TagDirective
-from ..macro_edge.directives import (
-    DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
-    MacroEdgeTargetDirective
-)
+from ..macro_edge.directives import MacroEdgeTargetDirective
 
 
 def _yield_ast_nodes_with_directives(ast):
@@ -427,13 +424,3 @@ def omit_ast_from_ast_selections(ast, ast_to_omit):
         new_ast.selection_set = SelectionSet(selections_to_keep)
 
     return new_ast
-
-
-def include_required_macro_directives(directives):
-    """Return list with added macro-definition-specific directives to the given directives list"""
-    return list(set(directives) | DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION)
-
-
-def exclude_disallowed_directives_in_macros(directives):
-    """Return list with disallowed directives in macros removed from the given directives list"""
-    return list(set(directives) & set(DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION))
