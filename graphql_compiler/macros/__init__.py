@@ -173,7 +173,6 @@ def get_schema_for_macro_definition(schema):
     macro editors, enabling them to autocomplete on the @macro_edge_definition and
     @macro_edge_target directives. Some directives that are disallowed in macro edge definitions,
     like @output and @output_source, will be removed from the directives list.
-    Raises an error if any non-default directives are present in the given schema.
 
     Args:
         schema: GraphQLSchema over which we want to write macros
@@ -196,7 +195,7 @@ def get_schema_for_macro_definition(schema):
     macro_definition_schema._directives = macro_definition_schema_directives
     # pylint: enable=protected-access
     return macro_definition_schema
-`
+
 
 def perform_macro_expansion(macro_registry, graphql_with_macro, graphql_args):
     """Return a new GraphQL query string and args, after expanding any encountered macros.
