@@ -295,9 +295,8 @@ def extract_simple_optional_location_info(
 
     Returns:
         dict mapping from simple_optional_root_location -> dict containing keys
-         - 'inner_location_name': Location object correspoding to the unique MarkLocation present
-                                  within a simple optional (one that does not expand vertex fields)
-                                  scope
+         - 'inner_location': Location object correspoding to the unique MarkLocation present within
+                             a simple optional (one that does not expand vertex fields) scope
          - 'edge_field': string representing the optional edge being traversed
         where simple_optional_root_to_inner_location is the location preceding the @optional scope
     """
@@ -327,9 +326,8 @@ def extract_simple_optional_location_info(
                 # The current optional Traverse is "simple"
                 # i.e. it does not contain any Traverses within.
                 inner_location = simple_optional_root_to_inner_location[preceding_location]
-                inner_location_name, _ = inner_location.get_location_name()
                 simple_optional_info_dict = {
-                    'inner_location_name': inner_location_name,
+                    'inner_location': inner_location,
                     'edge_field': current_block.get_field_name(),
                 }
                 simple_optional_root_info[preceding_location] = simple_optional_info_dict
