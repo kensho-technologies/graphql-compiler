@@ -211,7 +211,6 @@ class Variable(Expression):
         # We can't directly pass a Date or a DateTime object, so we have to pass it as a string
         # and then parse it inline. For date format parameter meanings, see:
         # http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html
-        self.validate()
         if GraphQLDate.is_same_type(self.inferred_type):
             return u'Date.parse("{}", {})'.format(STANDARD_DATE_FORMAT, self.variable_name)
         elif GraphQLDateTime.is_same_type(self.inferred_type):
