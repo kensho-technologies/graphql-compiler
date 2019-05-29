@@ -1518,19 +1518,23 @@ the `SchemaGraph`.
 
 #### SchemaGraph
 * `SchemaGraph`
+    * Keeps track of a schema's transitive inheritance structure.
+    * Keeps track of a schema's indexes. Indexes are not used in the GraphQL schema generation and 
+      have a provisional API.
     * Represents a database's schema through `SchemaElement` objects.
         * `SchemaElement`
             * Can be one of three kinds:
-                * `EdgeType`
-                * `VertexType`
-                * `NonGraphElement`.
+                * `VertexType`, which represent schema vertices.
+                * `EdgeType`, which represent relations between vertices.
+                * `NonGraphElement`, which represent classes that do not have direct connections 
+                   to other schema elements.
             * Have the following attributes:
-                * `name`
-                * `abstract`
+                * `name`, indicating the name of the class.
+                * `abstract`, indicating whether the class is abstract or not.
                 * `properties`, which are represented using GraphQLTypes.
                 * `in_connections`/`out_connections`, which represent the set of possible adjacent 
                   `SchemaElements`.
-                    * For an `EdgeType`, its connections represent the set of allowed `EdgeTypes` 
+                    * For an `EdgeType`, its connections represent the set of allowed `VertexTypes` 
                       and `NonGraphElements` allowed at each end of the edge.
                     * For `VertexType` and `NonGraphElement` objects, their connections represent
                       the set of edges connected to the `SchemaElement`. A `NonGraphElement` may 
@@ -1539,9 +1543,6 @@ the `SchemaGraph`.
             * `EdgeType` objects also have:
                 * `base_in_connection`/`base_out_connection`, which are the class allowed at each 
                   edge end that is the superclass of all other classes allowed at the edge end.
-    * Keeps track of a schema's transitive inheritance structure.
-    * Keeps track of a schema's indexes. Indexes are not used in the GraphQL schema generation and 
-      have a provisional API.
 
 ### Mapping an OrientDB schema to the SchemaGraph. 
 * We map classes that inherit from the base OrientDB vertex and edge classes to `VertexTypes` and 
