@@ -1513,7 +1513,7 @@ would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`
 ```
 
 ## Schema Generation
-To generate a GraphQL schema we first map database schemas into an intermediate representation:
+To generate a GraphQL schema, we first map a database schema into an intermediate representation:
 the `SchemaGraph`.
 
 #### SchemaGraph
