@@ -1526,8 +1526,9 @@ the `SchemaGraph`.
             * Can be one of three kinds:
                 * `VertexType`, which represent schema vertices.
                 * `EdgeType`, which represent relations between vertices.
-                * `NonGraphElement`, which represent classes that do not have direct connections 
-                   to other schema elements.
+                * `NonGraphElement`, which represents a schema element with usually no connections
+                   to other classes. A `NonGraphElement` may only have connections if it's abstract 
+                   and all its non-abstract subclasses are `VertexTypes`. 
             * Have the following attributes:
                 * `name`, indicating the name of the class.
                 * `abstract`, indicating whether the class is abstract or not.
@@ -1535,14 +1536,12 @@ the `SchemaGraph`.
                 * `in_connections`/`out_connections`, which represent the set of possible adjacent 
                   `SchemaElements`.
                     * For an `EdgeType`, its connections represent the set of allowed `VertexTypes` 
-                      and `NonGraphElements` allowed at each end of the edge.
+                      and `NonGraphElements` at each end of the edge.
                     * For `VertexType` and `NonGraphElement` objects, their connections represent
-                      the set of edges connected to the `SchemaElement`. A `NonGraphElement` may 
-                      only have connections if it's abstract and all its non-abstract subclasses 
-                      are `VertexTypes`. 
+                      the set of edges connected to them.
             * `EdgeType` objects also have:
-                * `base_in_connection`/`base_out_connection`, which are the class allowed at each 
-                  edge end that is the superclass of all other classes allowed at the edge end.
+                * `base_in_connection`/`base_out_connection`, which are the classes allowed at each 
+                  edge end that are the superclass of all other classes allowed at the edge end.
 
 ### Mapping an OrientDB schema to the SchemaGraph. 
 * We map classes that inherit from the base OrientDB vertex and edge classes to `VertexTypes` and 
@@ -1553,10 +1552,11 @@ the `SchemaGraph`.
 * We map non-abstract `VertexTypes` to `GraphQLObjects`.
 * We map abstract `VertexType` to `GraphQLInterfaces`. If the class is a non-abstract `VertexType` 
   we also create a `GraphQLUnion` that encompasses it and all its subclasses.
-* We represent `EdgeType` through `GraphQLLists` at each end type. For instance, suppose we have an 
-  `EdgeType` named Eats between Animal and Food `VertexTypes`. The corresponding Animal and Food 
-  `GraphQLObjects` will then have `out_Eats: [Food]` and `in_Eats: [Animal]` fields.
-* We represent abstract `NonGraphElements` as GraphQLInterfaces iff all their non-abstract 
+* We represent a non-abstract `EdgeType` through `GraphQLLists` at each end type. For instance, 
+  suppose we have an `EdgeType` named Eats between Animal and Food `VertexTypes`. The 
+  corresponding Animal and Food `GraphQLObjects` will then have `out_Eats: [Food]` and 
+  `in_Eats: [Animal]` fields.
+* We map abstract `NonGraphElements` as GraphQLInterfaces iff all their non-abstract 
   subclasses are `VertexTypes`.
 
 ## FAQ
