@@ -205,6 +205,8 @@ class Variable(Expression):
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this expression."""
+        self.validate()
+
         # We can't directly pass a Date or a DateTime object, so we have to pass it as a string
         # and then parse it inline. For date format parameter meanings, see:
         # http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html
@@ -559,8 +561,9 @@ class FoldedContextField(Expression):
         return template % template_data
 
     def to_gremlin(self):
-        """Must never be called."""
-        raise NotImplementedError()
+        """Not implemented, should not be used."""
+        raise AssertionError(u'FoldedContextField are not used during the query emission process '
+                             u'in Gremlin, so this is a bug. This function should not be called.')
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
@@ -618,7 +621,7 @@ class FoldCountContextField(Expression):
         return template % template_data
 
     def to_gremlin(self):
-        """Must never be called."""
+        """Not supported yet."""
         raise NotImplementedError()
 
 
@@ -799,9 +802,9 @@ class BinaryComposition(Expression):
         intersects_operator_format = '(%(operator)s(%(left)s, %(right)s).asList().size() > 0)'
         # pylint: enable=unused-variable
 
-        # Null literals use 'is/is not' as (in)equality operators, while other values use '=/<>'.
-        if any((isinstance(self.left, Literal) and self.left.value is None,
-                isinstance(self.right, Literal) and self.right.value is None)):
+        # Null literals use the OrientDB 'IS/IS NOT' (in)equality operators,
+        # while other values use the OrientDB '=/<>' operators.
+        if self.left == NullLiteral or self.right == NullLiteral:
             translation_table = {
                 u'=': (u'IS', regular_operator_format),
                 u'!=': (u'IS NOT', regular_operator_format),
@@ -947,6 +950,7 @@ class TernaryConditional(Expression):
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
+
         return u'({predicate} ? {if_true} : {if_false})'.format(
             predicate=self.predicate.to_gremlin(),
             if_true=self.if_true.to_gremlin(),
