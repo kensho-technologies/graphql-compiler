@@ -36,7 +36,7 @@ def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
             u'Unexpectedly found variable definitions at the top level of the GraphQL input. '
             u'This is not supported. Variable definitions: {}'.format(ast.variable_definitions))
 
-    # TODO(vlad): this should be replaced with get_schema_for_macro_definitions
+    # TODO(vlad): Replace with get_schema_for_macro_definitions
     #             without creating circular dependencies.
     # pylint: disable=protected-access
     schema_with_macro_directives = copy(schema)
