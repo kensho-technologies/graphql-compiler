@@ -65,6 +65,7 @@ For a more detailed overview and getting started guide, please see
      * [Pretty-Printing GraphQL Queries](#pretty-printing-graphql-queries)
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
+     * [SchemaGraph](#schemagraph)
   * [FAQ](#faq)
   * [License](#license)
 
@@ -1511,6 +1512,46 @@ would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`
     }
 }
 ```
+
+### SchemaGraph 
+The `SchemaGraph` is a utility class that encodes a database schema and allows for better schema 
+introspection than the GraphQL schema. The  `SchemaGraph` has three main advantages:
+ 1. It's able to store and expose a schema's index information. The interface for accessing index 
+    information is provisional though and might change in the near future.
+ 2. Its classes are allowed to inherit from non-abstract classes.
+ 3. It exposes many utility functions, such as `get_subclass_set`, that make it easier to explore 
+    the schema.
+
+We plan to add `SchemaGraph` generation from SQLAlchemy metadata and can currently generate a 
+`SchemaGraph` from OrientDB schema metadata as exemplified by the following mock example. 
+
+```python
+from graphql_compiler.schema_generation.orientdb.schema_graph_builder import (
+    get_orientdb_schema_graph
+)
+from graphql_compiler.schema_generation.orientdb.utils import (
+    ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
+)
+
+# Get schema metadata from hypothetical Animals database.
+client = your_function_that_returns_an_orientdb_client()
+schema_records = client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+schema_data = [record.oRecordData for record in schema_records]
+
+# Get index data. 
+index_records = client.command(ORIENTDB_INDEX_RECORDS_QUERY)
+index_query_data = [record.oRecordData for record in index_records]
+
+schema_graph = get_orientdb_schema_graph(schema_data, index_query_data)
+
+print(schema_graph.get_subclass_set('Animal'))
+# {'Animal', 'Dog'}
+
+print(schema_graph.get_unique_indexes_for_class('Animal'))
+# [IndexDefinition(name='uuid', 'base_classname'='Animal', fields={'uuid'}, unique=True, ordered=False, ignore_nulls=False)]
+```
+
+For more information about the `SchemaGraph`, please see the class documentation. 
 
 ## FAQ
 
