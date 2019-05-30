@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
-from collections import namedtuple
+from collections import OrderedDict, namedtuple
+from itertools import chain
 
 import six
 
@@ -25,6 +26,13 @@ ILLEGAL_PROPERTY_NAME_PREFIXES = (
 )
 
 
+ILLEGAL_PROPERTY_NAMES = (
+    # Names we reserve for referencing base connections as fields of an IndexDefinition object.
+    'out',
+    'in',
+)
+
+
 class SchemaGraph(object):
     """The SchemaGraph is a graph utility used to represent a OrientDB schema.
 
@@ -33,21 +41,24 @@ class SchemaGraph(object):
     on the graph. It also holds a fully denormalized schema for the graph.
     """
 
-    def __init__(self, elements, inheritance_structure):
+    def __init__(self, elements, inheritance_structure, all_indexes):
         """Create a new SchemaGraph.
 
         Args:
             elements: a dict, string -> SchemaElement, mapping each class in the schema to its
                       corresponding SchemaElement object.
-            inheritance_structure: InheritanceStructure, (namedtuple with subclass_sets and
-                                   superclass_sets fields), describing the inheritance structure
+            inheritance_structure: InheritanceStructure object, (with superclass_sets and
+                                   subclass_sets properties), describing the inheritance structure
                                    of the SchemaGraph.
+            all_indexes: set of IndexDefinitions, describing the indexes defined on the schema.
 
         Returns:
             fully-constructed SchemaGraph object
         """
         self._elements = elements
         self._inheritance_structure = inheritance_structure
+        self._all_indexes = all_indexes
+        self._class_to_indexes = self._get_class_to_indexes()
 
         self._vertex_class_names = _get_element_names_of_class(elements, VertexType)
         self._edge_class_names = _get_element_names_of_class(elements, EdgeType)
@@ -110,6 +121,50 @@ class SchemaGraph(object):
 
         return schema_element
 
+    def get_unique_indexes_for_class(self, cls):
+        """Return a frozenset of IndexDefinitions of unique indexes that apply to this class."""
+        return frozenset({
+            index_definition
+            for index_definition in self.get_all_indexes_for_class(cls)
+            if index_definition.unique
+        })
+
+    def get_properties_captured_by_index(self, index_definition, classname, props):
+        """Return the dict of values captured by the index, or None if the index does not apply.
+
+        Args:
+            index_definition: IndexDefinition describing the index to be checked for coverage
+            classname: string, the class to check for index coverage
+            props: dict, the properties on the vertex or edge being checked for coverage
+                   under the index
+
+        Returns:
+            dict or None:
+                - dict of the key-value pairs covered by the index, if the index applies, or
+                - None, if the index does not cover the specified class and properties
+        """
+        indexed_classes = self.get_subclass_set(index_definition.base_classname)
+        if classname not in indexed_classes:
+            return None
+
+        covered_props = {
+            field_name: props[field_name]
+            for field_name in index_definition.fields
+        }
+
+        if index_definition.ignore_nulls:
+            for value in six.itervalues(covered_props):
+                if value is None:
+                    # We found a None value in a null-ignoring index.
+                    # The index does not apply.
+                    return None
+
+        return covered_props
+
+    def get_all_indexes_for_class(self, cls):
+        """Return a frozenset of all IndexDefinitions (unique or not) that apply to this class."""
+        return self._class_to_indexes.get(cls, frozenset())
+
     def validate_is_vertex_type(self, vertex_classname):
         """Validate that a vertex classname indeed corresponds to a vertex class."""
         self.get_vertex_schema_element_or_raise(vertex_classname)
@@ -165,6 +220,36 @@ class SchemaGraph(object):
     def non_graph_class_names(self):
         """Return the set of non-graph class names in the SchemaGraph."""
         return self._non_graph_class_names
+
+    @property
+    def all_indexes(self):
+        """Return the set of all indexes in the schema."""
+        return self._all_indexes
+
+    @property
+    def unique_indexes(self):
+        """Return the set of all unique indexes in the schema."""
+        return frozenset({
+            index_definition
+            for index_definition in self._all_indexes
+            if index_definition.unique
+        })
+
+    def _get_class_to_indexes(self):
+        """Return a dict mapping class name to the class indexes."""
+        # Record the fact that the index applies to all subclasses of the index base class.
+        indexes_per_class = {}
+        for index in self._all_indexes:
+            for subclass_name in self.get_subclass_set(index.base_classname):
+                indexes_per_class.setdefault(subclass_name, []).append(index)
+
+        # Convert the lists into frozensets and assign to the property value.
+        class_to_indexes = {
+            classname: frozenset(definitions)
+            for classname, definitions in six.iteritems(indexes_per_class)
+        }
+
+        return class_to_indexes
 
 
 @six.python_2_unicode_compatible
@@ -341,12 +426,115 @@ def _validate_non_abstract_edge_has_defined_base_connections(
 def _validate_property_names(class_name, properties):
     """Validate that properties do not have names that may cause problems in the GraphQL schema."""
     for property_name in properties:
-        if not property_name or property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES):
+        is_illegal_name = (
+            not property_name or
+            property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES) or
+            property_name in ILLEGAL_PROPERTY_NAMES
+        )
+        if is_illegal_name:
             raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
                                           u'{}'.format(class_name, property_name))
 
 
-def get_subclass_sets_from_superclass_sets(superclass_sets):
+class InheritanceStructure(object):
+
+    def __init__(self, direct_superclass_sets):
+        """Create a new InheritanceStructure object.
+
+        Args:
+            direct_superclass_sets: dict, string -> set of strings, mapping a class
+                                    to its direct superclasses.
+
+        Returns:
+            an InheritanceStructure object.
+        """
+        direct_superclass_sets = _get_toposorted_direct_superclass_sets(direct_superclass_sets)
+        self._superclass_sets = _get_transitive_superclass_sets(direct_superclass_sets)
+        self._subclass_sets = _get_subclass_sets_from_superclass_sets(self._superclass_sets)
+
+    @property
+    def superclass_sets(self):
+        """Return a dict mapping each class to all classes it inherit from, including itself."""
+        return self._superclass_sets
+
+    @property
+    def subclass_sets(self):
+        """Return a dict mapping each class to all classes that inherit it, including itself."""
+        return self._subclass_sets
+
+
+def _get_toposorted_direct_superclass_sets(direct_superclass_sets):
+    """Return a topologically sorted OrderedDict that maps each class to its direct superclasses.
+
+    Args:
+        direct_superclass_sets: dict, string -> set of strings, mapping a class
+                                to its direct superclasses.
+
+    Return:
+        an OrderedDict toposorted by class inheritance. Each class appears before its subclasses.
+    """
+    def get_class_topolist(class_name, processed_classes, current_trace):
+        """Return a topologically sorted list of this class's superclasses and the class itself.
+
+        Args:
+            class_name: string, name of the class to process.
+            processed_classes: set of strings, a set of classes that have already been processed.
+            current_trace: list of strings, list of classes traversed during the recursion.
+
+        Returns:
+            list of dicts, list of class names sorted in topological order.
+        """
+        # Check if this class has already been handled
+        if class_name in processed_classes:
+            return []
+
+        if class_name in current_trace:
+            raise AssertionError(
+                'Encountered self-reference in dependency chain of {}'.format(class_name))
+
+        class_list = []
+        # Recursively process superclasses
+        current_trace.add(class_name)
+        for superclass_name in direct_superclass_sets[class_name]:
+            class_list.extend(get_class_topolist(superclass_name, processed_classes, current_trace))
+        current_trace.remove(class_name)
+        # Do the bookkeeping
+        class_list.append(class_name)
+        processed_classes.add(class_name)
+
+        return class_list
+
+    toposorted = []
+    for name in direct_superclass_sets.keys():
+        toposorted.extend(get_class_topolist(name, set(), set()))
+    return OrderedDict((class_name, direct_superclass_sets[class_name])
+                       for class_name in toposorted)
+
+
+def _get_transitive_superclass_sets(toposorted_direct_superclass_sets):
+    """Return the transitive superclass sets from the toposorted direct superclass sets."""
+    # For each class name, construct its superclass set:
+    # itself + the set of class names from which it inherits.
+    superclass_sets = dict()
+    for class_name, direct_superclass_set in six.iteritems(toposorted_direct_superclass_sets):
+        superclass_set = set(direct_superclass_set)
+        superclass_set.add(class_name)
+
+        # Since the input data must be in topological order, the superclasses of
+        # the current class should have already been processed.
+        # A KeyError on the following line would mean that the input
+        # was not topologically sorted.
+        superclass_set.update(chain.from_iterable(
+            superclass_sets[superclass_name]
+            for superclass_name in direct_superclass_set
+        ))
+
+        # Freeze the superclass set so it can't ever be modified again.
+        superclass_sets[class_name] = frozenset(superclass_set)
+    return superclass_sets
+
+
+def _get_subclass_sets_from_superclass_sets(superclass_sets):
     """Return a dict mapping each class to its set of subclasses."""
     subclass_sets = dict()
     for subclass_name, superclass_names in six.iteritems(superclass_sets):
@@ -403,10 +591,16 @@ def link_schema_elements(elements, inheritance_structure):
 #              explicit value for this property. Set to None if no default is given in the schema.
 PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
 
-# A way to describe a schema's normalized inheritance structure.
-#   - superclass_sets: a dict, string -> set of strings, mapping each class to its
-#                      superclasses. The set of superclasses includes the class itself and
-#                      the transitive superclasses. For instance, if A is a superclass of B,
-#                      and B is a superclass of C, then C's superclass set is {'A', 'B', 'C'}.
-#   - subclass_sets: a dict, string -> set of strings, that is similarly defined.
-InheritanceStructure = namedtuple('InheritanceStructure', ('superclass_sets', 'subclass_sets'))
+
+# A way to describe an index:
+#   - name: string, the name of the index.
+#   - base_classname: string, the name of the class on which the index is defined.
+#   - fields: set of strings, indicating which objects the index encompasses.
+#             The 'in' and 'out' strings refer to the base connections.
+#             All other strings reference the base class's properties.
+#   - unique: bool, indicating whether this index is unique.
+#   - ordered: bool, indicating whether this index is ordered.
+#   - ignore_nulls: bool, indicating if the index ignores null values.
+IndexDefinition = namedtuple(
+    'IndexDefinition',
+    ('name', 'base_classname', 'fields', 'unique', 'ordered', 'ignore_nulls'))

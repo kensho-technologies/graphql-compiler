@@ -195,6 +195,6 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
     if hidden_classes is None:
         hidden_classes = set()
 
-    schema_graph = get_orientdb_schema_graph(schema_data)
+    schema_graph = get_orientdb_schema_graph(schema_data, [])
     return get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
                                                 hidden_classes)

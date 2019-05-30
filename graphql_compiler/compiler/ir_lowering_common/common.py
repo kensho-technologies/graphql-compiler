@@ -2,13 +2,13 @@
 """Language-independent IR lowering and optimization functions."""
 import six
 
-from .blocks import (
+from ..blocks import (
     ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse, Unfold
 )
-from .expressions import (
+from ..expressions import (
     BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, NullLiteral, TrueLiteral
 )
-from .helpers import validate_safe_string
+from ..helpers import validate_safe_string
 
 
 def merge_consecutive_filter_clauses(ir_blocks):

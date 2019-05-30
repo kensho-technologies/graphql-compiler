@@ -4,12 +4,11 @@ import warnings
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLString
 import six
 import sqlalchemy.sql.sqltypes as sqltypes
-from sqlalchemy import Column
 
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
 from ..schema_graph import (
-    InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType, EdgeType,
-    get_subclass_sets_from_superclass_sets, link_schema_elements
+    EdgeType, InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType,
+    link_schema_elements
 )
 
 
@@ -70,21 +69,18 @@ UNSUPPORTED_PRIMITIVE_TYPES = frozenset({
 
 # TODO(pmantica1): Represent table inheritance in SchemaGraph.
 # TODO(pmantica1): Add option to map tables to EdgeTypes instead of VertexTypes.
+# TODO(pmantica1): Parse SQLAlchemy indexes.
+# TODO(pmantica1): Add integration test once get_graphql_schema_from_sqlalchemy_metadata is ready.
 def get_schema_graph_from_sql_alchemy_metadata(sqlalchemy_metadata):
     """Return the matching SchemaGraph for the SQLAlchemy Metadata object"""
-    elements = dict()
-    for table in six.itervalues(sqlalchemy_metadata.tables):
-        elements[table.name] = _get_vertex_type_from_sqlalchemy_table(table)
-        for column in table.get_children():
-            for foreign_key in column.foreign_keys:
-                outgoing_table = foreign_key.column.table
-                elements[column.key] = EdgeType(
-                    column.key, False, {}, {}, table.name, outgoing_table.name)
-    superclass_sets = {element_name: {element_name} for element_name in elements}
-    subclass_sets = get_subclass_sets_from_superclass_sets(superclass_sets)
-    inheritance_structure = InheritanceStructure(superclass_sets, subclass_sets)
+    vertex_types = _get_vertex_types(sqlalchemy_metadata.tables)
+    edge_types = _get_edge_types(sqlalchemy_metadata.tables)
+
+    elements = {element.class_name: element for element in vertex_types + edge_types}
+    direct_superclass_sets = {element_name: set() for element_name in elements}
+    inheritance_structure = InheritanceStructure(direct_superclass_sets)
     link_schema_elements(elements, inheritance_structure)
-    return SchemaGraph(elements, InheritanceStructure(superclass_sets, subclass_sets))
+    return SchemaGraph(elements, InheritanceStructure(direct_superclass_sets), set())
 
 
 def _try_get_graphql_scalar_type(column_name, column_type):
@@ -98,12 +94,17 @@ def _try_get_graphql_scalar_type(column_name, column_type):
     return maybe_graphql_type
 
 
+def _get_vertex_types(tables):
+    """Return the VertexType objects corresponding to SQLAlchemy Table objects."""
+    return [_get_vertex_type_from_sqlalchemy_table(table) for table in six.itervalues(tables)]
+
+
 # TODO(pmantica1): Address nullable types.
 # TODO(pmantica1): Map Enum to the GraphQL Enum type.
 # TODO(pmantica1): Map arrays to GraphQLLists once the compiler is able to handle them.
 # TODO(pmantica1): Possibly add a GraphQLInt64 type for SQL BigIntegers.
 def _get_vertex_type_from_sqlalchemy_table(table):
-    """Return the VertexType corresponding to the SQLALchemyTable object."""
+    """Return the VertexType corresponding to the SQLAlchemy Table object."""
     properties = dict()
     for column in table.get_children():
         name = column.key
@@ -112,3 +113,17 @@ def _get_vertex_type_from_sqlalchemy_table(table):
         if maybe_property_type is not None:
             properties[name] = PropertyDescriptor(maybe_property_type, default)
     return VertexType(table.name, False, properties, {})
+
+
+def _get_edge_types(tables):
+    """Return the EdgeType objects corresponding to SQLAlchemy ForeignKey objects."""
+    edge_types = []
+    for table in six.itervalues(tables):
+        for column in table.get_children():
+            for foreign_key in column.foreign_keys:
+                # We prepend the table name to ensure that the name is unique.
+                edge_name = '{}_{}'.format(table.name, column.name)
+                outgoing_table = foreign_key.column.table
+                edge_type = EdgeType(edge_name, False, {}, {}, table.name, outgoing_table.name)
+                edge_types.append(edge_type)
+    return edge_types
