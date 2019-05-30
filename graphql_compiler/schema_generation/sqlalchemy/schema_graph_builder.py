@@ -6,10 +6,7 @@ import six
 import sqlalchemy.sql.sqltypes as sqltypes
 
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
-from ..schema_graph import (
-    InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType,
-    get_subclass_sets_from_superclass_sets
-)
+from ..schema_graph import InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType
 
 
 # TODO(pmantica1): Add scalar mapping for the following classes: Interval.
@@ -70,14 +67,14 @@ UNSUPPORTED_PRIMITIVE_TYPES = frozenset({
 # TODO(pmantica1): Map foreign keys to edges.
 # TODO(pmantica1): Represent table inheritance in SchemaGraph.
 # TODO(pmantica1): Add option to map tables to EdgeTypes instead of VertexTypes.
+# TODO(pmantica1): Parse SQLAlchemy indexes.
 def get_schema_graph_from_sql_alchemy_metadata(sqlalchemy_metadata):
     """Return the matching SchemaGraph for the SQLAlchemy Metadata object"""
     elements = dict()
     for table_name, table in six.iteritems(sqlalchemy_metadata.tables):
         elements[table_name] = _get_vertex_type_from_sqlalchemy_table(table)
-    superclass_sets = {element_name: {element_name} for element_name in elements}
-    subclass_sets = get_subclass_sets_from_superclass_sets(superclass_sets)
-    return SchemaGraph(elements, InheritanceStructure(superclass_sets, subclass_sets))
+    direct_superclass_sets = {element_name: set() for element_name in elements}
+    return SchemaGraph(elements, InheritanceStructure(direct_superclass_sets), set())
 
 
 def _try_get_graphql_scalar_type(column_name, column_type):
