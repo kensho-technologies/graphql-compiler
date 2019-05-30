@@ -65,7 +65,7 @@ For a more detailed overview and getting started guide, please see
      * [Pretty-Printing GraphQL Queries](#pretty-printing-graphql-queries)
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
-     # [SchemaGraph](#schema-graph)
+     # [SchemaGraph](#schemagraph)
   * [FAQ](#faq)
   * [License](#license)
 
