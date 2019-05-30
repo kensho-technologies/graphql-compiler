@@ -1515,8 +1515,7 @@ would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`
 
 ### SchemaGraph 
 The `SchemaGraph` is a utility class that encodes a database schema and allows for better schema 
-introspection than the GraphQL schema. The  `SchemaGraph` has three main advantages over the 
-GraphQL schema:
+introspection than the GraphQL schema. The  `SchemaGraph` has three main advantages:
  1. It's able to store and expose a schema's index information. The interface for accessing index 
     information is provisional though and might change in the near future.
  2. Its classes are allowed to inherit from non-abstract classes.
