@@ -19,15 +19,20 @@ pip install graphql-compiler
 Through the GraphQL compiler, users can write powerful queries that uncover 
 deep relationships in the data while not having to worry about the underlying database query 
 language. The GraphQL compiler turns read-only queries written in GraphQL syntax to different 
-query languages. Furthermore, the GraphQL compiler validates queries through the use of a 
-GraphQL schema that specifies the underlying database schema.
+query languages. 
+
+Furthermore, the GraphQL compiler validates queries through the use of a GraphQL schema 
+that specifies the underlying schema of the database. We can currently autogenerate a 
+GraphQL schema by introspecting an OrientDB database, (see [End to End Example](#end-to-end-example)). 
+
+In the near future, we plan to add schema autogeneration from SQLAlchemy metadata as well. 
 
 For a more detailed overview and getting started guide, please see
 [our blog post](https://blog.kensho.com/compiled-graphql-as-a-database-query-language-72e106844282).
 
 ## Table of contents
   * [Features](#features)
-  * [Getting Started](#getting-started)
+  * [End to End Example](#end-to-end-example)
   * [Definitions](#definitions)
   * [Directives](#directives)
      * [@optional](#optional)
@@ -70,23 +75,6 @@ For a more detailed overview and getting started guide, please see
    and Microsoft SQL Server is a work in progress. A subset of compiler features are available for
    these databases. See the [SQL](#sql) section for more details.
 * **GraphQL Language Features:**  We prioritized and implemented a subset of all functionality supported by the GraphQL language. We hope to add more functionality over time.
-
-## Getting Started
-The first thing you'll need is a GraphQL schema. The GraphQL schema is a GraphQL 
-representation of the database schema that we use to validate and compile GraphQL 
-queries. For more information on how the GraphQL schema is defined please see: 
-[The GraphQL schema](#the-graphql-schema). 
-
-The GraphQL schema can be manually written, but the preferred way to build the schema is to
-programmatically generate it from the metadata of the underlying database. We currently support 
-schema generation for OrientDB and we intend to add schema generation for SQLAlchemy in the near 
-future. 
-
-After one has generated the GraphQL schema, the next step is to write the GraphQL 
-queries. The primary specifications for how to write a GraphQL query are outlined in
-[Definitions](#definitions) and [Directives](#directives). The 
-[Supported filtering operations](#supported-filtering-operations), [Type coercions](#type-coercions) 
-and [Meta fields](#meta-fields) sections contain additional information. 
 
 ## End-to-End Example
 Even though this example specifically targets an OrientDB database, it is meant as a generic 
