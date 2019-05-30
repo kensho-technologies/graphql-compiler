@@ -92,7 +92,7 @@ and [Meta fields](#meta-fields) sections contain additional information.
 Even though this example specifically targets an OrientDB database, it is meant as a generic 
 end-to-end example of how to use the GraphQL compiler.
 
-```python3
+```python
 from graphql.utils.schema_printer import print_schema
 from graphql_compiler import (
     get_graphql_schema_from_orientdb_schema_data, graphql_to_match
@@ -102,7 +102,7 @@ from graphql_compiler.schema_generation.orientdb.utils import ORIENTDB_SCHEMA_RE
 # Step 1: Get schema metadata from hypothetical Animals database.
 client = your_function_that_returns_an_orientdb_client()
 schema_records = client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
-schema_data = [x.oRecordData for x in schema_records]
+schema_data = [record.oRecordData for record in schema_records]
 
 # Step 2: Generate GraphQL schema from metadata.
 schema, type_equivalence_hints = get_graphql_schema_from_orientdb_schema_data(schema_data)
