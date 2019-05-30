@@ -65,6 +65,7 @@ For a more detailed overview and getting started guide, please see
      * [Pretty-Printing GraphQL Queries](#pretty-printing-graphql-queries)
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
+     # [SchemaGraph](#schema-graph)
   * [FAQ](#faq)
   * [License](#license)
 
@@ -1512,56 +1513,43 @@ would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`
 }
 ```
 
-## Schema Generation
-To generate a GraphQL schema, we first map a database schema into an intermediate representation:
-the `SchemaGraph`. 
+### SchemaGraph 
+The `SchemaGraph` is an utility class that encodes a database schema and allows for better schema 
+introspection. The  `SchemaGraph` has three main benefits over the GraphQL schema. First, 
+it's able to store and expose a schema's index information. Second, it can correctly represent the 
+inheritance of non-abstract classes. Finally, it exposes many utility functions, such as `
+get_subclass_set`, that make it easier to explore the schema.
 
-#### SchemaGraph
-The `SchemaGraph` is a python object representing the schema in the most convenient way for 
-introspection. It is also able to encode parts of the schema, (such as the schema's 
-indexes), that cannot be encoded in the GraphQL schema.
+We plan to add `SchemaGraph` generation from SQLAlchemy metadata and can currently generate a 
+`SchemaGraph` from OrientDB schema metadata as exemplified by the following mock example. 
 
-* `SchemaGraph`
-    * Keeps track of a schema's transitive inheritance structure.
-    * Keeps track of a schema's indexes. Indexes are not used in the GraphQL schema generation and 
-      have a provisional API.
-    * Represents a database's schema through `SchemaElement` objects.
-        * `SchemaElement`
-            * Can be one of three kinds:
-                * `VertexType`, which represent schema vertices.
-                * `EdgeType`, which represent relations between vertices.
-                * `NonGraphElement`, which represents a schema element with usually no connections
-                   to other classes. A `NonGraphElement` may only have connections if it's abstract 
-                   and all its non-abstract subclasses are `VertexTypes`. 
-            * Have the following attributes:
-                * `name`, indicating the name of the class.
-                * `abstract`, indicating whether the class is abstract or not.
-                * `properties`, which are represented using GraphQLTypes.
-                * `in_connections`/`out_connections`, which represent the set of possible adjacent 
-                  `SchemaElements`.
-                    * For an `EdgeType`, its connections represent the set of allowed `VertexTypes` 
-                      and `NonGraphElements` at each end of the edge.
-                    * For `VertexType` and `NonGraphElement` objects, their connections represent
-                      the set of edges connected to them.
-            * `EdgeType` objects also have:
-                * `base_in_connection`/`base_out_connection`, which are the classes allowed at each 
-                  edge end that are the superclass of all other classes allowed at the edge end.
+```python
+from graphql_compiler.schema_generation.orientdb.schema_graph_builder import (
+    get_orientdb_schema_graph
+)
+from graphql_compiler.schema_generation.orientdb.utils import (
+    ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
+)
 
-#### Mapping an OrientDB schema to the SchemaGraph. 
-* We map classes that inherit from the base OrientDB vertex and edge classes to `VertexTypes` and 
-  `EdgeTypes` respectively. 
-* We map the remaining set of classes to `NonGraphElements`.
+# Get schema metadata from hypothetical Animals database.
+client = your_function_that_returns_an_orientdb_client()
+schema_records = client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+schema_data = [x.oRecordData for x in schema_records]
 
-#### Mapping the SchemaGraph to the GraphQLSchema
-* We map non-abstract `VertexTypes` to `GraphQLObjects`.
-* We map abstract `VertexType` to `GraphQLInterfaces`. If the class is a non-abstract `VertexType` 
-  we also create a `GraphQLUnion` that encompasses it and all its subclasses.
-* We represent a non-abstract `EdgeType` through `GraphQLLists` at each end type. For instance, 
-  suppose we have an `EdgeType` named Eats between Animal and Food `VertexTypes`. The 
-  corresponding Animal and Food `GraphQLObjects` will then have `out_Eats: [Food]` and 
-  `in_Eats: [Animal]` fields.
-* We map abstract `NonGraphElements` as GraphQLInterfaces iff all their non-abstract 
-  subclasses are `VertexTypes`.
+# Get index data. 
+index_records = client.command(ORIENTDB_INDEX_RECORDS_QUERY)
+index_query_data = [x.oRecordData for x in index_records]
+
+schema_graph = get_orientdb_schema_graph(schema_data, index_query_data)
+
+print(schema_graph.get_subclass_set('Animal'))
+# {'Animal', 'Dog'}
+
+print(schema_graph.get_unique_indexes_for_class('Animal'))
+# [IndexDefinition(name='uuid', 'base_classname'='Animal', fields={'uuid'}, unique=True, ordered=False, ignore_nulls=False)]
+```
+
+For more information about the `SchemaGraph`, please see the class documentation. 
 
 ## FAQ
 
