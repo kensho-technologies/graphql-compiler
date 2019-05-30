@@ -22,13 +22,13 @@ def _get_sql_metadata():
         Column('supported_type', String()),
         Column('non_supported_type', Binary()),
         Column('default', Integer(), default=42),
-        Column('edge_to_B', String(), ForeignKey('B.primary_key'))
+        Column('edge_to_B', String(), ForeignKey('B.primary_key')),
     )
 
     Table(
         'B',
         metadata,
-        Column('primary_key', String(), primary_key=True)
+        Column('primary_key', String(), primary_key=True),
     )
 
     return metadata
