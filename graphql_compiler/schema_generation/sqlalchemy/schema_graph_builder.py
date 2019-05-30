@@ -80,7 +80,8 @@ def get_schema_graph_from_sql_alchemy_metadata(sqlalchemy_metadata):
     direct_superclass_sets = {element_name: set() for element_name in elements}
     inheritance_structure = InheritanceStructure(direct_superclass_sets)
     link_schema_elements(elements, inheritance_structure)
-    return SchemaGraph(elements, InheritanceStructure(direct_superclass_sets), set())
+
+    return SchemaGraph(elements, inheritance_structure, set())
 
 
 def _try_get_graphql_scalar_type(column_name, column_type):
