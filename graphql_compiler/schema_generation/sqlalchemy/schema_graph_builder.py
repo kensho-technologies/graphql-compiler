@@ -68,7 +68,7 @@ UNSUPPORTED_PRIMITIVE_TYPES = frozenset({
 # TODO(pmantica1): Represent table inheritance in SchemaGraph.
 # TODO(pmantica1): Add option to map tables to EdgeTypes instead of VertexTypes.
 # TODO(pmantica1): Parse SQLAlchemy indexes.
-def get_schema_graph_from_sql_alchemy_metadata(sqlalchemy_metadata):
+def get_sqlalchemy_schema_graph(sqlalchemy_metadata):
     """Return the matching SchemaGraph for the SQLAlchemy Metadata object"""
     elements = dict()
     for table_name, table in six.iteritems(sqlalchemy_metadata.tables):

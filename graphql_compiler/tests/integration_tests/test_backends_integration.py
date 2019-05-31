@@ -10,7 +10,7 @@ import pytest
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...tests import test_backend
 from ...tests.test_helpers import generate_schema, generate_schema_graph
-from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
+from ..test_helpers import SCHEMA_TEXT, compare_schema_texts, get_schema
 from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
 from .integration_test_helpers import (
     compile_and_run_match_query, compile_and_run_sql_query, sort_db_results
@@ -179,7 +179,7 @@ class IntegrationTests(TestCase):
         schema, _ = generate_schema(self.graph_client,
                                     class_to_field_type_overrides=class_to_field_type_overrides,
                                     hidden_classes={ORIENTDB_BASE_VERTEX_CLASS_NAME})
-        compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
+        compare_schema_texts(self, SCHEMA_TEXT, print_schema(schema))
 
     @integration_fixtures
     def test_override_field_types(self):
