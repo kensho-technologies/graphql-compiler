@@ -10,6 +10,7 @@ from ..schema_graph import (
     EdgeType, InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType,
     link_schema_elements
 )
+from ..exceptions import IllegalSchemaInputError
 
 
 # TODO(pmantica1): Add scalar mapping for the following classes: Interval.
@@ -121,10 +122,21 @@ def _get_edge_types(tables):
     edge_types = []
     for table in six.itervalues(tables):
         for column in table.get_children():
-            for foreign_key in column.foreign_keys:
+            if len(column.foreign_keys) > 1:
+                raise IllegalSchemaInputError(u'Multiple foreign keys are defined on column {} of '
+                                              u'table {}.'.format(column.key, table.name))
+            if len(column.foreign_keys) > 0:
+                foreign_key = list(column.foreign_keys)[0]
+
+                outgoing_table = foreign_key.column.table
+                if not foreign_key.column.primary_key:
+                    raise AssertionError(u'Foreign key defined in column {} in table {} references '
+                                         u'column {} in table {}, which is not primary key.'
+                                         .format(table.name, column.key, foreign_key.column.name,
+                                                 outgoing_table.name))
+
                 # We prepend the table name to ensure that the name is unique.
                 edge_name = '{}_{}'.format(table.name, column.name)
-                outgoing_table = foreign_key.column.table
                 edge_type = EdgeType(edge_name, False, {}, {}, table.name, outgoing_table.name)
                 edge_types.append(edge_type)
     return edge_types
