@@ -200,7 +200,7 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
 
 def get_graphql_schema_from_sqlalchemy_metadata(metadata, class_to_field_type_overrides=None,
                                                 hidden_classes=None):
-    """Construct a GraphQL schema from a SQLAlchemy metadata object.
+    """Construct a GraphQL schema from a SQLAlchemy Metadata object.
 
     Args:
         metadata: Metadata object describing the SQLAlchemy schema.
