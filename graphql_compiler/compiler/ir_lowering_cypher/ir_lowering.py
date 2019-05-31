@@ -84,15 +84,6 @@ def remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_tabl
     return new_ir_blocks
 
 
-def _get_field_type(location):
-    """Not implemented yet."""
-    # HACK(predrag): This allows more of the code to be exercised during tests.
-    #                Will solve this before merging.
-    from graphql import GraphQLString, GraphQLList
-    return GraphQLList(GraphQLString)
-    raise NotImplementedError()
-
-
 def replace_local_fields_with_context_fields(ir_blocks):
     """Rewrite LocalField expressions into ContextField expressions referencing that location."""
     def visitor_func_base(location, expression):
@@ -101,11 +92,10 @@ def replace_local_fields_with_context_fields(ir_blocks):
             return expression
 
         location_at_field = location.navigate_to_field(expression.field_name)
-        field_type = _get_field_type(location_at_field)
         if isinstance(location, FoldScopeLocation):
-            return FoldedContextField(location_at_field, field_type)
+            return FoldedContextField(location_at_field, expression.field_type)
         else:
-            return ContextField(location_at_field, field_type)
+            return ContextField(location_at_field, expression.field_type)
 
     new_ir_blocks = []
     blocks_to_be_rewritten = []
