@@ -101,8 +101,8 @@ def _get_vertex_type_from_sqlalchemy_table(table):
         maybe_property_type = _try_get_graphql_scalar_type(name, column.type)
         if maybe_property_type is not None:
             default = None
-            # TODO(pmantica1): Parse Sequence default values.
-            # The default field of Column object can be of either of type Sequence or ColumnDefault.
+            # TODO(pmantica1): Parse Sequence type default values.
+            # The type of default field of a Column object is either Sequence or ColumnDefault.
             if isinstance(column.default, ColumnDefault):
                 default = column.default.arg if column.default is not None else None
             properties[name] = PropertyDescriptor(maybe_property_type, default)
