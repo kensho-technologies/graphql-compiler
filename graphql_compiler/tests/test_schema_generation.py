@@ -3,6 +3,7 @@ import unittest
 
 from frozendict import frozendict
 from graphql.type import GraphQLList, GraphQLObjectType, GraphQLString
+import pytest
 import six
 
 from .. import get_graphql_schema_from_orientdb_schema_data
@@ -131,6 +132,18 @@ LOCATION_SCHEMA_DATA = frozendict({
             'type': PROPERTY_TYPE_STRING_ID,
         }
     ]
+})
+
+CLASS_WITH_INVALID_PROPERTY_NAME_SCHEMA_DATA = frozendict({
+    'name': 'ClassWithInvalidPropertyName',
+    'abstract': False,
+    'superClasses': [ORIENTDB_BASE_VERTEX_CLASS_NAME],
+    'properties': [
+        {
+            'name': '$invalid_name',
+            'type': PROPERTY_TYPE_STRING_ID
+        }
+    ],
 })
 
 
@@ -320,3 +333,12 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         baby_lives_in_edge = schema_graph.get_element_by_class_name('Baby_LivesIn')
         self.assertEqual('Baby', baby_lives_in_edge.base_in_connection)
+
+    def test_ignore_properties_with_invalid_name_warning(self):
+        schema_data = [
+            BASE_VERTEX_SCHEMA_DATA,
+            CLASS_WITH_INVALID_PROPERTY_NAME_SCHEMA_DATA,
+        ]
+
+        with pytest.warns(UserWarning):
+            get_graphql_schema_from_orientdb_schema_data(schema_data)
