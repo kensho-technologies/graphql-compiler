@@ -203,11 +203,13 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
 
     Args:
         schema_graph: SchemaGraph
-        class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
+        class_to_field_type_overrides: dict, class name -> {field name -> field type},
                                        (string -> {string -> GraphQLType}). Used to override the
                                        type of a field in the class where it's first defined and all
-                                       the class's subclasses.
-        hidden_classes: optional set of strings, classes to not include in the GraphQL schema.
+                                       the class's subclasses. Possibly None if there are no type
+                                       overrides.
+        hidden_classes: set of strings, classes to not include in the GraphQL schema. Possibly None
+                        if there are no classes to hide.
 
     Returns:
         tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
