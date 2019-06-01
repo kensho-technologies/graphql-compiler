@@ -34,7 +34,7 @@ CypherQuery = namedtuple(
 #   - step_types: set of string type names describing the type labels the vertex is required to have
 #   - where_block: optional Filter block that specifies any filtering that needs to be applied,
 #                  or None if no filtering is required
-#   - as_block: BaseLocation containing the name of the query step
+#   - as_block: MarkLocation block describing the location of the query step
 CypherStep = namedtuple(
     'CypherStep',
     ('linked_location', 'step_block', 'step_types', 'where_block', 'as_block'))

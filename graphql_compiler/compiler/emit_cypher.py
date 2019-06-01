@@ -79,12 +79,28 @@ def _emit_code_from_cypher_step(cypher_step):
     return pattern % template_data
 
 
-def _emit_with_clause(cypher_steps):
-    """Emit a Cypher WITH clause with the provided Cypher steps."""
-    if cypher_steps:
-        raise NotImplementedError()
-    else:
-        return ''
+def _emit_with_clause_components(cypher_steps):
+    """Emit the component strings of the Cypher WITH clause with the provided Cypher steps."""
+    if not cypher_steps:
+        return []
+
+    result = [u'WITH']
+    location_names = {
+        cypher_step.as_block.location.get_location_name()[0]
+        for cypher_step in cypher_steps
+    }
+
+    # Sort the locations, to ensure a deterministic order.
+    for index, location_name in enumerate(sorted(location_names)):
+        if index > 0:
+            result.append(u',')
+
+        # We intentionally "rename" each location to its own name, to work around a limitation
+        # in RedisGraph where un-aliased "WITH" clauses are not supported:
+        # https://oss.redislabs.com/redisgraph/known_limitations/#unaliased-with-entities
+        result.append(u'\n  %(name)s AS %(name)s' % {'name': location_name})
+
+    return result
 
 
 ##############
@@ -102,7 +118,7 @@ def emit_code_from_ir(cypher_query, compiler_metadata):
         raise NotImplementedError()
 
     if cypher_query.global_where_block is not None:
-        query_data.append(_emit_with_clause(cypher_query.steps))
+        query_data.extend(_emit_with_clause_components(cypher_query.steps))
 
         query_data.append(u'WHERE ')
         query_data.append(cypher_query.global_where_block.predicate.to_cypher())

@@ -762,7 +762,32 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            WITH
+                Animal___1 AS Animal___1,
+                Animal__out_Animal_ParentOf___1 AS Animal__out_Animal_ParentOf___1
+            WHERE (
+                (Animal__out_Animal_ParentOf___1 IS null) OR
+                (Animal__out_Animal_ParentOf___1.name = $name)
+            )
+            RETURN
+                Animal___1.name AS `animal_name`,
+                (
+                    CASE WHEN (Animal__out_Animal_ParentOf___1 IS NOT null)
+                    THEN Animal__out_Animal_ParentOf___1.name
+                    ELSE null
+                    END
+                ) AS `parent_name`,
+                (
+                    CASE WHEN (Animal__out_Animal_ParentOf___1 IS NOT null)
+                    THEN Animal__out_Animal_ParentOf___1.uuid
+                    ELSE null
+                    END
+                ) AS `uuid`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -1269,7 +1294,61 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH (Animal__out_Animal_ParentOf___1)-[:Animal_FedAt]->
+                (Animal__out_Animal_ParentOf__out_Animal_FedAt___1:FeedingEvent)
+            MATCH (Animal__out_Animal_ParentOf___1)<-[:Animal_ParentOf]-
+                (Animal__out_Animal_ParentOf__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH (Animal__out_Animal_ParentOf__in_Animal_ParentOf___1)-[:Animal_FedAt]->
+                (Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1:FeedingEvent)
+            MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            MATCH (Animal__in_Animal_ParentOf___1)-[:Animal_FedAt]->
+                (Animal__in_Animal_ParentOf__out_Animal_FedAt___1:FeedingEvent)
+                WHERE (
+                    (
+                        (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS null) OR
+                        (Animal__in_Animal_ParentOf__out_Animal_FedAt___1.name =
+                            Animal__out_Animal_ParentOf__out_Animal_FedAt___1.name)
+                    ) AND (
+                        (
+                            (Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                                IS null)
+                            OR
+                            (Animal__in_Animal_ParentOf__out_Animal_FedAt___1.event_date >=
+                                Animal__out_Animal_ParentOf
+                                __in_Animal_ParentOf__out_Animal_FedAt___1.event_date)
+                        )
+                        AND
+                        (
+                            (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS null)
+                            OR
+                            (Animal__in_Animal_ParentOf__out_Animal_FedAt___1.event_date <=
+                                Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date)
+                        )
+                    )
+                )
+            RETURN
+                (
+                    CASE WHEN (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
+                    THEN Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
+                    ELSE null
+                    END
+                ) AS `child_fed_at`,
+                Animal__in_Animal_ParentOf__out_Animal_FedAt___1.event_date AS `grandparent_fed_at`,
+                (
+                    CASE WHEN (
+                        Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                        IS NOT null
+                    )
+                    THEN Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
+                        .event_date
+                    ELSE null
+                    END
+                ) AS `other_parent_fed_at`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)

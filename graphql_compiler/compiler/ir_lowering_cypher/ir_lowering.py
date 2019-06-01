@@ -1,15 +1,17 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from functools import partial
 
-from ..blocks import (
-    Backtrack, CoerceType, Filter, Fold, GlobalOperationsStart, MarkLocation, QueryRoot, Recurse,
-    Traverse
+from ..blocks import CoerceType, Filter, Fold, MarkLocation, Recurse, Traverse
+from ..expressions import (
+    BinaryComposition, ContextField, FoldedContextField, LocalField, NullLiteral
 )
-from ..expressions import ContextField, FoldedContextField, LocalField
+from ..helpers import get_only_element_from_collection
+from ..ir_lowering_common.common import merge_consecutive_filter_clauses
 from ..ir_lowering_common.location_renaming import (
     make_location_rewriter_visitor_fn, make_revisit_location_translations
 )
 from ..helpers import FoldScopeLocation
+
 
 ##################################
 # Optimization / lowering passes #
@@ -123,7 +125,7 @@ def replace_local_fields_with_context_fields(ir_blocks):
     return new_ir_blocks
 
 
-def move_filters_in_optional_locations_to_global_operations(ir_blocks, query_metadata_table):
+def move_filters_in_optional_locations_to_global_operations(cypher_query, query_metadata_table):
     """Move Filter blocks found within @optional traversals to the global operations section.
 
     This transformation is necessary to uphold the compiler's chosen semantics around filters
@@ -137,38 +139,47 @@ def move_filters_in_optional_locations_to_global_operations(ir_blocks, query_met
     that explicitly reference the context of the field (whether folded or not).
 
     Args:
-        ir_blocks: list of IR blocks to rewrite
+        cypher_query: CypherQuery object describing the query to rewrite
         query_metadata_table: QueryMetadataTable object that captures information about the query
 
     Returns:
-        list of IR blocks with all Filter blocks affecting optional traversals moved to after the
-        GlobalOperationsStart block
+        CypherQuery object where all Filter blocks affecting optional traversals are merged into
+        the "global_where_block" attribute
     """
-    new_ir_blocks = []
+    new_steps = []
     global_filters = []
-    within_optional_scope = False
-    for block in ir_blocks:
-        new_block = block
 
-        if within_optional_scope and isinstance(block, Filter):
-            global_filters.append(block)
-            new_block = None  # Do not append the block in its original location.
-        elif isinstance(block, Traverse) and block.optional:
-            within_optional_scope = True
-        elif isinstance(block, Backtrack):
-            location_info = query_metadata_table.get_location_info(block.location)
-            within_optional_scope = location_info.optional_scopes_depth > 0
-        else:
-            # No changes or special behaviors for any other blocks.
-            pass
+    for cypher_step in cypher_query.steps:
+        new_cypher_step = cypher_step
 
-        if new_block is not None:
-            new_ir_blocks.append(new_block)
+        step_location = cypher_step.as_block.location
+        location_info = query_metadata_table.get_location_info(step_location)
 
-        if isinstance(block, GlobalOperationsStart):
-            # We just appended the block that signals the start of the global operations section.
-            # This is where all the global filters go.
-            new_ir_blocks.extend(global_filters)
-            global_filters = []
+        if location_info.optional_scopes_depth > 0 and cypher_step.where_block is not None:
+            # This Filter needs to be moved. However, it originates from within an optional location
+            # and therefore needs to be rewritten as "either the location doesn't exist or
+            # the filter passes" before being added to the global where block.
+            location_non_existence = BinaryComposition(
+                u'=',
+                ContextField(step_location, location_info.type),
+                NullLiteral
+            )
+            rewritten_predicate = BinaryComposition(
+                u'||',
+                location_non_existence,
+                cypher_step.where_block.predicate
+            )
+            global_filters.append(Filter(rewritten_predicate))
+            new_cypher_step = cypher_step._replace(where_block=None)
 
-    return new_ir_blocks
+        new_steps.append(new_cypher_step)
+
+    if cypher_query.global_where_block is not None:
+        global_filters.append(cypher_query.global_where_block)
+
+    new_global_where_block = cypher_query.global_where_block
+    if global_filters:
+        new_global_where_block = get_only_element_from_collection(
+            merge_consecutive_filter_clauses(global_filters))
+
+    return cypher_query._replace(steps=new_steps, global_where_block=new_global_where_block)

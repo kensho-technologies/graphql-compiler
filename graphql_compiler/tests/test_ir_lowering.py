@@ -2,7 +2,7 @@
 from pprint import pformat
 import unittest
 
-from graphql import GraphQLID, GraphQLList, GraphQLString
+from graphql import GraphQLID, GraphQLString
 
 from ..compiler import ir_lowering_gremlin, ir_lowering_match, ir_sanity_checks
 from ..compiler.blocks import (
