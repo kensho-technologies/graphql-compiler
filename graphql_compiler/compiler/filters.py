@@ -354,7 +354,9 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
     check_against_name = expressions.BinaryComposition(
         u'=', expressions.LocalField(name_field_name, name_field.type), argument_expression)
     check_against_alias = expressions.BinaryComposition(
-        u'contains', expressions.LocalField(alias_field_name, alias_field.type), argument_expression)
+        u'contains',
+        expressions.LocalField(alias_field_name, alias_field.type),
+        argument_expression)
     filter_predicate = expressions.BinaryComposition(
         u'||', check_against_name, check_against_alias)
 
