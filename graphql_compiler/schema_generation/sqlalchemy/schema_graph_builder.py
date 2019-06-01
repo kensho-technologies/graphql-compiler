@@ -3,6 +3,7 @@ import warnings
 
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLString
 import six
+from sqlalchemy.schema import ColumnDefault
 import sqlalchemy.sql.sqltypes as sqltypes
 
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
@@ -97,8 +98,12 @@ def _get_vertex_type_from_sqlalchemy_table(table):
     properties = dict()
     for column in table.get_children():
         name = column.key
-        default = column.default.arg if column.default is not None else None
         maybe_property_type = _try_get_graphql_scalar_type(name, column.type)
         if maybe_property_type is not None:
+            default = None
+            # TODO(pmantica1): Parse Sequence default values.
+            # The default field of Column object can be of either of type Sequence or ColumnDefault.
+            if isinstance(column.default, ColumnDefault):
+                default = column.default.arg if column.default is not None else None
             properties[name] = PropertyDescriptor(maybe_property_type, default)
     return VertexType(table.name, False, properties, {})
