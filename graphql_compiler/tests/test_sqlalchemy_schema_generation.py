@@ -61,4 +61,4 @@ class SQLALchemyGraphqlSchemaGenerationTests(unittest.TestCase):
 
     def test_mssql_type_mapping(self):
         a_vertex = self.schema_graph.get_element_by_class_name('A')
-        self.assertEqual(a_vertex.properties['column_with_mssql_type'], GraphQLInt)
+        self.assertEqual(a_vertex.properties['column_with_mssql_type'].type, GraphQLInt)
