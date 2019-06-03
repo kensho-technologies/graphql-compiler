@@ -228,8 +228,7 @@ def estimate_query_result_cardinality(
         lookup_class_counts: function, string -> int, that accepts a class name and returns the
                              total number of instances plus subclass instances
         graphql_query: string, a valid GraphQL query
-        parameters: dict, parameters with which query will be executed. Must be valid for the
-                    given graphql_query.
+        parameters: dict, parameters with which query will be executed.
         class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
                                        (string -> {string -> GraphQLType}). Used to override the
                                        type of a field in the class where it's first defined and all

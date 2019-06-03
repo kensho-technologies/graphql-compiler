@@ -774,7 +774,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
 
         params = dict()
 
-        # If we '='-filter on a property that isn't an index, do nothing.
+        # If we '='-filter on a property that isn't an index return a fractional selectivity of 1.
         filter_on_nonindex = FilterInfo(
             fields=('description',), op_name='=', args=('$description',)
         )
@@ -784,7 +784,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
 
-        # If we '='-filter on a property that's non-uniquely indexed, do nothing.
+        # If we '='-filter on a property that's non-uniquely 
+        # indexed return a fractional selectivity of 1.
         nonunique_filter = FilterInfo(fields=('birthday',), op_name='=', args=('$birthday',))
         selectivity = _get_filter_selectivity(
             schema_graph, empty_lookup_counts, nonunique_filter, params, classname
@@ -811,22 +812,19 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
 
         nonunique_filter = FilterInfo(fields=('birthday',), op_name='in_collection',
                                       args=('$birthday_collection',))
-        # These params aren't relevant to _get_filter_selectivity's result, but may expose bugs
         nonunique_params = {
             'birthday_collection': [
                 date(2017, 3, 22),
                 date(1999, 12, 31),
             ]
         }
-        # If we use an in_collection-filter on a property that is not uniquely indexed, do nothing.
+        # If we use an in_collection-filter on a property that is not uniquely indexed return a fractional selectivity of 1.
         selectivity = _get_filter_selectivity(
             schema_graph, empty_lookup_counts, nonunique_filter, nonunique_params, classname
         )
         expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
 
-        # If we use an in_collection-filter on a property that is uniquely indexed, expect as many
-        # results as there are elements in the collection.
         in_collection_filter = FilterInfo(fields=('uuid',), op_name='in_collection',
                                           args=('$uuid_collection',))
         unique_params = {
@@ -836,6 +834,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
                 '00000000-0000-0000-0000-000000000002'
             ]
         }
+        # If we use an in_collection-filter on a property that is uniquely indexed, expect as many
+        # results as there are elements in the collection.
         selectivity = _get_filter_selectivity(
             schema_graph, empty_lookup_counts, in_collection_filter, unique_params, classname
         )
