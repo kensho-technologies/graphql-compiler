@@ -9,7 +9,7 @@ from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
 
 
 # The following quote from https://docs.sqlalchemy.org/en/13/core/type_basics.html
-# explains what makes the all-cap classes particular:
+# explains what makes all-caps classes particular:
 # "This category of types refers to types that are either part of the SQL standard, or are
 # potentially found within a subset of database backends. Unlike the "generic" types, the SQL
 # standard/multi-vendor types have no guarantee of working on all backends, and will only work
