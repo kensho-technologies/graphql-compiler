@@ -1,3 +1,4 @@
+# Copyright 2019-present Kensho Technologies, LLC.
 import warnings
 
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLString
