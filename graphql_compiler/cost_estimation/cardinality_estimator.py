@@ -1,3 +1,4 @@
+# Copyright 2019-present Kensho Technologies, LLC.
 from itertools import chain
 
 from ..compiler.compiler_frontend import graphql_to_ir
