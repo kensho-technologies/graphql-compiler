@@ -784,7 +784,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
 
-        # If we '='-filter on a property that's non-uniquely 
+        # If we '='-filter on a property that's non-uniquely
         # indexed return a fractional selectivity of 1.
         nonunique_filter = FilterInfo(fields=('birthday',), op_name='=', args=('$birthday',))
         selectivity = _get_filter_selectivity(
@@ -818,7 +818,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
                 date(1999, 12, 31),
             ]
         }
-        # If we use an in_collection-filter on a property that is not uniquely indexed return a fractional selectivity of 1.
+        # If we use an in_collection-filter on a property that is not uniquely indexed
+        # return a fractional selectivity of 1.
         selectivity = _get_filter_selectivity(
             schema_graph, empty_lookup_counts, nonunique_filter, nonunique_params, classname
         )
