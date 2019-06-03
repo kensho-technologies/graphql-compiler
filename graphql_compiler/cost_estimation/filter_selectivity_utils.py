@@ -70,6 +70,7 @@ def _get_filter_selectivity(
         if _are_filter_fields_uniquely_indexed(filter_info.fields, unique_indexes):
             collection_name = get_parameter_name(filter_info.args[0])
             collection_size = len(parameters[collection_name])
+            # Assumption: each entry in the collection adds a row to the result
             return Selectivity(kind=ABSOLUTE_SELECTIVITY, value=float(collection_size))
 
     return Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
