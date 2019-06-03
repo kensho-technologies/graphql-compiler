@@ -1,4 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from datetime import date
 import unittest
 
 import pytest
@@ -10,7 +11,6 @@ from ..cost_estimation.filter_selectivity_utils import (
     ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity, _combine_filter_selectivities,
     _get_filter_selectivity
 )
-
 from .test_helpers import generate_schema_graph
 
 
@@ -712,6 +712,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1.0) * 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
+
 class FilterSelectivityUtilsTests(unittest.TestCase):
     def test_combine_filter_selectivities(self):
         """Test filter combination function."""
@@ -763,7 +764,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         self.assertEqual(expected_selectivity, _combine_filter_selectivities(selectivities))
 
     @pytest.mark.usefixtures('graph_client')
-    def test_get_filter_selectivity(self):
+    def test_get_equals_filter_selectivity(self):
         schema_graph = generate_schema_graph(self.graph_client)
         classname = 'Animal'
 
@@ -797,4 +798,46 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph, empty_lookup_counts, unique_filter, params, classname
         )
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+    @pytest.mark.usefixtures('graph_client')
+    def test_get_in_collection_filter_selectivity(self):
+        schema_graph = generate_schema_graph(self.graph_client)
+        classname = 'Animal'
+
+        def empty_lookup_counts(classname):
+            """Dummy function to pass into get_filter_selectivity."""
+            return 100
+
+        nonunique_filter = FilterInfo(fields=('birthday',), op_name='in_collection',
+                                      args=('$birthday_collection',))
+        # These params aren't relevant to _get_filter_selectivity's result, but may expose bugs
+        nonunique_params = {
+            'birthday_collection': [
+                date(2017, 3, 22),
+                date(1999, 12, 31),
+            ]
+        }
+        # If we use an in_collection-filter on a property that is not uniquely indexed, do nothing.
+        selectivity = _get_filter_selectivity(
+            schema_graph, empty_lookup_counts, nonunique_filter, nonunique_params, classname
+        )
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        # If we use an in_collection-filter on a property that is uniquely indexed, expect as many
+        # results as there are elements in the collection.
+        in_collection_filter = FilterInfo(fields=('uuid',), op_name='in_collection',
+                                          args=('$uuid_collection',))
+        unique_params = {
+            'uuid_collection': [
+                '00000000-0000-0000-0000-000000000000',
+                '00000000-0000-0000-0000-000000000001',
+                '00000000-0000-0000-0000-000000000002'
+            ]
+        }
+        selectivity = _get_filter_selectivity(
+            schema_graph, empty_lookup_counts, in_collection_filter, unique_params, classname
+        )
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
         self.assertEqual(expected_selectivity, selectivity)
