@@ -7,7 +7,7 @@ from .blocks import (
     Backtrack, CoerceType, ConstructResult, Filter, Fold, GlobalOperationsStart, MarkLocation,
     OutputSource, QueryRoot, Recurse, Traverse, Unfold
 )
-from .ir_lowering_common import extract_folds_from_ir_blocks
+from .ir_lowering_common.common import extract_folds_from_ir_blocks
 
 
 ###
