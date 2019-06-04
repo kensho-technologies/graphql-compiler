@@ -51,7 +51,7 @@ def _init_graph_client(load_schema_func, generate_data_func):
 
 
 @pytest.fixture(scope='class')
-def graph_client(request, init_snapshot_graph_client):
+def snapshot_graph_client(request, init_snapshot_graph_client):
     """Get a client for an initialized db, with all test data imported."""
     request.cls.graph_client = init_snapshot_graph_client
 
