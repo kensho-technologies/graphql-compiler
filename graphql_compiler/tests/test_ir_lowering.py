@@ -170,7 +170,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             Filter(
                 BinaryComposition(
                     u'=',
-                    LocalField('name'),
+                    LocalField('name', GraphQLString),
                     TernaryConditional(
                         ContextFieldExistence(child_location),
                         ContextField(child_name_location, GraphQLString),
@@ -198,7 +198,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             Filter(
                 BinaryComposition(
                     u'=',
-                    LocalField('name'),
+                    LocalField('name', GraphQLString),
                     TernaryConditional(
                         BinaryComposition(
                             u'!=',
@@ -574,21 +574,21 @@ class MatchIrLoweringTests(unittest.TestCase):
             Filter(
                 BinaryComposition(
                     u'<=',
-                    LocalField(u'birthday'),
+                    LocalField(u'birthday', GraphQLDate),
                     Variable('$foo_birthday', GraphQLDate)
                 )
             ),
             Filter(
                 BinaryComposition(
                     u'=',
-                    LocalField(u'name'),
+                    LocalField(u'name', GraphQLString),
                     Variable('$foo_name', GraphQLString)
                 )
             ),
             Filter(
                 BinaryComposition(
                     u'=',
-                    LocalField(u'color'),
+                    LocalField(u'color', GraphQLString),
                     Variable('$foo_color', GraphQLString)
                 )
             ),
@@ -609,18 +609,18 @@ class MatchIrLoweringTests(unittest.TestCase):
                         u'&&',
                         BinaryComposition(
                             u'<=',
-                            LocalField(u'birthday'),
+                            LocalField(u'birthday', GraphQLDate),
                             Variable('$foo_birthday', GraphQLDate)
                         ),
                         BinaryComposition(
                             u'=',
-                            LocalField(u'name'),
+                            LocalField(u'name', GraphQLString),
                             Variable('$foo_name', GraphQLString)
                         )
                     ),
                     BinaryComposition(
                         u'=',
-                        LocalField(u'color'),
+                        LocalField(u'color', GraphQLString),
                         Variable('$foo_color', GraphQLString)
                     )
                 )
@@ -658,7 +658,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                     ),
                     BinaryComposition(
                         u'>=',
-                        LocalField('event_date'),
+                        LocalField('event_date', GraphQLDateTime),
                         ContextField(other_parent_fed_at_tag, GraphQLDateTime)
                     ),
                     TrueLiteral
@@ -687,7 +687,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                         TernaryConditional(
                             BinaryComposition(
                                 u'>=',
-                                LocalField('event_date'),
+                                LocalField('event_date', GraphQLDateTime),
                                 ContextField(other_parent_fed_at_tag, GraphQLDateTime)
                             ),
                             TrueLiteral,
@@ -718,7 +718,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                     BinaryComposition(
                         u'has_substring',
                         ContextField(parent_location.navigate_to_field('name'), GraphQLString),
-                        LocalField('name')
+                        LocalField('name', GraphQLString)
                     )
                 )
             )
@@ -739,7 +739,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                             Literal('%'),
                             BinaryComposition(
                                 u'+',
-                                LocalField('name'),
+                                LocalField('name', GraphQLString),
                                 Literal('%')
                             )
                         )
@@ -761,11 +761,11 @@ class MatchIrLoweringTests(unittest.TestCase):
                 BinaryComposition(
                     u'>=',
                     Variable('$upper', GraphQLString),
-                    LocalField('name'),
+                    LocalField('name', GraphQLString),
                 ),
                 BinaryComposition(
                     u'>=',
-                    LocalField('name'),
+                    LocalField('name', GraphQLString),
                     Variable('$lower', GraphQLString)
                 )
             )
@@ -783,7 +783,7 @@ class MatchIrLoweringTests(unittest.TestCase):
 
         expected_final_filter_block = Filter(
             BetweenClause(
-                LocalField('name'),
+                LocalField('name', GraphQLString),
                 Variable('$lower', GraphQLString),
                 Variable('$upper', GraphQLString)
             )
@@ -869,12 +869,15 @@ class MatchIrLoweringTests(unittest.TestCase):
                     u'||',
                     BinaryComposition(
                         u'=',
-                        LocalField(u'out_Animal_ParentOf'),
+                        LocalField(u'out_Animal_ParentOf', None),
                         NullLiteral
                     ),
                     BinaryComposition(
                         u'=',
-                        UnaryTransformation(u'size', LocalField(u'out_Animal_ParentOf')),
+                        UnaryTransformation(
+                            u'size',
+                            LocalField(u'out_Animal_ParentOf', None)
+                        ),
                         ZeroLiteral
                     )
                 )
