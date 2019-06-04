@@ -270,8 +270,6 @@ def _expose_only_preferred_locations(match_query, location_types, coerced_locati
 
                     # Remove blocks that would emit a "class:" clause
                     if isinstance(match_step.root_block, QueryRoot):
-                        # Question: What does it mean for the bound to be implied by the
-                        # query structure? I think we need an INSTANCEOF filter in this case.
                         new_root_block = None
                     else:
                         new_root_block = match_step.root_block
