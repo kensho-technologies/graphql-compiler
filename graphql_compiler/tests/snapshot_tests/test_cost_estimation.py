@@ -22,7 +22,7 @@ def create_lookup_counts(count_data):
     return lookup_counts
 
 
-# The following TestCase class uses the 'graph_client' fixture
+# The following TestCase class uses the 'snapshot_graph_client' fixture
 # which pylint does not recognize as a class member.
 # pylint: disable=no-member
 @pytest.mark.slow
@@ -30,7 +30,7 @@ class CostEstimationTests(unittest.TestCase):
     """Test the cost estimation module using standard input data when possible."""
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_root_count(self):
         """"Ensure we correctly estimate the cardinality of the query root."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -48,7 +48,7 @@ class CostEstimationTests(unittest.TestCase):
 
         self.assertEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_traverse(self):
         """Ensure we correctly estimate cardinality over edges."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -69,7 +69,7 @@ class CostEstimationTests(unittest.TestCase):
 
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_fragment(self):
         """Ensure we correctly adjust for fragments."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -92,7 +92,7 @@ class CostEstimationTests(unittest.TestCase):
 
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_complex_traverse(self):
         """Ensure we correctly handle more complicated arrangements of traversals."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -138,7 +138,7 @@ class CostEstimationTests(unittest.TestCase):
         )
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_optional(self):
         """Ensure we handle an optional edge correctly."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -173,7 +173,7 @@ class CostEstimationTests(unittest.TestCase):
 
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_optional_and_traverse(self):
         """Ensure traversals inside optionals are handled correctly."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -229,7 +229,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 3.0 * (23.0 / 11.0) * (7.0 / 11.0) * (17.0 / 13.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_fold(self):
         """Ensure we handle an folded edge correctly."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -264,7 +264,7 @@ class CostEstimationTests(unittest.TestCase):
 
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_fold_and_traverse(self):
         """Ensure traversals inside folds are handled correctly."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -319,7 +319,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 3.0 * (23.0 / 11.0) * (7.0 / 11.0) * (17.0 / 13.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_recurse(self):
         """Ensure we handle recursion correctly."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -347,7 +347,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_recurse_and_traverse(self):
         """Ensure we handle traversals inside recurses correctly."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -380,7 +380,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1) * (13.0 / 7.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_single_filter(self):
         """Ensure we handle filters correctly."""
         # TODO: eventually, we should ensure other fractional/absolute selectivies work.
@@ -408,7 +408,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_traverse_and_filter(self):
         """Ensure we filters work correctly below the root location."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -446,7 +446,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 3.0 * 1.0 * (7.0 / 17.0) * (11.0 / 17.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_multiple_filters(self):
         """Ensure we handle multiple filters correctly."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -476,7 +476,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_optional_and_filter(self):
         """Test an optional and filter on the same Location."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -517,7 +517,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 5.0 * 1.0 * (11.0 / 7.0) * (6.0 / 7.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_optional_then_filter(self):
         """Test a filter within an optional scope."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -559,7 +559,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 5.0 * 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_fold_and_filter(self):
         """Test an fold and filter on the same Location."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -600,7 +600,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 5.0 * 1.0 * (11.0 / 7.0) * (6.0 / 7.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_fold_then_filter(self):
         """Test a filter within an fold scope."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -642,7 +642,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 5.0 * 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_recurse_and_filter(self):
         """Test a filter that immediately follows a recursed edge."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -677,7 +677,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 7.0 * 1.0 * (13.0 / 7.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_recurse_then_filter(self):
         """Test a filter that immediately follows a recursed edge."""
         schema_graph = generate_schema_graph(self.graph_client)
@@ -763,7 +763,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=2.0)
         self.assertEqual(expected_selectivity, _combine_filter_selectivities(selectivities))
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_get_equals_filter_selectivity(self):
         schema_graph = generate_schema_graph(self.graph_client)
         classname = 'Animal'
@@ -801,7 +801,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
 
-    @pytest.mark.usefixtures('graph_client')
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_get_in_collection_filter_selectivity(self):
         schema_graph = generate_schema_graph(self.graph_client)
         classname = 'Animal'
