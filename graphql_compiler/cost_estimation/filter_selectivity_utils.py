@@ -1,5 +1,8 @@
+# Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 import sys
+
+from ..compiler.helpers import get_parameter_name
 
 
 # The Selectivity represents the selectivity of a filter or a set of filters
@@ -57,13 +60,19 @@ def _get_filter_selectivity(
     Returns:
         Selectivity object, the selectivity of a specific filter at a given location.
     """
-    # TODO(evan): implement logic for various filter types
     unique_indexes = schema_graph.get_unique_indexes_for_class(location_name)
 
+    # TODO(vlad): support selectivity for non-uniquely indexed fields
     if filter_info.op_name == '=':
         if _are_filter_fields_uniquely_indexed(filter_info.fields, unique_indexes):
             # TODO(evan): don't return a higher absolute selectivity than class counts.
             return Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
+    elif filter_info.op_name == 'in_collection':
+        if _are_filter_fields_uniquely_indexed(filter_info.fields, unique_indexes):
+            collection_name = get_parameter_name(filter_info.args[0])
+            collection_size = len(parameters[collection_name])
+            # Assumption: each entry in the collection adds a row to the result
+            return Selectivity(kind=ABSOLUTE_SELECTIVITY, value=float(collection_size))
 
     return Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
 
