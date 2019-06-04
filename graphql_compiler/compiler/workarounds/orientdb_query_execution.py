@@ -44,8 +44,8 @@ The process of applying the optimizations is as follows:
           so OrientDB can choose the start point of lowest cardinality.
 """
 
-from ..blocks import CoerceType, QueryRoot, Recurse, Traverse
-from ..expressions import ContextField, ContextFieldExistence
+from ..blocks import CoerceType, Filter, QueryRoot, Recurse, Traverse
+from ..expressions import BinaryComposition, ContextField, ContextFieldExistence, Literal, LocalField
 from ..helpers import get_only_element_from_collection
 from ..ir_lowering_match.utils import convert_coerce_type_and_add_to_where_block
 
@@ -267,39 +267,31 @@ def _expose_only_preferred_locations(match_query, location_types, coerced_locati
                     # we ensure that we again infer the same type bound.
                     eligible_location_types[current_step_location] = current_type_bound
 
-                    if (current_step_location not in coerced_locations or
-                            previous_type_bound is not None):
-                        # The type bound here is already implied by the GraphQL query structure,
-                        # or has already been applied at a previous occurrence of this location.
-                        # We can simply delete the QueryRoot / CoerceType blocks that impart it.
-                        if isinstance(match_step.root_block, QueryRoot):
-                            # Question: What does it mean for the bound to be implied by the
-                            # query structure? I think we need an INSTANCEOF filter in this case.
-                            new_root_block = None
-                        else:
-                            new_root_block = match_step.root_block
-
-                        new_step = match_step._replace(
-                            root_block=new_root_block, coerce_type_block=None)
+                    # Remove blocks that would emit a "class:" clause
+                    if isinstance(match_step.root_block, QueryRoot):
+                        # Question: What does it mean for the bound to be implied by the
+                        # query structure? I think we need an INSTANCEOF filter in this case.
+                        new_root_block = None
                     else:
-                        # The type bound here is not already implied by the GraphQL query structure.
-                        # This should only be possible via a CoerceType block. Lower this CoerceType
-                        # block into a Filter with INSTANCEOF to ensure the resulting query has the
-                        # same semantics, while making the location invalid as a query start point.
-                        if (isinstance(match_step.root_block, QueryRoot) or
-                                match_step.coerce_type_block is None):
-                            raise AssertionError(u'Unexpected MATCH step applying a type bound not '
-                                                 u'already implied by the GraphQL query structure: '
-                                                 u'{} {}'.format(match_step, match_query))
+                        new_root_block = match_step.root_block
+                    new_coerce_type_block = None
+                    new_where_block = match_step.where_block
 
-                        new_where_block = convert_coerce_type_and_add_to_where_block(
-                            match_step.coerce_type_block, match_step.where_block)
-                        new_step = match_step._replace(
-                            coerce_type_block=None, where_block=new_where_block)
-                else:
-                    # There is no type bound that OrientDB can find defined at this location.
-                    # No action is necessary.
-                    pass
+                    # If needed, add a type bound that emits an INSTANCEOF in the "where:" clause
+                    if (previous_type_bound is None and current_type_bound is not None):
+                        instanceof_predicate = BinaryComposition(
+                            u'INSTANCEOF', LocalField('@this'), Literal(current_type_bound))
+                        if match_step.where_block:
+                            new_where_block = Filter(BinaryComposition(
+                                u'&&', instanceof_filter, match_step.where_block.predicate))
+                        else:
+                            new_where_block = Filter(instanceof_predicate)
+
+                    new_step = match_step._replace(
+                        root_block=new_root_block,
+                        coerce_type_block=new_coerce_type_block,
+                        where_block=new_where_block
+                    )
             else:
                 # This location is neither preferred nor eligible.
                 # No action is necessary at this location.
