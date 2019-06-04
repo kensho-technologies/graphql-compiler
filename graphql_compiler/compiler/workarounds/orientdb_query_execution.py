@@ -45,9 +45,10 @@ The process of applying the optimizations is as follows:
 """
 
 from ..blocks import CoerceType, Filter, QueryRoot, Recurse, Traverse
-from ..expressions import BinaryComposition, ContextField, ContextFieldExistence, Literal, LocalField
+from ..expressions import (
+    BinaryComposition, ContextField, ContextFieldExistence, Literal, LocalField
+)
 from ..helpers import get_only_element_from_collection
-from ..ir_lowering_match.utils import convert_coerce_type_and_add_to_where_block
 
 
 def _is_local_filter(filter_block):
@@ -282,8 +283,9 @@ def _expose_only_preferred_locations(match_query, location_types, coerced_locati
                         instanceof_predicate = BinaryComposition(
                             u'INSTANCEOF', LocalField('@this'), Literal(current_type_bound))
                         if match_step.where_block:
+                            # TODO(bojanserafimov): This branch needs test coverage
                             new_where_block = Filter(BinaryComposition(
-                                u'&&', instanceof_filter, match_step.where_block.predicate))
+                                u'&&', instanceof_predicate, match_step.where_block.predicate))
                         else:
                             new_where_block = Filter(instanceof_predicate)
 
