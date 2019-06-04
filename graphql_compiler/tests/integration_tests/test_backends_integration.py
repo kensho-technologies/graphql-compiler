@@ -125,18 +125,19 @@ class IntegrationTests(TestCase):
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
     @integration_fixtures
-    def test_colocated_filter_and_tag(self):
+    def test_edge_from_superclass_with_preferred_location_not_at_root(self):
         graphql_query = '''{
             Animal {
                 name @output(out_name: "animal_name")
                 out_Entity_Related {
                     name @output(out_name: "related_animal_name")
-                         @tag(tag_name: "name")
-                    alias @filter(op_name: "contains", value: ["%name"])
+                    alias @filter(op_name: "contains", value: ["$name"])
                 }
             }
         }'''
-        parameters = {}
+        parameters = {
+            'name': 'Species 2',
+        }
         expected_results = []
 
         self.assertResultsEqual(graphql_query, parameters, test_backend.ORIENTDB, expected_results)
