@@ -91,6 +91,7 @@ UNSUPPORTED_MSSQL_TYPES = frozenset({
     mssqltypes.XML,
 })
 
+# TODO(pmantica1): Use merge_non_overlapping_dicts when macro_system is merged into master.
 SQL_CLASS_TO_GRAPHQL_TYPE = {}
 SQL_CLASS_TO_GRAPHQL_TYPE.update(GENERIC_SQL_CLASS_TO_GRAPHQL_TYPE)
 SQL_CLASS_TO_GRAPHQL_TYPE.update(MSSQL_CLASS_TO_GRAPHQL_TYPE)
