@@ -146,39 +146,65 @@ CLASS_WITH_INVALID_PROPERTY_NAME = frozendict({
     ],
 })
 
+# We add arbitrary properties to the following classes to make the data as "real" as possible.
 ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS = frozendict({
     'name': 'AbstractNonGraphClassWithNonVertexConcreteSubclass',
     'abstract': True,
     'superClasses': [],
-    'properties': [],
+    'properties': [
+        {
+            'name': 'arbitrary_property_1',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 })
 
 ABSTRACT_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES = frozendict({
     'name': 'AbstractNonGraphClassWithOnlyVertexConcreteSubclasses',
     'abstract': True,
     'superClasses': [],
-    'properties': [],
+    'properties': [
+        {
+            'name': 'arbitrary_property_2',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 })
 
 CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS = frozendict({
     'name': 'ConcreteNonGraphClassWithNonVertexConcreteSubclass',
     'abstract': False,
     'superClasses': [],
-    'properties': [],
+    'properties': [
+        {
+            'name': 'arbitrary_property_3',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 })
 
 CONCRETE_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES = frozendict({
     'name': 'ConcreteNonGraphClassWithOnlyVertexConcreteSubclasses',
     'abstract': False,
     'superClasses': [],
-    'properties': [],
+    'properties': [
+        {
+            'name': 'arbitrary_property_4',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 })
 
 ABSTRACT_NON_GRAPH_CLASS_WITH_NO_SUBCLASSES = frozendict({
     'name': 'AbstractNonGraphClassWithNoSubclasses',
     'abstract': True,
     'superClasses': [],
-    'properties': [],
+    'properties': [
+        {
+            'name': 'arbitrary_property_5',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 })
 
 ARBITRARY_CONCRETE_VERTEX_CLASS = frozendict({
@@ -191,8 +217,12 @@ ARBITRARY_CONCRETE_VERTEX_CLASS = frozendict({
         CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS['name'],
         CONCRETE_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES['name'],
     ],
-    'properties': [],
-
+    'properties': [
+        {
+            'name': 'arbitrary_property_6',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 })
 
 ARBITRARY_CONCRETE_NON_GRAPH_CLASS = frozendict({
@@ -202,8 +232,12 @@ ARBITRARY_CONCRETE_NON_GRAPH_CLASS = frozendict({
         ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS['name'],
         CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS['name'],
     ],
-    'properties': [],
-
+    'properties': [
+        {
+            'name': 'arbitrary_property_7',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 })
 
 

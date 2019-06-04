@@ -21,9 +21,9 @@ def _has_only_vertex_non_abstract_subclasses(cls_name, schema_graph):
 
     all_non_abstract_subclasses_are_vertices = True
     for subclass_name in cls_subclasses:
-        subclass = schema_graph.get_element_by_class_name(subclass_name)
+        subclass_element = schema_graph.get_element_by_class_name(subclass_name)
         if subclass_name != cls_name:
-            if not subclass.abstract and not subclass.is_vertex:
+            if not subclass_element.abstract and not subclass_element.is_vertex:
                 all_non_abstract_subclasses_are_vertices = False
                 break
 
