@@ -2,11 +2,11 @@
 from itertools import chain
 
 from ..compiler.compiler_frontend import graphql_to_ir
-from ..compiler.helpers import FoldScopeLocation, Location, get_edge_direction_and_name
-from ..schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-from ..schema_generation.orientdb.schema_properties import (
-    EDGE_DESTINATION_PROPERTY_NAME, EDGE_SOURCE_PROPERTY_NAME
+from ..compiler.helpers import (
+    INBOUND_EDGE_DIRECTION, OUTBOUND_EDGE_DIRECTION, FoldScopeLocation, Location,
+    get_edge_direction_and_name
 )
+from ..schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from .filter_selectivity_utils import adjust_counts_for_filters
 
 
@@ -73,10 +73,10 @@ def _get_parent_and_child_name_from_edge(schema_graph, child_location):
     """Get the base classname of a location and its parent from the last edge information."""
     edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     edge_element = schema_graph.get_edge_schema_element_or_raise(edge_name)
-    if edge_direction == EDGE_DESTINATION_PROPERTY_NAME:
+    if edge_direction == INBOUND_EDGE_DIRECTION:
         parent_name_from_edge = edge_element.base_out_connection
         child_name_from_edge = edge_element.base_in_connection
-    elif edge_direction == EDGE_SOURCE_PROPERTY_NAME:
+    elif edge_direction == OUTBOUND_EDGE_DIRECTION:
         parent_name_from_edge = edge_element.base_in_connection
         child_name_from_edge = edge_element.base_out_connection
     return parent_name_from_edge, child_name_from_edge
