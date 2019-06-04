@@ -272,6 +272,7 @@ def _expose_only_preferred_locations(match_query, location_types, coerced_locati
                     if isinstance(match_step.root_block, QueryRoot):
                         new_root_block = None
                     else:
+                        # The root_block can be a QueryRoot, Traverse, Recurse or Backtrack.
                         new_root_block = match_step.root_block
                     new_coerce_type_block = None
                     new_where_block = match_step.where_block
