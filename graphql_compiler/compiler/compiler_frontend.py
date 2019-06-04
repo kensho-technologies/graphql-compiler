@@ -692,7 +692,7 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
             # This Filter is going in the global operations section of the query, so it cannot
             # use LocalField expressions since there is no "local" location to use.
             # Rewrite it so that all references of data at a location instead use ContextFields.
-            expected_field = expressions.LocalField(COUNT_META_FIELD_NAME)
+            expected_field = expressions.LocalField(COUNT_META_FIELD_NAME, GraphQLInt)
             replacement_field = expressions.FoldedContextField(location, GraphQLInt)
 
             visitor_fn = expressions.make_replacement_visitor(expected_field, replacement_field)
