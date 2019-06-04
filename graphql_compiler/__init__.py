@@ -21,6 +21,9 @@ from .schema_generation.graphql_schema import get_graphql_schema_from_schema_gra
 from .schema_generation.orientdb.schema_graph_builder import (
     get_orientdb_schema_graph
 )
+from .schema_generation.sqlalchemy.schema_graph_builder import (
+    get_sqlalchemy_schema_graph
+)
 
 __package_name__ = 'graphql-compiler'
 __version__ = '1.10.1'
@@ -190,11 +193,27 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
         tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
         The tuple is of type (GraphQLSchema, {GraphQLObjectType -> GraphQLUnionType}).
     """
-    if class_to_field_type_overrides is None:
-        class_to_field_type_overrides = dict()
-    if hidden_classes is None:
-        hidden_classes = set()
-
     schema_graph = get_orientdb_schema_graph(schema_data, [])
+    return get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
+                                                hidden_classes)
+
+
+def get_graphql_schema_from_sqlalchemy_metadata(metadata, class_to_field_type_overrides=None,
+                                                hidden_classes=None):
+    """Construct a GraphQL schema from a SQLAlchemy Metadata object.
+
+    Args:
+        metadata: Metadata object describing the SQLAlchemy schema.
+        class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
+                                       (string -> {string -> GraphQLType}). Used to override the
+                                       type of a field in the class where it's first defined and all
+                                       the class's subclasses.
+        hidden_classes: optional set of strings, classes to not include in the GraphQL schema.
+
+    Returns:
+        tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
+        The tuple is of type (GraphQLSchema, {GraphQLObjectType -> GraphQLUnionType}).
+    """
+    schema_graph = get_sqlalchemy_schema_graph(metadata)
     return get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
                                                 hidden_classes)
