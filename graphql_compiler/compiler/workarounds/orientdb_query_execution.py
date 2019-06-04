@@ -280,7 +280,7 @@ def _expose_only_preferred_locations(match_query, location_types, coerced_locati
                     # If needed, add a type bound that emits an INSTANCEOF in the "where:" clause
                     if (previous_type_bound is None and current_type_bound is not None):
                         instanceof_predicate = BinaryComposition(
-                            u'INSTANCEOF', LocalField('@this'), Literal(current_type_bound))
+                            u'INSTANCEOF', LocalField('@this', None), Literal(current_type_bound))
                         if match_step.where_block:
                             # TODO(bojanserafimov): This branch needs test coverage
                             new_where_block = Filter(BinaryComposition(
