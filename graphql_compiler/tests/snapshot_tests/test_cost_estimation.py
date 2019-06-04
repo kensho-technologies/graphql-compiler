@@ -763,7 +763,6 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=2.0)
         self.assertEqual(expected_selectivity, _combine_filter_selectivities(selectivities))
 
-
     @pytest.mark.usefixtures('graph_client')
     def test_get_equals_filter_selectivity(self):
         schema_graph = generate_schema_graph(self.graph_client)
@@ -801,7 +800,6 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         )
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
-
 
     @pytest.mark.usefixtures('graph_client')
     def test_get_in_collection_filter_selectivity(self):
