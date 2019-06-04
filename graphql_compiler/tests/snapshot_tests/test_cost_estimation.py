@@ -4,14 +4,14 @@ import unittest
 
 import pytest
 
-from . import test_input_data
-from ..compiler.metadata import FilterInfo
-from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
-from ..cost_estimation.filter_selectivity_utils import (
+from .. import test_input_data
+from ...compiler.metadata import FilterInfo
+from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
+from ...cost_estimation.filter_selectivity_utils import (
     ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity, _combine_filter_selectivities,
     _get_filter_selectivity
 )
-from .test_helpers import generate_schema_graph
+from ..test_helpers import generate_schema_graph
 
 
 def create_lookup_counts(count_data):
@@ -763,6 +763,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=2.0)
         self.assertEqual(expected_selectivity, _combine_filter_selectivities(selectivities))
 
+
     @pytest.mark.usefixtures('graph_client')
     def test_get_equals_filter_selectivity(self):
         schema_graph = generate_schema_graph(self.graph_client)
@@ -800,6 +801,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         )
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
+
 
     @pytest.mark.usefixtures('graph_client')
     def test_get_in_collection_filter_selectivity(self):
@@ -842,3 +844,6 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         )
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
         self.assertEqual(expected_selectivity, selectivity)
+
+
+# pylint: enable=no-member
