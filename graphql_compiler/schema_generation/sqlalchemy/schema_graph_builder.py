@@ -3,14 +3,15 @@ import warnings
 
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLString
 import six
+from sqlalchemy.schema import ColumnDefault
 import sqlalchemy.sql.sqltypes as sqltypes
 
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
+from ..exceptions import IllegalSchemaInputError
 from ..schema_graph import (
     EdgeType, InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType,
     link_schema_elements
 )
-from ..exceptions import IllegalSchemaInputError
 
 
 # TODO(pmantica1): Add scalar mapping for the following classes: Interval.
@@ -71,8 +72,7 @@ UNSUPPORTED_PRIMITIVE_TYPES = frozenset({
 # TODO(pmantica1): Represent table inheritance in SchemaGraph.
 # TODO(pmantica1): Add option to map tables to EdgeTypes instead of VertexTypes.
 # TODO(pmantica1): Parse SQLAlchemy indexes.
-# TODO(pmantica1): Add integration test once get_graphql_schema_from_sqlalchemy_metadata is ready.
-def get_schema_graph_from_sql_alchemy_metadata(sqlalchemy_metadata):
+def get_sqlalchemy_schema_graph(sqlalchemy_metadata):
     """Return the matching SchemaGraph for the SQLAlchemy Metadata object"""
     vertex_types = _get_vertex_types(sqlalchemy_metadata.tables)
     edge_types = _get_edge_types(sqlalchemy_metadata.tables)
@@ -110,9 +110,13 @@ def _get_vertex_type_from_sqlalchemy_table(table):
     properties = dict()
     for column in table.get_children():
         name = column.key
-        default = column.default.arg if column.default is not None else None
         maybe_property_type = _try_get_graphql_scalar_type(name, column.type)
         if maybe_property_type is not None:
+            default = None
+            # TODO(pmantica1): Parse Sequence type default values.
+            # The type of default field of a Column object is either Sequence or ColumnDefault.
+            if isinstance(column.default, ColumnDefault):
+                default = column.default.arg if column.default is not None else None
             properties[name] = PropertyDescriptor(maybe_property_type, default)
     return VertexType(table.name, False, properties, {})
 

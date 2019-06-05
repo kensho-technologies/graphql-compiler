@@ -208,6 +208,12 @@ def _get_mismatch_message(expected_blocks, received_blocks):
     return u'{}\n\n!=\n\n{}'.format(pretty_expected, pretty_received)
 
 
+def compare_schema_texts(test_case, expected, received):
+    """Compare the expected and received GraphQL schema texts."""
+    msg = '\n{}\n\n!=\n\n{}'.format(expected, received)
+    compare_ignoring_whitespace(test_case, expected, received, msg)
+
+
 def compare_ir_blocks(test_case, expected_blocks, received_blocks):
     """Compare the expected and received IR blocks."""
     mismatch_message = _get_mismatch_message(expected_blocks, received_blocks)
