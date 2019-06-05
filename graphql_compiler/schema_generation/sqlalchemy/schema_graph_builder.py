@@ -76,6 +76,7 @@ def get_sqlalchemy_schema_graph(sqlalchemy_metadata):
     """Return the matching SchemaGraph for the SQLAlchemy Metadata object"""
     vertex_types = _get_vertex_types(sqlalchemy_metadata.tables)
     edge_types = _get_edge_types(sqlalchemy_metadata.tables)
+    _validate_no_name_collisions_between_edges_and_vertices(vertex_types, edge_types)
 
     elements = {element.class_name: element for element in vertex_types + edge_types}
     direct_superclass_sets = {element_name: set() for element_name in elements}
@@ -135,12 +136,25 @@ def _get_edge_types(tables):
                 outgoing_table = foreign_key.column.table
                 if not foreign_key.column.primary_key:
                     raise AssertionError(u'Foreign key defined in column {} in table {} references '
-                                         u'column {} in table {}, which is not primary key.'
+                                         u'column {} in table {}, which is not a primary key.'
                                          .format(table.name, column.key, foreign_key.column.name,
                                                  outgoing_table.name))
 
-                # We prepend the table name to ensure that the name is unique.
+                # We prepend the table name to ensure that the name is an unique EdgeType name.
                 edge_name = '{}_{}'.format(table.name, column.name)
                 edge_type = EdgeType(edge_name, False, {}, {}, table.name, outgoing_table.name)
                 edge_types.append(edge_type)
     return edge_types
+
+
+def _validate_no_name_collisions_between_edges_and_vertices(vertex_types, edge_types):
+    """Validate that no EdgeType object has the same name as a VertexType object."""
+    # Under certain circumstances, it is possible, though unlikely we assume, to have a name
+    # collision between an EdgeType and VertexType object. So instead of adding code complexity
+    # to deal with name collisions, we raise an assertion error in the case we have one.
+    vertex_names = set(vertex_type.class_name for vertex_type in vertex_types)
+    edge_names = set(edge_type.class_name for edge_type in edge_types)
+    name_collision = edge_names.intersection(vertex_names)
+    if len(name_collision) > 0:
+        raise AssertionError(u'The following schema element names refer to both edges and '
+                             u'vertices: {}'.format(name_collision))
