@@ -38,5 +38,5 @@ class EmptySchemaError(SchemaError):
     """Raised when there are no visible vertex types to import into the GraphQL schema object."""
 
 
-class IllegalSchemaInputError(SchemaError):
+class IllegalInputSchemaError(SchemaError):
     """Raised when then the database schema does not meet necesary constraints."""

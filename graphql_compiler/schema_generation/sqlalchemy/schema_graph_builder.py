@@ -7,7 +7,7 @@ from sqlalchemy.schema import ColumnDefault
 import sqlalchemy.sql.sqltypes as sqltypes
 
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
-from ..exceptions import IllegalSchemaInputError
+from ..exceptions import IllegalInputSchemaError
 from ..schema_graph import (
     EdgeType, InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType,
     link_schema_elements
@@ -127,7 +127,7 @@ def _get_edge_types(tables):
     for table in six.itervalues(tables):
         for column in table.get_children():
             if len(column.foreign_keys) > 1:
-                raise IllegalSchemaInputError(u'Multiple foreign keys are defined on column {} of '
+                raise IllegalInputSchemaError(u'Multiple foreign keys are defined on column {} of '
                                               u'table {}.'.format(column.key, table.name))
             if len(column.foreign_keys) > 0:
                 foreign_key = list(column.foreign_keys)[0]
