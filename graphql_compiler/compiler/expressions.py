@@ -233,12 +233,21 @@ class Variable(Expression):
 class LocalField(Expression):
     """A field at the current position in the query."""
 
-    __slots__ = ('field_name',)
+    __slots__ = ('field_name', 'field_type')
 
-    def __init__(self, field_name):
-        """Construct a new LocalField object that references a field at the current position."""
-        super(LocalField, self).__init__(field_name)
+    def __init__(self, field_name, field_type):
+        """Construct a new LocalField object that references a field at the current position.
+
+        Args:
+            field_name: string, the name of the local field being referenced
+            field_type: GraphQLType object describing the type of the referenced field. For some
+                        special fields (such as OrientDB "@this" or "@rid"), we may be unable to
+                        represent the field type in the GraphQL type system. In these situations,
+                        this value is set to None.
+        """
+        super(LocalField, self).__init__(field_name, field_type)
         self.field_name = field_name
+        self.field_type = field_type
         self.validate()
 
     def get_local_object_gremlin_name(self):
@@ -248,6 +257,8 @@ class LocalField(Expression):
     def validate(self):
         """Validate that the LocalField is correctly representable."""
         validate_safe_string(self.field_name)
+        if self.field_type is not None and not is_graphql_type(self.field_type):
+            raise ValueError(u'Invalid value {} of "field_type": {}'.format(self.field_type, self))
 
     def to_match(self):
         """Return a unicode object with the MATCH representation of this LocalField."""

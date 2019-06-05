@@ -40,17 +40,22 @@ def _construct_field_operator_expression_dict(expression_list):
         expression_list: list of expressions to analyze
 
     Returns:
-        local_field_to_expressions:
+        tuple (field_name_to_expressions, field_name_to_type, remaining_expression_list), containing
+        - field_name_to_expressions:
             dict mapping local field names to "operator -> list of BinaryComposition" dictionaries,
             for each BinaryComposition operator involving the LocalField
-        remaining_expression_list:
+        - field_name_to_type:
+            dict mapping local field names to field type
+        - remaining_expression_list:
             list of remaining expressions that were *not*
             BinaryCompositions on a LocalField using any of the between operators
     """
     between_operators = (u'<=', u'>=')
     inverse_operator = {u'>=': u'<=', u'<=': u'>='}
-    local_field_to_expressions = {}
+    field_name_to_expressions = {}
+    field_name_to_type = {}
     remaining_expression_list = deque([])
+
     for expression in expression_list:
         if all((
             isinstance(expression, BinaryComposition),
@@ -63,11 +68,14 @@ def _construct_field_operator_expression_dict(expression_list):
             else:
                 new_expression = expression
             field_name = new_expression.left.field_name
-            expressions_dict = local_field_to_expressions.setdefault(field_name, {})
+            field_type = new_expression.left.field_type
+            field_name_to_type[field_name] = field_type
+            expressions_dict = field_name_to_expressions.setdefault(field_name, {})
             expressions_dict.setdefault(new_expression.operator, []).append(new_expression)
         else:
             remaining_expression_list.append(expression)
-    return local_field_to_expressions, remaining_expression_list
+
+    return field_name_to_expressions, field_name_to_type, remaining_expression_list
 
 
 def _lower_expressions_to_between(base_expression):
@@ -80,15 +88,15 @@ def _lower_expressions_to_between(base_expression):
         return base_expression
     else:
         between_operators = (u'<=', u'>=')
-        local_field_to_expressions, new_expression_list = _construct_field_operator_expression_dict(
-            expression_list)
+        field_name_to_expressions, field_name_to_type, new_expression_list = (
+            _construct_field_operator_expression_dict(expression_list))
 
         lowering_occurred = False
-        for field_name in local_field_to_expressions:
-            expressions_dict = local_field_to_expressions[field_name]
+        for field_name in field_name_to_expressions:
+            expressions_dict = field_name_to_expressions[field_name]
             if all(operator in expressions_dict and len(expressions_dict[operator]) == 1
                    for operator in between_operators):
-                field = LocalField(field_name)
+                field = LocalField(field_name, field_name_to_type[field_name])
                 lower_bound = expressions_dict[u'>='][0].right
                 upper_bound = expressions_dict[u'<='][0].right
                 new_expression_list.appendleft(BetweenClause(field, lower_bound, upper_bound))
