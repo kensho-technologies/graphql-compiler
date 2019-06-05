@@ -17,8 +17,11 @@ service postgresql stop
 ## Issues installing the Python MySQL package
 
 Sometimes, precompiled wheels for the Python MySQL package are not available, and your pipenv may
-try to build the wheels itself. If you are on OSX, you may then sometimes see an error
-like the following:
+try to build the wheels itself. This has happened on OSX and Ubuntu.
+
+### OSX
+
+You may then sometimes see an error like the following:
 ```
 [pipenv.exceptions.InstallError]:   File "/usr/local/lib/python3.7/site-packages/pipenv/core.py", line 1874, in do_install
 [pipenv.exceptions.InstallError]:       keep_outdated=keep_outdated
@@ -51,13 +54,7 @@ Then, make sure that `clang` is able to find it by adding the following line to 
 export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/opt/openssl/lib/
 ```
 
-## Issues running pipenv install --dev
-
-Sometimes MySQL doesn't come with Ubuntu 18.04 and 
-```
-apt-get install python-mysqldb
-```
-only installs the interface.
+### Ubuntu 18.04
 
 When running 
 ```
@@ -90,6 +87,7 @@ you might get an error like the following:
 [pipenv.exceptions.InstallError]: ['ERROR: Complete output from command python setup.py egg_info:', '    ERROR: /bin/sh: 1: mysql_config: not found', '    Traceback (most recent call last):', '      File "<string>", line 1, in <module>', '      File "/tmp/pip-install-ekmq8s3j/mysqlclient/setup.py", line 16, in <module>', '        metadata, options = get_config()', '      File "/tmp/pip-install-ekmq8s3j/mysqlclient/setup_posix.py", line 53, in get_config', '        libs = mysql_config("libs_r")', '      File "/tmp/pip-install-ekmq8s3j/mysqlclient/setup_posix.py", line 28, in mysql_config', '        raise EnvironmentError("%s not found" % (mysql_config.path,))', '    OSError: mysql_config not found', '    ----------------------------------------', 'ERROR: Command "python setup.py egg_info" failed with error code 1 in /tmp/pip-install-ekmq8s3j/mysqlclient/']
 ```
 
+
 The solution is to install MySQL:
 ```
 sudo apt-get install python3.6-dev libmysqlclient-dev
@@ -99,3 +97,9 @@ after which
 pipenv install --dev
 ```
 should work fine.
+
+This error might happen even if you've run
+```
+apt-get install python-mysqldb
+```
+because that only installs the interface to MySQL.
