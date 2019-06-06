@@ -2145,6 +2145,96 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
+    def test_not_contains_op_filter_with_variable(self):
+        test_data = test_input_data.contains_op_filter_with_variable()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((alias NOT CONTAINS {wanted})),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        # "NOT" is not supported? https://orientdb.com/docs/2.0/orientdb.wiki/SQL-Where.html
+        expected_gremlin = SKIP_TEST
+
+        # the alias list valued column is not yet supported by the SQL backend
+        expected_sql = SKIP_TEST
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
+
+    def test_not_contains_op_filter_with_tag(self):
+        test_data = test_input_data.not_contains_op_filter_with_tag()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    where: ((alias NOT CONTAINS $matched.Animal___1.name)),
+                    as: Animal__in_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+        '''
+        # "NOT" is not supported? https://orientdb.com/docs/2.0/orientdb.wiki/SQL-Where.html
+        expected_gremlin = SKIP_TEST
+
+        expected_sql = NotImplementedError
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
+
+    def test_not_contains_op_filter_with_optional_tag(self):
+        test_data = test_input_data.not_contains_op_filter_with_optional_tag()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    optional: true,
+                    as: Animal__in_Animal_ParentOf___1
+                }} ,
+                {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    where: ((
+                        ($matched.Animal__in_Animal_ParentOf___1 IS null)
+                        OR
+                        (alias NOT CONTAINS $matched.Animal__in_Animal_ParentOf___1.name))),
+                    as: Animal__out_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+            WHERE (
+                (
+                    (Animal___1.in_Animal_ParentOf IS null)
+                    OR
+                    (Animal___1.in_Animal_ParentOf.size() = 0)
+                )
+                OR
+                (Animal__in_Animal_ParentOf___1 IS NOT null)
+            )
+        '''
+        # "NOT" is not supported? https://orientdb.com/docs/2.0/orientdb.wiki/SQL-Where.html
+        expected_gremlin = SKIP_TEST
+
+        expected_sql = NotImplementedError
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
+
     def test_has_substring_op_filter(self):
         test_data = test_input_data.has_substring_op_filter()
 
