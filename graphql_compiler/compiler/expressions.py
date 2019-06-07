@@ -758,7 +758,7 @@ class BinaryComposition(Expression):
 
     SUPPORTED_OPERATORS = frozenset({
         u'=', u'!=', u'>=', u'<=', u'>', u'<', u'+', u'||', u'&&',
-        u'contains', u'intersects', u'has_substring', u'LIKE', u'INSTANCEOF',
+        u'contains', u'not_contains', u'intersects', u'has_substring', u'LIKE', u'INSTANCEOF',
     })
 
     __slots__ = ('operator', 'left', 'right')
@@ -832,6 +832,7 @@ class BinaryComposition(Expression):
                 u'||': (u'OR', regular_operator_format),
                 u'&&': (u'AND', regular_operator_format),
                 u'contains': (u'CONTAINS', regular_operator_format),
+                u'not_contains': (u'NOT CONTAINS', regular_operator_format),
                 u'intersects': (u'intersect', intersects_operator_format),
                 u'has_substring': (None, None),  # must be lowered into compatible form using LIKE
 
@@ -856,6 +857,7 @@ class BinaryComposition(Expression):
         immediate_operator_format = u'({left} {operator} {right})'
         dotted_operator_format = u'{left}.{operator}({right})'
         intersects_operator_format = u'(!{left}.{operator}({right}).empty)'
+        negated_dotted_operator_format = u'!{left}.{operator}({right})'
 
         translation_table = {
             u'=': (u'==', immediate_operator_format),
@@ -868,6 +870,7 @@ class BinaryComposition(Expression):
             u'||': (u'||', immediate_operator_format),
             u'&&': (u'&&', immediate_operator_format),
             u'contains': (u'contains', dotted_operator_format),
+            u'not_contains': (u'contains', negated_dotted_operator_format),
             u'intersects': (u'intersect', intersects_operator_format),
             u'has_substring': (u'contains', dotted_operator_format),
         }
