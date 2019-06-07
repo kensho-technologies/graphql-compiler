@@ -2160,8 +2160,14 @@ class CompilerTests(unittest.TestCase):
                 RETURN $matches
             )
         '''
-        # "NOT" is not supported? https://orientdb.com/docs/2.0/orientdb.wiki/SQL-Where.html
-        expected_gremlin = SKIP_TEST
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> it.alias.not(contains($wanted))}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
 
         # the alias list valued column is not yet supported by the SQL backend
         expected_sql = SKIP_TEST
@@ -2185,8 +2191,17 @@ class CompilerTests(unittest.TestCase):
                 RETURN $matches
             )
         '''
-        # "NOT" is not supported? https://orientdb.com/docs/2.0/orientdb.wiki/SQL-Where.html
-        expected_gremlin = SKIP_TEST
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .in('Animal_ParentOf')
+                .filter{it, m -> it.alias.not(contains(m.Animal___1.name))}
+                .as('Animal__in_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
 
         expected_sql = NotImplementedError
 
@@ -2228,8 +2243,26 @@ class CompilerTests(unittest.TestCase):
                 (Animal__in_Animal_ParentOf___1 IS NOT null)
             )
         '''
-        # "NOT" is not supported? https://orientdb.com/docs/2.0/orientdb.wiki/SQL-Where.html
-        expected_gremlin = SKIP_TEST
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+                .as('Animal__in_Animal_ParentOf___1')
+            .optional('Animal___1')
+            .as('Animal___2')
+                .out('Animal_ParentOf')
+                .filter{it, m -> (
+                        (m.Animal__in_Animal_ParentOf___1 == null)
+                        ||
+                        it.alias.not(contains(m.Animal__in_Animal_ParentOf___1.name))
+                    )
+                }
+                .as('Animal__out_Animal_ParentOf___1')
+            .back('Animal___2')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
 
         expected_sql = NotImplementedError
 
