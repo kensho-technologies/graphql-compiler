@@ -2203,7 +2203,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.Filter(
                 expressions.BinaryComposition(
-                    u'not contains',
+                    u'not_contains',
                     expressions.LocalField('alias', GraphQLList(GraphQLString)),
                     expressions.Variable('$wanted', GraphQLString)
                 )

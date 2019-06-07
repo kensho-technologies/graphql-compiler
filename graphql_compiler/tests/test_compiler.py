@@ -2146,7 +2146,7 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
     def test_not_contains_op_filter_with_variable(self):
-        test_data = test_input_data.contains_op_filter_with_variable()
+        test_data = test_input_data.not_contains_op_filter_with_variable()
 
         expected_match = '''
             SELECT
