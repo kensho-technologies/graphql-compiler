@@ -2154,7 +2154,7 @@ class CompilerTests(unittest.TestCase):
             FROM (
                 MATCH {{
                     class: Animal,
-                    where: ((alias NOT CONTAINS {wanted})),
+                    where: (NOT (alias CONTAINS {wanted})),
                     as: Animal___1
                 }}
                 RETURN $matches
@@ -2185,7 +2185,7 @@ class CompilerTests(unittest.TestCase):
                     class: Animal,
                     as: Animal___1
                 }}.in('Animal_ParentOf') {{
-                    where: ((alias NOT CONTAINS $matched.Animal___1.name)),
+                    where: (NOT (alias CONTAINS $matched.Animal___1.name)),
                     as: Animal__in_Animal_ParentOf___1
                 }}
                 RETURN $matches
@@ -2228,7 +2228,7 @@ class CompilerTests(unittest.TestCase):
                     where: ((
                         ($matched.Animal__in_Animal_ParentOf___1 IS null)
                         OR
-                        (alias NOT CONTAINS $matched.Animal__in_Animal_ParentOf___1.name))),
+                        NOT (alias CONTAINS $matched.Animal__in_Animal_ParentOf___1.name))),
                     as: Animal__out_Animal_ParentOf___1
                 }}
                 RETURN $matches

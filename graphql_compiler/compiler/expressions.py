@@ -811,6 +811,7 @@ class BinaryComposition(Expression):
         regular_operator_format = '(%(left)s %(operator)s %(right)s)'
         inverted_operator_format = '(%(right)s %(operator)s %(left)s)'  # noqa
         intersects_operator_format = '(%(operator)s(%(left)s, %(right)s).asList().size() > 0)'
+        negated_regular_operator_format = 'NOT (%(left)s %(operator)s %(right)s)'
         # pylint: enable=unused-variable
 
         # Null literals use the OrientDB 'IS/IS NOT' (in)equality operators,
@@ -832,7 +833,7 @@ class BinaryComposition(Expression):
                 u'||': (u'OR', regular_operator_format),
                 u'&&': (u'AND', regular_operator_format),
                 u'contains': (u'CONTAINS', regular_operator_format),
-                u'not_contains': (u'NOT CONTAINS', regular_operator_format),
+                u'not_contains': (u'CONTAINS', negated_regular_operator_format),
                 u'intersects': (u'intersect', intersects_operator_format),
                 u'has_substring': (None, None),  # must be lowered into compatible form using LIKE
 
