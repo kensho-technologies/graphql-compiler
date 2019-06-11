@@ -824,11 +824,6 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         # 'metadata' is the QueryMetadataTable describing all the metadata collected during query
         # processing, including location metadata (e.g. which locations are folded or optional).
         'metadata': query_metadata_table,
-        # 'tags' is a dict containing
-        #  - location: Location where the tag was defined
-        #  - optional: boolean representing whether the tag was defined within an @optional scope
-        #  - type: GraphQLType of the tagged value
-        'tags': dict(),
         # 'global_filters' is a list that may contain Filter blocks that are generated during
         # query processing, but apply to the global query scope and should be appended to the
         # IR blocks only after the GlobalOperationsStart block has been emitted.
