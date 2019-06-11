@@ -28,19 +28,21 @@ To get from GraphQL AST to IR, we follow the following pattern:
     The root AST node is always a vertex AST node.
 
     *** P-steps ***
-    step P-2. Process property-only directives, like @tag and @output.
+    step P-2. Process @output directives.
     ***************
 
     *** V-steps ***
-    step V-2. Recurse into any property field children of the current AST node
+    step V-2. Process @tag directives at all property field children of the current AST node.
+
+    step V-3. Recurse into any property field children of the current AST node
               (property fields cannot have property fields of their own, see _compile_vertex_ast()).
 
-    step V-3. Property field processing complete:  (see _compile_vertex_ast())
+    step V-4. Property field processing complete:  (see _compile_vertex_ast())
         - mark the current location in the query, since all @filter directives that apply to the
           current field have already been processed;
         - process the output_source directive, if it exists
 
-    step V-4. Recurse into any vertex field children of the current AST node:
+    step V-5. Recurse into any vertex field children of the current AST node:
               (see _compile_vertex_ast())
         - before recursing into each vertex:
           - process any @optional and @fold directives present on the child AST node;
@@ -243,6 +245,27 @@ def _process_output_source_directive(schema, current_schema_type, ast,
     else:
         return None
 
+def _process_tag_directive(context, current_schema_type, location, tag_directive):
+    if is_in_fold_scope(context):
+        raise GraphQLCompilationError(u'Tagging values within a @fold vertex field is '
+                                      u'not allowed! Location: {}'.format(location))
+
+    if location.field == COUNT_META_FIELD_NAME:
+        raise GraphQLCompilationError(
+            u'Tags are prohibited within @fold, but unexpectedly found use of '
+            u'a tag on the {} meta field that is only allowed within a @fold!'
+            u'Location: {}'.format(COUNT_META_FIELD_NAME, location))
+
+    # Schema validation has ensured that the fields below exist.
+    tag_name = tag_directive.arguments[0].value.value
+    if context['metadata'].get_tag_info(tag_name) is not None:
+        raise GraphQLCompilationError(u'Cannot reuse tag name: {}'.format(tag_name))
+    validate_safe_string(tag_name)
+    context['metadata'].record_tag_info(tag_name, TagInfo(
+        location=location,
+        optional=is_in_optional_scope(context),
+        type=strip_non_null_from_type(current_schema_type),
+    ))
 
 def _compile_property_ast(schema, current_schema_type, ast, location,
                           context, unique_local_directives):
@@ -270,29 +293,6 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
                                           .format(COUNT_META_FIELD_NAME, location))
 
     # step P-2: process property-only directives
-    tag_directive = unique_local_directives.get('tag', None)
-    if tag_directive:
-        if is_in_fold_scope(context):
-            raise GraphQLCompilationError(u'Tagging values within a @fold vertex field is '
-                                          u'not allowed! Location: {}'.format(location))
-
-        if location.field == COUNT_META_FIELD_NAME:
-            raise AssertionError(u'Tags are prohibited within @fold, but unexpectedly found use of '
-                                 u'a tag on the {} meta field that is only allowed within a @fold!'
-                                 u'Location: {}'
-                                 .format(COUNT_META_FIELD_NAME, location))
-
-        # Schema validation has ensured that the fields below exist.
-        tag_name = tag_directive.arguments[0].value.value
-        if context['metadata'].get_tag_info(tag_name) is not None:
-            raise GraphQLCompilationError(u'Cannot reuse tag name: {}'.format(tag_name))
-        validate_safe_string(tag_name)
-        context['metadata'].record_tag_info(tag_name, TagInfo(
-            location=location,
-            optional=is_in_optional_scope(context),
-            type=strip_non_null_from_type(current_schema_type),
-        ))
-
     output_directive = unique_local_directives.get('output', None)
     if output_directive:
         # Schema validation has ensured that the fields below exist.
@@ -402,7 +402,20 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
     validate_vertex_directives(unique_local_directives)
 
-    # step V-2: step into property fields
+    # step V-2: process @tag directives
+    for field_ast in property_fields:
+        field_name = get_ast_field_name(field_ast)
+        property_schema_type = get_field_type_from_schema(current_schema_type, field_name)
+        inner_location = location.navigate_to_field(field_name)
+        local_unique_directives = get_unique_directives(field_ast)
+        tag_directive = local_unique_directives.get('tag', None)
+        if tag_directive:
+            if get_local_filter_directives(field_ast, property_schema_type, None):
+                raise GraphQLCompilationError(u'Cannot filter and tag the same field {}'
+                                              .format(inner_location))
+            _process_tag_directive(context, property_schema_type, inner_location, tag_directive)
+
+    # step V-3: step into property fields
     for field_ast in property_fields:
         field_name = get_ast_field_name(field_ast)
         property_schema_type = get_field_type_from_schema(current_schema_type, field_name)
@@ -412,7 +425,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                                      inner_location, context)
         basic_blocks.extend(inner_basic_blocks)
 
-    # step V-3: mark the graph position, and process output_source directive
+    # step V-4: mark the graph position, and process output_source directive
     basic_blocks.append(_mark_location(location))
 
     output_source = _process_output_source_directive(schema, current_schema_type, ast,
@@ -420,7 +433,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     if output_source:
         basic_blocks.append(output_source)
 
-    # step V-4: step into vertex fields
+    # step V-5: step into vertex fields
     for field_ast in vertex_fields:
         field_name = get_ast_field_name(field_ast)
         validate_context_for_visiting_vertex_field(location, field_name, context)
