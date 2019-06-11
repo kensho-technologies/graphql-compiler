@@ -16,7 +16,7 @@ from .exceptions import EmptySchemaError
 
 
 def _has_only_vertex_non_abstract_subclasses(cls_name, schema_graph):
-    """Return True if all the classes non-abstract subclasses are vertices. Else, return False."""
+    """Return True if all the class's non-abstract subclasses are vertices. Else, return False."""
     cls_subclasses = schema_graph.get_subclass_set(cls_name)
 
     all_non_abstract_subclasses_are_vertices = True
