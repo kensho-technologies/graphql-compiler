@@ -303,7 +303,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
                                           u'in a fold. Location: {}'
                                           .format(COUNT_META_FIELD_NAME, location))
 
-    # step P-2: process property-only directives
+    # step P-2: Process @output directives.
     output_directive = unique_local_directives.get('output', None)
     if output_directive:
         # Schema validation has ensured that the fields below exist.
