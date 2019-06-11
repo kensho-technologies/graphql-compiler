@@ -341,6 +341,38 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_colocated_out_of_order_filter_and_tag(self):
+        test_data = test_input_data.colocated_out_of_order_filter_and_tag()
+
+        base_location = helpers.Location(('Animal',))
+        child_location = base_location.navigate_to_subpath('out_Entity_Related')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('out', 'Entity_Related'),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'contains',
+                    expressions.LocalField('alias', GraphQLList(GraphQLString)),
+                    expressions.LocalField('name', GraphQLString)
+                )
+            ),
+            blocks.MarkLocation(child_location),
+            blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'related_name': expressions.OutputContextField(
+                    child_location.navigate_to_field('name'), GraphQLString)
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            child_location: 'Entity',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_multiple_filters(self):
         test_data = test_input_data.multiple_filters()
 
