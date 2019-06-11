@@ -10,7 +10,7 @@ from ..compiler.expressions import (
     TernaryConditional, Variable
 )
 from ..compiler.helpers import Location
-from ..compiler.ir_lowering_common import OutputContextVertex
+from ..compiler.ir_lowering_common.common import OutputContextVertex
 from ..compiler.ir_lowering_match.utils import CompoundMatchQuery
 from ..compiler.match_query import convert_to_match_query
 from ..schema import GraphQLDateTime
@@ -58,7 +58,7 @@ class EmitMatchTests(unittest.TestCase):
             QueryRoot({'Foo'}),
             Filter(BinaryComposition(
                 u'=',
-                LocalField(u'name'),
+                LocalField(u'name', GraphQLString),
                 Variable('$desired_name', GraphQLString))),
             MarkLocation(base_location),
             Traverse('out', 'Foo_Bar'),
@@ -102,10 +102,10 @@ class EmitMatchTests(unittest.TestCase):
                 BinaryComposition(
                     u'&&',
                     BinaryComposition(u'>=',
-                                      LocalField('event_date'),
+                                      LocalField('event_date', GraphQLDateTime),
                                       Variable('$start', GraphQLDateTime)),
                     BinaryComposition(u'<=',
-                                      LocalField('event_date'),
+                                      LocalField('event_date', GraphQLDateTime),
                                       Variable('$end', GraphQLDateTime))
                 )
             ),
@@ -201,7 +201,7 @@ class EmitGremlinTests(unittest.TestCase):
             Traverse('out', 'Foo_Bar'),
             Filter(BinaryComposition(
                 u'=',
-                LocalField(u'name'),
+                LocalField(u'name', GraphQLString),
                 ContextField(base_location.navigate_to_field(u'name'), GraphQLString))),
             MarkLocation(child_location),
             Backtrack(base_location),
