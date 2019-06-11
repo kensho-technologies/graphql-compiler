@@ -2,6 +2,7 @@
 from copy import copy
 from itertools import chain
 
+from graphql import GraphQLList
 from graphql.language.ast import InlineFragment, SelectionSet
 import six
 
@@ -365,6 +366,10 @@ def expand_macros_in_query_ast(macro_registry, query_ast, query_args):
     query_type = macro_registry.schema_without_macros.get_query_type()
     base_start_type = query_type.fields[base_start_type_name].type
     tag_names = get_all_tag_names(base_ast)
+
+    # Allow list types at the query root in the schema.
+    if isinstance(base_start_type, GraphQLList):
+        base_start_type = base_start_type.of_type
 
     # Dict[str, Dict[str, MacroEdgeDescriptor]] mapping:
     # class name -> (macro edge name -> MacroEdgeDescriptor)
