@@ -284,15 +284,14 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
 
         # Schema validation has ensured that the fields below exist.
         tag_name = tag_directive.arguments[0].value.value
-        if tag_name in context['tags']:
+        if context['metadata'].get_tag_info(tag_name) is not None:
             raise GraphQLCompilationError(u'Cannot reuse tag name: {}'.format(tag_name))
         validate_safe_string(tag_name)
-        context['tags'][tag_name] = {
-            'location': location,
-            'optional': is_in_optional_scope(context),
-            'type': strip_non_null_from_type(current_schema_type),
-        }
-        context['metadata'].record_tag_info(tag_name, TagInfo(location=location))
+        context['metadata'].record_tag_info(tag_name, TagInfo(
+            location=location,
+            optional=is_in_optional_scope(context),
+            type=strip_non_null_from_type(current_schema_type),
+        ))
 
     output_directive = unique_local_directives.get('output', None)
     if output_directive:
