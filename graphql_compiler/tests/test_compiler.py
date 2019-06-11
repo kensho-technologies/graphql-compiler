@@ -182,6 +182,7 @@ class CompilerTests(unittest.TestCase):
 
         expected_match = '''
             SELECT Animal__out_Entity_Related___1.name AS `related_name` FROM (MATCH {{
+                where: ((@this INSTANCEOF 'Animal')),
                 as: Animal___1
             }}.out('Entity_Related') {{
                 class: Entity,
@@ -394,6 +395,7 @@ class CompilerTests(unittest.TestCase):
                 Animal__out_Animal_ParentOf___1.name AS `parent_name`
             FROM (
                 MATCH {{
+                    where: ((@this INSTANCEOF 'Animal')),
                     as: Animal___1
                 }}.out('Animal_ParentOf') {{
                     class: Animal,
@@ -426,6 +428,7 @@ class CompilerTests(unittest.TestCase):
                 Animal__out_Entity_Related___1.name AS `related_entity`
             FROM (
                 MATCH {{
+                    where: ((@this INSTANCEOF 'Animal')),
                     as: Animal___1
                 }}.out('Entity_Related') {{
                     class: Entity,
@@ -1152,6 +1155,7 @@ class CompilerTests(unittest.TestCase):
                     optional: true,
                     as: Animal__out_Animal_ParentOf__out_Animal_FedAt___1
                 }} , {{
+                    where: ((@this INSTANCEOF 'Animal')),
                     as: Animal__out_Animal_ParentOf___1
                 }}.in('Animal_ParentOf') {{
                     as: Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
@@ -2412,6 +2416,7 @@ class CompilerTests(unittest.TestCase):
                 Species___1.name AS `species_name`
             FROM (
                 MATCH {{
+                    where: ((@this INSTANCEOF 'Species')),
                     as: Species___1
                 }}.in('Animal_OfSpecies') {{
                     class: Animal,
@@ -2575,6 +2580,7 @@ class CompilerTests(unittest.TestCase):
                 Species___1.name AS `species_name`
             FROM (
                 MATCH {{
+                    where: ((@this INSTANCEOF 'Species')),
                     as: Species___1
                 }}.in('Animal_OfSpecies') {{
                     class: Animal,
@@ -2747,6 +2753,7 @@ class CompilerTests(unittest.TestCase):
                 Species___1.name AS `species_name`
             FROM (
                 MATCH {{
+                    where: ((@this INSTANCEOF 'Species')),
                     as: Species___1
                 }}.out('Species_Eats') {{
                     class: Food,
@@ -3574,12 +3581,14 @@ class CompilerTests(unittest.TestCase):
         expected_match = '''
             SELECT Animal__out_Animal_ParentOf__out_Animal_ParentOf___1.name
                 AS `animal_name` FROM (MATCH {{
+                where: ((@this INSTANCEOF 'Animal')),
                 as: Animal___1
             }}.out('Animal_ParentOf') {{
                 as: Animal__out_Animal_ParentOf___1
             }}.out('Animal_ParentOf') {{
                 as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
             }} , {{
+                where: ((@this INSTANCEOF 'Animal')),
                 as: Animal__out_Animal_ParentOf___1
             }}.out('Entity_Related') {{
                 class: Entity,
@@ -4329,6 +4338,7 @@ class CompilerTests(unittest.TestCase):
                     Animal__in_Animal_ParentOf___1.name AS `child_name`
                 FROM (
                     MATCH {{
+                        where: ((@this INSTANCEOF 'Animal')),
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
                         class: Animal,
@@ -4779,6 +4789,7 @@ class CompilerTests(unittest.TestCase):
                     Animal___1.name AS `animal_name`
                 FROM (
                     MATCH {{
+                        where: ((@this INSTANCEOF 'Animal')),
                         as: Animal___1
                     }}.out('Animal_ParentOf') {{
                         class: Animal,
@@ -5055,6 +5066,7 @@ class CompilerTests(unittest.TestCase):
                         as: Animal__out_Animal_ParentOf__out_Animal_FedAt___1
                     }} ,
                     {{
+                        where: ((@this INSTANCEOF 'Animal')),
                         as: Animal__out_Animal_ParentOf___1
                     }}.in('Animal_ParentOf') {{
                         as: Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
@@ -5734,6 +5746,7 @@ class CompilerTests(unittest.TestCase):
                     Animal__in_Animal_ParentOf___1.name AS `child_name`
                 FROM (
                     MATCH {{
+                        where: ((@this INSTANCEOF 'Animal')),
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
                         class: Animal,
