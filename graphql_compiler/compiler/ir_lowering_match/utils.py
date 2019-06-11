@@ -20,7 +20,10 @@ def convert_coerce_type_to_instanceof_filter(coerce_type_block):
     # INSTANCEOF requires the target class to be passed in as a string,
     # so we make the target class a string literal.
     new_predicate = BinaryComposition(
-        u'INSTANCEOF', LocalField('@this'), Literal(coerce_type_target))
+        u'INSTANCEOF',
+        LocalField('@this', None),
+        Literal(coerce_type_target)
+    )
 
     return Filter(new_predicate)
 
@@ -136,7 +139,7 @@ def filter_edge_field_non_existence(edge_expression):
 
 
 def _filter_orientdb_simple_optional_edge(
-        query_metadata_table, optional_edge_location, inner_location_name):
+        query_metadata_table, optional_edge_location, inner_location):
     """Return an Expression that is False for rows that don't follow the @optional specification.
 
     OrientDB does not filter correctly within optionals. Namely, a result where the optional edge
@@ -168,12 +171,14 @@ def _filter_orientdb_simple_optional_edge(
                               query processing, including location metadata (e.g. which locations
                               are folded or optional).
         optional_edge_location: Location object representing the optional edge field
-        inner_location_name: string representing location within the corresponding optional traverse
+        inner_location: Location object within the corresponding optional traverse
 
     Returns:
         Expression that evaluates to False for rows that do not follow the @optional specification
     """
-    inner_local_field = LocalField(inner_location_name)
+    location_info = query_metadata_table.get_location_info(inner_location)
+    inner_location_name, _ = inner_location.get_location_name()
+    inner_local_field = LocalField(inner_location_name, location_info.type)
     inner_location_existence = BinaryComposition(u'!=', inner_local_field, NullLiteral)
 
     # The optional_edge_location here is actually referring to the edge field itself.
@@ -204,10 +209,10 @@ def construct_where_filter_predicate(query_metadata_table, simple_optional_root_
                               are folded or optional).
         simple_optional_root_info: dict mapping from simple_optional_root_location -> dict
                                    containing keys
-                                   - 'inner_location_name': Location object correspoding to the
-                                                            unique MarkLocation present within a
-                                                            simple @optional (one that does not
-                                                            expands vertex fields) scope
+                                   - 'inner_location': Location object correspoding to the
+                                                       unique MarkLocation present within a
+                                                       simple @optional (one that does not
+                                                       expand vertex fields) scope
                                    - 'edge_field': string representing the optional edge being
                                                    traversed
                                    where simple_optional_root_to_inner_location is the location
@@ -217,12 +222,13 @@ def construct_where_filter_predicate(query_metadata_table, simple_optional_root_
     """
     inner_location_name_to_where_filter = {}
     for root_location, root_info_dict in six.iteritems(simple_optional_root_info):
-        inner_location_name = root_info_dict['inner_location_name']
+        inner_location = root_info_dict['inner_location']
+        inner_location_name, _ = inner_location.get_location_name()
         edge_field = root_info_dict['edge_field']
 
         optional_edge_location = root_location.navigate_to_field(edge_field)
         optional_edge_where_filter = _filter_orientdb_simple_optional_edge(
-            query_metadata_table, optional_edge_location, inner_location_name)
+            query_metadata_table, optional_edge_location, inner_location)
         inner_location_name_to_where_filter[inner_location_name] = optional_edge_where_filter
 
     # Sort expressions by inner_location_name to obtain deterministic order

@@ -51,7 +51,13 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
             elif optional_root_location in omitted_locations:
                 # Add filter to indicate that the omitted edge(s) shoud not exist
                 field_name = step.root_block.get_field_name()
-                new_predicate = filter_edge_field_non_existence(LocalField(field_name))
+
+                # HACK(predrag): Plumbing in the type here is tricky and generally not worth it,
+                #                since this code needs to be rewritten to resolve a bug related
+                #                to edge inheritance. GitHub issue:
+                #                https://github.com/kensho-technologies/graphql-compiler/issues/336
+                new_predicate = filter_edge_field_non_existence(LocalField(field_name, None))
+
                 old_filter = new_match_traversal[-1].where_block
                 if old_filter is not None:
                     new_predicate = BinaryComposition(u'&&', old_filter.predicate, new_predicate)
