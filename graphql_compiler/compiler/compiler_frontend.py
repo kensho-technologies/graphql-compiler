@@ -245,7 +245,17 @@ def _process_output_source_directive(schema, current_schema_type, ast,
     else:
         return None
 
+
 def _process_tag_directive(context, current_schema_type, location, tag_directive):
+    """Process the tag directive, modifying the context as appropriate.
+
+    Args:
+        context: dict, various per-compilation data (e.g. declared tags, whether the current block
+                 is optional, etc.). May be mutated in-place in this function!
+        current_schema_type: GraphQLType, the schema type at the current location
+        location: Location object representing the current location in the query
+        tag_directive: GraphQL Directive that we want to process
+    """
     if is_in_fold_scope(context):
         raise GraphQLCompilationError(u'Tagging values within a @fold vertex field is '
                                       u'not allowed! Location: {}'.format(location))
@@ -266,6 +276,7 @@ def _process_tag_directive(context, current_schema_type, location, tag_directive
         optional=is_in_optional_scope(context),
         type=strip_non_null_from_type(current_schema_type),
     ))
+
 
 def _compile_property_ast(schema, current_schema_type, ast, location,
                           context, unique_local_directives):
