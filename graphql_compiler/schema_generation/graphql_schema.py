@@ -15,6 +15,21 @@ from ..schema import DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS
 from .exceptions import EmptySchemaError
 
 
+def _has_only_vertex_non_abstract_subclasses(cls_name, schema_graph):
+    """Return True if all the class's non-abstract subclasses are vertices. Else, return False."""
+    cls_subclasses = schema_graph.get_subclass_set(cls_name)
+
+    all_non_abstract_subclasses_are_vertices = True
+    for subclass_name in cls_subclasses:
+        subclass_element = schema_graph.get_element_by_class_name(subclass_name)
+        if subclass_name != cls_name:
+            if not subclass_element.abstract and not subclass_element.is_vertex:
+                all_non_abstract_subclasses_are_vertices = False
+                break
+
+    return all_non_abstract_subclasses_are_vertices
+
+
 def _get_referenced_type_equivalences(graphql_types, type_equivalence_hints):
     """Filter union types with no edges from the type equivalence hints dict."""
     referenced_types = set()
@@ -170,12 +185,15 @@ def _create_interface_specification(schema_graph, graphql_types, hidden_classes,
     """Return a function that specifies the interfaces implemented by the given type."""
     def interface_spec():
         """Return a list of GraphQL interface types implemented by the type named 'cls_name'."""
-        abstract_superclass_set = (
-            superclass_name
-            for superclass_name in sorted(list(schema_graph.get_superclass_set(cls_name)))
-            if (superclass_name not in hidden_classes and
-                schema_graph.get_element_by_class_name(superclass_name).abstract)
-        )
+        abstract_superclass_set = []
+        for superclass_name in sorted(list(schema_graph.get_superclass_set(cls_name))):
+            if superclass_name not in hidden_classes:
+                if schema_graph.get_element_by_class_name(superclass_name).abstract:
+                    if superclass_name in schema_graph.non_graph_class_names:
+                        if _has_only_vertex_non_abstract_subclasses(superclass_name, schema_graph):
+                            abstract_superclass_set.append(superclass_name)
+                    else:
+                        abstract_superclass_set.append(superclass_name)
 
         return [
             graphql_types[x]
@@ -309,20 +327,9 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
         if not schema_graph.get_element_by_class_name(non_graph_cls_name).abstract:
             continue
 
-        cls_subclasses = schema_graph.get_subclass_set(non_graph_cls_name)
         # No need to add the possible abstract class if it doesn't have subclasses besides itself.
-        if len(cls_subclasses) > 1:
-            all_non_abstract_subclasses_are_vertices = True
-
-            # Check all non-abstract subclasses are vertices.
-            for subclass_name in cls_subclasses:
-                subclass = schema_graph.get_element_by_class_name(subclass_name)
-                if subclass_name != non_graph_cls_name:
-                    if not subclass.abstract and not subclass.is_vertex:
-                        all_non_abstract_subclasses_are_vertices = False
-                        break
-
-            if all_non_abstract_subclasses_are_vertices:
+        if len(schema_graph.get_subclass_set(non_graph_cls_name)) > 1:
+            if _has_only_vertex_non_abstract_subclasses(non_graph_cls_name, schema_graph):
                 # Add abstract class as an interface.
                 inherited_field_type_overrides.setdefault(non_graph_cls_name, dict())
                 field_type_overrides = inherited_field_type_overrides[non_graph_cls_name]

@@ -256,6 +256,24 @@ class OrientDBUnparameterizedMatchQueryTests(TestCase):
         self.assertMatchSnapshot(rows)
 
     @pytest.mark.usefixtures('snapshot_graph_client')
+    def test_not_contains_op_filter_with_tag(self):
+        test_data = test_input_data.not_contains_op_filter_with_tag()
+        sample_parameters = {}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('snapshot_graph_client')
+    def test_not_contains_op_filter_with_optional_tag(self):
+        test_data = test_input_data.not_contains_op_filter_with_optional_tag()
+        sample_parameters = {}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_has_substring_op_filter_with_optional_tag(self):
         test_data = test_input_data.has_substring_op_filter_with_optional_tag()
         sample_parameters = {}
@@ -744,6 +762,15 @@ class OrientDBParameterizedMatchQueryTests(TestCase):
     @pytest.mark.usefixtures('snapshot_graph_client')
     def test_contains_op_filter_with_variable(self):
         test_data = test_input_data.contains_op_filter_with_variable()
+        sample_parameters = {'wanted': 'Nazgul_1'}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('snapshot_graph_client')
+    def test_not_contains_op_filter_with_variable(self):
+        test_data = test_input_data.not_contains_op_filter_with_variable()
         sample_parameters = {'wanted': 'Nazgul_1'}
 
         rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)

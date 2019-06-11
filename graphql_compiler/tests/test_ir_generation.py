@@ -2226,6 +2226,122 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_not_contains_op_filter_with_variable(self):
+        test_data = test_input_data.not_contains_op_filter_with_variable()
+
+        base_location = helpers.Location(('Animal',))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'not_contains',
+                    expressions.LocalField('alias', GraphQLList(GraphQLString)),
+                    expressions.Variable('$wanted', GraphQLString)
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_not_contains_op_filter_with_tag(self):
+        test_data = test_input_data.not_contains_op_filter_with_tag()
+
+        base_location = helpers.Location(('Animal',))
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('in', 'Animal_ParentOf'),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'not_contains',
+                    expressions.LocalField('alias', GraphQLList(GraphQLString)),
+                    expressions.ContextField(
+                        base_location.navigate_to_field('name'),
+                        GraphQLString
+                    ),
+                )
+            ),
+            blocks.MarkLocation(parent_location),
+            blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_not_contains_op_filter_with_optional_tag(self):
+        test_data = test_input_data.not_contains_op_filter_with_optional_tag()
+
+        base_location = helpers.Location(('Animal',))
+        revisited_base_location = base_location.revisit()
+        parent_location = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        child_location = base_location.navigate_to_subpath('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+
+            blocks.Traverse('in', 'Animal_ParentOf', optional=True),
+            blocks.MarkLocation(parent_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, optional=True),
+            blocks.MarkLocation(revisited_base_location),
+
+            blocks.Traverse('out', 'Animal_ParentOf'),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'||',
+                    expressions.BinaryComposition(
+                        u'=',
+                        expressions.ContextFieldExistence(parent_location),
+                        expressions.FalseLiteral
+                    ),
+                    expressions.BinaryComposition(
+                        u'not_contains',
+                        expressions.LocalField('alias', GraphQLList(GraphQLString)),
+                        expressions.ContextField(
+                            parent_location.navigate_to_field('name'),
+                            GraphQLString
+                        )
+                    )
+                )
+            ),
+            blocks.MarkLocation(child_location),
+            blocks.Backtrack(revisited_base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            revisited_base_location: 'Animal',
+            parent_location: 'Animal',
+            child_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_has_substring_op_filter(self):
         test_data = test_input_data.has_substring_op_filter()
 
