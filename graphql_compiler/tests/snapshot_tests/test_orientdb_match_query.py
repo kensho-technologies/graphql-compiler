@@ -823,4 +823,5 @@ class OrientDBParameterizedMatchQueryTests(TestCase):
 
         self.assertMatchSnapshot(rows)
 
+
 # pylint: enable=no-member
