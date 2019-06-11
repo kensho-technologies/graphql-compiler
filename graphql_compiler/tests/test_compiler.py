@@ -2149,6 +2149,129 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
+    def test_not_contains_op_filter_with_variable(self):
+        test_data = test_input_data.not_contains_op_filter_with_variable()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((NOT (alias CONTAINS {wanted}))),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> !it.alias.contains($wanted)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        # the alias list valued column is not yet supported by the SQL backend
+        expected_sql = SKIP_TEST
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
+
+    def test_not_contains_op_filter_with_tag(self):
+        test_data = test_input_data.not_contains_op_filter_with_tag()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    where: ((NOT (alias CONTAINS $matched.Animal___1.name))),
+                    as: Animal__in_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .in('Animal_ParentOf')
+                .filter{it, m -> !it.alias.contains(m.Animal___1.name)}
+                .as('Animal__in_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        expected_sql = NotImplementedError
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
+
+    def test_not_contains_op_filter_with_optional_tag(self):
+        test_data = test_input_data.not_contains_op_filter_with_optional_tag()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    optional: true,
+                    as: Animal__in_Animal_ParentOf___1
+                }} ,
+                {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    where: ((
+                        ($matched.Animal__in_Animal_ParentOf___1 IS null)
+                        OR
+                        (NOT (alias CONTAINS $matched.Animal__in_Animal_ParentOf___1.name)))),
+                    as: Animal__out_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+            WHERE (
+                (
+                    (Animal___1.in_Animal_ParentOf IS null)
+                    OR
+                    (Animal___1.in_Animal_ParentOf.size() = 0)
+                )
+                OR
+                (Animal__in_Animal_ParentOf___1 IS NOT null)
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+                .as('Animal__in_Animal_ParentOf___1')
+            .optional('Animal___1')
+            .as('Animal___2')
+                .out('Animal_ParentOf')
+                .filter{it, m -> (
+                        (m.Animal__in_Animal_ParentOf___1 == null)
+                        ||
+                        !it.alias.contains(m.Animal__in_Animal_ParentOf___1.name)
+                    )
+                }
+                .as('Animal__out_Animal_ParentOf___1')
+            .back('Animal___2')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        expected_sql = NotImplementedError
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
+
     def test_has_substring_op_filter(self):
         test_data = test_input_data.has_substring_op_filter()
 
