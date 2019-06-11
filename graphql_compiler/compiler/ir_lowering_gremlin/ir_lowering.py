@@ -8,7 +8,7 @@ are entirely different and not easy to generate directly from this Expression ob
 An output-language-aware IR lowering step allows us to convert this Expression into
 other Expressions, using data already present in the IR, to simplify the final code generation step.
 """
-from graphql import GraphQLInt, GraphQLList
+from graphql import GraphQLInt, GraphQLList, GraphQLString
 from graphql.type import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 import six
 
@@ -76,7 +76,10 @@ def lower_coerce_type_blocks(ir_blocks):
         new_block = block
         if isinstance(block, CoerceType):
             predicate = BinaryComposition(
-                u'contains', Literal(list(block.target_class)), LocalField('@class'))
+                u'contains',
+                Literal(list(block.target_class)),
+                LocalField('@class', GraphQLString)
+            )
             new_block = Filter(predicate)
 
         new_ir_blocks.append(new_block)
@@ -115,7 +118,7 @@ def rewrite_filters_in_optional_blocks(ir_blocks):
                 raise AssertionError(u'Reached negative optional context depth for blocks: '
                                      u'{}'.format(ir_blocks))
         elif isinstance(block, Filter) and optional_context_depth > 0:
-            null_check = BinaryComposition(u'=', LocalField('@this'), NullLiteral)
+            null_check = BinaryComposition(u'=', LocalField('@this', None), NullLiteral)
             new_block = Filter(BinaryComposition(u'||', null_check, block.predicate))
         else:
             pass
@@ -300,7 +303,7 @@ def _convert_folded_blocks(folded_ir_blocks):
         if not isinstance(expression, LocalField):
             return expression
 
-        return GremlinFoldedLocalField(expression.field_name)
+        return GremlinFoldedLocalField(expression.field_name, expression.field_type)
 
     for block in folded_ir_blocks:
         new_block = block
