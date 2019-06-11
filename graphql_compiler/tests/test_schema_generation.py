@@ -457,13 +457,13 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
 
         schema_data = non_graph_classes_to_include + non_graph_classes_to_ignore + vertex_clases
 
-        names_of_non_graph_classes_to_ignore = set(
+        names_of_non_graph_classes_to_ignore = {
             non_graph_class['name']
             for non_graph_class in non_graph_classes_to_ignore
-        )
+        }
 
         graphql_schema, _ = get_graphql_schema_from_orientdb_schema_data(schema_data)
-        for name, _ in six.iteritems(graphql_schema.get_type_map()):
+        for name in six.iterkeys(graphql_schema.get_type_map()):
             self.assertNotIn(name, names_of_non_graph_classes_to_ignore)
 
         non_graph_class_type = graphql_schema.get_type(
