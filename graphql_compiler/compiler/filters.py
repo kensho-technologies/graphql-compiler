@@ -113,13 +113,13 @@ def _represent_argument(directive_location, context, argument, inferred_type):
 
         return (expressions.Variable(argument, inferred_type), None)
     elif is_tagged_parameter(argument):
-        argument_context = context['tags'].get(argument_name, None)
-        if argument_context is None:
+        tag_info = context['metadata'].get_tag_info(argument_name)
+        if tag_info is None:
             raise GraphQLCompilationError(u'Undeclared argument used: {}'.format(argument))
 
-        location = argument_context['location']
-        optional = argument_context['optional']
-        tag_inferred_type = argument_context['type']
+        location = tag_info.location
+        optional = tag_info.optional
+        tag_inferred_type = tag_info.type
 
         if location is None:
             raise AssertionError(u'Argument declared without location: {}'.format(argument_name))
