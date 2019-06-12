@@ -333,8 +333,10 @@ def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
 
         if new_selection_ast is selection_ast and (selections_before or selections_after):
             raise AssertionError(u'No macro expansion happened but there are selections '
-                                 u'to expand before and after the current selection {} {}'
-                                 .format(selections_before, selections_after))
+                                 u'to expand before and after the current selection {} {}.'
+                                 u'current_schema_type: {}, ast: {}, field_name: {}'
+                                 .format(selections_before, selections_after,
+                                         current_schema_type, ast, field_name))
 
         if new_selection_ast is not selection_ast:
             made_changes = True
