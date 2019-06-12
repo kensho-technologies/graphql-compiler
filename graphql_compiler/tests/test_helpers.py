@@ -267,6 +267,23 @@ VALID_MACROS_TEXT = [
                 }
             }
         }''', {}),
+    # The same as out_AnimalRichYoungerSiblings, but with a filter after the target.
+    ('''{
+        Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings_2") {
+            net_worth @tag(tag_name: "net_worth")
+            in_Animal_ParentOf {
+                out_Animal_ParentOf @macro_edge_target {
+                    net_worth @filter(op_name: ">", value: ["%net_worth"])
+                    out_Animal_BornAt {
+                        event_date @tag(tag_name: "birthday")
+                    }
+                }
+            }
+            out_Animal_BornAt {
+                event_date @filter(op_name: ">", value: ["%birthday"])
+            }
+        }
+    }''', {}),
     ('''{
             Animal @macro_edge_definition(name: "out_Animal_RelatedFood") {
                 in_Entity_Related {
