@@ -205,6 +205,8 @@ class Variable(Expression):
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this expression."""
+        self.validate()
+
         # We can't directly pass a Date or a DateTime object, so we have to pass it as a string
         # and then parse it inline. For date format parameter meanings, see:
         # http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html
@@ -231,12 +233,21 @@ class Variable(Expression):
 class LocalField(Expression):
     """A field at the current position in the query."""
 
-    __slots__ = ('field_name',)
+    __slots__ = ('field_name', 'field_type')
 
-    def __init__(self, field_name):
-        """Construct a new LocalField object that references a field at the current position."""
-        super(LocalField, self).__init__(field_name)
+    def __init__(self, field_name, field_type):
+        """Construct a new LocalField object that references a field at the current position.
+
+        Args:
+            field_name: string, the name of the local field being referenced
+            field_type: GraphQLType object describing the type of the referenced field. For some
+                        special fields (such as OrientDB "@this" or "@rid"), we may be unable to
+                        represent the field type in the GraphQL type system. In these situations,
+                        this value is set to None.
+        """
+        super(LocalField, self).__init__(field_name, field_type)
         self.field_name = field_name
+        self.field_type = field_type
         self.validate()
 
     def get_local_object_gremlin_name(self):
@@ -246,6 +257,8 @@ class LocalField(Expression):
     def validate(self):
         """Validate that the LocalField is correctly representable."""
         validate_safe_string(self.field_name)
+        if self.field_type is not None and not is_graphql_type(self.field_type):
+            raise ValueError(u'Invalid value {} of "field_type": {}'.format(self.field_type, self))
 
     def to_match(self):
         """Return a unicode object with the MATCH representation of this LocalField."""
@@ -559,8 +572,9 @@ class FoldedContextField(Expression):
         return template % template_data
 
     def to_gremlin(self):
-        """Must never be called."""
-        raise NotImplementedError()
+        """Not implemented, should not be used."""
+        raise AssertionError(u'FoldedContextField are not used during the query emission process '
+                             u'in Gremlin, so this is a bug. This function should not be called.')
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
@@ -618,7 +632,7 @@ class FoldCountContextField(Expression):
         return template % template_data
 
     def to_gremlin(self):
-        """Must never be called."""
+        """Not supported yet."""
         raise NotImplementedError()
 
 
@@ -744,7 +758,7 @@ class BinaryComposition(Expression):
 
     SUPPORTED_OPERATORS = frozenset({
         u'=', u'!=', u'>=', u'<=', u'>', u'<', u'+', u'||', u'&&',
-        u'contains', u'intersects', u'has_substring', u'LIKE', u'INSTANCEOF',
+        u'contains', u'not_contains', u'intersects', u'has_substring', u'LIKE', u'INSTANCEOF',
     })
 
     __slots__ = ('operator', 'left', 'right')
@@ -797,11 +811,12 @@ class BinaryComposition(Expression):
         regular_operator_format = '(%(left)s %(operator)s %(right)s)'
         inverted_operator_format = '(%(right)s %(operator)s %(left)s)'  # noqa
         intersects_operator_format = '(%(operator)s(%(left)s, %(right)s).asList().size() > 0)'
+        negated_regular_operator_format = '(NOT (%(left)s %(operator)s %(right)s))'
         # pylint: enable=unused-variable
 
-        # Null literals use 'is/is not' as (in)equality operators, while other values use '=/<>'.
-        if any((isinstance(self.left, Literal) and self.left.value is None,
-                isinstance(self.right, Literal) and self.right.value is None)):
+        # Null literals use the OrientDB 'IS/IS NOT' (in)equality operators,
+        # while other values use the OrientDB '=/<>' operators.
+        if self.left == NullLiteral or self.right == NullLiteral:
             translation_table = {
                 u'=': (u'IS', regular_operator_format),
                 u'!=': (u'IS NOT', regular_operator_format),
@@ -818,6 +833,7 @@ class BinaryComposition(Expression):
                 u'||': (u'OR', regular_operator_format),
                 u'&&': (u'AND', regular_operator_format),
                 u'contains': (u'CONTAINS', regular_operator_format),
+                u'not_contains': (u'CONTAINS', negated_regular_operator_format),
                 u'intersects': (u'intersect', intersects_operator_format),
                 u'has_substring': (None, None),  # must be lowered into compatible form using LIKE
 
@@ -842,6 +858,7 @@ class BinaryComposition(Expression):
         immediate_operator_format = u'({left} {operator} {right})'
         dotted_operator_format = u'{left}.{operator}({right})'
         intersects_operator_format = u'(!{left}.{operator}({right}).empty)'
+        negated_dotted_operator_format = u'!{left}.{operator}({right})'
 
         translation_table = {
             u'=': (u'==', immediate_operator_format),
@@ -854,6 +871,7 @@ class BinaryComposition(Expression):
             u'||': (u'||', immediate_operator_format),
             u'&&': (u'&&', immediate_operator_format),
             u'contains': (u'contains', dotted_operator_format),
+            u'not_contains': (u'contains', negated_dotted_operator_format),
             u'intersects': (u'intersect', intersects_operator_format),
             u'has_substring': (u'contains', dotted_operator_format),
         }
@@ -947,6 +965,7 @@ class TernaryConditional(Expression):
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
+
         return u'({predicate} ? {if_true} : {if_false})'.format(
             predicate=self.predicate.to_gremlin(),
             if_true=self.if_true.to_gremlin(),

@@ -28,19 +28,21 @@ To get from GraphQL AST to IR, we follow the following pattern:
     The root AST node is always a vertex AST node.
 
     *** P-steps ***
-    step P-2. Process property-only directives, like @tag and @output.
+    step P-2. Process @output directives.
     ***************
 
     *** V-steps ***
-    step V-2. Recurse into any property field children of the current AST node
+    step V-2. Process @tag directives at all property field children of the current AST node.
+
+    step V-3. Recurse into any property field children of the current AST node
               (property fields cannot have property fields of their own, see _compile_vertex_ast()).
 
-    step V-3. Property field processing complete:  (see _compile_vertex_ast())
+    step V-4. Property field processing complete:  (see _compile_vertex_ast())
         - mark the current location in the query, since all @filter directives that apply to the
           current field have already been processed;
         - process the output_source directive, if it exists
 
-    step V-4. Recurse into any vertex field children of the current AST node:
+    step V-5. Recurse into any vertex field children of the current AST node:
               (see _compile_vertex_ast())
         - before recursing into each vertex:
           - process any @optional and @fold directives present on the child AST node;
@@ -90,7 +92,7 @@ from .helpers import (
     get_parameter_name, get_uniquely_named_objects_by_name, get_vertex_field_type, invert_dict,
     is_tagged_parameter, strip_non_null_from_type, validate_output_name, validate_safe_string
 )
-from .metadata import LocationInfo, QueryMetadataTable, RecurseInfo, TagInfo
+from .metadata import LocationInfo, OutputInfo, QueryMetadataTable, RecurseInfo, TagInfo
 
 
 # LocationStackEntry contains the following:
@@ -244,6 +246,38 @@ def _process_output_source_directive(schema, current_schema_type, ast,
         return None
 
 
+def _process_tag_directive(context, current_schema_type, location, tag_directive):
+    """Process the tag directive, modifying the context as appropriate.
+
+    Args:
+        context: dict, various per-compilation data (e.g. declared tags, whether the current block
+                 is optional, etc.). May be mutated in-place in this function!
+        current_schema_type: GraphQLType, the schema type at the current location
+        location: Location object representing the current location in the query
+        tag_directive: GraphQL Directive that we want to process
+    """
+    if is_in_fold_scope(context):
+        raise GraphQLCompilationError(u'Tagging values within a @fold vertex field is '
+                                      u'not allowed! Location: {}'.format(location))
+
+    if location.field == COUNT_META_FIELD_NAME:
+        raise GraphQLCompilationError(
+            u'Tags are prohibited within @fold, but unexpectedly found use of '
+            u'a tag on the {} meta field that is only allowed within a @fold!'
+            u'Location: {}'.format(COUNT_META_FIELD_NAME, location))
+
+    # Schema validation has ensured that the fields below exist.
+    tag_name = tag_directive.arguments[0].value.value
+    if context['metadata'].get_tag_info(tag_name) is not None:
+        raise GraphQLCompilationError(u'Cannot reuse tag name: {}'.format(tag_name))
+    validate_safe_string(tag_name)
+    context['metadata'].record_tag_info(tag_name, TagInfo(
+        location=location,
+        optional=is_in_optional_scope(context),
+        type=strip_non_null_from_type(current_schema_type),
+    ))
+
+
 def _compile_property_ast(schema, current_schema_type, ast, location,
                           context, unique_local_directives):
     """Process property directives at this AST node, updating the query context as appropriate.
@@ -269,36 +303,12 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
                                           u'in a fold. Location: {}'
                                           .format(COUNT_META_FIELD_NAME, location))
 
-    # step P-2: process property-only directives
-    tag_directive = unique_local_directives.get('tag', None)
-    if tag_directive:
-        if is_in_fold_scope(context):
-            raise GraphQLCompilationError(u'Tagging values within a @fold vertex field is '
-                                          u'not allowed! Location: {}'.format(location))
-
-        if location.field == COUNT_META_FIELD_NAME:
-            raise AssertionError(u'Tags are prohibited within @fold, but unexpectedly found use of '
-                                 u'a tag on the {} meta field that is only allowed within a @fold!'
-                                 u'Location: {}'
-                                 .format(COUNT_META_FIELD_NAME, location))
-
-        # Schema validation has ensured that the fields below exist.
-        tag_name = tag_directive.arguments[0].value.value
-        if tag_name in context['tags']:
-            raise GraphQLCompilationError(u'Cannot reuse tag name: {}'.format(tag_name))
-        validate_safe_string(tag_name)
-        context['tags'][tag_name] = {
-            'location': location,
-            'optional': is_in_optional_scope(context),
-            'type': strip_non_null_from_type(current_schema_type),
-        }
-        context['metadata'].record_tag_info(tag_name, TagInfo(location=location))
-
+    # step P-2: Process @output directives.
     output_directive = unique_local_directives.get('output', None)
     if output_directive:
         # Schema validation has ensured that the fields below exist.
         output_name = output_directive.arguments[0].value.value
-        if output_name in context['outputs']:
+        if context['metadata'].get_output_info(output_name):
             raise GraphQLCompilationError(u'Cannot reuse output name: '
                                           u'{}, {}'.format(output_name, context))
         validate_safe_string(output_name)
@@ -312,12 +322,12 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
             if location.field != COUNT_META_FIELD_NAME:
                 graphql_type = GraphQLList(graphql_type)
 
-        context['outputs'][output_name] = {
-            'location': location,
-            'optional': is_in_optional_scope(context),
-            'type': graphql_type,
-            'fold': context.get('fold', None),
-        }
+        output_info = OutputInfo(
+            location=location,
+            type=graphql_type,
+            optional=is_in_optional_scope(context),
+        )
+        context['metadata'].record_output_info(output_name, output_info)
 
 
 def _get_recurse_directive_depth(field_name, field_directives):
@@ -403,7 +413,20 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
     validate_vertex_directives(unique_local_directives)
 
-    # step V-2: step into property fields
+    # step V-2: process @tag directives
+    for field_ast in property_fields:
+        field_name = get_ast_field_name(field_ast)
+        property_schema_type = get_field_type_from_schema(current_schema_type, field_name)
+        inner_location = location.navigate_to_field(field_name)
+        local_unique_directives = get_unique_directives(field_ast)
+        tag_directive = local_unique_directives.get('tag', None)
+        if tag_directive:
+            if get_local_filter_directives(field_ast, property_schema_type, None):
+                raise GraphQLCompilationError(u'Cannot filter and tag the same field {}'
+                                              .format(inner_location))
+            _process_tag_directive(context, property_schema_type, inner_location, tag_directive)
+
+    # step V-3: step into property fields
     for field_ast in property_fields:
         field_name = get_ast_field_name(field_ast)
         property_schema_type = get_field_type_from_schema(current_schema_type, field_name)
@@ -413,7 +436,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
                                                      inner_location, context)
         basic_blocks.extend(inner_basic_blocks)
 
-    # step V-3: mark the graph position, and process output_source directive
+    # step V-4: mark the graph position, and process output_source directive
     basic_blocks.append(_mark_location(location))
 
     output_source = _process_output_source_directive(schema, current_schema_type, ast,
@@ -421,7 +444,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     if output_source:
         basic_blocks.append(output_source)
 
-    # step V-4: step into vertex fields
+    # step V-5: step into vertex fields
     for field_ast in vertex_fields:
         field_name = get_ast_field_name(field_ast)
         validate_context_for_visiting_vertex_field(location, field_name, context)
@@ -524,7 +547,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         if edge_traversal_is_folded:
             has_count_filter = has_fold_count_filter(context)
             _validate_fold_has_outputs_or_count_filter(
-                get_context_fold_info(context), has_count_filter, context['outputs'])
+                get_context_fold_info(context), has_count_filter, query_metadata_table)
             basic_blocks.append(blocks.Unfold())
             unmark_context_fold_scope(context)
             if has_count_filter:
@@ -560,7 +583,19 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
     return basic_blocks
 
 
-def _validate_fold_has_outputs_or_count_filter(fold_scope_location, fold_has_count_filter, outputs):
+def _are_locations_in_same_fold(first_location, second_location):
+    """Returns True if locations are contained in the same fold scope."""
+    return (
+        isinstance(first_location, FoldScopeLocation) and
+        isinstance(second_location, FoldScopeLocation) and
+        first_location.base_location == second_location.base_location and
+        first_location.get_first_folded_edge() == second_location.get_first_folded_edge()
+    )
+
+
+def _validate_fold_has_outputs_or_count_filter(
+    fold_scope_location, fold_has_count_filter, query_metadata_table
+):
     """Ensure the @fold scope has at least one output, or filters on the size of the fold."""
     # This function makes sure that the @fold scope has an effect.
     # Folds either output data, or filter the data enclosing the fold based on the size of the fold.
@@ -570,8 +605,8 @@ def _validate_fold_has_outputs_or_count_filter(fold_scope_location, fold_has_cou
 
     # At least one output in the outputs list must point to the fold_scope_location,
     # or the scope corresponding to fold_scope_location had no @outputs and is illegal.
-    for output in six.itervalues(outputs):
-        if output['fold'] == fold_scope_location:
+    for _, output_info in query_metadata_table.outputs:
+        if _are_locations_in_same_fold(output_info.location, fold_scope_location):
             return True
 
     raise GraphQLCompilationError(u'Found a @fold scope that has no effect on the query. '
@@ -680,7 +715,7 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
             # This Filter is going in the global operations section of the query, so it cannot
             # use LocalField expressions since there is no "local" location to use.
             # Rewrite it so that all references of data at a location instead use ContextFields.
-            expected_field = expressions.LocalField(COUNT_META_FIELD_NAME)
+            expected_field = expressions.LocalField(COUNT_META_FIELD_NAME, GraphQLInt)
             replacement_field = expressions.FoldedContextField(location, GraphQLInt)
 
             visitor_fn = expressions.make_replacement_visitor(expected_field, replacement_field)
@@ -761,6 +796,10 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     # Validation passed, so the base_start_type must exist as a field of the root query.
     current_schema_type = get_field_type_from_schema(schema.get_query_type(), base_start_type)
 
+    # Allow list types at the query root in the schema.
+    if isinstance(current_schema_type, GraphQLList):
+        current_schema_type = current_schema_type.of_type
+
     # Construct the start location of the query and its associated metadata.
     location = Location((base_start_type,))
     base_location_info = LocationInfo(
@@ -782,22 +821,10 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         # 'metadata' is the QueryMetadataTable describing all the metadata collected during query
         # processing, including location metadata (e.g. which locations are folded or optional).
         'metadata': query_metadata_table,
-        # 'tags' is a dict containing
-        #  - location: Location where the tag was defined
-        #  - optional: boolean representing whether the tag was defined within an @optional scope
-        #  - type: GraphQLType of the tagged value
-        'tags': dict(),
         # 'global_filters' is a list that may contain Filter blocks that are generated during
         # query processing, but apply to the global query scope and should be appended to the
         # IR blocks only after the GlobalOperationsStart block has been emitted.
         'global_filters': [],
-        # 'outputs' is a dict mapping each output name to another dict which contains
-        #  - location: Location where to output from
-        #  - optional: boolean representing whether the output was defined within an @optional scope
-        #  - type: GraphQLType of the output
-        #  - fold: FoldScopeLocation object if the current output was defined within a fold scope,
-        #          and None otherwise
-        'outputs': dict(),
         # 'inputs' is a dict mapping input parameter names to their respective expected GraphQL
         # types, as automatically inferred by inspecting the query structure
         'inputs': dict(),
@@ -846,11 +873,10 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     basic_blocks.extend(context['global_filters'])
 
     # Based on the outputs context data, add an output step and construct the output metadata.
-    outputs_context = context['outputs']
-    basic_blocks.append(_compile_output_step(outputs_context))
+    basic_blocks.append(_compile_output_step(query_metadata_table))
     output_metadata = {
-        name: OutputMetadata(type=value['type'], optional=value['optional'])
-        for name, value in six.iteritems(outputs_context)
+        name: OutputMetadata(type=info.type, optional=info.optional)
+        for name, info in query_metadata_table.outputs
     }
 
     return IrAndMetadata(
@@ -860,26 +886,27 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         query_metadata_table=context['metadata'])
 
 
-def _compile_output_step(outputs):
+def _compile_output_step(query_metadata_table):
     """Construct the final ConstructResult basic block that defines the output format of the query.
 
     Args:
-        outputs: dict, output name (string) -> output data dict, specifying the location
-                 from where to get the data, and whether the data is optional (and therefore
-                 may be missing); missing optional data is replaced with 'null'
+        query_metadata_table: QueryMetadataTable object, part of which specifies the location from
+                              where to get the output, and whether the output is optional (and
+                              therefore may be missing); missing optional data is replaced with
+                              'null'
 
     Returns:
         a ConstructResult basic block that constructs appropriate outputs for the query
     """
-    if not outputs:
+    if next(query_metadata_table.outputs, None) is None:
         raise GraphQLCompilationError(u'No fields were selected for output! Please mark at least '
                                       u'one field with the @output directive.')
 
     output_fields = {}
-    for output_name, output_context in six.iteritems(outputs):
-        location = output_context['location']
-        optional = output_context['optional']
-        graphql_type = output_context['type']
+    for output_name, output_info in query_metadata_table.outputs:
+        location = output_info.location
+        optional = output_info.optional
+        graphql_type = output_info.type
 
         expression = None
         existence_check = None
@@ -887,7 +914,7 @@ def _compile_output_step(outputs):
         if isinstance(location, FoldScopeLocation):
             if optional:
                 raise AssertionError(u'Unreachable state reached, optional in fold: '
-                                     u'{}'.format(output_context))
+                                     u'{}'.format(output_info))
 
             if location.field == COUNT_META_FIELD_NAME:
                 expression = expressions.FoldCountContextField(location)

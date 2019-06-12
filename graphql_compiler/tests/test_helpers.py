@@ -13,7 +13,9 @@ from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
-from ..schema_generation.orientdb.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
+from ..schema_generation.orientdb.utils import (
+    ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
+)
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
@@ -160,16 +162,16 @@ SCHEMA_TEXT = '''
     }
 
     type RootSchemaQuery {
-        Animal: Animal
-        BirthEvent: BirthEvent
-        Entity: Entity
-        Event: Event
-        FeedingEvent: FeedingEvent
-        Food: Food
-        FoodOrSpecies: FoodOrSpecies
-        Location: Location
-        Species: Species
-        UniquelyIdentifiable: UniquelyIdentifiable
+        Animal: [Animal]
+        BirthEvent: [BirthEvent]
+        Entity: [Entity]
+        Event: [Event]
+        FeedingEvent: [FeedingEvent]
+        Food: [Food]
+        FoodOrSpecies: [FoodOrSpecies]
+        Location: [Location]
+        Species: [Species]
+        UniquelyIdentifiable: [UniquelyIdentifiable]
     }
 
     type Species implements Entity, UniquelyIdentifiable {
@@ -195,6 +197,112 @@ SCHEMA_TEXT = '''
         uuid: ID
     }
 '''
+
+VALID_MACROS_TEXT = [
+    ('''{
+            Entity @macro_edge_definition(name: "out_Entity_AlmostRelated") {
+                out_Entity_Related {
+                    out_Entity_Related @macro_edge_target{
+                        uuid
+                    }
+                }
+            }
+        }''', {}),
+    ('''{
+            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }''', {}),
+    ('''{
+            Animal @macro_edge_definition(name: "out_Animal_GrandchildrenCalledNate") {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"])
+                                        @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }''', {
+        'wanted': 'Nate',
+    }),
+    ('''{
+            Animal @macro_edge_definition(name: "out_Animal_RichSiblings") {
+                in_Animal_ParentOf {
+                    net_worth @tag(tag_name: "parent_net_worth")
+                    out_Animal_ParentOf @macro_edge_target {
+                        net_worth @filter(op_name: ">", value: ["%parent_net_worth"])
+                    }
+                }
+            }
+        }''', {}),
+    ('''{
+            Location @macro_edge_definition(name: "out_Location_Orphans") {
+                in_Animal_LivesIn @macro_edge_target {
+                    in_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$num_parents"])
+                                       @optional {
+                        uuid
+                    }
+                }
+            }
+        }''', {
+        'num_parents': 0,
+    }),
+    ('''{
+            Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings") {
+                net_worth @tag(tag_name: "net_worth")
+                out_Animal_BornAt {
+                    event_date @tag(tag_name: "birthday")
+                }
+                in_Animal_ParentOf {
+                    out_Animal_ParentOf @macro_edge_target {
+                        net_worth @filter(op_name: ">", value: ["%net_worth"])
+                        out_Animal_BornAt {
+                            event_date @filter(op_name: "<", value: ["%birthday"])
+                        }
+                    }
+                }
+            }
+        }''', {}),
+    # The same as out_AnimalRichYoungerSiblings, but with a filter after the target.
+    ('''{
+        Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings_2") {
+            net_worth @tag(tag_name: "net_worth")
+            in_Animal_ParentOf {
+                out_Animal_ParentOf @macro_edge_target {
+                    net_worth @filter(op_name: ">", value: ["%net_worth"])
+                    out_Animal_BornAt {
+                        event_date @tag(tag_name: "birthday")
+                    }
+                }
+            }
+            out_Animal_BornAt {
+                event_date @filter(op_name: ">", value: ["%birthday"])
+            }
+        }
+    }''', {}),
+    ('''{
+            Animal @macro_edge_definition(name: "out_Animal_RelatedFood") {
+                in_Entity_Related {
+                    ... on Food @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }''', {}),
+    ('''{
+            Animal @macro_edge_definition(name: "out_Animal_RelatedEntity") {
+                in_Entity_Related {
+                    ... on Entity @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }''', {}),
+]
 
 
 def transform(emitted_output):
@@ -285,7 +393,9 @@ def generate_schema_graph(graph_client):
     """Generate SchemaGraph from a pyorient client"""
     schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
-    return get_orientdb_schema_graph(schema_data)
+    index_records = graph_client.command(ORIENTDB_INDEX_RECORDS_QUERY)
+    index_query_data = [x.oRecordData for x in index_records]
+    return get_orientdb_schema_graph(schema_data, index_query_data)
 
 
 def generate_schema(graph_client, class_to_field_type_overrides=None, hidden_classes=None):
@@ -320,112 +430,6 @@ def get_empty_test_macro_registry():
 def get_test_macro_registry():
     """Return a MacroRegistry object containing macros used in tests."""
     macro_registry = get_empty_test_macro_registry()
-    valid_macros = [
-        ('''{
-            Entity @macro_edge_definition(name: "out_Entity_AlmostRelated") {
-                out_Entity_Related {
-                    out_Entity_Related @macro_edge_target{
-                        uuid
-                    }
-                }
-            }
-        }''', {}),
-        ('''{
-            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
-                out_Animal_ParentOf {
-                    out_Animal_ParentOf @macro_edge_target {
-                        uuid
-                    }
-                }
-            }
-        }''', {}),
-        ('''{
-            Animal @macro_edge_definition(name: "out_Animal_GrandchildrenCalledNate") {
-                out_Animal_ParentOf {
-                    out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"])
-                                        @macro_edge_target {
-                        uuid
-                    }
-                }
-            }
-        }''', {
-            'wanted': 'Nate',
-        }),
-        ('''{
-            Animal @macro_edge_definition(name: "out_Animal_RichSiblings") {
-                in_Animal_ParentOf {
-                    net_worth @tag(tag_name: "parent_net_worth")
-                    out_Animal_ParentOf @macro_edge_target {
-                        net_worth @filter(op_name: ">", value: ["%parent_net_worth"])
-                    }
-                }
-            }
-        }''', {}),
-        ('''{
-            Location @macro_edge_definition(name: "out_Location_Orphans") {
-                in_Animal_LivesIn @macro_edge_target {
-                    in_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$num_parents"])
-                                       @optional {
-                        uuid
-                    }
-                }
-            }
-        }''', {
-            'num_parents': 0,
-        }),
-        ('''{
-            Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings") {
-                net_worth @tag(tag_name: "net_worth")
-                out_Animal_BornAt {
-                    event_date @tag(tag_name: "birthday")
-                }
-                in_Animal_ParentOf {
-                    out_Animal_ParentOf @macro_edge_target {
-                        net_worth @filter(op_name: ">", value: ["%net_worth"])
-                        out_Animal_BornAt {
-                            event_date @filter(op_name: "<", value: ["%birthday"])
-                        }
-                    }
-                }
-            }
-        }''', {}),
-        # The same as out_AnimalRichYoungerSiblings, but with a filter after the target.
-        ('''{
-            Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings_2") {
-                net_worth @tag(tag_name: "net_worth")
-                in_Animal_ParentOf {
-                    out_Animal_ParentOf @macro_edge_target {
-                        net_worth @filter(op_name: ">", value: ["%net_worth"])
-                        out_Animal_BornAt {
-                            event_date @tag(tag_name: "birthday")
-                        }
-                    }
-                }
-                out_Animal_BornAt {
-                    event_date @filter(op_name: ">", value: ["%birthday"])
-                }
-            }
-        }''', {}),
-        ('''{
-            Animal @macro_edge_definition(name: "out_Animal_RelatedFood") {
-                in_Entity_Related {
-                    ... on Food @macro_edge_target {
-                        uuid
-                    }
-                }
-            }
-        }''', {}),
-        ('''{
-            Animal @macro_edge_definition(name: "out_Animal_RelatedEntity") {
-                in_Entity_Related {
-                    ... on Entity @macro_edge_target {
-                        uuid
-                    }
-                }
-            }
-        }''', {}),
-    ]
-
-    for graphql, args in valid_macros:
+    for graphql, args in VALID_MACROS_TEXT:
         register_macro_edge(macro_registry, graphql, args)
     return macro_registry

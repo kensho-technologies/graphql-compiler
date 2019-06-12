@@ -114,13 +114,13 @@ def _represent_argument(directive_location, context, argument, inferred_type):
 
         return (expressions.Variable(argument, inferred_type), None)
     elif is_tagged_parameter(argument):
-        argument_context = context['tags'].get(argument_name, None)
-        if argument_context is None:
+        tag_info = context['metadata'].get_tag_info(argument_name)
+        if tag_info is None:
             raise GraphQLCompilationError(u'Undeclared argument used: {}'.format(argument))
 
-        location = argument_context['location']
-        optional = argument_context['optional']
-        tag_inferred_type = argument_context['type']
+        location = tag_info.location
+        optional = tag_info.optional
+        tag_inferred_type = tag_info.type
 
         if location is None:
             raise AssertionError(u'Argument declared without location: {}'.format(argument_name))
@@ -147,9 +147,9 @@ def _represent_argument(directive_location, context, argument, inferred_type):
                     expressions.FalseLiteral)
 
         if field_is_local:
-            representation = expressions.LocalField(argument_name)
+            representation = expressions.LocalField(argument_name, inferred_type)
         else:
-            representation = expressions.ContextField(location, tag_inferred_type)
+            representation = expressions.ContextField(location, inferred_type)
 
         return (representation, non_existence_expression)
     else:
@@ -170,7 +170,7 @@ def _process_comparison_filter_directive(filter_operation_info, location,
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, containing the value to perform the comparison against;
-                    if the parameter is optional and missing, the check will return True
+                    if the parameter is optional and missing, the check will return True.
         operator: unicode, a comparison operator, like '=', '!=', '>=' etc.
                   This is a kwarg only to preserve the same positional arguments in the
                   function signature, to ease validation.
@@ -191,7 +191,9 @@ def _process_comparison_filter_directive(filter_operation_info, location,
         location, context, parameters[0], argument_inferred_type)
 
     comparison_expression = expressions.BinaryComposition(
-        operator, expressions.LocalField(filtered_field_name), argument_expression)
+        operator,
+        expressions.LocalField(filtered_field_name, filtered_field_type),
+        argument_expression)
 
     final_expression = None
     if non_existence_expression is not None:
@@ -217,7 +219,7 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, containing the value to check the edge degree against;
-                    if the parameter is optional and missing, the check will return True
+                    if the parameter is optional and missing, the check will return True.
 
     Returns:
         a Filter basic block that performs the check
@@ -232,7 +234,8 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
         raise AssertionError(u'Invalid value for "filtered_field_name" in "has_edge_degree" '
                              u'filter: {}'.format(filtered_field_name))
 
-    if not is_vertex_field_type(filter_operation_info.field_type):
+    filtered_field_type = filter_operation_info.field_type
+    if not is_vertex_field_type(filtered_field_type):
         raise AssertionError(u'Invalid value for "filter_operation_info.field_type" in '
                              u'"has_edge_degree" filter: {}'.format(filter_operation_info))
 
@@ -251,6 +254,13 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
                              u'should have been None. However, it was: '
                              u'{}'.format(non_existence_expression))
 
+    # HACK(predrag): Make the handling of vertex field types consistent. Currently, sometimes we
+    #                accept lists, and sometimes we don't. Both `Animal` and `[Animal]` should be
+    #                acceptable, since the difference there communicates a cardinality constraint
+    #                on the edge in question.
+    #                Issue: https://github.com/kensho-technologies/graphql-compiler/issues/329
+    hacked_field_type = GraphQLList(filtered_field_type)
+
     # If no edges to the vertex field exist, the edges' field in the database may be "null".
     # We also don't know ahead of time whether the supplied argument is zero or not.
     # We have to accommodate these facts in our generated comparison code.
@@ -259,16 +269,21 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
     argument_is_zero = expressions.BinaryComposition(
         u'=', argument_expression, expressions.ZeroLiteral)
     edge_field_is_null = expressions.BinaryComposition(
-        u'=', expressions.LocalField(filtered_field_name), expressions.NullLiteral)
+        u'=',
+        expressions.LocalField(filtered_field_name, hacked_field_type),
+        expressions.NullLiteral)
     edge_degree_is_zero = expressions.BinaryComposition(
         u'&&', argument_is_zero, edge_field_is_null)
 
     # The following expression will check for a non-zero edge degree equal to the argument.
     #  (edge_field != null) && (edge_field.size() == {argument})
     edge_field_is_not_null = expressions.BinaryComposition(
-        u'!=', expressions.LocalField(filtered_field_name), expressions.NullLiteral)
+        u'!=',
+        expressions.LocalField(filtered_field_name, hacked_field_type),
+        expressions.NullLiteral)
     edge_degree = expressions.UnaryTransformation(
-        u'size', expressions.LocalField(filtered_field_name))
+        u'size',
+        expressions.LocalField(filtered_field_name, hacked_field_type))
     edge_degree_matches_argument = expressions.BinaryComposition(
         u'=', edge_degree, argument_expression)
     edge_degree_is_non_zero = expressions.BinaryComposition(
@@ -292,7 +307,7 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, containing the value to check the name or alias against;
-                    if the parameter is optional and missing, the check will return True
+                    if the parameter is optional and missing, the check will return True.
 
     Returns:
         a Filter basic block that performs the check against the name or alias
@@ -303,11 +318,16 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
                                       u'{}'.format(filtered_field_type))
 
     current_type_fields = filtered_field_type.fields
-    name_field = current_type_fields.get('name', None)
-    alias_field = current_type_fields.get('alias', None)
-    if not name_field or not alias_field:
+    name_field_name = 'name'
+    alias_field_name = 'alias'
+    name_field = current_type_fields.get(name_field_name, None)
+    alias_field = current_type_fields.get(alias_field_name, None)
+    if name_field is None:
         raise GraphQLCompilationError(u'Cannot apply "name_or_alias" to type {} because it lacks a '
-                                      u'"name" or "alias" field.'.format(filtered_field_type))
+                                      u'"{}" field.'.format(filtered_field_type, name_field_name))
+    if alias_field is None:
+        raise GraphQLCompilationError(u'Cannot apply "name_or_alias" to type {} because it lacks a '
+                                      u'"{}" field.'.format(filtered_field_type, alias_field_name))
 
     name_field_type = strip_non_null_from_type(name_field.type)
     alias_field_type = strip_non_null_from_type(alias_field.type)
@@ -322,19 +342,22 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
     alias_field_inner_type = strip_non_null_from_type(alias_field_type.of_type)
     if alias_field_inner_type != name_field_type:
         raise GraphQLCompilationError(u'Cannot apply "name_or_alias" to type {} because the '
-                                      u'"name" field and the inner type of the "alias" field '
-                                      u'do not match: {} vs {}'.format(filtered_field_type,
-                                                                       name_field_type,
-                                                                       alias_field_inner_type))
+                                      u'"{}" field and the inner type of the "{}" field '
+                                      u'do not match: {} vs {}'
+                                      .format(filtered_field_type, name_field_name,
+                                              alias_field_name, name_field_type,
+                                              alias_field_inner_type))
 
     argument_inferred_type = name_field_type
     argument_expression, non_existence_expression = _represent_argument(
         location, context, parameters[0], argument_inferred_type)
 
     check_against_name = expressions.BinaryComposition(
-        u'=', expressions.LocalField('name'), argument_expression)
+        u'=', expressions.LocalField(name_field_name, name_field.type), argument_expression)
     check_against_alias = expressions.BinaryComposition(
-        u'contains', expressions.LocalField('alias'), argument_expression)
+        u'contains',
+        expressions.LocalField(alias_field_name, alias_field.type),
+        argument_expression)
     filter_predicate = expressions.BinaryComposition(
         u'||', check_against_name, check_against_alias)
 
@@ -375,14 +398,14 @@ def _process_between_filter_directive(filter_operation_info, location, context, 
         location, context, parameters[1], argument_inferred_type)
 
     lower_bound_clause = expressions.BinaryComposition(
-        u'>=', expressions.LocalField(filtered_field_name), arg1_expression)
+        u'>=', expressions.LocalField(filtered_field_name, filtered_field_type), arg1_expression)
     if arg1_non_existence is not None:
         # The argument is optional, and if it doesn't exist, this side of the check should pass.
         lower_bound_clause = expressions.BinaryComposition(
             u'||', arg1_non_existence, lower_bound_clause)
 
     upper_bound_clause = expressions.BinaryComposition(
-        u'<=', expressions.LocalField(filtered_field_name), arg2_expression)
+        u'<=', expressions.LocalField(filtered_field_name, filtered_field_type), arg2_expression)
     if arg2_non_existence is not None:
         # The argument is optional, and if it doesn't exist, this side of the check should pass.
         upper_bound_clause = expressions.BinaryComposition(
@@ -405,7 +428,7 @@ def _process_in_collection_filter_directive(filter_operation_info, location, con
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
-                    if the collection is optional and missing, the check will return True
+                    if the collection is optional and missing, the check will return True.
 
     Returns:
         a Filter basic block that performs the collection existence check
@@ -418,7 +441,9 @@ def _process_in_collection_filter_directive(filter_operation_info, location, con
         location, context, parameters[0], argument_inferred_type)
 
     filter_predicate = expressions.BinaryComposition(
-        u'contains', argument_expression, expressions.LocalField(filtered_field_name))
+        u'contains',
+        argument_expression,
+        expressions.LocalField(filtered_field_name, filtered_field_type))
     if non_existence_expression is not None:
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
@@ -440,7 +465,7 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
-                    if the collection is optional and missing, the check will return True
+                    if the collection is optional and missing, the check will return True.
 
     Returns:
         a Filter basic block that performs the substring check
@@ -457,7 +482,9 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
         location, context, parameters[0], argument_inferred_type)
 
     filter_predicate = expressions.BinaryComposition(
-        u'has_substring', expressions.LocalField(filtered_field_name), argument_expression)
+        u'has_substring',
+        expressions.LocalField(filtered_field_name, filtered_field_type),
+        argument_expression)
     if non_existence_expression is not None:
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
@@ -478,7 +505,7 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
-                    if the collection is optional and missing, the check will return True
+                    if the collection is optional and missing, the check will return True.
 
     Returns:
         a Filter basic block that performs the contains check
@@ -496,7 +523,50 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
         location, context, parameters[0], argument_inferred_type)
 
     filter_predicate = expressions.BinaryComposition(
-        u'contains', expressions.LocalField(filtered_field_name), argument_expression)
+        u'contains',
+        expressions.LocalField(filtered_field_name, filtered_field_type),
+        argument_expression)
+    if non_existence_expression is not None:
+        # The argument comes from an optional block and might not exist,
+        # in which case the filter expression should evaluate to True.
+        filter_predicate = expressions.BinaryComposition(
+            u'||', non_existence_expression, filter_predicate)
+
+    return blocks.Filter(filter_predicate)
+
+
+@takes_parameters(1)
+def _process_not_contains_filter_directive(filter_operation_info, location, context, parameters):
+    """Return a Filter basic block that checks if the directive arg is not contained in the field.
+
+    Args:
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
+        location: Location where this filter is used.
+        context: dict, various per-compilation data (e.g. declared tags, whether the current block
+                 is optional, etc.). May be mutated in-place in this function!
+        parameters: list of 1 element, specifying the collection in which the value must exist;
+                    if the collection is optional and missing, the check will return True.
+
+    Returns:
+        a Filter basic block that performs the contains check
+    """
+    filtered_field_type = filter_operation_info.field_type
+    filtered_field_name = filter_operation_info.field_name
+
+    base_field_type = strip_non_null_from_type(filtered_field_type)
+    if not isinstance(base_field_type, GraphQLList):
+        raise GraphQLCompilationError(u'Cannot apply "contains" to non-list '
+                                      u'type {}'.format(filtered_field_type))
+
+    argument_inferred_type = strip_non_null_from_type(base_field_type.of_type)
+    argument_expression, non_existence_expression = _represent_argument(
+        location, context, parameters[0], argument_inferred_type)
+
+    filter_predicate = expressions.BinaryComposition(
+        u'not_contains',
+        expressions.LocalField(filtered_field_name, filtered_field_type),
+        argument_expression)
     if non_existence_expression is not None:
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
@@ -517,7 +587,7 @@ def _process_intersects_filter_directive(filter_operation_info, location, contex
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
-                    if the collection is optional and missing, the check will return True
+                    if the collection is optional and missing, the check will return True.
 
     Returns:
         a Filter basic block that performs the intersects check
@@ -534,7 +604,9 @@ def _process_intersects_filter_directive(filter_operation_info, location, contex
         location, context, parameters[0], argument_inferred_type)
 
     filter_predicate = expressions.BinaryComposition(
-        u'intersects', expressions.LocalField(filtered_field_name), argument_expression)
+        u'intersects',
+        expressions.LocalField(filtered_field_name, filtered_field_type),
+        argument_expression)
     if non_existence_expression is not None:
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
@@ -571,6 +643,7 @@ PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset({
     u'between',
     u'in_collection',
     u'contains',
+    u'not_contains',
     u'intersects',
     u'has_substring',
     u'has_edge_degree',
@@ -626,6 +699,7 @@ def process_filter_directive(filter_operation_info, location, context):
         u'in_collection': _process_in_collection_filter_directive,
         u'has_substring': _process_has_substring_filter_directive,
         u'contains': _process_contains_filter_directive,
+        u'not_contains': _process_not_contains_filter_directive,
         u'intersects': _process_intersects_filter_directive,
         u'has_edge_degree': _process_has_edge_degree_filter_directive,
     }

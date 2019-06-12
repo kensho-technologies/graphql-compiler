@@ -7,18 +7,18 @@ import six
 
 from ..exceptions import IllegalSchemaStateError
 from ..schema_graph import (
-    EdgeType, NonGraphElement, PropertyDescriptor, SchemaGraph, VertexType,
-    get_subclass_sets_from_superclass_sets
+    EdgeType, IndexDefinition, InheritanceStructure, NonGraphElement, PropertyDescriptor,
+    SchemaGraph, VertexType, link_schema_elements
 )
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES,
-    EDGE_SOURCE_PROPERTY_NAME, ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
-    PROPERTY_TYPE_LINK_ID, parse_default_property_value, try_get_graphql_scalar_type
+    EDGE_SOURCE_PROPERTY_NAME, ORDERED_INDEX_TYPES, ORIENTDB_BASE_EDGE_CLASS_NAME,
+    ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_LINK_ID, UNIQUE_INDEX_TYPES,
+    parse_default_property_value, try_get_graphql_scalar_type
 )
-from .utils import toposort_classes
 
 
-def get_orientdb_schema_graph(schema_data):
+def get_orientdb_schema_graph(schema_data, index_data):
     """Create a new SchemaGraph from the OrientDB schema data.
 
     Args:
@@ -61,64 +61,59 @@ def get_orientdb_schema_graph(schema_data):
                                                          '{}' for the embedded set type. Note
                                                          that if the property is a collection
                                                          type, it must have a default value.
+        index_data: list of dicts describing the schema indexes. Each dict must have
+                    the following string fields:
+                        - name: string, the name of the index.
+                        - type: string, specifying the type of the index. It must be one of:
+                                        'UNIQUE', 'NOTUNIQUE', 'UNIQUE_HASH_INDEX', or
+                                        'NOTUNIQUE_HASH_INDEX'.
+                        - indexDefinition: dict, defining the index. It must contain one of two
+                                           string keys:
+                                           - field: string, the name of the field which the index
+                                                    encompasses.
+                                           - indexDefinitions: list of dicts. Each one of these
+                                                               dicts must contain a string field
+                                                               key. These specify the
+                                                               set of fields which the index
+                                                               encompasses.
+                        - className: string, the name of the class on which the index is defined.
+                        - nullValuesIgnored: bool, indicating if the index ignores null values.
 
     Returns:
         fully-constructed SchemaGraph object
     """
-
-    toposorted_schema_data = toposort_classes(schema_data)
-
-    superclass_sets = _get_superclass_sets_from_schema_data(toposorted_schema_data)
-
     class_name_to_definition = {
         class_definition['name']: class_definition
-        for class_definition in toposorted_schema_data
+        for class_definition in schema_data
     }
 
-    non_graph_elements = _get_non_graph_elements(class_name_to_definition, superclass_sets)
-    inner_collection_objs = _get_graphql_rep_of_non_graph_elements(
-        non_graph_elements, superclass_sets)
+    direct_superclass_sets = {
+        class_name: get_superclasses_from_class_definition(class_definition)
+        for class_name, class_definition in six.iteritems(class_name_to_definition)
+    }
+
+    inheritance_structure = InheritanceStructure(direct_superclass_sets)
+
+    non_graph_elements = _get_non_graph_elements(class_name_to_definition, inheritance_structure)
+    inner_collection_objs = _get_graphql_representation_of_non_graph_elements(
+        non_graph_elements, inheritance_structure)
 
     elements = non_graph_elements
     elements.update(
-        _get_edge_elements(class_name_to_definition, superclass_sets, inner_collection_objs))
+        _get_edge_elements(class_name_to_definition, inheritance_structure, inner_collection_objs)
+    )
     elements.update(
-        _get_vertex_elements(class_name_to_definition, superclass_sets, inner_collection_objs))
+        _get_vertex_elements(class_name_to_definition, inheritance_structure, inner_collection_objs)
+    )
 
     # Initialize the connections that show which schema classes can be connected to
     # which other schema classes, then freeze all schema elements.
-    _link_schema_elements(elements, superclass_sets)
+    link_schema_elements(elements, inheritance_structure)
     for element in six.itervalues(elements):
         element.freeze()
 
-    return SchemaGraph(elements, superclass_sets)
-
-
-def _get_superclass_sets_from_schema_data(schema_data):
-    """Return the superclass sets from the OrientDB schema data."""
-    # For each class name, construct its superclass set:
-    # itself + the set of class names from which it inherits.
-    superclass_sets = dict()
-    for class_definition in schema_data:
-        class_name = class_definition['name']
-        immediate_superclass_names = get_superclasses_from_class_definition(
-            class_definition)
-
-        superclass_set = set(immediate_superclass_names)
-        superclass_set.add(class_name)
-
-        # Since the input data must be in topological order, the superclasses of
-        # the current class should have already been processed.
-        # A KeyError on the following line would mean that the input
-        # was not topologically sorted.
-        superclass_set.update(chain.from_iterable(
-            superclass_sets[superclass_name]
-            for superclass_name in immediate_superclass_names
-        ))
-
-        # Freeze the superclass set so it can't ever be modified again.
-        superclass_sets[class_name] = frozenset(superclass_set)
-    return superclass_sets
+    all_indexes = _get_indexes(index_data, elements)
+    return SchemaGraph(elements, inheritance_structure, all_indexes)
 
 
 def get_superclasses_from_class_definition(class_definition):
@@ -138,10 +133,10 @@ def get_superclasses_from_class_definition(class_definition):
     return []
 
 
-def _get_non_graph_elements(class_name_to_definition, superclass_sets):
+def _get_non_graph_elements(class_name_to_definition, inheritance_structure):
     """Return a dict mapping class name to NonGraphElement."""
     non_graph_elements = dict()
-    _, _, non_graph_class_names = _get_vertex_edge_and_non_graph_class_names(superclass_sets)
+    _, _, non_graph_class_names = _get_vertex_edge_and_non_graph_class_names(inheritance_structure)
 
     for class_name in non_graph_class_names:
         class_definition = class_name_to_definition[class_name]
@@ -149,7 +144,7 @@ def _get_non_graph_elements(class_name_to_definition, superclass_sets):
         abstract = _is_abstract(class_definition)
 
         inherited_property_definitions = _get_inherited_property_definitions(
-            superclass_sets[class_name], class_name_to_definition)
+            inheritance_structure.superclass_sets[class_name], class_name_to_definition)
         link_property_definitions, non_link_property_definitions = (
             _get_link_and_non_link_properties(inherited_property_definitions))
 
@@ -165,13 +160,12 @@ def _get_non_graph_elements(class_name_to_definition, superclass_sets):
     return non_graph_elements
 
 
-def _get_edge_elements(class_name_to_definition, superclass_sets, inner_collection_objs):
+def _get_edge_elements(class_name_to_definition, inheritance_structure, inner_collection_objs):
     """Return a dict mapping class name to EdgeType."""
     edge_elements = dict()
-    subclass_sets = get_subclass_sets_from_superclass_sets(superclass_sets)
 
     vertex_class_names, edge_class_names, non_graph_class_names = (
-        _get_vertex_edge_and_non_graph_class_names(superclass_sets))
+        _get_vertex_edge_and_non_graph_class_names(inheritance_structure))
 
     for class_name in edge_class_names:
         class_definition = class_name_to_definition[class_name]
@@ -179,18 +173,18 @@ def _get_edge_elements(class_name_to_definition, superclass_sets, inner_collecti
         abstract = _is_abstract(class_definition)
 
         inherited_property_definitions = _get_inherited_property_definitions(
-            superclass_sets[class_name], class_name_to_definition)
+            inheritance_structure.superclass_sets[class_name], class_name_to_definition)
         link_property_definitions, non_link_property_definitions = (
             _get_link_and_non_link_properties(inherited_property_definitions))
 
         for definition in link_property_definitions:
             _validate_link_definition(
-                class_name_to_definition, definition, vertex_class_names, subclass_sets)
+                class_name_to_definition, definition, vertex_class_names, inheritance_structure)
 
         links = _get_end_direction_to_superclasses(link_property_definitions)
 
         maybe_base_in_connection, maybe_base_out_connection = _try_get_base_connections(
-            class_name, superclass_sets, links, abstract)
+            class_name, inheritance_structure, links, abstract)
 
         property_name_to_descriptor = _get_element_properties(
             class_name, non_link_property_definitions, non_graph_class_names, inner_collection_objs)
@@ -201,12 +195,12 @@ def _get_edge_elements(class_name_to_definition, superclass_sets, inner_collecti
     return edge_elements
 
 
-def _get_vertex_elements(class_name_to_definition, superclass_sets, inner_collection_objs):
+def _get_vertex_elements(class_name_to_definition, inheritance_structure, inner_collection_objs):
     """Return a dict mapping class name to VertexType."""
     vertex_elements = dict()
 
     vertex_class_names, _, non_graph_class_names = (
-        _get_vertex_edge_and_non_graph_class_names(superclass_sets))
+        _get_vertex_edge_and_non_graph_class_names(inheritance_structure))
 
     for class_name in vertex_class_names:
         class_definition = class_name_to_definition[class_name]
@@ -214,7 +208,7 @@ def _get_vertex_elements(class_name_to_definition, superclass_sets, inner_collec
         abstract = _is_abstract(class_definition)
 
         inherited_property_definitions = _get_inherited_property_definitions(
-            superclass_sets[class_name], class_name_to_definition)
+            inheritance_structure.superclass_sets[class_name], class_name_to_definition)
         link_property_definitions, non_link_property_definitions = (
             _get_link_and_non_link_properties(inherited_property_definitions))
 
@@ -230,13 +224,13 @@ def _get_vertex_elements(class_name_to_definition, superclass_sets, inner_collec
     return vertex_elements
 
 
-def _get_vertex_edge_and_non_graph_class_names(superclass_sets):
+def _get_vertex_edge_and_non_graph_class_names(inheritance_structure):
     """Return the vertex, edge and non-graph class names."""
     vertex_class_names = set()
     edge_class_names = set()
     non_graph_class_names = set()
 
-    for class_name, superclass_set in six.iteritems(superclass_sets):
+    for class_name, superclass_set in six.iteritems(inheritance_structure.superclass_sets):
         is_vertex = ORIENTDB_BASE_VERTEX_CLASS_NAME in superclass_set
         is_edge = ORIENTDB_BASE_EDGE_CLASS_NAME in superclass_set
 
@@ -373,7 +367,7 @@ def _get_default_value(class_name, property_definition):
 
 
 def _validate_link_definition(class_name_to_definition, property_definition,
-                              vertex_class_names, subclass_sets):
+                              vertex_class_names, inheritance_structure):
     """Validate that property named either 'in' or 'out' is properly defined as a link."""
     name = property_definition['name']
     type_id = property_definition['type']
@@ -387,7 +381,7 @@ def _validate_link_definition(class_name_to_definition, property_definition,
     if linked_class not in vertex_class_names:
         is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
         all_subclasses_are_vertices = True
-        for subclass in subclass_sets[linked_class]:
+        for subclass in inheritance_structure.subclass_sets[linked_class]:
             if subclass != linked_class and subclass not in vertex_class_names:
                 all_subclasses_are_vertices = False
                 break
@@ -409,7 +403,7 @@ def _get_end_direction_to_superclasses(link_property_definitions):
     return links
 
 
-def _try_get_base_connections(class_name, superclass_sets, links, abstract):
+def _try_get_base_connections(class_name, inheritance_structure, links, abstract):
     """Return a tuple with the EdgeType's base connections. Each tuple element may be None."""
     base_connections = {}
 
@@ -421,7 +415,7 @@ def _try_get_base_connections(class_name, superclass_sets, links, abstract):
         # if it exists, must be the class in linked_classes that is a subclass of all other
         # classes in linked_classes.
         for linked_class in linked_classes:
-            superclass_set = superclass_sets[linked_class]
+            superclass_set = inheritance_structure.superclass_sets[linked_class]
             if set(linked_classes).issubset(superclass_set):
                 base_connections[end_direction] = linked_class
 
@@ -435,43 +429,69 @@ def _try_get_base_connections(class_name, superclass_sets, links, abstract):
     )
 
 
-def _link_schema_elements(elements, superclass_sets):
-    """For each edge, link the schema elements it connects to each other."""
-    subclass_sets = get_subclass_sets_from_superclass_sets(superclass_sets)
-    _, edge_class_names, _ = _get_vertex_edge_and_non_graph_class_names(superclass_sets)
-
-    for edge_class_name in edge_class_names:
-        edge_element = elements[edge_class_name]
-
-        from_class_name = edge_element.base_in_connection
-        to_class_name = edge_element.base_out_connection
-
-        if not from_class_name or not to_class_name:
-            continue
-
-        edge_schema_element = elements[edge_class_name]
-
-        # Link from_class_name with edge_class_name
-        for from_class in subclass_sets[from_class_name]:
-            from_schema_element = elements[from_class]
-            from_schema_element.out_connections.add(edge_class_name)
-            edge_schema_element.in_connections.add(from_class)
-
-        # Link edge_class_name with to_class_name
-        for to_class in subclass_sets[to_class_name]:
-            to_schema_element = elements[to_class]
-            edge_schema_element.out_connections.add(to_class)
-            to_schema_element.in_connections.add(edge_class_name)
-
-
-def _get_graphql_rep_of_non_graph_elements(non_graph_elements, superclass_sets):
+def _get_graphql_representation_of_non_graph_elements(non_graph_elements, inheritance_structure):
     """Return a dict mapping name to GraphQL Object for non graph elements without superclasses."""
     graphql_reps = {}
     for element_name, element in six.iteritems(non_graph_elements):
-        if superclass_sets[element_name] == {element_name}:
+        if inheritance_structure.superclass_sets[element_name] == {element_name}:
             fields = {
                 name: property_obj.type
                 for name, property_obj in element.properties.items()
             }
             graphql_reps[element_name] = GraphQLObjectType(element_name, fields, [])
     return graphql_reps
+
+
+def _get_indexes(index_data, elements):
+    """Return a set of IndexDefinitions describing the indexes defined in the OrientDB database."""
+    all_indexes = set()
+
+    # Get indexes from OrientDB.
+    all_class_names = set(elements.keys())
+
+    for index in index_data:
+        index_name = index['name']
+        index_type = index['type']
+        index_unique = index_type in UNIQUE_INDEX_TYPES
+        index_ordered = index_type in ORDERED_INDEX_TYPES
+        index_definition = index['indexDefinition']
+        index_base_classname = index_definition['className']
+        index_ignore_nulls = index_definition['nullValuesIgnored']
+
+        # Exclude indexes on OrientDB metadata classes (e.g. OUser).
+        if index_base_classname not in all_class_names:
+            continue
+
+        # Index fields can be specified in one of two ways:
+        #   - directly on the "indexDefinition" dict, if only a single field is covered;
+        #   - within a nested "indexDefinitions" dict inside
+        #     the top-level "indexDefinition" dict, if multiple fields are covered.
+        single_field = index_definition.get('field', None)
+        if single_field is not None:
+            index_fields = frozenset((single_field,))
+        else:
+            index_fields = frozenset(
+                subdefinition['field']
+                for subdefinition in index_definition['indexDefinitions']
+            )
+
+        if not index_fields:
+            raise AssertionError(u'Unable to load index fields for index: {}'.format(index))
+
+        if index_ignore_nulls and len(index_fields) != 1:
+            raise AssertionError(
+                u'Index {} ignores nulls, but covers more than one field. '
+                u'We don\'t know how OrientDB handles such indexes, so they are not allowed. '
+                u'{}'.format(index_name, index))
+
+        definition = IndexDefinition(
+            name=index_name,
+            base_classname=index_base_classname,
+            fields=index_fields,
+            unique=index_unique,
+            ignore_nulls=index_ignore_nulls,
+            ordered=index_ordered,
+        )
+        all_indexes.add(definition)
+
+    return frozenset(all_indexes)
