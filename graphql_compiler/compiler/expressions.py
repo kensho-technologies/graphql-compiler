@@ -120,6 +120,7 @@ class Literal(Expression):
 
     to_gremlin = _to_output_code
     to_match = _to_output_code
+    to_cypher = _to_output_code
 
 
 NullLiteral = Literal(None)
@@ -217,6 +218,13 @@ class Variable(Expression):
         else:
             return six.text_type(self.variable_name)
 
+    def to_cypher(self):
+        """Return a unicode object with the Cypher representation of this expression."""
+        # Cypher has built-in support for variable expansion, so we'll just emit a variable
+        # definition and rely on Cypher to insert the value.
+        self.validate()
+        return u'{}'.format(self.variable_name)
+
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
         # Since this object has a GraphQL type as a variable, which doesn't implement
@@ -279,6 +287,11 @@ class LocalField(Expression):
         else:
             return u'{}.{}'.format(local_object_name, self.field_name)
 
+    def to_cypher(self):
+        """Not implemented, should not be used."""
+        raise AssertionError(u'LocalField is not used as part of the query emission process in '
+                             u'Cypher, so this is a bug. This function should not be called.')
+
 
 class GlobalContextField(Expression):
     """A field drawn from the global context, for use in a global operations WHERE statement."""
@@ -325,7 +338,13 @@ class GlobalContextField(Expression):
     def to_gremlin(self):
         """Not implemented, should not be used."""
         raise AssertionError(u'GlobalContextField is only used for the WHERE statement in '
-                             u'MATCH. This function should not be called.')
+                             u'MATCH, so this is a bug. This function should not be called.')
+
+    def to_cypher(self):
+        """Not implemented, should not be used."""
+        raise AssertionError(u'GlobalContextField is not used as part of the query emission '
+                             u'process in Cypher, so this is a bug. This function '
+                             u'should not be called.')
 
 
 class ContextField(Expression):
@@ -387,6 +406,21 @@ class ContextField(Expression):
                 template = u'm.{mark_name}.{field_name}'
         else:
             template = u'm.{mark_name}'
+
+        validate_safe_string(mark_name)
+
+        return template.format(mark_name=mark_name, field_name=field_name)
+
+    def to_cypher(self):
+        """Return a unicode object with the Cypher representation of this expression."""
+        self.validate()
+
+        mark_name, field_name = self.location.get_location_name()
+        if field_name is not None:
+            validate_safe_string(field_name)
+            template = u'{mark_name}.{field_name}'
+        else:
+            template = u'{mark_name}'
 
         validate_safe_string(mark_name)
 
@@ -479,6 +513,19 @@ class OutputContextField(Expression):
 
         return template.format(mark_name=mark_name, field_name=field_name,
                                format=format_value)
+
+    def to_cypher(self):
+        """Return a unicode object with the Cypher representation of this expression."""
+        self.validate()
+
+        mark_name, field_name = self.location.get_location_name()
+
+        validate_safe_string(field_name)
+        validate_safe_string(mark_name)
+
+        template = u'{mark_name}.{field_name}'
+
+        return template.format(mark_name=mark_name, field_name=field_name)
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
@@ -576,6 +623,10 @@ class FoldedContextField(Expression):
         raise AssertionError(u'FoldedContextField are not used during the query emission process '
                              u'in Gremlin, so this is a bug. This function should not be called.')
 
+    def to_cypher(self):
+        """Not implemented yet."""
+        raise NotImplementedError()
+
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
         # Since this object has a GraphQL type as a variable, which doesn't implement
@@ -635,6 +686,10 @@ class FoldCountContextField(Expression):
         """Not supported yet."""
         raise NotImplementedError()
 
+    def to_cypher(self):
+        """Not supported yet."""
+        raise NotImplementedError()
+
 
 class ContextFieldExistence(Expression):
     """An expression that evaluates to True if the given context field exists, and False otherwise.
@@ -674,6 +729,10 @@ class ContextFieldExistence(Expression):
     def to_gremlin(self):
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
         raise AssertionError(u'ContextFieldExistence.to_gremlin() was called: {}'.format(self))
+
+    def to_cypher(self):
+        """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
+        raise AssertionError(u'ContextFieldExistence.to_cypher() was called: {}'.format(self))
 
 
 def _validate_operator_name(operator, supported_operators):
@@ -751,6 +810,10 @@ class UnaryTransformation(Expression):
             'operator': gremlin_operator,
         }
         return template.format(**args)
+
+    def to_cypher(self):
+        """Not implemented yet."""
+        raise NotImplementedError()
 
 
 class BinaryComposition(Expression):
@@ -885,6 +948,47 @@ class BinaryComposition(Expression):
                                   left=self.left.to_gremlin(),
                                   right=self.right.to_gremlin())
 
+    def to_cypher(self):
+        """Return a unicode object with the Cypher representation of this expression."""
+        self.validate()
+
+        # The Cypher versions of some operators require an inverted order of arguments.
+        regular_operator_format = u'({left} {operator} {right})'
+        inverted_operator_format = u'({right} {operator} {left})'
+        negated_inverted_operator_format = u'(NOT ({right} {operator} {left}))'
+        intersects_operator_format = u'any(_ {operator} {left} WHERE _ {operator} {right})'
+
+        # Null literals use 'is/is not' as (in)equality operators, while other values use '=/<>'.
+        if self.left == NullLiteral or self.right == NullLiteral:
+            translation_table = {
+                u'=': (u'IS', regular_operator_format),
+                u'!=': (u'IS NOT', regular_operator_format),
+            }
+        else:
+            translation_table = {
+                u'=': (u'=', regular_operator_format),
+                u'!=': (u'!=', regular_operator_format),
+                u'>=': (u'>=', regular_operator_format),
+                u'<=': (u'<=', regular_operator_format),
+                u'>': (u'>', regular_operator_format),
+                u'<': (u'<', regular_operator_format),
+                u'||': (u'OR', regular_operator_format),
+                u'&&': (u'AND', regular_operator_format),
+                u'contains': (u'IN', inverted_operator_format),
+                u'not_contains': (u'IN', negated_inverted_operator_format),
+                u'intersects': (u'IN', intersects_operator_format),
+                u'has_substring': (u'CONTAINS', regular_operator_format),
+            }
+
+        cypher_operator, format_spec = translation_table.get(self.operator, (None, None))
+        if not cypher_operator:
+            raise AssertionError(u'Unrecognized operator used: '
+                                 u'{} {}'.format(self.operator, self))
+
+        return format_spec.format(operator=cypher_operator,
+                                  left=self.left.to_cypher(),
+                                  right=self.right.to_cypher())
+
 
 class TernaryConditional(Expression):
     """A ternary conditional expression, returning one of two expressions depending on a third."""
@@ -970,3 +1074,12 @@ class TernaryConditional(Expression):
             predicate=self.predicate.to_gremlin(),
             if_true=self.if_true.to_gremlin(),
             if_false=self.if_false.to_gremlin())
+
+    def to_cypher(self):
+        """Return a unicode object with the Cypher representation of this expression."""
+        self.validate()
+
+        return u'(CASE WHEN {predicate} THEN {if_true} ELSE {if_false} END)'.format(
+            predicate=self.predicate.to_cypher(),
+            if_true=self.if_true.to_cypher(),
+            if_false=self.if_false.to_cypher())
