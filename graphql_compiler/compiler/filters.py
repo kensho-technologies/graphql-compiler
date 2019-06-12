@@ -454,7 +454,8 @@ def _process_in_collection_filter_directive(filter_operation_info, location, con
 
 @scalar_leaf_only(u'not_in_collection')
 @takes_parameters(1)
-def _process_not_in_collection_filter_directive(filter_operation_info, location, context, parameters):
+def _process_not_in_collection_filter_directive(filter_operation_info, location, context,
+                                                parameters):
     """Return a Filter basic block that checks for a value's non-existence in a collection.
 
     Args:
