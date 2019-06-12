@@ -199,19 +199,28 @@ def _expand_specific_macro_edge(schema, macro_ast, selection_ast, subclass_sets=
         subclass_sets: optional dict mapping class names to the set of its subclass names
 
     Returns:
-        (replacement selection AST, list of extra selections that need to be added and merged)
-        The first value of the tuple is a replacement
+        tuple of:
+        - replacement_selection_ast: GraphQL AST object to replace the given selection_ast
+        - selections_before: list of GraphQL AST objects, the selections to be added somewhere
+          before the replacement_selection_ast.
+        - selections_after: list of GraphQL AST objects, the selections to be added somewhere
+          after the replacement_selection_ast. Since the replacemet_selection_ast is a vertex
+          field, and vertex fields always go after property fields, these selections are all
+          vertex fields.
     """
     replacement_selection_ast = None
-    extra_selections = []
+    selections_before = []
+    selections_after = []
 
-    # TODO(bojanserafimov): Rename macro tags if conflicting with user-defined tag names.
     # TODO(bojanserafimov): Remove macro tags if the user has tagged the same field.
 
     for macro_selection in macro_ast.selection_set.selections:
         new_ast, target_ast = find_target_and_copy_path_to_it(macro_selection)
         if target_ast is None:
-            extra_selections.append(macro_selection)
+            if replacement_selection_ast is None:
+                selections_before.append(macro_selection)
+            else:
+                selections_after.append(macro_selection)
         else:
             if replacement_selection_ast is not None:
                 raise AssertionError(u'Found multiple @macro_edge_target directives. {}'
@@ -225,7 +234,7 @@ def _expand_specific_macro_edge(schema, macro_ast, selection_ast, subclass_sets=
         raise AssertionError(u'Found no @macro_edge_target directives in macro selection set. {}'
                              .format(macro_ast))
 
-    return replacement_selection_ast, extra_selections
+    return replacement_selection_ast, selections_before, selections_after
 
 
 def _check_that_expansion_directives_are_supported(macro_edge_field):
@@ -275,13 +284,13 @@ def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
     macro_edges_at_this_type = inherited_macro_edges.get(current_schema_type.name, dict())
 
     made_changes = False
-    new_selections = []
+    new_selection_set = None
     new_query_args = query_args
-
-    extra_selection_set = None
 
     for selection_ast in ast.selection_set.selections:
         new_selection_ast = selection_ast
+        selections_before = []  # Selections from macro expansion to be added before this selection
+        selections_after = []  # Selections from macro expansion to be added after this selection
 
         if isinstance(selection_ast, InlineFragment):
             vertex_field_type = schema.get_type(selection_ast.type_condition.name.value)
@@ -303,11 +312,9 @@ def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
                     sanitized_macro_ast = replace_tag_names(
                         name_change_map, macro_edge_descriptor.expansion_ast)
 
-                    new_selection_ast, extra_selections = _expand_specific_macro_edge(
-                        schema, sanitized_macro_ast, selection_ast, subclass_sets=subclass_sets)
-                    extra_selection_set = _merge_selection_sets(
-                        SelectionSet(extra_selections), extra_selection_set)
-
+                    new_selection_ast, selections_before, selections_after = (
+                        _expand_specific_macro_edge(schema, sanitized_macro_ast, selection_ast,
+                                                    subclass_sets=subclass_sets))
                     new_query_args = _merge_non_overlapping_dicts(
                         new_query_args, macro_edge_descriptor.macro_args)
 
@@ -323,18 +330,15 @@ def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
                     macro_registry, inherited_macro_edges, vertex_field_type,
                     new_selection_ast, new_query_args, tag_names)
 
-        if new_selection_ast is not selection_ast:
+        if new_selection_ast is not selection_ast or selections_before or selections_after:
             made_changes = True
 
-        new_selections.append(new_selection_ast)
-
-    if extra_selection_set is not None:
-        made_changes = True
+        new_selection_set = _merge_selection_sets(new_selection_set, SelectionSet(
+            selections_before + [new_selection_ast] + selections_after))
 
     if made_changes:
         result_ast = copy(ast)
-        result_ast.selection_set = _merge_selection_sets(
-            extra_selection_set, SelectionSet(new_selections))
+        result_ast.selection_set = new_selection_set
     else:
         result_ast = ast
 

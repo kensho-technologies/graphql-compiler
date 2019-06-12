@@ -118,9 +118,9 @@ class MacroExpansionTests(unittest.TestCase):
 
         expected_query = '''{
             Animal {
-                net_worth @tag(tag_name: "net_worth")
-                          @filter(op_name: "<", value: ["$net_worth_upper_bound"])
+                net_worth @filter(op_name: "<", value: ["$net_worth_upper_bound"])
                           @output(out_name: "net_worth")
+                          @tag(tag_name: "net_worth")
                 out_Animal_BornAt {
                     event_date @tag(tag_name: "birthday")
                 }
@@ -159,7 +159,7 @@ class MacroExpansionTests(unittest.TestCase):
             Animal {
                 net_worth @tag(tag_name: "net_worth")
                 in_Animal_ParentOf {
-                    out_Animal_ParentOf @macro_edge_target {
+                    out_Animal_ParentOf {
                         net_worth @filter(op_name: ">", value: ["%net_worth"])
                         out_Animal_BornAt {
                             event_date @tag(tag_name: "birthday")
