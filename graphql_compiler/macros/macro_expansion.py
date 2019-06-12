@@ -331,7 +331,12 @@ def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
                     macro_registry, inherited_macro_edges, vertex_field_type,
                     new_selection_ast, new_query_args, tag_names)
 
-        if new_selection_ast is not selection_ast or selections_before or selections_after:
+        if new_selection_ast is selection_ast and (selections_before or selections_after):
+            raise AssertionError(u'No macro expansion happened but there are selections '
+                                 u'to expand before and after the current selection {} {}'
+                                 .format(selections_before, selections_after))
+
+        if new_selection_ast is not selection_ast:
             made_changes = True
 
         new_selection_set = _merge_selection_sets(new_selection_set, SelectionSet(
