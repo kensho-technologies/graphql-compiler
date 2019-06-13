@@ -72,11 +72,6 @@ class CompilerEntity(object):
         """Return the Gremlin unicode string representation of this object."""
         raise NotImplementedError()
 
-    @abstractmethod
-    def to_cypher(self):
-        """Return the Cypher unicode string representation of this object."""
-        raise NotImplementedError()
-
 
 @six.add_metaclass(ABCMeta)
 class Expression(CompilerEntity):
@@ -143,13 +138,6 @@ class MarkerBlock(BasicBlock):
 
     def to_gremlin(self):
         """Return the Gremlin representation of the block, which should almost always be empty.
-
-        The effect of MarkerBlocks is applied during optimization and code generation steps.
-        """
-        return u''
-
-    def to_cypher(self):
-        """Return the Cypher representation of the block, which should almost always be empty.
 
         The effect of MarkerBlocks is applied during optimization and code generation steps.
         """
