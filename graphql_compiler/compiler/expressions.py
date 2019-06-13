@@ -968,7 +968,7 @@ class BinaryComposition(Expression):
         else:
             translation_table = {
                 u'=': (u'=', regular_operator_format),
-                u'!=': (u'!=', regular_operator_format),
+                u'!=': (u'<>', regular_operator_format),
                 u'>=': (u'>=', regular_operator_format),
                 u'<=': (u'<=', regular_operator_format),
                 u'>': (u'>', regular_operator_format),
