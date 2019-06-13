@@ -678,8 +678,8 @@ def _get_filter_op_name_and_values(directive):
 COMPARISON_OPERATORS = frozenset({u'=', u'!=', u'>', u'<', u'>=', u'<='})
 PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset({
     u'between',
-    u'not_in_collection',
     u'in_collection',
+    u'not_in_collection',
     u'contains',
     u'not_contains',
     u'intersects',
