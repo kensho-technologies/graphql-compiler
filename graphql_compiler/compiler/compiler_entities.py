@@ -72,6 +72,11 @@ class CompilerEntity(object):
         """Return the Gremlin unicode string representation of this object."""
         raise NotImplementedError()
 
+    @abstractmethod
+    def to_cypher(self):
+        """Return the Cypher unicode string representation of this object."""
+        raise NotImplementedError()
+
 
 @six.add_metaclass(ABCMeta)
 class Expression(CompilerEntity):

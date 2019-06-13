@@ -95,8 +95,9 @@ class Literal(Expression):
         raise GraphQLCompilationError(u'Cannot represent literal: {}'.format(self.value))
 
     def _to_output_code(self):
-        """Return a unicode object with the Gremlin/MATCH representation of this Literal."""
-        # All supported Literal objects serialize to identical strings both in Gremlin and MATCH.
+        """Return a unicode object with the Gremlin/MATCH/Cypher representation of this Literal."""
+        # All supported Literal objects serialize to identical strings
+        # in all of Gremlin, Cypher, and MATCH.
         self.validate()
         if self.value is None:
             return u'null'
@@ -416,6 +417,7 @@ class ContextField(Expression):
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
+
         if field_name is not None:
             validate_safe_string(field_name)
             template = u'{mark_name}.{field_name}'
@@ -519,9 +521,8 @@ class OutputContextField(Expression):
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
-
-        validate_safe_string(field_name)
         validate_safe_string(mark_name)
+        validate_safe_string(field_name)
 
         template = u'{mark_name}.{field_name}'
 
