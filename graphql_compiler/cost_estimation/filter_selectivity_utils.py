@@ -27,11 +27,6 @@ def _is_fractional(selectivity):
     return selectivity.kind == FRACTIONAL_SELECTIVITY
 
 
-def _is_nondefault_selectivity(selectivity):
-    """Returns True if selectivity has kind fractional and selectivity of 1.0"""
-    return selectivity == Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
-
-
 def _has_any_absolute(selectivities):
     """Returns True if at least one selectivity has kind absolute."""
     for selectivity in selectivities:
