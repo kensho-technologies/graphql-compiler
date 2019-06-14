@@ -8,7 +8,6 @@ from ..compiler.helpers import (
 )
 from ..schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from .filter_selectivity_utils import adjust_counts_for_filters
-from .statistics import _get_class_count
 
 
 def _is_subexpansion_optional(query_metadata, child_location, parent_location):
@@ -107,7 +106,7 @@ def _estimate_children_per_parent(
     # Count the number of edges between child_location and parent_location type vertices.
     _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     # TODO(evan): If edge is recursed over, we need a more detailed statistic
-    edge_counts = _get_class_count(statistics, edge_name)
+    edge_counts = statistics.get_class_count(edge_name)
 
     # Scale edge_counts if child_location's type is a subclass of the edge's endpoint type.
     parent_name_from_edge, child_name_from_edge = _get_parent_and_child_name_from_edge(
@@ -116,12 +115,12 @@ def _estimate_children_per_parent(
     child_name_from_location = query_metadata.get_location_info(child_location).type.name
     if child_name_from_edge != child_name_from_location:
         edge_counts *= (
-            float(_get_class_count(statistics, child_name_from_location)) /
-            _get_class_count(statistics, child_name_from_edge)
+            float(statistics.get_class_count(child_name_from_location)) /
+            statistics.get_class_count(child_name_from_edge)
         )
 
     # Count the number of parents, over which we assume the edges are uniformly distributed.
-    parent_counts = _get_class_count(statistics, parent_name_from_edge)
+    parent_counts = statistics.get_class_count(parent_name_from_edge)
 
     # TODO(evan): edges are not necessarily uniformly distributed, so record more statistics
     child_counts_per_parent = float(edge_counts) / parent_counts
@@ -252,7 +251,7 @@ def estimate_query_result_cardinality(
 
     # First, count the vertices corresponding to the root location that pass relevant filters
     root_name = query_metadata.get_location_info(root_location).type.name
-    root_counts = _get_class_count(statistics, root_name)
+    root_counts = statistics.get_class_count(root_name)
     root_counts = adjust_counts_for_filters(
         schema_graph, statistics, query_metadata.get_filter_infos(root_location), parameters,
         root_name, root_counts

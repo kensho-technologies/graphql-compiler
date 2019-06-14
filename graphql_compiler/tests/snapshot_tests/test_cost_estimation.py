@@ -11,16 +11,8 @@ from ...cost_estimation.filter_selectivity_utils import (
     ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity, _combine_filter_selectivities,
     _get_filter_selectivity
 )
-from ...cost_estimation.statistics import GraphQLStatistics
+from ...cost_estimation.statistics import LocalStatistics
 from ..test_helpers import generate_schema_graph
-
-
-def create_class_counts(count_data):
-    """Create lookup_counts function for use in estimating query cost."""
-    def lookup_counts(name):
-        """Lookup the total number of instances and subinstances of a given class name."""
-        return count_data[name]
-    return lookup_counts
 
 
 # The following TestCase class uses the 'snapshot_graph_client' fixture
@@ -40,11 +32,11 @@ class CostEstimationTests(unittest.TestCase):
         count_data = {
             'Animal': 3,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -64,11 +56,11 @@ class CostEstimationTests(unittest.TestCase):
             'Animal': 3,
             'Animal_ParentOf': 5,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -92,11 +84,11 @@ class CostEstimationTests(unittest.TestCase):
             'Food': 11,
             'FoodOrSpecies': 14,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -139,11 +131,11 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_BornAt': 13,
             'BirthEvent': 17
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -179,11 +171,11 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_BornAt': 7,
             'Animal_FedAt': 3,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -224,11 +216,11 @@ class CostEstimationTests(unittest.TestCase):
             'Species_Eats': 5,
             'Species': 97,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -249,11 +241,11 @@ class CostEstimationTests(unittest.TestCase):
             'Entity': 11,
             'Species_Eats': 17,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -285,11 +277,11 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_BornAt': 7,
             'Animal_FedAt': 3,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -329,11 +321,11 @@ class CostEstimationTests(unittest.TestCase):
             'Entity': 11,
             'Species_Eats': 5,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -354,11 +346,11 @@ class CostEstimationTests(unittest.TestCase):
             'Entity': 11,
             'Species_Eats': 17,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -386,11 +378,11 @@ class CostEstimationTests(unittest.TestCase):
             'Animal': 7,
             'Animal_ParentOf': 11,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -423,11 +415,11 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_ParentOf': 11,
             'Animal_BornAt': 13,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -459,11 +451,11 @@ class CostEstimationTests(unittest.TestCase):
         count_data = {
             'Animal': 3,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -501,11 +493,11 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 17,
             'FeedingEvent': 11,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -536,11 +528,11 @@ class CostEstimationTests(unittest.TestCase):
         count_data = {
             'Animal': 3,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -579,11 +571,11 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'FeedingEvent': 6,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -626,11 +618,11 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'FeedingEvent': 6,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -672,11 +664,11 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'FeedingEvent': 6,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -719,11 +711,11 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'FeedingEvent': 6,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -761,11 +753,11 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_ParentOf': 11,
             'Animal_BornAt': 13,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -801,11 +793,11 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_ParentOf': 11,
             'Animal_BornAt': 13,
         }
-        statistics = GraphQLStatistics(
-            class_count=create_class_counts(count_data),
-            concrete_vertex_links=None,
-            domain_count=None,
-            histogram=None
+        statistics = LocalStatistics(
+            class_count=count_data,
+            count_of_vertex_pair_links_using_edge=dict(),
+            domain_count=dict(),
+            histogram=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -874,10 +866,10 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.graph_client)
         classname = 'Animal'
 
-        empty_statistics = GraphQLStatistics(class_count=None,
-                                             concrete_vertex_links=None,
-                                             domain_count=None,
-                                             histogram=None)
+        empty_statistics = LocalStatistics(class_count=dict(),
+                                           count_of_vertex_pair_links_using_edge=dict(),
+                                           domain_count=dict(),
+                                           histogram=dict())
         params = dict()
 
         # If we '='-filter on a property that isn't an index return a fractional selectivity of 1.
@@ -911,10 +903,10 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
     def test_get_in_collection_filter_selectivity(self):
         schema_graph = generate_schema_graph(self.graph_client)
         classname = 'Animal'
-        empty_statistics = GraphQLStatistics(class_count=None,
-                                             concrete_vertex_links=None,
-                                             domain_count=None,
-                                             histogram=None)
+        empty_statistics = LocalStatistics(class_count=dict(),
+                                           count_of_vertex_pair_links_using_edge=dict(),
+                                           domain_count=dict(),
+                                           histogram=dict())
 
         nonunique_filter = FilterInfo(fields=('birthday',), op_name='in_collection',
                                       args=('$birthday_collection',))

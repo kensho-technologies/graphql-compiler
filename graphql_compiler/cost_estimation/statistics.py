@@ -1,53 +1,169 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import namedtuple
+from abc import ABCMeta, abstractmethod
+
+import six
 
 
-##
-# A GraphQLStatistics object bundles statistics function regarding GraphQL objects and vertex field
-# values.
-# Contains:
-#   - class_count: function, string -> int, that accepts a class name and returns the total number
-#                  of instances plus subclass instances.
-#   - concrete_vertex_links: function, (string, string, string) -> optional int, that accepts two
-#                        concrete vertex class names and an edge class name, and returns how many
-#                        edges of the given type connect two vertices of the given types, or None if
-#                        the statistic doesn't exist.
-#   - domain_counts: function, (string, string) -> optional int, that accepts a class name and a
-#                    valid vertex field, and returns the number of different values the vertex field
-#                    has, or None if the statistic doesn't exist.
-#   - histograms: function, (string, string) -> optional [(float, float, float)], that accepts a
-#                 class name and a valid vertex field, and returns a list containing tuple
-#                 describing each histogram entry as (inclusive start of bucket interval, inclusive
-#                 end of bucket interval, element count), or None if the statistic doesn't exist.
-GraphQLStatistics = namedtuple(
-    'GraphQLStatistics',
-    ('class_count', 'concrete_vertex_links', 'domain_count', 'histogram')
-)
+@six.python_2_unicode_compatible
+@six.add_metaclass(ABCMeta)
+class GraphQLStatistics(object):
+    """Interface for statistics functions regarding GraphQL objects and vertex field values."""
+    @abstractmethod
+    def get_class_count(self, class_name):
+        """Return how many objects have the given class name.
 
+        Args:
+            class_name: str, either a vertex class name or a edge class name defined in the
+                        GraphQL schema.
 
-def _get_class_count(statistics, name):
-    """Return how many classes have the given name."""
-    if statistics.class_count is None:
+        Returns:
+            - Number of objects with given class name if the statistic exists
+            - None otherwise
+        """
         return None
-    return statistics.class_count(name)
 
+    @abstractmethod
+    def count_of_vertex_pair_links_using_edge(
+        self, vertex_in_class_name, vertex_out_class_name, edge_class_name
+    ):
+        """Return number of edges of given type connecting two vertices of given types.
 
-def _get_concrete_vertex_links_count(statistics, concrete_vertex_in_name, concrete_vertex_out_name,
-                                     edge_name):
-    """Return number of edges of a given type connecting two concrete vertices of given types."""
-    if statistics.concrete_vertex_links is None:
+        Args:
+            vertex_in_class_name: str, vertex class name.
+            vertex_out_class_name: str, vertex class name.
+            edge_class_name: str, edge class name.
+
+        Returns:
+            - The count of such links if the statistic exists
+            - None otherwise
+        """
         return None
-    return statistics.concrete_vertex_links(concrete_vertex_in_name, concrete_vertex_out_name,
-                                            edge_name)
 
+    @abstractmethod
+    def get_domain_count(self, vertex_name, field_name):
+        """Return the number of distinct values the vertex field has.
 
-def _get_domain_count(statistics, vertex_name, field_name):
-    if statistics.domain_count is None:
+        Preconditions:
+        1. field_name must be a valid vertex field of vertex_name
+
+        Args:
+            vertex_name: str, name of a vertex.
+            field_name: str, name of a vertex field.
+
+        Returns:
+            - Distinct value count if the statistic exists
+            - None otherwise
+        """
         return None
-    return statistics.domain_count(vertex_name, field_name)
 
+    @abstractmethod
+    def get_histogram(self, vertex_name, field_name):
+        """Return a histogram for the given vertex field.
 
-def _get_histogram(statistics, vertex_name, field_name):
-    if statistics.histogram is None:
+        Preconditions:
+        1. field_name must be a valid vertex field of vertex_name
+
+        Args:
+            vertex_name: str, name of a vertex.
+            field_name: str, name of a vertex field.
+
+        Returns:
+            - A histogram as a list of tuples with 3 elements each if the statistic exists.
+              Each tuple represents a bin as (start, end, elementCount), where start and end are
+              the interval boundaries (inclusively), and elementCount is the bin element count.
+            - None otherwise
+        """
         return None
-    return statistics.histogram(vertex_name, field_name)
+
+
+class LocalStatistics(GraphQLStatistics):
+    """Provides statistics that were provided during initialization."""
+
+    def __init__(self, class_count, count_of_vertex_pair_links_using_edge, domain_count, histogram):
+        """Initializes the statistics class with the given data.
+
+        Args:
+            class_count: dict, mapping class name to class count statistic.
+            count_of_vertex_pair_links_using_edge: dict, mapping tuple to number of vertex links
+                                                   using given edge class.
+            domain_count: dict, mapping tuple of vertex class name and vertex field name to domain
+                          count.
+            histogram: dict, mapping tuple of vertex class name and vertex field name to histogram.
+        """
+        self._class_count = class_count
+        self._count_of_vertex_pair_links_using_edge = count_of_vertex_pair_links_using_edge
+        self._domain_count = domain_count
+        self._histogram = histogram
+
+    def get_class_count(self, class_name):
+        """Return how many objects have the given class name.
+
+        Args:
+            class_name: str, either a vertex class name or a edge class name defined in the
+                        GraphQL schema.
+
+        Returns:
+            - Number of objects with given class name if the statistic exists
+            - None otherwise
+        """
+        if class_name not in self._class_count:
+            return None
+        return self._class_count[class_name]
+
+    def count_of_vertex_pair_links_using_edge(
+        self, vertex_in_class_name, vertex_out_class_name, edge_class_name
+    ):
+        """Return number of edges of given type connecting two vertices of given types.
+
+        Args:
+            vertex_in_class_name: str, vertex class name.
+            vertex_out_class_name: str, vertex class name.
+            edge_class_name: str, edge class name.
+
+        Returns:
+            - The count of such links if the statistic exists
+            - None otherwise
+        """
+        statistic_id = (vertex_in_class_name, vertex_out_class_name, edge_class_name)
+        if statistic_id not in self._count_of_vertex_pair_links_using_edge:
+            return None
+        return self._count_of_vertex_pair_links_using_edge[statistic_id]
+
+    def get_domain_count(self, vertex_name, field_name):
+        """Return the number of distinct values the vertex field has.
+
+        Preconditions:
+        1. field_name must be a valid vertex field of vertex_name
+
+        Args:
+            vertex_name: str, name of a vertex.
+            field_name: str, name of a vertex field.
+
+        Returns:
+            - Distinct value count if the statistic exists
+            - None otherwise
+        """
+        statistic_id = (vertex_name, field_name)
+        if statistic_id not in self._domain_count:
+            return None
+        return self._domain_count[statistic_id]
+
+    def get_histogram(self, vertex_name, field_name):
+        """Return a histogram for the given vertex field.
+
+        Preconditions:
+        1. field_name must be a valid vertex field of vertex_name
+
+        Args:
+            vertex_name: str, name of a vertex.
+            field_name: str, name of a vertex field.
+
+        Returns:
+            - A histogram as a list of tuples with 3 elements each if the statistic exists.
+              Each tuple represents a bin as (start, end, elementCount), where start and end are
+              the interval boundaries (inclusively), and elementCount is the bin element count.
+            - None otherwise
+        """
+        if vertex_name not in self._histogram or field_name not in self._histogram[vertex_name]:
+            return None
+        return self._histogram[vertex_name][field_name]

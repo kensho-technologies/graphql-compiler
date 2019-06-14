@@ -3,7 +3,6 @@ from collections import namedtuple
 import sys
 
 from ..compiler.helpers import get_parameter_name
-from .statistics import _get_domain_count
 
 
 # The Selectivity represents the selectivity of a filter or a set of filters
@@ -57,7 +56,7 @@ def _estimate_filter_selectivity_of_equality(
         result_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
 
     # Assumption: Each vertex field value occurs equally often.
-    field_domain_size = _get_domain_count(statistics, location_name, filter_fields[0])
+    field_domain_size = statistics.get_domain_count(location_name, filter_fields[0])
     if field_domain_size is not None:
         result_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0 / field_domain_size)
 
