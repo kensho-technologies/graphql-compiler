@@ -8,9 +8,8 @@ from ..compiler.helpers import (
 )
 from ..schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from .filter_selectivity_utils import adjust_counts_for_filters
-from .statistics import (
-    _get_class_count, _get_vertex_pair_links_count, _get_domain_count, _get_histograms
-)
+from .statistics import _get_class_count
+
 
 def _is_subexpansion_optional(query_metadata, child_location, parent_location):
     """Return True if child_location is the root of an optional subexpansion."""
@@ -255,7 +254,7 @@ def estimate_query_result_cardinality(
     root_name = query_metadata.get_location_info(root_location).type.name
     root_counts = _get_class_count(statistics, root_name)
     root_counts = adjust_counts_for_filters(
-        schema_graph, statistics, query_metadata.get_filter_infos(root_location), parameters, 
+        schema_graph, statistics, query_metadata.get_filter_infos(root_location), parameters,
         root_name, root_counts
     )
 
