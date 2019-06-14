@@ -5,12 +5,11 @@ from ..blocks import CoerceType, Filter, Fold, MarkLocation, Recurse, Traverse
 from ..expressions import (
     BinaryComposition, ContextField, FoldedContextField, LocalField, NullLiteral
 )
-from ..helpers import get_only_element_from_collection
+from ..helpers import FoldScopeLocation, get_only_element_from_collection
 from ..ir_lowering_common.common import merge_consecutive_filter_clauses
 from ..ir_lowering_common.location_renaming import (
     make_location_rewriter_visitor_fn, make_revisit_location_translations
 )
-from ..helpers import FoldScopeLocation
 
 
 ##################################
