@@ -220,6 +220,24 @@ class OrientDBUnparameterizedMatchQueryTests(TestCase):
         self.assertMatchSnapshot(rows)
 
     @pytest.mark.usefixtures('snapshot_graph_client')
+    def test_not_in_collection_op_filter_with_tag(self):
+        test_data = test_input_data.not_in_collection_op_filter_with_tag()
+        sample_parameters = {}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('snapshot_graph_client')
+    def test_not_in_collection_op_filter_with_optional_tag(self):
+        test_data = test_input_data.not_in_collection_op_filter_with_optional_tag()
+        sample_parameters = {}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('snapshot_graph_client')
     def test_intersects_op_filter_with_tag(self):
         test_data = test_input_data.intersects_op_filter_with_tag()
         sample_parameters = {}
@@ -719,6 +737,35 @@ class OrientDBParameterizedMatchQueryTests(TestCase):
     @pytest.mark.usefixtures('snapshot_graph_client')
     def test_in_collection_op_filter_with_variable(self):
         test_data = test_input_data.in_collection_op_filter_with_variable()
+        sample_names = [
+            'Nazgul__7',
+            'Nazgul__(((18_19_2_6)_1_19_6)_(1_12_14_19)_19_5)',
+            'Nazgul__10',
+            'Nazgul__(((((18_19_2_6)_1_19_6)_15_16_2)_11_14_6)_0_13_19)',
+            'Nazgul__(((((18_19_2_6)_1_19_6)_15_16_2)_14_8_9)_(11_12_14_16)_17_18)',
+            'Nazgul__(((((18_19_2_6)_1_19_6)_15_16_2)_11_14_6)_(11_5_7_8)_(1_12_14_19)_6)',
+            'Nazgul__((((18_19_2_6)_1_19_6)_15_16_2)_11_14_6)',
+            'Nazgul__6',
+            'Nazgul__5',
+            'Nazgul__(10_18_2_8)',
+            'Nazgul__(18_19_2_6)',
+            'Nazgul__1',
+            'Nazgul__(((18_19_2_6)_1_19_6)_15_16_2)',
+            'Nazgul__11',
+            'Nazgul__(1_12_14_19)',
+            'Nazgul__14',
+            'Nazgul__(((18_19_2_6)_1_19_6)_0_10_18)',
+            'Nazgul__2',
+        ]
+        sample_parameters = {'wanted': sample_names}
+
+        rows = execute_graphql(self.schema, test_data, self.graph_client, sample_parameters)
+
+        self.assertMatchSnapshot(rows)
+
+    @pytest.mark.usefixtures('snapshot_graph_client')
+    def test_not_in_collection_op_filter_with_variable(self):
+        test_data = test_input_data.not_in_collection_op_filter_with_variable()
         sample_names = [
             'Nazgul__7',
             'Nazgul__(((18_19_2_6)_1_19_6)_(1_12_14_19)_19_5)',

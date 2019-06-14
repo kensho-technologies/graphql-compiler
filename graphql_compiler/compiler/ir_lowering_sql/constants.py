@@ -45,6 +45,7 @@ CARDINALITY_LIST_VALUED = 'LIST_VALUED'
 # Column('column_name') == BindParameter('variable_name')
 SUPPORTED_OPERATORS = {
     u'contains': Operator(u'in_', CARDINALITY_LIST_VALUED),
+    u'not_contains': Operator(u'notin_', CARDINALITY_LIST_VALUED),
     u'&&': Operator(u'and_', CARDINALITY_BINARY),
     u'||': Operator(u'or_', CARDINALITY_BINARY),
     u'=': Operator(u'__eq__', CARDINALITY_UNARY),
