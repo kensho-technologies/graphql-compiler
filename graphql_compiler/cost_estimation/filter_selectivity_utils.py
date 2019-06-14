@@ -70,7 +70,7 @@ def _get_filter_selectivity(
 
     Args:
         schema_graph: SchemaGraph object
-        statistics: GraphQLStatistics object
+        statistics: object implementing GraphQLStatistics
         filter_info: FilterInfo object, filter on the location being filtered
         parameters: dict, parameters with which query will be executed
         location_name: string, type of the location being filtered
@@ -148,7 +148,7 @@ def adjust_counts_for_filters(
 
     Args:
         schema_graph: SchemaGraph object
-        statistics: GraphQLStatistics object
+        statistics: object implementing GraphQLStatistics
         filter_infos: list of FilterInfos, filters on the location being filtered
         parameters: dict, parameters with which query will be executed
         location_name: string, type of the location being filtered
