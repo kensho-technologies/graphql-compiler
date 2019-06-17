@@ -66,7 +66,7 @@ def _get_filter_selectivity(
 
     Args:
         schema_graph: SchemaGraph object
-        statistics: object implementing GraphQLStatistics
+        statistics: Statistics object
         filter_info: FilterInfo object, filter on the location being filtered
         parameters: dict, parameters with which query will be executed
         location_name: string, type of the location being filtered
@@ -98,15 +98,13 @@ def _get_filter_selectivity(
                 value=float(collection_size) * selectivity_per_entry_in_collection.value
             )
         elif _is_fractional(selectivity_per_entry_in_collection):
-            if selectivity_per_entry_in_collection != Selectivity(kind=FRACTIONAL_SELECTIVITY,
-                                                                  value=1.0):
-                result_selectivity = Selectivity(
-                    kind=selectivity_per_entry_in_collection.kind,
-                    value=min(float(collection_size) * selectivity_per_entry_in_collection.value,
-                              1.0)
-                    # The estimate may be above 1.0 in case of duplicates in the collection
-                    # so we make sure the value is <= 1.0
-                )
+            result_selectivity = Selectivity(
+                kind=selectivity_per_entry_in_collection.kind,
+                value=min(float(collection_size) * selectivity_per_entry_in_collection.value,
+                          1.0)
+                # The estimate may be above 1.0 in case of duplicates in the collection
+                # so we make sure the value is <= 1.0
+            )
 
     return result_selectivity
 
@@ -146,7 +144,7 @@ def adjust_counts_for_filters(
 
     Args:
         schema_graph: SchemaGraph object
-        statistics: object implementing GraphQLStatistics
+        statistics: Statistics object
         filter_infos: list of FilterInfos, filters on the location being filtered
         parameters: dict, parameters with which query will be executed
         location_name: string, type of the location being filtered

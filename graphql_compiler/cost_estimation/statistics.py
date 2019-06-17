@@ -7,12 +7,11 @@ import six
 @six.python_2_unicode_compatible
 @six.add_metaclass(ABCMeta)
 class Statistics(object):
-    """Abstract class for statistics regarding GraphQL objects and vertex field values.
+    """Abstract class for statistics regarding GraphQL objects and vertex fields.
 
     For the purposes of cost estimation, we need statistics to provide estimates for costs of
     certain operations like edge traversal and @filter directive usage.
-    This class provides an interface for these statistics.
-    All statistics except get_class_count are optional, so if the statistic doesn't exist, a
+    All statistics except get_class_count() are optional, so if the statistic doesn't exist, a
     value of None should be returned.
     """
     def __str__(self):
@@ -32,10 +31,10 @@ class Statistics(object):
                         GraphQL schema.
 
         Returns:
-            - Number of objects with, or inheriting the given class name
+            - int, number of objects with, or inheriting the given class name
 
         Raises:
-            AssertionError, if statistic for class_name was not provided.
+            AssertionError, if statistic for class_name does not exist.
         """
         raise NotImplementedError()
 
@@ -43,11 +42,11 @@ class Statistics(object):
     def get_edge_count_between_vertex_pair(
         self, vertex_out_class_name, vertex_in_class_name, edge_class_name
     ):
-        """Return the edge count between two vertices of a given type using an edge of a given type.
+        """Return number of edges of given class connecting two vertex types.
 
-        Edge traversal cost between two vertices using an edge that connects the vertices' using
-        their abstract inherited types is difficult to estimate, so we provide an interface for
-        this statistic.
+        For cost estimation, sometimes we need to predict traversal costs between two vertex types
+        using an edge type that connects the vertices' abstract types. If this statistic isn't
+        provided, it can be roughly estimated using multiple calls of get_class_count().
 
         Args:
             vertex_out_class_name: str, vertex class name.
@@ -55,7 +54,7 @@ class Statistics(object):
             edge_class_name: str, edge class name.
 
         Returns:
-            - The count of edges if the statistic exists
+            - int, the count of edges if the statistic exists
             - None otherwise
         """
         return None
@@ -64,8 +63,8 @@ class Statistics(object):
     def get_domain_count(self, vertex_name, field_name):
         """Return the number of distinct values the vertex field has over all vertex instances.
 
-        This statistics helps estimate the result size of @filter directives used to restrict
-        values using equality operators like '=', '!=', and 'in_collection'.
+        This statistic helps estimate the result size of @filter directives used to restrict values
+        using equality operators like '=', '!=', and 'in_collection'.
 
         Preconditions:
         1. field_name must be a valid vertex field of vertex_name
@@ -75,7 +74,7 @@ class Statistics(object):
             field_name: str, name of a vertex field.
 
         Returns:
-            - Distinct value count if the statistic exists
+            - int, domain size of the vertex field's values if the statistic exists
             - None otherwise
         """
         return None
@@ -84,7 +83,7 @@ class Statistics(object):
     def get_histogram(self, vertex_name, field_name):
         """Return a histogram for the given vertex field, providing statistics about range values.
 
-        This statistics helps estimate the result size of @filter directives used to restrict
+        This statistic helps estimate the result size of @filter directives used to restrict
         numbers using inequality operators like '>', '<', and 'between'.
 
         Preconditions:
@@ -95,9 +94,10 @@ class Statistics(object):
             field_name: str, name of a vertex field.
 
         Returns:
-            - A histogram as a list of tuples with 3 elements each if the statistic exists.
-              Each tuple represents a bin as (start, end, elementCount), where start and end are
-              the interval boundaries (inclusively), and elementCount is the bin element count.
+            - list[tuple(int, int, int)], histogram as a list of tuples with 3 elements each if the
+              statistic exists. Each tuple represents a bin as (start, end, elementCount), where
+              [start, end) is the range of values in the bin, and elementCount is the bin element
+              count.
             - None otherwise
         """
         return None
@@ -110,8 +110,8 @@ class LocalStatistics(Statistics):
 
         Args:
             class_count: dict, vertex/edge class name -> class count.
-            edge_count_between_vertex_pair: dict,
-                (str, str, str) -> count of edge type between vertex types.
+            edge_count_between_vertex_pair: dict, (vertex out class name, vertex in class name,
+                edge class name) -> count of edge type between vertex types.
             domain_count: dict, (str, str) -> domain size.
             histogram: dict, (str, str) -> histogram as list[tuple(int, int, int)]
         """
@@ -128,10 +128,10 @@ class LocalStatistics(Statistics):
                         GraphQL schema.
 
         Returns:
-            - Number of objects with, or inheriting the given class name
+            - int, number of objects with, or inheriting the given class name
 
         Raises:
-            AssertionError, if statistic for class_name was not provided.
+            AssertionError, if statistic for class_name does not exist.
         """
         if class_name not in self._class_count:
             raise AssertionError(u'Class count statistic is required, but entry not found for: '
@@ -141,11 +141,11 @@ class LocalStatistics(Statistics):
     def get_edge_count_between_vertex_pair(
         self, vertex_out_class_name, vertex_in_class_name, edge_class_name
     ):
-        """Return the edge count between two vertices of a given type using an edge of a given type.
+        """Return number of edges of given class connecting two vertex types.
 
-        Edge traversal cost between two vertices using an edge that connects the vertices' using
-        their abstract inherited types is difficult to estimate, so we provide an interface for
-        this statistic.
+        For cost estimation, sometimes we need to predict traversal costs between two vertex types
+        using an edge type that connects the vertices' abstract types. If this statistic isn't
+        provided, it can be roughly estimated using multiple calls of get_class_count().
 
         Args:
             vertex_out_class_name: str, vertex class name.
@@ -153,7 +153,7 @@ class LocalStatistics(Statistics):
             edge_class_name: str, edge class name.
 
         Returns:
-            - The count of edges if the statistic exists
+            - int, the count of edges if the statistic exists
             - None otherwise
         """
         statistic_id = (vertex_in_class_name, vertex_out_class_name, edge_class_name)
@@ -164,7 +164,7 @@ class LocalStatistics(Statistics):
     def get_domain_count(self, vertex_name, field_name):
         """Return the number of distinct values the vertex field has over all vertex instances.
 
-        This statistics helps estimate the result size of @filter directives used to restrict
+        This statistic helps estimate the result size of @filter directives used to restrict
         values using equality operators like '=', '!=', and 'in_collection'.
 
         Preconditions:
@@ -175,7 +175,7 @@ class LocalStatistics(Statistics):
             field_name: str, name of a vertex field.
 
         Returns:
-            - Distinct value count if the statistic exists
+            - int, domain size of the vertex field's values if the statistic exists
             - None otherwise
         """
         statistic_id = (vertex_name, field_name)
@@ -186,7 +186,7 @@ class LocalStatistics(Statistics):
     def get_histogram(self, vertex_name, field_name):
         """Return a histogram for the given vertex field, providing statistics about range values.
 
-        This statistics helps estimate the result size of @filter directives used to restrict
+        This statistic helps estimate the result size of @filter directives used to restrict
         numbers using inequality operators like '>', '<', and 'between'.
 
         Preconditions:
@@ -197,9 +197,10 @@ class LocalStatistics(Statistics):
             field_name: str, name of a vertex field.
 
         Returns:
-            - A histogram as a list of tuples with 3 elements each if the statistic exists.
-              Each tuple represents a bin as (start, end, elementCount), where start and end are
-              the interval boundaries (inclusively), and elementCount is the bin element count.
+            - list[tuple(int, int, int)], histogram as a list of tuples with 3 elements each if the
+              statistic exists. Each tuple represents a bin as (start, end, elementCount), where
+              [start, end) is the range of values in the bin, and elementCount is the bin element
+              count.
             - None otherwise
         """
         if vertex_name not in self._histogram or field_name not in self._histogram[vertex_name]:

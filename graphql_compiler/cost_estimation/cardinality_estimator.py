@@ -95,7 +95,7 @@ def _estimate_children_per_parent(
 
     Args:
         schema_graph: SchemaGraph object
-        statistics: object implementing GraphQLStatistics
+        statistics: Statistics object
         query_metadata: QueryMetadataTable object
         parameters: dict, parameters with which query will be executed
         child_location: BaseLocation object
@@ -149,7 +149,7 @@ def _estimate_subexpansion_cardinality(
 
     Args:
         schema_graph: SchemaGraph object
-        statistics: object implementing GraphQLStatistics
+        statistics: Statistics object
         query_metadata: QueryMetadataTable object
         parameters: dict, parameters with which query will be executed
         child_location: BaseLocation object, child of parent_location corresponding to the
@@ -193,7 +193,7 @@ def _estimate_expansion_cardinality(
 
     Args:
         schema_graph: SchemaGraph object
-        statistics: object implementing GraphQLStatistics
+        statistics: Statistics object
         query_metadata: QueryMetadataTable object
         parameters: dict, parameters with which query will be executed
         current_location: BaseLocation object, corresponding to the vertex we're expanding
@@ -223,7 +223,7 @@ def estimate_query_result_cardinality(
 
     Args:
         schema_graph: SchemaGraph object
-        statistics: object implementing GraphQLStatistics
+        statistics: Statistics object
         graphql_query: string, a valid GraphQL query
         parameters: dict, parameters with which query will be executed.
         class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
