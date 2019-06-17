@@ -7,7 +7,7 @@ import six
 @six.python_2_unicode_compatible
 @six.add_metaclass(ABCMeta)
 class Statistics(object):
-    """Abstract class for statistics regarding GraphQL objects and vertex fields.
+    """Abstract class for statistics regarding GraphQL objects and their fields.
 
     For the purposes of cost estimation, we need statistics to provide estimates for costs of
     certain operations like edge traversal and @filter directive usage.
