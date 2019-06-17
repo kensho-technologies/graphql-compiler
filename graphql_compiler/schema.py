@@ -9,7 +9,6 @@ from graphql import (
     GraphQLInterfaceType, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLScalarType,
     GraphQLString
 )
-from graphql.type.directives import specified_directives
 import six
 
 
