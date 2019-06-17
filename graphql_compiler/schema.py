@@ -9,6 +9,7 @@ from graphql import (
     GraphQLInterfaceType, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLScalarType,
     GraphQLString
 )
+from graphql.type.directives import specified_directives
 import six
 
 
@@ -190,6 +191,20 @@ RecurseDirective = GraphQLDirective(
         DirectiveLocation.FIELD,
     ]
 )
+
+
+OUTBOUND_EDGE_FIELD_PREFIX = 'out_'
+INBOUND_EDGE_FIELD_PREFIX = 'in_'
+VERTEX_FIELD_PREFIXES = frozenset({OUTBOUND_EDGE_FIELD_PREFIX, INBOUND_EDGE_FIELD_PREFIX})
+
+
+def is_vertex_field_name(field_name):
+    """Return True if the field's name indicates it is a non-root vertex field."""
+    # N.B.: A vertex field is a field whose type is a vertex type. This is what edges are.
+    return (
+        field_name.startswith(OUTBOUND_EDGE_FIELD_PREFIX) or
+        field_name.startswith(INBOUND_EDGE_FIELD_PREFIX)
+    )
 
 
 def _unused_function(*args, **kwargs):

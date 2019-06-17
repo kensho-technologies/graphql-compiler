@@ -64,15 +64,16 @@ from collections import namedtuple
 from graphql import (
     GraphQLInt, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLUnionType
 )
-from graphql.error import GraphQLSyntaxError
 from graphql.language.ast import Field, InlineFragment
-from graphql.language.parser import parse
 from graphql.validation import validate
 import six
 
 from . import blocks, expressions
-from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
-from ..schema import COUNT_META_FIELD_NAME, DIRECTIVES
+from ..ast_manipulation import (
+    get_ast_field_name, get_only_query_definition, get_only_selection_from_ast, safe_parse_graphql
+)
+from ..exceptions import GraphQLCompilationError, GraphQLValidationError
+from ..schema import COUNT_META_FIELD_NAME, DIRECTIVES, is_vertex_field_name
 from .context_helpers import (
     get_context_fold_info, get_optional_scope_or_none, has_encountered_output_source,
     has_fold_count_filter, is_in_fold_innermost_scope, is_in_fold_scope, is_in_optional_scope,
@@ -87,10 +88,9 @@ from .directive_helpers import (
 )
 from .filters import process_filter_directive
 from .helpers import (
-    FoldScopeLocation, Location, get_ast_field_name, get_edge_direction_and_name,
-    get_field_type_from_schema, get_parameter_name, get_uniquely_named_objects_by_name,
-    get_vertex_field_type, invert_dict, is_tagged_parameter, is_vertex_field_name,
-    strip_non_null_from_type, validate_output_name, validate_safe_string
+    FoldScopeLocation, Location, get_edge_direction_and_name, get_field_type_from_schema,
+    get_parameter_name, get_uniquely_named_objects_by_name, get_vertex_field_type, invert_dict,
+    is_tagged_parameter, strip_non_null_from_type, validate_output_name, validate_safe_string
 )
 from .metadata import LocationInfo, OutputInfo, QueryMetadataTable, RecurseInfo, TagInfo
 
@@ -790,10 +790,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         - location_types: a dict of location objects -> GraphQL type objects at that location
         - coerced_locations: a set of location objects indicating where type coercions have happened
     """
-    if len(ast.selection_set.selections) != 1:
-        raise GraphQLCompilationError(u'Cannot process AST with more than one root selection!')
-
-    base_ast = ast.selection_set.selections[0]
+    base_ast = get_only_selection_from_ast(ast, GraphQLCompilationError)
     base_start_type = get_ast_field_name(base_ast)  # This is the type at which querying starts.
 
     # Validation passed, so the base_start_type must exist as a field of the root query.
@@ -939,14 +936,7 @@ def _compile_output_step(query_metadata_table):
     return blocks.ConstructResult(output_fields)
 
 
-def _preprocess_graphql_string(graphql_string):
-    """Apply any necessary preprocessing to the input GraphQL string, returning the new version."""
-    # HACK(predrag): Workaround for graphql-core issue, to avoid needless errors:
-    #                https://github.com/graphql-python/graphql-core/issues/98
-    return graphql_string + '\n'
-
-
-def _validate_schema_and_ast(schema, ast):
+def validate_schema_and_ast(schema, ast):
     """Validate the supplied graphql schema and ast.
 
     This method wraps around graphql-core's validation to enforce a stricter requirement of the
@@ -1027,6 +1017,54 @@ def _validate_schema_and_ast(schema, ast):
 ##############
 
 
+def ast_to_ir(schema, ast, type_equivalence_hints=None):
+    """Convert the given GraphQL string into compiler IR, using the given schema object.
+
+    Args:
+        schema: GraphQL schema object, created using the GraphQL library
+        ast: AST object to be compiled to IR
+        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
+                                Used as a workaround for GraphQL's lack of support for
+                                inheritance across "types" (i.e. non-interfaces), as well as a
+                                workaround for Gremlin's total lack of inheritance-awareness.
+                                The key-value pairs in the dict specify that the "key" type
+                                is equivalent to the "value" type, i.e. that the GraphQL type or
+                                interface in the key is the most-derived common supertype
+                                of every GraphQL type in the "value" GraphQL union.
+                                Recursive expansion of type equivalence hints is not performed,
+                                and only type-level correctness of this argument is enforced.
+                                See README.md for more details on everything this parameter does.
+                                *****
+                                Be very careful with this option, as bad input here will
+                                lead to incorrect output queries being generated.
+                                *****
+
+    Returns:
+        IrAndMetadata named tuple, containing fields:
+        - ir_blocks: a list of IR basic block objects
+        - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
+        - output_metadata: a dict of output name (string) -> OutputMetadata object
+        - query_metadata_table: a QueryMetadataTable object containing location metadata
+
+    Raises flavors of GraphQLError in the following cases:
+        - if the query is invalid GraphQL (GraphQLParsingError);
+        - if the query doesn't match the schema (GraphQLValidationError);
+        - if the query has more than one definition block (GraphQLValidationError);
+        - if the query has more than one selection in the root object (GraphQLCompilationError);
+        - if the query does not obey directive usage rules (GraphQLCompilationError);
+        - if the query provides invalid / disallowed / wrong number of arguments
+          for a directive (GraphQLCompilationError).
+
+    In the case of implementation bugs, could also raise ValueError, TypeError, or AssertionError.
+    """
+    validation_errors = validate_schema_and_ast(schema, ast)
+    if validation_errors:
+        raise GraphQLValidationError(u'String does not validate: {}'.format(validation_errors))
+
+    base_ast = get_only_query_definition(ast, GraphQLValidationError)
+    return _compile_root_ast_to_ir(schema, base_ast, type_equivalence_hints=type_equivalence_hints)
+
+
 def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
     """Convert the given GraphQL string into compiler IR, using the given schema object.
 
@@ -1067,20 +1105,5 @@ def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
 
     In the case of implementation bugs, could also raise ValueError, TypeError, or AssertionError.
     """
-    graphql_string = _preprocess_graphql_string(graphql_string)
-    try:
-        ast = parse(graphql_string)
-    except GraphQLSyntaxError as e:
-        raise GraphQLParsingError(e)
-
-    validation_errors = _validate_schema_and_ast(schema, ast)
-
-    if validation_errors:
-        raise GraphQLValidationError(u'String does not validate: {}'.format(validation_errors))
-
-    if len(ast.definitions) != 1:
-        raise AssertionError(u'Unsupported graphql string with multiple definitions, should have '
-                             u'been caught in validation: \n{}\n{}'.format(graphql_string, ast))
-    base_ast = ast.definitions[0]
-
-    return _compile_root_ast_to_ir(schema, base_ast, type_equivalence_hints=type_equivalence_hints)
+    ast = safe_parse_graphql(graphql_string)
+    return ast_to_ir(schema, ast, type_equivalence_hints=type_equivalence_hints)
