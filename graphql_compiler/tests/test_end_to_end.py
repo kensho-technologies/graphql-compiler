@@ -2,10 +2,12 @@
 from decimal import Decimal
 import unittest
 
+from graphql import GraphQLList, GraphQLNonNull, GraphQLString
+
 from .. import graphql_to_gremlin, graphql_to_match
 from ..compiler import compile_graphql_to_gremlin, compile_graphql_to_match
 from ..exceptions import GraphQLInvalidArgumentError
-from ..query_formatting import insert_arguments_into_query
+from ..query_formatting import insert_arguments_into_query, validate_argument_type
 from .test_helpers import compare_gremlin, compare_match, get_schema
 
 
@@ -153,3 +155,17 @@ class QueryFormattingTests(unittest.TestCase):
 
             with self.assertRaises(GraphQLInvalidArgumentError):
                 graphql_to_gremlin(schema, EXAMPLE_GRAPHQL_QUERY, {})
+
+    def test_non_null_types_pass_validation(self):
+        type_and_value = [
+            (GraphQLString, 'abc'),  # sanity check
+            (GraphQLNonNull(GraphQLString), 'abc'),
+
+            (GraphQLList(GraphQLString), ['a', 'b', 'c']),  # sanity check
+            (GraphQLList(GraphQLNonNull(GraphQLString)), ['a', 'b', 'c']),
+            (GraphQLNonNull(GraphQLList(GraphQLString)), ['a', 'b', 'c']),
+            (GraphQLNonNull(GraphQLList(GraphQLNonNull(GraphQLString))), ['a', 'b', 'c']),
+        ]
+
+        for graphql_type, value in type_and_value:
+            validate_argument_type(graphql_type, value)
