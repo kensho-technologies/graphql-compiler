@@ -55,11 +55,7 @@ def _estimate_filter_selectivity_of_equality(
         # TODO(evan): don't return a higher absolute selectivity than class counts.
         result_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
 
-    # Assumption: Each vertex field value occurs equally often.
-    field_domain_size = statistics.get_domain_count(location_name, filter_fields[0])
-    if field_domain_size is not None:
-        result_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0 / field_domain_size)
-
+    # TODO(vlad): provide estimates for non-unique fields using domain_count metric.
     return result_selectivity
 
 
