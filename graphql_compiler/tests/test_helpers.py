@@ -282,24 +282,28 @@ def get_sql_metadata():
         sqlalchemy.Column('name', sqlalchemy.String(length=12), nullable=False),
         sqlalchemy.Column('net_worth', sqlalchemy.Integer, nullable=False),
         sqlalchemy.Column('birthday', sqlalchemy.Date, nullable=False),
-        sqlalchemy.Column('parent', sqlalchemy.Integer, sqlalchemy.ForeignKey('Animal.uuid'), nullable=True),
+        sqlalchemy.Column('parent', sqlalchemy.Integer, nullable=True),
+        schema='Animals.schema_1'
     )
     event_table = sqlalchemy.Table(
         'Event',
         sqlalchemy_metadata,
         sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
         sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
+        schema='Animals.schema_1'
     )
     entity_table = sqlalchemy.Table(
         'Entity',
         sqlalchemy_metadata,
         sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
         sqlalchemy.Column('name', sqlalchemy.String(length=12), nullable=False),
+        schema='Animals.schema_1'
     )
     entity_relationships = sqlalchemy.Table(
         'junction_Entity_Related',
         sqlalchemy_metadata,
         sqlalchemy.Column('parent', sqlalchemy.Integer, sqlalchemy.ForeignKey('entity.uuid'), nullable=True),
+        schema='Animals.schema_1'
     )
 
     edges = {

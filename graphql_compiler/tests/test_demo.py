@@ -32,7 +32,7 @@ def split_blocks(ir_blocks):
 def emit_sql(ir, sqlalchemy_metadata, sql_edges):
     current_classname, local_operations, global_operations = split_blocks(ir.ir_blocks)
     current_location = ir.query_metadata_table.root_location
-    current_alias = sqlalchemy_metadata.tables[current_classname].alias()
+    current_alias = sqlalchemy_metadata.tables['Animals.schema_1.' + current_classname].alias()
     alias_at_location = {}  # Updated only at MarkLocation blocks
 
     from_clause = current_alias
@@ -49,7 +49,7 @@ def emit_sql(ir, sqlalchemy_metadata, sql_edges):
             previous_alias = current_alias
             current_location = current_location.navigate_to_subpath('out_' + block.edge_name)
             edge = sql_edges[current_classname][block.direction][block.edge_name]
-            current_alias = sqlalchemy_metadata.tables[edge['table']].alias()
+            current_alias = sqlalchemy_metadata.tables['Animals.schema_1.' + edge['table']].alias()
 
             from_clause = from_clause.join(
                 current_alias,
@@ -74,8 +74,9 @@ def emit_sql(ir, sqlalchemy_metadata, sql_edges):
 
 
 def compile_sql(schema, sqlalchemy_metadata, sql_edges, graphql_string):
+    from sqlalchemy.dialects import mssql
     ir = compiler_frontend.graphql_to_ir(schema, graphql_string)
-    return emit_sql(ir, sqlalchemy_metadata, sql_edges)
+    return str(emit_sql(ir, sqlalchemy_metadata, sql_edges).compile(dialect=mssql.dialect()))
 
 
 class TestDemo(unittest.TestCase):
@@ -101,11 +102,11 @@ class TestDemo(unittest.TestCase):
         )
         expected_sql = '''
             SELECT
-                "Animal_1".name AS child_name
-            FROM "Animal" AS "Animal_2"
-                JOIN "Animal" AS "Animal_1" ON "Animal_2".parent = "Animal_1".uuid
+                [Animal_1].name AS child_name
+            FROM [Animals].schema_1.[Animal] AS [Animal_2]
+                JOIN [Animals].schema_1.[Animal] AS [Animal_1] ON [Animal_2].parent = [Animal_1].uuid
         '''
-        compare_sql(self, expected_sql, str(sql_query))
+        compare_sql(self, expected_sql, sql_query)
 
     def test_multiple_traversals(self):
         graphql_input = '''{
@@ -127,14 +128,14 @@ class TestDemo(unittest.TestCase):
         )
         expected_sql = '''
             SELECT
-                "Animal_1".name AS animal_name,
-                "Animal_2".name AS child_name,
-                "Animal_3".name AS grandchild_name
-            FROM "Animal" AS "Animal_1"
-                JOIN "Animal" AS "Animal_2" ON "Animal_1".parent = "Animal_2".uuid
-                JOIN "Animal" AS "Animal_3" ON "Animal_2".parent = "Animal_3".uuid
+                [Animal_1].name AS animal_name,
+                [Animal_2].name AS child_name,
+                [Animal_3].name AS grandchild_name
+            FROM [Animals].schema_1.[Animal] AS [Animal_1]
+                JOIN [Animals].schema_1.[Animal] AS [Animal_2] ON [Animal_1].parent = [Animal_2].uuid
+                JOIN [Animals].schema_1.[Animal] AS [Animal_3] ON [Animal_2].parent = [Animal_3].uuid
         '''
-        compare_sql(self, expected_sql, str(sql_query))
+        compare_sql(self, expected_sql, sql_query)
 
     def test_equals_filter(self):
         graphql_input = '''{
@@ -153,12 +154,12 @@ class TestDemo(unittest.TestCase):
         )
         expected_sql = '''
             SELECT
-                "Animal_1".name AS child_name
-            FROM "Animal" AS "Animal_2"
-                JOIN "Animal" AS "Animal_1" ON "Animal_2".parent = "Animal_1".uuid
-            WHERE "Animal_2".uuid = :animal_uuid
+                [Animal_1].name AS child_name
+            FROM [Animals].schema_1.[Animal] AS [Animal_2]
+                JOIN [Animal] AS [Animal_1] ON [Animal_2].parent = [Animal_1].uuid
+            WHERE [Animal_2].uuid = :animal_uuid
         '''
-        compare_sql(self, expected_sql, str(sql_query))
+        compare_sql(self, expected_sql, sql_query)
 
     def test_less_than_or_equal_filter(self):
         graphql_input = '''{
@@ -177,9 +178,9 @@ class TestDemo(unittest.TestCase):
         )
         expected_sql = '''
             SELECT
-                "Animal_1".name AS child_name
-            FROM "Animal" AS "Animal_2"
-                JOIN "Animal" AS "Animal_1" ON "Animal_2".parent = "Animal_1".uuid
-            WHERE "Animal_2".net_worth <= :max_net_worth
+                [Animal_1].name AS child_name
+            FROM [Animals].schema_1.[Animal] AS [Animal_2]
+                JOIN [Animals].schema_1.[Animal] AS [Animal_1] ON [Animal_2].parent = [Animal_1].uuid
+            WHERE [Animal_2].net_worth <= :max_net_worth
         '''
-        compare_sql(self, expected_sql, str(sql_query))
+        compare_sql(self, expected_sql, sql_query)
