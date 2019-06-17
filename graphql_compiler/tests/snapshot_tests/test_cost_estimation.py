@@ -34,7 +34,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -58,7 +58,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -86,7 +86,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -133,7 +133,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -173,7 +173,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -218,7 +218,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -243,7 +243,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -279,7 +279,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -323,7 +323,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -348,7 +348,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -380,7 +380,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -417,7 +417,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -453,7 +453,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -495,7 +495,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -530,7 +530,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -573,7 +573,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -620,7 +620,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -666,7 +666,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -713,7 +713,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -755,7 +755,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -795,7 +795,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(
             class_count=count_data,
-            count_of_vertex_pair_links_using_edge=dict(),
+            edge_count_between_vertex_pair=dict(),
             domain_count=dict(),
             histogram=dict()
         )
@@ -867,7 +867,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         classname = 'Animal'
 
         empty_statistics = LocalStatistics(class_count=dict(),
-                                           count_of_vertex_pair_links_using_edge=dict(),
+                                           edge_count_between_vertex_pair=dict(),
                                            domain_count=dict(),
                                            histogram=dict())
         params = dict()
@@ -904,7 +904,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.graph_client)
         classname = 'Animal'
         empty_statistics = LocalStatistics(class_count=dict(),
-                                           count_of_vertex_pair_links_using_edge=dict(),
+                                           edge_count_between_vertex_pair=dict(),
                                            domain_count=dict(),
                                            histogram=dict())
 
