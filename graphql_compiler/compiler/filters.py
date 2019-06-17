@@ -113,13 +113,13 @@ def _represent_argument(directive_location, context, argument, inferred_type):
 
         return (expressions.Variable(argument, inferred_type), None)
     elif is_tagged_parameter(argument):
-        argument_context = context['tags'].get(argument_name, None)
-        if argument_context is None:
+        tag_info = context['metadata'].get_tag_info(argument_name)
+        if tag_info is None:
             raise GraphQLCompilationError(u'Undeclared argument used: {}'.format(argument))
 
-        location = argument_context['location']
-        optional = argument_context['optional']
-        tag_inferred_type = argument_context['type']
+        location = tag_info.location
+        optional = tag_info.optional
+        tag_inferred_type = tag_info.type
 
         if location is None:
             raise AssertionError(u'Argument declared without location: {}'.format(argument_name))
@@ -169,7 +169,7 @@ def _process_comparison_filter_directive(filter_operation_info, location,
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, containing the value to perform the comparison against;
-                    if the parameter is optional and missing, the check will return True
+                    if the parameter is optional and missing, the check will return True.
         operator: unicode, a comparison operator, like '=', '!=', '>=' etc.
                   This is a kwarg only to preserve the same positional arguments in the
                   function signature, to ease validation.
@@ -218,7 +218,7 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, containing the value to check the edge degree against;
-                    if the parameter is optional and missing, the check will return True
+                    if the parameter is optional and missing, the check will return True.
 
     Returns:
         a Filter basic block that performs the check
@@ -306,7 +306,7 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, containing the value to check the name or alias against;
-                    if the parameter is optional and missing, the check will return True
+                    if the parameter is optional and missing, the check will return True.
 
     Returns:
         a Filter basic block that performs the check against the name or alias
@@ -427,7 +427,7 @@ def _process_in_collection_filter_directive(filter_operation_info, location, con
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
-                    if the collection is optional and missing, the check will return True
+                    if the collection is optional and missing, the check will return True.
 
     Returns:
         a Filter basic block that performs the collection existence check
@@ -452,6 +452,44 @@ def _process_in_collection_filter_directive(filter_operation_info, location, con
     return blocks.Filter(filter_predicate)
 
 
+@scalar_leaf_only(u'not_in_collection')
+@takes_parameters(1)
+def _process_not_in_collection_filter_directive(filter_operation_info, location, context,
+                                                parameters):
+    """Return a Filter basic block that checks for a value's non-existence in a collection.
+
+    Args:
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
+        location: Location where this filter is used.
+        context: dict, various per-compilation data (e.g. declared tags, whether the current block
+                 is optional, etc.). May be mutated in-place in this function!
+        parameters: list of 1 element, specifying the collection in which the value must exist;
+                    if the collection is optional and missing, the check will return True.
+
+    Returns:
+        a Filter basic block that performs the collection existence check
+    """
+    filtered_field_type = filter_operation_info.field_type
+    filtered_field_name = filter_operation_info.field_name
+
+    argument_inferred_type = GraphQLList(strip_non_null_from_type(filtered_field_type))
+    argument_expression, non_existence_expression = _represent_argument(
+        location, context, parameters[0], argument_inferred_type)
+
+    filter_predicate = expressions.BinaryComposition(
+        u'not_contains',
+        argument_expression,
+        expressions.LocalField(filtered_field_name, filtered_field_type))
+    if non_existence_expression is not None:
+        # The argument comes from an optional block and might not exist,
+        # in which case the filter expression should evaluate to True.
+        filter_predicate = expressions.BinaryComposition(
+            u'||', non_existence_expression, filter_predicate)
+
+    return blocks.Filter(filter_predicate)
+
+
 @scalar_leaf_only(u'has_substring')
 @takes_parameters(1)
 def _process_has_substring_filter_directive(filter_operation_info, location, context, parameters):
@@ -464,7 +502,7 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
-                    if the collection is optional and missing, the check will return True
+                    if the collection is optional and missing, the check will return True.
 
     Returns:
         a Filter basic block that performs the substring check
@@ -504,7 +542,7 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
-                    if the collection is optional and missing, the check will return True
+                    if the collection is optional and missing, the check will return True.
 
     Returns:
         a Filter basic block that performs the contains check
@@ -535,6 +573,47 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
 
 
 @takes_parameters(1)
+def _process_not_contains_filter_directive(filter_operation_info, location, context, parameters):
+    """Return a Filter basic block that checks if the directive arg is not contained in the field.
+
+    Args:
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
+        location: Location where this filter is used.
+        context: dict, various per-compilation data (e.g. declared tags, whether the current block
+                 is optional, etc.). May be mutated in-place in this function!
+        parameters: list of 1 element, specifying the collection in which the value must exist;
+                    if the collection is optional and missing, the check will return True.
+
+    Returns:
+        a Filter basic block that performs the contains check
+    """
+    filtered_field_type = filter_operation_info.field_type
+    filtered_field_name = filter_operation_info.field_name
+
+    base_field_type = strip_non_null_from_type(filtered_field_type)
+    if not isinstance(base_field_type, GraphQLList):
+        raise GraphQLCompilationError(u'Cannot apply "contains" to non-list '
+                                      u'type {}'.format(filtered_field_type))
+
+    argument_inferred_type = strip_non_null_from_type(base_field_type.of_type)
+    argument_expression, non_existence_expression = _represent_argument(
+        location, context, parameters[0], argument_inferred_type)
+
+    filter_predicate = expressions.BinaryComposition(
+        u'not_contains',
+        expressions.LocalField(filtered_field_name, filtered_field_type),
+        argument_expression)
+    if non_existence_expression is not None:
+        # The argument comes from an optional block and might not exist,
+        # in which case the filter expression should evaluate to True.
+        filter_predicate = expressions.BinaryComposition(
+            u'||', non_existence_expression, filter_predicate)
+
+    return blocks.Filter(filter_predicate)
+
+
+@takes_parameters(1)
 def _process_intersects_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks if the directive arg and the field intersect.
 
@@ -545,7 +624,7 @@ def _process_intersects_filter_directive(filter_operation_info, location, contex
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
-                    if the collection is optional and missing, the check will return True
+                    if the collection is optional and missing, the check will return True.
 
     Returns:
         a Filter basic block that performs the intersects check
@@ -600,7 +679,9 @@ COMPARISON_OPERATORS = frozenset({u'=', u'!=', u'>', u'<', u'>=', u'<='})
 PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset({
     u'between',
     u'in_collection',
+    u'not_in_collection',
     u'contains',
+    u'not_contains',
     u'intersects',
     u'has_substring',
     u'has_edge_degree',
@@ -654,8 +735,10 @@ def process_filter_directive(filter_operation_info, location, context):
         u'name_or_alias': _process_name_or_alias_filter_directive,
         u'between': _process_between_filter_directive,
         u'in_collection': _process_in_collection_filter_directive,
+        u'not_in_collection': _process_not_in_collection_filter_directive,
         u'has_substring': _process_has_substring_filter_directive,
         u'contains': _process_contains_filter_directive,
+        u'not_contains': _process_not_contains_filter_directive,
         u'intersects': _process_intersects_filter_directive,
         u'has_edge_degree': _process_has_edge_degree_filter_directive,
     }

@@ -36,7 +36,9 @@ OutputInfo = namedtuple(
 TagInfo = namedtuple(
     'TagInfo',
     (
-        'location',
+        'location',     # Location/FoldScopeLocation, where to output from
+        'type',         # GraphQLType of the tag
+        'optional',     # boolean, whether the output was defined within an @optional scope
     )
 )
 
