@@ -40,7 +40,7 @@ class Statistics(object):
         raise NotImplementedError()
 
     @abstractmethod
-    def edge_count_between_vertex_pair(
+    def get_edge_count_between_vertex_pair(
         self, vertex_out_class_name, vertex_in_class_name, edge_class_name
     ):
         """Return the edge count between two vertices of a given type using an edge of a given type.
@@ -138,7 +138,7 @@ class LocalStatistics(Statistics):
                                  u'{}'.format(class_name))
         return self._class_count[class_name]
 
-    def edge_count_between_vertex_pair(
+    def get_edge_count_between_vertex_pair(
         self, vertex_out_class_name, vertex_in_class_name, edge_class_name
     ):
         """Return the edge count between two vertices of a given type using an edge of a given type.
