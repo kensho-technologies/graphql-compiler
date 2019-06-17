@@ -183,8 +183,3 @@ class TestDemo(unittest.TestCase):
             WHERE "Animal_2".net_worth <= :max_net_worth
         '''
         compare_sql(self, expected_sql, str(sql_query))
-
-    # TODO for demo:
-    # - generate metadata from dms
-    # - run query on dms data
-    # - and binary expression
