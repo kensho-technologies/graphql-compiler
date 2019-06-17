@@ -272,6 +272,51 @@ def get_schema():
     return schema
 
 
+def get_sql_metadata():
+    import sqlalchemy
+    sqlalchemy_metadata = sqlalchemy.MetaData()
+    animal_table = sqlalchemy.Table(
+        'Animal',
+        sqlalchemy_metadata,
+        sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+        sqlalchemy.Column('name', sqlalchemy.String(length=12), nullable=False),
+        sqlalchemy.Column('net_worth', sqlalchemy.Integer, nullable=False),
+        sqlalchemy.Column('birthday', sqlalchemy.Date, nullable=False),
+        sqlalchemy.Column('parent', sqlalchemy.Integer, sqlalchemy.ForeignKey('Animal.uuid'), nullable=True),
+    )
+    event_table = sqlalchemy.Table(
+        'Event',
+        sqlalchemy_metadata,
+        sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+        sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
+    )
+    entity_table = sqlalchemy.Table(
+        'Entity',
+        sqlalchemy_metadata,
+        sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+        sqlalchemy.Column('name', sqlalchemy.String(length=12), nullable=False),
+    )
+    entity_relationships = sqlalchemy.Table(
+        'junction_Entity_Related',
+        sqlalchemy_metadata,
+        sqlalchemy.Column('parent', sqlalchemy.Integer, sqlalchemy.ForeignKey('entity.uuid'), nullable=True),
+    )
+
+    edges = {
+        'Animal': {
+            'out': {
+                'Animal_ParentOf': {
+                    'table': 'Animal',
+                    'on_clause': lambda lhs, rhs: lhs.c['parent'] == rhs.c['uuid'],
+                }
+            }
+        }
+    }
+
+    return sqlalchemy_metadata, edges
+
+
+
 def generate_schema_graph(graph_client):
     """Generate SchemaGraph from a pyorient client"""
     schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
