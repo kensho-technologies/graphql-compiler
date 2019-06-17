@@ -79,6 +79,8 @@ def _get_filter_selectivity(
         Selectivity object, the selectivity of a specific filter at a given location.
     """
     result_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+    #TODO(vlad): Add support for inequality operations '>', '<', 'between' using histogram statistic
+    #TODO(vlad): Add support for other filters like '!='
 
     if filter_info.op_name == '=':
         result_selectivity = _estimate_filter_selectivity_of_equality(

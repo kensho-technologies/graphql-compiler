@@ -106,6 +106,7 @@ def _estimate_children_per_parent(
     # Count the number of edges between child_location and parent_location type vertices.
     _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     # TODO(evan): If edge is recursed over, we need a more detailed statistic
+    # TODO(vlad): Use edge_count_between_vertex_pair statistic
     edge_counts = statistics.get_class_count(edge_name)
 
     # Scale edge_counts if child_location's type is a subclass of the edge's endpoint type.
