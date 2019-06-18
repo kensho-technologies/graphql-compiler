@@ -82,6 +82,9 @@ def _make_query_root_cypher_step(query_metadata_table, linked_location, current_
     """Return a CypherStep for a list of IR blocks that start with a QueryRoot block."""
     current_step_block_types = tuple(type(block) for block in current_step_blocks)
 
+    # There are only two "shapes" of blocks that can form the first CypherStep.
+    # The first CypherStep always has to be made of a QueryRoot block to start, and a MarkLocation
+    # at the end, and might also have a Filter in between.
     if current_step_block_types == (QueryRoot, Filter, MarkLocation):
         step_block, where_block, as_block = current_step_blocks
     elif current_step_block_types == (QueryRoot, MarkLocation):
@@ -115,7 +118,18 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
     global_operations_index = None
 
     for current_block_index, block in enumerate(remaining_ir_blocks):
-        if isinstance(block, QueryRoot):
+        if isinstance(block, GlobalOperationsStart):
+            # We hit the end of the IR blocks that describe the query structure,
+            # and we are about to start the global operations section. Finish adding
+            # the last CypherStep, then break out of the loop.
+            cypher_step = _make_cypher_step(
+                query_metadata_table, linked_location, current_step_blocks)
+            steps.append(cypher_step)
+            current_step_blocks = None
+
+            global_operations_index = current_block_index
+            break
+        elif isinstance(block, QueryRoot):
             if current_step_blocks is not None:
                 raise AssertionError(u'Unexpectedly encountered a QueryRoot block that was not '
                                      u'the first block in the IR: {} {}'
@@ -131,22 +145,18 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
             next_linked_location = None
 
             current_step_blocks = [block]
-        elif isinstance(block, GlobalOperationsStart):
-            global_operations_index = current_block_index
-            break
         elif isinstance(block, linked_location_source_types):
             next_linked_location = block.location
             if isinstance(block, MarkLocation):
                 current_step_blocks.append(block)
         elif isinstance(block, discarded_block_types):
+            # These blocks do not require any changes to the generated Cypher query. Skip them.
             pass
         elif isinstance(block, (Filter, CoerceType)):
             current_step_blocks.append(block)
         else:
             raise AssertionError(u'Unexpected block encountered: {} {}'
                                  .format(block, ir_blocks))
-
-    steps.append(_make_cypher_step(query_metadata_table, linked_location, current_step_blocks))
 
     if global_operations_index is None:
         raise AssertionError(u'Unexpectedly, no GlobalOperationsStart block was found in '
@@ -155,6 +165,9 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
     global_operations_blocks = remaining_ir_blocks[global_operations_index + 1:]
     global_operations_types = tuple(type(block) for block in global_operations_blocks)
 
+    # Global operations might include a Filter block (e.g. when enforcing the semantics of
+    # an @optional traversal with a nested @filter). The global operations must always have
+    # a ConstructResult block, because this is how we form the result returned to the user.
     if global_operations_types == (Filter, ConstructResult):
         global_where_block, output_block = global_operations_blocks
     elif global_operations_types == (ConstructResult,):

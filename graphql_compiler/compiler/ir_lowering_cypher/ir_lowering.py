@@ -69,6 +69,10 @@ def insert_explicit_type_bounds(ir_blocks, query_metadata_table, type_equivalenc
 
 def remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_table):
     """Remove location revisits, since they are not required in Cypher."""
+    # Revisits of locations are required by some backends (such as Gremlin) that do not natively
+    # support pattern-matching operators, in order to correctly handle optional edges.
+    # When pattern-matching is supported (as in Cypher, via the MATCH / OPTIONAL MATCH operators),
+    # location revisits are unnecessary and may be safely removed.
     location_translations = make_revisit_location_translations(query_metadata_table)
     visitor_fn = make_location_rewriter_visitor_fn(location_translations)
 
