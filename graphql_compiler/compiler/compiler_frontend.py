@@ -1018,7 +1018,7 @@ def validate_schema_and_ast(schema, ast):
 
 
 def ast_to_ir(schema, ast, type_equivalence_hints=None):
-    """Convert the given GraphQL string into compiler IR, using the given schema object.
+    """Convert the given GraphQL AST object into compiler IR, using the given schema object.
 
     Args:
         schema: GraphQL schema object, created using the GraphQL library
