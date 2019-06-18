@@ -109,11 +109,14 @@ class LocalStatistics(Statistics):
         """Initializes statistics with the given data.
 
         Args:
-            class_count: dict, vertex/edge class name -> class count.
-            edge_count_between_vertex_pair: dict, (vertex out class name, vertex in class name,
-                edge class name) -> count of edge type between vertex types.
-            domain_count: dict, (str, str) -> domain size.
-            histogram: dict, (str, str) -> histogram as list[tuple(int, int, int)]
+            class_count: dict, str -> int, mapping vertex/edge class name to class count.
+            edge_count_between_vertex_pair: dict, (str, str, str) -> int,
+            	mapping tuple of (vertex out class name, vertex in class name, edge class name) to
+            	count of edge type between vertex types.
+            domain_count: dict, (str, str) -> int, mapping vertex class and field on that
+            	vertex to domain size.
+            histogram: dict, (str, str) -> list[tuple(int, int, int)], mapping vertex class and
+            	field on that vertex class to histogram as list[tuple(int, int, int)].
         """
         self._class_count = class_count
         self._edge_count_between_vertex_pair = edge_count_between_vertex_pair
