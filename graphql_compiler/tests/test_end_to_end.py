@@ -215,4 +215,3 @@ class QueryFormattingTests(unittest.TestCase):
 
         for graphql_type, value in type_and_value:
             validate_argument_type(graphql_type, value)
-
