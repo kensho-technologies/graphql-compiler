@@ -210,6 +210,7 @@ class CompilerTests(unittest.TestCase):
 
         expected_match = '''
             SELECT Animal__out_Entity_Related___1.name AS `related_name` FROM (MATCH {{
+                where: ((@this INSTANCEOF 'Animal')),
                 as: Animal___1
             }}.out('Entity_Related') {{
                 class: Entity,
@@ -229,7 +230,49 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = SKIP_TEST  # Not implemented
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
+                WHERE (Animal__out_Entity_Related___1.name IN Animal__out_Entity_Related___1.alias)
+            RETURN Animal__out_Entity_Related___1.name AS `related_name`
+        '''
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+
+    def test_colocated_out_of_order_filter_and_tag(self):
+        test_data = test_input_data.colocated_out_of_order_filter_and_tag()
+
+        expected_match = '''
+            SELECT Animal__out_Entity_Related___1.name AS `related_name` FROM (MATCH {{
+                where: ((@this INSTANCEOF 'Animal')),
+                as: Animal___1
+            }}.out('Entity_Related') {{
+                class: Entity,
+                where: ((alias CONTAINS name)),
+                as: Animal__out_Entity_Related___1
+            }} RETURN $matches)
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .out('Entity_Related')
+                .filter{it, m -> it.alias.contains(it.name)}
+                .as('Animal__out_Entity_Related___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                related_name: m.Animal__out_Entity_Related___1.name
+            ])}
+        '''
+        expected_sql = SKIP_TEST  # Not implemented
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
+                WHERE (Animal__out_Entity_Related___1.name IN Animal__out_Entity_Related___1.alias)
+            RETURN Animal__out_Entity_Related___1.name AS `related_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -260,7 +303,7 @@ class CompilerTests(unittest.TestCase):
                 )
             ''' % {'operator': match_operator}  # nosec, the operators are hardcoded above
 
-            # In Gremlin, equality comparisons use two equal signs instead of one, unlike in MATCH.
+            # In Gremlin, equality comparisons use two equal signs instead of one.
             gremlin_operator = u'==' if operator == u'=' else operator
             expected_gremlin = '''
                 g.V('@class', 'Animal')
@@ -280,12 +323,14 @@ class CompilerTests(unittest.TestCase):
                     animal_1.name %(operator)s :wanted
             ''' % {'operator': operator}  # nosec, the operators are hardcoded above
 
+            # In Cypher, inequality comparisons use "<>" instead of "!=".
+            cypher_operator = u'<>' if operator == u'!=' else operator
             expected_cypher = '''
                 CYPHER 9
                 MATCH (Animal___1:Animal)
                     WHERE (Animal___1.name %(operator)s $wanted)
                 RETURN Animal___1.name AS `animal_name`
-            ''' % {'operator': operator}  # nosec, the operators are hardcoded above
+            ''' % {'operator': cypher_operator}  # nosec, the operators are hardcoded above
 
             expected_output_metadata = {
                 'animal_name': OutputMetadata(type=GraphQLString, optional=False),
@@ -463,6 +508,7 @@ class CompilerTests(unittest.TestCase):
                 Animal__out_Animal_ParentOf___1.name AS `parent_name`
             FROM (
                 MATCH {{
+                    where: ((@this INSTANCEOF 'Animal')),
                     as: Animal___1
                 }}.out('Animal_ParentOf') {{
                     class: Animal,
@@ -506,6 +552,7 @@ class CompilerTests(unittest.TestCase):
                 Animal__out_Entity_Related___1.name AS `related_entity`
             FROM (
                 MATCH {{
+                    where: ((@this INSTANCEOF 'Animal')),
                     as: Animal___1
                 }}.out('Entity_Related') {{
                     class: Entity,
@@ -1386,6 +1433,7 @@ class CompilerTests(unittest.TestCase):
                     optional: true,
                     as: Animal__out_Animal_ParentOf__out_Animal_FedAt___1
                 }} , {{
+                    where: ((@this INSTANCEOF 'Animal')),
                     as: Animal__out_Animal_ParentOf___1
                 }}.in('Animal_ParentOf') {{
                     as: Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
@@ -2223,6 +2271,136 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
 
+    def test_not_in_collection_op_filter_with_variable(self):
+        test_data = test_input_data.not_in_collection_op_filter_with_variable()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((NOT ({wanted} CONTAINS name))),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> !$wanted.contains(it.name)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+        expected_sql = '''
+            SELECT
+                animal_1.name AS animal_name
+            FROM
+                animal AS animal_1
+            WHERE
+                animal_1.name NOT IN ([EXPANDING_wanted])
+        '''
+        expected_cypher = SKIP_TEST
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+
+    def test_not_in_collection_op_filter_with_tag(self):
+        test_data = test_input_data.not_in_collection_op_filter_with_tag()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    where: ((NOT ($matched.Animal___1.alias CONTAINS name))),
+                    as: Animal__out_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .out('Animal_ParentOf')
+            .filter{it, m -> !m.Animal___1.alias.contains(it.name)}
+            .as('Animal__out_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+        expected_sql = NotImplementedError
+        expected_cypher = SKIP_TEST
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+
+    def test_not_in_collection_op_filter_with_optional_tag(self):
+        test_data = test_input_data.not_in_collection_op_filter_with_optional_tag()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    optional: true,
+                    as: Animal__in_Animal_ParentOf___1
+                }} , {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    where: ((
+                         ($matched.Animal__in_Animal_ParentOf___1 IS null)
+                         OR
+                         (NOT ($matched.Animal__in_Animal_ParentOf___1.alias CONTAINS name))
+                    )),
+                    as: Animal__out_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+            WHERE (
+                (
+                    (Animal___1.in_Animal_ParentOf IS null)
+                    OR
+                    (Animal___1.in_Animal_ParentOf.size() = 0)
+                )
+                OR
+                (Animal__in_Animal_ParentOf___1 IS NOT null)
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+            .as('Animal__in_Animal_ParentOf___1')
+            .optional('Animal___1')
+            .as('Animal___2')
+            .out('Animal_ParentOf')
+            .filter{it, m -> (
+                (m.Animal__in_Animal_ParentOf___1 == null) ||
+                !m.Animal__in_Animal_ParentOf___1.alias.contains(it.name)
+            )}
+            .as('Animal__out_Animal_ParentOf___1')
+            .back('Animal___2')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+        expected_sql = NotImplementedError
+        expected_cypher = SKIP_TEST
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+
     def test_intersects_op_filter_with_variable(self):
         test_data = test_input_data.intersects_op_filter_with_variable()
 
@@ -2485,6 +2663,134 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
+
+    def test_not_contains_op_filter_with_variable(self):
+        test_data = test_input_data.not_contains_op_filter_with_variable()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((NOT (alias CONTAINS {wanted}))),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> !it.alias.contains($wanted)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+
+        # the alias list valued column is not yet supported by the SQL backend
+        expected_sql = SKIP_TEST
+
+        expected_cypher = SKIP_TEST
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+
+    def test_not_contains_op_filter_with_tag(self):
+        test_data = test_input_data.not_contains_op_filter_with_tag()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    where: ((NOT (alias CONTAINS $matched.Animal___1.name))),
+                    as: Animal__in_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .in('Animal_ParentOf')
+                .filter{it, m -> !it.alias.contains(m.Animal___1.name)}
+                .as('Animal__in_Animal_ParentOf___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+        expected_sql = NotImplementedError
+        expected_cypher = SKIP_TEST
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+
+    def test_not_contains_op_filter_with_optional_tag(self):
+        test_data = test_input_data.not_contains_op_filter_with_optional_tag()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}.in('Animal_ParentOf') {{
+                    optional: true,
+                    as: Animal__in_Animal_ParentOf___1
+                }} ,
+                {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    where: ((
+                        ($matched.Animal__in_Animal_ParentOf___1 IS null)
+                        OR
+                        (NOT (alias CONTAINS $matched.Animal__in_Animal_ParentOf___1.name)))),
+                    as: Animal__out_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+            WHERE (
+                (
+                    (Animal___1.in_Animal_ParentOf IS null)
+                    OR
+                    (Animal___1.in_Animal_ParentOf.size() = 0)
+                )
+                OR
+                (Animal__in_Animal_ParentOf___1 IS NOT null)
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
+                .as('Animal__in_Animal_ParentOf___1')
+            .optional('Animal___1')
+            .as('Animal___2')
+                .out('Animal_ParentOf')
+                .filter{it, m -> (
+                        (m.Animal__in_Animal_ParentOf___1 == null)
+                        ||
+                        !it.alias.contains(m.Animal__in_Animal_ParentOf___1.name)
+                    )
+                }
+                .as('Animal__out_Animal_ParentOf___1')
+            .back('Animal___2')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+        expected_sql = NotImplementedError
+        expected_cypher = SKIP_TEST
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
 
     def test_has_substring_op_filter(self):
         test_data = test_input_data.has_substring_op_filter()
@@ -2770,6 +3076,7 @@ class CompilerTests(unittest.TestCase):
                 Species___1.name AS `species_name`
             FROM (
                 MATCH {{
+                    where: ((@this INSTANCEOF 'Species')),
                     as: Species___1
                 }}.in('Animal_OfSpecies') {{
                     class: Animal,
@@ -2937,6 +3244,7 @@ class CompilerTests(unittest.TestCase):
                 Species___1.name AS `species_name`
             FROM (
                 MATCH {{
+                    where: ((@this INSTANCEOF 'Species')),
                     as: Species___1
                 }}.in('Animal_OfSpecies') {{
                     class: Animal,
@@ -3117,6 +3425,7 @@ class CompilerTests(unittest.TestCase):
                 Species___1.name AS `species_name`
             FROM (
                 MATCH {{
+                    where: ((@this INSTANCEOF 'Species')),
                     as: Species___1
                 }}.out('Species_Eats') {{
                     class: Food,
@@ -3976,12 +4285,14 @@ class CompilerTests(unittest.TestCase):
         expected_match = '''
             SELECT Animal__out_Animal_ParentOf__out_Animal_ParentOf___1.name
                 AS `animal_name` FROM (MATCH {{
+                where: ((@this INSTANCEOF 'Animal')),
                 as: Animal___1
             }}.out('Animal_ParentOf') {{
                 as: Animal__out_Animal_ParentOf___1
             }}.out('Animal_ParentOf') {{
                 as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
             }} , {{
+                where: ((@this INSTANCEOF 'Animal')),
                 as: Animal__out_Animal_ParentOf___1
             }}.out('Entity_Related') {{
                 class: Entity,
@@ -4765,6 +5076,7 @@ class CompilerTests(unittest.TestCase):
                     Animal__in_Animal_ParentOf___1.name AS `child_name`
                 FROM (
                     MATCH {{
+                        where: ((@this INSTANCEOF 'Animal')),
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
                         class: Animal,
@@ -5223,6 +5535,7 @@ class CompilerTests(unittest.TestCase):
                     Animal___1.name AS `animal_name`
                 FROM (
                     MATCH {{
+                        where: ((@this INSTANCEOF 'Animal')),
                         as: Animal___1
                     }}.out('Animal_ParentOf') {{
                         class: Animal,
@@ -5503,6 +5816,7 @@ class CompilerTests(unittest.TestCase):
                         as: Animal__out_Animal_ParentOf__out_Animal_FedAt___1
                     }} ,
                     {{
+                        where: ((@this INSTANCEOF 'Animal')),
                         as: Animal__out_Animal_ParentOf___1
                     }}.in('Animal_ParentOf') {{
                         as: Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
@@ -6200,6 +6514,7 @@ class CompilerTests(unittest.TestCase):
                     Animal__in_Animal_ParentOf___1.name AS `child_name`
                 FROM (
                     MATCH {{
+                        where: ((@this INSTANCEOF 'Animal')),
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
                         class: Animal,

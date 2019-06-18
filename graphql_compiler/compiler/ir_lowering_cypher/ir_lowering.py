@@ -5,12 +5,11 @@ from ..blocks import CoerceType, Filter, Fold, MarkLocation, Recurse, Traverse
 from ..expressions import (
     BinaryComposition, ContextField, FoldedContextField, LocalField, NullLiteral
 )
-from ..helpers import get_only_element_from_collection
+from ..helpers import FoldScopeLocation, get_only_element_from_collection
 from ..ir_lowering_common.common import merge_consecutive_filter_clauses
 from ..ir_lowering_common.location_renaming import (
     make_location_rewriter_visitor_fn, make_revisit_location_translations
 )
-from ..helpers import FoldScopeLocation
 
 
 ##################################
@@ -70,6 +69,10 @@ def insert_explicit_type_bounds(ir_blocks, query_metadata_table, type_equivalenc
 
 def remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_table):
     """Remove location revisits, since they are not required in Cypher."""
+    # Revisits of locations are required by some backends (such as Gremlin) that do not natively
+    # support pattern-matching operators, in order to correctly handle optional edges.
+    # When pattern-matching is supported (as in Cypher, via the MATCH / OPTIONAL MATCH operators),
+    # location revisits are unnecessary and may be safely removed.
     location_translations = make_revisit_location_translations(query_metadata_table)
     visitor_fn = make_location_rewriter_visitor_fn(location_translations)
 

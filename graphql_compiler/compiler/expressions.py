@@ -95,8 +95,9 @@ class Literal(Expression):
         raise GraphQLCompilationError(u'Cannot represent literal: {}'.format(self.value))
 
     def _to_output_code(self):
-        """Return a unicode object with the Gremlin/MATCH representation of this Literal."""
-        # All supported Literal objects serialize to identical strings both in Gremlin and MATCH.
+        """Return a unicode object with the Gremlin/MATCH/Cypher representation of this Literal."""
+        # All supported Literal objects serialize to identical strings
+        # in all of Gremlin, Cypher, and MATCH.
         self.validate()
         if self.value is None:
             return u'null'
@@ -416,6 +417,7 @@ class ContextField(Expression):
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
+
         if field_name is not None:
             validate_safe_string(field_name)
             template = u'{mark_name}.{field_name}'
@@ -519,9 +521,8 @@ class OutputContextField(Expression):
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
-
-        validate_safe_string(field_name)
         validate_safe_string(mark_name)
+        validate_safe_string(field_name)
 
         template = u'{mark_name}.{field_name}'
 
@@ -821,7 +822,7 @@ class BinaryComposition(Expression):
 
     SUPPORTED_OPERATORS = frozenset({
         u'=', u'!=', u'>=', u'<=', u'>', u'<', u'+', u'||', u'&&',
-        u'contains', u'intersects', u'has_substring', u'LIKE', u'INSTANCEOF',
+        u'contains', u'not_contains', u'intersects', u'has_substring', u'LIKE', u'INSTANCEOF',
     })
 
     __slots__ = ('operator', 'left', 'right')
@@ -874,6 +875,7 @@ class BinaryComposition(Expression):
         regular_operator_format = '(%(left)s %(operator)s %(right)s)'
         inverted_operator_format = '(%(right)s %(operator)s %(left)s)'  # noqa
         intersects_operator_format = '(%(operator)s(%(left)s, %(right)s).asList().size() > 0)'
+        negated_regular_operator_format = '(NOT (%(left)s %(operator)s %(right)s))'
         # pylint: enable=unused-variable
 
         # Null literals use the OrientDB 'IS/IS NOT' (in)equality operators,
@@ -895,6 +897,7 @@ class BinaryComposition(Expression):
                 u'||': (u'OR', regular_operator_format),
                 u'&&': (u'AND', regular_operator_format),
                 u'contains': (u'CONTAINS', regular_operator_format),
+                u'not_contains': (u'CONTAINS', negated_regular_operator_format),
                 u'intersects': (u'intersect', intersects_operator_format),
                 u'has_substring': (None, None),  # must be lowered into compatible form using LIKE
 
@@ -919,6 +922,7 @@ class BinaryComposition(Expression):
         immediate_operator_format = u'({left} {operator} {right})'
         dotted_operator_format = u'{left}.{operator}({right})'
         intersects_operator_format = u'(!{left}.{operator}({right}).empty)'
+        negated_dotted_operator_format = u'!{left}.{operator}({right})'
 
         translation_table = {
             u'=': (u'==', immediate_operator_format),
@@ -931,6 +935,7 @@ class BinaryComposition(Expression):
             u'||': (u'||', immediate_operator_format),
             u'&&': (u'&&', immediate_operator_format),
             u'contains': (u'contains', dotted_operator_format),
+            u'not_contains': (u'contains', negated_dotted_operator_format),
             u'intersects': (u'intersect', intersects_operator_format),
             u'has_substring': (u'contains', dotted_operator_format),
         }
@@ -951,6 +956,7 @@ class BinaryComposition(Expression):
         # The Cypher versions of some operators require an inverted order of arguments.
         regular_operator_format = u'({left} {operator} {right})'
         inverted_operator_format = u'({right} {operator} {left})'
+        negated_inverted_operator_format = u'(NOT ({right} {operator} {left}))'
         intersects_operator_format = u'any(_ {operator} {left} WHERE _ {operator} {right})'
 
         # Null literals use 'is/is not' as (in)equality operators, while other values use '=/<>'.
@@ -962,7 +968,7 @@ class BinaryComposition(Expression):
         else:
             translation_table = {
                 u'=': (u'=', regular_operator_format),
-                u'!=': (u'!=', regular_operator_format),
+                u'!=': (u'<>', regular_operator_format),
                 u'>=': (u'>=', regular_operator_format),
                 u'<=': (u'<=', regular_operator_format),
                 u'>': (u'>', regular_operator_format),
@@ -970,6 +976,7 @@ class BinaryComposition(Expression):
                 u'||': (u'OR', regular_operator_format),
                 u'&&': (u'AND', regular_operator_format),
                 u'contains': (u'IN', inverted_operator_format),
+                u'not_contains': (u'IN', negated_inverted_operator_format),
                 u'intersects': (u'IN', intersects_operator_format),
                 u'has_substring': (u'CONTAINS', regular_operator_format),
             }

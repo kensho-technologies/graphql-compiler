@@ -2,7 +2,7 @@
 import unittest
 
 from frozendict import frozendict
-from graphql.type import GraphQLList, GraphQLObjectType, GraphQLString
+from graphql.type import GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLString
 import pytest
 import six
 
@@ -15,25 +15,25 @@ from ..schema_generation.orientdb.schema_properties import (
 )
 
 
-BASE_VERTEX_SCHEMA_DATA = frozendict({
+BASE_VERTEX = frozendict({
     'name': ORIENTDB_BASE_VERTEX_CLASS_NAME,
     'abstract': False,
     'properties': []
 })
 
-BASE_EDGE_SCHEMA_DATA = frozendict({
+BASE_EDGE = frozendict({
     'name': ORIENTDB_BASE_EDGE_CLASS_NAME,
     'abstract': False,
     'properties': []
 })
 
-EXTERNAL_SOURCE_SCHEMA_DATA = frozendict({
+EXTERNAL_SOURCE = frozendict({
     'name': 'ExternalSource',
     'abstract': False,
     'properties': []
 })
 
-ENTITY_SCHEMA_DATA = frozendict({
+ENTITY = frozendict({
     'name': 'Entity',
     'abstract': True,
     'superClasses': [ORIENTDB_BASE_VERTEX_CLASS_NAME],
@@ -45,7 +45,7 @@ ENTITY_SCHEMA_DATA = frozendict({
     ]
 })
 
-PERSON_SCHEMA_DATA = frozendict({
+PERSON = frozendict({
     'name': 'Person',
     'abstract': False,
     'superClass': 'Entity',
@@ -59,7 +59,7 @@ PERSON_SCHEMA_DATA = frozendict({
     ],
 })
 
-BABY_SCHEMA_DATA = frozendict({
+BABY = frozendict({
     'name': 'Baby',
     'abstract': False,
     'superClass': 'Person',
@@ -67,7 +67,7 @@ BABY_SCHEMA_DATA = frozendict({
 })
 
 
-DATA_POINT_SCHEMA_DATA = frozendict({
+DATA_POINT = frozendict({
     'name': 'DataPoint',
     'abstract': True,
     'properties': [
@@ -81,7 +81,7 @@ DATA_POINT_SCHEMA_DATA = frozendict({
     'superClass': 'V',
 })
 
-PERSON_LIVES_IN_EDGE_SCHEMA_DATA = frozendict({
+PERSON_LIVES_IN_EDGE = frozendict({
     'name': 'Person_LivesIn',
     'abstract': False,
     'customFields': {
@@ -104,7 +104,7 @@ PERSON_LIVES_IN_EDGE_SCHEMA_DATA = frozendict({
 })
 
 
-BABY_LIVES_IN_EDGE_SCHEMA_DATA = frozendict({
+BABY_LIVES_IN_EDGE = frozendict({
     'name': 'Baby_LivesIn',
     'abstract': False,
     'properties': [
@@ -122,7 +122,7 @@ BABY_LIVES_IN_EDGE_SCHEMA_DATA = frozendict({
     'superClass': 'Person_LivesIn',
 })
 
-LOCATION_SCHEMA_DATA = frozendict({
+LOCATION = frozendict({
     'name': 'Location',
     'abstract': False,
     'superClasses': ['Entity'],
@@ -134,7 +134,7 @@ LOCATION_SCHEMA_DATA = frozendict({
     ]
 })
 
-CLASS_WITH_INVALID_PROPERTY_NAME_SCHEMA_DATA = frozendict({
+CLASS_WITH_INVALID_PROPERTY_NAME = frozendict({
     'name': 'ClassWithInvalidPropertyName',
     'abstract': False,
     'superClasses': [ORIENTDB_BASE_VERTEX_CLASS_NAME],
@@ -146,47 +146,141 @@ CLASS_WITH_INVALID_PROPERTY_NAME_SCHEMA_DATA = frozendict({
     ],
 })
 
+# We add arbitrary properties to the following classes to make the data as "real" as possible.
+ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS = frozendict({
+    'name': 'AbstractNonGraphClassWithNonVertexConcreteSubclass',
+    'abstract': True,
+    'superClasses': [],
+    'properties': [
+        {
+            'name': 'arbitrary_property_1',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
+})
+
+ABSTRACT_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES = frozendict({
+    'name': 'AbstractNonGraphClassWithOnlyVertexConcreteSubclasses',
+    'abstract': True,
+    'superClasses': [],
+    'properties': [
+        {
+            'name': 'arbitrary_property_2',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
+})
+
+CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS = frozendict({
+    'name': 'ConcreteNonGraphClassWithNonVertexConcreteSubclass',
+    'abstract': False,
+    'superClasses': [],
+    'properties': [
+        {
+            'name': 'arbitrary_property_3',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
+})
+
+CONCRETE_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES = frozendict({
+    'name': 'ConcreteNonGraphClassWithOnlyVertexConcreteSubclasses',
+    'abstract': False,
+    'superClasses': [],
+    'properties': [
+        {
+            'name': 'arbitrary_property_4',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
+})
+
+ABSTRACT_NON_GRAPH_CLASS_WITH_NO_SUBCLASSES = frozendict({
+    'name': 'AbstractNonGraphClassWithNoSubclasses',
+    'abstract': True,
+    'superClasses': [],
+    'properties': [
+        {
+            'name': 'arbitrary_property_5',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
+})
+
+ARBITRARY_CONCRETE_VERTEX_CLASS = frozendict({
+    'name': 'ArbitraryConcreteVertexClass',
+    'abstract': False,
+    'superClasses': [
+        ORIENTDB_BASE_VERTEX_CLASS_NAME,
+        ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS['name'],
+        ABSTRACT_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES['name'],
+        CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS['name'],
+        CONCRETE_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES['name'],
+    ],
+    'properties': [
+        {
+            'name': 'arbitrary_property_6',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
+})
+
+ARBITRARY_CONCRETE_NON_GRAPH_CLASS = frozendict({
+    'name': 'ArbitraryConcreteNonGraphClass',
+    'abstract': False,
+    'superClasses': [
+        ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS['name'],
+        CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS['name'],
+    ],
+    'properties': [
+        {
+            'name': 'arbitrary_property_7',
+            'type': PROPERTY_TYPE_STRING_ID,
+        }
+    ],
+})
+
 
 class GraphqlSchemaGenerationTests(unittest.TestCase):
     def test_parsed_vertex(self):
         schema_data = [
-            BASE_VERTEX_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA,
+            BASE_VERTEX,
+            ENTITY,
         ]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertTrue(schema_graph.get_element_by_class_name('Entity').is_vertex)
 
     def test_parsed_edge(self):
         schema_data = [
-            BASE_EDGE_SCHEMA_DATA,
-            BASE_VERTEX_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA,
-            LOCATION_SCHEMA_DATA,
-            PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA,
+            BASE_EDGE,
+            BASE_VERTEX,
+            ENTITY,
+            LOCATION,
+            PERSON_LIVES_IN_EDGE,
+            PERSON,
         ]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertTrue(schema_graph.get_element_by_class_name('Person_LivesIn').is_edge)
 
     def test_parsed_non_graph_class(self):
-        schema_data = [EXTERNAL_SOURCE_SCHEMA_DATA]
+        schema_data = [EXTERNAL_SOURCE]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertTrue(schema_graph.get_element_by_class_name('ExternalSource').is_non_graph)
 
     def test_no_superclass(self):
-        schema_data = [BASE_VERTEX_SCHEMA_DATA]
+        schema_data = [BASE_VERTEX]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertEqual({ORIENTDB_BASE_VERTEX_CLASS_NAME},
                          schema_graph.get_superclass_set(ORIENTDB_BASE_VERTEX_CLASS_NAME))
 
     def test_parsed_superclass_field(self):
         schema_data = [
-            BASE_EDGE_SCHEMA_DATA,
-            BASE_VERTEX_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA,
-            LOCATION_SCHEMA_DATA,
-            PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA,
+            BASE_EDGE,
+            BASE_VERTEX,
+            ENTITY,
+            LOCATION,
+            PERSON_LIVES_IN_EDGE,
+            PERSON,
         ]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertEqual({'Person_LivesIn', ORIENTDB_BASE_EDGE_CLASS_NAME},
@@ -194,8 +288,8 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
 
     def test_parsed_superclasses_field(self):
         schema_data = [
-            BASE_VERTEX_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA,
+            BASE_VERTEX,
+            ENTITY,
         ]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertEqual({'Entity', ORIENTDB_BASE_VERTEX_CLASS_NAME},
@@ -203,8 +297,8 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
 
     def test_parsed_property(self):
         schema_data = [
-            BASE_VERTEX_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA,
+            BASE_VERTEX,
+            ENTITY,
         ]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         name_property = schema_graph.get_element_by_class_name('Entity').properties['name']
@@ -212,9 +306,9 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
 
     def test_native_orientdb_collection_property(self):
         schema_data = [
-            BASE_VERTEX_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA,
+            BASE_VERTEX,
+            ENTITY,
+            PERSON,
         ]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         alias_property = schema_graph.get_element_by_class_name('Person').properties['alias']
@@ -223,9 +317,9 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
 
     def test_class_collection_property(self):
         schema_data = [
-            BASE_VERTEX_SCHEMA_DATA,
-            DATA_POINT_SCHEMA_DATA,
-            EXTERNAL_SOURCE_SCHEMA_DATA,
+            BASE_VERTEX,
+            DATA_POINT,
+            EXTERNAL_SOURCE,
         ]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         friends_property = schema_graph.get_element_by_class_name('DataPoint').properties[
@@ -236,12 +330,12 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
 
     def test_link_parsing(self):
         schema_data = [
-            BASE_EDGE_SCHEMA_DATA,
-            BASE_VERTEX_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA,
-            LOCATION_SCHEMA_DATA,
-            PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA,
+            BASE_EDGE,
+            BASE_VERTEX,
+            ENTITY,
+            LOCATION,
+            PERSON_LIVES_IN_EDGE,
+            PERSON,
         ]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         person_lives_in_edge = schema_graph.get_element_by_class_name('Person_LivesIn')
@@ -250,27 +344,27 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
 
     def test_parsed_class_fields(self):
         schema_data = [
-            BASE_EDGE_SCHEMA_DATA,
-            BASE_VERTEX_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA,
-            LOCATION_SCHEMA_DATA,
-            PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA,
+            BASE_EDGE,
+            BASE_VERTEX,
+            ENTITY,
+            LOCATION,
+            PERSON_LIVES_IN_EDGE,
+            PERSON,
         ]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         person_lives_in_edge = schema_graph.get_element_by_class_name('Person_LivesIn')
-        self.assertEqual(PERSON_LIVES_IN_EDGE_SCHEMA_DATA['customFields'],
+        self.assertEqual(PERSON_LIVES_IN_EDGE['customFields'],
                          person_lives_in_edge.class_fields)
 
     def test_type_equivalence_dicts(self):
         schema_data = [
-            BASE_EDGE_SCHEMA_DATA,
-            BASE_VERTEX_SCHEMA_DATA,
-            BABY_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA,
-            LOCATION_SCHEMA_DATA,
-            PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA,
+            BASE_EDGE,
+            BASE_VERTEX,
+            BABY,
+            ENTITY,
+            LOCATION,
+            PERSON_LIVES_IN_EDGE,
+            PERSON,
         ]
         schema, type_equivalence_dicts = get_graphql_schema_from_orientdb_schema_data(schema_data)
 
@@ -304,10 +398,10 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
 
     def test_filter_type_equivalences_with_no_edges(self):
         schema_data = [
-            BASE_VERTEX_SCHEMA_DATA,
-            BABY_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA,
+            BASE_VERTEX,
+            BABY,
+            ENTITY,
+            PERSON,
         ]
         schema, type_equivalence_dicts = get_graphql_schema_from_orientdb_schema_data(schema_data)
         # Since there is not ingoing edge to Person, we filter the Person_Baby union
@@ -320,14 +414,14 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
 
     def test_edge_inheritance(self):
         schema_data = [
-            BASE_EDGE_SCHEMA_DATA,
-            BABY_LIVES_IN_EDGE_SCHEMA_DATA,
-            BASE_VERTEX_SCHEMA_DATA,
-            BABY_SCHEMA_DATA,
-            ENTITY_SCHEMA_DATA,
-            LOCATION_SCHEMA_DATA,
-            PERSON_LIVES_IN_EDGE_SCHEMA_DATA,
-            PERSON_SCHEMA_DATA,
+            BASE_EDGE,
+            BABY_LIVES_IN_EDGE,
+            BASE_VERTEX,
+            BABY,
+            ENTITY,
+            LOCATION,
+            PERSON_LIVES_IN_EDGE,
+            PERSON,
         ]
 
         schema_graph = get_orientdb_schema_graph(schema_data, [])
@@ -336,9 +430,42 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
 
     def test_ignore_properties_with_invalid_name_warning(self):
         schema_data = [
-            BASE_VERTEX_SCHEMA_DATA,
-            CLASS_WITH_INVALID_PROPERTY_NAME_SCHEMA_DATA,
+            BASE_VERTEX,
+            CLASS_WITH_INVALID_PROPERTY_NAME,
         ]
 
         with pytest.warns(UserWarning):
             get_graphql_schema_from_orientdb_schema_data(schema_data)
+
+    def test_include_non_graph_classes_in_graphql_schema(self):
+        non_graph_classes_to_include = [
+            ABSTRACT_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES,
+        ]
+
+        non_graph_classes_to_ignore = [
+            ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS,
+            ABSTRACT_NON_GRAPH_CLASS_WITH_NO_SUBCLASSES,
+            CONCRETE_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES,
+            CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS,
+            ARBITRARY_CONCRETE_NON_GRAPH_CLASS,
+        ]
+
+        vertex_clases = [
+            ARBITRARY_CONCRETE_VERTEX_CLASS,
+            BASE_VERTEX,
+        ]
+
+        schema_data = non_graph_classes_to_include + non_graph_classes_to_ignore + vertex_clases
+
+        names_of_non_graph_classes_to_ignore = {
+            non_graph_class['name']
+            for non_graph_class in non_graph_classes_to_ignore
+        }
+
+        graphql_schema, _ = get_graphql_schema_from_orientdb_schema_data(schema_data)
+        for name in six.iterkeys(graphql_schema.get_type_map()):
+            self.assertNotIn(name, names_of_non_graph_classes_to_ignore)
+
+        non_graph_class_type = graphql_schema.get_type(
+            ABSTRACT_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES['name'])
+        self.assertTrue(isinstance(non_graph_class_type, GraphQLInterfaceType))

@@ -461,7 +461,8 @@ as `@filter` parameters, for several reasons:
   (denoting a runtime parameter) or `%` (denoting a tagged parameter),
   followed by exclusively upper or lower case letters (`A-Z`, `a-z`) or underscores (`_`).
 - The `@tag` directives corresponding to any tagged parameters in a given `@filter` query
-  must be applied to fields that appear strictly before the field with the `@filter` directive.
+  must be applied to fields that appear either at the same vertex as the one with the `@filter`,
+  or strictly before the field with the `@filter` directive.
 - "Can't compare apples and oranges" -- the GraphQL type of the parameters supplied to the `@filter`
   must match the GraphQL types the compiler infers based on the field the `@filter` is applied to.
 - If the `@tag` corresponding to a tagged parameter originates from within a vertex field
