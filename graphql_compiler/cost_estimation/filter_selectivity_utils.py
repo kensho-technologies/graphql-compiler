@@ -44,15 +44,29 @@ def _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
     return False
 
 
+def _estimate_filter_selectivity_of_equality(
+    schema_graph, statistics, location_name, filter_fields
+):
+    """Calculate the selectivity of equality filter(s) at a given location."""
+    result_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+
+    unique_indexes = schema_graph.get_unique_indexes_for_class(location_name)
+    if _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
+        # TODO(evan): don't return a higher absolute selectivity than class counts.
+        result_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
+
+    # TODO(vlad): provide estimates for non-unique fields using domain_count metric.
+    return result_selectivity
+
+
 def _get_filter_selectivity(
-    schema_graph, lookup_class_counts, filter_info, parameters, location_name
+    schema_graph, statistics, filter_info, parameters, location_name
 ):
     """Calculate the selectivity of an individual filter at a given location.
 
     Args:
         schema_graph: SchemaGraph object
-        lookup_class_counts: function, string -> int, that accepts a class name and returns the
-                             total number of instances plus subclass instances
+        statistics: Statistics object
         filter_info: FilterInfo object, filter on the location being filtered
         parameters: dict, parameters with which query will be executed
         location_name: string, type of the location being filtered
@@ -60,21 +74,39 @@ def _get_filter_selectivity(
     Returns:
         Selectivity object, the selectivity of a specific filter at a given location.
     """
-    unique_indexes = schema_graph.get_unique_indexes_for_class(location_name)
+    result_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+    # TODO(vlad): Support for inequality operators like '>', '<', 'between' using histograms
+    # TODO(vlad): Support for other filters like '!='
 
-    # TODO(vlad): support selectivity for non-uniquely indexed fields
     if filter_info.op_name == '=':
-        if _are_filter_fields_uniquely_indexed(filter_info.fields, unique_indexes):
-            # TODO(evan): don't return a higher absolute selectivity than class counts.
-            return Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
+        result_selectivity = _estimate_filter_selectivity_of_equality(
+            schema_graph, statistics, location_name, filter_info.fields
+        )
     elif filter_info.op_name == 'in_collection':
-        if _are_filter_fields_uniquely_indexed(filter_info.fields, unique_indexes):
-            collection_name = get_parameter_name(filter_info.args[0])
-            collection_size = len(parameters[collection_name])
-            # Assumption: each entry in the collection adds a row to the result
-            return Selectivity(kind=ABSOLUTE_SELECTIVITY, value=float(collection_size))
+        collection_name = get_parameter_name(filter_info.args[0])
+        collection_size = len(parameters[collection_name])
 
-    return Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+        selectivity_per_entry_in_collection = _estimate_filter_selectivity_of_equality(
+            schema_graph, statistics, location_name, filter_info.fields
+        )
+
+        # Assumption: The selectivity is proportional to the number of entries in the collection
+        # This will not hold in case of duplicates.
+        if _is_absolute(selectivity_per_entry_in_collection):
+            result_selectivity = Selectivity(
+                kind=ABSOLUTE_SELECTIVITY,
+                value=float(collection_size) * selectivity_per_entry_in_collection.value
+            )
+        elif _is_fractional(selectivity_per_entry_in_collection):
+            result_selectivity = Selectivity(
+                kind=selectivity_per_entry_in_collection.kind,
+                value=min(float(collection_size) * selectivity_per_entry_in_collection.value,
+                          1.0)
+                # The estimate may be above 1.0 in case of duplicates in the collection
+                # so we make sure the value is <= 1.0
+            )
+
+    return result_selectivity
 
 
 def _combine_filter_selectivities(selectivities):
@@ -106,14 +138,13 @@ def _combine_filter_selectivities(selectivities):
 
 
 def adjust_counts_for_filters(
-    schema_graph, lookup_class_counts, filter_infos, parameters, location_name, counts
+    schema_graph, statistics, filter_infos, parameters, location_name, counts
 ):
     """Adjust result counts for filters on a given location by calculating selectivities.
 
     Args:
         schema_graph: SchemaGraph object
-        lookup_class_counts: function, string -> int, that accepts a class name and returns the
-                             total number of instances plus subclass instances
+        statistics: Statistics object
         filter_infos: list of FilterInfos, filters on the location being filtered
         parameters: dict, parameters with which query will be executed
         location_name: string, type of the location being filtered
@@ -124,7 +155,7 @@ def adjust_counts_for_filters(
     """
     selectivities = [
         _get_filter_selectivity(
-            schema_graph, lookup_class_counts, filter_info, parameters, location_name
+            schema_graph, statistics, filter_info, parameters, location_name
         )
         for filter_info in filter_infos
     ]
