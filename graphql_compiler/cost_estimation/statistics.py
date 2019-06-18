@@ -114,7 +114,7 @@ class LocalStatistics(Statistics):
             	mapping tuple of (vertex out class name, vertex in class name, edge class name) to
             	count of edge type between vertex types.
             domain_count: dict, (str, str) -> int, mapping vertex class and field on that
-            	vertex to domain size.
+            	vertex class to domain size.
             histogram: dict, (str, str) -> list[tuple(int, int, int)], mapping vertex class and
             	field on that vertex class to histogram as list[tuple(int, int, int)].
         """
