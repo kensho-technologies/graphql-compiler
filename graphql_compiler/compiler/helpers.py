@@ -7,12 +7,11 @@ import string
 
 import funcy
 from graphql import GraphQLList, GraphQLNonNull, GraphQLString, is_type
-from graphql.language.ast import InlineFragment
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 import six
 
 from ..exceptions import GraphQLCompilationError
-from ..schema import TYPENAME_META_FIELD_NAME
+from ..schema import INBOUND_EDGE_FIELD_PREFIX, OUTBOUND_EDGE_FIELD_PREFIX, is_vertex_field_name
 
 
 # These are the Java (OrientDB) representations of the ISO-8601 standard date and datetime formats.
@@ -20,9 +19,6 @@ STANDARD_DATE_FORMAT = 'yyyy-MM-dd'
 STANDARD_DATETIME_FORMAT = 'yyyy-MM-dd\'T\'HH:mm:ssX'
 
 VARIABLE_ALLOWED_CHARS = frozenset(six.text_type(string.ascii_letters + string.digits + '_'))
-
-OUTBOUND_EDGE_FIELD_PREFIX = 'out_'
-INBOUND_EDGE_FIELD_PREFIX = 'in_'
 
 OUTBOUND_EDGE_DIRECTION = 'out'
 INBOUND_EDGE_DIRECTION = 'in'
@@ -40,24 +36,6 @@ def get_only_element_from_collection(one_element_collection):
         raise AssertionError(u'Expected a collection with exactly one element, but got: {}'
                              .format(one_element_collection))
     return funcy.first(one_element_collection)
-
-
-def get_ast_field_name(ast):
-    """Return the normalized field name for the given AST node."""
-    replacements = {
-        # We always rewrite the following field names into their proper underlying counterparts.
-        TYPENAME_META_FIELD_NAME: '@class'
-    }
-    base_field_name = ast.name.value
-    normalized_name = replacements.get(base_field_name, base_field_name)
-    return normalized_name
-
-
-def get_ast_field_name_or_none(ast):
-    """Return the field name for the AST node, or None if the AST is an InlineFragment."""
-    if isinstance(ast, InlineFragment):
-        return None
-    return get_ast_field_name(ast)
 
 
 def get_field_type_from_schema(schema_type, field_name):
@@ -114,14 +92,6 @@ def get_edge_direction_and_name(vertex_field_name):
     validate_safe_string(edge_name)
 
     return edge_direction, edge_name
-
-
-def is_vertex_field_name(field_name):
-    """Return True if the field's name indicates it is a non-root vertex field."""
-    return (
-        field_name.startswith(OUTBOUND_EDGE_FIELD_PREFIX) or
-        field_name.startswith(INBOUND_EDGE_FIELD_PREFIX)
-    )
 
 
 def is_vertex_field_type(graphql_type):
