@@ -230,33 +230,34 @@ the `@optional` does not apply, and that value is then checked against the filte
 coercion. These subsequent operations may then cause the result set to be discarded if it does
 not match.
 
-For example, suppose we have two Person nodes with names `Albert` and `Betty` such that there's an edge 
-`Albert-knows->Betty`.
+For example, suppose we have two `Person` vertices with names `Albert` and `Betty` such that there is a `Person_Knows` edge from `Albert` to `Betty`.
 
-Then for the following query:
+Then the following query:
 ```graphql
 {
   Person {
     out_Person_Knows @optional {
-      name @filter(op_name: "=", value: "Charles")
+      name @filter(op_name: "=", value: ["$name"])
     }
     name @output(out_name: "person_name")
   }
 }
 ```
-then the output would be 
-```graphql
-{}
+with runtime parameter
+```python
+{
+  "name": "Charles"
+}
 ```
-because the `Albert-knows->Betty` edge satisfies the `@optional` directive, but this edge is then discarded because it doesn't match the filter checking if Betty's name is Charles. 
+because the `Person_Knows` edge from `Albert` to `Betty` satisfies the `@optional` directive, but `Betty` doesn't match the filter checking for a node with name `Charles`.
 
-However, if no such outgoing `knows` edge existed from Albert, then the output would be
-```graphql
+However, if no such `Person_Knows` edge existed from `Albert`, then the output would be
+```python
 {
   name: 'Albert'
 }
 ```
-because no such edge can satisfy the @optional directive, and no filtering happens.
+because no such edge can satisfy the `@optional` directive, and no filtering happens.
 
 ### @output
 
