@@ -2277,7 +2277,8 @@ class CompilerTests(unittest.TestCase):
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
-                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR (Animal__out_Animal_ParentOf___1.name IN Animal__in_Animal_ParentOf___1.alias))
+                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR
+                    (Animal__out_Animal_ParentOf___1.name IN Animal__in_Animal_ParentOf___1.alias))
             RETURN
                 Animal___1.name AS `animal_name`
         '''
@@ -2427,7 +2428,9 @@ class CompilerTests(unittest.TestCase):
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
-                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR (NOT(Animal__out_Animal_ParentOf___1.name IN Animal__in_Animal_ParentOf___1.alias)))
+                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR
+                    (NOT(Animal__out_Animal_ParentOf___1.name IN
+                        Animal__in_Animal_ParentOf___1.alias)))
             RETURN
                 Animal___1.name AS `animal_name`
         '''
@@ -2698,7 +2701,8 @@ class CompilerTests(unittest.TestCase):
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
-                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR (Animal__in_Animal_ParentOf___1.name IN Animal__out_Animal_ParentOf___1.alias))
+                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR
+                    (Animal__in_Animal_ParentOf___1.name IN Animal__out_Animal_ParentOf___1.alias))
             RETURN
                 Animal___1.name AS `animal_name`
         '''
@@ -2847,7 +2851,9 @@ class CompilerTests(unittest.TestCase):
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
-                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR (NOT(Animal__in_Animal_ParentOf___1.name IN Animal__out_Animal_ParentOf___1.alias)))
+                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR
+                    (NOT(Animal__in_Animal_ParentOf___1.name IN
+                        Animal__out_Animal_ParentOf___1.alias)))
             RETURN
                 Animal___1.name AS `animal_name`
         '''
