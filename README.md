@@ -249,7 +249,7 @@ with runtime parameter
   "name": "Charles"
 }
 ```
-because the `Person_Knows` edge from `Albert` to `Betty` satisfies the `@optional` directive, but `Betty` doesn't match the filter checking for a node with name `Charles`.
+would output an empty list because the `Person_Knows` edge from `Albert` to `Betty` satisfies the `@optional` directive, but `Betty` doesn't match the filter checking for a node with name `Charles`.
 
 However, if no such `Person_Knows` edge existed from `Albert`, then the output would be
 ```python
