@@ -109,7 +109,7 @@ class LocalStatistics(Statistics):
             class_counts: dict, str -> int, mapping vertex/edge class name to class count.
             edge_count_between_vertex_pairs: dict, (str, str, str) -> int,
                 mapping tuple of (vertex out class name, vertex in class name, edge class name) to
-                count of edges between vertex classes.
+                count of edge instances of given class connecting instances of two vertex classes.
             count_of_distinct_values: dict, (str, str) -> int, mapping vertex class name and field
                 name on that vertex class to the number of distinct values of the field for that
                 vertex class.
