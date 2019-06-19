@@ -2165,7 +2165,13 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 animal_1.name IN ([EXPANDING_wanted])
         '''
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+                WHERE (Animal___1.name IN $wanted)
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2266,7 +2272,15 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR (Animal__out_Animal_ParentOf___1.name IN Animal__in_Animal_ParentOf___1.alias))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2302,7 +2316,13 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 animal_1.name NOT IN ([EXPANDING_wanted])
         '''
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+                WHERE (NOT(Animal___1.name IN $wanted))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
@@ -2336,8 +2356,14 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
-
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE (NOT(Animal__out_Animal_ParentOf___1.name IN Animal___1.alias))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
 
@@ -2396,7 +2422,15 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR (NOT(Animal__out_Animal_ParentOf___1.name IN Animal__in_Animal_ParentOf___1.alias)))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
@@ -2659,7 +2693,15 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR (Animal__in_Animal_ParentOf___1.name IN Animal__out_Animal_ParentOf___1.alias))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2691,7 +2733,13 @@ class CompilerTests(unittest.TestCase):
         # the alias list valued column is not yet supported by the SQL backend
         expected_sql = SKIP_TEST
 
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+                WHERE (NOT($wanted IN Animal___1.alias))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
@@ -2725,7 +2773,14 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+                WHERE (NOT(Animal___1.name IN Animal__in_Animal_ParentOf___1.alias))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
@@ -2787,7 +2842,15 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            CYPHER 9
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR (NOT(Animal__in_Animal_ParentOf___1.name IN Animal__out_Animal_ParentOf___1.alias)))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
