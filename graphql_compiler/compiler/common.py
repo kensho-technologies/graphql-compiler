@@ -153,7 +153,6 @@ def compile_graphql_to_cypher(schema, graphql_string, type_equivalence_hints=Non
         schema, graphql_string, type_equivalence_hints, None)
 
 
-
 def _compile_graphql_generic(language, lowering_func, query_emitter_func,
                              schema, graphql_string, type_equivalence_hints, compiler_metadata):
     """Compile the GraphQL input, lowering and emitting the query using the given functions.
