@@ -105,23 +105,23 @@ class Statistics(object):
 
 class LocalStatistics(Statistics):
     """Provides statistics using ones given at initialization."""
-    def __init__(self, class_count, edge_count_between_vertex_pair, domain_count, histogram):
+    def __init__(self, class_counts, edge_count_between_vertex_pairs, domain_counts, histograms):
         """Initializes statistics with the given data.
 
         Args:
-            class_count: dict, str -> int, mapping vertex/edge class name to class count.
-            edge_count_between_vertex_pair: dict, (str, str, str) -> int,
+            class_counts: dict, str -> int, mapping vertex/edge class name to class count.
+            edge_count_between_vertex_pairs: dict, (str, str, str) -> int,
                 mapping tuple of (vertex out class name, vertex in class name, edge class name) to
                 count of edge type between vertex types.
-            domain_count: dict, (str, str) -> int, mapping vertex class and field on that
+            domain_counts: dict, (str, str) -> int, mapping vertex class and field on that
                 vertex class to domain size.
-            histogram: dict, (str, str) -> list[tuple(int, int, int)], mapping vertex class and
+            histograms: dict, (str, str) -> list[tuple(int, int, int)], mapping vertex class and
                 field on that vertex class to histogram as list[tuple(int, int, int)].
         """
-        self._class_count = class_count
-        self._edge_count_between_vertex_pair = edge_count_between_vertex_pair
-        self._domain_count = domain_count
-        self._histogram = histogram
+        self._class_counts = class_counts
+        self._edge_count_between_vertex_pairs = edge_count_between_vertex_pairs
+        self._domain_counts = domain_counts
+        self._histograms = histograms
 
     def get_class_count(self, class_name):
         """Return how many objects have, or inherit, the given class name.
@@ -136,10 +136,10 @@ class LocalStatistics(Statistics):
         Raises:
             AssertionError, if statistic for class_name does not exist.
         """
-        if class_name not in self._class_count:
+        if class_name not in self._class_counts:
             raise AssertionError(u'Class count statistic is required, but entry not found for: '
                                  u'{}'.format(class_name))
-        return self._class_count[class_name]
+        return self._class_counts[class_name]
 
     def get_edge_count_between_vertex_pair(
         self, vertex_out_class_name, vertex_in_class_name, edge_class_name
@@ -159,10 +159,10 @@ class LocalStatistics(Statistics):
             - int, the count of edges if the statistic exists
             - None otherwise
         """
-        statistic_id = (vertex_in_class_name, vertex_out_class_name, edge_class_name)
-        if statistic_id not in self._edge_count_between_vertex_pair:
+        statistic_key = (vertex_in_class_name, vertex_out_class_name, edge_class_name)
+        if statistic_key not in self._edge_count_between_vertex_pairs:
             return None
-        return self._edge_count_between_vertex_pair[statistic_id]
+        return self._edge_count_between_vertex_pairs[statistic_key]
 
     def get_domain_count(self, vertex_name, field_name):
         """Return the number of distinct values the vertex field has over all vertex instances.
@@ -181,10 +181,10 @@ class LocalStatistics(Statistics):
             - int, domain size of the vertex field's values if the statistic exists
             - None otherwise
         """
-        statistic_id = (vertex_name, field_name)
-        if statistic_id not in self._domain_count:
+        statistic_key = (vertex_name, field_name)
+        if statistic_key not in self._domain_counts:
             return None
-        return self._domain_count[statistic_id]
+        return self._domain_counts[statistic_key]
 
     def get_histogram(self, vertex_name, field_name):
         """Return a histogram for the given vertex field, providing statistics about range values.
@@ -206,6 +206,7 @@ class LocalStatistics(Statistics):
               count.
             - None otherwise
         """
-        if vertex_name not in self._histogram or field_name not in self._histogram[vertex_name]:
+        histogram_key = (vertex_name, field_name)
+        if histogram_key not in self._histogram:
             return None
-        return self._histogram[vertex_name][field_name]
+        return self._histogram[histogram_key]
