@@ -29,6 +29,21 @@ def split_blocks(ir_blocks):
 
 
 def emit_sql(ir, tables, sql_edges):
+    """Emit SQLAlchemy from IR.
+
+    Args:
+        - ir: IR
+        - tables: dict from graphql vertex names to sqlalchemy tables. The tables can come from different
+          metadatas, and live in different tables, it doesn't really matter. If they do come from different
+          databases, their table.schema should contain '<database_name>.<schema_name>'.
+        - sql_edges: dict mapping graphql classes to:
+                        dict mapping edge fields at that class to a dict with the following info:
+                           to_table: GrapqQL vertex where the edge ends up
+                           from_column: column name in this table
+                           to_column: column name in tables[to_table]. The join is done on the from_column
+                                      and to_column being equal. If you really need other kinds of joins,
+                                      feel free to extend the interface.
+    """
     current_classname, local_operations, global_operations = split_blocks(ir.ir_blocks)
     current_location = ir.query_metadata_table.root_location
     current_alias = tables[current_classname].alias()
