@@ -912,6 +912,7 @@ class BinaryComposition(Expression):
             u'>=': operator.__ge__,
             u'&&': sql.expression.and_,
             u'||': sql.expression.or_,
+            u'has_substring': sql.schema.Column.contains,
         }
         return translation_table[self.operator](
             self.left.to_sql(current_alias),

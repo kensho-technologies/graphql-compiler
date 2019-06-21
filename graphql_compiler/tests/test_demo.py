@@ -3,8 +3,7 @@ import sqlalchemy
 import six
 import unittest
 from .test_helpers import get_schema, get_sql_metadata, compare_sql
-from ..compiler import compiler_frontend, blocks, helpers
-
+from ..compiler import compiler_frontend, blocks, helpers, expressions
 
 
 def split_blocks(ir_blocks):
@@ -29,10 +28,10 @@ def split_blocks(ir_blocks):
     return start_classname, local_operations, global_operations
 
 
-def emit_sql(ir, sqlalchemy_metadata, sql_edges):
+def emit_sql(ir, tables, sql_edges):
     current_classname, local_operations, global_operations = split_blocks(ir.ir_blocks)
     current_location = ir.query_metadata_table.root_location
-    current_alias = sqlalchemy_metadata.tables['Animals.schema_1.' + current_classname].alias()
+    current_alias = tables[current_classname].alias()
     alias_at_location = {}  # Updated only at MarkLocation blocks
 
     from_clause = current_alias
@@ -40,25 +39,28 @@ def emit_sql(ir, sqlalchemy_metadata, sql_edges):
     filters = []
 
     for block in local_operations:
-        if isinstance(block, blocks.MarkLocation):
+        if isinstance(block, (blocks.EndOptional)):
+            pass  # Nothing to do
+        elif isinstance(block, blocks.MarkLocation):
             alias_at_location[current_location] = current_alias
         elif isinstance(block, blocks.Backtrack):
             current_location = block.location
             current_alias = alias_at_location[current_location]
+            current_classname = ir.query_metadata_table.get_location_info(current_location).type.name
         elif isinstance(block, blocks.Traverse):
             previous_alias = current_alias
-            current_location = current_location.navigate_to_subpath('out_' + block.edge_name)
-            edge = sql_edges[current_classname][block.direction][block.edge_name]
-            current_alias = sqlalchemy_metadata.tables['Animals.schema_1.' + edge['table']].alias()
+            edge_field = u'{}_{}'.format(block.direction, block.edge_name)
+            current_location = current_location.navigate_to_subpath(edge_field)
+            edge = sql_edges[current_classname][edge_field]
+            current_alias = tables[edge['to_table']].alias()
+            current_classname = ir.query_metadata_table.get_location_info(current_location).type.name
 
             from_clause = from_clause.join(
                 current_alias,
-                onclause=edge['on_clause'](
-                    previous_alias,
-                    current_alias,
-                ),
+                onclause=(previous_alias.c[edge['from_column']] == current_alias.c[edge['to_column']]),
                 isouter=block.optional)
         elif isinstance(block, blocks.Filter):
+            # TODO check it works for filter inside optional.
             filters.append(block.predicate.to_sql(current_alias))
         else:
             raise NotImplementedError(u'{}'.format(block))
@@ -67,24 +69,31 @@ def emit_sql(ir, sqlalchemy_metadata, sql_edges):
     for block in global_operations:
         if isinstance(block, blocks.ConstructResult):
             for output_name, field in six.iteritems(block.fields):
+                # import pdb; pdb.set_trace()
+
+                # HACK for outputs in optionals
+                if isinstance(field, expressions.TernaryConditional):
+                    if isinstance(field.predicate, expressions.ContextFieldExistence):
+                        field = field.if_true
+
                 table = alias_at_location[field.location.at_vertex()]
                 outputs.append(table.c.get(field.location.field).label(output_name))
 
     return sqlalchemy.select(outputs).select_from(from_clause).where(sqlalchemy.and_(*filters))
 
 
-def compile_sql(schema, sqlalchemy_metadata, sql_edges, graphql_string):
-    from sqlalchemy.dialects import mssql
+def compile_sql(schema, tables, sql_edges, graphql_string):
     ir = compiler_frontend.graphql_to_ir(schema, graphql_string)
-    return str(emit_sql(ir, sqlalchemy_metadata, sql_edges).compile(dialect=mssql.dialect()))
+    return emit_sql(ir, tables, sql_edges)
 
 
+from sqlalchemy.dialects import mssql
 class TestDemo(unittest.TestCase):
     def setUp(self):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
         self.schema = get_schema()
-        self.sqlalchemy_metadata, self.sql_edges = get_sql_metadata()
+        self.sqlalchemy_metadata, self.tables, self.sql_edges = get_sql_metadata()
 
     def test_simple_traversal(self):
         graphql_input = '''{
@@ -96,10 +105,11 @@ class TestDemo(unittest.TestCase):
         }'''
         sql_query = compile_sql(
             self.schema,
-            self.sqlalchemy_metadata,
+            self.tables,
             self.sql_edges,
             graphql_input
         )
+        sql_query = str(sql_query.compile(dialect=mssql.dialect()))
         expected_sql = '''
             SELECT
                 [Animal_1].name AS child_name
@@ -122,10 +132,11 @@ class TestDemo(unittest.TestCase):
         }'''
         sql_query = compile_sql(
             self.schema,
-            self.sqlalchemy_metadata,
+            self.tables,
             self.sql_edges,
             graphql_input
         )
+        sql_query = str(sql_query.compile(dialect=mssql.dialect()))
         expected_sql = '''
             SELECT
                 [Animal_1].name AS animal_name,
@@ -148,15 +159,16 @@ class TestDemo(unittest.TestCase):
         }'''
         sql_query = compile_sql(
             self.schema,
-            self.sqlalchemy_metadata,
+            self.tables,
             self.sql_edges,
             graphql_input
         )
+        sql_query = str(sql_query.compile(dialect=mssql.dialect()))
         expected_sql = '''
             SELECT
                 [Animal_1].name AS child_name
             FROM [Animals].schema_1.[Animal] AS [Animal_2]
-                JOIN [Animal] AS [Animal_1] ON [Animal_2].parent = [Animal_1].uuid
+                JOIN [Animals].schema_1.[Animal] AS [Animal_1] ON [Animal_2].parent = [Animal_1].uuid
             WHERE [Animal_2].uuid = :animal_uuid
         '''
         compare_sql(self, expected_sql, sql_query)
@@ -172,15 +184,39 @@ class TestDemo(unittest.TestCase):
         }'''
         sql_query = compile_sql(
             self.schema,
-            self.sqlalchemy_metadata,
+            self.tables,
             self.sql_edges,
             graphql_input
         )
+        sql_query = str(sql_query.compile(dialect=mssql.dialect()))
         expected_sql = '''
             SELECT
                 [Animal_1].name AS child_name
             FROM [Animals].schema_1.[Animal] AS [Animal_2]
                 JOIN [Animals].schema_1.[Animal] AS [Animal_1] ON [Animal_2].parent = [Animal_1].uuid
             WHERE [Animal_2].net_worth <= :max_net_worth
+        '''
+        compare_sql(self, expected_sql, sql_query)
+
+    def test_optional(self):
+        graphql_input = '''{
+            Animal {
+                out_Animal_ParentOf @optional {
+                    name @output(out_name: "child_name")
+                }
+            }
+        }'''
+        sql_query = compile_sql(
+            self.schema,
+            self.tables,
+            self.sql_edges,
+            graphql_input
+        )
+        sql_query = str(sql_query.compile(dialect=mssql.dialect()))
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS child_name
+            FROM [Animals].schema_1.[Animal] AS [Animal_2]
+                LEFT OUTER JOIN [Animals].schema_1.[Animal] AS [Animal_1] ON [Animal_2].parent = [Animal_1].uuid
         '''
         compare_sql(self, expected_sql, sql_query)

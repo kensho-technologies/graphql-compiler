@@ -274,8 +274,10 @@ def get_schema():
 
 def get_sql_metadata():
     import sqlalchemy
+    tables = {}
     sqlalchemy_metadata = sqlalchemy.MetaData()
-    animal_table = sqlalchemy.Table(
+    sqlalchemy_metadata.schema = 'Animals.schema_1'
+    tables['Animal'] = sqlalchemy.Table(
         'Animal',
         sqlalchemy_metadata,
         sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
@@ -283,41 +285,19 @@ def get_sql_metadata():
         sqlalchemy.Column('net_worth', sqlalchemy.Integer, nullable=False),
         sqlalchemy.Column('birthday', sqlalchemy.Date, nullable=False),
         sqlalchemy.Column('parent', sqlalchemy.Integer, nullable=True),
-        schema='Animals.schema_1'
-    )
-    event_table = sqlalchemy.Table(
-        'Event',
-        sqlalchemy_metadata,
-        sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
-        sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
-        schema='Animals.schema_1'
-    )
-    entity_table = sqlalchemy.Table(
-        'Entity',
-        sqlalchemy_metadata,
-        sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
-        sqlalchemy.Column('name', sqlalchemy.String(length=12), nullable=False),
-        schema='Animals.schema_1'
-    )
-    entity_relationships = sqlalchemy.Table(
-        'junction_Entity_Related',
-        sqlalchemy_metadata,
-        sqlalchemy.Column('parent', sqlalchemy.Integer, sqlalchemy.ForeignKey('entity.uuid'), nullable=True),
-        schema='Animals.schema_1'
     )
 
     edges = {
         'Animal': {
-            'out': {
-                'Animal_ParentOf': {
-                    'table': 'Animal',
-                    'on_clause': lambda lhs, rhs: lhs.c['parent'] == rhs.c['uuid'],
-                }
+            'out_Animal_ParentOf': {
+                'to_table': 'Animal',
+                'from_column': 'parent',
+                'to_column': 'uuid',
             }
         }
     }
 
-    return sqlalchemy_metadata, edges
+    return sqlalchemy_metadata, tables, edges
 
 
 
