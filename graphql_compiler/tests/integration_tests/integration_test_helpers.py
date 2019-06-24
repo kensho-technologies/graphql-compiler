@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import six
 
-from ... import graphql_to_match, graphql_to_sql
+from ... import graphql_to_match, graphql_to_sql, graphql_to_cypher
 from ...compiler.ir_lowering_sql.metadata import SqlMetadata
 
 
@@ -63,3 +63,16 @@ def compile_and_run_sql_query(schema, graphql_query, parameters, engine, metadat
             results.append(dict(result))
         trans.rollback()
     return results
+
+
+def compile_and_run_cypher_query(schema, graphql_query, parameters, neo4j_client):
+    """Compiles and runs a Cypher query against the supplied graph client."""
+    converted_parameters = {
+        name: try_convert_decimal_to_string(value)
+        for name, value in six.iteritems(parameters)
+    }
+    compilation_result = graphql_to_cypher(schema, graphql_query, converted_parameters)
+    query = compilation_result.query
+    with neo4j_client.driver.session() as session:
+        results = session.run(query)
+    return results.data()

@@ -7,9 +7,11 @@ import six
 
 from .test_data_tools.data_tool import (
     generate_orient_integration_data, generate_orient_snapshot_data, generate_sql_integration_data,
-    init_sql_integration_test_backends, tear_down_integration_test_backends
+    generate_neo4j_integration_data, init_sql_integration_test_backends,
+    tear_down_integration_test_backends,
 )
 from .test_data_tools.graph import get_test_graph
+from .test_data_tools.neo4j import get_test_neo4j_graph
 from .test_data_tools.schema import load_schema
 
 
@@ -50,6 +52,35 @@ def _init_graph_client(load_schema_func, generate_data_func):
     return graph_client
 
 
+@pytest.fixture(scope='session')
+def init_integration_neo4j_client():
+    """Return a client for an initialized db, with all test data imported."""
+    return _init_neo4j_client(generate_neo4j_integration_data)
+
+
+def _init_neo4j_client(generate_data_func):
+    # TODO Leon: this might be the same as _init_graph_client, consider the right abstraction.
+    #  don't prematurely change it now but think about it
+    # Try to set up the database for the test up to 20 times before giving up.
+    graph_name = 'animals'
+
+    # Try to set up the database for the test up to 20 times before giving up.
+    set_up_successfully = False
+    for _ in range(20):
+        try:
+            neo4j_client = get_test_neo4j_graph(graph_name, generate_data_func)
+            set_up_successfully = True
+            break
+        except Exception as e:  # pylint: disable=broad-except
+            sys.stderr.write(u'Failed to set up test DB: {}'.format(e))
+            time.sleep(1)
+
+    if not set_up_successfully:
+        raise AssertionError(u'Failed to set up database without raising an exception!')
+
+    return neo4j_client
+
+
 @pytest.fixture(scope='class')
 def snapshot_graph_client(request, init_snapshot_graph_client):
     """Get a client for an initialized db, with all test data imported."""
@@ -60,6 +91,12 @@ def snapshot_graph_client(request, init_snapshot_graph_client):
 def integration_graph_client(request, init_integration_graph_client):
     """Get a client for an initialized db, with all test data imported."""
     request.cls.graph_client = init_integration_graph_client
+
+
+@pytest.fixture(scope='class')
+def integration_neo4j_client(request, init_integration_neo4j_client):
+    """Get a client for an initialized db, with all test data imported."""
+    request.cls.neo4j_client = init_integration_neo4j_client
 
 
 @pytest.fixture(scope='class')

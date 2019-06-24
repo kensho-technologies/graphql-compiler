@@ -27,6 +27,11 @@ MATCH_BACKENDS = {
     test_backend.ORIENTDB,
 }
 
+CYPHER_BACKENDS = {
+    test_backend.NEO4J,
+    # test_backend.REDISGRAPH,
+}
+
 SQL_BACKEND_TO_CONNECTION_STRING = {
     test_backend.POSTGRES:
         u'postgresql://postgres:{password}@localhost:5432'.format(password=DEFAULT_ROOT_PASSWORD),
