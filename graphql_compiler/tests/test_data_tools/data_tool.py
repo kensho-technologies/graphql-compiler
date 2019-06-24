@@ -27,6 +27,25 @@ def generate_orient_integration_data(client):
     _load_sql_files_to_orient_client(client, sql_files)
 
 
+def generate_neo4j_integration_data(client):
+    """Create Neo4j test DB from the SQL commands file for integration testing."""
+    project_root = path.dirname(path.abspath(__file__))
+    neo4j_files = glob(path.join(project_root, 'integration_data/*.cypher'))
+    _load_neo4j_files_to_neo4j_client(client, neo4j_files)
+
+
+def _load_neo4j_files_to_neo4j_client(client, neo4j_files):
+    for filepath in neo4j_files:
+        with open(filepath) as f:
+            with client.driver.session() as session:
+                for command in f.readlines():
+                    sanitized_command = command.strip()
+                    if len(sanitized_command) == 0 or sanitized_command[0] == '#':
+                        # comment or empty line, ignore
+                        continue
+                    session.run(sanitized_command)
+
+
 def _load_sql_files_to_orient_client(client, sql_files):
     """Load list of supplied SQL files into the supplied OrientDB client."""
     for filepath in sql_files:
