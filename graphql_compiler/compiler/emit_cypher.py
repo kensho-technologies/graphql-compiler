@@ -109,7 +109,7 @@ def _emit_with_clause_components(cypher_steps):
 
 def emit_code_from_ir(cypher_query, compiler_metadata):
     """Return a Cypher query string from a CypherQuery object."""
-    query_data = [u'CYPHER 9\n']
+    query_data = [u'CYPHER\n']
 
     for cypher_step in cypher_query.steps:
         query_data.append(_emit_code_from_cypher_step(cypher_step))
