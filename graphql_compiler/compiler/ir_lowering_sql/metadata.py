@@ -11,18 +11,24 @@ class SqlMetadata(object):
     In order to transform GraphQL to SQL, there needs to be additional metadata specified
     for mapping:
         - GraphQL types -> SQL tables
-        - GraphQL fields -> SQL columns
         - GraphQL edges -> SQL JOINs
     """
 
-    def __init__(self, dialect, sqlalchemy_metadata):
-        """Initialize a new SQL metadata manager."""
-        self.sqlalchemy_metadata = sqlalchemy_metadata
-        self._db_backend = SqlBackend(dialect)
-        self.table_name_to_table = {
-            name.lower(): table
-            for name, table in six.iteritems(self.sqlalchemy_metadata.tables)
-        }
+    def __init__(self, tables, joins):
+        """Initialize a new SQL metadata.
+
+        Args:
+            - tables: dict mapping every graphql type to a sqlalchemy table
+            - joins: dict mapping graphql classes to:
+                        dict mapping edge fields at that class to a dict with the following info:
+                           to_table: GrapqQL vertex where the edge ends up
+                           from_column: column name in this table
+                           to_column: column name in tables[to_table]. The join is done on the from_column
+                                      and to_column being equal. If you really need other kinds of joins,
+                                      feel free to extend the interface.
+        """
+        self.table_name_to_table = tables
+        self.joins = joins
 
     def get_table(self, schema_type):
         """Retrieve a SQLAlchemy table based on the supplied GraphQL schema type name."""
@@ -37,8 +43,3 @@ class SqlMetadata(object):
         """Retrieve a SQLAlchemy table based on the supplied GraphQL schema type name."""
         table_name = schema_type.lower()
         return table_name in self.table_name_to_table
-
-    @property
-    def db_backend(self):
-        """Retrieve this compiler's DB backend."""
-        return self._db_backend

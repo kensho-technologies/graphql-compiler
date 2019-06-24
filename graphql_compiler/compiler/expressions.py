@@ -121,6 +121,9 @@ class Literal(Expression):
     to_gremlin = _to_output_code
     to_match = _to_output_code
 
+    def to_sql(self, current_alias):
+        return self.value
+
 
 NullLiteral = Literal(None)
 TrueLiteral = Literal(True)
@@ -221,7 +224,8 @@ class Variable(Expression):
         self.validate()
 
         from sqlalchemy import bindparam
-        return bindparam(self.variable_name[1:])
+        expanding = isinstance(self.inferred_type, GraphQLList)
+        return bindparam(self.variable_name[1:], expanding=expanding)
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
@@ -287,6 +291,12 @@ class LocalField(Expression):
 
     def to_sql(self, current_alias):
         self.validate()
+
+        if isinstance(self.field_type, GraphQLList):
+            raise NotImplementedError(u'We dont support lists yet')
+
+        if '@' in self.field_name:
+            raise NotImplementedError(u'We dont support __typename yet')
 
         return current_alias.c[self.field_name]
 
@@ -404,6 +414,10 @@ class ContextField(Expression):
         validate_safe_string(mark_name)
 
         return template.format(mark_name=mark_name, field_name=field_name)
+
+    def to_sql(self, current_alias):
+        # TODO do I have enough info?
+        raise NotImplementedError()
 
 
 class OutputContextField(Expression):
@@ -913,6 +927,9 @@ class BinaryComposition(Expression):
             u'&&': sql.expression.and_,
             u'||': sql.expression.or_,
             u'has_substring': sql.schema.Column.contains,
+            u'contains': lambda x, y: y.in_(x),
+            u'not_contains': lambda x, y: y.notin_(x),
+            u'intersects': lambda x, y: raise_(NotImplementedError()),
         }
         return translation_table[self.operator](
             self.left.to_sql(current_alias),

@@ -112,11 +112,20 @@ def compile_graphql_to_sql(schema, graphql_string, compiler_metadata, type_equiv
     Returns:
         a CompilationResult object
     """
-    lowering_func = ir_lowering_sql.lower_ir
-    query_emitter_func = emit_sql.emit_code_from_ir
-    return _compile_graphql_generic(
-        SQL_LANGUAGE, lowering_func, query_emitter_func,
-        schema, graphql_string, type_equivalence_hints, compiler_metadata)
+    from . import sql_tmp
+    ir_and_metadata = graphql_to_ir(
+        schema, graphql_string, type_equivalence_hints=type_equivalence_hints)
+
+    lowered_ir_blocks = sql_tmp.lower_ir(
+        ir_and_metadata.ir_blocks, ir_and_metadata.query_metadata_table,
+        type_equivalence_hints=type_equivalence_hints)
+
+    query = sql_tmp.emit_sql(lowered_ir_blocks, ir_and_metadata.query_metadata_table, compiler_metadata)
+    return CompilationResult(
+        query=query,
+        language=SQL_LANGUAGE,
+        output_metadata=ir_and_metadata.output_metadata,
+        input_metadata=ir_and_metadata.input_metadata)
 
 
 def _compile_graphql_generic(language, lowering_func, query_emitter_func,

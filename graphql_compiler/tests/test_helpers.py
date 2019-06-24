@@ -281,10 +281,22 @@ def get_sql_metadata():
         'Animal',
         sqlalchemy_metadata,
         sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
-        sqlalchemy.Column('name', sqlalchemy.String(length=12), nullable=False),
         sqlalchemy.Column('net_worth', sqlalchemy.Integer, nullable=False),
+        sqlalchemy.Column('name', sqlalchemy.String(length=12), nullable=False),
         sqlalchemy.Column('birthday', sqlalchemy.Date, nullable=False),
         sqlalchemy.Column('parent', sqlalchemy.Integer, nullable=True),
+    )
+    tables['Event'] = sqlalchemy.Table(
+        'Event',
+        sqlalchemy_metadata,
+        sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+        sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
+    )
+    tables['Entity'] = sqlalchemy.Table(
+        'Entity',
+        sqlalchemy_metadata,
+        sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+        sqlalchemy.Column('name', sqlalchemy.String(length=12), nullable=False),
     )
 
     edges = {
@@ -294,10 +306,10 @@ def get_sql_metadata():
                 'from_column': 'parent',
                 'to_column': 'uuid',
             }
-        }
+        },
     }
 
-    return sqlalchemy_metadata, tables, edges
+    return tables, edges
 
 
 

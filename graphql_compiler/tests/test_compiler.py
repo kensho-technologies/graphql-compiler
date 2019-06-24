@@ -14,7 +14,8 @@ from ..compiler import (
 from ..compiler.ir_lowering_sql.metadata import SqlMetadata
 from .test_data_tools.data_tool import get_animal_schema_sql_metadata
 from .test_helpers import (
-    SKIP_TEST, compare_gremlin, compare_input_metadata, compare_match, compare_sql, get_schema
+    SKIP_TEST, compare_gremlin, compare_input_metadata, compare_match, compare_sql, get_schema,
+    get_sql_metadata,
 )
 
 
@@ -66,7 +67,8 @@ def check_test_data(test_case, test_data, expected_match, expected_gremlin, expe
             test_data.graphql_input,
             test_case.sql_metadata,
             type_equivalence_hints=schema_based_type_equivalence_hints)
-        compare_sql(test_case, expected_sql, str(result.query))
+        from sqlalchemy.dialects import mssql
+        compare_sql(test_case, expected_sql, str(result.query.compile(dialect=mssql.dialect())))
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata,
                                result.input_metadata)
@@ -78,7 +80,8 @@ class CompilerTests(unittest.TestCase):
         self.maxDiff = None
         self.schema = get_schema()
         _, sqlalchemy_metadata = get_animal_schema_sql_metadata()
-        self.sql_metadata = SqlMetadata(sqlite.dialect.name, sqlalchemy_metadata)
+        tables, joins = get_sql_metadata()
+        self.sql_metadata = SqlMetadata(tables, joins)
 
     def test_immediate_output(self):
         test_data = test_input_data.immediate_output()
@@ -103,9 +106,9 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
@@ -135,10 +138,10 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.birthday AS birthday,
-                animal_1.net_worth AS net_worth
+                [Animal_1].birthday AS birthday,
+                [Animal_1].net_worth AS net_worth
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
@@ -168,11 +171,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.net_worth >= :min_worth
+                [Animal_1].net_worth >= :min_worth
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
@@ -272,11 +275,11 @@ class CompilerTests(unittest.TestCase):
 
             expected_sql = '''
                 SELECT
-                    animal_1.name AS animal_name
+                    [Animal_1].name AS animal_name
                 FROM
-                    animal AS animal_1
+                    [Animals].schema_1.[Animal] AS [Animal_1]
                 WHERE
-                    animal_1.name %s :wanted
+                    [Animal_1].name %s :wanted
             ''' % (operator,)  # nosec, the operators are hardcoded above
 
             expected_output_metadata = {
@@ -320,12 +323,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name >= :lower_bound
-                AND animal_1.name < :upper_bound
+                [Animal_1].name >= :lower_bound
+                AND [Animal_1].name < :upper_bound
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
@@ -357,7 +360,14 @@ class CompilerTests(unittest.TestCase):
                 parent_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS parent_name
+            FROM
+                [Animals].schema_1.[Animal] AS [Animal_2]
+                JOIN [Animals].schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_2].parent = [Animal_1].uuid
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -687,7 +697,17 @@ class CompilerTests(unittest.TestCase):
                           m.Animal__out_Animal_ParentOf___1.uuid : null)
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name,
+                [Animal_2].name AS parent_name,
+                [Animal_2].uuid AS uuid
+            FROM
+                [Animals].schema_1.[Animal] AS [Animal_1]
+                LEFT OUTER JOIN [Animals].schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].parent = [Animal_2].uuid
+            WHERE [Animal_2].name = :name
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -757,12 +777,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS name
+                [Animal_1].name AS name
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name >= :lower
-                AND animal_1.name <= :upper
+                [Animal_1].name >= :lower
+                AND [Animal_1].name <= :upper
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
@@ -800,12 +820,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.birthday AS birthday
+                [Animal_1].birthday AS birthday
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.birthday >= :lower
-                AND animal_1.birthday <= :upper
+                [Animal_1].birthday >= :lower
+                AND [Animal_1].birthday <=: upper
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
@@ -844,12 +864,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                event_1.event_date AS event_date
+                [Event_1].event_date AS event_date
             FROM
-                event AS event_1
+                [Animals].schema_1.[Event] A S[Event_1]
             WHERE
-                event_1.event_date >= :lower
-                AND event_1.event_date <= :upper
+                [Event_1].event_date >= :lower
+                AND [Event_1].event_date <=: upper
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
@@ -881,12 +901,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS name
+                [Animal_1].name AS name
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name <= :upper
-                AND animal_1.name >= :lower
+                [Animal_1].name <= :upper
+                AND [Animal_1].name >= :lower
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
@@ -932,14 +952,14 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS name
+                [Animal_1].name AS name
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name <= :upper
-                AND (animal_1.name LIKE '%' || :substring || '%')
-                AND animal_1.name IN ([EXPANDING_fauna])
-                AND animal_1.name >= :lower
+                [Animal_1].name <=: upper
+                AND ([Animal_1].name LIKE '%' + :substring + '%')
+                AND[Animal_1].name IN ([EXPANDING_fauna])
+                AND[Animal_1].name >=: lower
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
@@ -969,13 +989,13 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS name
+                [Animal_1].name AS name
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name <= :upper
-                AND animal_1.name >= :lower0
-                AND animal_1.name >= :lower1
+                [Animal_1].name <= :upper
+                AND [Animal_1].name >= :lower0
+                AND [Animal_1].name >= :lower1
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
@@ -1840,11 +1860,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name IN ([EXPANDING_wanted])
+                [Animal_1].name IN ([EXPANDING_wanted])
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
@@ -1964,11 +1984,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name NOT IN ([EXPANDING_wanted])
+                [Animal_1].name NOTIN ([EXPANDING_wanted])
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
@@ -2449,11 +2469,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
             WHERE
-                (animal_1.name LIKE '%' || :wanted || '%')
+                ([Animal_1].nameLIKE'%'+:wanted+'%')
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
@@ -2488,11 +2508,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
             WHERE
-                (animal_1.name LIKE '%' || :wanted || '%')
+                ([Animal_1].nameLIKE'%'+:wanted+'%')
         '''
         expected_output_metadata = {
             'animal_name': OutputMetadata(type=GraphQLString, optional=False),
@@ -5941,13 +5961,13 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                [Animals].schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.uuid >= :uuid_lower
-                AND animal_1.uuid <= :uuid_upper
-                AND animal_1.birthday >= :earliest_modified_date
+                [Animal_1].uuid >= :uuid_lower
+                AND [Animal_1].uuid <= :uuid_upper
+                AND [Animal_1].birthday >= :earliest_modified_date
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
