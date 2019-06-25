@@ -31,7 +31,7 @@ class Statistics(object):
                         GraphQL schema.
 
         Returns:
-            - int, number of vertices and edges with, or inheriting the given class name
+            - int, the count of vertex and edge instances with, or inheriting the given class name
 
         Raises:
             AssertionError, if statistic for the given vertex/edge class does not exist.
@@ -42,7 +42,7 @@ class Statistics(object):
     def get_edge_count_between_vertex_pair(
         self, vertex_out_class_name, vertex_in_class_name, edge_class_name
     ):
-        """Return count of edges connecting two vertices.
+        """Return the count of edges connecting two vertices.
 
         This statistic is optional, as the estimator can roughly predict this cost using
         get_class_count(). In some cases of traversal between two vertices using an edge connecting
@@ -72,7 +72,7 @@ class Statistics(object):
             field_name: str, name of a vertex field.
 
         Returns:
-            - int, count of distinct values of that vertex field if the statistic exists
+            - int, the count of distinct values of that vertex field if the statistic exists
             - None otherwise
         """
         return None
@@ -112,7 +112,7 @@ class LocalStatistics(Statistics):
                 mapping tuple of (vertex out class name, vertex in class name, edge class name) to
                 count of edge instances of given class connecting instances of two vertex classes.
             count_of_distinct_values: dict, (str, str) -> int, mapping vertex class name and field
-                name on that vertex class to the number of distinct values of the field for that
+                name on that vertex class to the count of distinct values of the field for that
                 vertex class.
             histograms: dict, (str, str) -> list[tuple(float, float, int)], mapping vertex class
                 name and field name on that vertex class to histogram.
@@ -130,7 +130,7 @@ class LocalStatistics(Statistics):
                         GraphQL schema.
 
         Returns:
-            - int, number of vertices and edges with, or inheriting the given class name
+            - int, the count of vertex and edges instances with, or inheriting the given class name
 
         Raises:
             AssertionError, if statistic for the given vertex/edge class does not exist.
@@ -138,12 +138,12 @@ class LocalStatistics(Statistics):
         if class_name not in self._class_counts:
             raise AssertionError(u'Class count statistic is required, but entry not found for: '
                                  u'{}'.format(class_name))
-        return self._class_counts.get(class_name)
+        return self._class_counts[class_name]
 
     def get_edge_count_between_vertex_pair(
         self, vertex_out_class_name, vertex_in_class_name, edge_class_name
     ):
-        """Return count of edges connecting two vertices.
+        """Return the count of edges connecting two vertices.
 
         This statistic is optional, as the estimator can roughly predict this cost using
         get_class_count(). In some cases of traversal between two vertices using an edge connecting
@@ -173,7 +173,7 @@ class LocalStatistics(Statistics):
             field_name: str, name of a vertex field.
 
         Returns:
-            - int, count of distinct values of that vertex field if the statistic exists
+            - int, the count of distinct values of that vertex field if the statistic exists
             - None otherwise
         """
         statistic_key = (vertex_name, field_name)
