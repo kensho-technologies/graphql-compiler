@@ -31,7 +31,7 @@ class Statistics(object):
                         GraphQL schema.
 
         Returns:
-            - int, the count of vertex and edge instances with, or inheriting the given class name
+            - int, the count of vertex or edge instances with, or inheriting the given class name
 
         Raises:
             AssertionError, if statistic for the given vertex/edge class does not exist.
@@ -130,7 +130,7 @@ class LocalStatistics(Statistics):
                         GraphQL schema.
 
         Returns:
-            - int, the count of vertex and edge instances with, or inheriting the given class name
+            - int, the count of vertex or edge instances with, or inheriting the given class name
 
         Raises:
             AssertionError, if statistic for the given vertex/edge class does not exist.
