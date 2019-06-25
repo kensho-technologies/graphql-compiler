@@ -29,7 +29,7 @@ MATCH_BACKENDS = {
 
 CYPHER_BACKENDS = {
     test_backend.NEO4J,
-    # test_backend.REDISGRAPH,
+    # TODO: Leon implement for test_backend.REDISGRAPH,
 }
 
 SQL_BACKEND_TO_CONNECTION_STRING = {

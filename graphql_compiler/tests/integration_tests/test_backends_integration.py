@@ -28,7 +28,7 @@ all_backends = parameterized.expand([
     test_backend.SQLITE,
     test_backend.MSSQL,
     test_backend.NEO4J,
-    # test_backend.REDISGRAPH,
+    # TODO: Leon implement for test_backend.REDISGRAPH,
 ])
 
 # Store the typical fixtures required for an integration tests.
