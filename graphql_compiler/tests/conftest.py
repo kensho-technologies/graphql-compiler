@@ -2,6 +2,7 @@
 import sys
 import time
 
+from funcy import retry
 import pytest
 import six
 
@@ -32,23 +33,10 @@ def init_integration_graph_client():
     return _init_graph_client(load_schema, generate_orient_integration_data)
 
 
+@retry(tries=20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_graph_client(load_schema_func, generate_data_func):
     graph_name = 'animals'
-
-    # Try to set up the database for the test up to 20 times before giving up.
-    set_up_successfully = False
-    for _ in range(20):
-        try:
-            graph_client = get_test_graph(graph_name, load_schema_func, generate_data_func)
-            set_up_successfully = True
-            break
-        except Exception as e:  # pylint: disable=broad-except
-            sys.stderr.write(u'Failed to set up test DB: {}'.format(e))
-            time.sleep(1)
-
-    if not set_up_successfully:
-        raise AssertionError(u'Failed to set up database without raising an exception!')
-
+    graph_client = get_test_graph(graph_name, load_schema_func, generate_data_func)
     return graph_client
 
 
@@ -58,26 +46,10 @@ def init_integration_neo4j_client():
     return _init_neo4j_client(generate_neo4j_integration_data)
 
 
+@retry(tries=20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_neo4j_client(generate_data_func):
-    # TODO Leon: this might be the same as _init_graph_client, consider the right abstraction.
-    #  don't prematurely change it now but think about it
-    # Try to set up the database for the test up to 20 times before giving up.
     graph_name = 'animals'
-
-    # Try to set up the database for the test up to 20 times before giving up.
-    set_up_successfully = False
-    for _ in range(20):
-        try:
-            neo4j_client = get_test_neo4j_graph(graph_name, generate_data_func)
-            set_up_successfully = True
-            break
-        except Exception as e:  # pylint: disable=broad-except
-            sys.stderr.write(u'Failed to set up test DB: {}'.format(e))
-            time.sleep(1)
-
-    if not set_up_successfully:
-        raise AssertionError(u'Failed to set up database without raising an exception!')
-
+    neo4j_client = get_test_neo4j_graph(graph_name, generate_data_func)
     return neo4j_client
 
 
