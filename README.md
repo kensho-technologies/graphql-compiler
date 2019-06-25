@@ -47,8 +47,10 @@ For a more detailed overview and getting started guide, please see
      * [name_or_alias](#name_or_alias)
      * [between](#between)
      * [in_collection](#in_collection)
+     * [not_in_collection](#not_in_collection)
      * [has_substring](#has_substring)
      * [contains](#contains)
+     * [not_contains](#not_contains)
      * [intersects](#intersects)
      * [has_edge_degree](#has_edge_degree)
   * [Type coercions](#type-coercions)
@@ -720,6 +722,23 @@ containing the `Animal`'s name and color in columns named `animal_name` and `col
 #### Constraints and Rules
 - Must be on a property field that is not of list type.
 
+### not_in_collection
+#### Example Use
+```graphql
+{
+    Animal {
+        name @output(out_name: "animal_name")
+        color @output(out_name: "color")
+              @filter(op_name: "not_in_collection", value: ["$colors"])
+    }
+}
+```
+This returns one row for every `Animal` which has a color not contained in a list of colors,
+containing the `Animal`'s name and color in columns named `animal_name` and `color`, respectively.
+
+#### Constraints and Rules
+- Must be on a property field that is not of list type.
+
 ### has_substring
 #### Example Use
 ```graphql
@@ -748,6 +767,23 @@ in a column named `animal_name`.
 }
 ```
 This returns one row for every `Animal` whose list of aliases contains the value supplied
+for the `$wanted` parameter. Each row contains the matching `Animal`'s name
+in a column named `animal_name`.
+
+#### Constraints and Rules
+- Must be on a property field of list type.
+
+### not_contains
+#### Example Use
+```graphql
+{
+    Animal {
+        alias @filter(op_name: "not_contains", value: ["$wanted"])
+        name @output(out_name: "animal_name")
+    }
+}
+```
+This returns one row for every `Animal` whose list of aliases does not contain the value supplied
 for the `$wanted` parameter. Each row contains the matching `Animal`'s name
 in a column named `animal_name`.
 
