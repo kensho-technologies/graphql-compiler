@@ -442,8 +442,8 @@ Consider the following query:
     }
 }
 ```
-It returns one row for every `Animal` that has a color equal to `$animal_color`,
-containing the animal's name in a column named `animal_name`. The parameter `$animal_color` is
+It returns one row for every `Animal` that has a color equal to `$animal_color`. Each row
+contains the animal's name in a column named `animal_name`. The parameter `$animal_color` is
 a runtime parameter -- the user must pass in a value (e.g. `{"animal_color": "blue"}`) that
 will be inserted into the query before querying the database.
 
@@ -645,7 +645,7 @@ Supported comparison operators:
 }
 ```
 This returns one row for every `Species` whose name is equal to the value of the `$species_name`
-parameter, containing the `uuid` of the `Species` in a column named `species_uuid`.
+parameter. Each row contains the `uuid` of the `Species` in a column named `species_uuid`.
 
 ##### Greater than or equal to (`>=`):
 ```
@@ -657,8 +657,8 @@ parameter, containing the `uuid` of the `Species` in a column named `species_uui
     }
 }
 ```
-This returns one row for every `Animal` that was born after or on a `$point_in_time`,
-containing the animal's name and birthday in columns named `name` and `birthday`, respectively.
+This returns one row for every `Animal` that was born after or on a `$point_in_time`.
+Each row contains the animal's name and birthday in columns named `name` and `birthday`, respectively.
 
 #### Constraints and Rules
 - All comparison operators must be on a property field.
@@ -676,8 +676,8 @@ Allows you to filter on vertices which contain the exact string `$wanted_name_or
     }
 }
 ```
-This returns one row for every `Animal` whose name and/or alias is equal to `$wanted_name_or_alias`,
-containing the animal's name in a column named `name`.
+This returns one row for every `Animal` whose name and/or alias is equal to `$wanted_name_or_alias`.
+Each row contains the animal's name in a column named `name`.
 
 The value provided for `$wanted_name_or_alias` must be the full name and/or alias of the `Animal`.
 Substrings will not be matched.
@@ -697,8 +697,8 @@ Substrings will not be matched.
 }
 ```
 This returns:
-- One row for every `Animal` whose birthday is in between `$lower` and `$upper` dates (inclusive),
-containing the animal's name in a column named `name`.
+- One row for every `Animal` whose birthday is in between `$lower` and `$upper` dates (inclusive).
+Each row contains the animal's name in a column named `name`.
 
 #### Constraints and Rules
 - Must be on a property field.
@@ -716,8 +716,8 @@ containing the animal's name in a column named `name`.
     }
 }
 ```
-This returns one row for every `Animal` which has a color contained in a list of colors,
-containing the `Animal`'s name and color in columns named `animal_name` and `color`, respectively.
+This returns one row for every `Animal` which has a color contained in a list of colors.
+Each row contains the `Animal`'s name and color in columns named `animal_name` and `color`, respectively.
 
 #### Constraints and Rules
 - Must be on a property field that is not of list type.
@@ -733,8 +733,8 @@ containing the `Animal`'s name and color in columns named `animal_name` and `col
     }
 }
 ```
-This returns one row for every `Animal` which has a color not contained in a list of colors,
-containing the `Animal`'s name and color in columns named `animal_name` and `color`, respectively.
+This returns one row for every `Animal` which has a color not contained in a list of colors.
+Each row contains the `Animal`'s name and color in columns named `animal_name` and `color`, respectively.
 
 #### Constraints and Rules
 - Must be on a property field that is not of list type.
@@ -966,7 +966,7 @@ insert_meta_fields_into_existing_schema(existing_schema)
     }
 }
 ```
-This query returns one row for each `Animal` vertex, containing its name, and the number and names
+This query returns one row for each `Animal` vertex. Each row contains its name, and the number and names
 of its children. While the output type of the `child_names` selection is a list of strings,
 the output type of the `number_of_children` selection is an integer.
 
