@@ -24,7 +24,7 @@ class Statistics(object):
 
     @abstractmethod
     def get_class_count(self, class_name):
-        """Return how many vertex and edge instances have, or inherit, the given class name.
+        """Return how many vertex or edge instances have, or inherit, the given class name.
 
         Args:
             class_name: str, either a vertex class name or an edge class name defined in the
@@ -123,7 +123,7 @@ class LocalStatistics(Statistics):
         self._histograms = histograms
 
     def get_class_count(self, class_name):
-        """Return how many vertex and edge instances have, or inherit, the given class name.
+        """Return how many vertex or edge instances have, or inherit, the given class name.
 
         Args:
             class_name: str, either a vertex class name or an edge class name defined in the
