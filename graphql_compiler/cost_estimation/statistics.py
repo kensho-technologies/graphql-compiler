@@ -24,14 +24,14 @@ class Statistics(object):
 
     @abstractmethod
     def get_class_count(self, class_name):
-        """Return how many object instances have, or inherit, the given class name.
+        """Return how many vertex and edge instances have, or inherit, the given class name.
 
         Args:
             class_name: str, either a vertex class name or an edge class name defined in the
                         GraphQL schema.
 
         Returns:
-            - int, number of objects with, or inheriting the given class name
+            - int, number of vertices and edges with, or inheriting the given class name
 
         Raises:
             AssertionError, if statistic for the given vertex/edge class does not exist.
@@ -42,11 +42,12 @@ class Statistics(object):
     def get_edge_count_between_vertex_pair(
         self, vertex_out_class_name, vertex_in_class_name, edge_class_name
     ):
-        """Return count of edge instances of given class connecting instances of two vertex classes.
-
-        This statistic helps when predicting expansion size between two vertices using edges
-        connecting the vertices' superclasses. If this statistic isn't available, it can be roughly
-        estimated using multiple calls of get_class_count().
+        """Return count of edges connecting two vertices.
+	
+		This statistic is optional, as the estimator can roughly predict this cost using 
+		get_class_count(). In some cases of traversal between two vertices using an edge connecting 
+		the vertices' superclasses, the estimates generated using get_class_count() may be off by
+		several orders of magnitude. In such cases, this statistic should be provided.
 
         Args:
             vertex_out_class_name: str, vertex class name.
@@ -60,7 +61,7 @@ class Statistics(object):
         return None
 
     @abstractmethod
-    def get_count_of_distinct_field_values(self, vertex_name, field_name):
+    def get_distinct_field_values_count(self, vertex_name, field_name):
         """Return the count of distinct values the given vertex field has over all vertex instances.
 
         This statistic helps estimate the result size of @filter directives used to restrict
@@ -122,17 +123,17 @@ class LocalStatistics(Statistics):
         self._histograms = histograms
 
     def get_class_count(self, class_name):
-        """Return how many object instances have, or inherit, the given class name.
+        """Return how many vertex and edge instances have, or inherit, the given class name.
 
         Args:
             class_name: str, either a vertex class name or an edge class name defined in the
                         GraphQL schema.
 
         Returns:
-            - int, number of objects with, or inheriting the given class name
+            - int, number of vertices and edges with, or inheriting the given class name
 
         Raises:
-            AssertionError, if statistic for class_name does not exist.
+            AssertionError, if statistic for the given vertex/edge class does not exist.
         """
         if class_name not in self._class_counts:
             raise AssertionError(u'Class count statistic is required, but entry not found for: '
@@ -142,11 +143,12 @@ class LocalStatistics(Statistics):
     def get_edge_count_between_vertex_pair(
         self, vertex_out_class_name, vertex_in_class_name, edge_class_name
     ):
-        """Return count of edge instances of given class connecting instances of two vertex classes.
-
-        This statistic helps when predicting expansion size between two vertices using edges
-        connecting the vertices' superclasses. If this statistic isn't available, it can be roughly
-        estimated using multiple calls of get_class_count().
+        """Return count of edges connecting two vertices.
+	
+		This statistic is optional, as the estimator can roughly predict this cost using 
+		get_class_count(). In some cases of traversal between two vertices using an edge connecting 
+		the vertices' superclasses, the estimates generated using get_class_count() may be off by
+		several orders of magnitude. In such cases, this statistic should be provided.
 
         Args:
             vertex_out_class_name: str, vertex class name.
@@ -160,7 +162,7 @@ class LocalStatistics(Statistics):
         statistic_key = (vertex_in_class_name, vertex_out_class_name, edge_class_name)
         return self._edge_count_between_vertex_pairs.get(statistic_key)
 
-    def get_count_of_distinct_field_values(self, vertex_name, field_name):
+    def get_distinct_field_values_count(self, vertex_name, field_name):
         """Return the count of distinct values the given vertex field has over all vertex instances.
 
         This statistic helps estimate the result size of @filter directives used to restrict
