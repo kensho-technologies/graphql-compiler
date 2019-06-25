@@ -43,11 +43,11 @@ class Statistics(object):
         self, vertex_out_class_name, vertex_in_class_name, edge_class_name
     ):
         """Return count of edges connecting two vertices.
-	
-		This statistic is optional, as the estimator can roughly predict this cost using 
-		get_class_count(). In some cases of traversal between two vertices using an edge connecting 
-		the vertices' superclasses, the estimates generated using get_class_count() may be off by
-		several orders of magnitude. In such cases, this statistic should be provided.
+
+        This statistic is optional, as the estimator can roughly predict this cost using
+        get_class_count(). In some cases of traversal between two vertices using an edge connecting
+        the vertices' superclasses, the estimates generated using get_class_count() may be off by
+        several orders of magnitude. In such cases, this statistic should be provided.
 
         Args:
             vertex_out_class_name: str, vertex class name.
@@ -144,11 +144,11 @@ class LocalStatistics(Statistics):
         self, vertex_out_class_name, vertex_in_class_name, edge_class_name
     ):
         """Return count of edges connecting two vertices.
-	
-		This statistic is optional, as the estimator can roughly predict this cost using 
-		get_class_count(). In some cases of traversal between two vertices using an edge connecting 
-		the vertices' superclasses, the estimates generated using get_class_count() may be off by
-		several orders of magnitude. In such cases, this statistic should be provided.
+
+        This statistic is optional, as the estimator can roughly predict this cost using
+        get_class_count(). In some cases of traversal between two vertices using an edge connecting
+        the vertices' superclasses, the estimates generated using get_class_count() may be off by
+        several orders of magnitude. In such cases, this statistic should be provided.
 
         Args:
             vertex_out_class_name: str, vertex class name.
