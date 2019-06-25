@@ -11,9 +11,9 @@ from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX
 from ...tests import test_backend
 from ...tests.test_helpers import generate_schema, generate_schema_graph
 from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
-from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS, CYPHER_BACKENDS
+from .integration_backend_config import CYPHER_BACKENDS, MATCH_BACKENDS, SQL_BACKENDS
 from .integration_test_helpers import (
-    compile_and_run_match_query, compile_and_run_sql_query, compile_and_run_cypher_query,
+    compile_and_run_cypher_query, compile_and_run_match_query, compile_and_run_sql_query,
     sort_db_results
 )
 

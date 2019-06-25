@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import six
 
-from ... import graphql_to_match, graphql_to_sql, graphql_to_cypher
+from ... import graphql_to_cypher, graphql_to_match, graphql_to_sql
 from ...compiler.ir_lowering_sql.metadata import SqlMetadata
 
 

@@ -1,15 +1,13 @@
 # Copyright 2018-present Kensho Technologies, LLC.
-import sys
-import time
 
 from funcy import retry
 import pytest
 import six
 
 from .test_data_tools.data_tool import (
-    generate_orient_integration_data, generate_orient_snapshot_data, generate_sql_integration_data,
-    generate_neo4j_integration_data, init_sql_integration_test_backends,
-    tear_down_integration_test_backends,
+    generate_neo4j_integration_data, generate_orient_integration_data,
+    generate_orient_snapshot_data, generate_sql_integration_data,
+    init_sql_integration_test_backends, tear_down_integration_test_backends
 )
 from .test_data_tools.graph import get_test_graph
 from .test_data_tools.neo4j import get_test_neo4j_graph
