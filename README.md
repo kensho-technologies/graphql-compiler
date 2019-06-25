@@ -442,7 +442,7 @@ Consider the following query:
     }
 }
 ```
-It returns one row for every `Animal` that has a color equal to `$animal_color`. Each row
+It returns one row for every `Animal` vertex that has a color equal to `$animal_color`. Each row
 contains the animal's name in a column named `animal_name`. The parameter `$animal_color` is
 a runtime parameter -- the user must pass in a value (e.g. `{"animal_color": "blue"}`) that
 will be inserted into the query before querying the database.
