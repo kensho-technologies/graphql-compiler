@@ -235,4 +235,3 @@ def graphql_to_cypher(schema, graphql_query, parameters, type_equivalence_hints=
         schema, graphql_query, type_equivalence_hints=type_equivalence_hints)
     return compilation_result._replace(
         query=insert_arguments_into_query(compilation_result, parameters))
-

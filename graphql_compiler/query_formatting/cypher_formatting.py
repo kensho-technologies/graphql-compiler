@@ -4,7 +4,6 @@ import json
 from string import Template
 
 import arrow
-
 from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 import six
 
@@ -12,7 +11,7 @@ from ..compiler import CYPHER_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
-from .representations import represent_float_as_str, type_check_and_str, coerce_to_decimal
+from .representations import coerce_to_decimal, represent_float_as_str, type_check_and_str
 
 
 def _safe_cypher_string(argument_value):
@@ -95,7 +94,7 @@ def _safe_cypher_argument(expected_type, argument_value):
         return _safe_cypher_date_and_datetime(expected_type, (datetime.date,), argument_value)
     elif GraphQLDateTime.is_same_type(expected_type):
         return _safe_cypher_date_and_datetime(expected_type,
-                                             (datetime.datetime, arrow.Arrow), argument_value)
+                                              (datetime.datetime, arrow.Arrow), argument_value)
     elif isinstance(expected_type, GraphQLList):
         return _safe_cypher_list(expected_type.of_type, argument_value)
     else:
@@ -116,7 +115,7 @@ def insert_arguments_into_cypher_query(compilation_result, arguments):
         arguments: Dict[str, Any], parameter name -> value, for every parameter the query expects.
 
     Returns:
-        string, a Cypher query with  with inserted argument data.
+        string, a Cypher query with inserted argument data.
     """
     if compilation_result.language != CYPHER_LANGUAGE:
         raise AssertionError(u'Unexpected query output language: {}'.format(compilation_result))
