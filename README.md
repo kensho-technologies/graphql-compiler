@@ -657,7 +657,7 @@ parameter. Each row contains the `uuid` of the `Species` in a column named `spec
     }
 }
 ```
-This returns one row for every `Animal` that was born after or on a `$point_in_time`.
+This returns one row for every `Animal` vertex that was born after or on a `$point_in_time`.
 Each row contains the animal's name and birthday in columns named `name` and `birthday`, respectively.
 
 #### Constraints and Rules
@@ -676,7 +676,7 @@ Allows you to filter on vertices which contain the exact string `$wanted_name_or
     }
 }
 ```
-This returns one row for every `Animal` whose name and/or alias is equal to `$wanted_name_or_alias`.
+This returns one row for every `Animal` vertex whose name and/or alias is equal to `$wanted_name_or_alias`.
 Each row contains the animal's name in a column named `name`.
 
 The value provided for `$wanted_name_or_alias` must be the full name and/or alias of the `Animal`.
@@ -697,7 +697,7 @@ Substrings will not be matched.
 }
 ```
 This returns:
-- One row for every `Animal` whose birthday is in between `$lower` and `$upper` dates (inclusive).
+- One row for every `Animal` vertex whose birthday is in between `$lower` and `$upper` dates (inclusive).
 Each row contains the animal's name in a column named `name`.
 
 #### Constraints and Rules
@@ -716,7 +716,7 @@ Each row contains the animal's name in a column named `name`.
     }
 }
 ```
-This returns one row for every `Animal` which has a color contained in a list of colors.
+This returns one row for every `Animal` vertex which has a color contained in a list of colors.
 Each row contains the `Animal`'s name and color in columns named `animal_name` and `color`, respectively.
 
 #### Constraints and Rules
@@ -733,7 +733,7 @@ Each row contains the `Animal`'s name and color in columns named `animal_name` a
     }
 }
 ```
-This returns one row for every `Animal` which has a color not contained in a list of colors.
+This returns one row for every `Animal` vertex which has a color not contained in a list of colors.
 Each row contains the `Animal`'s name and color in columns named `animal_name` and `color`, respectively.
 
 #### Constraints and Rules
@@ -749,7 +749,7 @@ Each row contains the `Animal`'s name and color in columns named `animal_name` a
     }
 }
 ```
-This returns one row for every `Animal` whose name contains the value supplied
+This returns one row for every `Animal` vertex whose name contains the value supplied
 for the `$substring` parameter. Each row contains the matching `Animal`'s name
 in a column named `animal_name`.
 
@@ -766,7 +766,7 @@ in a column named `animal_name`.
     }
 }
 ```
-This returns one row for every `Animal` whose list of aliases contains the value supplied
+This returns one row for every `Animal` vertex whose list of aliases contains the value supplied
 for the `$wanted` parameter. Each row contains the matching `Animal`'s name
 in a column named `animal_name`.
 
@@ -783,7 +783,7 @@ in a column named `animal_name`.
     }
 }
 ```
-This returns one row for every `Animal` whose list of aliases does not contain the value supplied
+This returns one row for every `Animal` vertex whose list of aliases does not contain the value supplied
 for the `$wanted` parameter. Each row contains the matching `Animal`'s name
 in a column named `animal_name`.
 
@@ -800,7 +800,7 @@ in a column named `animal_name`.
     }
 }
 ```
-This returns one row for every `Animal` whose list of aliases has a non-empty intersection
+This returns one row for every `Animal` vertex whose list of aliases has a non-empty intersection
 with the list of values supplied for the `$wanted` parameter.
 Each row contains the matching `Animal`'s name in a column named `animal_name`.
 
@@ -820,7 +820,7 @@ Each row contains the matching `Animal`'s name in a column named `animal_name`.
     }
 }
 ```
-This returns one row for every `Animal` that has exactly `$child_count` children
+This returns one row for every `Animal` vertex that has exactly `$child_count` children
 (i.e. where the `out_Animal_ParentOf` edge appears exactly `$child_count` times).
 Each row contains the matching `Animal`'s name, in a column named `animal_name`.
 
