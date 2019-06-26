@@ -281,8 +281,8 @@ def get_sql_metadata():
         'Animal',
         sqlalchemy_metadata,
         sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
-        sqlalchemy.Column('net_worth', sqlalchemy.Integer, nullable=False),
         sqlalchemy.Column('name', sqlalchemy.String(length=12), nullable=False),
+        sqlalchemy.Column('net_worth', sqlalchemy.Integer, nullable=False),
         sqlalchemy.Column('birthday', sqlalchemy.Date, nullable=False),
         sqlalchemy.Column('parent', sqlalchemy.Integer, nullable=True),
     )

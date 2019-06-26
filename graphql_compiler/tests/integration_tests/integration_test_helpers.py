@@ -50,10 +50,9 @@ def compile_and_run_match_query(schema, graphql_query, parameters, graph_client)
     return results
 
 
-def compile_and_run_sql_query(schema, graphql_query, parameters, engine, metadata):
+def compile_and_run_sql_query(schema, graphql_query, parameters, engine, sql_metadata):
     """Compiles and runs a SQL query against the supplied SQL backend."""
     dialect_name = engine.dialect.name
-    sql_metadata = SqlMetadata(dialect_name, metadata)
     compilation_result = graphql_to_sql(schema, graphql_query, parameters, sql_metadata, None)
     query = compilation_result.query
     results = []

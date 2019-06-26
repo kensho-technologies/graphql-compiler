@@ -7,7 +7,10 @@ from os import path
 from funcy import retry
 import six
 from sqlalchemy import Column, Date, DateTime, MetaData, Numeric, String, Table, create_engine, text
+from sqlalchemy.schema import CreateSchema
 
+from ...compiler.ir_lowering_sql.metadata import SqlMetadata
+from ..test_helpers import get_sql_metadata
 from ..integration_tests.integration_backend_config import (
     EXPLICIT_DB_BACKENDS, SQL_BACKEND_TO_CONNECTION_STRING, SqlTestBackend
 )
@@ -55,9 +58,10 @@ def init_sql_integration_test_backends():
             # create the test DB, outside of a transaction (autocommit)
             create_database_command = text('CREATE DATABASE animals;')
             engine.execution_options(isolation_level='AUTOCOMMIT').execute(create_database_command)
-            # update the connection string and engine to connect to this new DB specifically
-            connection_string = base_connection_string + u'/animals'
-            engine = create_engine(connection_string)
+
+            # Create schema_1 inside Animals database
+            animals_engine = create_engine(base_connection_string + u'/animals')
+            animals_engine.execution_options(isolation_level='AUTOCOMMIT').execute(CreateSchema('schema_1'))
         sql_test_backend = SqlTestBackend(engine, base_connection_string)
         sql_test_backends[backend_name] = sql_test_backend
     return sql_test_backends
@@ -75,13 +79,13 @@ def tear_down_integration_test_backends(sql_test_backends):
         engine = create_engine(sql_test_backend.base_connection_string)
         # set execution options to AUTOCOMMIT so that the DB drop is not performed in a transaction
         # as this is not allowed on some SQL backends
-        drop_database_command = text('DROP DATABASE IF EXISTS animals;')
-        engine.execution_options(isolation_level='AUTOCOMMIT').execute(drop_database_command)
+        engine.execution_options(isolation_level='AUTOCOMMIT').execute('DROP DATABASE IF EXISTS Animals;')
 
 
 def generate_sql_integration_data(sql_test_backends):
     """Populate test data for SQL backends for integration testing."""
-    table_name_to_table, metadata = get_animal_schema_sql_metadata()
+    tables, joins = get_sql_metadata()
+    sql_metadata = SqlMetadata(tables, joins)
     animal_rows = (
         (
             'cfc6e625-8594-0927-468f-f53d864a7a51',
@@ -109,16 +113,16 @@ def generate_sql_integration_data(sql_test_backends):
         ),
     )
     table_values = [
-        (table_name_to_table['animal'], animal_rows),
+        (tables['Animal'], animal_rows),
     ]
     for sql_test_backend in six.itervalues(sql_test_backends):
-        metadata.drop_all(sql_test_backend.engine)
-        metadata.create_all(sql_test_backend.engine)
         for table, insert_values in table_values:
+            table.delete(bind=sql_test_backend.engine)
+            table.create(bind=sql_test_backend.engine)
             for insert_value in insert_values:
                 sql_test_backend.engine.execute(table.insert(insert_value))
 
-    return metadata
+    return sql_metadata
 
 
 def get_animal_schema_sql_metadata():

@@ -75,10 +75,12 @@ def sql_integration_data(request):
     }
     request.cls.sql_metadata = sql_metadata
     # yield the fixture to allow testing class to run
-    yield
-    # tear down the fixture after the testing class runs all tests
-    # including rolling back transaction to ensure all fixture data removed.
-    tear_down_integration_test_backends(sql_test_backends)
+    try:
+        yield
+    finally:
+        # tear down the fixture after the testing class runs all tests
+        # including rolling back transaction to ensure all fixture data removed.
+        tear_down_integration_test_backends(sql_test_backends)
 
 
 def pytest_addoption(parser):

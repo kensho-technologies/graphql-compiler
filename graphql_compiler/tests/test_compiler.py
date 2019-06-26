@@ -204,7 +204,7 @@ class CompilerTests(unittest.TestCase):
                 related_name: m.Animal__out_Entity_Related___1.name
             ])}
         '''
-        expected_sql = SKIP_TEST  # Not implemented
+        expected_sql = NotImplementedError  # Not implemented: Needs junction tables.
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -232,7 +232,7 @@ class CompilerTests(unittest.TestCase):
                 related_name: m.Animal__out_Entity_Related___1.name
             ])}
         '''
-        expected_sql = SKIP_TEST  # Not implemented
+        expected_sql = NotImplementedError  # Not implemented: Needs junction tables.
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -2225,7 +2225,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         # the alias list valued column is not yet supported by the SQL backend
-        expected_sql = SKIP_TEST
+        expected_sql = NotImplementedError
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 
@@ -2346,7 +2346,7 @@ class CompilerTests(unittest.TestCase):
         '''
 
         # the alias list valued column is not yet supported by the SQL backend
-        expected_sql = SKIP_TEST
+        expected_sql = NotImplementedError
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql)
 

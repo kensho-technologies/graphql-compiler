@@ -21,10 +21,10 @@ from .integration_test_helpers import (
 # the list of backends to test against with the full @parametrized.expand([...]) decorator.
 all_backends = parameterized.expand([
     test_backend.ORIENTDB,
-    test_backend.POSTGRES,
-    test_backend.MARIADB,
-    test_backend.MYSQL,
-    test_backend.SQLITE,
+    # test_backend.POSTGRES,
+    # test_backend.MARIADB,
+    # test_backend.MYSQL,
+    # test_backend.SQLITE,
     test_backend.MSSQL,
 ])
 
