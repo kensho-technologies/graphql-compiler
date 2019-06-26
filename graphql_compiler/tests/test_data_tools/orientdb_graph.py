@@ -16,7 +16,7 @@ def get_orientdb_url(database_name):
     return template.format(ORIENTDB_SERVER, database_name)
 
 
-def get_test_graph(graph_name, load_schema_func, generate_data_func):
+def get_test_orientdb_graph(graph_name, load_schema_func, generate_data_func):
     """Generate the test database and return the pyorient client."""
     url = get_orientdb_url(graph_name)
     config = Config.from_url(url, ORIENTDB_USER, ORIENTDB_PASSWORD, initial_drop=True)
