@@ -272,18 +272,18 @@ def get_schema():
     return schema
 
 
-def generate_schema_graph(graph_client):
+def generate_schema_graph(orientdb_client):
     """Generate SchemaGraph from a pyorient client"""
-    schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+    schema_records = orientdb_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
-    index_records = graph_client.command(ORIENTDB_INDEX_RECORDS_QUERY)
+    index_records = orientdb_client.command(ORIENTDB_INDEX_RECORDS_QUERY)
     index_query_data = [x.oRecordData for x in index_records]
     return get_orientdb_schema_graph(schema_data, index_query_data)
 
 
-def generate_schema(graph_client, class_to_field_type_overrides=None, hidden_classes=None):
+def generate_schema(orientdb_client, class_to_field_type_overrides=None, hidden_classes=None):
     """Generate schema and type equivalence dict from a pyorient client"""
-    schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+    schema_records = orientdb_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
     return get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_type_overrides,
                                                         hidden_classes)
