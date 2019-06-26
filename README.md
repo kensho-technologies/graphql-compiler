@@ -230,6 +230,35 @@ the `@optional` does not apply, and that value is then checked against the filte
 coercion. These subsequent operations may then cause the result set to be discarded if it does
 not match.
 
+For example, suppose we have two `Person` vertices with names `Albert` and `Betty` such that there is a `Person_Knows` edge from `Albert` to `Betty`.
+
+Then the following query:
+```graphql
+{
+  Person {
+    out_Person_Knows @optional {
+      name @filter(op_name: "=", value: ["$name"])
+    }
+    name @output(out_name: "person_name")
+  }
+}
+```
+with runtime parameter
+```python
+{
+  "name": "Charles"
+}
+```
+would output an empty list because the `Person_Knows` edge from `Albert` to `Betty` satisfies the `@optional` directive, but `Betty` doesn't match the filter checking for a node with name `Charles`.
+
+However, if no such `Person_Knows` edge existed from `Albert`, then the output would be
+```python
+{
+  name: 'Albert'
+}
+```
+because no such edge can satisfy the `@optional` directive, and no filtering happens.
+
 ### @output
 
 Denotes that the value of a property field should be included in the output.
