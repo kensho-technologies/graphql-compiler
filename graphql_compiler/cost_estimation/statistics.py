@@ -101,22 +101,29 @@ class Statistics(object):
 class LocalStatistics(Statistics):
     """Provides statistics using ones given at initialization."""
     def __init__(
-        self, class_counts, edge_count_between_vertex_pairs, count_of_distinct_field_values,
-        histograms
+        self, class_counts, edge_count_between_vertex_pairs=None,
+        count_of_distinct_field_values=None, histograms=None
     ):
         """Initializes statistics with the given data.
 
         Args:
             class_counts: dict, str -> int, mapping vertex/edge class name to class count.
-            edge_count_between_vertex_pairs: dict, (str, str, str) -> int,
+            edge_count_between_vertex_pairs: optional dict, (str, str, str) -> int,
                 mapping tuple of (vertex out class name, vertex in class name, edge class name) to
                 count of edge instances of given class connecting instances of two vertex classes.
-            count_of_distinct_values: dict, (str, str) -> int, mapping vertex class name and field
-                name on that vertex class to the count of distinct values of the field for that
-                vertex class.
-            histograms: dict, (str, str) -> list[tuple(float, float, int)], mapping vertex class
-                name and field name on that vertex class to histogram.
+            count_of_distinct_values: optional dict, (str, str) -> int, mapping vertex class name
+                and field name on that vertex class to the count of distinct values of the field for
+                that vertex class.
+            histograms:optional dict, (str, str) -> list[tuple(float, float, int)], mapping vertex
+                class name and field name on that vertex class to histogram.
         """
+        if edge_count_between_vertex_pairs is None:
+            edge_count_between_vertex_pairs = dict()
+        if count_of_distinct_field_values is None:
+            count_of_distinct_field_values = dict()
+        if histograms is None:
+            histograms = dict()
+
         self._class_counts = class_counts
         self._edge_count_between_vertex_pairs = edge_count_between_vertex_pairs
         self._count_of_distinct_field_values = count_of_distinct_field_values
@@ -159,7 +166,7 @@ class LocalStatistics(Statistics):
             - int, the count of edges if the statistic exists
             - None otherwise
         """
-        statistic_key = (vertex_in_class_name, vertex_out_class_name, edge_class_name)
+        statistic_key = (vertex_out_class_name, vertex_in_class_name, edge_class_name)
         return self._edge_count_between_vertex_pairs.get(statistic_key)
 
     def get_distinct_field_values_count(self, vertex_name, field_name):

@@ -82,6 +82,75 @@ def _get_parent_and_child_name_from_edge(schema_graph, child_location):
     return parent_name_from_edge, child_name_from_edge
 
 
+def _get_outbound_and_inbound_names_from_locations(query_metadata, child_location, parent_location):
+    """Get the out and in classnames of a location and its parent from the last edge information."""
+    edge_direction, _ = _get_last_edge_direction_and_name_to_location(child_location)
+    parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
+    child_name_from_location = query_metadata.get_location_info(child_location).type.name
+    if edge_direction == INBOUND_EDGE_DIRECTION:
+        outbound_vertex_name = child_name_from_location
+        inbound_vertex_name = parent_name_from_location
+    elif edge_direction == OUTBOUND_EDGE_DIRECTION:
+        outbound_vertex_name = parent_name_from_location
+        inbound_vertex_name = child_name_from_location
+    return outbound_vertex_name, inbound_vertex_name
+
+
+def _probe_statistics_for_edge_count_between_vertex_pair(
+    statistics, query_metadata, child_location, parent_location
+):
+    """Probe statistics for the count of edges connecting two vertex classes."""
+    _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
+    outbound_vertex_name, inbound_vertex_name = _get_outbound_and_inbound_names_from_locations(
+        query_metadata, child_location, parent_location
+    )
+    probe_result = statistics.get_edge_count_between_vertex_pair(
+        outbound_vertex_name, inbound_vertex_name, edge_name
+    )
+    return probe_result
+
+
+def _estimate_edge_count_between_vertex_pair_using_class_count(
+    schema_graph, statistics, query_metadata, child_location, parent_location
+):
+    """Estimate the count of edges connecting two vertex classes via the class_count statistic.
+
+    Given a parent location of type A and a child location of type B, we estimate the number of AB
+    edges using class counts. If A and B are subclasses of C and D respectively, we only have access
+    to CD edges, so in general, we'll use (# of CD edges) / (# of C vertices), but since we're only
+    interested in edges to Bs, we'll scale this result by the fraction of Bs over Ds.
+
+    Args:
+        schema_graph: SchemaGraph object
+        statistics: Statistics object
+        query_metadata: QueryMetadataTable object
+        child_location: BaseLocation object
+        parent_location: BaseLocation object
+    """
+    _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
+    edge_counts = statistics.get_class_count(edge_name)
+
+    parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
+    child_name_from_location = query_metadata.get_location_info(child_location).type.name
+    parent_name_from_edge, child_name_from_edge = _get_parent_and_child_name_from_edge(
+        schema_graph, child_location
+    )
+    # Scale edge_counts if child_location's type is a subclass of the edge's endpoint type.
+    if child_name_from_location != child_name_from_edge:
+        edge_counts *= (
+            float(statistics.get_class_count(child_name_from_location)) /
+            statistics.get_class_count(child_name_from_edge)
+        )
+    # Scale edge_counts if parent_location's type is a subclass of the edge's endpoint type.
+    if parent_name_from_location != parent_name_from_edge:
+        edge_counts *= (
+            float(statistics.get_class_count(parent_name_from_location)) /
+            statistics.get_class_count(parent_name_from_edge)
+        )
+
+    return edge_counts
+
+
 def _estimate_children_per_parent(
     schema_graph, statistics, query_metadata, parameters, child_location, parent_location
 ):
@@ -89,9 +158,7 @@ def _estimate_children_per_parent(
 
     Given a parent location of type A and child location of type B, assume all AB edges are
     distributed evenly over A vertices, so the expected number of child edges per parent vertex is
-    (# of AB edges) / (# of A vertices). If A and B are subclasses of C and D respectively, we only
-    have access to CD edges, so in general, we'll use (# of CD edges) / (# of C vertices), but since
-    we're only interested in edges to Bs, we'll scale this result by the fraction of Bs over Ds.
+    (# of AB edges) / (# of A vertices).
 
     Args:
         schema_graph: SchemaGraph object
@@ -99,33 +166,28 @@ def _estimate_children_per_parent(
         query_metadata: QueryMetadataTable object
         parameters: dict, parameters with which query will be executed
         child_location: BaseLocation object
+        parent_location: BaseLocation object
 
     Returns:
         float, expected number of child_location vertices connected to each parent_location vertex.
     """
-    # Count the number of edges between child_location and parent_location type vertices.
-    _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
-    # TODO(evan): If edge is recursed over, we need a more detailed statistic
-    # TODO(vlad): Use get_edge_count_between_vertex_pair statistic
-    edge_counts = statistics.get_class_count(edge_name)
-
-    # Scale edge_counts if child_location's type is a subclass of the edge's endpoint type.
-    parent_name_from_edge, child_name_from_edge = _get_parent_and_child_name_from_edge(
-        schema_graph, child_location
+    edge_counts = _probe_statistics_for_edge_count_between_vertex_pair(
+        statistics, query_metadata, child_location, parent_location
     )
-    child_name_from_location = query_metadata.get_location_info(child_location).type.name
-    if child_name_from_edge != child_name_from_location:
-        edge_counts *= (
-            float(statistics.get_class_count(child_name_from_location)) /
-            statistics.get_class_count(child_name_from_edge)
+
+    if not edge_counts:
+        edge_counts = _estimate_edge_count_between_vertex_pair_using_class_count(
+            schema_graph, statistics, query_metadata, child_location, parent_location
         )
 
+    parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     # Count the number of parents, over which we assume the edges are uniformly distributed.
-    parent_counts = statistics.get_class_count(parent_name_from_edge)
+    parent_location_counts = statistics.get_class_count(parent_name_from_location)
 
     # TODO(evan): edges are not necessarily uniformly distributed, so record more statistics
-    child_counts_per_parent = float(edge_counts) / parent_counts
+    child_counts_per_parent = float(edge_counts) / parent_location_counts
 
+    # TODO(evan): If edge is recursed over, we need a more detailed statistic
     # Recursion always starts with depth = 0, so we should treat the parent result set itself as a
     # child result set to be expanded (so add 1 to child_counts).
     is_recursive = _is_subexpansion_recursive(query_metadata, child_location, parent_location)
@@ -133,6 +195,7 @@ def _estimate_children_per_parent(
         child_counts_per_parent += 1
 
     # Adjust the counts for filters at child_location.
+    child_name_from_location = query_metadata.get_location_info(child_location).type.name
     child_filters = query_metadata.get_filter_infos(child_location)
     child_counts_per_parent = adjust_counts_for_filters(
         schema_graph, statistics, child_filters, parameters, child_name_from_location,
