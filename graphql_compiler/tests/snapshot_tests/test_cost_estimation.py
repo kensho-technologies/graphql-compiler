@@ -33,10 +33,10 @@ class CostEstimationTests(unittest.TestCase):
             'Animal': 3,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -57,10 +57,10 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_ParentOf': 5,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -85,10 +85,10 @@ class CostEstimationTests(unittest.TestCase):
             'FoodOrSpecies': 14,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -132,10 +132,10 @@ class CostEstimationTests(unittest.TestCase):
             'BirthEvent': 17
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -172,10 +172,10 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_FedAt': 3,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -217,10 +217,10 @@ class CostEstimationTests(unittest.TestCase):
             'Species': 97,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -242,10 +242,10 @@ class CostEstimationTests(unittest.TestCase):
             'Species_Eats': 17,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -278,10 +278,10 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_FedAt': 3,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -322,10 +322,10 @@ class CostEstimationTests(unittest.TestCase):
             'Species_Eats': 5,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -347,10 +347,10 @@ class CostEstimationTests(unittest.TestCase):
             'Species_Eats': 17,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -379,10 +379,10 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_ParentOf': 11,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -416,10 +416,10 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_BornAt': 13,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -452,10 +452,10 @@ class CostEstimationTests(unittest.TestCase):
             'Animal': 3,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -494,10 +494,10 @@ class CostEstimationTests(unittest.TestCase):
             'FeedingEvent': 11,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -529,10 +529,10 @@ class CostEstimationTests(unittest.TestCase):
             'Animal': 3,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -572,10 +572,10 @@ class CostEstimationTests(unittest.TestCase):
             'FeedingEvent': 6,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -619,10 +619,10 @@ class CostEstimationTests(unittest.TestCase):
             'FeedingEvent': 6,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -665,10 +665,10 @@ class CostEstimationTests(unittest.TestCase):
             'FeedingEvent': 6,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -712,10 +712,10 @@ class CostEstimationTests(unittest.TestCase):
             'FeedingEvent': 6,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -754,10 +754,10 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_BornAt': 13,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -794,10 +794,10 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_BornAt': 13,
         }
         statistics = LocalStatistics(
-            class_count=count_data,
-            edge_count_between_vertex_pair=dict(),
-            domain_count=dict(),
-            histogram=dict()
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -866,10 +866,10 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.graph_client)
         classname = 'Animal'
 
-        empty_statistics = LocalStatistics(class_count=dict(),
-                                           edge_count_between_vertex_pair=dict(),
-                                           domain_count=dict(),
-                                           histogram=dict())
+        empty_statistics = LocalStatistics(class_counts=dict(),
+                                           edge_count_between_vertex_pairs=dict(),
+                                           count_of_distinct_field_values=dict(),
+                                           histograms=dict())
         params = dict()
 
         # If we '='-filter on a property that isn't an index return a fractional selectivity of 1.
@@ -903,10 +903,10 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
     def test_get_in_collection_filter_selectivity(self):
         schema_graph = generate_schema_graph(self.graph_client)
         classname = 'Animal'
-        empty_statistics = LocalStatistics(class_count=dict(),
-                                           edge_count_between_vertex_pair=dict(),
-                                           domain_count=dict(),
-                                           histogram=dict())
+        empty_statistics = LocalStatistics(class_counts=dict(),
+                                           edge_count_between_vertex_pairs=dict(),
+                                           count_of_distinct_field_values=dict(),
+                                           histograms=dict())
 
         nonunique_filter = FilterInfo(fields=('birthday',), op_name='in_collection',
                                       args=('$birthday_collection',))

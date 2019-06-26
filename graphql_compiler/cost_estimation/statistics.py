@@ -9,8 +9,8 @@ import six
 class Statistics(object):
     """Abstract class for statistics regarding GraphQL objects.
 
-    For the purposes of cost estimation, we need statistics to provide estimates for costs of
-    certain operations like edge traversal and @filter directive usage.
+    For the purposes of query cardinality estimation, we need statistics to provide better
+    cardinality estimates when operations like edge traversal or @filter directives are used.
     All statistics except get_class_count() are optional, so if the statistic doesn't exist, a
     value of None should be returned.
     """
@@ -24,17 +24,17 @@ class Statistics(object):
 
     @abstractmethod
     def get_class_count(self, class_name):
-        """Return how many objects have, or inherit, the given class name.
+        """Return how many vertex or edge instances have, or inherit, the given class name.
 
         Args:
             class_name: str, either a vertex class name or an edge class name defined in the
                         GraphQL schema.
 
         Returns:
-            - int, number of objects with, or inheriting the given class name
+            - int, the count of vertex or edge instances with, or inheriting the given class name
 
         Raises:
-            AssertionError, if statistic for class_name does not exist.
+            AssertionError, if statistic for the given vertex/edge class does not exist.
         """
         raise NotImplementedError()
 
@@ -42,11 +42,12 @@ class Statistics(object):
     def get_edge_count_between_vertex_pair(
         self, vertex_out_class_name, vertex_in_class_name, edge_class_name
     ):
-        """Return number of edges of given class connecting two vertex types.
+        """Return the count of edges connecting two vertices.
 
-        For cost estimation, sometimes we need to predict traversal costs between two vertex types
-        using an edge type that connects the vertices' abstract types. If this statistic isn't
-        provided, it can be roughly estimated using multiple calls of get_class_count().
+        This statistic is optional, as the estimator can roughly predict this cost using
+        get_class_count(). In some cases of traversal between two vertices using an edge connecting
+        the vertices' superclasses, the estimates generated using get_class_count() may be off by
+        several orders of magnitude. In such cases, this statistic should be provided.
 
         Args:
             vertex_out_class_name: str, vertex class name.
@@ -60,21 +61,18 @@ class Statistics(object):
         return None
 
     @abstractmethod
-    def get_domain_count(self, vertex_name, field_name):
-        """Return the number of distinct values the vertex field has over all vertex instances.
+    def get_distinct_field_values_count(self, vertex_name, field_name):
+        """Return the count of distinct values the given vertex field has over all vertex instances.
 
-        This statistic helps estimate the result size of @filter directives used to restrict values
-        using equality operators like '=', '!=', and 'in_collection'.
-
-        Preconditions:
-        1. field_name must be a valid vertex field of vertex_name
+        This statistic helps estimate the result size of @filter directives used to restrict
+        values using equality operators like '=', '!=', and 'in_collection'.
 
         Args:
             vertex_name: str, name of a vertex.
             field_name: str, name of a vertex field.
 
         Returns:
-            - int, domain size of the vertex field's values if the statistic exists
+            - int, the count of distinct values of that vertex field if the statistic exists
             - None otherwise
         """
         return None
@@ -86,16 +84,13 @@ class Statistics(object):
         This statistic helps estimate the result size of @filter directives used to restrict
         numbers using inequality operators like '>', '<', and 'between'.
 
-        Preconditions:
-        1. field_name must be a valid vertex field of vertex_name
-
         Args:
             vertex_name: str, name of a vertex.
             field_name: str, name of a vertex field.
 
         Returns:
-            - list[tuple(int, int, int)], histogram as a list of tuples with 3 elements each if the
-              statistic exists. Each tuple represents a bin as (start, end, elementCount), where
+            - list[tuple(float, float, int)], histogram as a list of tuples with 3 elements each if
+              the statistic exists. Each tuple represents a bin as (start, end, elementCount), where
               [start, end) is the range of values in the bin, and elementCount is the bin element
               count.
             - None otherwise
@@ -105,50 +100,55 @@ class Statistics(object):
 
 class LocalStatistics(Statistics):
     """Provides statistics using ones given at initialization."""
-    def __init__(self, class_count, edge_count_between_vertex_pair, domain_count, histogram):
+    def __init__(
+        self, class_counts, edge_count_between_vertex_pairs, count_of_distinct_field_values,
+        histograms
+    ):
         """Initializes statistics with the given data.
 
         Args:
-            class_count: dict, str -> int, mapping vertex/edge class name to class count.
-            edge_count_between_vertex_pair: dict, (str, str, str) -> int,
+            class_counts: dict, str -> int, mapping vertex/edge class name to class count.
+            edge_count_between_vertex_pairs: dict, (str, str, str) -> int,
                 mapping tuple of (vertex out class name, vertex in class name, edge class name) to
-                count of edge type between vertex types.
-            domain_count: dict, (str, str) -> int, mapping vertex class and field on that
-                vertex class to domain size.
-            histogram: dict, (str, str) -> list[tuple(int, int, int)], mapping vertex class and
-                field on that vertex class to histogram as list[tuple(int, int, int)].
+                count of edge instances of given class connecting instances of two vertex classes.
+            count_of_distinct_values: dict, (str, str) -> int, mapping vertex class name and field
+                name on that vertex class to the count of distinct values of the field for that
+                vertex class.
+            histograms: dict, (str, str) -> list[tuple(float, float, int)], mapping vertex class
+                name and field name on that vertex class to histogram.
         """
-        self._class_count = class_count
-        self._edge_count_between_vertex_pair = edge_count_between_vertex_pair
-        self._domain_count = domain_count
-        self._histogram = histogram
+        self._class_counts = class_counts
+        self._edge_count_between_vertex_pairs = edge_count_between_vertex_pairs
+        self._count_of_distinct_field_values = count_of_distinct_field_values
+        self._histograms = histograms
 
     def get_class_count(self, class_name):
-        """Return how many objects have, or inherit, the given class name.
+        """Return how many vertex or edge instances have, or inherit, the given class name.
 
         Args:
             class_name: str, either a vertex class name or an edge class name defined in the
                         GraphQL schema.
 
         Returns:
-            - int, number of objects with, or inheriting the given class name
+            - int, the count of vertex or edge instances with, or inheriting the given class name
 
         Raises:
-            AssertionError, if statistic for class_name does not exist.
+            AssertionError, if statistic for the given vertex/edge class does not exist.
         """
-        if class_name not in self._class_count:
+        if class_name not in self._class_counts:
             raise AssertionError(u'Class count statistic is required, but entry not found for: '
                                  u'{}'.format(class_name))
-        return self._class_count[class_name]
+        return self._class_counts[class_name]
 
     def get_edge_count_between_vertex_pair(
         self, vertex_out_class_name, vertex_in_class_name, edge_class_name
     ):
-        """Return number of edges of given class connecting two vertex types.
+        """Return the count of edges connecting two vertices.
 
-        For cost estimation, sometimes we need to predict traversal costs between two vertex types
-        using an edge type that connects the vertices' abstract types. If this statistic isn't
-        provided, it can be roughly estimated using multiple calls of get_class_count().
+        This statistic is optional, as the estimator can roughly predict this cost using
+        get_class_count(). In some cases of traversal between two vertices using an edge connecting
+        the vertices' superclasses, the estimates generated using get_class_count() may be off by
+        several orders of magnitude. In such cases, this statistic should be provided.
 
         Args:
             vertex_out_class_name: str, vertex class name.
@@ -159,32 +159,25 @@ class LocalStatistics(Statistics):
             - int, the count of edges if the statistic exists
             - None otherwise
         """
-        statistic_id = (vertex_in_class_name, vertex_out_class_name, edge_class_name)
-        if statistic_id not in self._edge_count_between_vertex_pair:
-            return None
-        return self._edge_count_between_vertex_pair[statistic_id]
+        statistic_key = (vertex_in_class_name, vertex_out_class_name, edge_class_name)
+        return self._edge_count_between_vertex_pairs.get(statistic_key)
 
-    def get_domain_count(self, vertex_name, field_name):
-        """Return the number of distinct values the vertex field has over all vertex instances.
+    def get_distinct_field_values_count(self, vertex_name, field_name):
+        """Return the count of distinct values the given vertex field has over all vertex instances.
 
         This statistic helps estimate the result size of @filter directives used to restrict
         values using equality operators like '=', '!=', and 'in_collection'.
-
-        Preconditions:
-        1. field_name must be a valid vertex field of vertex_name
 
         Args:
             vertex_name: str, name of a vertex.
             field_name: str, name of a vertex field.
 
         Returns:
-            - int, domain size of the vertex field's values if the statistic exists
+            - int, the count of distinct values of that vertex field if the statistic exists
             - None otherwise
         """
-        statistic_id = (vertex_name, field_name)
-        if statistic_id not in self._domain_count:
-            return None
-        return self._domain_count[statistic_id]
+        statistic_key = (vertex_name, field_name)
+        return self._count_of_distinct_field_values.get(statistic_key)
 
     def get_histogram(self, vertex_name, field_name):
         """Return a histogram for the given vertex field, providing statistics about range values.
@@ -192,20 +185,16 @@ class LocalStatistics(Statistics):
         This statistic helps estimate the result size of @filter directives used to restrict
         numbers using inequality operators like '>', '<', and 'between'.
 
-        Preconditions:
-        1. field_name must be a valid vertex field of vertex_name
-
         Args:
             vertex_name: str, name of a vertex.
             field_name: str, name of a vertex field.
 
         Returns:
-            - list[tuple(int, int, int)], histogram as a list of tuples with 3 elements each if the
-              statistic exists. Each tuple represents a bin as (start, end, elementCount), where
+            - list[tuple(float, float, int)], histogram as a list of tuples with 3 elements each if
+              the statistic exists. Each tuple represents a bin as (start, end, elementCount), where
               [start, end) is the range of values in the bin, and elementCount is the bin element
               count.
             - None otherwise
         """
-        if vertex_name not in self._histogram or field_name not in self._histogram[vertex_name]:
-            return None
-        return self._histogram[vertex_name][field_name]
+        histogram_key = (vertex_name, field_name)
+        return self._histograms.get(histogram_key)
