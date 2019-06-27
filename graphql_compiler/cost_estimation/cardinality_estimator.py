@@ -119,7 +119,7 @@ def _estimate_edge_count_between_vertex_pair_using_class_count(
     edges using class counts. If A and B are subclasses of C and D respectively, we only have
     access to CD edges, so in general, we assume that the number of CD edges with A as an endpoint 
     are proportional to the fraction of A vertices over C vertices, and likewise for B and D. 
-	Using this assumption, in general we estimate the (# of AB edges) as
+	Using this assumption, in general we estimate the statistic as
     (# of AB edges) = (# of CD edges) * (# of A vertices) / (# of C vertices) * 
     								    (# of B vertices) / (# of D vertices).
 
