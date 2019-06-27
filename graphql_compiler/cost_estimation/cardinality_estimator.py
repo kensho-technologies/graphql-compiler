@@ -117,11 +117,11 @@ def _estimate_edge_count_between_vertex_pair_using_class_count(
 
     Given a parent location of type A and a child location of type B, we estimate the number of AB
     edges using class counts. If A and B are subclasses of C and D respectively, we only have
-    access to CD edges, so in general, we assume that the number of CD edges with A as an endpoint 
-    are proportional to the fraction of A vertices over C vertices, and likewise for B and D. 
-	Using this assumption, in general we estimate the statistic as
-    (# of AB edges) = (# of CD edges) * (# of A vertices) / (# of C vertices) * 
-    								    (# of B vertices) / (# of D vertices).
+    access to CD edges, so in general, we assume that the number of CD edges with A as an endpoint
+    are proportional to the fraction of A vertices over C vertices, and likewise for B and D.
+    Using this assumption, in general we estimate the statistic as
+    (# of AB edges) = (# of CD edges) * (# of A vertices) / (# of C vertices) *
+                                        (# of B vertices) / (# of D vertices).
 
     Args:
         schema_graph: SchemaGraph object
@@ -130,8 +130,8 @@ def _estimate_edge_count_between_vertex_pair_using_class_count(
         child_location: BaseLocation object
         parent_location: BaseLocation object
 
-	Returns:
-		float, estimate for (# of AB edges)
+    Returns:
+        float, estimate for (# of AB edges)
     """
     _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     edge_counts = statistics.get_class_count(edge_name)
