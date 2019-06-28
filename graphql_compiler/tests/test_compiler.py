@@ -9,19 +9,28 @@ from sqlalchemy.dialects import sqlite
 
 from . import test_input_data
 from ..compiler import (
-    OutputMetadata, compile_graphql_to_cypher, compile_graphql_to_gremlin, compile_graphql_to_match,
-    compile_graphql_to_sql
+    OutputMetadata,
+    compile_graphql_to_cypher,
+    compile_graphql_to_gremlin,
+    compile_graphql_to_match,
+    compile_graphql_to_sql,
 )
 from ..compiler.ir_lowering_sql.metadata import SqlMetadata
 from .test_data_tools.data_tool import get_animal_schema_sql_metadata
 from .test_helpers import (
-    SKIP_TEST, compare_cypher, compare_gremlin, compare_input_metadata, compare_match, compare_sql,
-    get_schema
+    SKIP_TEST,
+    compare_cypher,
+    compare_gremlin,
+    compare_input_metadata,
+    compare_match,
+    compare_sql,
+    get_schema,
 )
 
 
 def check_test_data(
-        test_case, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher):
+    test_case, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+):
     """Assert that the GraphQL input generates all expected output queries data."""
     if test_data.type_equivalence_hints:
         # For test convenience, we accept the type equivalence hints in string form.
@@ -33,8 +42,11 @@ def check_test_data(
     else:
         schema_based_type_equivalence_hints = None
 
-    result = compile_graphql_to_match(test_case.schema, test_data.graphql_input,
-                                      type_equivalence_hints=schema_based_type_equivalence_hints)
+    result = compile_graphql_to_match(
+        test_case.schema,
+        test_data.graphql_input,
+        type_equivalence_hints=schema_based_type_equivalence_hints,
+    )
     compare_match(test_case, expected_match, result.query)
     test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
     compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
@@ -43,12 +55,16 @@ def check_test_data(
     if expected_gremlin == NotImplementedError:
         with test_case.assertRaises(NotImplementedError):
             compile_graphql_to_gremlin(
-                test_case.schema, test_data.graphql_input,
-                type_equivalence_hints=schema_based_type_equivalence_hints)
+                test_case.schema,
+                test_data.graphql_input,
+                type_equivalence_hints=schema_based_type_equivalence_hints,
+            )
     else:
         result = compile_graphql_to_gremlin(
-            test_case.schema, test_data.graphql_input,
-            type_equivalence_hints=schema_based_type_equivalence_hints)
+            test_case.schema,
+            test_data.graphql_input,
+            type_equivalence_hints=schema_based_type_equivalence_hints,
+        )
         compare_gremlin(test_case, expected_gremlin, result.query)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
@@ -68,23 +84,27 @@ def check_test_data(
             test_case.schema,
             test_data.graphql_input,
             test_case.sql_metadata,
-            type_equivalence_hints=schema_based_type_equivalence_hints)
+            type_equivalence_hints=schema_based_type_equivalence_hints,
+        )
         compare_sql(test_case, expected_sql, str(result.query))
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata,
-                               result.input_metadata)
+        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
     if expected_cypher == SKIP_TEST:
         pass
     elif expected_cypher == NotImplementedError:
         with test_case.assertRaises(NotImplementedError):
             compile_graphql_to_cypher(
-                test_case.schema, test_data.graphql_input,
-                type_equivalence_hints=schema_based_type_equivalence_hints)
+                test_case.schema,
+                test_data.graphql_input,
+                type_equivalence_hints=schema_based_type_equivalence_hints,
+            )
     else:
         result = compile_graphql_to_cypher(
-            test_case.schema, test_data.graphql_input,
-            type_equivalence_hints=schema_based_type_equivalence_hints)
+            test_case.schema,
+            test_data.graphql_input,
+            type_equivalence_hints=schema_based_type_equivalence_hints,
+        )
         compare_cypher(test_case, expected_cypher, result.query)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
@@ -131,8 +151,9 @@ class CompilerTests(unittest.TestCase):
             RETURN Animal___1.name AS `animal_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_immediate_output_custom_scalars(self):
         test_data = test_input_data.immediate_output_custom_scalars()
@@ -166,8 +187,9 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_immediate_output_with_custom_scalar_filter(self):
         test_data = test_input_data.immediate_output_with_custom_scalar_filter()
@@ -202,8 +224,9 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_colocated_filter_and_tag(self):
         test_data = test_input_data.colocated_filter_and_tag()
@@ -239,7 +262,8 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_colocated_out_of_order_filter_and_tag(self):
         test_data = test_input_data.colocated_out_of_order_filter_and_tag()
@@ -274,8 +298,9 @@ class CompilerTests(unittest.TestCase):
             RETURN Animal__out_Entity_Related___1.name AS `related_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_immediate_filter_and_output(self):
         # Ensure that all basic comparison operators output correct code in this simple case.
@@ -286,7 +311,9 @@ class CompilerTests(unittest.TestCase):
                 Animal {
                     name @filter(op_name: "%s", value: ["$wanted"]) @output(out_name: "animal_name")
                 }
-            }''' % (operator,)
+            }''' % (
+                operator,
+            )
 
             # In MATCH, inequality comparisons use the SQL standard "<>" rather than "!=".
             match_operator = u'<>' if operator == u'!=' else operator
@@ -301,7 +328,9 @@ class CompilerTests(unittest.TestCase):
                     }}
                     RETURN $matches
                 )
-            ''' % {'operator': match_operator}  # nosec, the operators are hardcoded above
+            ''' % {
+                'operator': match_operator
+            }  # nosec, the operators are hardcoded above
 
             # In Gremlin, equality comparisons use two equal signs instead of one.
             gremlin_operator = u'==' if operator == u'=' else operator
@@ -312,7 +341,9 @@ class CompilerTests(unittest.TestCase):
                 .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                     animal_name: m.Animal___1.name
                 ])}
-            ''' % {'operator': gremlin_operator}
+            ''' % {
+                'operator': gremlin_operator
+            }
 
             expected_sql = '''
                 SELECT
@@ -321,7 +352,9 @@ class CompilerTests(unittest.TestCase):
                     animal AS animal_1
                 WHERE
                     animal_1.name %(operator)s :wanted
-            ''' % {'operator': operator}  # nosec, the operators are hardcoded above
+            ''' % {
+                'operator': operator
+            }  # nosec, the operators are hardcoded above
 
             # In Cypher, inequality comparisons use "<>" instead of "!=".
             cypher_operator = u'<>' if operator == u'!=' else operator
@@ -330,22 +363,24 @@ class CompilerTests(unittest.TestCase):
                 MATCH (Animal___1:Animal)
                     WHERE (Animal___1.name %(operator)s $wanted)
                 RETURN Animal___1.name AS `animal_name`
-            ''' % {'operator': cypher_operator}  # nosec, the operators are hardcoded above
+            ''' % {
+                'operator': cypher_operator
+            }  # nosec, the operators are hardcoded above
 
             expected_output_metadata = {
-                'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+                'animal_name': OutputMetadata(type=GraphQLString, optional=False)
             }
-            expected_input_metadata = {
-                'wanted': GraphQLString,
-            }
+            expected_input_metadata = {'wanted': GraphQLString}
             test_data = test_input_data.CommonTestData(
                 graphql_input=graphql_input,
                 expected_output_metadata=expected_output_metadata,
                 expected_input_metadata=expected_input_metadata,
-                type_equivalence_hints=None)
+                type_equivalence_hints=None,
+            )
 
-            check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                            expected_cypher)
+            check_test_data(
+                self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+            )
 
     def test_multiple_filters(self):
         test_data = test_input_data.multiple_filters()
@@ -390,8 +425,9 @@ class CompilerTests(unittest.TestCase):
             RETURN Animal___1.name AS `animal_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_traverse_and_output(self):
         test_data = test_input_data.traverse_and_output()
@@ -428,8 +464,9 @@ class CompilerTests(unittest.TestCase):
             RETURN Animal__out_Animal_ParentOf___1.name AS `parent_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_traverse_after_mandatory_traverse(self):
         test_data = test_input_data.optional_traverse_after_mandatory_traverse()
@@ -497,8 +534,9 @@ class CompilerTests(unittest.TestCase):
                 Animal__out_Animal_OfSpecies___1.name AS `species_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_traverse_filter_and_output(self):
         test_data = test_input_data.traverse_filter_and_output()
@@ -541,8 +579,9 @@ class CompilerTests(unittest.TestCase):
             RETURN Animal__out_Animal_ParentOf___1.name AS `parent_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_name_or_alias_filter_on_interface_type(self):
         test_data = test_input_data.name_or_alias_filter_on_interface_type()
@@ -585,8 +624,9 @@ class CompilerTests(unittest.TestCase):
             RETURN Animal__out_Entity_Related___1.name AS `related_entity`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_output_source_and_complex_output(self):
         test_data = test_input_data.output_source_and_complex_output()
@@ -628,8 +668,9 @@ class CompilerTests(unittest.TestCase):
                 Animal__out_Animal_ParentOf___1.name AS `parent_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_on_optional_variable_equality(self):
         # The operand in the @filter directive originates from an optional block.
@@ -693,8 +734,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_on_optional_variable_name_or_alias(self):
         # The operand in the @filter directive originates from an optional block.
@@ -758,8 +800,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_in_optional_block(self):
         test_data = test_input_data.filter_in_optional_block()
@@ -836,8 +879,9 @@ class CompilerTests(unittest.TestCase):
                 ) AS `uuid`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_in_optional_and_count(self):
         test_data = test_input_data.filter_in_optional_and_count()
@@ -877,8 +921,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_between_filter_on_simple_scalar(self):
         # The "between" filter emits different output depending on what the compared types are.
@@ -922,8 +967,9 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_between_filter_on_date(self):
         # The "between" filter emits different output depending on what the compared types are.
@@ -973,8 +1019,9 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.birthday AS `birthday`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_between_filter_on_datetime(self):
         # The "between" filter emits different output depending on what the compared types are.
@@ -1025,8 +1072,9 @@ class CompilerTests(unittest.TestCase):
                 Event___1.event_date AS `event_date`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_between_lowering_on_simple_scalar(self):
         # The "between" filter emits different output depending on what the compared types are.
@@ -1070,8 +1118,9 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_between_lowering_with_extra_filters(self):
         test_data = test_input_data.between_lowering_with_extra_filters()
@@ -1136,8 +1185,9 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_no_between_lowering_on_simple_scalar(self):
         test_data = test_input_data.no_between_lowering_on_simple_scalar()
@@ -1183,8 +1233,9 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_complex_optional_variables(self):
         # The operands in the @filter directives originate from an optional block,
@@ -1409,8 +1460,9 @@ class CompilerTests(unittest.TestCase):
                 ) AS `other_parent_fed_at`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_complex_optional_variables_with_starting_filter(self):
         # The operands in the @filter directives originate from an optional block,
@@ -1580,8 +1632,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_simple_fragment(self):
         test_data = test_input_data.simple_fragment()
@@ -1625,8 +1678,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_typename_output(self):
         test_data = test_input_data.typename_output()
@@ -1660,8 +1714,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_typename_filter(self):
         test_data = test_input_data.typename_filter()
@@ -1689,8 +1744,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_simple_recurse(self):
         test_data = test_input_data.simple_recurse()
@@ -1731,8 +1787,9 @@ class CompilerTests(unittest.TestCase):
             RETURN Animal__out_Animal_ParentOf___1.name AS `relation_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_traverse_then_recurse(self):
         test_data = test_input_data.traverse_then_recurse()
@@ -1794,8 +1851,9 @@ class CompilerTests(unittest.TestCase):
                 Animal__out_Animal_ImportantEvent___1.name AS `important_event`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_then_traverse_and_recurse(self):
         test_data = test_input_data.filter_then_traverse_and_recurse()
@@ -1871,8 +1929,9 @@ class CompilerTests(unittest.TestCase):
                 Animal__out_Animal_ImportantEvent___1.name AS `important_event`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_two_consecutive_recurses(self):
         test_data = test_input_data.two_consecutive_recurses()
@@ -1966,8 +2025,9 @@ class CompilerTests(unittest.TestCase):
                 Animal__out_Animal_ImportantEvent___1.name AS `important_event`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_recurse_within_fragment(self):
         test_data = test_input_data.recurse_within_fragment()
@@ -2016,8 +2076,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_within_recurse(self):
         test_data = test_input_data.filter_within_recurse()
@@ -2057,8 +2118,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_recurse_with_immediate_type_coercion(self):
         test_data = test_input_data.recurse_with_immediate_type_coercion()
@@ -2100,8 +2162,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_recurse_with_immediate_type_coercion_and_filter(self):
         test_data = test_input_data.recurse_with_immediate_type_coercion_and_filter()
@@ -2143,8 +2206,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_in_collection_op_filter_with_variable(self):
         test_data = test_input_data.in_collection_op_filter_with_variable()
@@ -2185,8 +2249,9 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `animal_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_in_collection_op_filter_with_tag(self):
         test_data = test_input_data.in_collection_op_filter_with_tag()
@@ -2226,8 +2291,9 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `animal_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_in_collection_op_filter_with_optional_tag(self):
         test_data = test_input_data.in_collection_op_filter_with_optional_tag()
@@ -2295,8 +2361,9 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `animal_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_not_in_collection_op_filter_with_variable(self):
         test_data = test_input_data.not_in_collection_op_filter_with_variable()
@@ -2338,7 +2405,8 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_not_in_collection_op_filter_with_tag(self):
         test_data = test_input_data.not_in_collection_op_filter_with_tag()
@@ -2378,7 +2446,8 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `animal_name`
         '''
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_not_in_collection_op_filter_with_optional_tag(self):
         test_data = test_input_data.not_in_collection_op_filter_with_optional_tag()
@@ -2448,7 +2517,8 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_intersects_op_filter_with_variable(self):
         test_data = test_input_data.intersects_op_filter_with_variable()
@@ -2476,8 +2546,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_intersects_op_filter_with_tag(self):
         test_data = test_input_data.intersects_op_filter_with_tag()
@@ -2510,8 +2581,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_intersects_op_filter_with_optional_tag(self):
         test_data = test_input_data.intersects_op_filter_with_optional_tag()
@@ -2571,8 +2643,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_contains_op_filter_with_variable(self):
         test_data = test_input_data.contains_op_filter_with_variable()
@@ -2607,8 +2680,9 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `animal_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_contains_op_filter_with_tag(self):
         test_data = test_input_data.contains_op_filter_with_tag()
@@ -2648,8 +2722,9 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `animal_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_contains_op_filter_with_optional_tag(self):
         test_data = test_input_data.contains_op_filter_with_optional_tag()
@@ -2719,8 +2794,9 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `animal_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_not_contains_op_filter_with_variable(self):
         test_data = test_input_data.not_contains_op_filter_with_variable()
@@ -2758,7 +2834,8 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_not_contains_op_filter_with_tag(self):
         test_data = test_input_data.not_contains_op_filter_with_tag()
@@ -2799,7 +2876,8 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_not_contains_op_filter_with_optional_tag(self):
         test_data = test_input_data.not_contains_op_filter_with_optional_tag()
@@ -2871,7 +2949,8 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_substring_op_filter(self):
         test_data = test_input_data.has_substring_op_filter()
@@ -2912,8 +2991,9 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `animal_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_substring_op_filter_with_variable(self):
         graphql_input = '''{
@@ -2954,20 +3034,20 @@ class CompilerTests(unittest.TestCase):
         expected_cypher = SKIP_TEST
 
         expected_output_metadata = {
-            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+            'animal_name': OutputMetadata(type=GraphQLString, optional=False)
         }
-        expected_input_metadata = {
-            'wanted': GraphQLString,
-        }
+        expected_input_metadata = {'wanted': GraphQLString}
 
         test_data = test_input_data.CommonTestData(
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=None)
+            type_equivalence_hints=None,
+        )
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_substring_op_filter_with_tag(self):
         graphql_input = '''{
@@ -3005,7 +3085,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_output_metadata = {
-            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+            'animal_name': OutputMetadata(type=GraphQLString, optional=False)
         }
         expected_input_metadata = {}
 
@@ -3013,13 +3093,15 @@ class CompilerTests(unittest.TestCase):
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=None)
+            type_equivalence_hints=None,
+        )
 
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_substring_op_filter_with_optional_tag(self):
         graphql_input = '''{
@@ -3085,7 +3167,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_output_metadata = {
-            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+            'animal_name': OutputMetadata(type=GraphQLString, optional=False)
         }
         expected_input_metadata = {}
 
@@ -3093,13 +3175,15 @@ class CompilerTests(unittest.TestCase):
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=None)
+            type_equivalence_hints=None,
+        )
 
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_edge_degree_op_filter(self):
         test_data = test_input_data.has_edge_degree_op_filter()
@@ -3141,8 +3225,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_edge_degree_op_filter_with_optional(self):
         test_data = test_input_data.has_edge_degree_op_filter_with_optional()
@@ -3209,8 +3294,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_edge_degree_op_filter_with_optional_and_between(self):
         test_data = test_input_data.has_edge_degree_op_filter_with_optional_and_between()
@@ -3312,8 +3398,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_edge_degree_op_filter_with_fold(self):
         test_data = test_input_data.has_edge_degree_op_filter_with_fold()
@@ -3366,8 +3453,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_simple_union(self):
         test_data = test_input_data.simple_union()
@@ -3402,8 +3490,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_then_apply_fragment(self):
         test_data = test_input_data.filter_then_apply_fragment()
@@ -3440,8 +3529,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_then_apply_fragment_with_multiple_traverses(self):
         test_data = test_input_data.filter_then_apply_fragment_with_multiple_traverses()
@@ -3494,8 +3584,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_on_fragment_in_union(self):
         test_data = test_input_data.filter_on_fragment_in_union()
@@ -3532,8 +3623,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_on_union(self):
         test_data = test_input_data.optional_on_union()
@@ -3583,8 +3675,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_gremlin_type_hints(self):
         graphql_input = '''{
@@ -3596,9 +3689,7 @@ class CompilerTests(unittest.TestCase):
                 }
             }
         }'''
-        type_equivalence_hints = {
-            'Event': 'Union__BirthEvent__Event__FeedingEvent'
-        }
+        type_equivalence_hints = {'Event': 'Union__BirthEvent__Event__FeedingEvent'}
 
         expected_match = '''
             SELECT
@@ -3626,7 +3717,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_output_metadata = {
-            'related_event': OutputMetadata(type=GraphQLString, optional=False),
+            'related_event': OutputMetadata(type=GraphQLString, optional=False)
         }
         expected_input_metadata = {}
 
@@ -3634,13 +3725,15 @@ class CompilerTests(unittest.TestCase):
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=type_equivalence_hints)
+            type_equivalence_hints=type_equivalence_hints,
+        )
 
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_unnecessary_traversal_elimination(self):
         # This test case caught a bug in the optimization pass that eliminates unnecessary
@@ -3767,21 +3860,21 @@ class CompilerTests(unittest.TestCase):
             'event_uuid': OutputMetadata(type=GraphQLID, optional=True),
             'species_uuid': OutputMetadata(type=GraphQLID, optional=True),
         }
-        expected_input_metadata = {
-            'uuid': GraphQLID,
-        }
+        expected_input_metadata = {'uuid': GraphQLID}
 
         test_data = test_input_data.CommonTestData(
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=None)
+            type_equivalence_hints=None,
+        )
 
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_fold_on_output_variable(self):
         test_data = test_input_data.fold_on_output_variable()
@@ -3815,8 +3908,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_fold_after_traverse(self):
         test_data = test_input_data.fold_after_traverse()
@@ -3859,8 +3953,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_fold_and_traverse(self):
         test_data = test_input_data.fold_and_traverse()
@@ -3904,8 +3999,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_fold_and_deep_traverse(self):
         test_data = test_input_data.fold_and_deep_traverse()
@@ -3952,8 +4048,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_traverse_and_fold_and_traverse(self):
         test_data = test_input_data.traverse_and_fold_and_traverse()
@@ -4005,8 +4102,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_outputs_in_same_fold(self):
         test_data = test_input_data.multiple_outputs_in_same_fold()
@@ -4047,8 +4145,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_outputs_in_same_fold_and_traverse(self):
         test_data = test_input_data.multiple_outputs_in_same_fold_and_traverse()
@@ -4102,8 +4201,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_folds(self):
         test_data = test_input_data.multiple_folds()
@@ -4155,8 +4255,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_folds_and_traverse(self):
         test_data = test_input_data.multiple_folds_and_traverse()
@@ -4234,8 +4335,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_fold_date_and_datetime_fields(self):
         test_data = test_input_data.fold_date_and_datetime_fields()
@@ -4281,8 +4383,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_to_union_base_type_inside_fold(self):
         # Given type_equivalence_hints = { Event: Union__BirthEvent__Event__FeedingEvent },
@@ -4320,8 +4423,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_no_op_coercion_inside_fold(self):
         # The type where the coercion is applied is already Entity, so the coercion is a no-op.
@@ -4357,8 +4461,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_no_op_coercion_with_eligible_subpath(self):
         test_data = test_input_data.no_op_coercion_with_eligible_subpath()
@@ -4401,8 +4506,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_within_fold_scope(self):
         test_data = test_input_data.filter_within_fold_scope()
@@ -4448,8 +4554,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_on_fold_scope(self):
         test_data = test_input_data.filter_on_fold_scope()
@@ -4488,8 +4595,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_on_interface_within_fold_scope(self):
         test_data = test_input_data.coercion_on_interface_within_fold_scope()
@@ -4526,8 +4634,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_on_interface_within_fold_traversal(self):
         test_data = test_input_data.coercion_on_interface_within_fold_traversal()
@@ -4572,8 +4681,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_on_union_within_fold_scope(self):
         test_data = test_input_data.coercion_on_union_within_fold_scope()
@@ -4610,8 +4720,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_filters_and_multiple_outputs_within_fold_scope(self):
         test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope()
@@ -4668,8 +4779,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_filters_and_multiple_outputs_within_fold_traversal(self):
         test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_traversal()
@@ -4735,8 +4847,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_output_count_in_fold_scope(self):
         test_data = test_input_data.output_count_in_fold_scope()
@@ -4761,8 +4874,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_count_with_runtime_parameter_in_fold_scope(self):
         test_data = test_input_data.filter_count_with_runtime_parameter_in_fold_scope()
@@ -4788,8 +4902,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_count_with_tagged_parameter_in_fold_scope(self):
         test_data = test_input_data.filter_count_with_tagged_parameter_in_fold_scope()
@@ -4818,8 +4933,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_count_and_other_filters_in_fold_scope(self):
         test_data = test_input_data.filter_count_and_other_filters_in_fold_scope()
@@ -4846,8 +4962,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_filters_on_count(self):
         test_data = test_input_data.multiple_filters_on_count()
@@ -4878,8 +4995,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_on_count_with_nested_filter(self):
         test_data = test_input_data.filter_on_count_with_nested_filter()
@@ -4905,8 +5023,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_and_traverse(self):
         test_data = test_input_data.optional_and_traverse()
@@ -4977,8 +5096,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_and_traverse_after_filter(self):
         test_data = test_input_data.optional_and_traverse_after_filter()
@@ -5053,8 +5173,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_and_deep_traverse(self):
         test_data = test_input_data.optional_and_deep_traverse()
@@ -5142,8 +5263,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_traverse_and_optional_and_traverse(self):
         test_data = test_input_data.traverse_and_optional_and_traverse()
@@ -5233,8 +5355,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_optional_traversals_with_starting_filter(self):
         test_data = test_input_data.multiple_optional_traversals_with_starting_filter()
@@ -5400,8 +5523,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_traversal_and_optional_without_traversal(self):
         test_data = test_input_data.optional_traversal_and_optional_without_traversal()
@@ -5523,8 +5647,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_on_interface_within_optional_traversal(self):
         test_data = test_input_data.coercion_on_interface_within_optional_traversal()
@@ -5602,8 +5727,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_on_optional_traversal_equality(self):
         test_data = test_input_data.filter_on_optional_traversal_equality()
@@ -5704,8 +5830,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_on_optional_traversal_name_or_alias(self):
         test_data = test_input_data.filter_on_optional_traversal_name_or_alias()
@@ -5802,8 +5929,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_complex_optional_traversal_variables(self):
         test_data = test_input_data.complex_optional_traversal_variables()
@@ -6027,8 +6155,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_simple_optional_recurse(self):
         test_data = test_input_data.simple_optional_recurse()
@@ -6109,8 +6238,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_traverse_within_optional(self):
         test_data = test_input_data.multiple_traverse_within_optional()
@@ -6196,8 +6326,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_and_fold(self):
         test_data = test_input_data.optional_and_fold()
@@ -6255,8 +6386,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_fold_and_optional(self):
         test_data = test_input_data.fold_and_optional()
@@ -6314,8 +6446,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_traversal_and_fold_traversal(self):
         test_data = test_input_data.optional_traversal_and_fold_traversal()
@@ -6397,8 +6530,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_fold_traversal_and_optional_traversal(self):
         test_data = test_input_data.fold_traversal_and_optional_traversal()
@@ -6474,8 +6608,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_between_lowering(self):
         test_data = test_input_data.between_lowering()
@@ -6528,8 +6663,9 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `animal_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_and_filter_with_tag(self):
         test_data = test_input_data.coercion_and_filter_with_tag()
@@ -6571,8 +6707,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_nested_optional_and_traverse(self):
         test_data = test_input_data.nested_optional_and_traverse()
@@ -6681,8 +6818,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_complex_nested_optionals(self):
         test_data = test_input_data.complex_nested_optionals()
@@ -6771,8 +6909,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_recursive_field_type_is_subtype_of_parent_field(self):
         """Ensure recursion can occur on an edge assigned to a supertype of the current scope."""
@@ -6807,5 +6946,6 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )

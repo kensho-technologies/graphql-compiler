@@ -6,28 +6,37 @@ from ..exceptions import GraphQLCompilationError
 from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression
 from .helpers import (
-    STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
-    ensure_unicode_string, is_graphql_type, safe_quoted_string, strip_non_null_from_type,
-    validate_safe_string
+    STANDARD_DATE_FORMAT,
+    STANDARD_DATETIME_FORMAT,
+    FoldScopeLocation,
+    Location,
+    ensure_unicode_string,
+    is_graphql_type,
+    safe_quoted_string,
+    strip_non_null_from_type,
+    validate_safe_string,
 )
 
 
 # Since MATCH uses $-prefixed keywords to indicate special values,
 # we must restrict those keywords from being used as variables.
 # For consistency, we blacklist these keywords in both Gremlin and MATCH.
-RESERVED_MATCH_KEYWORDS = frozenset({
-    u'$matches',
-    u'$matched',
-    u'$paths',
-    u'$elements',
-    u'$pathElements',
-    u'$depth',
-    u'$currentMatch',
-})
+RESERVED_MATCH_KEYWORDS = frozenset(
+    {
+        u'$matches',
+        u'$matched',
+        u'$paths',
+        u'$elements',
+        u'$pathElements',
+        u'$depth',
+        u'$currentMatch',
+    }
+)
 
 
 def make_replacement_visitor(find_expression, replace_expression):
     """Return a visitor function that replaces every instance of one expression with another one."""
+
     def visitor_fn(expression):
         """Return the replacement if this expression matches the expression we're looking for."""
         if expression == find_expression:
@@ -40,6 +49,7 @@ def make_replacement_visitor(find_expression, replace_expression):
 
 def make_type_replacement_visitor(find_types, replacement_func):
     """Return a visitor function that replaces expressions of a given type with new expressions."""
+
     def visitor_fn(expression):
         """Return a replacement expression if the original expression is of the correct type."""
         if isinstance(expression, find_types):
@@ -157,12 +167,16 @@ class Variable(Expression):
         """Validate that the Variable is correctly representable."""
         # Get the first letter, or empty string if it doesn't exist.
         if not self.variable_name.startswith(u'$'):
-            raise GraphQLCompilationError(u'Expected variable name to start with $, but was: '
-                                          u'{}'.format(self.variable_name))
+            raise GraphQLCompilationError(
+                u'Expected variable name to start with $, but was: '
+                u'{}'.format(self.variable_name)
+            )
 
         if self.variable_name in RESERVED_MATCH_KEYWORDS:
-            raise GraphQLCompilationError(u'Cannot use reserved MATCH keyword {} as variable '
-                                          u'name!'.format(self.variable_name))
+            raise GraphQLCompilationError(
+                u'Cannot use reserved MATCH keyword {} as variable '
+                u'name!'.format(self.variable_name)
+            )
 
         validate_safe_string(self.variable_name[1:])
 
@@ -170,8 +184,10 @@ class Variable(Expression):
             raise ValueError(u'Invalid value of "inferred_type": {}'.format(self.inferred_type))
 
         if isinstance(self.inferred_type, GraphQLNonNull):
-            raise ValueError(u'GraphQL non-null types are not supported as "inferred_type": '
-                             u'{}'.format(self.inferred_type))
+            raise ValueError(
+                u'GraphQL non-null types are not supported as "inferred_type": '
+                u'{}'.format(self.inferred_type)
+            )
 
         if isinstance(self.inferred_type, GraphQLList):
             inner_type = strip_non_null_from_type(self.inferred_type.of_type)
@@ -182,7 +198,8 @@ class Variable(Expression):
                 # a programming error within the library.
                 raise GraphQLCompilationError(
                     u'Lists of Date or DateTime cannot currently be represented as '
-                    u'Variable objects: {}'.format(self.inferred_type))
+                    u'Variable objects: {}'.format(self.inferred_type)
+                )
 
     def to_match(self):
         """Return a unicode object with the MATCH representation of this Variable."""
@@ -238,9 +255,11 @@ class Variable(Expression):
         """Return True if the given object is equal to this one, and False otherwise."""
         # Since this object has a GraphQL type as a variable, which doesn't implement
         # the equality operator, we have to override equality and call is_same_type() here.
-        return (type(self) == type(other) and
-                self.variable_name == other.variable_name and
-                self.inferred_type.is_same_type(other.inferred_type))
+        return (
+            type(self) == type(other)
+            and self.variable_name == other.variable_name
+            and self.inferred_type.is_same_type(other.inferred_type)
+        )
 
     def __ne__(self, other):
         """Check another object for non-equality against this one."""
@@ -298,8 +317,10 @@ class LocalField(Expression):
 
     def to_cypher(self):
         """Not implemented, should not be used."""
-        raise AssertionError(u'LocalField is not used as part of the query emission process in '
-                             u'Cypher, so this is a bug. This function should not be called.')
+        raise AssertionError(
+            u'LocalField is not used as part of the query emission process in '
+            u'Cypher, so this is a bug. This function should not be called.'
+        )
 
 
 class GlobalContextField(Expression):
@@ -324,12 +345,14 @@ class GlobalContextField(Expression):
     def validate(self):
         """Validate that the GlobalContextField is correctly representable."""
         if not isinstance(self.location, Location):
-            raise TypeError(u'Expected Location location, got: {} {}'
-                            .format(type(self.location).__name__, self.location))
+            raise TypeError(
+                u'Expected Location location, got: {} {}'.format(
+                    type(self.location).__name__, self.location
+                )
+            )
 
         if self.location.field is None:
-            raise AssertionError(u'Received Location without a field: {}'
-                                 .format(self.location))
+            raise AssertionError(u'Received Location without a field: {}'.format(self.location))
 
         if not is_graphql_type(self.field_type):
             raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
@@ -346,14 +369,18 @@ class GlobalContextField(Expression):
 
     def to_gremlin(self):
         """Not implemented, should not be used."""
-        raise AssertionError(u'GlobalContextField is only used for the WHERE statement in '
-                             u'MATCH, so this is a bug. This function should not be called.')
+        raise AssertionError(
+            u'GlobalContextField is only used for the WHERE statement in '
+            u'MATCH, so this is a bug. This function should not be called.'
+        )
 
     def to_cypher(self):
         """Not implemented, should not be used."""
-        raise AssertionError(u'GlobalContextField is not used as part of the query emission '
-                             u'process in Cypher, so this is a bug. This function '
-                             u'should not be called.')
+        raise AssertionError(
+            u'GlobalContextField is not used as part of the query emission '
+            u'process in Cypher, so this is a bug. This function '
+            u'should not be called.'
+        )
 
 
 class ContextField(Expression):
@@ -382,8 +409,11 @@ class ContextField(Expression):
     def validate(self):
         """Validate that the ContextField is correctly representable."""
         if not isinstance(self.location, Location):
-            raise TypeError(u'Expected Location location, got: {} {}'.format(
-                type(self.location).__name__, self.location))
+            raise TypeError(
+                u'Expected Location location, got: {} {}'.format(
+                    type(self.location).__name__, self.location
+                )
+            )
 
         if not is_graphql_type(self.field_type):
             raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
@@ -461,12 +491,17 @@ class OutputContextField(Expression):
     def validate(self):
         """Validate that the OutputContextField is correctly representable."""
         if not isinstance(self.location, Location):
-            raise TypeError(u'Expected Location location, got: {} {}'.format(
-                type(self.location).__name__, self.location))
+            raise TypeError(
+                u'Expected Location location, got: {} {}'.format(
+                    type(self.location).__name__, self.location
+                )
+            )
 
         if not self.location.field:
-            raise ValueError(u'Expected Location object that points to a field, got: '
-                             u'{}'.format(self.location))
+            raise ValueError(
+                u'Expected Location object that points to a field, got: '
+                u'{}'.format(self.location)
+            )
 
         if not is_graphql_type(self.field_type):
             raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
@@ -481,7 +516,8 @@ class OutputContextField(Expression):
                 # a programming error within the library.
                 raise GraphQLCompilationError(
                     u'Lists of Date or DateTime cannot currently be represented as '
-                    u'OutputContextField objects: {}'.format(self.field_type))
+                    u'OutputContextField objects: {}'.format(self.field_type)
+                )
 
     def to_match(self):
         """Return a unicode object with the MATCH representation of this expression."""
@@ -521,8 +557,7 @@ class OutputContextField(Expression):
             template += '.format("{format}")'
             format_value = STANDARD_DATETIME_FORMAT
 
-        return template.format(mark_name=mark_name, field_name=field_name,
-                               format=format_value)
+        return template.format(mark_name=mark_name, field_name=field_name, format=format_value)
 
     def to_cypher(self):
         """Return a unicode object with the Cypher representation of this expression."""
@@ -540,9 +575,11 @@ class OutputContextField(Expression):
         """Return True if the given object is equal to this one, and False otherwise."""
         # Since this object has a GraphQL type as a variable, which doesn't implement
         # the equality operator, we have to override equality and call is_same_type() here.
-        return (type(self) == type(other) and
-                self.location == other.location and
-                self.field_type.is_same_type(other.field_type))
+        return (
+            type(self) == type(other)
+            and self.location == other.location
+            and self.field_type.is_same_type(other.field_type)
+        )
 
     def __ne__(self, other):
         """Check another object for non-equality against this one."""
@@ -574,29 +611,42 @@ class FoldedContextField(Expression):
     def validate(self):
         """Validate that the FoldedContextField is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
-            raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
-                type(self.fold_scope_location), self.fold_scope_location))
+            raise TypeError(
+                u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
+                    type(self.fold_scope_location), self.fold_scope_location
+                )
+            )
 
         if self.fold_scope_location.field is None:
-            raise ValueError(u'Expected FoldScopeLocation at a field, but got: {}'
-                             .format(self.fold_scope_location))
+            raise ValueError(
+                u'Expected FoldScopeLocation at a field, but got: {}'.format(
+                    self.fold_scope_location
+                )
+            )
 
         if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
             if not GraphQLInt.is_same_type(self.field_type):
-                raise TypeError(u'Expected the _x_count meta-field to be of GraphQLInt type, but '
-                                u'encountered type {} instead: {}'
-                                .format(self.field_type, self.fold_scope_location))
+                raise TypeError(
+                    u'Expected the _x_count meta-field to be of GraphQLInt type, but '
+                    u'encountered type {} instead: {}'.format(
+                        self.field_type, self.fold_scope_location
+                    )
+                )
         else:
             if not isinstance(self.field_type, GraphQLList):
-                raise ValueError(u'Invalid value of "field_type" for a field that is not '
-                                 u'a meta-field, expected a list type but got: {} {}'
-                                 .format(self.field_type, self.fold_scope_location))
+                raise ValueError(
+                    u'Invalid value of "field_type" for a field that is not '
+                    u'a meta-field, expected a list type but got: {} {}'.format(
+                        self.field_type, self.fold_scope_location
+                    )
+                )
 
             inner_type = strip_non_null_from_type(self.field_type.of_type)
             if isinstance(inner_type, GraphQLList):
                 raise GraphQLCompilationError(
                     u'Outputting list-valued fields in a @fold context is currently not supported: '
-                    u'{} {}'.format(self.fold_scope_location, self.field_type.of_type))
+                    u'{} {}'.format(self.fold_scope_location, self.field_type.of_type)
+                )
 
     def to_match(self):
         """Return a unicode object with the MATCH representation of this expression."""
@@ -606,9 +656,7 @@ class FoldedContextField(Expression):
         validate_safe_string(mark_name)
 
         template = u'$%(mark_name)s.%(field_name)s'
-        template_data = {
-            'mark_name': mark_name,
-        }
+        template_data = {'mark_name': mark_name}
 
         if field_name == COUNT_META_FIELD_NAME:
             template_data['field_name'] = 'size()'
@@ -629,8 +677,10 @@ class FoldedContextField(Expression):
 
     def to_gremlin(self):
         """Not implemented, should not be used."""
-        raise AssertionError(u'FoldedContextField are not used during the query emission process '
-                             u'in Gremlin, so this is a bug. This function should not be called.')
+        raise AssertionError(
+            u'FoldedContextField are not used during the query emission process '
+            u'in Gremlin, so this is a bug. This function should not be called.'
+        )
 
     def to_cypher(self):
         """Not implemented yet."""
@@ -640,9 +690,11 @@ class FoldedContextField(Expression):
         """Return True if the given object is equal to this one, and False otherwise."""
         # Since this object has a GraphQL type as a variable, which doesn't implement
         # the equality operator, we have to override equality and call is_same_type() here.
-        return (type(self) == type(other) and
-                self.fold_scope_location == other.fold_scope_location and
-                self.field_type.is_same_type(other.field_type))
+        return (
+            type(self) == type(other)
+            and self.fold_scope_location == other.fold_scope_location
+            and self.field_type.is_same_type(other.field_type)
+        )
 
     def __ne__(self, other):
         """Check another object for non-equality against this one."""
@@ -670,13 +722,17 @@ class FoldCountContextField(Expression):
     def validate(self):
         """Validate that the FoldCountContextField is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
-            raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
-                type(self.fold_scope_location), self.fold_scope_location))
+            raise TypeError(
+                u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
+                    type(self.fold_scope_location), self.fold_scope_location
+                )
+            )
 
         if self.fold_scope_location.field != COUNT_META_FIELD_NAME:
-            raise AssertionError(u'Unexpected field in the FoldScopeLocation of this '
-                                 u'FoldCountContextField object: {} {}'
-                                 .format(self.fold_scope_location, self))
+            raise AssertionError(
+                u'Unexpected field in the FoldScopeLocation of this '
+                u'FoldCountContextField object: {} {}'.format(self.fold_scope_location, self)
+            )
 
     def to_match(self):
         """Return a unicode object with the MATCH representation of this expression."""
@@ -686,9 +742,7 @@ class FoldCountContextField(Expression):
         validate_safe_string(mark_name)
 
         template = u'$%(mark_name)s.size()'
-        template_data = {
-            'mark_name': mark_name,
-        }
+        template_data = {'mark_name': mark_name}
         return template % template_data
 
     def to_gremlin(self):
@@ -724,12 +778,17 @@ class ContextFieldExistence(Expression):
     def validate(self):
         """Validate that the ContextFieldExistence is correctly representable."""
         if not isinstance(self.location, Location):
-            raise TypeError(u'Expected Location location, got: {} {}'.format(
-                type(self.location).__name__, self.location))
+            raise TypeError(
+                u'Expected Location location, got: {} {}'.format(
+                    type(self.location).__name__, self.location
+                )
+            )
 
         if self.location.field:
-            raise ValueError(u'Expected location to point to a vertex, '
-                             u'but found a field: {}'.format(self.location))
+            raise ValueError(
+                u'Expected location to point to a vertex, '
+                u'but found a field: {}'.format(self.location)
+            )
 
     def to_match(self):
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
@@ -747,8 +806,11 @@ class ContextFieldExistence(Expression):
 def _validate_operator_name(operator, supported_operators):
     """Ensure the named operator is valid and supported."""
     if not isinstance(operator, six.text_type):
-        raise TypeError(u'Expected operator as unicode string, got: {} {}'.format(
-            type(operator).__name__, operator))
+        raise TypeError(
+            u'Expected operator as unicode string, got: {} {}'.format(
+                type(operator).__name__, operator
+            )
+        )
 
     if operator not in supported_operators:
         raise GraphQLCompilationError(u'Unrecognized operator: {}'.format(operator))
@@ -772,8 +834,11 @@ class UnaryTransformation(Expression):
         _validate_operator_name(self.operator, UnaryTransformation.SUPPORTED_OPERATORS)
 
         if not isinstance(self.inner_expression, Expression):
-            raise TypeError(u'Expected Expression inner_expression, got {} {}'.format(
-                type(self.inner_expression).__name__, self.inner_expression))
+            raise TypeError(
+                u'Expected Expression inner_expression, got {} {}'.format(
+                    type(self.inner_expression).__name__, self.inner_expression
+                )
+            )
 
     def visit_and_update(self, visitor_fn):
         """Create an updated version (if needed) of UnaryTransformation via the visitor pattern."""
@@ -788,36 +853,28 @@ class UnaryTransformation(Expression):
         """Return a unicode object with the MATCH representation of this UnaryTransformation."""
         self.validate()
 
-        translation_table = {
-            u'size': u'size()',
-        }
+        translation_table = {u'size': u'size()'}
         match_operator = translation_table.get(self.operator)
         if not match_operator:
-            raise AssertionError(u'Unrecognized operator used: '
-                                 u'{} {}'.format(self.operator, self))
+            raise AssertionError(
+                u'Unrecognized operator used: ' u'{} {}'.format(self.operator, self)
+            )
 
         template = u'%(inner)s.%(operator)s'
-        args = {
-            'inner': self.inner_expression.to_match(),
-            'operator': match_operator,
-        }
+        args = {'inner': self.inner_expression.to_match(), 'operator': match_operator}
         return template % args
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this expression."""
-        translation_table = {
-            u'size': u'count()',
-        }
+        translation_table = {u'size': u'count()'}
         gremlin_operator = translation_table.get(self.operator)
         if not gremlin_operator:
-            raise AssertionError(u'Unrecognized operator used: '
-                                 u'{} {}'.format(self.operator, self))
+            raise AssertionError(
+                u'Unrecognized operator used: ' u'{} {}'.format(self.operator, self)
+            )
 
         template = u'{inner}.{operator}'
-        args = {
-            'inner': self.inner_expression.to_gremlin(),
-            'operator': gremlin_operator,
-        }
+        args = {'inner': self.inner_expression.to_gremlin(), 'operator': gremlin_operator}
         return template.format(**args)
 
     def to_cypher(self):
@@ -828,10 +885,25 @@ class UnaryTransformation(Expression):
 class BinaryComposition(Expression):
     """An expression created by composing two expressions together."""
 
-    SUPPORTED_OPERATORS = frozenset({
-        u'=', u'!=', u'>=', u'<=', u'>', u'<', u'+', u'||', u'&&',
-        u'contains', u'not_contains', u'intersects', u'has_substring', u'LIKE', u'INSTANCEOF',
-    })
+    SUPPORTED_OPERATORS = frozenset(
+        {
+            u'=',
+            u'!=',
+            u'>=',
+            u'<=',
+            u'>',
+            u'<',
+            u'+',
+            u'||',
+            u'&&',
+            u'contains',
+            u'not_contains',
+            u'intersects',
+            u'has_substring',
+            u'LIKE',
+            u'INSTANCEOF',
+        }
+    )
 
     __slots__ = ('operator', 'left', 'right')
 
@@ -857,12 +929,18 @@ class BinaryComposition(Expression):
         _validate_operator_name(self.operator, BinaryComposition.SUPPORTED_OPERATORS)
 
         if not isinstance(self.left, Expression):
-            raise TypeError(u'Expected Expression left, got: {} {} {}'.format(
-                type(self.left).__name__, self.left, self))
+            raise TypeError(
+                u'Expected Expression left, got: {} {} {}'.format(
+                    type(self.left).__name__, self.left, self
+                )
+            )
 
         if not isinstance(self.right, Expression):
-            raise TypeError(u'Expected Expression right, got: {} {}'.format(
-                type(self.right).__name__, self.right))
+            raise TypeError(
+                u'Expected Expression right, got: {} {}'.format(
+                    type(self.right).__name__, self.right
+                )
+            )
 
     def visit_and_update(self, visitor_fn):
         """Create an updated version (if needed) of BinaryComposition via the visitor pattern."""
@@ -908,7 +986,6 @@ class BinaryComposition(Expression):
                 u'not_contains': (u'CONTAINS', negated_regular_operator_format),
                 u'intersects': (u'intersect', intersects_operator_format),
                 u'has_substring': (None, None),  # must be lowered into compatible form using LIKE
-
                 # MATCH-specific operators
                 u'LIKE': (u'LIKE', regular_operator_format),
                 u'INSTANCEOF': (u'INSTANCEOF', regular_operator_format),
@@ -916,12 +993,13 @@ class BinaryComposition(Expression):
 
         match_operator, format_spec = translation_table.get(self.operator, (None, None))
         if not match_operator:
-            raise AssertionError(u'Unrecognized operator used: '
-                                 u'{} {}'.format(self.operator, self))
+            raise AssertionError(
+                u'Unrecognized operator used: ' u'{} {}'.format(self.operator, self)
+            )
 
-        return format_spec % dict(operator=match_operator,
-                                  left=self.left.to_match(),
-                                  right=self.right.to_match())
+        return format_spec % dict(
+            operator=match_operator, left=self.left.to_match(), right=self.right.to_match()
+        )
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this expression."""
@@ -950,12 +1028,13 @@ class BinaryComposition(Expression):
 
         gremlin_operator, format_spec = translation_table.get(self.operator, (None, None))
         if not gremlin_operator:
-            raise AssertionError(u'Unrecognized operator used: '
-                                 u'{} {}'.format(self.operator, self))
+            raise AssertionError(
+                u'Unrecognized operator used: ' u'{} {}'.format(self.operator, self)
+            )
 
-        return format_spec.format(operator=gremlin_operator,
-                                  left=self.left.to_gremlin(),
-                                  right=self.right.to_gremlin())
+        return format_spec.format(
+            operator=gremlin_operator, left=self.left.to_gremlin(), right=self.right.to_gremlin()
+        )
 
     def to_cypher(self):
         """Return a unicode object with the Cypher representation of this expression."""
@@ -991,12 +1070,13 @@ class BinaryComposition(Expression):
 
         cypher_operator, format_spec = translation_table.get(self.operator, (None, None))
         if not cypher_operator:
-            raise AssertionError(u'Unrecognized operator used: '
-                                 u'{} {}'.format(self.operator, self))
+            raise AssertionError(
+                u'Unrecognized operator used: ' u'{} {}'.format(self.operator, self)
+            )
 
-        return format_spec.format(operator=cypher_operator,
-                                  left=self.left.to_cypher(),
-                                  right=self.right.to_cypher())
+        return format_spec.format(
+            operator=cypher_operator, left=self.left.to_cypher(), right=self.right.to_cypher()
+        )
 
 
 class TernaryConditional(Expression):
@@ -1024,14 +1104,23 @@ class TernaryConditional(Expression):
     def validate(self):
         """Validate that the TernaryConditional is correctly representable."""
         if not isinstance(self.predicate, Expression):
-            raise TypeError(u'Expected Expression predicate, got: {} {}'.format(
-                type(self.predicate).__name__, self.predicate))
+            raise TypeError(
+                u'Expected Expression predicate, got: {} {}'.format(
+                    type(self.predicate).__name__, self.predicate
+                )
+            )
         if not isinstance(self.if_true, Expression):
-            raise TypeError(u'Expected Expression if_true, got: {} {}'.format(
-                type(self.if_true).__name__, self.if_true))
+            raise TypeError(
+                u'Expected Expression if_true, got: {} {}'.format(
+                    type(self.if_true).__name__, self.if_true
+                )
+            )
         if not isinstance(self.if_false, Expression):
-            raise TypeError(u'Expected Expression if_false, got: {} {}'.format(
-                type(self.if_false).__name__, self.if_false))
+            raise TypeError(
+                u'Expected Expression if_false, got: {} {}'.format(
+                    type(self.if_false).__name__, self.if_false
+                )
+            )
 
     def visit_and_update(self, visitor_fn):
         """Create an updated version (if needed) of TernaryConditional via the visitor pattern."""
@@ -1039,9 +1128,13 @@ class TernaryConditional(Expression):
         new_if_true = self.if_true.visit_and_update(visitor_fn)
         new_if_false = self.if_false.visit_and_update(visitor_fn)
 
-        if any((new_predicate is not self.predicate,
+        if any(
+            (
+                new_predicate is not self.predicate,
                 new_if_true is not self.if_true,
-                new_if_false is not self.if_false)):
+                new_if_false is not self.if_false,
+            )
+        ):
             return visitor_fn(TernaryConditional(new_predicate, new_if_true, new_if_false))
         else:
             return visitor_fn(self)
@@ -1057,9 +1150,11 @@ class TernaryConditional(Expression):
         def visitor_fn(expression):
             """Visitor function that ensures the predicate does not contain TernaryConditionals."""
             if isinstance(expression, TernaryConditional):
-                raise ValueError(u'Cannot emit MATCH code for TernaryConditional that contains '
-                                 u'in its predicate another TernaryConditional: '
-                                 u'{} {}'.format(expression, self))
+                raise ValueError(
+                    u'Cannot emit MATCH code for TernaryConditional that contains '
+                    u'in its predicate another TernaryConditional: '
+                    u'{} {}'.format(expression, self)
+                )
             return expression
 
         self.predicate.visit_and_update(visitor_fn)
@@ -1067,13 +1162,17 @@ class TernaryConditional(Expression):
         format_spec = u'if(eval("%(predicate)s"), %(if_true)s, %(if_false)s)'
         predicate_string = self.predicate.to_match()
         if u'"' in predicate_string:
-            raise AssertionError(u'Found a double-quote within the predicate string, this would '
-                                 u'have terminated the if(eval()) early and should be fixed: '
-                                 u'{} {}'.format(predicate_string, self))
+            raise AssertionError(
+                u'Found a double-quote within the predicate string, this would '
+                u'have terminated the if(eval()) early and should be fixed: '
+                u'{} {}'.format(predicate_string, self)
+            )
 
-        return format_spec % dict(predicate=predicate_string,
-                                  if_true=self.if_true.to_match(),
-                                  if_false=self.if_false.to_match())
+        return format_spec % dict(
+            predicate=predicate_string,
+            if_true=self.if_true.to_match(),
+            if_false=self.if_false.to_match(),
+        )
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this expression."""
@@ -1082,7 +1181,8 @@ class TernaryConditional(Expression):
         return u'({predicate} ? {if_true} : {if_false})'.format(
             predicate=self.predicate.to_gremlin(),
             if_true=self.if_true.to_gremlin(),
-            if_false=self.if_false.to_gremlin())
+            if_false=self.if_false.to_gremlin(),
+        )
 
     def to_cypher(self):
         """Return a unicode object with the Cypher representation of this expression."""
@@ -1091,4 +1191,5 @@ class TernaryConditional(Expression):
         return u'(CASE WHEN {predicate} THEN {if_true} ELSE {if_false} END)'.format(
             predicate=self.predicate.to_cypher(),
             if_true=self.if_true.to_cypher(),
-            if_false=self.if_false.to_cypher())
+            if_false=self.if_false.to_cypher(),
+        )
