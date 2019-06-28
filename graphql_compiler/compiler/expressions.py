@@ -224,7 +224,15 @@ class Variable(Expression):
         # Cypher has built-in support for variable expansion, so we'll just emit a variable
         # definition and rely on Cypher to insert the value.
         self.validate()
-        return u'{}'.format(self.variable_name)
+
+        # We can't directly pass a Date or a DateTime object, so we have to pass it as a string
+        # and then parse it inline.
+        if GraphQLDate.is_same_type(self.inferred_type):
+            return u'DATE({})'.format(self.variable_name)
+        elif GraphQLDateTime.is_same_type(self.inferred_type):
+            return u'DATETIME({})'.format(self.variable_name)
+        else:
+            return u'{}'.format(self.variable_name)
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
