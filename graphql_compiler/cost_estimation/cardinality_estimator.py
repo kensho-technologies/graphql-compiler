@@ -124,9 +124,7 @@ def _estimate_edge_count_between_vertex_pair_using_class_count(
     Given a parent location of type A and a child location of type B, we estimate the number of AB
     edges using class counts. If A and B are subclasses of C and D respectively, we only have access
     to CD edges, so in general, we estimate using the assumption that CD edges are distributed
-    evenly among all C and D vertices. So to get the number of AB edges, we scale the number of CD
-    edges by the fraction of C vertices that are of type A and also independently by the fraction of
-    D vertices that are of type B.
+    among all C and D vertices independently of the vertex's subclass. 
     Using this assumption, in general we estimate the statistic as
     (# of AB edges) = (# of CD edges) * (# of A vertices) / (# of C vertices) *
                                         (# of B vertices) / (# of D vertices).
