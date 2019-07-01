@@ -1,37 +1,46 @@
-# Copyright 2017-present Kensho Technologies, LLC.
-"""Safely represent arguments for MATCH-language GraphQL queries."""
+# Copyright 2019-present Kensho Technologies, LLC.
 import datetime
 import json
+from string import Template
 
 import arrow
 from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 import six
 
-from ..compiler import MATCH_LANGUAGE
+from ..compiler import CYPHER_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .representations import coerce_to_decimal, represent_float_as_str, type_check_and_str
 
 
-def _safe_match_string(value):
-    """Sanitize and represent a string argument in MATCH."""
-    if not isinstance(value, six.string_types):
-        if isinstance(value, bytes):  # likely to only happen in py2
-            value = value.decode('utf-8')
+def _safe_cypher_string(argument_value):
+    """Sanitize and represent a string argument in Cypher."""
+    if not isinstance(argument_value, six.string_types):
+        if isinstance(argument_value, bytes):  # likely to only happen in py2
+            argument_value = argument_value.decode('utf-8')
         else:
             raise GraphQLInvalidArgumentError(
-                u'Attempting to convert a non-string into a string: ' u'{}'.format(value)
+                u'Attempting to convert a non-string into a string: ' u'{}'.format(argument_value)
             )
 
     # Using JSON encoding means that all unicode literals and special chars
     # (e.g. newlines and backslashes) are replaced by appropriate escape sequences.
-    # JSON has the same escaping rules as MATCH / SQL, so no further escaping is necessary.
-    return json.dumps(value)
+    # Since the compiler only allows variables with upper or lower case letters (A-Z, a-z)
+    # or underscores (_), arbitrary code execution is not possible, so we don't need any
+    # other special handling for these strings.
+    escaped_and_quoted = json.dumps(argument_value)
+    return escaped_and_quoted
 
 
-def _safe_match_date_and_datetime(graphql_type, expected_python_types, value):
-    """Represent date and datetime objects as MATCH strings."""
+def _safe_cypher_decimal(argument_value):
+    """Represent decimal objects as Cypher strings."""
+    decimal_value = coerce_to_decimal(argument_value)
+    return 'toFloat(' + _safe_cypher_string(str(decimal_value)) + ')'
+
+
+def _safe_cypher_date_and_datetime(graphql_type, expected_python_types, value):
+    """Represent date and datetime objects as Cypher strings."""
     # Python datetime.datetime is a subclass of datetime.date,
     # but in this case, the two are not interchangeable.
     # Rather than using isinstance, we will therefore check for exact type equality.
@@ -50,21 +59,15 @@ def _safe_match_date_and_datetime(graphql_type, expected_python_types, value):
     except ValueError as e:
         raise GraphQLInvalidArgumentError(e)
 
-    return _safe_match_string(serialized_value)
+    return _safe_cypher_string(serialized_value)
 
 
-def _safe_match_decimal(value):
-    """Represent decimal objects as MATCH strings."""
-    decimal_value = coerce_to_decimal(value)
-    return 'decimal(' + _safe_match_string(str(decimal_value)) + ')'
-
-
-def _safe_match_list(inner_type, argument_value):
-    """Represent the list of "inner_type" objects in MATCH form."""
+def _safe_cypher_list(inner_type, argument_value):
+    """Represent the list of "inner_type" objects in Cypher form."""
     stripped_type = strip_non_null_from_type(inner_type)
     if isinstance(stripped_type, GraphQLList):
         raise GraphQLInvalidArgumentError(
-            u'MATCH does not currently support nested lists, '
+            u'Cypher does not currently support nested lists, '
             u'but inner type was {}: '
             u'{}'.format(inner_type, argument_value)
         )
@@ -74,14 +77,14 @@ def _safe_match_list(inner_type, argument_value):
             u'Attempting to represent a non-list as a list: ' u'{}'.format(argument_value)
         )
 
-    components = (_safe_match_argument(stripped_type, x) for x in argument_value)
+    components = (_safe_cypher_argument(stripped_type, x) for x in argument_value)
     return u'[' + u','.join(components) + u']'
 
 
-def _safe_match_argument(expected_type, argument_value):
-    """Return a MATCH (SQL) string representing the given argument value."""
+def _safe_cypher_argument(expected_type, argument_value):
+    """Return a Cypher string representing the given argument value."""
     if GraphQLString.is_same_type(expected_type):
-        return _safe_match_string(argument_value)
+        return _safe_cypher_string(argument_value)
     elif GraphQLID.is_same_type(expected_type):
         # IDs can be strings or numbers, but the GraphQL library coerces them to strings.
         # We will follow suit and treat them as strings.
@@ -90,7 +93,7 @@ def _safe_match_argument(expected_type, argument_value):
                 argument_value = argument_value.decode('utf-8')
             else:
                 argument_value = six.text_type(argument_value)
-        return _safe_match_string(argument_value)
+        return _safe_cypher_string(argument_value)
     elif GraphQLFloat.is_same_type(expected_type):
         return represent_float_as_str(argument_value)
     elif GraphQLInt.is_same_type(expected_type):
@@ -104,15 +107,15 @@ def _safe_match_argument(expected_type, argument_value):
     elif GraphQLBoolean.is_same_type(expected_type):
         return type_check_and_str(bool, argument_value)
     elif GraphQLDecimal.is_same_type(expected_type):
-        return _safe_match_decimal(argument_value)
+        return _safe_cypher_decimal(argument_value)
     elif GraphQLDate.is_same_type(expected_type):
-        return _safe_match_date_and_datetime(expected_type, (datetime.date,), argument_value)
+        return _safe_cypher_date_and_datetime(expected_type, (datetime.date,), argument_value)
     elif GraphQLDateTime.is_same_type(expected_type):
-        return _safe_match_date_and_datetime(
+        return _safe_cypher_date_and_datetime(
             expected_type, (datetime.datetime, arrow.Arrow), argument_value
         )
     elif isinstance(expected_type, GraphQLList):
-        return _safe_match_list(expected_type.of_type, argument_value)
+        return _safe_cypher_list(expected_type.of_type, argument_value)
     else:
         raise AssertionError(
             u'Could not safely represent the requested GraphQL type: '
@@ -125,8 +128,8 @@ def _safe_match_argument(expected_type, argument_value):
 ######
 
 
-def insert_arguments_into_match_query(compilation_result, arguments):
-    """Insert the arguments into the compiled MATCH query to form a complete query.
+def insert_arguments_into_cypher_query(compilation_result, arguments):
+    """Insert the arguments into the compiled Cypher query to form a complete query.
 
     Args:
         compilation_result: a CompilationResult object derived from the GraphQL compiler
@@ -134,9 +137,9 @@ def insert_arguments_into_match_query(compilation_result, arguments):
                     query expects.
 
     Returns:
-        string, a MATCH query with inserted argument data
+        string, a Cypher query with inserted argument data.
     """
-    if compilation_result.language != MATCH_LANGUAGE:
+    if compilation_result.language != CYPHER_LANGUAGE:
         raise AssertionError(u'Unexpected query output language: {}'.format(compilation_result))
 
     base_query = compilation_result.query
@@ -144,11 +147,11 @@ def insert_arguments_into_match_query(compilation_result, arguments):
 
     # The arguments are assumed to have already been validated against the query.
     sanitized_arguments = {
-        key: _safe_match_argument(argument_types[key], value)
+        key: _safe_cypher_argument(argument_types[key], value)
         for key, value in six.iteritems(arguments)
     }
 
-    return base_query.format(**sanitized_arguments)
+    return Template(base_query).substitute(sanitized_arguments)
 
 
 ######
