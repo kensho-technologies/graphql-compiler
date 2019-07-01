@@ -111,8 +111,8 @@ def insert_arguments_into_cypher_query(compilation_result, arguments):
     """Insert the arguments into the compiled Cypher query to form a complete query.
 
     Args:
-        compilation_result: CompilationResult, compilation result from the GraphQL compiler.
-        arguments: Dict[str, Any], parameter name -> value, for every parameter the query expects.
+        compilation_result: a CompilationResult object derived from the GraphQL compiler
+        arguments: dict, str -> any, mapping argument name to its value, for every parameter the query expects.
 
     Returns:
         string, a Cypher query with inserted argument data.
