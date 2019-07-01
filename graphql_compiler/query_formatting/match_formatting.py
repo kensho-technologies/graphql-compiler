@@ -17,7 +17,7 @@ from .representations import coerce_to_decimal, represent_float_as_str, type_che
 def _safe_match_string(value):
     """Sanitize and represent a string argument in MATCH."""
     if not isinstance(value, six.string_types):
-        if isinstance(value, bytes):  # should only happen in py3
+        if isinstance(value, bytes):  # likely to only happen in py2
             value = value.decode('utf-8')
         else:
             raise GraphQLInvalidArgumentError(
@@ -86,7 +86,7 @@ def _safe_match_argument(expected_type, argument_value):
         # IDs can be strings or numbers, but the GraphQL library coerces them to strings.
         # We will follow suit and treat them as strings.
         if not isinstance(argument_value, six.string_types):
-            if isinstance(argument_value, bytes):  # should only happen in py3
+            if isinstance(argument_value, bytes):  # likely to only happen in py2
                 argument_value = argument_value.decode('utf-8')
             else:
                 argument_value = six.text_type(argument_value)
