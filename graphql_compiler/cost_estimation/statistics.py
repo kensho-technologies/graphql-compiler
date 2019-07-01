@@ -63,7 +63,7 @@ class Statistics(object):
 
 class LocalStatistics(Statistics):
     """Provides statistics using ones given at initialization."""
-    def __init__(self, class_counts, *, edge_count_between_vertex_pairs=None):
+    def __init__(self, class_counts, edge_count_between_vertex_pairs=None):
         """Initializes statistics with the given data.
 
         Args:
