@@ -108,13 +108,13 @@ class LocalStatistics(Statistics):
 
         Args:
             class_counts: dict, str -> int, mapping vertex/edge class name to class count.
-            edge_count_between_vertex_pairs: optional dict, (str, str, str) -> int,
-                mapping tuple of (vertex out class name, vertex in class name, edge class name) to
+            edge_count_between_vertex_pairs: optional dict, (str, str, str) -> int, mapping 
+                tuple of (vertex source class name, edge class name, vertex target class name) to
                 count of edge instances of given class connecting instances of two vertex classes.
             count_of_distinct_values: optional dict, (str, str) -> int, mapping vertex class name
                 and field name on that vertex class to the count of distinct values of the field for
                 that vertex class.
-            histograms:optional dict, (str, str) -> list[tuple(float, float, int)], mapping vertex
+            histograms: optional dict, (str, str) -> list[tuple(float, float, int)], mapping vertex
                 class name and field name on that vertex class to histogram.
         """
         if edge_count_between_vertex_pairs is None:
