@@ -87,7 +87,7 @@ def _get_parent_and_child_base_classnames_from_edge(schema_graph, child_location
 
 def _get_outbound_and_inbound_names_from_locations(query_metadata, child_location, parent_location):
     """Get the out and in classnames of a location and its parent from the last edge information."""
-    edge_direction, _ = _get_last_edge_direction_and_name_to_location(child_location)
+    edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     child_name_from_location = query_metadata.get_location_info(child_location).type.name
     if edge_direction == INBOUND_EDGE_DIRECTION:
