@@ -185,6 +185,7 @@ print(compilation_result.query)
   type `Species`. This is possible since `Entity` is an interface, and `Species` is a type
   that implements the `Entity` interface.
 
+
 ## Directives
 
 ### @optional
