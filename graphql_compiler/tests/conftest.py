@@ -9,8 +9,8 @@ from .test_data_tools.data_tool import (
     generate_orient_snapshot_data, generate_sql_integration_data,
     init_sql_integration_test_backends, tear_down_integration_test_backends
 )
-from .test_data_tools.graph import get_test_graph
 from .test_data_tools.neo4j import get_test_neo4j_graph
+from .test_data_tools.orientdb_graph import get_test_orientdb_graph
 from .test_data_tools.schema import load_schema
 
 
@@ -20,22 +20,22 @@ from .test_data_tools.schema import load_schema
 
 
 @pytest.fixture(scope='session')
-def init_snapshot_graph_client():
+def init_snapshot_orientdb_client():
     """Return a client for an initialized db, with all test data imported."""
-    return _init_graph_client(load_schema, generate_orient_snapshot_data)
+    return _init_orientdb_client(load_schema, generate_orient_snapshot_data)
 
 
 @pytest.fixture(scope='session')
-def init_integration_graph_client():
+def init_integration_orientdb_client():
     """Return a client for an initialized db, with all test data imported."""
-    return _init_graph_client(load_schema, generate_orient_integration_data)
+    return _init_orientdb_client(load_schema, generate_orient_integration_data)
 
 
 @retry(tries=20, timeout=1)  # pylint: disable=no-value-for-parameter
-def _init_graph_client(load_schema_func, generate_data_func):
+def _init_orientdb_client(load_schema_func, generate_data_func):
     graph_name = 'animals'
-    graph_client = get_test_graph(graph_name, load_schema_func, generate_data_func)
-    return graph_client
+    orientdb_client = get_test_graph(graph_name, load_schema_func, generate_data_func)
+    return orientdb_client
 
 
 @pytest.fixture(scope='session')
@@ -43,7 +43,7 @@ def init_integration_neo4j_client():
     """Return a client for an initialized db, with all test data imported."""
     return _init_neo4j_client(generate_neo4j_integration_data)
 
-
+  
 @retry(tries=20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_neo4j_client(generate_data_func):
     graph_name = 'animals'
@@ -52,15 +52,15 @@ def _init_neo4j_client(generate_data_func):
 
 
 @pytest.fixture(scope='class')
-def snapshot_graph_client(request, init_snapshot_graph_client):
+def snapshot_orientdb_client(request, init_snapshot_orientdb_client):
     """Get a client for an initialized db, with all test data imported."""
-    request.cls.graph_client = init_snapshot_graph_client
+    request.cls.orientdb_client = init_snapshot_orientdb_client
 
 
 @pytest.fixture(scope='class')
-def integration_graph_client(request, init_integration_graph_client):
+def integration_orientdb_client(request, init_integration_orientdb_client):
     """Get a client for an initialized db, with all test data imported."""
-    request.cls.graph_client = init_integration_graph_client
+    request.cls.orientdb_client = init_integration_orientdb_client
 
 
 @pytest.fixture(scope='class')

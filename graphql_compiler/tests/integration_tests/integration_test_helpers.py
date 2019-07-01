@@ -36,7 +36,7 @@ def try_convert_decimal_to_string(value):
     return value
 
 
-def compile_and_run_match_query(schema, graphql_query, parameters, graph_client):
+def compile_and_run_match_query(schema, graphql_query, parameters, orientdb_client):
     """Compiles and runs a MATCH query against the supplied graph client."""
     # MATCH code emitted by the compiler expects Decimals to be passed in as strings
     converted_parameters = {
@@ -46,7 +46,7 @@ def compile_and_run_match_query(schema, graphql_query, parameters, graph_client)
     compilation_result = graphql_to_match(schema, graphql_query, converted_parameters)
 
     query = compilation_result.query
-    results = [row.oRecordData for row in graph_client.command(query)]
+    results = [row.oRecordData for row in orientdb_client.command(query)]
     return results
 
 

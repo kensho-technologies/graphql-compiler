@@ -34,8 +34,8 @@ all_backends = parameterized.expand([
 # Store the typical fixtures required for an integration tests.
 # Individual tests can supply the full @pytest.mark.usefixtures to override if necessary.
 integration_fixtures = pytest.mark.usefixtures(
-    'integration_graph_client',
     'integration_neo4j_client',
+    'integration_orientdb_client',
     'sql_integration_data',
 )
 
@@ -83,7 +83,7 @@ class IntegrationTests(TestCase):
                 cls.schema, graphql_query, parameters, engine, cls.sql_metadata)
         elif backend_name in MATCH_BACKENDS:
             results = compile_and_run_match_query(
-                cls.schema, graphql_query, parameters, cls.graph_client)
+                cls.schema, graphql_query, parameters, cls.orientdb_client)
         elif backend_name in CYPHER_BACKENDS:
             results = compile_and_run_cypher_query(
                 cls.schema, graphql_query, parameters, cls.neo4j_client)
@@ -201,7 +201,7 @@ class IntegrationTests(TestCase):
         class_to_field_type_overrides = {
             'UniquelyIdentifiable': {'uuid': GraphQLID}
         }
-        schema, _ = generate_schema(self.graph_client,
+        schema, _ = generate_schema(self.orientdb_client,
                                     class_to_field_type_overrides=class_to_field_type_overrides,
                                     hidden_classes={ORIENTDB_BASE_VERTEX_CLASS_NAME})
         compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
@@ -211,7 +211,7 @@ class IntegrationTests(TestCase):
         class_to_field_type_overrides = {
             'UniquelyIdentifiable': {'uuid': GraphQLID}
         }
-        schema, _ = generate_schema(self.graph_client,
+        schema, _ = generate_schema(self.orientdb_client,
                                     class_to_field_type_overrides=class_to_field_type_overrides)
         # Since Animal implements the UniquelyIdentifiable interface and since we we overrode
         # UniquelyIdentifiable's uuid field to be of type GraphQLID when we generated the schema,
@@ -220,18 +220,18 @@ class IntegrationTests(TestCase):
 
     @integration_fixtures
     def test_include_admissible_non_graph_class(self):
-        schema, _ = generate_schema(self.graph_client)
+        schema, _ = generate_schema(self.orientdb_client)
         # Included abstract non-vertex classes whose non-abstract subclasses are all vertexes.
         self.assertIsNotNone(schema.get_type('UniquelyIdentifiable'))
 
     @integration_fixtures
     def test_selectively_hide_classes(self):
-        schema, _ = generate_schema(self.graph_client, hidden_classes={'Animal'})
+        schema, _ = generate_schema(self.orientdb_client, hidden_classes={'Animal'})
         self.assertNotIn('Animal', schema.get_type_map())
 
     @integration_fixtures
     def test_parsed_schema_element_custom_fields(self):
-        schema_graph = generate_schema_graph(self.graph_client)
+        schema_graph = generate_schema_graph(self.orientdb_client)
         parent_of_edge = schema_graph.get_element_by_class_name('Animal_ParentOf')
         expected_custom_class_fields = {
             'human_name_in': 'Parent',
