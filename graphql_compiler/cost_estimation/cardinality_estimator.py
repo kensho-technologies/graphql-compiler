@@ -79,6 +79,9 @@ def _get_parent_and_child_name_from_edge(schema_graph, child_location):
     elif edge_direction == OUTBOUND_EDGE_DIRECTION:
         parent_name_from_edge = edge_element.base_in_connection
         child_name_from_edge = edge_element.base_out_connection
+    else:
+        raise AssertionError(u'Expected edge direction to be either inbound or outbound.'
+                             u'Found: {}'.format(edge_direction))
     return parent_name_from_edge, child_name_from_edge
 
 
@@ -93,6 +96,9 @@ def _get_outbound_and_inbound_names_from_locations(query_metadata, child_locatio
     elif edge_direction == OUTBOUND_EDGE_DIRECTION:
         outbound_vertex_name = parent_name_from_location
         inbound_vertex_name = child_name_from_location
+    else:
+        raise AssertionError(u'Expected edge direction to be either inbound or outbound.'
+                             u'Found: {}'.format(edge_direction))
     return outbound_vertex_name, inbound_vertex_name
 
 
