@@ -69,20 +69,20 @@ def _get_last_edge_direction_and_name_to_location(location):
     return edge_direction, edge_name
 
 
-def _get_parent_and_child_name_from_edge(schema_graph, child_location):
+def _get_parent_and_child_base_classnames_from_edge(schema_graph, child_location):
     """Get the base classname of a location and its parent from the last edge information."""
     edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     edge_element = schema_graph.get_edge_schema_element_or_raise(edge_name)
     if edge_direction == INBOUND_EDGE_DIRECTION:
-        parent_name_from_edge = edge_element.base_out_connection
-        child_name_from_edge = edge_element.base_in_connection
+        parent_base_classname = edge_element.base_out_connection
+        child_base_classname = edge_element.base_in_connection
     elif edge_direction == OUTBOUND_EDGE_DIRECTION:
-        parent_name_from_edge = edge_element.base_in_connection
-        child_name_from_edge = edge_element.base_out_connection
+        parent_base_classname = edge_element.base_in_connection
+        child_base_classname = edge_element.base_out_connection
     else:
         raise AssertionError(u'Expected edge direction to be either inbound or outbound.'
                              u'Found: edge {} with direction {}'.format(edge_name, edge_direction))
-    return parent_name_from_edge, child_name_from_edge
+    return parent_base_classname, child_base_classname
 
 
 def _get_outbound_and_inbound_names_from_locations(query_metadata, child_location, parent_location):
@@ -122,9 +122,11 @@ def _estimate_edge_count_between_vertex_pair_using_class_count(
     """Estimate the count of edges connecting two vertex classes via the class_count statistic.
 
     Given a parent location of type A and a child location of type B, we estimate the number of AB
-    edges using class counts. If A and B are subclasses of C and D respectively, we only have
-    access to CD edges, so in general, we assume that the number of CD edges with A as an endpoint
-    are proportional to the fraction of A vertices over C vertices, and likewise for B and D.
+    edges using class counts. If A and B are subclasses of C and D respectively, we only have access
+    to CD edges, so in general, we estimate using the assumption that CD edges are distributed
+    evenly among all C and D vertices. So to get the number of AB edges, we scale the number of CD
+    edges by the fraction of C vertices that are of type A and also independently by the fraction of
+    D vertices that are of type B.
     Using this assumption, in general we estimate the statistic as
     (# of AB edges) = (# of CD edges) * (# of A vertices) / (# of C vertices) *
                                         (# of B vertices) / (# of D vertices).
@@ -144,20 +146,20 @@ def _estimate_edge_count_between_vertex_pair_using_class_count(
 
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     child_name_from_location = query_metadata.get_location_info(child_location).type.name
-    parent_name_from_edge, child_name_from_edge = _get_parent_and_child_name_from_edge(
+    parent_base_classname, child_base_classname = _get_parent_and_child_base_classnames_from_edge(
         schema_graph, child_location
     )
     # Scale edge_counts if child_location's type is a subclass of the edge's endpoint type.
-    if child_name_from_location != child_name_from_edge:
+    if child_name_from_location != child_base_classname:
         edge_counts *= (
             float(statistics.get_class_count(child_name_from_location)) /
-            statistics.get_class_count(child_name_from_edge)
+            statistics.get_class_count(child_base_classname)
         )
     # Scale edge_counts if parent_location's type is a subclass of the edge's endpoint type.
-    if parent_name_from_location != parent_name_from_edge:
+    if parent_name_from_location != parent_base_classname:
         edge_counts *= (
             float(statistics.get_class_count(parent_name_from_location)) /
-            statistics.get_class_count(parent_name_from_edge)
+            statistics.get_class_count(parent_base_classname)
         )
 
     return edge_counts
