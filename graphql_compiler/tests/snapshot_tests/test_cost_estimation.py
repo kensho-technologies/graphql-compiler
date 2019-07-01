@@ -153,7 +153,7 @@ class CostEstimationTests(unittest.TestCase):
             'Entity_Related': 11
         }
         edge_count_data = {
-            ('Animal', 'Event', 'Entity_Related'): 2
+            ('Animal', 'Entity_Related', 'Event'): 2
         }
         statistics = LocalStatistics(
             count_data, edge_count_between_vertex_pairs=edge_count_data)
@@ -189,7 +189,7 @@ class CostEstimationTests(unittest.TestCase):
             'Entity_Related': 11
         }
         edge_count_data = {
-            ('Animal', 'Event', 'Entity_Related'): 2
+            ('Animal', 'Entity_Related', 'Event'): 2
         }
         statistics = LocalStatistics(
             count_data, edge_count_between_vertex_pairs=edge_count_data)
@@ -231,7 +231,7 @@ class CostEstimationTests(unittest.TestCase):
             'Location': 13
         }
         edge_count_data = {
-            ('Animal', 'Event', 'Entity_Related'): 2
+            ('Animal', 'Entity_Related', 'Event'): 2
         }
         statistics = LocalStatistics(
             count_data, edge_count_between_vertex_pairs=edge_count_data)
@@ -548,7 +548,7 @@ class CostEstimationTests(unittest.TestCase):
             'BirthEvent': 13
         }
         edge_count_data = {
-            ('Animal', 'BirthEvent', 'Animal_BornAt'): 2
+            ('Animal', 'Animal_BornAt', 'BirthEvent'): 2
         }
         statistics = LocalStatistics(count_data, edge_count_between_vertex_pairs=edge_count_data)
 

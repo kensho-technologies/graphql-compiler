@@ -40,7 +40,7 @@ class Statistics(object):
 
     @abstractmethod
     def get_edge_count_between_vertex_pair(
-        self, vertex_out_class_name, vertex_in_class_name, edge_class_name
+        self, vertex_source_class_name, edge_class_name, vertex_target_class_name
     ):
         """Return the count of edges connecting two vertices.
 
@@ -50,9 +50,9 @@ class Statistics(object):
         several orders of magnitude. In such cases, this statistic should be provided.
 
         Args:
-            vertex_out_class_name: str, vertex class name.
-            vertex_in_class_name: str, vertex class name.
+            vertex_source_class_name: str, vertex class name.
             edge_class_name: str, edge class name.
+            vertex_target_class_name: str, vertex class name.
 
         Returns:
             - int, the count of edges if the statistic exists
@@ -148,7 +148,7 @@ class LocalStatistics(Statistics):
         return self._class_counts[class_name]
 
     def get_edge_count_between_vertex_pair(
-        self, vertex_out_class_name, vertex_in_class_name, edge_class_name
+        self, vertex_source_class_name, edge_class_name, vertex_target_class_name
     ):
         """Return the count of edges connecting two vertices.
 
@@ -158,15 +158,15 @@ class LocalStatistics(Statistics):
         several orders of magnitude. In such cases, this statistic should be provided.
 
         Args:
-            vertex_out_class_name: str, vertex class name.
-            vertex_in_class_name: str, vertex class name.
+            vertex_source_class_name: str, vertex class name.
             edge_class_name: str, edge class name.
+            vertex_target_class_name: str, vertex class name.
 
         Returns:
             - int, the count of edges if the statistic exists
             - None otherwise
         """
-        statistic_key = (vertex_out_class_name, vertex_in_class_name, edge_class_name)
+        statistic_key = (vertex_source_class_name, edge_class_name, vertex_target_class_name)
         return self._edge_count_between_vertex_pairs.get(statistic_key)
 
     def get_distinct_field_values_count(self, vertex_name, field_name):
