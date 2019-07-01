@@ -284,7 +284,14 @@ def get_sql_metadata():
         sqlalchemy.Column('name', sqlalchemy.String(length=12), nullable=False),
         sqlalchemy.Column('net_worth', sqlalchemy.Integer, nullable=False),
         sqlalchemy.Column('birthday', sqlalchemy.Date, nullable=False),
-        sqlalchemy.Column('parent', sqlalchemy.Integer, nullable=True),
+        sqlalchemy.Column('parent', sqlalchemy.String(36), nullable=True),
+        sqlalchemy.Column('species', sqlalchemy.String(36), nullable=True),
+    )
+    tables['Species'] = sqlalchemy.Table(
+        'Species',
+        sqlalchemy_metadata,
+        sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+        sqlalchemy.Column('name', sqlalchemy.String(length=12), nullable=False),
     )
     tables['Event'] = sqlalchemy.Table(
         'Event',
@@ -304,6 +311,11 @@ def get_sql_metadata():
             'out_Animal_ParentOf': {
                 'to_table': 'Animal',
                 'from_column': 'parent',
+                'to_column': 'uuid',
+            },
+            'out_Animal_OfSpecies': {
+                'to_table': 'Species',
+                'from_column': 'species',
                 'to_column': 'uuid',
             }
         },

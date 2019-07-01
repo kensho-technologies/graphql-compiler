@@ -57,7 +57,7 @@ def emit_sql(ir_blocks, query_metadata_table, compiler_metadata):
         raise NotImplementedError(u'Edges need to be added in test_helpers {}'
                                   .format(current_classname))
     current_alias = tables[current_classname].alias()
-    alias_at_location = {}  # Updated only at MarkLocation blocks
+    alias_at_location = {}  # Updated only at MarkLocation blocks. Maps query path to alias
 
     from_clause = current_alias
     outputs = []
@@ -67,10 +67,10 @@ def emit_sql(ir_blocks, query_metadata_table, compiler_metadata):
         if isinstance(block, (blocks.EndOptional)):
             pass  # Nothing to do
         elif isinstance(block, blocks.MarkLocation):
-            alias_at_location[current_location] = current_alias
+            alias_at_location[current_location.query_path] = current_alias
         elif isinstance(block, blocks.Backtrack):
             current_location = block.location
-            current_alias = alias_at_location[current_location]
+            current_alias = alias_at_location[current_location.query_path]
             current_classname = query_metadata_table.get_location_info(current_location).type.name
         elif isinstance(block, blocks.Traverse):
             previous_alias = current_alias
@@ -104,7 +104,11 @@ def emit_sql(ir_blocks, query_metadata_table, compiler_metadata):
                     if isinstance(field.predicate, expressions.ContextFieldExistence):
                         field = field.if_true
 
-                table = alias_at_location[field.location.at_vertex()]
+                # HACK this should be done inside expression.to_sql
+                if field.location.field.startswith('@'):
+                    raise NotImplementedError()
+
+                table = alias_at_location[field.location.at_vertex().query_path]
                 outputs.append(table.c.get(field.location.field).label(output_name))
 
     return sqlalchemy.select(outputs).select_from(from_clause).where(sqlalchemy.and_(*filters))
