@@ -67,13 +67,13 @@ def _emit_code_from_cypher_step(cypher_step):
             'in': ('left_edge_mark', u'<'),
             'out': ('right_edge_mark', u'>'),
         }
-        direction_symbol_name, direction_symbol = direction_lookup[direction]
-        template_data[direction_symbol_name] = direction_symbol
+        key, value = direction_lookup[direction]
+        template_data[key] = value
 
     if isinstance(cypher_step.step_block, Recurse):
         template_data['quantifier'] = u'*0..%d' % cypher_step.step_block.depth
 
-    # Comply with Cypher style guidebook on whitespace a bit.
+    # Try to obey the Cypher style guidebook at least a little bit.
     pattern += u'\n'
 
     return pattern % template_data
