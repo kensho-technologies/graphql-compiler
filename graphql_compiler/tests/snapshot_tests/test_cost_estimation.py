@@ -32,7 +32,12 @@ class CostEstimationTests(unittest.TestCase):
         count_data = {
             'Animal': 3,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, test_data.graphql_input, dict()
@@ -51,7 +56,12 @@ class CostEstimationTests(unittest.TestCase):
             'Animal': 3,
             'Animal_ParentOf': 5,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, test_data.graphql_input, dict()
@@ -74,7 +84,12 @@ class CostEstimationTests(unittest.TestCase):
             'Food': 11,
             'FoodOrSpecies': 14,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, test_data.graphql_input, dict()
@@ -116,7 +131,12 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_BornAt': 13,
             'BirthEvent': 17
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -151,7 +171,12 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_BornAt': 7,
             'Animal_FedAt': 3,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -191,7 +216,12 @@ class CostEstimationTests(unittest.TestCase):
             'Species_Eats': 5,
             'Species': 97,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -211,7 +241,12 @@ class CostEstimationTests(unittest.TestCase):
             'Entity': 11,
             'Species_Eats': 17,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -242,7 +277,12 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_BornAt': 7,
             'Animal_FedAt': 3,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -281,7 +321,12 @@ class CostEstimationTests(unittest.TestCase):
             'Entity': 11,
             'Species_Eats': 5,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -301,7 +346,12 @@ class CostEstimationTests(unittest.TestCase):
             'Entity': 11,
             'Species_Eats': 17,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -328,7 +378,12 @@ class CostEstimationTests(unittest.TestCase):
             'Animal': 7,
             'Animal_ParentOf': 11,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -360,7 +415,12 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_ParentOf': 11,
             'Animal_BornAt': 13,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -391,7 +451,12 @@ class CostEstimationTests(unittest.TestCase):
         count_data = {
             'Animal': 3,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -428,7 +493,12 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 17,
             'FeedingEvent': 11,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -458,7 +528,12 @@ class CostEstimationTests(unittest.TestCase):
         count_data = {
             'Animal': 3,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -496,7 +571,12 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'FeedingEvent': 6,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -538,7 +618,12 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'FeedingEvent': 6,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -579,7 +664,12 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'FeedingEvent': 6,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -621,7 +711,12 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'FeedingEvent': 6,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -658,7 +753,12 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_ParentOf': 11,
             'Animal_BornAt': 13,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -693,7 +793,12 @@ class CostEstimationTests(unittest.TestCase):
             'Animal_ParentOf': 11,
             'Animal_BornAt': 13,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(
+            class_counts=count_data,
+            edge_count_between_vertex_pairs=dict(),
+            count_of_distinct_field_values=dict(),
+            histograms=dict()
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -761,7 +866,10 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         classname = 'Animal'
 
-        empty_statistics = LocalStatistics(dict())
+        empty_statistics = LocalStatistics(class_counts=dict(),
+                                           edge_count_between_vertex_pairs=dict(),
+                                           count_of_distinct_field_values=dict(),
+                                           histograms=dict())
         params = dict()
 
         # If we '='-filter on a property that isn't an index return a fractional selectivity of 1.
@@ -795,7 +903,11 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
     def test_get_in_collection_filter_selectivity(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         classname = 'Animal'
-        empty_statistics = LocalStatistics(dict())
+        empty_statistics = LocalStatistics(class_counts=dict(),
+                                           edge_count_between_vertex_pairs=dict(),
+                                           count_of_distinct_field_values=dict(),
+                                           histograms=dict())
+
         nonunique_filter = FilterInfo(fields=('birthday',), op_name='in_collection',
                                       args=('$birthday_collection',))
         nonunique_params = {
