@@ -111,7 +111,7 @@ def _probe_statistics_for_edge_count_between_vertex_pair(
         query_metadata, child_location, parent_location
     )
     probe_result = statistics.get_edge_count_between_vertex_pair(
-        outbound_vertex_name, inbound_vertex_name, edge_name
+        outbound_vertex_name, edge_name, inbound_vertex_name
     )
     return probe_result
 
@@ -188,7 +188,7 @@ def _estimate_children_per_parent(
         statistics, query_metadata, child_location, parent_location
     )
 
-    if not edge_counts:
+    if edge_counts is None:
         edge_counts = _estimate_edge_count_between_vertex_pair_using_class_count(
             schema_graph, statistics, query_metadata, child_location, parent_location
         )
