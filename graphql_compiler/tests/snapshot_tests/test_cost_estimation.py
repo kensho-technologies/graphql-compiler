@@ -922,7 +922,6 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         classname = 'Animal'
         empty_statistics = LocalStatistics(dict())
-
         nonunique_filter = FilterInfo(fields=('birthday',), op_name='in_collection',
                                       args=('$birthday_collection',))
         nonunique_params = {
