@@ -123,7 +123,7 @@ def _estimate_edge_count_between_vertex_pair_using_class_count(
 
     Given a parent location of class A and a child location of class B, this function estimates the
     number of AB edges using class counts. If A and B are subclasses of the edge's endpoint classes
-    which we'll name C and D respectively, we only have statistics for CD edges. So estimates for
+    (which we'll name C and D respectively), we only have statistics for CD edges. So estimates for
     the number of AB edges will be made using the assumption that CD edges are distributed
     independently of whether or not the vertex of class C is also of class A and likewise for D and
     B. In the general case, we estimate the statistic as
