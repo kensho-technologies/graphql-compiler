@@ -168,6 +168,42 @@ class CostEstimationTests(unittest.TestCase):
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_traversal_with_no_results(self):
+        """Test type coercion where no results should be expected."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_input = '''{
+            Animal {
+                out_Entity_Related {
+                    ... on Event {
+                        uuid @output(out_name: "event_id")
+                    }
+                }
+            }
+        }'''
+        params = {}
+
+        count_data = {
+            'Entity': 19,
+            'Animal': 3,
+            'Event': 7,
+            'Entity_Related': 11
+        }
+        edge_count_data = {
+            ('Animal', 'Entity_Related', 'Event'): 0
+        }
+        statistics = LocalStatistics(
+            count_data, edge_count_between_vertex_pairs=edge_count_data)
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, statistics, graphql_input, params
+        )
+
+        # edge_count_data tells us that no Entity_Related edges connect Animals and Events, so the
+        # result size is 0.0 results.
+        expected_cardinality_estimate = 0.0
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_traversal_in_reverse_direction_provided_both_statistics(self):
         """Test traversal in inbound direction provided multiple statistics."""
         schema_graph = generate_schema_graph(self.orientdb_client)
