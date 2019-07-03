@@ -1,7 +1,8 @@
 from graphql import build_ast_schema, parse
-from graphql.language.visitor import Visitor, visit
 from graphql.language.printer import print_ast
-from .utils import SchemaData, SchemaError, get_schema_data
+from graphql.language.visitor import Visitor, visit
+
+from .utils import SchemaError, get_schema_data
 
 
 class RenamedSchema(object):
@@ -31,7 +32,7 @@ class RenamedSchema(object):
         schema_data = get_schema_data(ast)
         # Check that the input schema has no extensions
         if schema_data.has_extension:
-            raise SchemaError("Input schema should not contain extensions.")
+            raise SchemaError('Input schema should not contain extensions.')
 
         self._rename_schema(ast, rename_func, schema_data)
 
