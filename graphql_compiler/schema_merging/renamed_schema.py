@@ -82,7 +82,7 @@ class RenamedSchema(object):
         Raises:
             SchemaError if the rename causes name conflicts
         """
-        visitor = RenameSchemaVisitor(rename_func, query_type_name, scalars)
+        visitor = RenameSchemaTypesVisitor(rename_func, query_type_name, scalars)
         visit(ast, visitor)
 
         self.reverse_name_map = visitor.reverse_name_map  # no aliasing, visitor goes oos
@@ -106,7 +106,7 @@ class RenamedSchema(object):
         self.reverse_root_field_map = visitor.reverse_field_map  # no aliasing, visitor goes oos
 
 
-class RenameSchemaVisitor(Visitor):
+class RenameSchemaTypesVisitor(Visitor):
     """Traverse a Document AST, editing the names of nodes."""
     def __init__(self, rename_func, query_type, scalar_types):
         self.rename_func = rename_func  # callable that takes string to string
