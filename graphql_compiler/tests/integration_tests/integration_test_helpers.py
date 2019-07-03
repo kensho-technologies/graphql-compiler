@@ -65,7 +65,7 @@ def compile_and_run_sql_query(schema, graphql_query, parameters, engine, sql_met
     with connection.begin() as trans:
         for result in connection.execute(printquery(query.params(parameters), mssql.dialect())):
             results_with_query_string.append(dict(result))
-        for result in connection.execute(results_with_sqlalchemy_clause, parameters):
+        for result in connection.execute(query, parameters):
             results_with_sqlalchemy_clause.append(dict(result))
         trans.rollback()
     if results_with_query_string != results_with_sqlalchemy_clause:
