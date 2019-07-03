@@ -1,3 +1,4 @@
+# Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
 from graphql import build_ast_schema, parse
