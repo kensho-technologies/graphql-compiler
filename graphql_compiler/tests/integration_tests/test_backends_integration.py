@@ -189,6 +189,28 @@ class IntegrationTests(TestCase):
         ]
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
+    @all_backends
+    @integration_fixtures
+    def test_filter_on_date(self, backend_name):
+        graphql_query = '''
+        {
+            Animal {
+                name @output(out_name: "animal_name")
+                birthday @filter(op_name: "=", value: ["$birthday"])
+            }
+        }
+        '''
+        import datetime
+        if backend_name == test_backend.ORIENTDB:
+            return
+        parameters = {
+            'birthday': datetime.date(1975, 3, 3),
+        }
+        expected_results = [
+            {'animal_name': 'Animal 3'},
+        ]
+        self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
+
     @integration_fixtures
     def test_snapshot_graphql_schema_from_orientdb_schema(self):
         class_to_field_type_overrides = {
