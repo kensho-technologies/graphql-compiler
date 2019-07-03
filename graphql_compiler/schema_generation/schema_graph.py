@@ -283,11 +283,11 @@ class SchemaElement(object):
         # In the schema graph, both vertices and edges are represented with vertices.
         # These dicts have the name of the adjacent schema vertex in the appropriate direction.
         #
-        # For vertex classes:
+        # For vertex classes and non-graph classes:
         #   in  = the edge is attached with its head / arrow side
         #   out = the edge is attached with its tail side
         #
-        # For edge classes and non-graph classes:
+        # For edge classes:
         #   in  = the tail side of the edge
         #   out = the head / arrow side of the edge
         #
