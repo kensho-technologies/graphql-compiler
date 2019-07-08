@@ -4,7 +4,6 @@ from pprint import pformat
 import re
 
 from graphql import parse
-from graphql.type import GraphQLInterfaceType, GraphQLObjectType
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
