@@ -283,7 +283,6 @@ GraphQLDecimal = GraphQLScalarType(
 
 CUSTOM_SCALAR_TYPES = (
     GraphQLDecimal,
-    GraphQLString,
     GraphQLDate,
     GraphQLDateTime,
 )
