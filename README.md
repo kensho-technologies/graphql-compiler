@@ -1290,20 +1290,7 @@ is expected to correspond to a SQLAlchemy table object of the same name, case in
 schema type this could look like:
 
 ```python
-from graphql import parse
-from graphql.utils.build_ast_schema import build_ast_schema
-from sqlalchemy import Column, MetaData, String, Table, create_engine
-
-from graphql_compiler import graphql_to_sql
-from graphql_compiler.compiler.ir_lowering_sql.metadata import SqlMetadata
-from graphql_compiler.schema_generation.orientdb.schema_graph_builder import (
-    get_orientdb_schema_graph
-)
-from graphql_compiler.schema_generation.orientdb.utils import (
-    ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
-)
-
-
+from sqlalchemy import MetaData, Table, Column, String
 # table for GraphQL type Animal
 metadata = MetaData()
 animal_table = Table(
@@ -1325,6 +1312,11 @@ This is intended to show the setup steps for the SQL backend of the GraphQL comp
 does not represent best practices for configuring and running SQLAlchemy in a production system. 
 
 ```python
+from graphql import parse
+from graphql.utils.build_ast_schema import build_ast_schema
+from sqlalchemy import MetaData, Table, Column, String, create_engine
+from graphql_compiler.compiler.ir_lowering_sql.metadata import SqlMetadata
+from graphql_compiler import graphql_to_sql
 
 # Step 1: Configure a GraphQL schema (note that this can also be done programmatically)
 schema_text = '''
@@ -1619,6 +1611,12 @@ We plan to add `SchemaGraph` generation from SQLAlchemy metadata and can current
 `SchemaGraph` from OrientDB schema metadata as exemplified by the following mock example. 
 
 ```python
+from graphql_compiler.schema_generation.orientdb.schema_graph_builder import (
+    get_orientdb_schema_graph
+)
+from graphql_compiler.schema_generation.orientdb.utils import (
+    ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
+)
 
 # Get schema metadata from hypothetical Animals database.
 client = your_function_that_returns_an_orientdb_client()
