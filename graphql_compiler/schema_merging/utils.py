@@ -1,54 +1,38 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import namedtuple
-
-from graphql.language.visitor import Visitor, visit
+from graphql.type.definition import GraphQLScalarType
 
 
 class SchemaError(Exception):
-    pass
+    """Parent of specific error classes. Raised if schema's structure is illegal."""
 
 
-SchemaData = namedtuple('SchemaData', ['query_type', 'scalars', 'directives'])
+class SchemaRenameConflictError(SchemaError):
+    """Raised when renaming types or root fields cause name conflicts."""
 
 
-class GetSchemaDataVisitor(Visitor):
-    """Gather information about the schema to aid any transforms."""
-    def __init__(self):
-        self.query_type = None  # str, name of the query type, e.g. 'RootSchemaQuery'
-        self.scalars = set()  # Set[str], names of scalar types
-        self.directives = set()  # Set[str], names of directives
-        self.schema_data = None
-
-    def enter_OperationTypeDefinition(self, node, *args):
-        """Set name of type query if entering query definition."""
-        if node.operation == 'query':
-            self.query_type = node.type.name.value
-
-    def enter_ScalarTypeDefinition(self, node, *args):
-        """Add to records the name of user defined scalar type."""
-        self.scalars.add(node.name.value)
-
-    def enter_DirectiveDefinition(self, node, *args):
-        """Add to records the name of user defined directive type."""
-        # NOTE: currently we don't check if the definitions of the directives agree.
-        self.directives.add(node.name.value)
-
-    def leave_Document(self, node, *args):
-        """Organize information into a SchemaData object."""
-        self.schema_data = SchemaData(query_type=self.query_type,
-                                      scalars=self.scalars,
-                                      directives=self.directives)
-
-
-def get_schema_data(ast):
-    """Get schema data of input ast.
+def get_query_type_name(schema):
+    """Get the name of the query type of the input schema.
 
     Args:
-        ast: Document
+        schema: GraphQLSchema
 
     Returns:
-        SchemaData
+        str, name of the query type (e.g. RootSchemaQuery)
     """
-    get_schema_data_visitor = GetSchemaDataVisitor()
-    visit(ast, get_schema_data_visitor)
-    return get_schema_data_visitor.schema_data
+    return schema.get_query_type().name
+
+
+def get_scalar_names(schema):
+    """Get names of all scalars used in the input schema.
+
+    Includes all user defined scalars, as well as any builtin scalars used in the schema; excludes
+    builtin scalars not used in the schema.
+
+    Returns:
+        Set[str], set of names of scalars used in the schema
+    """
+    type_map = schema.get_type_map()
+    scalars = {
+        type_name for type_name in type_map if isinstance(type_map[type_name], GraphQLScalarType)
+    }
+    return scalars
