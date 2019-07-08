@@ -20,7 +20,8 @@ def rename_schema(schema_string, rename_func=lambda name: name):
     """Create a RenamedSchema, where types and query root fields are renamed using rename_func.
 
     Args:
-        schema_string: string describing a valid schema that does not contain extensions
+        schema_string: string describing a valid schema that does not contain extensions or
+                       input object definitions
         rename_func: callable that takes string to string, used to transform the names of
                      types, interfaces, enums, and root fields. Defaults to identity
 
@@ -28,27 +29,26 @@ def rename_schema(schema_string, rename_func=lambda name: name):
         RenamedSchema
 
     Raises:
-        SchemaError if input schema_string does not represent a valid schema without extensions,
-            or if there are conflicts between the renamed types or root fields
+        SchemaError if there are conflicts between the renamed types or root fields or if input
+        schema_string does not represent a valid schema
     """
     # Check that the input string is a parseable and valid schema.
     try:
         ast = parse(schema_string)
-        build_ast_schema(ast)
+        build_ast_schema(ast)  # Check that the ast can be built into a valid schema without errors
     except Exception as e:  # Can't be more specific -- see graphql/utils/build_ast_schema.py
         raise SchemaError('Input schema does not define a valid schema.\n'
                           'Message: {}'.format(e))
 
     schema_data = get_schema_data(ast)
-    # Check that the input schema has no extensions
-    if schema_data.has_extension:
-        raise SchemaError('Input schema should not contain extensions.')
+    query_type = schema_data.query_type
+    scalars = schema_data.scalars
 
     # Rename types, interfaces, enums
-    reverse_name_map = _rename_types(ast, rename_func, schema_data.query_type, schema_data.scalars)
+    reverse_name_map = _rename_types(ast, rename_func, query_type, scalars)
 
     # Rename root fields
-    reverse_root_field_map = _rename_root_fields(ast, rename_func, schema_data.query_type)
+    reverse_root_field_map = _rename_root_fields(ast, rename_func, query_type)
 
     return RenamedSchema(schema_ast=ast, reverse_name_map=reverse_name_map,
                          reverse_root_field_map=reverse_root_field_map)
@@ -73,7 +73,7 @@ def _rename_types(ast, rename_func, query_type, scalars):
     Raises:
         SchemaError if the rename causes name conflicts
     """
-    visitor = RenameSchemaVisitor(rename_func, query_type, scalars)
+    visitor = RenameSchemaTypesVisitor(rename_func, query_type, scalars)
     visit(ast, visitor)
 
     return visitor.reverse_name_map
@@ -101,8 +101,29 @@ def _rename_root_fields(ast, rename_func, query_type):
     return visitor.reverse_field_map
 
 
-class RenameSchemaVisitor(Visitor):
+class RenameSchemaTypesVisitor(Visitor):
     """Traverse a Document AST, editing the names of nodes."""
+
+    noop_types = frozenset({
+        'Name', 'Document', 'Argument', 'IntValue', 'FloatValue', 'StringValue',
+        'BooleanValue', 'EnumValue', 'ListValue', 'Directive', 'ListType', 'NonNullType',
+        'SchemaDefinition', 'OperationTypeDefinition', 'ScalarTypeDefinition',
+        'FieldDefinition', 'InputValueDefinition', 'EnumValueDefinition',
+        'DirectiveDefinition'
+    })
+    rename_types = frozenset({
+        'NamedType', 'ObjectTypeDefinition', 'InterfaceTypeDefinition',
+        'UnionTypeDefinition', 'EnumTypeDefinition'
+    })
+    unexpected_types = frozenset({
+        'OperationDefinition', 'SelectionSet', 'Field', 'FragmentSpread',
+        'InlineFragment', 'FragmentDefinition', 'Variable', 'VariableDefinition',
+        'ObjectValue', 'ObjectField'
+    })
+    disallowed_types = frozenset({
+        'TypeExtensionDefinition', 'InputObjectTypeDefinition'
+    })
+
     def __init__(self, rename_func, query_type, scalar_types):
         self.rename_func = rename_func  # callable that takes string to string
         self.reverse_name_map = {}  # Dict[str, str], from new name to original name
@@ -110,30 +131,13 @@ class RenameSchemaVisitor(Visitor):
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({'String', 'Int', 'Float', 'Boolean', 'ID'})
 
-        # NOTE: behavior of Directive type is not completely clear
-        self.noop_types = frozenset({
-            'Name', 'Document', 'Argument', 'IntValue', 'FloatValue', 'StringValue',
-            'BooleanValue', 'EnumValue', 'ListValue', 'Directive', 'ListType', 'NonNullType',
-            'SchemaDefinition', 'OperationTypeDefinition', 'ScalarTypeDefinition',
-            'FieldDefinition', 'InputValueDefinition', 'EnumValueDefinition',
-            'DirectiveDefinition'
-        })
-        self.rename_types = frozenset({
-            'NamedType', 'ObjectTypeDefinition', 'InterfaceTypeDefinition',
-            'UnionTypeDefinition', 'EnumTypeDefinition'
-        })
-        self.unexpected_types = frozenset({
-            'OperationDefinition', 'SelectionSet', 'Field', 'FragmentSpread',
-            'InlineFragment', 'FragmentDefinition'
-        })
-
     def _rename_name_add_to_record(self, node):
         """Rename the value of the node, and add the name mapping to reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
 
         Args:
-            node: Name type Node
+            node: type Name
 
         Raises:
             SchemaError if the newly renamed node causes name conflicts with existing types,
@@ -176,6 +180,7 @@ class RenameSchemaVisitor(Visitor):
         self.reverse_name_map[new_name_string] = name_string
 
     def enter(self, node, key, parent, path, ancestors):
+        """Upon entering a node, operate depending on node type."""
         node_type = type(node).__name__
         if node_type in self.noop_types:
             # Do nothing, continue traversal
@@ -186,10 +191,11 @@ class RenameSchemaVisitor(Visitor):
         elif node_type in self.unexpected_types:
             # Node type unexpected in schema definition, raise error
             raise SchemaError('Node type "{}" unexpected in schema AST'.format(node_type))
-        elif node_type == 'TypeExtensionDefinition':
-            raise SchemaError('Extension definition not allowed')
+        elif node_type in self.disallowed_types:
+            # Node type possible in schema definition but disallowed, raise error
+            raise SchemaError('Node type "{}" not allowed'.format(node_type))
         else:
-            # VariableDefinition, Variable, ObjectValue, ObjectField, InputObjectTypeDefinition
+            # ObjectValue, ObjectField
             # The above types I'm not sure what to do about
             # TODO
             raise AssertionError('Missed type: "{}"'.format(node_type))
