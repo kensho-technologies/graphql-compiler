@@ -4,11 +4,13 @@ from pprint import pformat
 import re
 
 from graphql import parse
+from graphql.type import GraphQLInterfaceType, GraphQLObjectType
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 
 from .. import get_graphql_schema_from_orientdb_schema_data
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
+from ..schema import CUSTOM_SCALAR_TYPES
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
 from ..schema_generation.orientdb.utils import (
     ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
@@ -275,6 +277,20 @@ def get_schema():
     """Get a schema object for testing."""
     ast = parse(SCHEMA_TEXT)
     schema = build_ast_schema(ast)
+    # The schema text contains no information about how to parse or serialize non-builtin scalar
+    # types so we add this information manually. For more info see the link below:
+    # pylint: disable=max-line-length, protected-access
+    # https://stackoverflow.com/questions/47824603/graphql-custom-scalar-definition-without-graphql-tools
+    for graphql_type in CUSTOM_SCALAR_TYPES:
+        # We cannot simply replace the value corresponding to the key graphql_type.name.
+        # We actually need to modify the value because it is referenced in other places in the
+        # schema such as graphql object fields.
+        if graphql_type.name in schema._type_map:
+            schema._type_map[graphql_type.name].description = graphql_type.description
+            schema._type_map[graphql_type.name].serialize = graphql_type.serialize
+            schema._type_map[graphql_type.name].parse_value = graphql_type.parse_value
+            schema._type_map[graphql_type.name].parse_literal = graphql_type.parse_literal
+    # pylint: enable=max-line-length, protected-access
     return schema
 
 
