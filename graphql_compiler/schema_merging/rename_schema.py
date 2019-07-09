@@ -4,14 +4,19 @@ from collections import namedtuple
 from graphql import build_ast_schema, parse
 from graphql.language.visitor import Visitor, visit
 
-from .utils import SchemaError, SchemaRenameConflictError, get_query_type_name, get_scalar_names
+from .utils import (
+    SchemaStructureError,
+    SchemaRenameConflictError,
+    get_query_type_name,
+    get_scalar_names,
+    check_root_fields_name_match,
+)
 
 
 RenamedSchema = namedtuple(
     'RenamedSchema', (
         'schema_ast',  # type: Document, ast representing the renamed schema
-        'reverse_name_map',  # type: Dict[str, str], renamed type name to original type name
-        'reverse_root_field_map'  # type: Dict[str, str], renamed field name to original field name
+        'reverse_name_map',  # type: Dict[str, str], renamed type/root field name to original name
     )
 )
 
@@ -26,20 +31,24 @@ def rename_schema(schema_string, rename_dict):
 
     Args:
         schema_string: string describing a valid schema that does not contain extensions,
-                       input object definitions, mutations, or subscriptions
+                       input object definitions, mutations, or subscriptions, whose root fields
+                       share the same name as the types they query
         rename_dict: Dict[str, str], mapping original type/field names to renamed type/field names.
                      Type or root field names that do not appear in the dict will be unchanged.
-                     Any dict-like object that implements get(key, default_value) may also be used.
+                     Any dict-like object that implements get(key, [default]) and
+                     __contains__ may also be used
 
     Returns:
-        RenamedSchema, a namedtuple that contains the ast of the renamed schema, the map of renamed
-        type names to original type names, and the map of renamed root field (fields of the root
-        type/query type) names to original root field names.
+        RenamedSchema, a namedtuple that contains the ast of the renamed schema, and the map
+        of renamed type/root field names to original names. All names are included in the map,
+        even those that are unchanged
 
     Raises:
-        GraphQLSyntaxError if input schema cannot be parsed
-        Exception if the parsed ast does not represent a valid schema
-        SchemaError if the input schema contains type definitions or input object definitions
+        GraphQLSyntaxError if input string cannot be parsed
+        SchemaStructureError if the schema does not have the expected form; in particular, if
+        the parsed ast does not represent a valid schema, if any root field does not have the
+        same name as the type that it queries, if the schema contains type definitions or
+        input object definitions, or if the schema contains mutations or subscriptions
         SchemaRenameConflictError if there are conflicts between the renamed types or root fields
     """
     # Check that the input string is a parseable
@@ -47,20 +56,31 @@ def rename_schema(schema_string, rename_dict):
     ast = parse(schema_string)
 
     # Check that the ast can be built into a valid schema
-    # May raise Exception -- see graphql/utils/build_ast_schema.py
-    schema = build_ast_schema(ast)
+    try:
+        # May raise Exception -- see graphql/utils/build_ast_schema.py
+        schema = build_ast_schema(ast)
+    except Exception as e:
+        raise SchemaStructureError('Input is not a valid schema. Message: {}'.format(e))
+
+    if schema.get_mutation_type() is not None:
+        raise SchemaStructureError('Schema contains mutations.')
+
+    if schema.get_subscription_type() is not None:
+        raise SchemaStructureError('Schema contains subscriptions.')
 
     query_type = get_query_type_name(schema)
     scalars = get_scalar_names(schema)
+
+    # Check root field names match up with their queried types
+    check_root_fields_name_match(ast, query_type)
 
     # Rename types, interfaces, enums
     reverse_name_map = _rename_types(ast, rename_dict, query_type, scalars)
 
     # Rename root fields
-    reverse_root_field_map = _rename_root_fields(ast, rename_dict, query_type)
+    _rename_root_fields(ast, rename_dict, query_type)
 
-    return RenamedSchema(schema_ast=ast, reverse_name_map=reverse_name_map,
-                         reverse_root_field_map=reverse_root_field_map)
+    return RenamedSchema(schema_ast=ast, reverse_name_map=reverse_name_map)
 
 
 def _rename_types(ast, rename_dict, query_type, scalars):
@@ -101,16 +121,11 @@ def _rename_root_fields(ast, rename_dict, query_type):
                      does not appear in the dict, it will be unchanged
         query_type: string, name of the query type, e.g. 'RootSchemaQuery'
 
-    Returns:
-        Dict[str, str], the renamed root field name to original root field name map
-
     Raises:
         SchemaRenameConflictError if rename causes root field name conflicts
     """
     visitor = RenameRootFieldsVisitor(rename_dict, query_type)
     visit(ast, visitor)
-
-    return visitor.reverse_field_map
 
 
 class RenameSchemaTypesVisitor(Visitor):
@@ -178,7 +193,8 @@ class RenameSchemaTypesVisitor(Visitor):
         Modifies node and potentially modifies reverse_name_map.
 
         Args:
-            node: type Name (see graphql/language/ast)
+            node: type Name (see graphql/language/ast), an object describing the name of an ast
+                  element such as type, interface, or scalar (user defined or builtin)
 
         Raises:
             SchemaRenameConflictError if the newly renamed node causes name conflicts with
@@ -189,8 +205,7 @@ class RenameSchemaTypesVisitor(Visitor):
         if name_string == self.query_type or name_string in self.scalar_types:
             return
 
-        new_name_string = self.rename_dict.get(name_string, name_string)
-        # Defaults to original name string if not found in rename_dict
+        new_name_string = self.rename_dict.get(name_string, name_string)  # Default use original
 
         if (
             new_name_string in self.reverse_name_map and
@@ -222,12 +237,12 @@ class RenameSchemaTypesVisitor(Visitor):
             self._rename_name_add_to_record(node.name)
         elif node_type in self.unexpected_types:
             # Node type unexpected in schema definition, raise error
-            raise SchemaError(
+            raise SchemaStructureError(
                 u'Node type "{}" unexpected in schema AST'.format(node_type)
             )
         elif node_type in self.disallowed_types:
             # Node type possible in schema definition but disallowed, raise error
-            raise SchemaError(
+            raise SchemaStructureError(
                 u'Node type "{}" not allowed'.format(node_type)
             )
         else:
@@ -258,8 +273,8 @@ class RenameRootFieldsVisitor(Visitor):
         """If entering field under query type, rename and add to reverse map."""
         if self.in_query_type:
             field_name = node.name.value
-            new_field_name = self.rename_dict.get(field_name, field_name)
-            # Defaults to original field name if not found in rename_dict
+
+            new_field_name = self.rename_dict.get(field_name, field_name)  # Default use original
 
             if (
                 new_field_name in self.reverse_field_map and
