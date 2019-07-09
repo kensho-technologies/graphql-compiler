@@ -5,11 +5,8 @@ from graphql import build_ast_schema, parse
 from graphql.language.visitor import Visitor, visit
 
 from .utils import (
-    SchemaStructureError,
-    SchemaRenameConflictError,
-    get_query_type_name,
-    get_scalar_names,
-    check_root_fields_name_match,
+    SchemaRenameConflictError, SchemaStructureError, check_root_fields_name_match,
+    get_query_type_name, get_scalar_names
 )
 
 

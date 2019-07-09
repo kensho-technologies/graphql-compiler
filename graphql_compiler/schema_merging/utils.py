@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from graphql.type.definition import GraphQLScalarType
 from graphql.language.ast import NamedType
 from graphql.language.visitor import Visitor, visit
+from graphql.type.definition import GraphQLScalarType
 
 
 class SchemaError(Exception):
