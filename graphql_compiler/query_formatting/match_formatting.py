@@ -122,7 +122,8 @@ def insert_arguments_into_match_query(compilation_result, arguments):
 
     Args:
         compilation_result: a CompilationResult object derived from the GraphQL compiler
-        arguments: dict, str -> any, mapping argument name to its value, for every parameter the query expects.
+        arguments: dict, str -> any, mapping argument name to its value, for every parameter the
+                    query expects.
 
     Returns:
         string, a MATCH query with inserted argument data

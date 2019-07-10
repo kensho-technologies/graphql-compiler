@@ -11,7 +11,7 @@ from ..compiler import CYPHER_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
-from .representations import coerce_to_decimal, represent_float_as_str, type_check_and_str
+from .representations import represent_float_as_str, type_check_and_str
 
 
 def _safe_cypher_string(argument_value):
@@ -35,6 +35,7 @@ def _safe_cypher_string(argument_value):
 def _safe_cypher_decimal(argument_value):
     """Cypher doesn't support decimals, only ints and floats, so we'll raise an error here."""
     raise NotImplementedError
+
 
 def _safe_cypher_date_and_datetime(graphql_type, expected_python_types, value):
     """Represent date and datetime objects as Cypher strings."""
@@ -128,7 +129,8 @@ def insert_arguments_into_cypher_query_redisgraph(compilation_result, arguments)
 
     Args:
         compilation_result: a CompilationResult object derived from the GraphQL compiler
-        arguments: dict, str -> any, mapping argument name to its value, for every parameter the query expects.
+        arguments: dict, str -> any, mapping argument name to its value, for every parameter the
+                    query expects.
 
     Returns:
         string, a Cypher query with inserted argument data.
