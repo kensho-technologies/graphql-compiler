@@ -27,10 +27,15 @@ MATCH_BACKENDS = {
     test_backend.ORIENTDB,
 }
 
-CYPHER_BACKENDS = {
+# split neo4j and redisgraph because redisgraph doesn't support all neo4j features.
+NEO4J_BACKENDS = {
     test_backend.NEO4J,
+}
+
+REDISGRAPH_BACKENDS = {
     test_backend.REDISGRAPH,
 }
+
 
 SQL_BACKEND_TO_CONNECTION_STRING = {
     test_backend.POSTGRES:

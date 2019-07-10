@@ -30,7 +30,7 @@ def generate_orient_integration_data(client):
 def generate_neo4j_integration_data(client):
     """Create Neo4j test DB from the SQL commands file for integration testing."""
     project_root = path.dirname(path.abspath(__file__))
-    neo4j_files = glob(path.join(project_root, 'integration_data/*.cypher'))
+    neo4j_files = glob(path.join(project_root, 'integration_data/create_neo4j_integration.cypher'))
     _load_neo4j_files_to_neo4j_client(client, neo4j_files)
 
 
@@ -44,6 +44,24 @@ def _load_neo4j_files_to_neo4j_client(client, neo4j_files):
                         # comment or empty line, ignore
                         continue
                     session.run(sanitized_command)
+
+
+def generate_redisgraph_integration_data(client):
+    """Create Redisgraph test DB from the SQL commands file for integration testing."""
+    project_root = path.dirname(path.abspath(__file__))
+    cypher_files = glob(path.join(project_root, 'integration_data/create_redisgraph_integration.cypher'))
+    _load_cypher_files_to_redisgraph_client(client, cypher_files)
+
+
+def _load_cypher_files_to_redisgraph_client(client, cypher_files):
+    for filepath in cypher_files:
+        with open(filepath) as f:
+            for command in f.readlines():
+                sanitized_command = command.strip()
+                if len(sanitized_command) == 0 or sanitized_command[0] == '#':
+                    # comment or empty line, ignore
+                    continue
+                client.query(sanitized_command)
 
 
 def _load_sql_files_to_orient_client(client, sql_files):
