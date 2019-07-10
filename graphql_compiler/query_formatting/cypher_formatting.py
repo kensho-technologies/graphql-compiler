@@ -20,9 +20,8 @@ def _safe_cypher_string(argument_value):
         if isinstance(argument_value, bytes):  # likely to only happen in py2
             argument_value = argument_value.decode('utf-8')
         else:
-            raise GraphQLInvalidArgumentError(
-                u'Attempting to convert a non-string into a string: ' u'{}'.format(argument_value)
-            )
+            raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
+                                              u'{}'.format(argument_value))
 
     # Using JSON encoding means that all unicode literals and special chars
     # (e.g. newlines and backslashes) are replaced by appropriate escape sequences.
@@ -44,11 +43,9 @@ def _safe_cypher_date_and_datetime(graphql_type, expected_python_types, value):
     # Rather than using isinstance, we will therefore check for exact type equality.
     value_type = type(value)
     if not any(value_type == x for x in expected_python_types):
-        raise GraphQLInvalidArgumentError(
-            u'Expected value to be exactly one of '
-            u'python types {}, but was {}: '
-            u'{}'.format(expected_python_types, value_type, value)
-        )
+        raise GraphQLInvalidArgumentError(u'Expected value to be exactly one of '
+                                          u'python types {}, but was {}: '
+                                          u'{}'.format(expected_python_types, value_type, value))
 
     # The serialize() method of GraphQLDate and GraphQLDateTime produces the correct
     # ISO-8601 format that MATCH expects. We then simply represent it as a regular string.
@@ -64,18 +61,18 @@ def _safe_cypher_list(inner_type, argument_value):
     """Represent the list of "inner_type" objects in Cypher form."""
     stripped_type = strip_non_null_from_type(inner_type)
     if isinstance(stripped_type, GraphQLList):
-        raise GraphQLInvalidArgumentError(
-            u'Cypher does not currently support nested lists, '
-            u'but inner type was {}: '
-            u'{}'.format(inner_type, argument_value)
-        )
+        raise GraphQLInvalidArgumentError(u'Cypher does not currently support nested lists, '
+                                          u'but inner type was {}: '
+                                          u'{}'.format(inner_type, argument_value))
 
     if not isinstance(argument_value, list):
-        raise GraphQLInvalidArgumentError(
-            u'Attempting to represent a non-list as a list: ' u'{}'.format(argument_value)
-        )
+        raise GraphQLInvalidArgumentError(u'Attempting to represent a non-list as a list: '
+                                          u'{}'.format(argument_value))
 
-    components = (_safe_cypher_argument(stripped_type, x) for x in argument_value)
+    components = (
+        _safe_cypher_argument(stripped_type, x)
+        for x in argument_value
+    )
     return u'[' + u','.join(components) + u']'
 
 
@@ -98,9 +95,8 @@ def _safe_cypher_argument(expected_type, argument_value):
         # Special case: in Python, isinstance(True, int) returns True.
         # Safeguard against this with an explicit check against bool type.
         if isinstance(argument_value, bool):
-            raise GraphQLInvalidArgumentError(
-                u'Attempting to represent a non-int as an int: ' u'{}'.format(argument_value)
-            )
+            raise GraphQLInvalidArgumentError(u'Attempting to represent a non-int as an int: '
+                                              u'{}'.format(argument_value))
         return type_check_and_str(int, argument_value)
     elif GraphQLBoolean.is_same_type(expected_type):
         return type_check_and_str(bool, argument_value)
@@ -109,16 +105,13 @@ def _safe_cypher_argument(expected_type, argument_value):
     elif GraphQLDate.is_same_type(expected_type):
         return _safe_cypher_date_and_datetime(expected_type, (datetime.date,), argument_value)
     elif GraphQLDateTime.is_same_type(expected_type):
-        return _safe_cypher_date_and_datetime(
-            expected_type, (datetime.datetime, arrow.Arrow), argument_value
-        )
+        return _safe_cypher_date_and_datetime(expected_type,
+                                              (datetime.datetime, arrow.Arrow), argument_value)
     elif isinstance(expected_type, GraphQLList):
         return _safe_cypher_list(expected_type.of_type, argument_value)
     else:
-        raise AssertionError(
-            u'Could not safely represent the requested GraphQL type: '
-            u'{} {}'.format(expected_type, argument_value)
-        )
+        raise AssertionError(u'Could not safely represent the requested GraphQL type: '
+                             u'{} {}'.format(expected_type, argument_value))
 
 
 ######
@@ -135,8 +128,7 @@ def insert_arguments_into_cypher_query_redisgraph(compilation_result, arguments)
 
     Args:
         compilation_result: a CompilationResult object derived from the GraphQL compiler
-        arguments: dict, str -> any, mapping argument name to its value, for every parameter the
-                    query expects.
+        arguments: dict, str -> any, mapping argument name to its value, for every parameter the query expects.
 
     Returns:
         string, a Cypher query with inserted argument data.
@@ -154,6 +146,5 @@ def insert_arguments_into_cypher_query_redisgraph(compilation_result, arguments)
     }
 
     return Template(base_query).substitute(sanitized_arguments)
-
 
 ######
