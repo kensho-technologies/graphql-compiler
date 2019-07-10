@@ -139,8 +139,7 @@ def merge_schemas(schemas_dict):
                 scalars.add(new_name)
 
             elif isinstance(new_definition, ast_types.DirectiveDefinition):
-                if new_name in directives:
-                    # if definitions agree, continue
+                if new_name in directives:  # existing directive
                     if new_definition == directives[new_name]:  # definitions agree
                         continue
                     else:  # definitions disagree
