@@ -34,10 +34,8 @@ def _safe_cypher_string(argument_value):
 
 
 def _safe_cypher_decimal(argument_value):
-    """Represent decimal objects as Cypher strings."""
-    decimal_value = coerce_to_decimal(argument_value)
-    return 'toFloat(' + _safe_cypher_string(str(decimal_value)) + ')'
-
+    """Cypher doesn't support decimals, only ints and floats, so we'll raise an error here."""
+    raise NotImplementedError
 
 def _safe_cypher_date_and_datetime(graphql_type, expected_python_types, value):
     """Represent date and datetime objects as Cypher strings."""
@@ -128,8 +126,12 @@ def _safe_cypher_argument(expected_type, argument_value):
 ######
 
 
-def insert_arguments_into_cypher_query(compilation_result, arguments):
+def insert_arguments_into_cypher_query_redisgraph(compilation_result, arguments):
     """Insert the arguments into the compiled Cypher query to form a complete query.
+    This is only for Redisgraph because Neo4j's client can do this on its own.
+    Redisgraph doesn't support parameterized queries (see here:
+    https://github.com/RedisGraph/RedisGraph/issues/544#issuecomment-507963576).
+    Work to support parameters is expected to start in August 2019.
 
     Args:
         compilation_result: a CompilationResult object derived from the GraphQL compiler
