@@ -1,12 +1,13 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
+from copy import deepcopy
 
-from graphql import build_ast_schema, parse
+from graphql import build_ast_schema
 from graphql.language.visitor import Visitor, visit
 
 from .utils import (
-    SchemaNameConflictError, SchemaStructureError, _check_ast_schema_valid,
-    get_query_type_name, get_scalar_names
+    SchemaNameConflictError, SchemaStructureError, _check_ast_schema_valid, get_query_type_name,
+    get_scalar_names
 )
 
 
@@ -18,7 +19,7 @@ RenamedSchema = namedtuple(
 )
 
 
-def rename_schema(schema_string, rename_dict):
+def rename_schema(ast, rename_dict):
     """Create a RenamedSchema, where types and query root fields are renamed using rename_dict.
 
     Any type, interface, enum, or root field (fields of the root type/query type) whose name
@@ -27,9 +28,9 @@ def rename_schema(schema_string, rename_dict):
     belonging to the root type will never be renamed.
 
     Args:
-        schema_string: string describing a valid schema that does not contain extensions,
-                       input object definitions, mutations, or subscriptions, whose root fields
-                       share the same name as the types they query
+        ast: Document, representing a valid schema that does not contain extensions, input
+             object definitions, mutations, or subscriptions, whose root fields share the
+             same name as the types they query. Not modified by this function
         rename_dict: Dict[str, str], mapping original type/field names to renamed type/field names.
                      Type or root field names that do not appear in the dict will be unchanged.
                      Any dict-like object that implements get(key, [default]) and
@@ -41,16 +42,13 @@ def rename_schema(schema_string, rename_dict):
         even those that are unchanged
 
     Raises:
-        GraphQLSyntaxError if input string cannot be parsed
         SchemaStructureError if the schema does not have the expected form; in particular, if
-        the parsed ast does not represent a valid schema, if any root field does not have the
+        the ast does not represent a valid schema, if any root field does not have the
         same name as the type that it queries, if the schema contains type extensions or
         input object definitions, or if the schema contains mutations or subscriptions
         SchemaNameConflictError if there are conflicts between the renamed types or root fields
     """
-    # Check that the input string is a parseable
-    # May raise GraphQLSyntaxerror
-    ast = parse(schema_string)
+    ast = deepcopy(ast)
 
     # Check that the ast can be built into a valid schema
     try:
