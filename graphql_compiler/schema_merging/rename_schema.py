@@ -5,15 +5,15 @@ from graphql import build_ast_schema, parse
 from graphql.language.visitor import Visitor, visit
 
 from .utils import (
-    SchemaRenameConflictError, SchemaStructureError, check_root_fields_name_match,
+    SchemaNameConflictError, SchemaStructureError, _check_ast_schema_valid,
     get_query_type_name, get_scalar_names
 )
 
 
 RenamedSchema = namedtuple(
     'RenamedSchema', (
-        'schema_ast',  # type: Document, ast representing the renamed schema
-        'reverse_name_map',  # type: Dict[str, str], renamed type/root field name to original name
+        'schema_ast',  # Document, ast representing the renamed schema
+        'reverse_name_map',  # Dict[str, str], renamed type/root field name to original name
     )
 )
 
@@ -44,9 +44,9 @@ def rename_schema(schema_string, rename_dict):
         GraphQLSyntaxError if input string cannot be parsed
         SchemaStructureError if the schema does not have the expected form; in particular, if
         the parsed ast does not represent a valid schema, if any root field does not have the
-        same name as the type that it queries, if the schema contains type definitions or
+        same name as the type that it queries, if the schema contains type extensions or
         input object definitions, or if the schema contains mutations or subscriptions
-        SchemaRenameConflictError if there are conflicts between the renamed types or root fields
+        SchemaNameConflictError if there are conflicts between the renamed types or root fields
     """
     # Check that the input string is a parseable
     # May raise GraphQLSyntaxerror
@@ -59,17 +59,11 @@ def rename_schema(schema_string, rename_dict):
     except Exception as e:
         raise SchemaStructureError('Input is not a valid schema. Message: {}'.format(e))
 
-    if schema.get_mutation_type() is not None:
-        raise SchemaStructureError('Schema contains mutations.')
-
-    if schema.get_subscription_type() is not None:
-        raise SchemaStructureError('Schema contains subscriptions.')
+    # Check additional structural requirements
+    _check_ast_schema_valid(ast, schema)
 
     query_type = get_query_type_name(schema)
     scalars = get_scalar_names(schema)
-
-    # Check root field names match up with their queried types
-    check_root_fields_name_match(ast, query_type)
 
     # Rename types, interfaces, enums
     reverse_name_map = _rename_types(ast, rename_dict, query_type, scalars)
@@ -99,7 +93,7 @@ def _rename_types(ast, rename_dict, query_type, scalars):
         Dict[str, str], the renamed type name to original type name map
 
     Raises:
-        SchemaRenameConflictError if the rename causes name conflicts
+        SchemaNameConflictError if the rename causes name conflicts
     """
     visitor = RenameSchemaTypesVisitor(rename_dict, query_type, scalars)
     visit(ast, visitor)
@@ -119,7 +113,7 @@ def _rename_root_fields(ast, rename_dict, query_type):
         query_type: string, name of the query type, e.g. 'RootSchemaQuery'
 
     Raises:
-        SchemaRenameConflictError if rename causes root field name conflicts
+        SchemaNameConflictError if rename causes root field name conflicts
     """
     visitor = RenameRootFieldsVisitor(rename_dict, query_type)
     visit(ast, visitor)
@@ -194,7 +188,7 @@ class RenameSchemaTypesVisitor(Visitor):
                   element such as type, interface, or scalar (user defined or builtin)
 
         Raises:
-            SchemaRenameConflictError if the newly renamed node causes name conflicts with
+            SchemaNameConflictError if the newly renamed node causes name conflicts with
             existing types, scalars, or builtin types
         """
         name_string = node.value
@@ -208,13 +202,13 @@ class RenameSchemaTypesVisitor(Visitor):
             new_name_string in self.reverse_name_map and
             self.reverse_name_map[new_name_string] != name_string
         ):
-            raise SchemaRenameConflictError(
+            raise SchemaNameConflictError(
                 u'"{}" and "{}" are both renamed to "{}"'.format(
                     name_string, self.reverse_name_map[new_name_string], new_name_string
                 )
             )
         if new_name_string in self.scalar_types or new_name_string in self.builtin_types:
-            raise SchemaRenameConflictError(
+            raise SchemaNameConflictError(
                 u'"{}" was renamed to "{}", clashing with scalar "{}"'.format(
                     name_string, new_name_string, new_name_string
                 )
@@ -277,7 +271,7 @@ class RenameRootFieldsVisitor(Visitor):
                 new_field_name in self.reverse_field_map and
                 self.reverse_field_map[new_field_name] != field_name
             ):
-                raise SchemaRenameConflictError(
+                raise SchemaNameConflictError(
                     u'"{}" and "{}" are both renamed to "{}"'.format(
                         field_name, self.reverse_field_map[new_field_name], new_field_name
                     )

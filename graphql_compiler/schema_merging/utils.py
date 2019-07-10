@@ -17,7 +17,7 @@ class SchemaStructureError(SchemaError):
     """
 
 
-class SchemaRenameConflictError(SchemaError):
+class SchemaNameConflictError(SchemaError):
     """Raised when renaming types or root fields cause name conflicts."""
 
 
@@ -89,7 +89,7 @@ class CheckRootFieldsNameMatchVisitor(Visitor):
                 )
 
 
-def check_root_fields_name_match(ast, query_type):
+def _check_root_fields_name_match(ast, query_type):
     """Check every root field's name is identical to the type it queries.
 
     Args:
@@ -102,3 +102,27 @@ def check_root_fields_name_match(ast, query_type):
     """
     visitor = CheckRootFieldsNameMatchVisitor(query_type)
     visit(ast, visitor)
+
+
+def _check_ast_schema_valid(ast, schema):
+    """Check the schema satisfies structural requirements for rename and merge.
+
+    In particular, check that the schema contains no mutations, no subscriptions, and all root
+    field names match the types they query.
+
+    Args:
+        ast: Document, representing a schema
+        schema: GraphQLSchema, representing the same schema as ast
+
+    Raises:
+        SchemaStructureError if the schema contains mutations, contains subscriptions, or some
+        root field name does not match the type it queries.
+    """
+    if schema.get_mutation_type() is not None:
+        raise SchemaStructureError('Schema contains mutations.')
+    if schema.get_subscription_type() is not None:
+        raise SchemaStructureError('Schema contains subscriptions.')
+
+    query_type = get_query_type_name(schema)
+
+    _check_root_fields_name_match(ast, query_type)
