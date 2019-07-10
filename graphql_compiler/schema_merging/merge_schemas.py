@@ -13,10 +13,10 @@ from .utils import (
 
 
 MergedSchema = namedtuple(
-    'MergedSchema', [
+    'MergedSchema', (
         'schema_ast',  # Document, ast representing the merged schema
         'name_id_map',  # Dict[str, str], type name to id of the schema the type is from
-    ]
+    )
 )
 
 
