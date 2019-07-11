@@ -34,7 +34,9 @@ def _safe_cypher_string(argument_value):
 
 def _safe_cypher_decimal(argument_value):
     """Cypher doesn't support decimals, only ints and floats, so we'll raise an error here."""
-    raise NotImplementedError
+    raise NotImplementedError(u'Cypher doesn\'t support Decimals, only ints and floats. See '
+                              u'OpenCypher documentation. Argument value was {}'.
+                              format(argument_value))
 
 
 def _safe_cypher_date_and_datetime(graphql_type, expected_python_types, value):
@@ -122,6 +124,7 @@ def _safe_cypher_argument(expected_type, argument_value):
 
 def insert_arguments_into_cypher_query_redisgraph(compilation_result, arguments):
     """Insert the arguments into the compiled Cypher query to form a complete query.
+
     This is only for Redisgraph because Neo4j's client can do this on its own.
     Redisgraph doesn't support parameterized queries (see here:
     https://github.com/RedisGraph/RedisGraph/issues/544#issuecomment-507963576).

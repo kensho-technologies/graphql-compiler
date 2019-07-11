@@ -68,6 +68,7 @@ For a more detailed overview and getting started guide, please see
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
      * [SchemaGraph](#schemagraph)
+     * [Cypher query parameters](#cypher-query-parameters)
   * [FAQ](#faq)
   * [License](#license)
 
@@ -1637,6 +1638,24 @@ print(schema_graph.get_unique_indexes_for_class('Animal'))
 ```
 
 For more information about the `SchemaGraph`, please see the class documentation. 
+
+
+### Cypher query parameters
+Redisgraph doesn't support query parameters, so we perform manual parameter interpolation in the
+graphql_to_redisgraph_cypher function. However, for Neo4j, we can use Neo4j's client to do 
+parameter interpolation on its own so that we don't reinvent the wheel.
+
+The function insert_arguments_into_query does so based on the query language, which isn't
+fine-grained enough here-- for Cypher backends, we only want to insert parameters if the backend
+is Redisgraph, but not if it's Neo4j.
+
+Instead, the correct approach for Neo4j Cypher is as follows, given a Neo4j Python client called n:
+```python
+compilation_result = compile_graphql_to_cypher(
+    schema, graphql_query, type_equivalence_hints=type_equivalence_hints)
+with n.driver.session() as session:
+    result = session.run(compilation_result.query, parameters)
+```
 
 ## FAQ
 
