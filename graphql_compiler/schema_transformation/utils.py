@@ -26,8 +26,8 @@ class InvalidNameError(SchemaTransformError):
     This may be raised if the input schema contains invalid names, or if the user attempts to
     rename a type/field to an invalid name. A name is considered valid if it consists of
     alphanumeric characters and underscores and doesn't start with a numeric character (as
-    required by GraphQL), and doesn't start with double underscores as such types are reserved
-    for GraphQL internal use.
+    required by GraphQL), and doesn't start with double underscores as such types names are
+    reserved for GraphQL internal use.
     """
 
 
