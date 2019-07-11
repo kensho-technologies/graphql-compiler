@@ -54,7 +54,7 @@ def check_type_name_is_valid(name):
         raise InvalidTypeNameError(u'"{}" is not a valid GraphQL name.'.format(name))
     if name.startswith('__'):
         raise InvalidTypeNameError(u'"{}" starts with two underscores, which is reserved for '
-                               u'GraphQL internal use and is not allowed.'.format(name))
+                                   u'GraphQL internal use and is not allowed.'.format(name))
 
 
 def get_query_type_name(schema):
