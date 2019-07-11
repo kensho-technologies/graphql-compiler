@@ -1,4 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+import re
+
 from graphql.language.ast import NamedType
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
@@ -17,8 +19,39 @@ class SchemaStructureError(SchemaTransformError):
     """
 
 
+class InvalidNameError(SchemaTransformError):
+    """Raised if a type/field name is not valid.
+
+    This may be raised if the input schema contains invalid names, or if the user attempts to
+    rename a type/field to an invalid name. A name is considered valid if it consists of
+    alphanumeric characters and underscores and doesn't start with a numeric character (as
+    required by GraphQL), and doesn't start with double underscores as such types are reserved
+    for GraphQL internal use.
+    """
+
+
 class SchemaNameConflictError(SchemaTransformError):
     """Raised when renaming types or fields cause name conflicts."""
+
+
+def check_name_is_valid(name):
+    """Check if input is a valid, nonreserved GraphQL type name.
+
+    Args:
+        name: str
+
+    Raises:
+        InvalidNameError if the name doesn't consist of only alphanumeric characters and
+        underscores, starts with a numeric character, or starts with double underscores
+    """
+    if not isinstance(name, str):
+        raise InvalidNameError(u'Name "{}" is not a string.'.format(name))
+    pattern = re.compile(r'^[_a-zA-Z][_a-zA-Z0-9]*$')
+    if not pattern.match(name):
+        raise InvalidNameError(u'"{}" is not a valid GraphQL name.'.format(name))
+    if name.startswith('__'):
+        raise InvalidNameError(u'"{}" starts with two underscores, which is reserved for '
+                               u'GraphQL internal use and is not allowed.'.format(name))
 
 
 def get_query_type_name(schema):
@@ -39,14 +72,18 @@ def get_scalar_names(schema):
     Includes all user defined scalars, as well as any builtin scalars used in the schema; excludes
     builtin scalars not used in the schema.
 
+    Note: If the user defined a scalar that shares its name with a builtin introspection type
+    (such as __Schema, __Directive, etc), it will not be listed in type_map and thus will not
+    be included in the output.
+
     Returns:
         Set[str], set of names of scalars used in the schema
     """
     type_map = schema.get_type_map()
     scalars = {
         type_name
-        for type_name in type_map
-        if isinstance(type_map[type_name], GraphQLScalarType)
+        for type_name, type_object in six.iteritems(type_map)
+        if isinstance(type_object, GraphQLScalarType)
     }
     return scalars
 
@@ -92,7 +129,7 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
             if field_name != queried_type_name:
                 raise SchemaStructureError(
                     u'Query type\'s field name "{}" does not match corresponding queried type '
-                    'name "{}"'.format(field_name, queried_type_name)
+                    u'name "{}"'.format(field_name, queried_type_name)
                 )
 
 
@@ -126,9 +163,13 @@ def check_ast_schema_is_valid(ast, schema):
         query type field name does not match the type it queries.
     """
     if schema.get_mutation_type() is not None:
-        raise SchemaStructureError(u'Schema contains mutations.')
+        raise SchemaStructureError(
+            u'Renaming schemas that contain mutations is currently not supported.'
+        )
     if schema.get_subscription_type() is not None:
-        raise SchemaStructureError(u'Schema contains subscriptions.')
+        raise SchemaStructureError(
+            u'Renaming schemas that contain subscriptions is currently not supported.'
+        )
 
     query_type = get_query_type_name(schema)
 

@@ -8,7 +8,7 @@ import six
 
 from .utils import (
     SchemaNameConflictError, SchemaStructureError, check_ast_schema_is_valid, get_query_type_name,
-    get_scalar_names
+    get_scalar_names, check_name_is_valid
 )
 
 
@@ -35,8 +35,7 @@ def rename_schema(ast, renamings):
              the same name as the types they query. Not modified by this function
         renamings: Dict[str, str], mapping original type/field names to renamed type/field names.
                    Type or query type field names that do not appear in the dict will be unchanged.
-                   Any dict-like object that implements get(key, [default]) and
-                   __contains__ may also be used
+                   Any dict-like object that implements get(key, [default]) may also be used
 
     Returns:
         RenamedSchemaDescriptor, a namedtuple that contains the AST of the renamed schema, and the
@@ -129,7 +128,6 @@ def _rename_query_type_fields(ast, renamings, query_type):
 
 class RenameSchemaTypesVisitor(Visitor):
     """Traverse a Document AST, editing the names of nodes."""
-
     noop_types = frozenset({
         'Argument',
         'BooleanValue',
@@ -147,9 +145,11 @@ class RenameSchemaTypesVisitor(Visitor):
         'Name',
         'NonNullType',
         'OperationTypeDefinition',
-        'ScalarTypeDefinition',
         'SchemaDefinition',
         'StringValue',
+    })
+    check_name_validity_types = frozenset({
+        'ScalarTypeDefinition',
     })
     rename_types = frozenset({
         'EnumTypeDefinition',
@@ -209,11 +209,13 @@ class RenameSchemaTypesVisitor(Visitor):
             existing types, scalars, or builtin types
         """
         name_string = node.value
+        check_name_is_valid(name_string)
 
         if name_string == self.query_type or name_string in self.scalar_types:
             return
 
         new_name_string = self.renamings.get(name_string, name_string)  # Default use original
+        check_name_is_valid(new_name_string)
 
         if (
             new_name_string in self.reverse_name_map and
@@ -240,6 +242,9 @@ class RenameSchemaTypesVisitor(Visitor):
         if node_type in self.noop_types:
             # Do nothing, continue traversal
             return None
+        elif node_type in self.check_name_validity_types:
+            # Check the current name is valid, do not rename, continue traversal
+            check_name_is_valid(node.name.value)
         elif node_type in self.rename_types:
             # Rename and put into record the name attribute of current node; continue traversal
             self._rename_name_and_add_to_record(node.name)
@@ -287,8 +292,10 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         """If inside the query type, rename field and add the name pair to reverse_field_map."""
         if self.in_query_type:
             field_name = node.name.value
+            check_name_is_valid(field_name)
 
             new_field_name = self.renamings.get(field_name, field_name)  # Default use original
+            check_name_is_valid(new_field_name)
 
             if (
                 new_field_name in self.reverse_field_map and
