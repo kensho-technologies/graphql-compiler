@@ -37,7 +37,7 @@ def try_convert_decimal_to_string(value):
 
 
 def compile_and_run_match_query(schema, graphql_query, parameters, orientdb_client):
-    """Compiles and runs a MATCH query against the supplied graph client."""
+    """Compile and run a MATCH query against the supplied graph client."""
     # MATCH code emitted by the compiler expects Decimals to be passed in as strings
     converted_parameters = {
         name: try_convert_decimal_to_string(value)
@@ -51,7 +51,7 @@ def compile_and_run_match_query(schema, graphql_query, parameters, orientdb_clie
 
 
 def compile_and_run_sql_query(schema, graphql_query, parameters, engine, metadata):
-    """Compiles and runs a SQL query against the supplied SQL backend."""
+    """Compile and run a SQL query against the supplied SQL backend."""
     dialect_name = engine.dialect.name
     sql_metadata = SqlMetadata(dialect_name, metadata)
     compilation_result = graphql_to_sql(schema, graphql_query, parameters, sql_metadata, None)
@@ -66,7 +66,7 @@ def compile_and_run_sql_query(schema, graphql_query, parameters, engine, metadat
 
 
 def compile_and_run_neo4j_query(schema, graphql_query, parameters, neo4j_client):
-    """Compiles and runs a Cypher query against the supplied graph client."""
+    """Compile and run a Cypher query against the supplied graph client."""
     converted_parameters = {
         name: try_convert_decimal_to_string(value)
         for name, value in six.iteritems(parameters)
@@ -79,20 +79,17 @@ def compile_and_run_neo4j_query(schema, graphql_query, parameters, neo4j_client)
 
 
 def compile_and_run_redisgraph_query(schema, graphql_query, parameters, redisgraph_client):
-    """Compiles and runs a Cypher query against the supplied graph client."""
+    """Compile and run a Cypher query against the supplied graph client."""
     converted_parameters = {
         name: try_convert_decimal_to_string(value)
         for name, value in six.iteritems(parameters)
     }
     compilation_result = graphql_to_cypher_redisgraph(schema, graphql_query, converted_parameters)
     query = compilation_result.query
-    query = query.replace('CYPHER 3.5', '') # TODO Leon: hack-- need to remove version number
     result_set = redisgraph_client.query(query).result_set
     # redisgraph gives us back bytes, but we want strings.
     column_names = [column_name.decode('utf-8') for column_name in result_set[0]]
     rows = [[row_item.decode('utf-8') if type(row_item) in (bytes, bytearray) else row_item for row_item in row]
             for row in result_set[1:]] # decode the strings, leave the rest.
-    # rows = [[row_item.decode('utf-8') for row_item in row] for row in result_set[1:]]
-    # rows = result_set[1:]
     result = [dict(zip(column_names, row)) for row in rows]
     return result

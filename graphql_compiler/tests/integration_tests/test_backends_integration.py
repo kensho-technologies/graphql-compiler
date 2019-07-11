@@ -108,7 +108,6 @@ class IntegrationTests(TestCase):
         elif backend_name in NEO4J_BACKENDS:
             results = compile_and_run_neo4j_query(
                 cls.schema, graphql_query, parameters, cls.neo4j_client)
-            print('results ' + str(results))
         elif backend_name in REDISGRAPH_BACKENDS:
             results = compile_and_run_redisgraph_query(
                 cls.schema, graphql_query, parameters, cls.redisgraph_client)

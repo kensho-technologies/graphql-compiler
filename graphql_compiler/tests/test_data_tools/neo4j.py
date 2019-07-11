@@ -9,7 +9,7 @@ NEO4J_USER = 'neo4j'
 NEO4J_PASSWORD = 'root'
 
 
-class Neo4jClient:
+class Neo4jClient(object):
     def __init__(self, graph_name):
         url = get_neo4j_url(graph_name)
         self.driver = GraphDatabase.driver(url, auth=(NEO4J_USER, NEO4J_PASSWORD))
