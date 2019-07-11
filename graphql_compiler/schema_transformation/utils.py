@@ -4,21 +4,21 @@ from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
 
 
-class SchemaError(Exception):
+class SchemaTransformError(Exception):
     """Parent of specific error classes."""
 
 
-class SchemaStructureError(SchemaError):
-    """Raised if a schema's structure is illegal.
+class SchemaStructureError(SchemaTransformError):
+    """Raised if an input schema's structure is illegal.
 
-    This may happen if an ast cannot be built into a schema, if the schema contains disallowed
-    components, or if the schema contains root fields that are named differently from the type
-    it queries.
+    This may happen if an AST cannot be built into a schema, if the schema contains disallowed
+    components, or if the schema contains some field of the query type that is named differently
+    from the type it queries.
     """
 
 
-class SchemaNameConflictError(SchemaError):
-    """Raised when renaming types or root fields cause name conflicts."""
+class SchemaNameConflictError(SchemaTransformError):
+    """Raised when renaming types or fields cause name conflicts."""
 
 
 def get_query_type_name(schema):
@@ -44,35 +44,42 @@ def get_scalar_names(schema):
     """
     type_map = schema.get_type_map()
     scalars = {
-        type_name for type_name in type_map if isinstance(type_map[type_name], GraphQLScalarType)
+        type_name
+        for type_name in type_map
+        if isinstance(type_map[type_name], GraphQLScalarType)
     }
     return scalars
 
 
-class CheckRootFieldsNameMatchVisitor(Visitor):
-    """Check every root field's name is identical to the type it queries.
+class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
+    """Check that every query type field's name is identical to the type it queries.
 
     If not, raise SchemaStructureError.
     """
     def __init__(self, query_type):
+        """Create a visitor for checking query type field names.
+
+        Args:
+            query_type: str, name of the query type (e.g. RootSchemaQuery)
+        """
         self.query_type = query_type
         self.in_query_type = False
 
     def enter_ObjectTypeDefinition(self, node, *args):
-        """If entering query type, set flag to True."""
+        """If the node's name matches the query type, record that we entered the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = True
 
     def leave_ObjectTypeDefinition(self, node, *args):
-        """If leaving query type, set flag to False."""
+        """If the node's name matches the query type, record that we left the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = False
 
     def enter_FieldDefinition(self, node, *args):
-        """If entering field under query type (root field), check that the names match.
+        """If inside the query type, check that the field and queried type names match.
 
         Raises:
-            SchemaStructureError if the root field name is not identical to the name of the type
+            SchemaStructureError if the field name is not identical to the name of the type
             that it queries
         """
         if self.in_query_type:
@@ -84,31 +91,31 @@ class CheckRootFieldsNameMatchVisitor(Visitor):
             queried_type_name = type_node.name.value
             if field_name != queried_type_name:
                 raise SchemaStructureError(
-                    'Root field name "{}" does not match corresponding queried type '
+                    u'Query type\'s field name "{}" does not match corresponding queried type '
                     'name "{}"'.format(field_name, queried_type_name)
                 )
 
 
-def _check_root_fields_name_match(ast, query_type):
-    """Check every root field's name is identical to the type it queries.
+def _check_query_type_fields_name_match(ast, query_type):
+    """Check every query type field's name is identical to the type it queries.
 
     Args:
         ast: Document representing a schema
         query_type: str, name of the query type
 
     Raises:
-        SchemaStructureError if any root field name is not identical to the name of the type that
-        it queries
+        SchemaStructureError if any query type field name is not identical to the name of the
+        type that it queries
     """
-    visitor = CheckRootFieldsNameMatchVisitor(query_type)
+    visitor = CheckQueryTypeFieldsNameMatchVisitor(query_type)
     visit(ast, visitor)
 
 
-def _check_ast_schema_valid(ast, schema):
+def check_ast_schema_is_valid(ast, schema):
     """Check the schema satisfies structural requirements for rename and merge.
 
-    In particular, check that the schema contains no mutations, no subscriptions, and all root
-    field names match the types they query.
+    In particular, check that the schema contains no mutations, no subscriptions, and all query
+    type field names match the types they query.
 
     Args:
         ast: Document, representing a schema
@@ -116,13 +123,13 @@ def _check_ast_schema_valid(ast, schema):
 
     Raises:
         SchemaStructureError if the schema contains mutations, contains subscriptions, or some
-        root field name does not match the type it queries.
+        query type field name does not match the type it queries.
     """
     if schema.get_mutation_type() is not None:
-        raise SchemaStructureError('Schema contains mutations.')
+        raise SchemaStructureError(u'Schema contains mutations.')
     if schema.get_subscription_type() is not None:
-        raise SchemaStructureError('Schema contains subscriptions.')
+        raise SchemaStructureError(u'Schema contains subscriptions.')
 
     query_type = get_query_type_name(schema)
 
-    _check_root_fields_name_match(ast, query_type)
+    _check_query_type_fields_name_match(ast, query_type)
