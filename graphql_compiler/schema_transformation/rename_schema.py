@@ -142,8 +142,8 @@ class RenameSchemaTypesVisitor(Visitor):
         'FloatValue',
         'InputValueDefinition',
         'IntValue',
-        'ListValue',
         'ListType',
+        'ListValue',
         'Name',
         'NonNullType',
         'OperationTypeDefinition',
@@ -194,7 +194,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.builtin_types = frozenset({'String', 'Int', 'Float', 'Boolean', 'ID'})
 
     def _rename_name_and_add_to_record(self, node):
-        """Rename the value of the node, and add the name mapping to reverse_name_map.
+        """Rename the value of the node, and add the name pair to reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
 
@@ -284,7 +284,7 @@ class RenameQueryTypeFieldsVisitor(Visitor):
             self.in_query_type = False
 
     def enter_FieldDefinition(self, node, *args):
-        """If inside the query type, rename the field and add its name to reverse map."""
+        """If inside the query type, rename field and add the name pair to reverse_field_map."""
         if self.in_query_type:
             field_name = node.name.value
 
