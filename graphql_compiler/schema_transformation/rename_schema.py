@@ -43,6 +43,10 @@ def rename_schema(ast, renamings):
         in the map.
 
     Raises:
+        InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
+        to rename a type to an invalid name. A name is considered invalid if it does not consist
+        of alphanumeric characters and underscores, if it starts with a numeric character, or
+        if it starts with double underscores
         SchemaStructureError if the schema does not have the expected form; in particular, if
         the AST does not represent a valid schema, if any query type field does not have the
         same name as the type that it queries, if the schema contains type extensions or
@@ -100,6 +104,8 @@ def _rename_types(ast, renamings, query_type, scalars):
         including those that were not renamed.
 
     Raises:
+        InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
+        to rename a type to an invalid name
         SchemaNameConflictError if the rename causes name conflicts
     """
     visitor = RenameSchemaTypesVisitor(renamings, query_type, scalars)
@@ -118,9 +124,6 @@ def _rename_query_type_fields(ast, renamings, query_type):
         renamings: Dict[str, str], mapping original field name to renamed name. If a name
                    does not appear in the dict, it will be unchanged
         query_type: string, name of the query type, e.g. 'RootSchemaQuery'
-
-    Raises:
-        SchemaNameConflictError if rename causes field names to conflict
     """
     visitor = RenameQueryTypeFieldsVisitor(renamings, query_type)
     visit(ast, visitor)
@@ -205,6 +208,7 @@ class RenameSchemaTypesVisitor(Visitor):
                   element such as type, interface, or scalar (user defined or builtin)
 
         Raises:
+            InvalidTypeNameError if either the node's current name or renamed name is invalid
             SchemaNameConflictError if the newly renamed node causes name conflicts with
             existing types, scalars, or builtin types
         """
@@ -272,10 +276,12 @@ class RenameQueryTypeFieldsVisitor(Visitor):
                        name not in the dict will be unchanged
             query_type: str, name of the query type (e.g. RootSchemaQuery)
         """
+        # Note that as field names and type names have been confirmed to match up, any renamed
+        # field already has a corresponding renamed type. If no errors, due to either invalid
+        # names or name conflicts, were raised when renaming type, no errors will occur when
+        # renaming query type fields.
         self.in_query_type = False
         self.renamings = renamings
-        self.reverse_field_map = {}  # Dict[str, str], renamed field name to original field name
-        # reverse_field_map contains all query type fields, including those that were unchanged
         self.query_type = query_type
 
     def enter_ObjectTypeDefinition(self, node, *args):
@@ -292,20 +298,5 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         """If inside the query type, rename field and add the name pair to reverse_field_map."""
         if self.in_query_type:
             field_name = node.name.value
-            check_type_name_is_valid(field_name)
-
             new_field_name = self.renamings.get(field_name, field_name)  # Default use original
-            check_type_name_is_valid(new_field_name)
-
-            if (
-                new_field_name in self.reverse_field_map and
-                self.reverse_field_map[new_field_name] != field_name
-            ):
-                raise SchemaNameConflictError(
-                    u'"{}" and "{}" are both renamed to "{}"'.format(
-                        field_name, self.reverse_field_map[new_field_name], new_field_name
-                    )
-                )
-
             node.name.value = new_field_name
-            self.reverse_field_map[new_field_name] = field_name

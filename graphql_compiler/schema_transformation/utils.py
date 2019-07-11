@@ -20,7 +20,7 @@ class SchemaStructureError(SchemaTransformError):
     """
 
 
-class InvalidNameError(SchemaTransformError):
+class InvalidTypeNameError(SchemaTransformError):
     """Raised if a type/field name is not valid.
 
     This may be raised if the input schema contains invalid names, or if the user attempts to
@@ -45,15 +45,15 @@ def check_type_name_is_valid(name):
         name: str
 
     Raises:
-        InvalidNameError if the name doesn't consist of only alphanumeric characters and
+        InvalidTypeNameError if the name doesn't consist of only alphanumeric characters and
         underscores, starts with a numeric character, or starts with double underscores
     """
     if not isinstance(name, str):
-        raise InvalidNameError(u'Name "{}" is not a string.'.format(name))
+        raise InvalidTypeNameError(u'Name "{}" is not a string.'.format(name))
     if not _graphql_type_name_pattern.match(name):
-        raise InvalidNameError(u'"{}" is not a valid GraphQL name.'.format(name))
+        raise InvalidTypeNameError(u'"{}" is not a valid GraphQL name.'.format(name))
     if name.startswith('__'):
-        raise InvalidNameError(u'"{}" starts with two underscores, which is reserved for '
+        raise InvalidTypeNameError(u'"{}" starts with two underscores, which is reserved for '
                                u'GraphQL internal use and is not allowed.'.format(name))
 
 
