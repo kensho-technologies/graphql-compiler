@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 from copy import deepcopy
+import six
 
 from graphql import build_ast_schema
 from graphql.language.visitor import Visitor, visit
@@ -15,7 +16,7 @@ RenamedSchemaDescriptor = namedtuple(
     'RenamedSchemaDescriptor', (
         'schema_ast',  # Document, AST representing the renamed schema
         'reverse_name_map',  # Dict[str, str], renamed type/query type field name to original name
-        # reverse_name_map
+        # reverse_name_map only contains names that were changed
     )
 )
 
@@ -66,11 +67,19 @@ def rename_schema(ast, renamings):
 
     # Rename types, interfaces, enums
     reverse_name_map = _rename_types(ast, renamings, query_type, scalars)
+    reverse_name_map_changed_names_only = {
+        renamed_name: original_name
+        for renamed_name, original_name in six.iteritems(reverse_name_map)
+        if renamed_name != original_name
+    }
+
 
     # Rename query type fields
     _rename_query_type_fields(ast, renamings, query_type)
 
-    return RenamedSchemaDescriptor(schema_ast=ast, reverse_name_map=reverse_name_map)
+    return RenamedSchemaDescriptor(
+        schema_ast=ast, reverse_name_map=reverse_name_map_changed_names_only
+    )
 
 
 def _rename_types(ast, renamings, query_type, scalars):
@@ -89,7 +98,8 @@ def _rename_types(ast, renamings, query_type, scalars):
                  scalars and and used builtin scalars, excluding unused builtins
 
     Returns:
-        Dict[str, str], the renamed type name to original type name map
+        Dict[str, str], the renamed type name to original type name map. Map contains all types,
+        including those that were not renamed.
 
     Raises:
         SchemaNameConflictError if the rename causes name conflicts
@@ -179,6 +189,7 @@ class RenameSchemaTypesVisitor(Visitor):
         """
         self.renamings = renamings
         self.reverse_name_map = {}  # Dict[str, str], from renamed type name to original type name
+        # reverse_name_map contains all types, including those that were unchanged
         self.query_type = query_type
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({'String', 'Int', 'Float', 'Boolean', 'ID'})
@@ -260,6 +271,7 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         self.in_query_type = False
         self.renamings = renamings
         self.reverse_field_map = {}  # Dict[str, str], renamed field name to original field name
+        # reverse_field_map contains all query type fields, including those that were unchanged
         self.query_type = query_type
 
     def enter_ObjectTypeDefinition(self, node, *args):
