@@ -1,10 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 from copy import deepcopy
-import six
 
 from graphql import build_ast_schema
 from graphql.language.visitor import Visitor, visit
+import six
 
 from .utils import (
     SchemaNameConflictError, SchemaStructureError, check_ast_schema_is_valid, get_query_type_name,
@@ -72,7 +72,6 @@ def rename_schema(ast, renamings):
         for renamed_name, original_name in six.iteritems(reverse_name_map)
         if renamed_name != original_name
     }
-
 
     # Rename query type fields
     _rename_query_type_fields(ast, renamings, query_type)
