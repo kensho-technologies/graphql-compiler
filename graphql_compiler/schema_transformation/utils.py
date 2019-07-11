@@ -4,6 +4,7 @@ import re
 from graphql.language.ast import NamedType
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
+import six
 
 
 class SchemaTransformError(Exception):

@@ -7,8 +7,8 @@ from graphql.language.visitor import Visitor, visit
 import six
 
 from .utils import (
-    SchemaNameConflictError, SchemaStructureError, check_ast_schema_is_valid, get_query_type_name,
-    get_scalar_names, check_name_is_valid
+    SchemaNameConflictError, SchemaStructureError, check_ast_schema_is_valid, check_name_is_valid,
+    get_query_type_name, get_scalar_names
 )
 
 
