@@ -35,7 +35,10 @@ class SchemaNameConflictError(SchemaTransformError):
     """Raised when renaming types or fields cause name conflicts."""
 
 
-def check_name_is_valid(name):
+graphql_type_name_pattern = re.compile(r'^[_a-zA-Z][_a-zA-Z0-9]*$')
+
+
+def check_type_name_is_valid(name):
     """Check if input is a valid, nonreserved GraphQL type name.
 
     Args:
@@ -47,8 +50,7 @@ def check_name_is_valid(name):
     """
     if not isinstance(name, str):
         raise InvalidNameError(u'Name "{}" is not a string.'.format(name))
-    pattern = re.compile(r'^[_a-zA-Z][_a-zA-Z0-9]*$')
-    if not pattern.match(name):
+    if not graphql_type_name_pattern.match(name):
         raise InvalidNameError(u'"{}" is not a valid GraphQL name.'.format(name))
     if name.startswith('__'):
         raise InvalidNameError(u'"{}" starts with two underscores, which is reserved for '

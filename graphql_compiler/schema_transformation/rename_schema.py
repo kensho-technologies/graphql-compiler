@@ -7,8 +7,8 @@ from graphql.language.visitor import Visitor, visit
 import six
 
 from .utils import (
-    SchemaNameConflictError, SchemaStructureError, check_ast_schema_is_valid, check_name_is_valid,
-    get_query_type_name, get_scalar_names
+    SchemaNameConflictError, SchemaStructureError, check_ast_schema_is_valid,
+    check_type_name_is_valid, get_query_type_name, get_scalar_names
 )
 
 
@@ -209,13 +209,13 @@ class RenameSchemaTypesVisitor(Visitor):
             existing types, scalars, or builtin types
         """
         name_string = node.value
-        check_name_is_valid(name_string)
+        check_type_name_is_valid(name_string)
 
         if name_string == self.query_type or name_string in self.scalar_types:
             return
 
         new_name_string = self.renamings.get(name_string, name_string)  # Default use original
-        check_name_is_valid(new_name_string)
+        check_type_name_is_valid(new_name_string)
 
         if (
             new_name_string in self.reverse_name_map and
@@ -244,7 +244,7 @@ class RenameSchemaTypesVisitor(Visitor):
             return None
         elif node_type in self.check_name_validity_types:
             # Check the current name is valid, do not rename, continue traversal
-            check_name_is_valid(node.name.value)
+            check_type_name_is_valid(node.name.value)
         elif node_type in self.rename_types:
             # Rename and put into record the name attribute of current node; continue traversal
             self._rename_name_and_add_to_record(node.name)
@@ -292,10 +292,10 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         """If inside the query type, rename field and add the name pair to reverse_field_map."""
         if self.in_query_type:
             field_name = node.name.value
-            check_name_is_valid(field_name)
+            check_type_name_is_valid(field_name)
 
             new_field_name = self.renamings.get(field_name, field_name)  # Default use original
-            check_name_is_valid(new_field_name)
+            check_type_name_is_valid(new_field_name)
 
             if (
                 new_field_name in self.reverse_field_map and
