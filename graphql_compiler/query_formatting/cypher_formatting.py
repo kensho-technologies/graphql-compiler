@@ -25,9 +25,8 @@ def _safe_cypher_string(argument_value):
 
     # Using JSON encoding means that all unicode literals and special chars
     # (e.g. newlines and backslashes) are replaced by appropriate escape sequences.
-    # Since the compiler only allows variables with upper or lower case letters (A-Z, a-z)
-    # or underscores (_), arbitrary code execution is not possible, so we don't need any
-    # other special handling for these strings.
+    # Unlike with Gremlin, unescaped dollar signs $ are not a problem when contained in a
+    # string literal in Cypher because they do not allow for arbitrary code execution.
     escaped_and_quoted = json.dumps(argument_value)
     return escaped_and_quoted
 
