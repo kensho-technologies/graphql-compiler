@@ -49,7 +49,8 @@ def _load_neo4j_files_to_neo4j_client(client, neo4j_files):
 def generate_redisgraph_integration_data(client):
     """Create Redisgraph test DB from the SQL commands file for integration testing."""
     project_root = path.dirname(path.abspath(__file__))
-    cypher_files = glob(path.join(project_root, 'integration_data/create_redisgraph_integration.cypher'))
+    cypher_files = glob(path.join(project_root,
+                                  'integration_data/create_redisgraph_integration.cypher'))
     _load_cypher_files_to_redisgraph_client(client, cypher_files)
 
 
