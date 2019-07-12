@@ -170,12 +170,14 @@ def merge_schemas(schemas_dict):
                 name_id_map[new_name] = cur_schema_id
 
         # Concatenate all query type fields
+        # Since query_type was taken from the schema built from the input AST, the query type
+        # should never be not found
+        if new_query_type_fields is None:
+            raise AssertionError(u'Query type "{}" field definitions unexpected not '
+                                 u'found.'.format(cur_query_type))
         # Note that as field names and type names have been confirmed to match up, and types
         # were merged without invalid names or name conflicts, query type fields can also be
         # merged without errors.
-        if new_query_type_fields is None:
-            raise AssertionError(u'Query type field definitions unexpected not found.')
-
         merged_query_type_fields.extend(new_query_type_fields)
 
     return MergedSchemaDescriptor(schema_ast=merged_schema_ast, name_id_map=name_id_map)
