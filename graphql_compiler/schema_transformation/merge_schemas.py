@@ -67,9 +67,9 @@ def merge_schemas(schemas_dict):
     schemas.
 
     Args:
-        schemas_dict: OrderedDict where keys are schema_identifiers, and values are
-                      ASTs (Documents) describing schemas. The ASTs will not be modified by
-                      this function
+        schemas_dict: OrderedDict[str, Document], where keys are names/identifiers of schemas,
+                      and values are ASTs describing schemas. The ASTs will not be modified
+                      by this funcion
 
     Returns:
         MergedSchemaDescriptor, a namedtuple that contains the AST of the merged schema,
@@ -77,11 +77,11 @@ def merge_schemas(schemas_dict):
         came from
 
     Raises:
-        SchemaStructureError if the schema does not have the expected form; in particular, if
+        - SchemaStructureError if the schema does not have the expected form; in particular, if
         the AST does not represent a valid schema, if any query type field does not have the
         same name as the type that it queries, if the schema contains type extensions or
         input object definitions, or if the schema contains mutations or subscriptions
-        SchemaNameConflictError if there are conflicts between the names of
+        - SchemaNameConflictError if there are conflicts between the names of
         types/interfaces/enums/scalars, or conflicts between the definition of directives
         with the same name
     """
@@ -90,11 +90,9 @@ def merge_schemas(schemas_dict):
 
     query_type = 'RootSchemaQuery'
     # NOTE: currently, the query type will always be named RootSchemaQuery
-    # could be changed so the user has an input, or by changed to always use the query type
-    # name in the first schema in the input, if desired
+    # This could be changed so the user specifies the name of the query type, or be changed
+    # to always use the query type name in the first input schema
     merged_schema_ast = basic_schema_ast(query_type)  # Document
-    merged_definitions = merged_schema_ast.definitions  # List[Node]
-    merged_query_type_fields = merged_definitions[1].fields  # List[FieldDefinition]
 
     name_id_map = {}  # Dict[str, str], name of type/interface/enum/union to schema id
     scalars = {'String', 'Int', 'Float', 'Boolean', 'ID'}  # Set[str], user defined + builtins
@@ -114,7 +112,7 @@ def merge_schemas(schemas_dict):
         cur_query_type = get_query_type_name(cur_schema)
 
         # Merge cur_ast into merged_schema_ast
-        # Concatenate new scalars, new directive, and all type definitions to merged_definitions
+        # Concatenate new scalars, new directive, and all type definitions to definitions list
         # Raise errors for conflicting scalars, directives, or types
         new_definitions = cur_ast.definitions  # List[Node]
         new_query_type_fields = None  # List[FieldDefinition]
@@ -141,7 +139,7 @@ def merge_schemas(schemas_dict):
                                                        print_ast(directives[new_name]))
                         )
                 # new directive
-                merged_definitions.append(new_definition)  # Add to AST
+                merged_schema_ast.definitions.append(new_definition)  # Add to AST
                 directives[new_name] = new_definition
 
             elif isinstance(new_definition, ast_types.ScalarTypeDefinition):
@@ -153,7 +151,7 @@ def merge_schemas(schemas_dict):
                         u'New scalar "{}" clashes with existing type.'.format(new_name)
                     )
                 # new, valid scalar
-                merged_definitions.append(new_definition)  # Add to AST
+                merged_schema_ast.definitions.append(new_definition)  # Add to AST
                 scalars.add(new_name)
 
             else:  # Generic type definition
@@ -166,7 +164,7 @@ def merge_schemas(schemas_dict):
                     raise SchemaNameConflictError(
                         u'New type "{}" clashes with existing type.'.format(new_name)
                     )
-                merged_definitions.append(new_definition)
+                merged_schema_ast.definitions.append(new_definition)
                 name_id_map[new_name] = cur_schema_id
 
         # Concatenate all query type fields
@@ -178,6 +176,7 @@ def merge_schemas(schemas_dict):
         # Note that as field names and type names have been confirmed to match up, and types
         # were merged without invalid names or name conflicts, query type fields can also be
         # merged without errors.
-        merged_query_type_fields.extend(new_query_type_fields)
+        query_type_index = 1  # Query type is the second entry in the list of definitions
+        merged_schema_ast.definitions[query_type_index].fields.extend(new_query_type_fields)
 
     return MergedSchemaDescriptor(schema_ast=merged_schema_ast, name_id_map=name_id_map)
