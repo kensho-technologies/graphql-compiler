@@ -179,7 +179,7 @@ class RenameSchemaTypesVisitor(Visitor):
     })
 
     def __init__(self, renamings, query_type, scalar_types):
-        """Create a visitor for renaming types.
+        """Create a visitor for renaming types in a schema AST.
 
         Args:
             renamings: Dict[str, str], mapping from original type name to renamed type name.
@@ -269,7 +269,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
 class RenameQueryTypeFieldsVisitor(Visitor):
     def __init__(self, renamings, query_type):
-        """Create a visitor for renaming fields of the query type.
+        """Create a visitor for renaming fields of the query type in a schema AST.
 
         Args:
             renamings: Dict[str, str], from original field name to renamed field name. Any
