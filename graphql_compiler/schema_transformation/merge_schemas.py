@@ -8,8 +8,8 @@ from graphql.language.printer import print_ast
 import six
 
 from .utils import (
-    InvalidTypeNameError, SchemaNameConflictError, SchemaStructureError,
-    check_ast_schema_is_valid, check_type_name_is_valid, get_query_type_name
+    SchemaNameConflictError, SchemaStructureError, check_ast_schema_is_valid,
+    check_type_name_is_valid, get_query_type_name
 )
 
 
