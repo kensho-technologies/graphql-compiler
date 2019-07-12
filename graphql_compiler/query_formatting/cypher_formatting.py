@@ -34,8 +34,8 @@ def _safe_cypher_string(argument_value):
 def _safe_cypher_decimal(argument_value):
     """Cypher doesn't support decimals, only ints and floats, so we'll raise an error here."""
     raise NotImplementedError(u'Cypher doesn\'t support Decimals, only ints and floats. See '
-                              u'OpenCypher documentation. Argument value was {}'.
-                              format(argument_value))
+                              u'OpenCypher documentation. Argument value was {}'
+                              .format(argument_value))
 
 
 def _safe_cypher_date_and_datetime(graphql_type, expected_python_types, value):

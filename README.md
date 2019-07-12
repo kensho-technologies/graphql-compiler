@@ -1641,19 +1641,19 @@ For more information about the `SchemaGraph`, please see the class documentation
 
 
 ### Cypher query parameters
-Redisgraph doesn't support query parameters, so we perform manual parameter interpolation in the
-graphql_to_redisgraph_cypher function. However, for Neo4j, we can use Neo4j's client to do 
+RedisGraph [doesn't support query parameters](https://github.com/RedisGraph/RedisGraph/issues/544#issuecomment-507963576), so we perform manual parameter interpolation in the
+`graphql_to_redisgraph_cypher` function. However, for Neo4j, we can use Neo4j's client to do
 parameter interpolation on its own so that we don't reinvent the wheel.
 
-The function insert_arguments_into_query does so based on the query language, which isn't
+The function `insert_arguments_into_query` does so based on the query language, which isn't
 fine-grained enough here-- for Cypher backends, we only want to insert parameters if the backend
-is Redisgraph, but not if it's Neo4j.
+is RedisGraph, but not if it's Neo4j.
 
-Instead, the correct approach for Neo4j Cypher is as follows, given a Neo4j Python client called n:
+Instead, the correct approach for Neo4j Cypher is as follows, given a Neo4j Python client called `neo4j_client`:
 ```python
 compilation_result = compile_graphql_to_cypher(
     schema, graphql_query, type_equivalence_hints=type_equivalence_hints)
-with n.driver.session() as session:
+with neo4j_client.driver.session() as session:
     result = session.run(compilation_result.query, parameters)
 ```
 

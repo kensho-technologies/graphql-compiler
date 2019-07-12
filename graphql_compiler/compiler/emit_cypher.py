@@ -109,6 +109,14 @@ def _emit_with_clause_components(cypher_steps):
 
 def emit_code_from_ir(cypher_query, compiler_metadata):
     """Return a Cypher query string from a CypherQuery object."""
+    # According to the Cypher Query Language Reference [0], the standard Cypher version is Cypher
+    # 9 (page 196) and we should be able to specify the Cypher version in the query.
+    # Unfortunately, this turns out to be invalid in both Neo4j and RedisGraph-- Neo4j supports
+    # Cypher version 2.3, 3.4, and 3.5 [1] while Redisgraph doesn't support the syntax at all [2].
+    # When this does eventually get resolved, we can change `query_data` back to `[u'CYPHER 9']`
+    # [0] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
+    # [1] https://github.com/neo4j/neo4j/issues/12239
+    # [2] https://github.com/RedisGraph/RedisGraph/issues/552
     query_data = [u'']
 
     for cypher_step in cypher_query.steps:
