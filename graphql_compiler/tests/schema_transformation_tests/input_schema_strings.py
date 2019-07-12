@@ -17,6 +17,30 @@ class InputSchemaStrings(object):
         }
     ''')
 
+    multiple_types_schema = dedent('''\
+        schema {
+          query: SchemaQuery
+        }
+
+        type Human {
+          name: String
+        }
+
+        type Droid {
+          id: String
+        }
+
+        type Dog {
+          nickname: String
+        }
+
+        type SchemaQuery {
+          Human: Human
+          Droid: Droid
+          Dog: Dog
+        }
+    ''')
+
     enum_schema = dedent('''\
         schema {
           query: SchemaQuery

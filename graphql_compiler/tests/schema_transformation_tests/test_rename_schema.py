@@ -6,10 +6,10 @@ from graphql import parse
 from graphql.language.printer import print_ast
 from graphql.language.visitor_meta import QUERY_DOCUMENT_KEYS
 
-from graphql_compiler.schema_transformation.rename_schema import (
+from ...schema_transformation.rename_schema import (
     RenameSchemaTypesVisitor, rename_schema
 )
-from graphql_compiler.schema_transformation.utils import (
+from ...schema_transformation.utils import (
     InvalidTypeNameError, SchemaNameConflictError, SchemaStructureError
 )
 
@@ -59,6 +59,66 @@ class TestRenameSchema(unittest.TestCase):
         original_ast = parse(ISS.basic_schema)
         rename_schema(original_ast, {'Human': 'NewHuman'})
         self.assertEqual(original_ast, parse(ISS.basic_schema))
+
+    def test_swap_rename(self):
+        renamed_schema = rename_schema(parse(ISS.multiple_types_schema),
+                                       {'Human': 'Droid', 'Droid': 'Human'})
+        renamed_schema_string = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Droid {
+              name: String
+            }
+
+            type Human {
+              id: String
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            type SchemaQuery {
+              Droid: Droid
+              Human: Human
+              Dog: Dog
+            }
+        ''')
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({'Human': 'Droid', 'Droid': 'Human'},
+                         renamed_schema.reverse_name_map)
+
+    def test_cyclic_rename(self):
+        renamed_schema = rename_schema(parse(ISS.multiple_types_schema),
+                                       {'Human': 'Droid', 'Droid': 'Dog', 'Dog': 'Human'})
+        renamed_schema_string = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Droid {
+              name: String
+            }
+
+            type Dog {
+              id: String
+            }
+
+            type Human {
+              nickname: String
+            }
+
+            type SchemaQuery {
+              Droid: Droid
+              Dog: Dog
+              Human: Human
+            }
+        ''')
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({'Dog': 'Droid', 'Human': 'Dog', 'Droid': 'Human'},
+                         renamed_schema.reverse_name_map)
 
     def test_enum_rename(self):
         renamed_schema = rename_schema(parse(ISS.enum_schema),
