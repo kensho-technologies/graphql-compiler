@@ -54,11 +54,16 @@ def _estimate_filter_selectivity_of_equality(
     if _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
         # TODO(evan): don't return a higher absolute selectivity than class counts.
         result_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
+    else:
+        # Assumption: each distinct field value is equally common
+        statistics_result = statistics.get_distinct_field_values_count(
+            location_name, filter_fields[0]
+        )
 
-    # Assumption: each distinct field value is equally common
-    statistics_result = statistics.get_distinct_field_values_count(location_name, filter_field_name)
-    if statistics_result is not None:
-    	result_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0/statistics_result)
+        if statistics_result is not None:
+            result_selectivity = Selectivity(
+                kind=FRACTIONAL_SELECTIVITY, value=1.0 / statistics_result
+            )
 
     return result_selectivity
 
@@ -102,6 +107,7 @@ def _get_filter_selectivity(
                 value=float(collection_size) * selectivity_per_entry_in_collection.value
             )
         elif _is_fractional(selectivity_per_entry_in_collection):
+
             result_selectivity = Selectivity(
                 kind=FRACTIONAL_SELECTIVITY,
                 value=min(float(collection_size) * selectivity_per_entry_in_collection.value,

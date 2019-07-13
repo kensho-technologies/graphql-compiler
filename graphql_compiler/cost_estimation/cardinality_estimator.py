@@ -110,7 +110,7 @@ def _probe_statistics_for_edge_count_between_vertex_pair(
     outbound_vertex_name, inbound_vertex_name = _get_outbound_and_inbound_names_from_locations(
         query_metadata, child_location, parent_location
     )
-    probe_result = statistics.get_edge_count_between_vertex_pair(
+    probe_result = statistics.get_vertex_edge_vertex_count(
         outbound_vertex_name, edge_name, inbound_vertex_name
     )
     return probe_result

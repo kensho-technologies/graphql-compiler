@@ -133,7 +133,7 @@ class CostEstimationTests(unittest.TestCase):
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_traversal_provided_both_statistics(self):
-        """Test type coercion provided both class_counts and edge_count_between_vertex_pairs."""
+        """Test type coercion provided both class_counts and vertex_edge_vertex_counts."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_input = '''{
             Animal {
@@ -152,11 +152,12 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'Entity_Related': 11
         }
-        edge_count_data = {
+        vertex_edge_vertex_data = {
             ('Animal', 'Entity_Related', 'Event'): 2
         }
         statistics = LocalStatistics(
-            count_data, edge_count_between_vertex_pairs=edge_count_data)
+            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -188,18 +189,19 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'Entity_Related': 11
         }
-        edge_count_data = {
+        vertex_edge_vertex_data = {
             ('Animal', 'Entity_Related', 'Event'): 0
         }
         statistics = LocalStatistics(
-            count_data, edge_count_between_vertex_pairs=edge_count_data)
+            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
-        # edge_count_data tells us that no Entity_Related edges connect Animals and Events, so the
-        # result size is 0.0 results.
+        # Vertex_edge_vertex_data tells us that no Entity_Related edges connect Animals and Events,
+        # so the result set is empty.
         expected_cardinality_estimate = 0.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
@@ -224,11 +226,12 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'Entity_Related': 11
         }
-        edge_count_data = {
+        vertex_edge_vertex_data = {
             ('Animal', 'Entity_Related', 'Event'): 2
         }
         statistics = LocalStatistics(
-            count_data, edge_count_between_vertex_pairs=edge_count_data)
+            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -266,11 +269,12 @@ class CostEstimationTests(unittest.TestCase):
             'Entity_Related': 11,
             'Location': 13
         }
-        edge_count_data = {
+        vertex_edge_vertex_data = {
             ('Animal', 'Entity_Related', 'Event'): 2
         }
         statistics = LocalStatistics(
-            count_data, edge_count_between_vertex_pairs=edge_count_data)
+            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -583,10 +587,10 @@ class CostEstimationTests(unittest.TestCase):
             'FeedingEvent': 11,
             'BirthEvent': 13
         }
-        edge_count_data = {
+        vertex_edge_vertex_data = {
             ('Animal', 'Animal_BornAt', 'BirthEvent'): 2
         }
-        statistics = LocalStatistics(count_data, edge_count_between_vertex_pairs=edge_count_data)
+        statistics = LocalStatistics(count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -926,7 +930,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         empty_statistics = LocalStatistics(dict())
         params = dict()
 
-        # If we '='-filter on a property that isn't an index return a fractional selectivity of 1.
+        # If we '='-filter on a property that isn't an index, with no distinct-field-values-count
+        # statistics, return a fractional selectivity of 1.
         filter_on_nonindex = FilterInfo(
             fields=('description',), op_name='=', args=('$description',)
         )
@@ -936,8 +941,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
 
-        # If we '='-filter on a property that's non-uniquely
-        # indexed return a fractional selectivity of 1.
+        # If we '='-filter on a property that's non-uniquely indexed, with no
+        # distinct-field-values-count statistics, return a fractional selectivity of 1.
         nonunique_filter = FilterInfo(fields=('birthday',), op_name='=', args=('$birthday',))
         selectivity = _get_filter_selectivity(
             schema_graph, empty_statistics, nonunique_filter, params, classname
@@ -945,10 +950,42 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
 
+        distinct_birthday_values_data = {
+            ('Animal', 'birthday'): 3
+        }
+        statistics_with_distinct_birthday_values_data = LocalStatistics(
+            dict(), distinct_field_values_counts=distinct_birthday_values_data
+        )
+        # If we '='-filter on a property that's non-uniquely indexed, but has only 3 distinct field
+        # values, return a fractional selectivity of 1.0 / 3.0.
+        nonunique_filter = FilterInfo(fields=('birthday',), op_name='=', args=('$birthday',))
+        selectivity = _get_filter_selectivity(
+            schema_graph, statistics_with_distinct_birthday_values_data,
+            nonunique_filter, params, classname
+        )
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0 / 3.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
         # If we '='-filter on a property that is uniquely indexed, expect exactly 1 result.
         unique_filter = FilterInfo(fields=('uuid',), op_name='=', args=('$uuid',))
         selectivity = _get_filter_selectivity(
             schema_graph, empty_statistics, unique_filter, params, classname
+        )
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        distinct_uuid_values_data = {
+            ('Animal', 'uuid'): 3
+        }
+        statistics_with_distinct_uuid_values_data = LocalStatistics(
+            dict(), distinct_field_values_counts=distinct_uuid_values_data
+        )
+        # If we '='-filter on a property that is both uniquely indexed, and has 3 distinct field
+        # values, expect exactly 1 result, since the index overrides the statistic.
+        unique_filter = FilterInfo(fields=('uuid',), op_name='=', args=('$uuid',))
+        selectivity = _get_filter_selectivity(
+            schema_graph, statistics_with_distinct_uuid_values_data,
+            unique_filter, params, classname
         )
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
@@ -966,10 +1003,38 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
                 date(1999, 12, 31),
             ]
         }
-        # If we use an in_collection-filter on a property that is not uniquely indexed
-        # return a fractional selectivity of 1.
+        # If we use an in_collection-filter on a property that is not uniquely indexed, with no
+        # distinct field values count statistic, return a fractional selectivity of 1.
         selectivity = _get_filter_selectivity(
             schema_graph, empty_statistics, nonunique_filter, nonunique_params, classname
+        )
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        distinct_birthday_values_data = {
+            ('Animal', 'birthday'): 3
+        }
+        statistics_with_distinct_birthday_values_data = LocalStatistics(
+            dict(), distinct_field_values_counts=distinct_birthday_values_data
+        )
+        # If we use an in_collection-filter using a collection with 2 elements on a property that is
+        # not uniquely indexed, but has 3 distinct values, return a fractional
+        # selectivity of 2.0 / 3.0.
+        selectivity = _get_filter_selectivity(
+            schema_graph, statistics_with_distinct_birthday_values_data, nonunique_filter,
+            nonunique_params, classname
+        )
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=2.0 / 3.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        statistics_with_distinct_birthday_values_data = LocalStatistics(
+            dict(), distinct_birthday_values_data
+        )
+        # If we use an in_collection-filter with 4 elements on a property that is not uniquely
+        # indexed, but has 3 distinct values, return a fractional selectivity of 1.0.
+        selectivity = _get_filter_selectivity(
+            schema_graph, statistics_with_distinct_birthday_values_data, nonunique_filter,
+            nonunique_params, classname
         )
         expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
