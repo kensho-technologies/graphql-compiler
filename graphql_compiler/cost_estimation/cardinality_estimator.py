@@ -184,12 +184,12 @@ def _estimate_children_per_parent(
     Returns:
         float, expected number of child_location vertices connected to each parent_location vertex.
     """
-    edge_counts = _probe_statistics_for_edge_count_between_vertex_pair(
+    edge_counts = _probe_statistics_for_vertex_edge_vertex_count(
         statistics, query_metadata, child_location, parent_location
     )
 
     if edge_counts is None:
-        edge_counts = _estimate_edge_count_between_vertex_pair_using_class_count(
+        edge_counts = _estimate_vertex_edge_vertex_count_using_class_count(
             schema_graph, statistics, query_metadata, child_location, parent_location
         )
 

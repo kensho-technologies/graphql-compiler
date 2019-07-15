@@ -55,7 +55,7 @@ def _estimate_filter_selectivity_of_equality(
         # TODO(evan): don't return a higher absolute selectivity than class counts.
         result_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
     else:
-        # Assumption: each distinct field value is equally common
+        # Assumption: each distinct field value is equally common.
         statistics_result = statistics.get_distinct_field_values_count(
             location_name, filter_fields[0]
         )
@@ -99,15 +99,13 @@ def _get_filter_selectivity(
             schema_graph, statistics, location_name, filter_info.fields
         )
 
-        # Assumption: The selectivity is proportional to the number of entries in the collection
-        # This will not hold in case of duplicates.
+        # Assumption: the selectivity is proportional to the number of entries in the collection.
         if _is_absolute(selectivity_per_entry_in_collection):
             result_selectivity = Selectivity(
                 kind=ABSOLUTE_SELECTIVITY,
                 value=float(collection_size) * selectivity_per_entry_in_collection.value
             )
         elif _is_fractional(selectivity_per_entry_in_collection):
-
             result_selectivity = Selectivity(
                 kind=FRACTIONAL_SELECTIVITY,
                 value=min(float(collection_size) * selectivity_per_entry_in_collection.value,
