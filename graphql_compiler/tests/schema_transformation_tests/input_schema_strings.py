@@ -17,7 +17,7 @@ class InputSchemaStrings(object):
         }
     ''')
 
-    multiple_types_schema = dedent('''\
+    multiple_objects_schema = dedent('''\
         schema {
           query: SchemaQuery
         }
@@ -79,7 +79,7 @@ class InputSchemaStrings(object):
         }
     ''')
 
-    interfaces_schema = dedent('''\
+    multiple_interfaces_schema = dedent('''\
         schema {
           query: SchemaQuery
         }
@@ -110,6 +110,7 @@ class InputSchemaStrings(object):
         }
 
         type Human {
+          id: String
           birthday: Date
         }
 
@@ -279,7 +280,7 @@ class InputSchemaStrings(object):
         }
     ''')
 
-    invalid_schema = dedent('''\
+    missing_type_schema = dedent('''\
         schema {
           query: SchemaQuery
         }

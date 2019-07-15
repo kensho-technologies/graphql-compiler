@@ -20,11 +20,13 @@ class TestRenameSchema(unittest.TestCase):
     def test_rename_visitor_type_coverage(self):
         """Check that all types are covered without overlap."""
         all_types = set(ast_type.__name__ for ast_type in QUERY_DOCUMENT_KEYS)
-        type_sets = [RenameSchemaTypesVisitor.noop_types,
-                     RenameSchemaTypesVisitor.check_name_validity_types,
-                     RenameSchemaTypesVisitor.rename_types,
-                     RenameSchemaTypesVisitor.unexpected_types,
-                     RenameSchemaTypesVisitor.disallowed_types]
+        type_sets = [
+            RenameSchemaTypesVisitor.noop_types,
+            RenameSchemaTypesVisitor.check_name_validity_types,
+            RenameSchemaTypesVisitor.rename_types,
+            RenameSchemaTypesVisitor.unexpected_types,
+            RenameSchemaTypesVisitor.disallowed_types,
+        ]
         type_sets_union = set()
         for type_set in type_sets:
             self.assertTrue(type_sets_union.isdisjoint(type_set))
@@ -61,7 +63,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(original_ast, parse(ISS.basic_schema))
 
     def test_swap_rename(self):
-        renamed_schema = rename_schema(parse(ISS.multiple_types_schema),
+        renamed_schema = rename_schema(parse(ISS.multiple_objects_schema),
                                        {'Human': 'Droid', 'Droid': 'Human'})
         renamed_schema_string = dedent('''\
             schema {
@@ -91,7 +93,7 @@ class TestRenameSchema(unittest.TestCase):
                          renamed_schema.reverse_name_map)
 
     def test_cyclic_rename(self):
-        renamed_schema = rename_schema(parse(ISS.multiple_types_schema),
+        renamed_schema = rename_schema(parse(ISS.multiple_objects_schema),
                                        {'Human': 'Droid', 'Droid': 'Dog', 'Dog': 'Human'})
         renamed_schema_string = dedent('''\
             schema {
@@ -170,9 +172,9 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual({'NewKid': 'Kid', 'NewCharacter': 'Character'},
                          renamed_schema.reverse_name_map)
 
-    def test_interfaces_rename(self):
+    def test_multiple_interfaces_rename(self):
         renamed_schema = rename_schema(
-            parse(ISS.interfaces_schema), {
+            parse(ISS.multiple_interfaces_schema), {
                 'Human': 'NewHuman', 'Character': 'NewCharacter', 'Creature': 'Creature'
             }
         )
@@ -216,6 +218,7 @@ class TestRenameSchema(unittest.TestCase):
             }
 
             type NewHuman {
+              id: String
               birthday: Date
             }
 
@@ -258,8 +261,12 @@ class TestRenameSchema(unittest.TestCase):
     def test_list_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.list_schema), {
-                'Droid': 'NewDroid', 'Character': 'NewCharacter', 'Height': 'NewHeight',
-                'Date': 'NewDate', 'id': 'NewId', 'String': 'NewString'
+                'Droid': 'NewDroid',
+                'Character': 'NewCharacter',
+                'Height': 'NewHeight',
+                'Date': 'NewDate',
+                'id': 'NewId',
+                'String': 'NewString',
             }
         )
         renamed_schema_string = dedent('''\
@@ -292,7 +299,11 @@ class TestRenameSchema(unittest.TestCase):
         ''')
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual(
-            {'NewCharacter': 'Character', 'NewDroid': 'Droid', 'NewHeight': 'Height'},
+            {
+                'NewCharacter': 'Character',
+                'NewDroid': 'Droid',
+                'NewHeight': 'Height',
+            },
             renamed_schema.reverse_name_map
         )
 
@@ -317,8 +328,11 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_directive_rename(self):
         renamed_schema = rename_schema(
-            parse(ISS.directive_schema), {
-                'Human': 'NewHuman', 'Droid': 'NewDroid', 'stitch': 'NewStitch'
+            parse(ISS.directive_schema),
+            {
+                'Human': 'NewHuman',
+                'Droid': 'NewDroid',
+                'stitch': 'NewStitch',
             }
         )
         renamed_schema_string = dedent('''\
@@ -484,9 +498,9 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(SchemaNameConflictError):
             rename_schema(parse(schema_string), {'Human': 'String'})
 
-    def test_invalid_schema(self):
+    def test_missing_type_schema(self):
         with self.assertRaises(SchemaStructureError):
-            rename_schema(parse(ISS.invalid_schema), {})
+            rename_schema(parse(ISS.missing_type_schema), {})
 
     def test_schema_extension(self):
         schema_string = dedent('''\
@@ -716,6 +730,12 @@ class TestRenameSchema(unittest.TestCase):
             }
         ''')
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({'NewCharacter': 'Character', 'NewGiraffe': 'Giraffe',
-                          'NewHeight': 'Height', 'NewHuman': 'Human'},
-                         renamed_schema.reverse_name_map)
+        self.assertEqual(
+            {
+                'NewCharacter': 'Character',
+                'NewGiraffe': 'Giraffe',
+                'NewHeight': 'Height',
+                'NewHuman': 'Human'
+            },
+            renamed_schema.reverse_name_map
+        )
