@@ -133,7 +133,7 @@ class CostEstimationTests(unittest.TestCase):
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_traversal_provided_both_statistics(self):
-        """Test type coercion provided both class_counts and edge_count_between_vertex_pairs."""
+        """Test type coercion provided both class_counts and vertex_edge_vertex_counts."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_input = '''{
             Animal {
@@ -152,11 +152,12 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'Entity_Related': 11
         }
-        edge_count_data = {
+        vertex_edge_vertex_data = {
             ('Animal', 'Entity_Related', 'Event'): 2
         }
         statistics = LocalStatistics(
-            count_data, edge_count_between_vertex_pairs=edge_count_data)
+            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -188,18 +189,19 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'Entity_Related': 11
         }
-        edge_count_data = {
+        vertex_edge_vertex_data = {
             ('Animal', 'Entity_Related', 'Event'): 0
         }
         statistics = LocalStatistics(
-            count_data, edge_count_between_vertex_pairs=edge_count_data)
+            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
-        # edge_count_data tells us that no Entity_Related edges connect Animals and Events, so the
-        # result size is 0.0 results.
+        # Vertex_edge_vertex_data tells us that no Entity_Related edges connect Animals and Events,
+        # so the result set is empty.
         expected_cardinality_estimate = 0.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
@@ -224,11 +226,12 @@ class CostEstimationTests(unittest.TestCase):
             'Event': 7,
             'Entity_Related': 11
         }
-        edge_count_data = {
+        vertex_edge_vertex_data = {
             ('Animal', 'Entity_Related', 'Event'): 2
         }
         statistics = LocalStatistics(
-            count_data, edge_count_between_vertex_pairs=edge_count_data)
+            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -266,11 +269,12 @@ class CostEstimationTests(unittest.TestCase):
             'Entity_Related': 11,
             'Location': 13
         }
-        edge_count_data = {
+        vertex_edge_vertex_data = {
             ('Animal', 'Entity_Related', 'Event'): 2
         }
         statistics = LocalStatistics(
-            count_data, edge_count_between_vertex_pairs=edge_count_data)
+            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -583,10 +587,10 @@ class CostEstimationTests(unittest.TestCase):
             'FeedingEvent': 11,
             'BirthEvent': 13
         }
-        edge_count_data = {
+        vertex_edge_vertex_data = {
             ('Animal', 'Animal_BornAt', 'BirthEvent'): 2
         }
-        statistics = LocalStatistics(count_data, edge_count_between_vertex_pairs=edge_count_data)
+        statistics = LocalStatistics(count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
