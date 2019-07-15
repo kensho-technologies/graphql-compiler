@@ -100,6 +100,7 @@ def _get_filter_selectivity(
         )
 
         # Assumption: the selectivity is proportional to the number of entries in the collection.
+        # This will not hold in case of duplicates.
         if _is_absolute(selectivity_per_entry_in_collection):
             result_selectivity = Selectivity(
                 kind=ABSOLUTE_SELECTIVITY,
@@ -110,6 +111,9 @@ def _get_filter_selectivity(
                 kind=FRACTIONAL_SELECTIVITY,
                 value=min(float(collection_size) * selectivity_per_entry_in_collection.value,
                           1.0)
+                # The estimate may be above 1.0 in case of duplicates in the collection
+                # so we make sure the value is <= 1.0
+
             )
 
     return result_selectivity
