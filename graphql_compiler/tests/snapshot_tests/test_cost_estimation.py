@@ -163,8 +163,8 @@ class CostEstimationTests(unittest.TestCase):
             schema_graph, statistics, graphql_input, params
         )
 
-        # For each Animal, edge_count tells us we should expect (2.0 / 3.0) Events when traversing
-        # using Entity_Related. This totals to 3.0 * (2.0 / 3.0) results.
+        # For each Animal, vertex_edge_vertex counts tell us we should expect (2.0 / 3.0) Events
+        # when traversing using Entity_Related. This totals to 3.0 * (2.0 / 3.0) results.
         expected_cardinality_estimate = 3.0 * (2.0 / 3.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
@@ -237,14 +237,14 @@ class CostEstimationTests(unittest.TestCase):
             schema_graph, statistics, graphql_input, params
         )
 
-        # For each Event, edge_count tells us we should expect (2.0 / 7.0) Animals when traversing
-        # using Entity_Related. This totals to 7.0 * (2.0 / 7.0) result sets.
+        # For each Event, vertex_edge_vertex_count tells us we should expect (2.0 / 7.0) Animals
+        # when traversing using Entity_Related. This totals to 7.0 * (2.0 / 7.0) result sets.
         expected_cardinality_estimate = 7.0 * (2.0 / 7.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_traversals_with_different_statistics_combination(self):
-        """Test two traversals, where one has edge_count statistic and the other doesn't."""
+        """Test two traversals, where one has vertex_edge_vertex counts and the other doesn't."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_input = '''{
             Animal {
