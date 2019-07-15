@@ -100,6 +100,5 @@ def compile_and_run_redisgraph_query(schema, graphql_query, parameters, redisgra
         decoded_record = [field.decode('utf-8') if type(field) in (bytes, bytearray) else field
                           for field in record]
         decoded_records.append(decoded_record)
-    print(decoded_records)
     result = [dict(zip(decoded_column_names, record)) for record in decoded_records]
     return result
