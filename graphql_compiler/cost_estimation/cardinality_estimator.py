@@ -102,10 +102,10 @@ def _get_outbound_and_inbound_names_from_locations(query_metadata, child_locatio
     return outbound_vertex_name, inbound_vertex_name
 
 
-def _probe_statistics_for_edge_count_between_vertex_pair(
+def _probe_statistics_for_vertex_edge_vertex_count(
     statistics, query_metadata, child_location, parent_location
 ):
-    """Probe statistics for the count of edges connecting two vertex classes."""
+    """Probe statistics for vertex_edge_vertex count given parent and child locations."""
     _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     outbound_vertex_name, inbound_vertex_name = _get_outbound_and_inbound_names_from_locations(
         query_metadata, child_location, parent_location
@@ -116,10 +116,10 @@ def _probe_statistics_for_edge_count_between_vertex_pair(
     return probe_result
 
 
-def _estimate_edge_count_between_vertex_pair_using_class_count(
+def _estimate_vertex_edge_vertex_count_using_class_count(
     schema_graph, statistics, query_metadata, child_location, parent_location
 ):
-    """Estimate the count of edges connecting two vertex classes via the class_count statistic.
+    """Estimate the count of edges that that connect the parent and child locations.
 
     Given a parent location of class A and a child location of class B, this function estimates the
     number of AB edges using class counts. If A and B are subclasses of the edge's endpoint classes
