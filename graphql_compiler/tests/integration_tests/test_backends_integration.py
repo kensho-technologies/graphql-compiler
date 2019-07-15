@@ -1,4 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
+import datetime
 from decimal import Decimal
 from unittest import TestCase
 
@@ -222,6 +223,25 @@ class IntegrationTests(TestCase):
             'wide_substring': 'Animal',
             # narrows set to just ['Animal 3']
             'narrow_substring': '3',
+        }
+        expected_results = [
+            {'animal_name': 'Animal 3'},
+        ]
+        self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
+
+    @all_backends
+    @integration_fixtures
+    def test_filter_on_date(self, backend_name):
+        graphql_query = '''
+        {
+            Animal {
+                name @output(out_name: "animal_name")
+                birthday @filter(op_name: "=", value: ["$birthday"])
+            }
+        }
+        '''
+        parameters = {
+            'birthday': datetime.date(1975, 3, 3),
         }
         expected_results = [
             {'animal_name': 'Animal 3'},
