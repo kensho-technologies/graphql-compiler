@@ -202,8 +202,7 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
 
 
 def graphql_to_redisgraph_cypher(schema, graphql_query, parameters, type_equivalence_hints=None):
-    """Compile the GraphQL input using the schema into a Cypher query (for use specifically with
-    RedisGraph) and associated metadata.
+    """Compile the GraphQL input into a RedisGraph Cypher query and associated metadata.
 
     Note that the corresponding function that would convert GraphQL to Cypher for Neo4j does not
     exist because Neo4j supports query parameters but RedisGraph doesn't. So, for Neo4j we will use
