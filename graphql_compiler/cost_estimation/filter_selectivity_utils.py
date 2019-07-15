@@ -49,7 +49,18 @@ def _estimate_filter_selectivity_of_equality(
 ):
     """Calculate the selectivity of equality filter(s) at a given location.
 
-    Since there may be multiple equality filters at a given location, this function
+    Using the available unique indexes, and the distinct-field-values-count statistic, this function
+    extracts the current location's selectivites, and then combines them, returning one Selectivity
+    object.
+
+    Args:
+        schema_graph: SchemaGraph object
+        statistics: Statistics object
+        location_name: string, type of the location being filtered
+        filter_fields: tuple of str, listing all the fields being filtered over
+
+    Returns:
+        Selectivity object, the selectivity of an specific equality filter at a given location.
     """
     all_selectivities = []
 
