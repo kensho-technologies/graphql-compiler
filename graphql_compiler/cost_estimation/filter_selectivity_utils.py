@@ -47,24 +47,29 @@ def _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
 def _estimate_filter_selectivity_of_equality(
     schema_graph, statistics, location_name, filter_fields
 ):
-    """Calculate the selectivity of equality filter(s) at a given location."""
-    result_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+    """Calculate the selectivity of equality filter(s) at a given location.
+
+    Since there may be multiple equality filters at a given location, this function
+    """
+    all_selectivities = []
 
     unique_indexes = schema_graph.get_unique_indexes_for_class(location_name)
     if _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
         # TODO(evan): don't return a higher absolute selectivity than class counts.
-        result_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
-    else:
-        # Assumption: each distinct field value is equally common.
-        statistics_result = statistics.get_distinct_field_values_count(
-            location_name, filter_fields[0]
-        )
+        all_selectivities.append(Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0))
+
+    for field_name in filter_fields:
+        statistics_result = statistics.get_distinct_field_values_count(location_name, field_name)
 
         if statistics_result is not None:
-            result_selectivity = Selectivity(
+            # Assumption: all distinct field values are distributed evenly among vertex instances,
+            # so each distinct value occurs
+            # (# of current location vertex instances) / (# of distinct field values) times.
+            all_selectivities.append(Selectivity(
                 kind=FRACTIONAL_SELECTIVITY, value=1.0 / statistics_result
-            )
+            ))
 
+    result_selectivity = _combine_filter_selectivities(all_selectivities)
     return result_selectivity
 
 
@@ -113,7 +118,6 @@ def _get_filter_selectivity(
                           1.0)
                 # The estimate may be above 1.0 in case of duplicates in the collection
                 # so we make sure the value is <= 1.0
-
             )
 
     return result_selectivity

@@ -192,8 +192,7 @@ class CostEstimationTests(unittest.TestCase):
             ('Animal', 'Entity_Related', 'Event'): 0
         }
         statistics = LocalStatistics(
-            count_data, edge_count_between_vertex_pairs=edge_count_data
-        )
+            count_data, edge_count_between_vertex_pairs=edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
