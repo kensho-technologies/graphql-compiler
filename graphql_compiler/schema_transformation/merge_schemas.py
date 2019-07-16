@@ -8,8 +8,8 @@ from graphql.language.printer import print_ast
 import six
 
 from .utils import (
-    SchemaNameConflictError, SchemaStructureError, check_ast_schema_is_valid,
-    check_type_name_is_valid, get_query_type_name
+    SchemaNameConflictError, check_ast_schema_is_valid, check_type_name_is_valid,
+    get_query_type_name
 )
 
 
@@ -21,7 +21,7 @@ MergedSchemaDescriptor = namedtuple(
 )
 
 
-def basic_schema_ast(query_type):
+def _basic_schema_ast(query_type):
     """Create a basic AST Document representing a nearly blank schema.
 
     The output AST contains a single query type, whose name is the input string. The query type
@@ -78,37 +78,31 @@ def merge_schemas(schemas_dict):
 
     Raises:
         - SchemaStructureError if the schema does not have the expected form; in particular, if
-        the AST does not represent a valid schema, if any query type field does not have the
-        same name as the type that it queries, if the schema contains type extensions or
-        input object definitions, or if the schema contains mutations or subscriptions
+          the AST does not represent a valid schema, if any query type field does not have the
+          same name as the type that it queries, if the schema contains type extensions or
+          input object definitions, or if the schema contains mutations or subscriptions
         - SchemaNameConflictError if there are conflicts between the names of
-        types/interfaces/enums/scalars, or conflicts between the definition of directives
-        with the same name
+          types/interfaces/enums/scalars, or conflicts between the definition of directives
+          with the same name
     """
     if len(schemas_dict) == 0:
         raise ValueError(u'Expected a nonzero number of schemas to merge.')
 
     query_type = 'RootSchemaQuery'
-    # NOTE: currently, the query type will always be named RootSchemaQuery
-    # This could be changed so the user specifies the name of the query type, or be changed
-    # to always use the query type name in the first input schema
-    merged_schema_ast = basic_schema_ast(query_type)  # Document
+    merged_schema_ast = _basic_schema_ast(query_type)  # Document
 
     name_id_map = {}  # Dict[str, str], name of type/interface/enum/union to schema id
     scalars = {'String', 'Int', 'Float', 'Boolean', 'ID'}  # Set[str], user defined + builtins
     directives = {}  # Dict[str, DirectiveDefinition]
 
     for cur_schema_id, cur_ast in six.iteritems(schemas_dict):
+        # Prevent aliasing between output and input
         cur_ast = deepcopy(cur_ast)
 
-        try:
-            cur_schema = build_ast_schema(cur_ast)
-        except Exception as e:
-            raise SchemaStructureError(u'Input is not a valid schema. Message: {}'.format(e))
+        # Check input schema satisfies various structural requirements
+        check_ast_schema_is_valid(cur_ast)
 
-        # Check additional structural requirements
-        check_ast_schema_is_valid(cur_ast, cur_schema)
-
+        cur_schema = build_ast_schema(cur_ast)
         cur_query_type = get_query_type_name(cur_schema)
 
         # Merge cur_ast into merged_schema_ast
