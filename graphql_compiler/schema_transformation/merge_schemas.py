@@ -7,10 +7,7 @@ from graphql.language import ast as ast_types
 from graphql.language.printer import print_ast
 import six
 
-from .utils import (
-    SchemaNameConflictError, check_ast_schema_is_valid, check_type_name_is_valid,
-    get_query_type_name
-)
+from .utils import SchemaNameConflictError, check_ast_schema_is_valid, get_query_type_name
 
 
 MergedSchemaDescriptor = namedtuple(
@@ -106,7 +103,8 @@ def merge_schemas(schemas_dict):
         cur_query_type = get_query_type_name(cur_schema)
 
         # Merge cur_ast into merged_schema_ast
-        # Concatenate new scalars, new directive, and all type definitions to definitions list
+        # Concatenate new scalars, new directives, and type definitions other than the query
+        # type to definitions list
         # Raise errors for conflicting scalars, directives, or types
         new_definitions = cur_ast.definitions  # List[Node]
         new_query_type_fields = None  # List[FieldDefinition]
@@ -137,7 +135,6 @@ def merge_schemas(schemas_dict):
                 directives[new_name] = new_definition
 
             elif isinstance(new_definition, ast_types.ScalarTypeDefinition):
-                check_type_name_is_valid(new_name)
                 if new_name in scalars:  # existing scalar
                     continue
                 if new_name in name_id_map:  # new scalar clashing with existing type
@@ -149,7 +146,6 @@ def merge_schemas(schemas_dict):
                 scalars.add(new_name)
 
             else:  # Generic type definition
-                check_type_name_is_valid(new_name)
                 if new_name in scalars:
                     raise SchemaNameConflictError(
                         u'New type "{}" clashes with existing scalar.'.format(new_name)
@@ -168,8 +164,7 @@ def merge_schemas(schemas_dict):
             raise AssertionError(u'Query type "{}" field definitions unexpected not '
                                  u'found.'.format(cur_query_type))
         # Note that as field names and type names have been confirmed to match up, and types
-        # were merged without invalid names or name conflicts, query type fields can also be
-        # merged without errors.
+        # were merged without name conflicts, query type fields can also be safely merged
         query_type_index = 1  # Query type is the second entry in the list of definitions
         merged_schema_ast.definitions[query_type_index].fields.extend(new_query_type_fields)
 
