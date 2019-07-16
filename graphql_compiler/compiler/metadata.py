@@ -36,7 +36,9 @@ OutputInfo = namedtuple(
 TagInfo = namedtuple(
     'TagInfo',
     (
-        'location',
+        'location',     # Location/FoldScopeLocation, where to output from
+        'type',         # GraphQLType of the tag
+        'optional',     # boolean, whether the output was defined within an @optional scope
     )
 )
 
@@ -241,7 +243,7 @@ class QueryMetadataTable(object):
             yield revisit_location
 
     def get_revisit_origin(self, location):
-        """Return the original location that this location revisits, or None if it isn't a revisit.
+        """Return the location that this location revisits, or the input if it isn't a revisit.
 
         Args:
             location: Location/FoldScopeLocation object whose revisit origin to get
