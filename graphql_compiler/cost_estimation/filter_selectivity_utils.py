@@ -47,15 +47,40 @@ def _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
 def _estimate_filter_selectivity_of_equality(
     schema_graph, statistics, location_name, filter_fields
 ):
-    """Calculate the selectivity of equality filter(s) at a given location."""
-    result_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+    """Calculate the selectivity of equality filter(s) at a given location.
+
+    Using the available unique indexes, and the distinct-field-values-count statistic, this function
+    extracts the current location's selectivites, and then combines them, returning one Selectivity
+    object.
+
+    Args:
+        schema_graph: SchemaGraph object
+        statistics: Statistics object
+        location_name: string, type of the location being filtered
+        filter_fields: tuple of str, listing all the fields being filtered over
+
+    Returns:
+        Selectivity object, the selectivity of an specific equality filter at a given location.
+    """
+    all_selectivities = []
 
     unique_indexes = schema_graph.get_unique_indexes_for_class(location_name)
     if _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
         # TODO(evan): don't return a higher absolute selectivity than class counts.
-        result_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
+        all_selectivities.append(Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0))
 
-    # TODO(vlad): provide estimates for non-unique fields using domain_count metric.
+    for field_name in filter_fields:
+        statistics_result = statistics.get_distinct_field_values_count(location_name, field_name)
+
+        if statistics_result is not None:
+            # Assumption: all distinct field values are distributed evenly among vertex instances,
+            # so each distinct value occurs
+            # (# of current location vertex instances) / (# of distinct field values) times.
+            all_selectivities.append(Selectivity(
+                kind=FRACTIONAL_SELECTIVITY, value=1.0 / statistics_result
+            ))
+
+    result_selectivity = _combine_filter_selectivities(all_selectivities)
     return result_selectivity
 
 
@@ -90,7 +115,7 @@ def _get_filter_selectivity(
             schema_graph, statistics, location_name, filter_info.fields
         )
 
-        # Assumption: The selectivity is proportional to the number of entries in the collection
+        # Assumption: the selectivity is proportional to the number of entries in the collection.
         # This will not hold in case of duplicates.
         if _is_absolute(selectivity_per_entry_in_collection):
             result_selectivity = Selectivity(
@@ -99,7 +124,7 @@ def _get_filter_selectivity(
             )
         elif _is_fractional(selectivity_per_entry_in_collection):
             result_selectivity = Selectivity(
-                kind=selectivity_per_entry_in_collection.kind,
+                kind=FRACTIONAL_SELECTIVITY,
                 value=min(float(collection_size) * selectivity_per_entry_in_collection.value,
                           1.0)
                 # The estimate may be above 1.0 in case of duplicates in the collection

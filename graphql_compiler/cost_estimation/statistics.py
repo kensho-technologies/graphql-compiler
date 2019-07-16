@@ -62,10 +62,30 @@ class Statistics(object):
         """
         return None
 
+    @abstractmethod
+    def get_distinct_field_values_count(self, vertex_name, field_name):
+        """Return the count of distinct values a vertex's property field has over all instances.
+
+        This statistic helps estimate the result size of @filter directives used to filter
+        values using equality operators like '=', '!=', and 'in_collection'.
+
+        Args:
+            vertex_name: str, name of a vertex.
+            field_name: str, name of a vertex field.
+
+        Returns:
+            - int, count of distinct values of that vertex's property field if the statistic exists.
+            - None otherwise.
+        """
+        return None
+
 
 class LocalStatistics(Statistics):
     """Provides statistics using ones given at initialization."""
-    def __init__(self, class_counts, vertex_edge_vertex_counts=None):
+    def __init__(
+        self, class_counts, vertex_edge_vertex_counts=None,
+        distinct_field_values_counts=None
+    ):
         """Initializes statistics with the given data.
 
         Args:
@@ -73,12 +93,18 @@ class LocalStatistics(Statistics):
             vertex_edge_vertex_counts: optional dict, (str, str, str) -> int, mapping
                 tuple of (vertex source class name, edge class name, vertex target class name) to
                 count of edge instances of given class connecting instances of two vertex classes.
+            distinct_field_values_counts: optional dict, (str, str) -> int, mapping vertex class
+                name and property field name to the count of distinct values of that vertex class's
+                property field.
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
+        if distinct_field_values_counts is None:
+            distinct_field_values_counts = dict()
 
-        self._class_counts = class_counts
+        self._class_counts = frozendict(class_counts)
         self._vertex_edge_vertex_counts = frozendict(vertex_edge_vertex_counts)
+        self._distinct_field_values_counts = frozendict(distinct_field_values_counts)
 
     def get_class_count(self, class_name):
         """Return how many vertex or edge instances have, or inherit, the given class name.
@@ -120,3 +146,20 @@ class LocalStatistics(Statistics):
         """
         statistic_key = (vertex_source_class_name, edge_class_name, vertex_target_class_name)
         return self._vertex_edge_vertex_counts.get(statistic_key)
+
+    def get_distinct_field_values_count(self, vertex_name, field_name):
+        """Return the count of distinct values a vertex's property field has over all instances.
+
+        This statistic helps estimate the result size of @filter directives used to filter
+        values using equality operators like '=', '!=', and 'in_collection'.
+
+        Args:
+            vertex_name: str, name of a vertex.
+            field_name: str, name of a vertex field.
+
+        Returns:
+            - int, count of distinct values of that vertex's property field if the statistic exists.
+            - None otherwise.
+        """
+        statistic_key = (vertex_name, field_name)
+        return self._distinct_field_values_counts.get(statistic_key)
