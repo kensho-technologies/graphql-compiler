@@ -1,8 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
+from copy import deepcopy
 
-from graphql import build_ast_schema, parse
-from graphql.language.printer import print_ast
+from graphql import build_ast_schema
 from graphql.language.visitor import Visitor, visit
 import six
 
@@ -54,7 +54,7 @@ def rename_schema(ast, renamings):
         - SchemaNameConflictError if there are conflicts between the renamed types or fields
     """
     # Prevent modifying input
-    ast = parse(print_ast(ast))  # much faster than deepcopy
+    ast = deepcopy(ast)
 
     # Check input schema satisfies various structural requirements
     check_ast_schema_is_valid(ast)
