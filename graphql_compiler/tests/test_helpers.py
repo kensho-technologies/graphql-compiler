@@ -11,10 +11,10 @@ from .. import get_graphql_schema_from_orientdb_schema_data
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..schema import CUSTOM_SCALAR_TYPES
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
-from ..schema_generation.utils import amend_custom_scalar_types
 from ..schema_generation.orientdb.utils import (
     ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
 )
+from ..schema_generation.utils import amend_custom_scalar_types
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
