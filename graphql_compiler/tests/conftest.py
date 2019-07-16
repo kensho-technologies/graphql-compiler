@@ -33,7 +33,11 @@ def init_integration_orientdb_client():
     return _init_orientdb_client(load_schema, generate_orient_integration_data)
 
 
-@retry(tries=20, timeout=1)
+# retry is a decorator that attempts to call the decorated function repeatedly, and it takes a
+# parameter "call". Call is the function being decorated, so we don't need to specify that in
+# the parameters that the retry decorator takes, so we can disable pylint's warning about
+# missing parameters here.
+@retry(tries=20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_orientdb_client(load_schema_func, generate_data_func):
     graph_name = 'animals'
     orientdb_client = get_test_orientdb_graph(graph_name, load_schema_func, generate_data_func)
@@ -46,7 +50,9 @@ def init_integration_neo4j_client():
     return _init_neo4j_client(generate_neo4j_integration_data)
 
 
-@retry(tries=20, timeout=1)
+# We can disable pylint's warning about missing parameters here because retry is a decorator. See
+# _init_orientdb_client function comment.
+@retry(tries=20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_neo4j_client(generate_data_func):
     graph_name = 'animals'
     neo4j_client = get_test_neo4j_graph(graph_name, generate_data_func)
@@ -59,7 +65,9 @@ def init_integration_redisgraph_client():
     return _init_redisgraph_client(generate_redisgraph_integration_data)
 
 
-@retry(tries=20, timeout=1)
+# We can disable pylint's warning about missing parameters here because retry is a decorator. See
+# _init_orientdb_client function comment.
+@retry(tries=20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_redisgraph_client(generate_data_func):
     graph_name = 'animals'
     redisgraph_client = get_test_redisgraph_graph(graph_name, generate_data_func)
