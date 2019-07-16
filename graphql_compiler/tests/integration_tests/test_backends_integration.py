@@ -58,8 +58,10 @@ def almost_all_backends(excluded_backends):
                   auto-generates a test function for each backend. For more information see
                   https://github.com/wolever/parameterized
     """
-    non_excluded_backends = [backend for backend in all_backends_list
-                             if backend not in excluded_backends]
+    non_excluded_backends = [
+        backend for backend in all_backends_list
+        if backend not in excluded_backends
+    ]
     return parameterized.expand(non_excluded_backends)
 
 

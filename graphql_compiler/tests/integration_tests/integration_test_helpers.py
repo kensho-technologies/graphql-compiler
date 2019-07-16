@@ -77,11 +77,7 @@ def compile_and_run_neo4j_query(schema, graphql_query, parameters, neo4j_client)
 
 def compile_and_run_redisgraph_query(schema, graphql_query, parameters, redisgraph_client):
     """Compile and run a Cypher query against the supplied graph client."""
-    converted_parameters = {
-        name: try_convert_decimal_to_string(value)
-        for name, value in six.iteritems(parameters)
-    }
-    compilation_result = graphql_to_redisgraph_cypher(schema, graphql_query, converted_parameters)
+    compilation_result = graphql_to_redisgraph_cypher(schema, graphql_query, parameters)
     query = compilation_result.query
     result_set = redisgraph_client.query(query).result_set
 
@@ -97,8 +93,10 @@ def compile_and_run_redisgraph_query(schema, graphql_query, parameters, redisgra
     for record in records:
         # decode if bytes, leave alone otherwise. For more info see here:
         # https://oss.redislabs.com/redisgraph/result_structure/#top-level-members
-        decoded_record = [field.decode('utf-8') if type(field) in (bytes, bytearray) else field
-                          for field in record]
+        decoded_record = [
+            field.decode('utf-8') if type(field) in (bytes, bytearray) else field
+            for field in record
+        ]
         decoded_records.append(decoded_record)
     result = [dict(zip(decoded_column_names, record)) for record in decoded_records]
     return result
