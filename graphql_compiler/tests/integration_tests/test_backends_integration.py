@@ -235,7 +235,7 @@ class IntegrationTests(TestCase):
         ]
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
-    @all_backends
+    @almost_all_backends(excluded_backends=[test_backend.REDISGRAPH])
     @integration_fixtures
     def test_filter_on_date(self, backend_name):
         graphql_query = '''
