@@ -20,10 +20,7 @@ from .integration_test_helpers import (
     compile_and_run_sql_query, sort_db_results
 )
 
-
-# Store the test parametrization for running against all backends. Individual tests can customize
-# the list of backends to test against with the full @parametrized.expand([...]) decorator.
-all_backends = parameterized.expand([
+all_backends_list = [
     test_backend.ORIENTDB,
     test_backend.POSTGRES,
     test_backend.MARIADB,
@@ -32,27 +29,11 @@ all_backends = parameterized.expand([
     test_backend.MSSQL,
     test_backend.NEO4J,
     test_backend.REDISGRAPH,
-])
+]
 
-# TODO Leon this is really bad but it works for now
-all_backends_but_redisgraph = parameterized.expand([
-    test_backend.ORIENTDB,
-    test_backend.POSTGRES,
-    test_backend.MARIADB,
-    test_backend.MYSQL,
-    test_backend.SQLITE,
-    test_backend.MSSQL,
-    test_backend.NEO4J,
-])
-
-all_backends_but_cypher = parameterized.expand([
-    test_backend.ORIENTDB,
-    test_backend.POSTGRES,
-    test_backend.MARIADB,
-    test_backend.MYSQL,
-    test_backend.SQLITE,
-    test_backend.MSSQL,
-])
+# Store the test parametrization for running against all backends. Individual tests can customize
+# the list of backends to test against with the full @parametrized.expand([...]) decorator.
+all_backends = parameterized.expand(all_backends_list)
 
 # Store the typical fixtures required for an integration tests.
 # Individual tests can supply the full @pytest.mark.usefixtures to override if necessary.
@@ -62,6 +43,24 @@ integration_fixtures = pytest.mark.usefixtures(
     'integration_redisgraph_client',
     'sql_integration_data',
 )
+
+
+def almost_all_backends(excluded_backends):
+    """Decorator for test functions to use a specific backend.
+
+    Args:
+        excluded_backends: List[str], a list of backend strings from test_backend.py to exclude in
+                           testing.
+
+    Returns:
+        function that expands tests. parameterized.expand() takes in a list of test parameters (in
+                  this case, backend strings specifying which backends to use for the test) and
+                  auto-generates a test function for each backend. For more information see
+                  https://github.com/wolever/parameterized
+    """
+    non_excluded_backends = [backend for backend in all_backends_list
+                             if backend not in excluded_backends]
+    return parameterized.expand(non_excluded_backends)
 
 
 # The following test class uses several fixtures adding members that pylint
@@ -137,9 +136,11 @@ class IntegrationTests(TestCase):
         ]
         self.assertResultsEqual(graphql_query, {}, backend_name, expected_results)
 
-    @all_backends_but_cypher
-    # we could replace net_worth with something else; Cypher just doesn't support Decimals
-    # TODO Leon
+    # Cypher doesn't support Decimals (both Neo4j [1] and RedisGraph [2])
+    # [0] https://oss.redislabs.com/redisgraph/cypher_support/#types
+    # [1] https://neo4j.com/docs/cypher-manual/current/syntax/values/
+    # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
+    @almost_all_backends(excluded_backends=[test_backend.NEO4J, test_backend.REDISGRAPH])
     @integration_fixtures
     def test_simple_filter(self, backend_name):
         graphql_query = '''
@@ -178,11 +179,12 @@ class IntegrationTests(TestCase):
 
         self.assertResultsEqual(graphql_query, parameters, test_backend.ORIENTDB, expected_results)
 
-    @all_backends_but_cypher
-    # redisgraph doesn't support lists so in_collection doesn't make sense.
-    # alternatively, could change the second filter-- TODO Leon
-    # Also Cypher doesn't support floats anyways--
-    # if we want to run these tests then we need to change Decimal to Float.
+    # Redisgraph doesn't support lists so in_collection doesn't make sense. [0]
+    # Cypher doesn't support Decimals (both Neo4j [1] and RedisGraph [2])
+    # [0] https://oss.redislabs.com/redisgraph/cypher_support/#types
+    # [1] https://neo4j.com/docs/cypher-manual/current/syntax/values/
+    # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
+    @almost_all_backends(excluded_backends=[test_backend.REDISGRAPH, test_backend.NEO4J])
     @integration_fixtures
     def test_two_filters(self, backend_name):
         graphql_query = '''
@@ -206,7 +208,9 @@ class IntegrationTests(TestCase):
 
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
-    @all_backends_but_redisgraph   # redisgraph doesn't support string function CONTAINS
+    # RedisGraph doesn't support string function CONTAINS
+    # https://oss.redislabs.com/redisgraph/cypher_support/#string-operators
+    @almost_all_backends(excluded_backends=[test_backend.REDISGRAPH])
     @integration_fixtures
     def test_has_substring_precedence(self, backend_name):
         graphql_query = '''
