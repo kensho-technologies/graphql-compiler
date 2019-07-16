@@ -3,9 +3,10 @@ from decimal import Decimal
 
 import six
 
-from ... import graphql_to_redisgraph_cypher, graphql_to_match, graphql_to_sql
-from ...compiler.ir_lowering_sql.metadata import SqlMetadata
+from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
 from ...compiler import compile_graphql_to_cypher
+from ...compiler.ir_lowering_sql.metadata import SqlMetadata
+
 
 def sort_db_results(results):
     """Deterministically sort DB results.

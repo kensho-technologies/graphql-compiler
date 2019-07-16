@@ -20,6 +20,7 @@ from .integration_test_helpers import (
     compile_and_run_sql_query, sort_db_results
 )
 
+
 all_backends_list = [
     test_backend.ORIENTDB,
     test_backend.POSTGRES,
