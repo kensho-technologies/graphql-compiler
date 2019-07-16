@@ -82,9 +82,18 @@ def compile_and_run_redisgraph_query(schema, graphql_query, parameters, redisgra
     query = compilation_result.query
     result_set = redisgraph_client.query(query).result_set
 
-    # See description of result sets in RedisGraph here:
-    # https://github.com/RedisGraph/RedisGraph/issues/557
-    # We have a discrepancy between the RedisGraph docs and what actually happens.
+    # result_set is a list containing two items. The first is a list of property names that a
+    # given query returns (roughly analogous to the names of the columns returned by a SQL query)
+    # and the second is the returned data itself.
+    #
+    # result_set formatting for this version of RedisGraph (version 1.2.2) can be found here [0]
+    # Note this differs from the official documentation on the Redis Labs website [1] because the
+    # docs on the website are for the newer version 1.9.9 [2]. We expect a new version to be
+    # released in Q3 2019.
+    #
+    # [0] https://github.com/RedisGraph/RedisGraph/blob/v1.2.2/docs/design.md#querying-the-graph
+    # [1] https://oss.redislabs.com/redisgraph/result_structure/
+    # [2] https://github.com/RedisGraph/RedisGraph/issues/557
     column_names = result_set[0]
     records = result_set[1:]
 
