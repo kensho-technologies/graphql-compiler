@@ -279,27 +279,3 @@ class InputSchemaStrings(object):
           Giraffe: Giraffe
         }
     ''')
-
-    missing_type_schema = dedent('''\
-        schema {
-          query: SchemaQuery
-        }
-
-        type SchemaQuery {
-          Human: Human
-        }
-    ''')
-
-    double_underscore_schema = dedent('''\
-        schema {
-          query: SchemaQuery
-        }
-
-        type SchemaQuery {
-          __Human: __Human
-        }
-
-        type __Human {
-          id: String
-        }
-    ''')

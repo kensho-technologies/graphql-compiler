@@ -6,13 +6,8 @@ from graphql import parse
 from graphql.language.printer import print_ast
 from graphql.language.visitor_meta import QUERY_DOCUMENT_KEYS
 
-from ...schema_transformation.rename_schema import (
-    RenameSchemaTypesVisitor, rename_schema
-)
-from ...schema_transformation.utils import (
-    InvalidTypeNameError, SchemaNameConflictError, SchemaStructureError
-)
-
+from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema
+from ...schema_transformation.utils import InvalidTypeNameError, SchemaNameConflictError
 from .input_schema_strings import InputSchemaStrings as ISS
 
 
@@ -22,10 +17,7 @@ class TestRenameSchema(unittest.TestCase):
         all_types = set(ast_type.__name__ for ast_type in QUERY_DOCUMENT_KEYS)
         type_sets = [
             RenameSchemaTypesVisitor.noop_types,
-            RenameSchemaTypesVisitor.check_name_validity_types,
             RenameSchemaTypesVisitor.rename_types,
-            RenameSchemaTypesVisitor.unexpected_types,
-            RenameSchemaTypesVisitor.disallowed_types,
         ]
         type_sets_union = set()
         for type_set in type_sets:
@@ -374,7 +366,7 @@ class TestRenameSchema(unittest.TestCase):
               name: String
             }
         ''')
-        renamed_schema = rename_schema(parse(schema_string), {'Human': 'NewHuman'})
+        renamed_schema = rename_schema(parse(schema_string), {'Human': 'NewHuman', 'id': 'Id'})
         renamed_schema_string = dedent('''\
             schema {
               query: SchemaQuery
@@ -498,111 +490,6 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(SchemaNameConflictError):
             rename_schema(parse(schema_string), {'Human': 'String'})
 
-    def test_missing_type_schema(self):
-        with self.assertRaises(SchemaStructureError):
-            rename_schema(parse(ISS.missing_type_schema), {})
-
-    def test_schema_extension(self):
-        schema_string = dedent('''\
-            schema {
-              query: SchemaQuery
-            }
-
-            type SchemaQuery {
-              Human: Human
-            }
-
-            type Human {
-              id: String
-            }
-
-            extend type Human {
-              age: Int
-            }
-        ''')
-        with self.assertRaises(SchemaStructureError):
-            rename_schema(parse(schema_string), {})
-
-    def test_input_type_definition(self):
-        schema_string = dedent('''\
-            schema {
-              query: SchemaQuery
-            }
-
-            type SchemaQuery {
-              id: String
-            }
-
-            input MessageInput {
-              content: String
-            }
-        ''')
-        with self.assertRaises(SchemaStructureError):
-            rename_schema(parse(schema_string), {})
-
-    def test_mutation_definition(self):
-        schema_string = dedent('''\
-            schema {
-              query: SchemaQuery
-              mutation: SchemaMutation
-            }
-
-            type SchemaQuery {
-              id: String
-            }
-
-            type SchemaMutation {
-              addId(id: String): String
-            }
-        ''')
-        with self.assertRaises(SchemaStructureError):
-            rename_schema(parse(schema_string), {})
-
-    def test_subscription_definition(self):
-        schema_string = dedent('''\
-            schema {
-              query: SchemaQuery
-              subscription: SchemaSubscription
-            }
-
-            type SchemaQuery {
-              id: String
-            }
-
-            type SchemaSubscription {
-              getId: String
-            }
-        ''')
-        with self.assertRaises(SchemaStructureError):
-            rename_schema(parse(schema_string), {})
-
-    def test_inconsistent_root_field_name(self):
-        schema_string = dedent('''\
-            schema {
-              query: SchemaQuery
-            }
-
-            type Human1 {
-              id: String
-            }
-
-            type Human2 {
-              id: String
-            }
-
-            type SchemaQuery {
-              human1: Human1
-              human2: Human2
-            }
-        ''')
-
-        with self.assertRaises(SchemaStructureError):
-            rename_schema(parse(schema_string), {})
-
-    def test_illegal_double_underscore_name(self):
-        with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.double_underscore_schema), {})
-
     def test_illegal_rename_start_with_number(self):
         with self.assertRaises(InvalidTypeNameError):
             rename_schema(parse(ISS.basic_schema), {'Human': '0Human'})
@@ -622,72 +509,6 @@ class TestRenameSchema(unittest.TestCase):
     def test_illegal_rename_to_reserved_name_type(self):
         with self.assertRaises(InvalidTypeNameError):
             rename_schema(parse(ISS.basic_schema), {'Human': '__Type'})
-
-    def test_illegal_reserved_name_type(self):
-        schema_string = dedent('''\
-            schema {
-              query: SchemaQuery
-            }
-
-            type SchemaQuery {
-              Human: Human
-            }
-
-            type Human {
-              id: String
-            }
-
-            type __Type {
-              id: String
-            }
-        ''')
-        with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(schema_string), {})
-
-    def test_illegal_reserved_name_enum(self):
-        schema_string = dedent('''\
-            schema {
-              query: SchemaQuery
-            }
-
-            type SchemaQuery {
-              Human: Human
-            }
-
-            type Human {
-              id: String
-            }
-
-            enum __Type {
-              ENUM1
-              ENUM2
-            }
-        ''')
-        with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(schema_string), {})
-
-    def test_illegal_reserved_name_scalar(self):
-        # NOTE: such scalars will not appear in typemap!
-        # See graphql/type/introspection for all reserved types
-        # This edge case (scalar with reserved type name defined but not used) is the reason that
-        # check_name_validity_types was added to RenameSchemaTypesVisitor
-        schema_string = dedent('''\
-            schema {
-              query: SchemaQuery
-            }
-
-            type SchemaQuery {
-              Human: Human
-            }
-
-            type Human {
-              id: String
-            }
-
-            scalar __Type
-        ''')
-        with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(schema_string), {})
 
     def test_rename_using_dict_like_prefixer_class(self):
         class PrefixNewDict(object):
