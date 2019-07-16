@@ -4,7 +4,7 @@ def amend_custom_scalar_types(schema, scalars):
 
        Information about the fields, (other than the name), of custom GraphQLScalarType objects is
        lost when GraphQLSchema objects are serialized into strings. This function uses the
-       original type definitions to mutate the schema and reconstructs fields of custom
+       original type definitions to mutate the schema and reconstructs the fields of custom
        scalar types.
 
        Args:
