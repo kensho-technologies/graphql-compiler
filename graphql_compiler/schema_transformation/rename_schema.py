@@ -1,14 +1,14 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from copy import deepcopy
 
-from graphql import build_ast_schema
+from graphql import build_ast_schema, parse
+from graphql.language.printer import print_ast
 from graphql.language.visitor import Visitor, visit
 import six
 
 from .utils import (
-    SchemaNameConflictError, SchemaStructureError, check_ast_schema_is_valid,
-    check_type_name_is_valid, get_query_type_name, get_scalar_names
+    SchemaNameConflictError, check_ast_schema_is_valid, check_type_name_is_valid,
+    get_query_type_name, get_scalar_names
 )
 
 
@@ -43,28 +43,23 @@ def rename_schema(ast, renamings):
         in the map.
 
     Raises:
-        InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
-        to rename a type to an invalid name. A name is considered invalid if it does not consist
-        of alphanumeric characters and underscores, if it starts with a numeric character, or
-        if it starts with double underscores
-        SchemaStructureError if the schema does not have the expected form; in particular, if
-        the AST does not represent a valid schema, if any query type field does not have the
-        same name as the type that it queries, if the schema contains type extensions or
-        input object definitions, or if the schema contains mutations or subscriptions
-        SchemaNameConflictError if there are conflicts between the renamed types or fields
+        - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
+          to rename a type to an invalid name. A name is considered invalid if it does not consist
+          of alphanumeric characters and underscores, if it starts with a numeric character, or
+          if it starts with double underscores
+        - SchemaStructureError if the schema does not have the expected form; in particular, if
+          the AST does not represent a valid schema, if any query type field does not have the
+          same name as the type that it queries, if the schema contains type extensions or
+          input object definitions, or if the schema contains mutations or subscriptions
+        - SchemaNameConflictError if there are conflicts between the renamed types or fields
     """
-    ast = deepcopy(ast)
+    # Prevent modifying input
+    ast = parse(print_ast(ast))  # much faster than deepcopy
 
-    # Check that the AST can be built into a valid schema
-    try:
-        # May raise Exception -- see graphql/utils/build_ast_schema.py
-        schema = build_ast_schema(ast)
-    except Exception as e:
-        raise SchemaStructureError(u'Input is not a valid schema. Message: {}'.format(e))
+    # Check input schema satisfies various structural requirements
+    check_ast_schema_is_valid(ast)
 
-    # Check additional structural requirements
-    check_ast_schema_is_valid(ast, schema)
-
+    schema = build_ast_schema(ast)
     query_type = get_query_type_name(schema)
     scalars = get_scalar_names(schema)
 
@@ -104,9 +99,9 @@ def _rename_types(ast, renamings, query_type, scalars):
         including those that were not renamed.
 
     Raises:
-        InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
-        to rename a type to an invalid name
-        SchemaNameConflictError if the rename causes name conflicts
+        - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
+          to rename a type to an invalid name
+        - SchemaNameConflictError if the rename causes name conflicts
     """
     visitor = RenameSchemaTypesVisitor(renamings, query_type, scalars)
     visit(ast, visitor)
@@ -139,20 +134,30 @@ class RenameSchemaTypesVisitor(Visitor):
         'Document',
         'EnumValue',
         'EnumValueDefinition',
+        'Field',
         'FieldDefinition',
         'FloatValue',
+        'FragmentDefinition',
+        'FragmentSpread',
+        'InlineFragment',
+        'InputObjectTypeDefinition',
         'InputValueDefinition',
         'IntValue',
         'ListType',
         'ListValue',
         'Name',
         'NonNullType',
+        'ObjectField',
+        'ObjectValue',
+        'OperationDefinition',
         'OperationTypeDefinition',
-        'SchemaDefinition',
-        'StringValue',
-    })
-    check_name_validity_types = frozenset({
         'ScalarTypeDefinition',
+        'SchemaDefinition',
+        'SelectionSet',
+        'StringValue',
+        'TypeExtensionDefinition',
+        'Variable',
+        'VariableDefinition',
     })
     rename_types = frozenset({
         'EnumTypeDefinition',
@@ -160,22 +165,6 @@ class RenameSchemaTypesVisitor(Visitor):
         'NamedType',
         'ObjectTypeDefinition',
         'UnionTypeDefinition',
-    })
-    unexpected_types = frozenset({
-        'Field',
-        'FragmentDefinition',
-        'FragmentSpread',
-        'InlineFragment',
-        'ObjectField',
-        'ObjectValue',
-        'OperationDefinition',
-        'SelectionSet',
-        'Variable',
-        'VariableDefinition',
-    })
-    disallowed_types = frozenset({
-        'InputObjectTypeDefinition',
-        'TypeExtensionDefinition',
     })
 
     def __init__(self, renamings, query_type, scalar_types):
@@ -208,12 +197,11 @@ class RenameSchemaTypesVisitor(Visitor):
                   element such as type, interface, or scalar (user defined or builtin)
 
         Raises:
-            InvalidTypeNameError if either the node's current name or renamed name is invalid
-            SchemaNameConflictError if the newly renamed node causes name conflicts with
-            existing types, scalars, or builtin types
+            - InvalidTypeNameError if either the node's current name or renamed name is invalid
+            - SchemaNameConflictError if the newly renamed node causes name conflicts with
+              existing types, scalars, or builtin types
         """
         name_string = node.value
-        check_type_name_is_valid(name_string)
 
         if name_string == self.query_type or name_string in self.scalar_types:
             return
@@ -246,22 +234,9 @@ class RenameSchemaTypesVisitor(Visitor):
         if node_type in self.noop_types:
             # Do nothing, continue traversal
             return None
-        elif node_type in self.check_name_validity_types:
-            # Check the current name is valid, do not rename, continue traversal
-            check_type_name_is_valid(node.name.value)
         elif node_type in self.rename_types:
             # Rename and put into record the name attribute of current node; continue traversal
             self._rename_name_and_add_to_record(node.name)
-        elif node_type in self.unexpected_types:
-            # Node type unexpected in schema definition, raise error
-            raise SchemaStructureError(
-                u'Node type "{}" unexpected in schema AST'.format(node_type)
-            )
-        elif node_type in self.disallowed_types:
-            # Node type possible in schema definition but disallowed, raise error
-            raise SchemaStructureError(
-                u'Node type "{}" not allowed'.format(node_type)
-            )
         else:
             # All Node types should've been taken care of, this line should never be reached
             raise AssertionError(u'Missed type: "{}"'.format(node_type))
