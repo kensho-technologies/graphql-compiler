@@ -126,7 +126,6 @@ class CompilerTests(unittest.TestCase):
                 animal AS animal_1
         '''
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
             RETURN Animal___1.name AS `animal_name`
         '''
@@ -231,7 +230,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = SKIP_TEST  # Not implemented
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
                 WHERE (Animal__out_Entity_Related___1.name IN Animal__out_Entity_Related___1.alias)
@@ -267,7 +265,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = SKIP_TEST  # Not implemented
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
                 WHERE (Animal__out_Entity_Related___1.name IN Animal__out_Entity_Related___1.alias)
@@ -326,7 +323,6 @@ class CompilerTests(unittest.TestCase):
             # In Cypher, inequality comparisons use "<>" instead of "!=".
             cypher_operator = u'<>' if operator == u'!=' else operator
             expected_cypher = '''
-                CYPHER 9
                 MATCH (Animal___1:Animal)
                     WHERE (Animal___1.name %(operator)s $wanted)
                 RETURN Animal___1.name AS `animal_name`
@@ -381,7 +377,6 @@ class CompilerTests(unittest.TestCase):
                 AND animal_1.name < :upper_bound
         '''
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
                 WHERE (
                     (Animal___1.name >= $lower_bound) AND
@@ -422,7 +417,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
             RETURN Animal__out_Animal_ParentOf___1.name AS `parent_name`
@@ -483,7 +477,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_OfSpecies]->(Animal__out_Animal_OfSpecies___1:Species)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -531,7 +524,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
                 WHERE (
@@ -575,7 +567,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
                 WHERE (
@@ -619,7 +610,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
                 WHERE (Animal___1.name = $wanted)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -810,7 +800,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
             WITH
@@ -915,7 +904,6 @@ class CompilerTests(unittest.TestCase):
                 AND animal_1.name <= :upper
         '''
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
                 WHERE ((Animal___1.name >= $lower) AND (Animal___1.name <= $upper))
             RETURN
@@ -1051,7 +1039,6 @@ class CompilerTests(unittest.TestCase):
                 AND animal_1.name >= :lower
         '''
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
                 WHERE ((Animal___1.name <= $upper) AND (Animal___1.name >= $lower))
             RETURN
@@ -1112,7 +1099,6 @@ class CompilerTests(unittest.TestCase):
                 AND animal_1.name >= :lower
         '''
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
                 WHERE (
                     (
@@ -1161,7 +1147,6 @@ class CompilerTests(unittest.TestCase):
                 AND animal_1.name >= :lower1
         '''
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
                 WHERE (
                     ((Animal___1.name <= $upper) AND (Animal___1.name >= $lower0)) AND
@@ -1342,7 +1327,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
             OPTIONAL MATCH (Animal__out_Animal_ParentOf___1)-[:Animal_FedAt]->
@@ -1713,7 +1697,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf*0..1]->(Animal__out_Animal_ParentOf___1:Animal)
             RETURN Animal__out_Animal_ParentOf___1.name AS `relation_name`
@@ -1771,7 +1754,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
             MATCH
                 (Animal___1)-[:Animal_ImportantEvent]->(Animal__out_Animal_ImportantEvent___1:Event)
@@ -1844,7 +1826,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
                 WHERE (
                     (Animal___1.name = $animal_name_or_alias) OR
@@ -1937,7 +1918,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
                 WHERE (
                     (Animal___1.name = $animal_name_or_alias) OR
@@ -2165,7 +2145,12 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 animal_1.name IN ([EXPANDING_wanted])
         '''
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+                WHERE (Animal___1.name IN $wanted)
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2200,7 +2185,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
                 WHERE (Animal__out_Animal_ParentOf___1.name IN Animal___1.alias)
@@ -2266,7 +2250,15 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR
+                    (Animal__out_Animal_ParentOf___1.name IN Animal__in_Animal_ParentOf___1.alias))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2302,7 +2294,12 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 animal_1.name NOT IN ([EXPANDING_wanted])
         '''
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+                WHERE (NOT(Animal___1.name IN $wanted))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
@@ -2336,8 +2333,13 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
-
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE (NOT(Animal__out_Animal_ParentOf___1.name IN Animal___1.alias))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
 
@@ -2396,7 +2398,16 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR
+                    (NOT(Animal__out_Animal_ParentOf___1.name IN
+                        Animal__in_Animal_ParentOf___1.alias)))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
@@ -2551,7 +2562,6 @@ class CompilerTests(unittest.TestCase):
         # the alias list valued column is not yet supported by the SQL backend
         expected_sql = SKIP_TEST
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
                 WHERE ($wanted IN Animal___1.alias)
             RETURN
@@ -2591,7 +2601,6 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
                 WHERE (Animal___1.name IN Animal__in_Animal_ParentOf___1.alias)
@@ -2659,7 +2668,15 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR
+                    (Animal__in_Animal_ParentOf___1.name IN Animal__out_Animal_ParentOf___1.alias))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -2691,7 +2708,12 @@ class CompilerTests(unittest.TestCase):
         # the alias list valued column is not yet supported by the SQL backend
         expected_sql = SKIP_TEST
 
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+                WHERE (NOT($wanted IN Animal___1.alias))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
@@ -2725,7 +2747,13 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+                WHERE (NOT(Animal___1.name IN Animal__in_Animal_ParentOf___1.alias))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
@@ -2787,7 +2815,16 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE ((Animal__in_Animal_ParentOf___1 IS null) OR
+                    (NOT(Animal__in_Animal_ParentOf___1.name IN
+                        Animal__out_Animal_ParentOf___1.alias)))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
@@ -2824,7 +2861,6 @@ class CompilerTests(unittest.TestCase):
                 (animal_1.name LIKE '%' || :wanted || '%')
         '''
         expected_cypher = '''
-            CYPHER 9
             MATCH (Animal___1:Animal)
                 WHERE (Animal___1.name CONTAINS $wanted)
             RETURN

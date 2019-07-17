@@ -18,7 +18,7 @@ from .representations import coerce_to_decimal, represent_float_as_str, type_che
 def _safe_gremlin_string(value):
     """Sanitize and represent a string argument in Gremlin."""
     if not isinstance(value, six.string_types):
-        if isinstance(value, bytes):  # should only happen in py3
+        if isinstance(value, bytes):  # likely to only happen in py2
             value = value.decode('utf-8')
         else:
             raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
@@ -100,7 +100,7 @@ def _safe_gremlin_argument(expected_type, argument_value):
         # IDs can be strings or numbers, but the GraphQL library coerces them to strings.
         # We will follow suit and treat them as strings.
         if not isinstance(argument_value, six.string_types):
-            if isinstance(argument_value, bytes):  # should only happen in py3
+            if isinstance(argument_value, bytes):  # likely to only happen in py2
                 argument_value = argument_value.decode('utf-8')
             else:
                 argument_value = six.text_type(argument_value)
@@ -147,7 +147,8 @@ def insert_arguments_into_gremlin_query(compilation_result, arguments):
 
     Args:
         compilation_result: a CompilationResult object derived from the GraphQL compiler
-        arguments: dict, mapping argument name to its value, for every parameter the query expects.
+        arguments: dict, str -> any, mapping argument name to its value, for every parameter the
+                   query expects.
 
     Returns:
         string, a Gremlin query with inserted argument data
