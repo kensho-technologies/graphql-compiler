@@ -1,36 +1,24 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import unittest
 
-from graphql import GraphQLObjectType, GraphQLString
+from graphql import GraphQLString, GraphQLObjectType
 
-from ..compiler import emit_cypher, emit_gremlin, emit_match
-from ..compiler.blocks import (
-    Backtrack,
-    CoerceType,
-    ConstructResult,
-    Filter,
-    GlobalOperationsStart,
-    MarkLocation,
-    QueryRoot,
-    Traverse,
-)
+from ..compiler import emit_cypher
 from ..compiler.cypher_query import convert_to_cypher_query
+from ..compiler.metadata import LocationInfo, QueryMetadataTable
+from ..compiler import emit_gremlin, emit_match
+from ..compiler.blocks import Backtrack, ConstructResult, Filter, MarkLocation, QueryRoot, Traverse, \
+    GlobalOperationsStart, CoerceType
 from ..compiler.expressions import (
-    BinaryComposition,
-    ContextField,
-    LocalField,
-    NullLiteral,
-    OutputContextField,
-    TernaryConditional,
-    Variable,
+    BinaryComposition, ContextField, LocalField, NullLiteral, OutputContextField,
+    TernaryConditional, Variable
 )
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common.common import OutputContextVertex
 from ..compiler.ir_lowering_match.utils import CompoundMatchQuery
 from ..compiler.match_query import convert_to_match_query
-from ..compiler.metadata import LocationInfo, QueryMetadataTable
 from ..schema import GraphQLDateTime
-from .test_helpers import compare_cypher, compare_gremlin, compare_match
+from .test_helpers import compare_gremlin, compare_match, compare_cypher
 
 
 class EmitMatchTests(unittest.TestCase):
@@ -45,7 +33,9 @@ class EmitMatchTests(unittest.TestCase):
         ir_blocks = [
             QueryRoot({'Foo'}),
             MarkLocation(base_location),
-            ConstructResult({'foo_name': OutputContextField(base_name_location, GraphQLString)}),
+            ConstructResult({
+                'foo_name': OutputContextField(base_name_location, GraphQLString),
+            }),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -70,19 +60,19 @@ class EmitMatchTests(unittest.TestCase):
 
         ir_blocks = [
             QueryRoot({'Foo'}),
-            Filter(
-                BinaryComposition(
-                    u'=',
-                    LocalField(u'name', GraphQLString),
-                    Variable('$desired_name', GraphQLString),
-                )
-            ),
+            Filter(BinaryComposition(
+                u'=',
+                LocalField(u'name', GraphQLString),
+                Variable('$desired_name', GraphQLString))),
             MarkLocation(base_location),
             Traverse('out', 'Foo_Bar'),
             MarkLocation(child_location),
+
             QueryRoot({'Foo'}),
             MarkLocation(base_location),
-            ConstructResult({'foo_name': OutputContextField(base_name_location, GraphQLString)}),
+            ConstructResult({
+                'foo_name': OutputContextField(base_name_location, GraphQLString),
+            }),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -115,20 +105,18 @@ class EmitMatchTests(unittest.TestCase):
             Filter(
                 BinaryComposition(
                     u'&&',
-                    BinaryComposition(
-                        u'>=',
-                        LocalField('event_date', GraphQLDateTime),
-                        Variable('$start', GraphQLDateTime),
-                    ),
-                    BinaryComposition(
-                        u'<=',
-                        LocalField('event_date', GraphQLDateTime),
-                        Variable('$end', GraphQLDateTime),
-                    ),
+                    BinaryComposition(u'>=',
+                                      LocalField('event_date', GraphQLDateTime),
+                                      Variable('$start', GraphQLDateTime)),
+                    BinaryComposition(u'<=',
+                                      LocalField('event_date', GraphQLDateTime),
+                                      Variable('$end', GraphQLDateTime))
                 )
             ),
             MarkLocation(base_location),
-            ConstructResult({'name': OutputContextField(base_name_location, GraphQLString)}),
+            ConstructResult({
+                'name': OutputContextField(base_name_location, GraphQLString)
+            }),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -157,9 +145,9 @@ class EmitMatchTests(unittest.TestCase):
         ir_blocks = [
             QueryRoot({'Event'}),
             MarkLocation(base_location),
-            ConstructResult(
-                {'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)}
-            ),
+            ConstructResult({
+                'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)
+            }),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
@@ -190,7 +178,9 @@ class EmitGremlinTests(unittest.TestCase):
         ir_blocks = [
             QueryRoot({'Foo'}),
             MarkLocation(base_location),
-            ConstructResult({'foo_name': OutputContextField(base_name_location, GraphQLString)}),
+            ConstructResult({
+                'foo_name': OutputContextField(base_name_location, GraphQLString),
+            })
         ]
 
         expected_gremlin = '''
@@ -213,16 +203,15 @@ class EmitGremlinTests(unittest.TestCase):
             QueryRoot({'Foo'}),
             MarkLocation(base_location),
             Traverse('out', 'Foo_Bar'),
-            Filter(
-                BinaryComposition(
-                    u'=',
-                    LocalField(u'name', GraphQLString),
-                    ContextField(base_location.navigate_to_field(u'name'), GraphQLString),
-                )
-            ),
+            Filter(BinaryComposition(
+                u'=',
+                LocalField(u'name', GraphQLString),
+                ContextField(base_location.navigate_to_field(u'name'), GraphQLString))),
             MarkLocation(child_location),
             Backtrack(base_location),
-            ConstructResult({'foo_name': OutputContextField(base_name_location, GraphQLString)}),
+            ConstructResult({
+                'foo_name': OutputContextField(base_name_location, GraphQLString),
+            })
         ]
 
         expected_gremlin = '''
@@ -253,22 +242,18 @@ class EmitGremlinTests(unittest.TestCase):
             MarkLocation(child_location),
             Backtrack(base_location, optional=True),
             MarkLocation(revisited_base_location),
-            ConstructResult(
-                {
-                    'bar_name': TernaryConditional(
-                        BinaryComposition(
-                            u'!=',
-                            # HACK(predrag): The type given to OutputContextVertex here is wrong,
-                            # but it shouldn't cause any trouble since it has absolutely nothing to do
-                            # with the code being tested.
-                            OutputContextVertex(child_location, GraphQLString),
-                            NullLiteral,
-                        ),
-                        OutputContextField(child_name_location, GraphQLString),
-                        NullLiteral,
-                    )
-                }
-            ),
+            ConstructResult({
+                'bar_name': TernaryConditional(
+                    BinaryComposition(
+                        u'!=',
+                        # HACK(predrag): The type given to OutputContextVertex here is wrong,
+                        # but it shouldn't cause any trouble since it has absolutely nothing to do
+                        # with the code being tested.
+                        OutputContextVertex(child_location, GraphQLString),
+                        NullLiteral),
+                    OutputContextField(child_name_location, GraphQLString),
+                    NullLiteral)
+            })
         ]
 
         expected_gremlin = '''
@@ -293,9 +278,9 @@ class EmitGremlinTests(unittest.TestCase):
         ir_blocks = [
             QueryRoot({'Event'}),
             MarkLocation(base_location),
-            ConstructResult(
-                {'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)}
-            ),
+            ConstructResult({
+                'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)
+            })
         ]
 
         expected_gremlin = '''
