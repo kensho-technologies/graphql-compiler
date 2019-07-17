@@ -435,7 +435,7 @@ class TestMergeSchemas(unittest.TestCase):
         self.assertEqual({'Human': 'first', 'Droid': 'first', 'Kid': 'second'},
                          merged_schema.name_to_schema_id)
 
-    def test_dedup_clashing_directives(self):
+    def test_clashing_directives(self):
         extra_directive_schema = dedent('''\
             schema {
               query: SchemaQuery
