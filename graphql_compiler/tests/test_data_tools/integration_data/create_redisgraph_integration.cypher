@@ -7,7 +7,8 @@ create (n)
 # Refer to Github issue: https://github.com/RedisGraph/RedisGraph/issues/551
 match (n) delete n
 
-# The other difference is that Redisgraph doesn't support toFloat (and other casting functions) so those are removed.
+# The other difference is that Redisgraph doesn't support temporal types but Neo4j does. As a
+# result, the birthday field from create_neo4j_integration.cypher doesn't exist here.
 create (:Animal {name: 'Animal 1', net_worth: 100.0, uuid: 'cfc6e625-8594-0927-468f-f53d864a7a51'})
 create (:Animal {name: 'Animal 2', net_worth: 200.0, uuid: 'cfc6e625-8594-0927-468f-f53d864a7a52'})
 create (:Animal {name: 'Animal 3', net_worth: 300.0, uuid: 'cfc6e625-8594-0927-468f-f53d864a7a53'})
