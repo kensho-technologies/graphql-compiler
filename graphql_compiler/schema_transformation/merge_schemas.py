@@ -61,7 +61,6 @@ def merge_schemas(schemas_dict):
     Merged schema will contain all type, interface, enum, scalar, and directive definitions
     from input schemas. The fields of its query type will be the union of the fields of the
     query types of each input schema.
-    schemas.
 
     Args:
         schemas_dict: OrderedDict[str, Document], where keys are names/identifiers of schemas,
