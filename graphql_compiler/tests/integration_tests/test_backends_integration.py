@@ -236,6 +236,7 @@ class IntegrationTests(TestCase):
         ]
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
+    # RedisGraph doesn't support temporal types, so Date types aren't supported.
     @almost_all_backends(excluded_backends=[test_backend.REDISGRAPH])
     @integration_fixtures
     def test_filter_on_date(self, backend_name):
