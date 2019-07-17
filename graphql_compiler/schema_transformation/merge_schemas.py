@@ -41,7 +41,7 @@ def merge_schemas(schema_id_to_ast):
         scalars and directives are expected to be defined in every schema.
 
     Raises:
-        - ValueError if the some schema identifier is not a nonempty string of alphanumeric
+        - ValueError if some schema identifier is not a nonempty string of alphanumeric
           characters and underscores
         - SchemaStructureError if the schema does not have the expected form; in particular, if
           the AST does not represent a valid schema, if any query type field does not have the
@@ -167,27 +167,7 @@ def _get_basic_schema_ast(query_type):
 
 
 def _process_directive_definition(directive, existing_directives, merged_schema_ast):
-    """Compare new directive against existing ones, update records and schema accordingly.
-
-    If the directive is new, in that no existing directive shares its name, it will be added
-    to both existing_directives and merged_schema_ast.
-    If the directive already exists, in that there is some existing directive that shares its
-    name and structure, nothing will be changed.
-    If there is a conflict, in that there is some existing directive that shares its name but
-    has a different structure, an error will be raised.
-
-    existing_directives and merged_schema_ast may be modified.
-
-    Args:
-        directive: DirectiveDefinition, an AST node representing the definition of a directive
-        existing_directives: Dict[str, DirectiveDefinition], mapping the name of each existing
-                             directive to the AST node defining it
-        merged_schema_ast: Document, AST representing a schema
-
-    Raises:
-        - SchemaNameConflictError if there is an existing directive with the same name, but
-          a different definition, as the input directive
-    """
+    """Compare new directive against existing directives, update records and schema."""
     directive_name = directive.name.value
     if directive_name in existing_directives:
         if directive == existing_directives[directive_name]:  # definitions agree
@@ -207,25 +187,7 @@ def _process_directive_definition(directive, existing_directives, merged_schema_
 
 
 def _process_scalar_definition(scalar, existing_scalars, existing_types, merged_schema_ast):
-    """Compare new scalar against existing scalars and types, update records and schema.
-
-    If the scalar is new and does not conflict with any existing type, it will be added to both
-    existing_scalars and merged_schema_ast.
-    if the scalar is new but clashes with the name of some existing type, an error will be raised.
-    If the scalar already exists, nothing will be changed.
-
-    existing_scalars and merged_schema_ast may be modified.
-
-    Args:
-        scalar: ScalarDefinition, an AST node representing the definition of a scalar
-        existing_scalars: Set[str], set of names of all existing scalars
-        existing_types: Set[str], set of names of all existing types
-        merged_schema_ast: Document, AST representing a schema
-
-    Raises:
-        - SchemaNameConflictError if there is an existing type those name conflicts with the
-          new scalar
-    """
+    """Compare new scalar against existing scalars and types, update records and schema."""
     scalar_name = scalar.name.value
     if scalar_name in existing_scalars:
         return
@@ -240,27 +202,7 @@ def _process_scalar_definition(scalar, existing_scalars, existing_types, merged_
 
 def _process_generic_type_definition(generic_type, schema_id, existing_scalars, name_to_schema_id,
                                      merged_schema_ast):
-    """Compare new type against existing scalars and types, update records and schema.
-
-    If the type name conflicts with any existing type or scalar, an error will be raised.
-    If the type doesn't cause name conflicts, it will be added to both name_to_schema_id and
-    merged_schema_ast.
-
-    name_to_schema_id and merged_schema_ast may be modified.
-
-    Args:
-        generic_type: Any of EnumTypeDefinition, InterfaceTypeDefinition, ObjectTypeDefinition,
-                      or UnionTypeDefinition, an AST node representing the definition of a type
-        schema_id: str, the identifier of the schema that this type came from
-        existing_scalars: Set[str], set of names of all existing scalars
-        name_to_schema_id: Dict[str, str], mapping names of types to the identifier of the schema
-                           that they came from
-        merged_schema_ast: Document, AST representing a schema
-
-    Raises:
-        - SchemaNameConflictError if there is an existing type or scalar those name conflicts
-          with the new type's name
-    """
+    """Compare new type against existing scalars and types, update records and schema."""
     type_name = generic_type.name.value
     if type_name in existing_scalars:
         raise SchemaNameConflictError(
