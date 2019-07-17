@@ -334,7 +334,6 @@ class EmitCypherTests(unittest.TestCase):
         received_cypher = emit_cypher.emit_code_from_ir(cypher_query, None)
 
         expected_cypher = '''
-            CYPHER 3.5
             MATCH (Foo___1:Foo)
             RETURN Foo___1.name AS `foo_name`
         '''
@@ -405,7 +404,6 @@ class EmitCypherTests(unittest.TestCase):
         received_cypher = emit_cypher.emit_code_from_ir(cypher_query, None)
 
         expected_cypher = '''
-            CYPHER 3.5
             MATCH (Foo___1:Foo)
             MATCH (Foo___1)-[:Foo_Bar]->(Foo__out_Foo_Bar___1:Bar)
               WHERE (Foo__out_Foo_Bar___1.name = Foo___1.name)
@@ -482,7 +480,6 @@ class EmitCypherTests(unittest.TestCase):
         received_cypher = emit_cypher.emit_code_from_ir(cypher_query, None)
 
         expected_cypher = '''
-            CYPHER 3.5
             MATCH (Foo___1:Foo)
             OPTIONAL MATCH (Foo___1)-[:Foo_Bar]->(Foo__out_Foo_Bar___1:Bar)
             RETURN
@@ -527,7 +524,6 @@ class EmitCypherTests(unittest.TestCase):
         received_cypher = emit_cypher.emit_code_from_ir(cypher_query, None)
 
         expected_cypher = '''
-            CYPHER 3.5
             MATCH (Event___1:Event)
             RETURN
             Event___1.event_date AS `event_date`
