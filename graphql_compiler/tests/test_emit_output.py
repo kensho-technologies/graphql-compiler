@@ -1,14 +1,14 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import unittest
 
-from graphql import GraphQLString, GraphQLObjectType
+from graphql import GraphQLObjectType, GraphQLString
 
-from ..compiler import emit_cypher
+from ..compiler import emit_cypher, emit_gremlin, emit_match
+from ..compiler.blocks import (
+    Backtrack, CoerceType, ConstructResult, Filter, GlobalOperationsStart, MarkLocation, QueryRoot,
+    Traverse
+)
 from ..compiler.cypher_query import convert_to_cypher_query
-from ..compiler.metadata import LocationInfo, QueryMetadataTable
-from ..compiler import emit_gremlin, emit_match
-from ..compiler.blocks import Backtrack, ConstructResult, Filter, MarkLocation, QueryRoot, Traverse, \
-    GlobalOperationsStart, CoerceType
 from ..compiler.expressions import (
     BinaryComposition, ContextField, LocalField, NullLiteral, OutputContextField,
     TernaryConditional, Variable
@@ -17,8 +17,9 @@ from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common.common import OutputContextVertex
 from ..compiler.ir_lowering_match.utils import CompoundMatchQuery
 from ..compiler.match_query import convert_to_match_query
+from ..compiler.metadata import LocationInfo, QueryMetadataTable
 from ..schema import GraphQLDateTime
-from .test_helpers import compare_gremlin, compare_match, compare_cypher
+from .test_helpers import compare_cypher, compare_gremlin, compare_match
 
 
 class EmitMatchTests(unittest.TestCase):
@@ -247,8 +248,8 @@ class EmitGremlinTests(unittest.TestCase):
                     BinaryComposition(
                         u'!=',
                         # HACK(predrag): The type given to OutputContextVertex here is wrong,
-                        # but it shouldn't cause any trouble since it has absolutely nothing to do
-                        # with the code being tested.
+                        # but it shouldn't cause any trouble since it has absolutely nothing to
+                        # do with the code being tested.
                         OutputContextVertex(child_location, GraphQLString),
                         NullLiteral),
                     OutputContextField(child_name_location, GraphQLString),
@@ -308,11 +309,11 @@ class EmitCypherTests(unittest.TestCase):
         #     }
         # }'''
 
-        base_location = Location(("Foo",))
-        base_name_location = base_location.navigate_to_field("name")
+        base_location = Location(('Foo',))
+        base_name_location = base_location.navigate_to_field('name')
         base_location_info = LocationInfo(
             parent_location=None,
-            type=GraphQLObjectType(name="Foo", fields={'name': GraphQLString}),
+            type=GraphQLObjectType(name='Foo', fields={'name': GraphQLString}),
             coerced_from_type=None,
             optional_scopes_depth=0,
             recursive_scopes_depth=0,
@@ -320,10 +321,10 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         ir_blocks = [
-            QueryRoot({"Foo"}),
+            QueryRoot({'Foo'}),
             MarkLocation(base_location),
-            GlobalOperationsStart(),  # this block is necessary for Cypher. Indicates filter/output blocks after this.
-            ConstructResult({"foo_name": OutputContextField(base_name_location, GraphQLString)}),
+            GlobalOperationsStart(),  # necessary for Cypher. Filter/output blocks come after this.
+            ConstructResult({'foo_name': OutputContextField(base_name_location, GraphQLString)}),
         ]
         query_metadata_table = QueryMetadataTable(
             root_location=base_location, root_location_info=base_location_info
@@ -332,11 +333,11 @@ class EmitCypherTests(unittest.TestCase):
         cypher_query = convert_to_cypher_query(ir_blocks, query_metadata_table)
         received_cypher = emit_cypher.emit_code_from_ir(cypher_query, None)
 
-        expected_cypher = """
+        expected_cypher = '''
             CYPHER 3.5
             MATCH (Foo___1:Foo)
             RETURN Foo___1.name AS `foo_name`
-        """
+        '''
 
         compare_cypher(self, expected_cypher, received_cypher)
 
@@ -352,21 +353,21 @@ class EmitCypherTests(unittest.TestCase):
         #     }
         # }'''
 
-        base_location = Location(("Foo",))
-        base_name_location = base_location.navigate_to_field("name")
+        base_location = Location(('Foo',))
+        base_name_location = base_location.navigate_to_field('name')
         base_location_info = LocationInfo(
             parent_location=None,
-            type=GraphQLObjectType(name="Foo", fields={'name': GraphQLString}),
+            type=GraphQLObjectType(name='Foo', fields={'name': GraphQLString}),
             coerced_from_type=None,
             optional_scopes_depth=0,
             recursive_scopes_depth=0,
             is_within_fold=False,
         )
 
-        child_location = base_location.navigate_to_subpath("out_Foo_Bar")
+        child_location = base_location.navigate_to_subpath('out_Foo_Bar')
         child_location_info = LocationInfo(
             parent_location=base_location,
-            type=GraphQLObjectType(name="Bar", fields={'name': GraphQLString}),
+            type=GraphQLObjectType(name='Bar', fields={'name': GraphQLString}),
             coerced_from_type=None,
             optional_scopes_depth=1,
             recursive_scopes_depth=0,
@@ -374,25 +375,26 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         ir_blocks = [
-            QueryRoot({"Foo"}),
+            QueryRoot({'Foo'}),
             MarkLocation(base_location),
-            Traverse("out", "Foo_Bar"),
+            Traverse('out', 'Foo_Bar'),
             CoerceType(
                 {'Bar'}
             ),  # see compiler.ir_lowering_cypher's insert_explicit_type_bounds method
             Filter(
                 BinaryComposition(
-                    u"=",
-                    # see compiler.ir_lowering_cypher's replace_local_fields_with_context_fields method
-                    # LocalField(u"name", GraphQLString) gets replaced with the child_location field "name"
-                    ContextField(child_location.navigate_to_field(u"name"), GraphQLString),
-                    ContextField(base_location.navigate_to_field(u"name"), GraphQLString),
+                    u'=',
+                    # see compiler.ir_lowering_cypher's replace_local_fields_with_context_fields
+                    # method LocalField(u"name", GraphQLString) gets replaced with the
+                    # child_location field "name"
+                    ContextField(child_location.navigate_to_field(u'name'), GraphQLString),
+                    ContextField(base_location.navigate_to_field(u'name'), GraphQLString),
                 )
             ),
             MarkLocation(child_location),
             Backtrack(base_location),
             GlobalOperationsStart(),
-            ConstructResult({"foo_name": OutputContextField(base_name_location, GraphQLString)}),
+            ConstructResult({'foo_name': OutputContextField(base_name_location, GraphQLString)}),
         ]
         query_metadata_table = QueryMetadataTable(
             root_location=base_location, root_location_info=base_location_info
@@ -402,14 +404,14 @@ class EmitCypherTests(unittest.TestCase):
         cypher_query = convert_to_cypher_query(ir_blocks, query_metadata_table)
         received_cypher = emit_cypher.emit_code_from_ir(cypher_query, None)
 
-        expected_cypher = """
+        expected_cypher = '''
             CYPHER 3.5
             MATCH (Foo___1:Foo)
             MATCH (Foo___1)-[:Foo_Bar]->(Foo__out_Foo_Bar___1:Bar)
               WHERE (Foo__out_Foo_Bar___1.name = Foo___1.name)
             RETURN
               Foo___1.name AS `foo_name`
-        """
+        '''
         compare_cypher(self, expected_cypher, received_cypher)
 
     def test_output_inside_optional_traversal(self):
@@ -421,22 +423,21 @@ class EmitCypherTests(unittest.TestCase):
         #         }
         #     }
         # }'''
-        base_location = Location(("Foo",))
-        revisited_base_location = base_location.revisit()
+        base_location = Location(('Foo',))
         base_location_info = LocationInfo(
             parent_location=None,
-            type=GraphQLObjectType(name="Foo", fields={'name': GraphQLString}),
+            type=GraphQLObjectType(name='Foo', fields={'name': GraphQLString}),
             coerced_from_type=None,
             optional_scopes_depth=0,
             recursive_scopes_depth=0,
             is_within_fold=False,
         )
 
-        child_location = base_location.navigate_to_subpath("out_Foo_Bar")
-        child_name_location = child_location.navigate_to_field("name")
+        child_location = base_location.navigate_to_subpath('out_Foo_Bar')
+        child_name_location = child_location.navigate_to_field('name')
         child_location_info = LocationInfo(
             parent_location=base_location,
-            type=GraphQLObjectType(name="Bar", fields={'name': GraphQLString}),
+            type=GraphQLObjectType(name='Bar', fields={'name': GraphQLString}),
             coerced_from_type=None,
             optional_scopes_depth=1,
             recursive_scopes_depth=0,
@@ -444,9 +445,9 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         ir_blocks = [
-            QueryRoot({"Foo"}),
+            QueryRoot({'Foo'}),
             MarkLocation(base_location),
-            Traverse("out", "Foo_Bar", optional=True),
+            Traverse('out', 'Foo_Bar', optional=True),
             CoerceType(
                 {'Bar'}
             ),  # see compiler.ir_lowering_cypher's insert_explicit_type_bounds method
@@ -457,12 +458,12 @@ class EmitCypherTests(unittest.TestCase):
             GlobalOperationsStart(),
             ConstructResult(
                 {
-                    "bar_name": TernaryConditional(
+                    'bar_name': TernaryConditional(
                         BinaryComposition(
-                            u"!=",
+                            u'!=',
                             # HACK(predrag): The type given to OutputContextVertex here is wrong,
-                            # but it shouldn't cause any trouble since it has absolutely nothing to do
-                            # with the code being tested.
+                            # but it shouldn't cause any trouble since it has absolutely nothing to
+                            # do with the code being tested.
                             OutputContextVertex(child_location, GraphQLString),
                             NullLiteral,
                         ),
@@ -480,13 +481,14 @@ class EmitCypherTests(unittest.TestCase):
         cypher_query = convert_to_cypher_query(ir_blocks, query_metadata_table)
         received_cypher = emit_cypher.emit_code_from_ir(cypher_query, None)
 
-        expected_cypher = """
+        expected_cypher = '''
             CYPHER 3.5
             MATCH (Foo___1:Foo)
             OPTIONAL MATCH (Foo___1)-[:Foo_Bar]->(Foo__out_Foo_Bar___1:Bar)
             RETURN
-                (CASE WHEN (Foo__out_Foo_Bar___1 IS NOT null) THEN Foo__out_Foo_Bar___1.name ELSE null END) AS `bar_name`
-        """
+                (CASE WHEN (Foo__out_Foo_Bar___1 IS NOT null)
+                THEN Foo__out_Foo_Bar___1.name ELSE null END) AS `bar_name`
+        '''
 
         compare_cypher(self, expected_cypher, received_cypher)
 
@@ -498,11 +500,11 @@ class EmitCypherTests(unittest.TestCase):
         #     }
         # }'''
 
-        base_location = Location(("Event",))
-        base_event_date_location = base_location.navigate_to_field("event_date")
+        base_location = Location(('Event',))
+        base_event_date_location = base_location.navigate_to_field('event_date')
         base_location_info = LocationInfo(
             parent_location=None,
-            type=GraphQLObjectType(name="Foo", fields={'name': GraphQLString}),
+            type=GraphQLObjectType(name='Foo', fields={'name': GraphQLString}),
             coerced_from_type=None,
             optional_scopes_depth=0,
             recursive_scopes_depth=0,
@@ -510,11 +512,11 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         ir_blocks = [
-            QueryRoot({"Event"}),
+            QueryRoot({'Event'}),
             MarkLocation(base_location),
             GlobalOperationsStart(),
             ConstructResult(
-                {"event_date": OutputContextField(base_event_date_location, GraphQLDateTime)}
+                {'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)}
             ),
         ]
         query_metadata_table = QueryMetadataTable(
@@ -524,11 +526,11 @@ class EmitCypherTests(unittest.TestCase):
         cypher_query = convert_to_cypher_query(ir_blocks, query_metadata_table)
         received_cypher = emit_cypher.emit_code_from_ir(cypher_query, None)
 
-        expected_cypher = """
+        expected_cypher = '''
             CYPHER 3.5
             MATCH (Event___1:Event)
             RETURN
             Event___1.event_date AS `event_date`
-        """
+        '''
 
         compare_cypher(self, expected_cypher, received_cypher)
