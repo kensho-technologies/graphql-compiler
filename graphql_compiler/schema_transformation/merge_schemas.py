@@ -6,7 +6,10 @@ from graphql.language import ast as ast_types
 from graphql.language.printer import print_ast
 import six
 
-from .utils import SchemaNameConflictError, check_ast_schema_is_valid, get_query_type_name
+from .utils import (
+    SchemaNameConflictError, check_ast_schema_is_valid, check_schema_identifier_is_valid,
+    get_query_type_name
+)
 
 
 MergedSchemaDescriptor = namedtuple(
@@ -17,7 +20,116 @@ MergedSchemaDescriptor = namedtuple(
 )
 
 
-def _basic_schema_ast(query_type):
+def merge_schemas(schema_id_to_ast):
+    """Check that input schemas do not contain conflicting definitions, then merge.
+
+    The merged schema will contain all type, interface, union, enum, scalar, and directive
+    definitions from input schemas. The fields of its query type will be the union of the
+    fields of the query types of each input schema.
+
+    Note that the output AST will share mutable objects with input ASTs.
+
+    Args:
+        schema_id_to_ast: OrderedDict[str, Document], where keys are names/identifiers of schemas,
+                          and values are ASTs describing schemas. The ASTs will not be modified
+                          by this funcion
+
+    Returns:
+        MergedSchemaDescriptor, a namedtuple that contains the AST of the merged schema,
+        and the map from names of types/query type fields to the id of the schema that they
+        came from. Scalars and directives will not appear in the map, as the same set of
+        scalars and directives are expected to be defined in every schema.
+
+    Raises:
+        - ValueError if the some schema identifier is not a nonempty string of alphanumeric
+          characters and underscores
+        - SchemaStructureError if the schema does not have the expected form; in particular, if
+          the AST does not represent a valid schema, if any query type field does not have the
+          same name as the type that it queries, if the schema contains type extensions or
+          input object definitions, or if the schema contains mutations or subscriptions
+        - SchemaNameConflictError if there are conflicts between the names of
+          types/interfaces/enums/scalars, or conflicts between the definition of directives
+          with the same name
+    """
+    if len(schema_id_to_ast) == 0:
+        raise ValueError(u'Expected a nonzero number of schemas to merge.')
+
+    query_type = 'RootSchemaQuery'
+    merged_schema_ast = _get_basic_schema_ast(query_type)  # Document
+
+    name_to_schema_id = {}  # Dict[str, str], name of type/interface/enum/union to schema id
+    scalars = {'String', 'Int', 'Float', 'Boolean', 'ID'}  # Set[str], user defined + builtins
+    directives = {}  # Dict[str, DirectiveDefinition]
+
+    for current_schema_id, current_ast in six.iteritems(schema_id_to_ast):
+        # Check input schema identifier is a string of alphanumeric characters and underscores
+        check_schema_identifier_is_valid(current_schema_id)
+        # Check input schema satisfies various structural requirements
+        check_ast_schema_is_valid(current_ast)
+
+        current_schema = build_ast_schema(current_ast)
+        current_query_type = get_query_type_name(current_schema)
+
+        # Merge cur_ast into merged_schema_ast
+        # Concatenate new scalars, new directives, and type definitions other than the query
+        # type to definitions list
+        # Raise errors for conflicting scalars, directives, or types
+        new_definitions = current_ast.definitions  # List[Node]
+        new_query_type_fields = None  # List[FieldDefinition]
+
+        for new_definition in new_definitions:
+            if isinstance(new_definition, ast_types.SchemaDefinition):
+                continue
+
+            elif (
+                isinstance(new_definition, ast_types.ObjectTypeDefinition) and
+                new_definition.name.value == current_query_type
+            ):  # query type definition
+                new_query_type_fields = new_definition.fields  # List[FieldDefinition]
+
+            elif isinstance(new_definition, ast_types.DirectiveDefinition):
+                _process_directive_definition(
+                    new_definition, directives, merged_schema_ast
+                )
+
+            elif isinstance(new_definition, ast_types.ScalarTypeDefinition):
+                _process_scalar_definition(
+                    new_definition, scalars, six.iterkeys(name_to_schema_id), merged_schema_ast
+                )
+
+            elif isinstance(new_definition, (
+                ast_types.EnumTypeDefinition,
+                ast_types.InterfaceTypeDefinition,
+                ast_types.ObjectTypeDefinition,
+                ast_types.UnionTypeDefinition,
+            )):
+                _process_generic_type_definition(
+                    new_definition, current_schema_id, scalars, name_to_schema_id, merged_schema_ast
+                )
+
+            else:  # All definition types should've been covered
+                raise AssertionError(
+                    u'Missed definition type: "{}"'.format(type(new_definition).__name__)
+                )
+
+        # Concatenate all query type fields
+        # Since query_type was taken from the schema built from the input AST, the query type
+        # should never be not found
+        if new_query_type_fields is None:
+            raise AssertionError(u'Query type "{}" field definitions unexpected not '
+                                 u'found.'.format(current_query_type))
+        # Note that as field names and type names have been confirmed to match up, and types
+        # were merged without name conflicts, query type fields can also be safely merged
+        query_type_index = 1  # Query type is the second entry in the list of definitions
+        merged_schema_ast.definitions[query_type_index].fields.extend(new_query_type_fields)
+
+    return MergedSchemaDescriptor(
+        schema_ast=merged_schema_ast,
+        name_to_schema_id=name_to_schema_id
+    )
+
+
+def _get_basic_schema_ast(query_type):
     """Create a basic AST Document representing a nearly blank schema.
 
     The output AST contains a single query type, whose name is the input string. The query type
@@ -54,118 +166,109 @@ def _basic_schema_ast(query_type):
     return blank_ast
 
 
-def merge_schemas(schemas_dict):
-    """Check that input schemas do not contain conflicting definitions, then merge.
+def _process_directive_definition(directive, existing_directives, merged_schema_ast):
+    """Compare new directive against existing ones, update records and schema accordingly.
 
-    Merged schema will contain all type, interface, enum, scalar, and directive definitions
-    from input schemas. The fields of its query type will be the union of the fields of the
-    query types of each input schema.
+    If the directive is new, in that no existing directive shares its name, it will be added
+    to both existing_directives and merged_schema_ast.
+    If the directive already exists, in that there is some existing directive that shares its
+    name and structure, nothing will be changed.
+    If there is a conflict, in that there is some existing directive that shares its name but
+    has a different structure, an error will be raised.
 
-    Note that the output AST will share mutable objects with input ASTs.
+    existing_directives and merged_schema_ast may be modified.
 
     Args:
-        schemas_dict: OrderedDict[str, Document], where keys are names/identifiers of schemas,
-                      and values are ASTs describing schemas. The ASTs will not be modified
-                      by this funcion
-
-    Returns:
-        MergedSchemaDescriptor, a namedtuple that contains the AST of the merged schema,
-        and the map from names of types/query type fields to the id of the schema that they
-        came from
+        directive: DirectiveDefinition, an AST node representing the definition of a directive
+        existing_directives: Dict[str, DirectiveDefinition], mapping the name of each existing
+                             directive to the AST node defining it
+        merged_schema_ast: Document, AST representing a schema
 
     Raises:
-        - SchemaStructureError if the schema does not have the expected form; in particular, if
-          the AST does not represent a valid schema, if any query type field does not have the
-          same name as the type that it queries, if the schema contains type extensions or
-          input object definitions, or if the schema contains mutations or subscriptions
-        - SchemaNameConflictError if there are conflicts between the names of
-          types/interfaces/enums/scalars, or conflicts between the definition of directives
-          with the same name
+        - SchemaNameConflictError if there is an existing directive with the same name, but
+          a different definition, as the input directive
     """
-    if len(schemas_dict) == 0:
-        raise ValueError(u'Expected a nonzero number of schemas to merge.')
+    directive_name = directive.name.value
+    if directive_name in existing_directives:
+        if directive == existing_directives[directive_name]:  # definitions agree
+            return
+        else:  # definitions disagree
+            raise SchemaNameConflictError(
+                u'Directive "{}" with definition "{}" has already been defined with '
+                u'definition "{}".'.format(
+                    directive_name,
+                    print_ast(directive),
+                    print_ast(existing_directives[directive_name]),
+                )
+            )
+    # new directive
+    merged_schema_ast.definitions.append(directive)  # Add to AST
+    existing_directives[directive_name] = directive  # Add to record of directives
 
-    query_type = 'RootSchemaQuery'
-    merged_schema_ast = _basic_schema_ast(query_type)  # Document
 
-    name_to_schema_id = {}  # Dict[str, str], name of type/interface/enum/union to schema id
-    scalars = {'String', 'Int', 'Float', 'Boolean', 'ID'}  # Set[str], user defined + builtins
-    directives = {}  # Dict[str, DirectiveDefinition]
+def _process_scalar_definition(scalar, existing_scalars, existing_types, merged_schema_ast):
+    """Compare new scalar against existing scalars and types, update records and schema.
 
-    for cur_schema_id, cur_ast in six.iteritems(schemas_dict):
-        # Check input schema satisfies various structural requirements
-        check_ast_schema_is_valid(cur_ast)
+    If the scalar is new and does not conflict with any existing type, it will be added to both
+    existing_scalars and merged_schema_ast.
+    if the scalar is new but clashes with the name of some existing type, an error will be raised.
+    If the scalar already exists, nothing will be changed.
 
-        cur_schema = build_ast_schema(cur_ast)
-        cur_query_type = get_query_type_name(cur_schema)
+    existing_scalars and merged_schema_ast may be modified.
 
-        # Merge cur_ast into merged_schema_ast
-        # Concatenate new scalars, new directives, and type definitions other than the query
-        # type to definitions list
-        # Raise errors for conflicting scalars, directives, or types
-        new_definitions = cur_ast.definitions  # List[Node]
-        new_query_type_fields = None  # List[FieldDefinition]
-        for new_definition in new_definitions:
-            if isinstance(new_definition, ast_types.SchemaDefinition):
-                continue
+    Args:
+        scalar: ScalarDefinition, an AST node representing the definition of a scalar
+        existing_scalars: Set[str], set of names of all existing scalars
+        existing_types: Set[str], set of names of all existing types
+        merged_schema_ast: Document, AST representing a schema
 
-            new_name = new_definition.name.value
+    Raises:
+        - SchemaNameConflictError if there is an existing type those name conflicts with the
+          new scalar
+    """
+    scalar_name = scalar.name.value
+    if scalar_name in existing_scalars:
+        return
+    if scalar_name in existing_types:  # new scalar clashing with existing type
+        raise SchemaNameConflictError(
+            u'New scalar "{}" clashes with existing type.'.format(scalar_name)
+        )
+    # new, valid scalar
+    merged_schema_ast.definitions.append(scalar)  # Add to AST
+    existing_scalars.add(scalar_name)  # Add to record of scalars
 
-            if (
-                isinstance(new_definition, ast_types.ObjectTypeDefinition) and
-                new_name == cur_query_type
-            ):  # query type definition
-                new_query_type_fields = new_definition.fields  # List[FieldDefinition]
 
-            elif isinstance(new_definition, ast_types.DirectiveDefinition):
-                if new_name in directives:  # existing directive
-                    if new_definition == directives[new_name]:  # definitions agree
-                        continue
-                    else:  # definitions disagree
-                        raise SchemaNameConflictError(
-                            u'Directive "{}" with definition "{}" has already been defined with '
-                            u'definition "{}".'.format(new_name, print_ast(new_definition),
-                                                       print_ast(directives[new_name]))
-                        )
-                # new directive
-                merged_schema_ast.definitions.append(new_definition)  # Add to AST
-                directives[new_name] = new_definition
+def _process_generic_type_definition(generic_type, schema_id, existing_scalars, name_to_schema_id,
+                                     merged_schema_ast):
+    """Compare new type against existing scalars and types, update records and schema.
 
-            elif isinstance(new_definition, ast_types.ScalarTypeDefinition):
-                if new_name in scalars:  # existing scalar
-                    continue
-                if new_name in name_to_schema_id:  # new scalar clashing with existing type
-                    raise SchemaNameConflictError(
-                        u'New scalar "{}" clashes with existing type.'.format(new_name)
-                    )
-                # new, valid scalar
-                merged_schema_ast.definitions.append(new_definition)  # Add to AST
-                scalars.add(new_name)
+    If the type name conflicts with any existing type or scalar, an error will be raised.
+    If the type doesn't cause name conflicts, it will be added to both name_to_schema_id and
+    merged_schema_ast.
 
-            else:  # Generic type definition
-                if new_name in scalars:
-                    raise SchemaNameConflictError(
-                        u'New type "{}" clashes with existing scalar.'.format(new_name)
-                    )
-                if new_name in name_to_schema_id:
-                    raise SchemaNameConflictError(
-                        u'New type "{}" clashes with existing type.'.format(new_name)
-                    )
-                merged_schema_ast.definitions.append(new_definition)
-                name_to_schema_id[new_name] = cur_schema_id
+    name_to_schema_id and merged_schema_ast may be modified.
 
-        # Concatenate all query type fields
-        # Since query_type was taken from the schema built from the input AST, the query type
-        # should never be not found
-        if new_query_type_fields is None:
-            raise AssertionError(u'Query type "{}" field definitions unexpected not '
-                                 u'found.'.format(cur_query_type))
-        # Note that as field names and type names have been confirmed to match up, and types
-        # were merged without name conflicts, query type fields can also be safely merged
-        query_type_index = 1  # Query type is the second entry in the list of definitions
-        merged_schema_ast.definitions[query_type_index].fields.extend(new_query_type_fields)
+    Args:
+        generic_type: Any of EnumTypeDefinition, InterfaceTypeDefinition, ObjectTypeDefinition,
+                      or UnionTypeDefinition, an AST node representing the definition of a type
+        schema_id: str, the identifier of the schema that this type came from
+        existing_scalars: Set[str], set of names of all existing scalars
+        name_to_schema_id: Dict[str, str], mapping names of types to the identifier of the schema
+                           that they came from
+        merged_schema_ast: Document, AST representing a schema
 
-    return MergedSchemaDescriptor(
-        schema_ast=merged_schema_ast,
-        name_to_schema_id=name_to_schema_id
-    )
+    Raises:
+        - SchemaNameConflictError if there is an existing type or scalar those name conflicts
+          with the new type's name
+    """
+    type_name = generic_type.name.value
+    if type_name in existing_scalars:
+        raise SchemaNameConflictError(
+            u'New type "{}" clashes with existing scalar.'.format(type_name)
+        )
+    if type_name in name_to_schema_id:
+        raise SchemaNameConflictError(
+            u'New type "{}" clashes with existing type.'.format(type_name)
+        )
+    merged_schema_ast.definitions.append(generic_type)  # Add to AST
+    name_to_schema_id[type_name] = schema_id
