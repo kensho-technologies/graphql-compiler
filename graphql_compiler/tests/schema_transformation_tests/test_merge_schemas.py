@@ -47,6 +47,18 @@ class TestMergeSchemas(unittest.TestCase):
         self.assertEqual({'Droid': 'enum', 'Height': 'enum', 'Human': 'basic'},
                          merged_schema.name_to_schema_id)
 
+    def test_originals_unmodified(self):
+        basic_ast = parse(ISS.basic_schema)
+        enum_ast = parse(ISS.enum_schema)
+        merge_schemas(
+            OrderedDict({
+                'basic': basic_ast,
+                'enum': enum_ast
+            })
+        )
+        self.assertEqual(basic_ast, parse(ISS.basic_schema))
+        self.assertEqual(enum_ast, parse(ISS.enum_schema))
+
     def test_multiple_merge(self):
         merged_schema = merge_schemas(
             OrderedDict({
