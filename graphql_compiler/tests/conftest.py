@@ -10,9 +10,9 @@ from .test_data_tools.data_tool import (
     generate_sql_integration_data, init_sql_integration_test_backends,
     tear_down_integration_test_backends
 )
-from .test_data_tools.neo4j import get_test_neo4j_graph
+from .test_data_tools.neo4j_graph import get_test_neo4j_graph
 from .test_data_tools.orientdb_graph import get_test_orientdb_graph
-from .test_data_tools.redisgraph import get_test_redisgraph_graph
+from .test_data_tools.redisgraph_graph import get_test_redisgraph_graph
 from .test_data_tools.schema import load_schema
 
 
