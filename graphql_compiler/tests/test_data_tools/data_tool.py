@@ -35,6 +35,7 @@ def generate_neo4j_integration_data(client):
 
 
 def _load_neo4j_files_to_neo4j_client(client, neo4j_files):
+    """Load list of supplied Cypher files into the supplied Neo4j client."""
     for filepath in neo4j_files:
         with open(filepath) as f:
             with client.driver.session() as session:
@@ -55,6 +56,7 @@ def generate_redisgraph_integration_data(client):
 
 
 def _load_cypher_files_to_redisgraph_client(client, cypher_files):
+    """Load list of supplied Cypher files into the supplied RedisGraph client."""
     for filepath in cypher_files:
         with open(filepath) as f:
             for command in f.readlines():
