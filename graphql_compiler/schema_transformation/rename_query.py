@@ -8,18 +8,19 @@ from .utils import QueryStructureError
 
 
 def rename_query(ast, renamings):
-    """Translate all types and root fields (fields of query type) using renamings.
+    """Translate names of types and root vertex fields using renamings.
 
-    Most fields (fields of types other than the query type) will not be renamed. Any type
-    or field that does not appear in renamings will be unchanged.
-    Roughly speaking, rename_query renames the same elements as rename_schema.
+    Root vertex fields are fields of the query type. Other fields will not be renamed.
+
+    This function is intended to be used in conjunction with rename_schema.
 
     Args:
         ast: Document, representing a valid query. It is assumed to have passed GraphQL's
-             builtin validation -- validate(schema, ast). ast not modified by this function
-        renamings: Dict[str, str], mapping original types/query type field names as appearing
-                   in the query to renamed names. Type or query type field names not appearing
-                   in the dict will be unchanged
+             builtin validation -- validate(schema, ast), in that it has the structure of a
+             valid query, does not reference non-existent types or fields, and passes type
+             checks. The ast is not modified by this function
+        renamings: Dict[str, str], mapping original type/root vertex field names to renamed
+                   names. Names not appearing in the dict will be unchanged
 
     Returns:
         Document, a new AST representing the renamed query
@@ -29,8 +30,9 @@ def rename_query(ast, renamings):
           AST contains Fragments, or if it contains an InlineFragment at the root level
     """
     # NOTE: There is a validation section in graphql-core that takes in a schema and a
-    # query ast, and checks whether the query is valid. This code assumes this validation
-    # step has been done on the input AST.
+    # query ast, and checks whether the query is valid -- for example, type names are known in
+    # the schema, all leaf nodes are scalars, arguments are of the correct type, etc.
+    # We assume this validation step has been done.
     if len(ast.definitions) > 1:  # includes either multiple queries, or fragment definitions
         raise QueryStructureError(
             u'Only one query may be included, and fragments are not allowed.'
@@ -55,7 +57,7 @@ def rename_query(ast, renamings):
 
 class RenameQueryVisitor(Visitor):
     def __init__(self, renamings):
-        """Create a visitor for renaming types and fields of the query type in a query AST.
+        """Create a visitor for renaming types and root vertex fields in a query AST.
 
         Args:
             renamings: Dict[str, str], mapping from original type name to renamed type name.
@@ -89,8 +91,8 @@ class RenameQueryVisitor(Visitor):
         self.selection_set_level -= 1
 
     def enter_Field(self, node, *args):
-        """Rename entry point fields, aka fields of the query type."""
-        # For a Field to be a field of the query type, it needs to be the first level of
+        """Rename root vertex fields."""
+        # For a Field to be a root vertex field, it needs to be the first level of
         # selections (fields in more nested selections are normal fields that should not be
         # modified)
         # As FragmentDefinition is not allowed, the parent of the selection must be a query
