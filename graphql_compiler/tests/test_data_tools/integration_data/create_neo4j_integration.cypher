@@ -1,6 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 # delete all leftover nodes from previous tests
 match (n) detach delete n
+# Neo4j supports temporal types but Redisgraph doesn't. As a result, the birthday field doesn't
+# exist in create_rediisgraph_integration.cypher.
 create (:Animal {name: 'Animal 1', net_worth: 100.0, uuid: 'cfc6e625-8594-0927-468f-f53d864a7a51', birthday: DATE('1900-01-01')})
 create (:Animal {name: 'Animal 2', net_worth: 200.0, uuid: 'cfc6e625-8594-0927-468f-f53d864a7a52', birthday: DATE('1950-02-02')})
 create (:Animal {name: 'Animal 3', net_worth: 300.0, uuid: 'cfc6e625-8594-0927-468f-f53d864a7a53', birthday: DATE('1975-03-03')})
