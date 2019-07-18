@@ -1639,6 +1639,7 @@ print(schema_graph.get_unique_indexes_for_class('Animal'))
 
 For more information about the `SchemaGraph`, please see the class documentation. 
 
+
 ### Cypher query parameters
 RedisGraph [doesn't support query parameters](https://github.com/RedisGraph/RedisGraph/issues/544#issuecomment-507963576), so we perform manual parameter interpolation in the
 `graphql_to_redisgraph_cypher` function. However, for Neo4j, we can use Neo4j's client to do
