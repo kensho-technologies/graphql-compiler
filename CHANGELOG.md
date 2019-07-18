@@ -4,13 +4,12 @@
 
 ## v1.11.0
 
-- Add indexes to the SchemaGraph and OrientDB index parsing. [#312](https://github.com/kensho-technologies/graphql-compiler/pull/312)
-- Allow list types in RootSchemaQuery. 
-- Refactor the SchemaGraph to use GraphQL's type system, separate each SchemaElement kind into it's own class and removed links as properties. [#292](https://github.com/kensho-technologies/graphql-compiler/pull/292)
+- Release the SchemaGraph, a utility class designed for easy schema introspection. [#292](https://github.com/kensho-technologies/graphql-compiler/pull/292)
+- Add a provisional interface to the SchemaGraph that helps explore a schema's indexes. [#312](https://github.com/kensho-technologies/graphql-compiler/pull/312)
 - Clean up README.md and update troubleshooting documentation.
 - Many mantainer quality-of-life improvements.
 
-Thanks to `0xflotus`, `pmantica1`, `bojanserafimov`, `evantey`, and `Vladimir Maksimovski` for their contributions.
+Thanks to `0xflotus`, `pmantica1`, `LWProgramming`, `bojanserafimov`, `evantey`, and `Vladimir Maksimovski` for their contributions.
 
 ## v1.10.1
 
