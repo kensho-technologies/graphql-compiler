@@ -6,6 +6,8 @@
 
 - Release the SchemaGraph, a utility class designed for easy schema introspection. [#292](https://github.com/kensho-technologies/graphql-compiler/pull/292)
 - Add a provisional interface to the SchemaGraph that helps explore a schema's indexes. [#312](https://github.com/kensho-technologies/graphql-compiler/pull/312)
+- Allow out-of-order tags and filters in the same scope.
+- Fix missing filter type coercions in MATCH compilation.
 - Clean up README.md and update troubleshooting documentation.
 - Many mantainer quality-of-life improvements.
 
