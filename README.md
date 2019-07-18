@@ -1632,15 +1632,24 @@ index_query_data = [record.oRecordData for record in index_records]
 
 schema_graph = get_orientdb_schema_graph(schema_data, index_query_data)
 
-# Get the all subclasses.
+# Get the all subclasses of a class.
 print(schema_graph.get_subclass_set('Animal'))
 # {'Animal', 'Dog'}
 
-# Get all the outgoing edges.
-print(schema_graph.get_element_by_class_name('Animal').out_connections)
-# {'Animal_BornAt', 'Animal_FedAt', 'Animal_LivesIn'}
+# Get all the outgoing edge classes of a vertex class.
+print(schema_graph.get_vertex_schema_element_or_raise('Animal').out_connections)
+# {'Animal_Eats', 'Animal_FedAt', 'Animal_LivesIn'}
 
-# Get all index definitions defined on a class.
+# Get the vertex classes allowed in the arrow side of an edge class.
+print(schema_graph.get_edge_schema_element_or_raise('Animal_Eats').out_connections)
+# {'Fruit', 'Food'}
+
+# Get the vertex class allowed in the arrow side of an edge class that is a 
+# superclass of all classes allowed in that edge end.
+print(schema_graph.get_edge_schema_element_or_raise('Animal_Eats').base_out_connection)
+# Food
+
+# Get the unique indexes defined on a class.
 print(schema_graph.get_unique_indexes_for_class('Animal'))
 # [IndexDefinition(name='uuid', 'base_classname'='Animal', fields={'uuid'}, unique=True, ordered=False, ignore_nulls=False)]
 ```
