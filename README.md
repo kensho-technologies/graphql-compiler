@@ -1646,7 +1646,7 @@ print(schema_graph.get_unique_indexes_for_class('Animal'))
 ```
 
 In the future, we plan to add `SchemaGraph` generation from SQLAlchemy metadata. We also plan to 
-add a mechanism where one can query the `SchemaGraph` using GraphQL queries.
+add a mechanism where one can query a `SchemaGraph` using GraphQL queries.
 
 ### Cypher query parameters
 RedisGraph [doesn't support query parameters](https://github.com/RedisGraph/RedisGraph/issues/544#issuecomment-507963576), so we perform manual parameter interpolation in the
