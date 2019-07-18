@@ -125,9 +125,9 @@ def insert_arguments_into_cypher_query_redisgraph(compilation_result, arguments)
     """Insert the arguments into the compiled Cypher query to form a complete query.
 
     This is only for Redisgraph because Neo4j's client can do this on its own.
-    Redisgraph doesn't support parameterized queries (see here:
-    https://github.com/RedisGraph/RedisGraph/issues/544#issuecomment-507963576).
-    Work to support parameters is expected to start in August 2019.
+    Redisgraph doesn't support parameterized queries (as described in the Github issue:
+    https://github.com/RedisGraph/RedisGraph/issues/544#issuecomment-507963576
+    work is only expected to start in August 2019).
 
     Args:
         compilation_result: a CompilationResult object derived from the GraphQL compiler
