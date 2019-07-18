@@ -41,7 +41,7 @@ def rename_query(ast, renamings):
     # the schema, all leaf nodes are scalars, arguments are of the correct type, etc.
     # We assume this validation step has been done.
     if len(ast.definitions) > 1:  # includes either multiple queries, or fragment definitions
-        raise GraphQLValidationError (
+        raise GraphQLValidationError(
             u'Only one query may be included, and fragments are not allowed.'
         )
 
@@ -49,7 +49,7 @@ def rename_query(ast, renamings):
 
     for selection in query_definition.selection_set.selections:
         if not isinstance(selection, ast_types.Field):  # possibly an InlineFragment
-            raise GraphQLValidationError (
+            raise GraphQLValidationError(
                 u'Each root selections must be of type "Field", not "{}" as in '
                 u'selection "{}"'.format(type(selection).__name__, selection)
             )
