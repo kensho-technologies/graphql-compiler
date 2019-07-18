@@ -1600,16 +1600,18 @@ would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`
 ```
 
 ### SchemaGraph 
-The `SchemaGraph` is a utility class that encodes a database schema and allows for better schema 
-introspection than the GraphQL schema. The  `SchemaGraph` has three main advantages:
+
+When building a GraphQL schema from the database metadata, we first build a `SchemaGraph` from 
+the metadata and then from the `SchemaGraph` build the GraphQL schema. The `SchemaGraph` is also 
+an encoding of underlying database schema, but it has three main advantages that make it a 
+more powerful schema introspection tool:
  1. It's able to store and expose a schema's index information. The interface for accessing index 
     information is provisional though and might change in the near future.
  2. Its classes are allowed to inherit from non-abstract classes.
  3. It exposes many utility functions, such as `get_subclass_set`, that make it easier to explore 
     the schema.
 
-We plan to add `SchemaGraph` generation from SQLAlchemy metadata and can currently generate a 
-`SchemaGraph` from OrientDB schema metadata as exemplified by the following mock example. 
+See below for a mock example of how to build and use the `SchemaGraph`: 
 
 ```python
 from graphql_compiler.schema_generation.orientdb.schema_graph_builder import (
@@ -1630,15 +1632,21 @@ index_query_data = [record.oRecordData for record in index_records]
 
 schema_graph = get_orientdb_schema_graph(schema_data, index_query_data)
 
+# Get the all subclasses.
 print(schema_graph.get_subclass_set('Animal'))
 # {'Animal', 'Dog'}
 
+# Get all the outgoing edges.
+print(schema_graph.get_element_by_class_name('Animal').out_connections)
+# {'Animal_BornAt', 'Animal_FedAt', 'Animal_LivesIn'}
+
+# Get all index definitions defined on a class.
 print(schema_graph.get_unique_indexes_for_class('Animal'))
 # [IndexDefinition(name='uuid', 'base_classname'='Animal', fields={'uuid'}, unique=True, ordered=False, ignore_nulls=False)]
 ```
 
-For more information about the `SchemaGraph`, please see the class documentation. 
-
+In the future, we plan to add `SchemaGraph` generation from SQLAlchemy metadata. We also plan to 
+add a mechanism where one can query the `SchemaGraph` using GraphQL queries.
 
 ### Cypher query parameters
 RedisGraph [doesn't support query parameters](https://github.com/RedisGraph/RedisGraph/issues/544#issuecomment-507963576), so we perform manual parameter interpolation in the
