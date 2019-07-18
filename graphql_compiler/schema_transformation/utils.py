@@ -37,14 +37,6 @@ class SchemaNameConflictError(SchemaTransformError):
     """Raised when renaming or merging types or fields cause name conflicts."""
 
 
-class QueryStructureError(SchemaTransformError):
-    """Raised if an input query's structure is illegal.
-
-    This may happen if a query starts with an inline fragment, or contains a FragmentDefinition
-    or FragmentSpread as fragments are not supported by the compiler.
-    """
-
-
 _alphanumeric_and_underscore = frozenset(string.ascii_letters + string.digits + '_')
 
 
