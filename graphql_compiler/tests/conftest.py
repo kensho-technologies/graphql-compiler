@@ -39,6 +39,7 @@ def init_integration_orientdb_client():
 # missing parameters here.
 @retry(20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_orientdb_client(load_schema_func, generate_data_func):
+    """Set up a database and return a client that can query the database."""
     graph_name = 'animals'
     orientdb_client = get_test_orientdb_graph(graph_name, load_schema_func, generate_data_func)
     return orientdb_client
@@ -54,6 +55,7 @@ def init_integration_neo4j_client():
 # _init_orientdb_client function comment.
 @retry(20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_neo4j_client(generate_data_func):
+    """Set up a database and return a client that can query the database."""
     graph_name = 'animals'
     neo4j_client = get_test_neo4j_graph(graph_name, generate_data_func)
     return neo4j_client
@@ -69,6 +71,7 @@ def init_integration_redisgraph_client():
 # _init_orientdb_client function comment.
 @retry(20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_redisgraph_client(generate_data_func):
+    """Set up a database and return a client that can query the database."""
     graph_name = 'animals'
     redisgraph_client = get_test_redisgraph_graph(graph_name, generate_data_func)
     return redisgraph_client
