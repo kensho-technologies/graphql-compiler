@@ -2,18 +2,17 @@
 def amend_custom_scalar_types(schema, scalars):
     """Amend the serialization, parsing and description of custom scalar types in the schema.
 
-       Information about the fields, (other than the name), of custom GraphQLScalarType objects is
-       lost when GraphQLSchema objects are serialized into strings. This function uses the
-       original type definitions to mutate the schema and reconstructs the fields of custom
-       scalar types.
+    Information about the description, serialization and parsing of custom scalar type
+    objects is lost when a GraphQL schema is parsed from a string. This causes issues when
+    working with custom scalar type objects. In order to avoid these issues, this function
+    amends custom scalar type objects in the schema by using their original definitions.
 
-       Args:
-           schema: GraphQLSchema object
-           scalars: set of GraphQLScalarType objects, the original custom GraphQLScalarType
-                    objects.
+    Args:
+        schema: GraphQLSchema object that has possibly been parsed from a string. It might be
+                mutated in-place in this function.
+        scalars: set of GraphQLScalarType objects, the original custom GraphQLScalarType
+                 objects.
     """
-    # The schema text contains no information about how to parse or serialize non-builtin scalar
-    # types so we add this information manually.
     for graphql_type in scalars:
         # We cannot simply replace the value corresponding to the key graphql_type.name.
         # We actually need to modify the value because it is referenced in other places in the
