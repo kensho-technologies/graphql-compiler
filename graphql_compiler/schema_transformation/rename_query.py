@@ -4,15 +4,22 @@ from copy import deepcopy
 from graphql.language import ast as ast_types
 from graphql.language.visitor import Visitor, visit
 
-from .utils import QueryStructureError
+from ..exceptions import GraphQLValidationError
 
 
 def rename_query(ast, renamings):
     """Translate names of types and root vertex fields using renamings.
 
-    Root vertex fields are fields of the query type. Other fields will not be renamed.
+    Besides root vertex fields (fields of the query type), no field will be renamed.
 
-    This function is intended to be used in conjunction with rename_schema.
+    This function is intended to be used in conjunction with rename_schema. In order to
+    resolve name conflicts when merging schemas, one may rename certain schema types.
+    However, queries against the underlying database will only work if compiled with
+    the original schema of the database. Therefore, in order to be able run queries
+    against the original schema, one may use this function to revert the name of types in
+    the queries back to their original names.
+    The attribute 'reverse_name_map' of a RenamedSchemaDescriptor may be used as the input
+    'renamings' for this purpose.
 
     Args:
         ast: Document, representing a valid query. It is assumed to have passed GraphQL's
@@ -26,15 +33,15 @@ def rename_query(ast, renamings):
         Document, a new AST representing the renamed query
 
     Raises:
-        - QueryStrutureError if the ast does not have the expected form; in particular, if the
-          AST contains Fragments, or if it contains an InlineFragment at the root level
+        - GraphQLValidationError if the ast does not have the expected form; in particular,
+          if the AST contains Fragments, or if it contains an InlineFragment at the root level
     """
     # NOTE: There is a validation section in graphql-core that takes in a schema and a
     # query ast, and checks whether the query is valid -- for example, type names are known in
     # the schema, all leaf nodes are scalars, arguments are of the correct type, etc.
     # We assume this validation step has been done.
     if len(ast.definitions) > 1:  # includes either multiple queries, or fragment definitions
-        raise QueryStructureError(
+        raise GraphQLValidationError (
             u'Only one query may be included, and fragments are not allowed.'
         )
 
@@ -42,7 +49,7 @@ def rename_query(ast, renamings):
 
     for selection in query_definition.selection_set.selections:
         if not isinstance(selection, ast_types.Field):  # possibly an InlineFragment
-            raise QueryStructureError(
+            raise GraphQLValidationError (
                 u'Each root selections must be of type "Field", not "{}" as in '
                 u'selection "{}"'.format(type(selection).__name__, selection)
             )
