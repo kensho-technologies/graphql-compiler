@@ -1629,6 +1629,7 @@ schema_data = [record.oRecordData for record in schema_records]
 index_records = client.command(ORIENTDB_INDEX_RECORDS_QUERY)
 index_query_data = [record.oRecordData for record in index_records]
 
+# Build SchemaGraph.
 schema_graph = get_orientdb_schema_graph(schema_data, index_query_data)
 
 # Get all the subclasses of a class.
