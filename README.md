@@ -1632,7 +1632,7 @@ index_query_data = [record.oRecordData for record in index_records]
 
 schema_graph = get_orientdb_schema_graph(schema_data, index_query_data)
 
-# Get the all subclasses of a class.
+# Get all the subclasses of a class.
 print(schema_graph.get_subclass_set('Animal'))
 # {'Animal', 'Dog'}
 
