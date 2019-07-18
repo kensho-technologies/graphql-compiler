@@ -248,8 +248,8 @@ class EmitGremlinTests(unittest.TestCase):
                     BinaryComposition(
                         u'!=',
                         # HACK(predrag): The type given to OutputContextVertex here is wrong,
-                        # but it shouldn't cause any trouble since it has absolutely nothing to
-                        # do with the code being tested.
+                        # but it shouldn't cause any trouble since it has absolutely nothing to do
+                        # with the code being tested.
                         OutputContextVertex(child_location, GraphQLString),
                         NullLiteral),
                     OutputContextField(child_name_location, GraphQLString),
