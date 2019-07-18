@@ -167,12 +167,19 @@ def _get_basic_schema_ast(query_type):
 
 
 def _process_directive_definition(directive, existing_directives, merged_schema_ast):
-    """Compare new directive against existing directives, update records and schema."""
+    """Compare new directive against existing directives, update records and schema.
+
+    Args:
+        directive: DirectiveDefinition, an AST node representing the definition of a directive
+        existing_directives: Dict[str, DirectiveDefinition], mapping the name of each existing
+                             directive to the AST node defining it; modified by this function
+        merged_schema_ast: Document, AST representing a schema; modified by this function
+    """
     directive_name = directive.name.value
     if directive_name in existing_directives:
-        if directive == existing_directives[directive_name]:  # definitions agree
+        if directive == existing_directives[directive_name]:
             return
-        else:  # definitions disagree
+        else:
             raise SchemaNameConflictError(
                 u'Directive "{}" with definition "{}" has already been defined with '
                 u'definition "{}".'.format(
@@ -182,27 +189,45 @@ def _process_directive_definition(directive, existing_directives, merged_schema_
                 )
             )
     # new directive
-    merged_schema_ast.definitions.append(directive)  # Add to AST
-    existing_directives[directive_name] = directive  # Add to record of directives
+    merged_schema_ast.definitions.append(directive)
+    existing_directives[directive_name] = directive
 
 
 def _process_scalar_definition(scalar, existing_scalars, existing_types, merged_schema_ast):
-    """Compare new scalar against existing scalars and types, update records and schema."""
+    """Compare new scalar against existing scalars and types, update records and schema.
+
+    Args:
+        scalar: ScalarDefinition, an AST node representing the definition of a scalar
+        existing_scalars: Set[str], set of names of all existing scalars; modified by this
+                          function
+        existing_types: Set[str], set of names of all existing types
+        merged_schema_ast: Document, AST representing a schema; modified by this function
+    """
     scalar_name = scalar.name.value
     if scalar_name in existing_scalars:
         return
-    if scalar_name in existing_types:  # new scalar clashing with existing type
+    if scalar_name in existing_types:
         raise SchemaNameConflictError(
             u'New scalar "{}" clashes with existing type.'.format(scalar_name)
         )
     # new, valid scalar
-    merged_schema_ast.definitions.append(scalar)  # Add to AST
-    existing_scalars.add(scalar_name)  # Add to record of scalars
+    merged_schema_ast.definitions.append(scalar)
+    existing_scalars.add(scalar_name)
 
 
 def _process_generic_type_definition(generic_type, schema_id, existing_scalars, name_to_schema_id,
                                      merged_schema_ast):
-    """Compare new type against existing scalars and types, update records and schema."""
+    """Compare new type against existing scalars and types, update records and schema.
+
+    Args:
+        generic_type: Any of EnumTypeDefinition, InterfaceTypeDefinition, ObjectTypeDefinition,
+                      or UnionTypeDefinition, an AST node representing the definition of a type
+        schema_id: str, the identifier of the schema that this type came from
+        existing_scalars: Set[str], set of names of all existing scalars
+        name_to_schema_id: Dict[str, str], mapping names of types to the identifier of the schema
+                           that they came from; modified by this function
+        merged_schema_ast: Document, AST representing a schema; modified by this function
+    """
     type_name = generic_type.name.value
     if type_name in existing_scalars:
         raise SchemaNameConflictError(
@@ -212,5 +237,5 @@ def _process_generic_type_definition(generic_type, schema_id, existing_scalars, 
         raise SchemaNameConflictError(
             u'New type "{}" clashes with existing type.'.format(type_name)
         )
-    merged_schema_ast.definitions.append(generic_type)  # Add to AST
+    merged_schema_ast.definitions.append(generic_type)
     name_to_schema_id[type_name] = schema_id
