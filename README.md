@@ -1110,12 +1110,12 @@ However, the following rules of thumb are useful to keep in mind:
 
 ## Query cost estimation
 
-Due to GraphQL's easy-to-use nature, it's very easy for the user to write a query that can use a lot
-of memory and/or have a long execution time. So it might be worthwhile to estimate a query's
-cost (in terms of time taken and memory used) using statistics about the  without actually
-executing the query on the database. Since the time and memory required for query execution varies
-depending on the underlying database, as a rough proxy, we estimate the number of result rows for
-the given query i.e. the query's cardinality.
+Due to GraphQL's easy-to-use nature, queries that use a lot of memory and/or have a long execution
+time can happen often. For better user-friendliness, it might be worthwhile to estimate a query's
+cost (in terms of time taken and memory used) using statistics without executing the query on the
+database. Since the time and memory required for query execution varies depending on the underlying
+database, as a rough proxy, we estimate the number of result rows for the given query i.e. the
+query's cardinality.
 
 These estimates can be used to improve user-friendliness for query execution.
 For example, the esimates can be used to warn users about a query that asks for too many results.
