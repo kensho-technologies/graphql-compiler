@@ -1636,17 +1636,16 @@ schema_graph = get_orientdb_schema_graph(schema_data, index_query_data)
 print(schema_graph.get_subclass_set('Animal'))
 # {'Animal', 'Dog'}
 
-# Get all the outgoing edge classes of a vertex class.
-print(schema_graph.get_vertex_schema_element_or_raise('Animal').out_connections)
+# Get all the incoming edge classes of a vertex class.
+print(schema_graph.get_vertex_schema_element_or_raise('Animal').in_connections)
 # {'Animal_Eats', 'Animal_FedAt', 'Animal_LivesIn'}
 
-# Get the vertex classes allowed in the arrow side of an edge class.
-print(schema_graph.get_edge_schema_element_or_raise('Animal_Eats').out_connections)
+# Get the vertex classes allowed as the tail vertex of an edge class.
+print(schema_graph.get_edge_schema_element_or_raise('Animal_Eats').in_connections)
 # {'Fruit', 'Food'}
 
-# Get the vertex class allowed in the arrow side of an edge class that is a 
-# superclass of all classes allowed in that edge end.
-print(schema_graph.get_edge_schema_element_or_raise('Animal_Eats').base_out_connection)
+# Get the superclass of all classes allowed as the tail vertex of an edge class.
+print(schema_graph.get_edge_schema_element_or_raise('Animal_Eats').base_in_connection)
 # Food
 
 # Get the unique indexes defined on a class.
