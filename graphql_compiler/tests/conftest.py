@@ -15,6 +15,7 @@ from .test_data_tools.orientdb_graph import get_test_orientdb_graph
 from .test_data_tools.redisgraph_graph import get_test_redisgraph_graph
 from .test_data_tools.schema import load_schema
 
+
 GRAPH_NAME = 'animals'  # Name for integration test database
 
 
