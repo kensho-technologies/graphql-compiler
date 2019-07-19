@@ -1602,7 +1602,7 @@ would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`
 ### SchemaGraph 
 When building a GraphQL schema from the database metadata, we first build a `SchemaGraph` from 
 the metadata and then, from the `SchemaGraph`, build the GraphQL schema. The `SchemaGraph` is also 
-an encoding of underlying database schema, but it has three main advantages that make it a 
+an encoding of the underlying database schema, but it has three main advantages that make it a 
 more powerful schema introspection tool:
  1. It's able to store and expose a schema's index information. The interface for accessing index 
     information is provisional though and might change in the near future.
