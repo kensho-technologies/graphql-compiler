@@ -57,8 +57,10 @@ For a more detailed overview and getting started guide, please see
      * [\_x_count](#_x_count)
   * [The GraphQL schema](#the-graphql-schema)
   * [Query cost estimation](#query-cost-estimation)
-     * [Statistics](#statistics)
      * [Usage of query cost estimation](#usage-of-query-cost-estimation)
+     * [Statistics](#statistics)
+       * [Required statistics](#required-statistics)
+       * [Optional statistics](#optional-statistics)
   * [Execution model](#execution-model)
   * [SQL](#sql)
      * [Configuring SQLAlchemy](#configuring-sqlalchemy)
@@ -1120,6 +1122,12 @@ query's cardinality.
 These estimates can be used to improve user-friendliness for query execution.
 For example, the estimates can be used to warn users about a query that asks for too many results.
 
+### Usage of query cost estimation
+
+To get estimates for the number of result rows for a given query and statistics object, use the
+`estimate_query_result_cardinality()` function in
+`graphql_compiler/cost_estimation/cardinality_estimator.py`.
+
 ### Statistics
 
 Before estimates can be generated, you need to provide statistics about the graph data. The
@@ -1154,12 +1162,6 @@ estimator, while the other two are optional, as they can be roughly approximated
   the given property field has. E.g. If get_distinct_field_values_count('Animal', 'name') is called,
   and there are 3 animals, two named 'Alice', and one called 'Bob', then the result should be 2, as
   there are 2 distinct values for an Animal's name.
-
-### Usage of query cost estimation
-
-To get estimates for the number of result rows for a given query, use the
-`estimate_query_result_cardinality()` function in
-`graphql_compiler/cost_estimation/cardinality_estimator.py`.
 
 ## Execution model
 
