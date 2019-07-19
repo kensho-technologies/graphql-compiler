@@ -205,10 +205,10 @@ def _process_scalar_definition(scalar, existing_scalars, name_to_schema_id, merg
     if scalar_name in name_to_schema_id:
         raise SchemaNameConflictError(
             u'New scalar "{}" clashes with existing type "{}" in schema "{}". Consider '
-            u'renaming this type in schema "{}" using the tool rename_schema before merging '
+            u'renaming type "{}" in schema "{}" using the tool rename_schema before merging '
             u'to avoid conflicts.'.format(
                 scalar_name, scalar_name, name_to_schema_id[scalar_name],
-                name_to_schema_id[scalar_name]
+                scalar_name, name_to_schema_id[scalar_name]
             )
         )
     # new, valid scalar
@@ -233,17 +233,17 @@ def _process_generic_type_definition(generic_type, schema_id, existing_scalars, 
     if type_name in existing_scalars:
         raise SchemaNameConflictError(
             u'New type "{}" in schema "{}" clashes with existing scalar. Consider '
-            u'renaming this type in schema "{}" using the tool rename_schema before merging '
+            u'renaming type "{}" in schema "{}" using the tool rename_schema before merging '
             u'to avoid conflicts.'.format(
-                type_name, schema_id, schema_id
+                type_name, schema_id, type_name, schema_id
             )
         )
     if type_name in name_to_schema_id:
         raise SchemaNameConflictError(
             u'New type "{}" in schema "{}" clashes with existing type "{}" in schema "{}". '
-            u'Consider renaming this type in either schema before merging to avoid '
+            u'Consider renaming type "{}" in either schema before merging to avoid '
             u'conflicts.'.format(
-                type_name, schema_id, type_name, name_to_schema_id[type_name]
+                type_name, schema_id, type_name, name_to_schema_id[type_name], type_name
             )
         )
     merged_schema_ast.definitions.append(generic_type)
