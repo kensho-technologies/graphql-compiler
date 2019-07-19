@@ -1636,8 +1636,8 @@ schema_graph = get_orientdb_schema_graph(schema_data, index_query_data)
 print(schema_graph.get_subclass_set('Animal'))
 # {'Animal', 'Dog'}
 
-# Get all the incoming edge classes of a vertex class.
-print(schema_graph.get_vertex_schema_element_or_raise('Animal').in_connections)
+# Get all the outgoing edge classes of a vertex class.
+print(schema_graph.get_vertex_schema_element_or_raise('Animal').out_connections)
 # {'Animal_Eats', 'Animal_FedAt', 'Animal_LivesIn'}
 
 # Get the vertex classes allowed as the tail vertex of an edge class.
