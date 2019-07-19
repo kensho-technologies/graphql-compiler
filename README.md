@@ -64,6 +64,8 @@ For a more detailed overview and getting started guide, please see
      * [Configuring SQLAlchemy](#configuring-sqlalchemy)
      * [End-To-End SQL Example](#end-to-end-sql-example)
      * [Configuring the SQL Database to Match the GraphQL Schema](#configuring-the-sql-database-to-match-the-graphql-schema)
+  * [Query Cost Estimation](#query-cost-estimation)
+     * [Supported Statistics](#supported-statistics)
   * [Miscellaneous](#miscellaneous)
      * [Pretty-Printing GraphQL Queries](#pretty-printing-graphql-queries)
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
@@ -1412,6 +1414,23 @@ CREATE VIEW animal AS
     FROM animal_table
 ```
 At this point, the `animal` view can be used in the SQLAlchemy Table for the purposes of compiling.
+
+## Query Cost Estimation
+
+Since some GraphQL queries may take a long time to execute, it might be worthwhile to estimate a
+query's cost using certain precomputed statistics without actually executing the query. Currently,
+we support cardinality estimation using `estimate_query_result_cardinality()` in 
+`graphql_compiler/cost_estimation.py`. We define cardinality as the unfolded number of rows 
+returned by the query.
+
+We estimate cardinality by estimating the number of *result sets* (sets of graph vertices that
+match with scopes in the query) found as the results are *expanded* (as we step through the query
+and create or discard result sets).
+
+### Supported Statistcs
+
+- Vertex counts for each type e.g. Animal, BirthEvent.
+- Edge counts for each type e.g. in_Animal_Related, in_Entity_Related, out_Entity_Related.
 
 ## Miscellaneous
 
