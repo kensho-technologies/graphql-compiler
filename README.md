@@ -1152,16 +1152,16 @@ estimation. The other two are optional, as they can be roughly approximated.
 ### Optional statistics
 
 - `get_vertex_edge_vertex_count(source vertex class, edge class, target vertex class)`:
-  Given the names of two vertex classes and an edge class, return the number of edges of the given
-  type whose source endpoint is of type `source vertex class`, and the destination endpoint is of
+  Given the names of two vertex classes and an edge class, return the number of edges of type `edge
+  class` whose source endpoint is of type `source vertex class`, and the destination endpoint is of
   type `target vertex class`. For example, `get_vertex_edge_vertex_count('Animal', 'Entity_Related',
-  'BirthEvent')` should provide the number of 'Entity_Related' edges that start from a vertex of type
-  'Animal' and end at a vertex of type 'BirthEvent'.
+  'BirthEvent')` should provide the number of 'Entity_Related' edges that start from a vertex of
+  type 'Animal' and end at a vertex of type 'BirthEvent'.
 - `get_distinct_field_values_count(vertex, field)`:
-  Given a vertex class, and a property field on that vertex class, return how many distinct values
-  the given property field has. E.g. If `get_distinct_field_values_count('Animal', 'name')` is called,
-  and there are 3 animals, two named 'Alice', and one called 'Bob', then the result should be 2, as
-  there are 2 distinct values for an Animal's name.
+  Given a vertex class, and a property field on that vertex class, return how many distinct values  
+  the given property field has. E.g. If `get_distinct_field_values_count('Animal', 'name')` is
+  called, and there are 3 animals, two named 'Alice', and one called 'Bob', then the result should
+  be 2, as there are 2 distinct values for an Animal's name.
 
 ## Execution model
 
