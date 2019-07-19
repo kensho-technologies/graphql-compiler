@@ -163,7 +163,7 @@ def validate_safe_string(value):
             value not in legal_strings_with_special_chars:
         raise GraphQLCompilationError(u'Encountered illegal characters in string: {}. '
                                       u'Strings are only allowed to have underscores, '
-                                      u'digits and upper and lower case alphabetical letters.'
+                                      u'digits and, upper and lower case alphabetical letters.'
                                       .format(value))
 
 
