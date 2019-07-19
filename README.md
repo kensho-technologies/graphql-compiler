@@ -1116,8 +1116,8 @@ Due to GraphQL's easy-to-use nature, queries that use a lot of memory and/or hav
 time can happen often. For better user-friendliness, it's worthwhile to estimate a query's cost (in
 terms of time taken and memory used) using statistics without executing the query on the database.
 Since the time and memory required for query execution varies depending on the underlying database,
-as a rough proxy, the cost estimator estimate the number of result rows for the given query i.e. the
-query's cardinality.
+as a rough proxy, the cost estimator estimates the number of result rows for the given query i.e.
+the query's cardinality.
 
 These estimates can be used to improve user-friendliness for query execution.
 For example, the estimates can be used to warn users about a query that asks for too many results.
