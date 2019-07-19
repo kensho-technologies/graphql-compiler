@@ -1138,28 +1138,28 @@ are implemented:
 - LocalStatistics, an implementation of Statistics, where the statistics are provided during
   initialization, and can't be modified thereafter.
 
-Currently, three statistics are supported. Get_class_count() must be given for the cardinality
+Currently, three statistics are supported. `get_class_count()` must be given for the cardinality
 estimator, while the other two are optional, as they can be roughly approximated.
 
 #### Required statistics
 
-- get_class_count(class): 
+- `get_class_count(class)`: 
   Given the name of a vertex or edge class, return the number of objects of that type. If the given
   class is an interface, the objects that inherit from this class should also be included. So if
-  get_class_count('Entity') is called, it should also include the number of 'Animal' objects,
+  `get_class_count('Entity')` is called, it should also include the number of 'Animal' objects,
   'Food' objects, etc.
 
 #### Optional statistics
 
-- get_vertex_edge_vertex_count(source vertex class, edge class, target vertex class):
+- `get_vertex_edge_vertex_count(source vertex class, edge class, target vertex class)`:
   Given the names of two vertex classes and an edge class, return the number of edges of the given
   type whose source endpoint is of type 'source vertex class', and the destination endpoint is of
-  type 'target vertex class'. For example, get_vertex_edge_vertex_count('Animal', 'Entity_Related',
-  'BirthEvent') should provide the number of 'Entity_Related' edges that start from a vertex of type
+  type 'target vertex class'. For example, `get_vertex_edge_vertex_count('Animal', 'Entity_Related',
+  'BirthEvent')` should provide the number of 'Entity_Related' edges that start from a vertex of type
   'Animal' and end at a vertex of type 'BirthEvent'.
-- get_distinct_field_values_count(vertex, field):
+- `get_distinct_field_values_count(vertex, field)`:
   Given a vertex class, and a property field on that vertex class, return how many distinct values
-  the given property field has. E.g. If get_distinct_field_values_count('Animal', 'name') is called,
+  the given property field has. E.g. If `get_distinct_field_values_count('Animal', 'name')` is called,
   and there are 3 animals, two named 'Alice', and one called 'Bob', then the result should be 2, as
   there are 2 distinct values for an Animal's name.
 
