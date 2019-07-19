@@ -102,7 +102,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
 
     if is_runtime_parameter(argument):
         # We want to valid the argument name after we validated that it is not a literal argument
-        # in order to raise a better error message.
+        # in order to possibly raise an error with a better explanation.
         validate_safe_string(argument_name)
         existing_type = context['inputs'].get(argument_name, inferred_type)
         if not inferred_type.is_same_type(existing_type):
@@ -115,7 +115,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
         return (expressions.Variable(argument, inferred_type), None)
     elif is_tagged_parameter(argument):
         # We want to valid the argument name after we validated that it is not a literal argument
-        # in order to raise a better error message.
+        # in order to possibly raise an error with a better explanation.
         validate_safe_string(argument_name)
         tag_info = context['metadata'].get_tag_info(argument_name)
         if tag_info is None:
