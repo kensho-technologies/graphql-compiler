@@ -1157,7 +1157,7 @@ estimation. The other two are optional, as they can be roughly approximated.
   type `target vertex class`. For example, `get_vertex_edge_vertex_count('Animal', 'Entity_Related',
   'BirthEvent')` should provide the number of 'Entity_Related' edges that start from a vertex of
   type 'Animal' and end at a vertex of type 'BirthEvent'.
-- `get_distinct_field_values_count(vertex, field)`:
+- `get_distinct_field_values_count(vertex class, field name)`:
   Given a vertex class, and a property field on that vertex class, return how many distinct values  
   the given property field has. E.g. If `get_distinct_field_values_count('Animal', 'name')` is
   called, and there are 3 animals, two named 'Alice', and one called 'Bob', then the result should
