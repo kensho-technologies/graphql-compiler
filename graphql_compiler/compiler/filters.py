@@ -98,11 +98,11 @@ def _represent_argument(directive_location, context, argument, inferred_type):
               expression that will evaluate to True if the argument is skipped as optional and
               therefore not present, and False otherwise.
     """
-    # Regardless of what kind of variable we are dealing with,
-    # we want to ensure its name is valid.
     argument_name = argument[1:]
 
     if is_runtime_parameter(argument):
+        # We want to valid the argument name after we validated that it is not a literal argument
+        # in order to raise a better error message.
         validate_safe_string(argument_name)
         existing_type = context['inputs'].get(argument_name, inferred_type)
         if not inferred_type.is_same_type(existing_type):
@@ -114,6 +114,8 @@ def _represent_argument(directive_location, context, argument, inferred_type):
 
         return (expressions.Variable(argument, inferred_type), None)
     elif is_tagged_parameter(argument):
+        # We want to valid the argument name after we validated that it is not a literal argument
+        # in order to raise a better error message.
         validate_safe_string(argument_name)
         tag_info = context['metadata'].get_tag_info(argument_name)
         if tag_info is None:
