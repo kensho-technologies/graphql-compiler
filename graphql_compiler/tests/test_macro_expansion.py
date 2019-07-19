@@ -38,6 +38,60 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
+    def test_macro_edge_pro_forma_fields(self):
+        query = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_GrandparentOf {
+                    uuid
+                }
+            }
+        }'''
+        args = {}
+
+        expected_query = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf {
+                        uuid
+                    }
+                }
+            }
+        }'''
+        expected_args = {}
+
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
+    def test_macro_edge_pro_forma_fields_2(self):
+        query = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_GrandparentOf {
+                    name
+                }
+            }
+        }'''
+        args = {}
+
+        expected_query = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf {
+                        name
+                    }
+                }
+            }
+        }'''
+        expected_args = {}
+
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)
+
     def test_macro_edge_on_interface(self):
         query = '''{
             Animal {
