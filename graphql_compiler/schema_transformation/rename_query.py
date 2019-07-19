@@ -12,15 +12,6 @@ def rename_query(ast, renamings):
 
     Besides root vertex fields (fields of the query type), no field will be renamed.
 
-    This function is intended to be used in conjunction with rename_schema. In order to
-    resolve name conflicts when merging schemas, one may rename certain schema types.
-    However, queries against the underlying database will only work if compiled with
-    the original schema of the database. Therefore, in order to be able run queries
-    against the original schema, one may use this function to revert the name of types in
-    the queries back to their original names.
-    The attribute 'reverse_name_map' of a RenamedSchemaDescriptor may be used as the input
-    'renamings' for this purpose.
-
     Args:
         ast: Document, representing a valid query. It is assumed to have passed GraphQL's
              builtin validation -- validate(schema, ast), in that it has the structure of a
