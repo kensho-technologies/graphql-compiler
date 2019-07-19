@@ -36,8 +36,8 @@ def init_integration_orientdb_client():
 
 
 # retry is a decorator that attempts to call the decorated function repeatedly, and it takes a
-# parameter "call". Call is the function being decorated, so we don't need to specify that in
-# the parameters that the retry decorator takes, so we can disable pylint's warning about
+# parameter "call". Call is the function being decorated, so we don't need to specify which
+# parameters the retry decorator takes. So, we can disable pylint's warning about
 # missing parameters here.
 @retry(20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_orientdb_client(load_schema_func, generate_data_func):
