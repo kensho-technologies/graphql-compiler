@@ -1153,8 +1153,8 @@ estimation. The other two are optional, as they can be roughly approximated.
 
 - `get_vertex_edge_vertex_count(source vertex class, edge class, target vertex class)`:
   Given the names of two vertex classes and an edge class, return the number of edges of the given
-  type whose source endpoint is of type 'source vertex class', and the destination endpoint is of
-  type 'target vertex class'. For example, `get_vertex_edge_vertex_count('Animal', 'Entity_Related',
+  type whose source endpoint is of type `source vertex class`, and the destination endpoint is of
+  type `target vertex class`. For example, `get_vertex_edge_vertex_count('Animal', 'Entity_Related',
   'BirthEvent')` should provide the number of 'Entity_Related' edges that start from a vertex of type
   'Animal' and end at a vertex of type 'BirthEvent'.
 - `get_distinct_field_values_count(vertex, field)`:
