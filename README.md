@@ -1145,9 +1145,9 @@ while the other two can be roughly approximated. The supported statistics are:
   'Animal' and end at a vertex of type 'BirthEvent'.
 3. get_distinct_field_values_count(vertex, field):
   Given a vertex class, and a property field on that vertex class, return how many distinct values
-  the given property field has. E.g. If get_distinct_field_values_count('Animal', 'name') is
-  called, and there are 3 animals, two with name 'A', and one called 'B', there are 2 distinct
-  values for an Animal's name.
+  the given property field has. E.g. If get_distinct_field_values_count('Animal', 'name') is called,
+  and there are 3 animals, two named 'Alice', and one called 'Bob', then the result should be 2, as
+  there are 2 distinct values for an Animal's name.
 
 ### Usage of query cost estimation
 
