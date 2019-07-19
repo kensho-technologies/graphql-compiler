@@ -1141,7 +1141,7 @@ are implemented:
 Currently, three statistics are supported. `get_class_count()` must be provided for cardinality
 estimation. The other two are optional, as they can be roughly approximated.
 
-#### Required statistics
+### Required statistics
 
 - `get_class_count(class)`: 
   Given the name of a vertex or edge class, return the number of objects of that type. If the given
@@ -1149,7 +1149,7 @@ estimation. The other two are optional, as they can be roughly approximated.
   `get_class_count('Entity')` is called, it should also include the number of 'Animal' objects,
   'Food' objects, etc.
 
-#### Optional statistics
+### Optional statistics
 
 - `get_vertex_edge_vertex_count(source vertex class, edge class, target vertex class)`:
   Given the names of two vertex classes and an edge class, return the number of edges of the given
