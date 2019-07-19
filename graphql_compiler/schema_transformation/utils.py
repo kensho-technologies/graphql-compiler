@@ -8,8 +8,10 @@ from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
 import six
 
+from ..exceptions import GraphQLError
 
-class SchemaTransformError(Exception):
+
+class SchemaTransformError(GraphQLError):
     """Parent of specific error classes."""
 
 
@@ -37,14 +39,14 @@ class SchemaNameConflictError(SchemaTransformError):
     """Raised when renaming or merging types or fields cause name conflicts."""
 
 
-_alphanumeric_and_underscore = frozenset(string.ascii_letters + string.digits + '_')
+_alphanumeric_and_underscore = frozenset(six.text_type(string.ascii_letters + string.digits + '_'))
 
 
 def check_schema_identifier_is_valid(identifier):
     """Check if input is a valid identifier, made of alphanumeric and underscore characters.
 
     Args:
-        identifier: str
+        identifier: str, used for identifying input schemas when merging multiple schemas
 
     Raises:
         - ValueError if the name is the empty string, or if it consists of characters other
