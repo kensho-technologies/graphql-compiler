@@ -1133,9 +1133,9 @@ To get estimates for the number of result rows for a given query and statistics 
 Before estimates can be generated, you need to provide statistics about the graph data. The
 applicable classes are in `graphql_compiler/cost_estimation/statistics.py`. Currently, two classes
 are implemented:
-- Statistics, an abstract base class that describes the interface the cost estimator expects for
+- `Statistics`, an abstract base class that describes the interface the cost estimator expects for
   statistics. This allows users to create their own implementations for the statistic class.
-- LocalStatistics, an implementation of Statistics, where the statistics are provided during
+- `LocalStatistics`, an implementation of `Statistics`, where the statistics are provided during
   initialization, and can't be modified thereafter.
 
 Currently, three statistics are supported. `get_class_count()` must be given for the cardinality
