@@ -1111,14 +1111,14 @@ However, the following rules of thumb are useful to keep in mind:
 ## Query cost estimation
 
 Due to GraphQL's easy-to-use nature, queries that use a lot of memory and/or have a long execution
-time can happen often. For better user-friendliness, it might be worthwhile to estimate a query's
-cost (in terms of time taken and memory used) using statistics without executing the query on the
-database. Since the time and memory required for query execution varies depending on the underlying
-database, as a rough proxy, we estimate the number of result rows for the given query i.e. the
+time can happen often. For better user-friendliness, it's worthwhile to estimate a query's cost (in
+terms of time taken and memory used) using statistics without executing the query on the database.
+Since the time and memory required for query execution varies depending on the underlying database,
+as a rough proxy, the cost estimator estimate the number of result rows for the given query i.e. the
 query's cardinality.
 
 These estimates can be used to improve user-friendliness for query execution.
-For example, the esimates can be used to warn users about a query that asks for too many results.
+For example, the estimates can be used to warn users about a query that asks for too many results.
 
 ### Statistics
 
@@ -1126,24 +1126,30 @@ Before estimates can be generated, you need to provide statistics about the grap
 applicable classes are in `graphql_compiler/cost_estimation/statistics.py`. Currently, two classes
 are implemented:
 - Statistics, an abstract base class that describes the interface the cost estimator expects for
-  statistics.
-- LocalStatistics, an implementation of Statistics, where you provide your statistics at
-  initialization as parameters to the constructor.
+  statistics. This allows users to create their own implementations for the statistic class.
+- LocalStatistics, an implementation of Statistics, where the statistics are provided during
+  initialization, and can't be modified thereafter.
 
-Currently, three statistics are supported. The first statistic must be provided for an estimate,
-while the other two can be roughly approximated. The supported statistics are:
-1. get_class_count(class):
+Currently, three statistics are supported. Get_class_count() must be given for the cardinality
+estimator, while the other two are optional, as they can be roughly approximated.
+
+#### Required statistics
+
+- get_class_count(class): 
   Given the name of a vertex or edge class, return the number of objects of that type. If the given
   class is an interface, the objects that inherit from this class should also be included. So if
   get_class_count('Entity') is called, it should also include the number of 'Animal' objects,
   'Food' objects, etc.
-2. get_vertex_edge_vertex_count(source vertex class, edge class, target vertex class):
+
+#### Optional statistics
+
+- get_vertex_edge_vertex_count(source vertex class, edge class, target vertex class):
   Given the names of two vertex classes and an edge class, return the number of edges of the given
   type whose source endpoint is of type 'source vertex class', and the destination endpoint is of
   type 'target vertex class'. For example, get_vertex_edge_vertex_count('Animal', 'Entity_Related',
   'BirthEvent') should provide the number of 'Entity_Related' edges that start from a vertex of type
   'Animal' and end at a vertex of type 'BirthEvent'.
-3. get_distinct_field_values_count(vertex, field):
+- get_distinct_field_values_count(vertex, field):
   Given a vertex class, and a property field on that vertex class, return how many distinct values
   the given property field has. E.g. If get_distinct_field_values_count('Animal', 'name') is called,
   and there are 3 animals, two named 'Alice', and one called 'Bob', then the result should be 2, as
