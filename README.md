@@ -1138,8 +1138,8 @@ are implemented:
 - `LocalStatistics`, an implementation of `Statistics`, where the statistics are provided during
   initialization, and can't be modified thereafter.
 
-Currently, three statistics are supported. `get_class_count()` must be given for the cardinality
-estimator, while the other two are optional, as they can be roughly approximated.
+Currently, three statistics are supported. `get_class_count()` must be provided for cardinality
+estimation. The other two are optional, as they can be roughly approximated.
 
 #### Required statistics
 
