@@ -15,6 +15,8 @@ from .test_data_tools.orientdb_graph import get_test_orientdb_graph
 from .test_data_tools.redisgraph_graph import get_test_redisgraph_graph
 from .test_data_tools.schema import load_schema
 
+GRAPH_NAME = 'animals'  # Name for integration test database
+
 
 # Pytest fixtures depend on name redefinitions to work,
 # so this check generates tons of false-positives here.
@@ -40,8 +42,7 @@ def init_integration_orientdb_client():
 @retry(20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_orientdb_client(load_schema_func, generate_data_func):
     """Set up a database and return a client that can query the database."""
-    graph_name = 'animals'
-    orientdb_client = get_test_orientdb_graph(graph_name, load_schema_func, generate_data_func)
+    orientdb_client = get_test_orientdb_graph(GRAPH_NAME, load_schema_func, generate_data_func)
     return orientdb_client
 
 
@@ -56,8 +57,7 @@ def init_integration_neo4j_client():
 @retry(20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_neo4j_client(generate_data_func):
     """Set up a database and return a client that can query the database."""
-    graph_name = 'animals'
-    neo4j_client = get_test_neo4j_graph(graph_name, generate_data_func)
+    neo4j_client = get_test_neo4j_graph(GRAPH_NAME, generate_data_func)
     return neo4j_client
 
 
@@ -72,8 +72,7 @@ def init_integration_redisgraph_client():
 @retry(20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_redisgraph_client(generate_data_func):
     """Set up a database and return a client that can query the database."""
-    graph_name = 'animals'
-    redisgraph_client = get_test_redisgraph_graph(graph_name, generate_data_func)
+    redisgraph_client = get_test_redisgraph_graph(GRAPH_NAME, generate_data_func)
     return redisgraph_client
 
 
