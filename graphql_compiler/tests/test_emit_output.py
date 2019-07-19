@@ -19,7 +19,7 @@ from ..compiler.ir_lowering_match.utils import CompoundMatchQuery
 from ..compiler.match_query import convert_to_match_query
 from ..compiler.metadata import LocationInfo, QueryMetadataTable
 from ..schema import GraphQLDateTime
-from .test_helpers import compare_cypher, compare_gremlin, compare_match
+from .test_helpers import compare_cypher, compare_gremlin, compare_match, get_schema
 
 
 class EmitMatchTests(unittest.TestCase):
@@ -297,6 +297,12 @@ class EmitGremlinTests(unittest.TestCase):
 
 
 class EmitCypherTests(unittest.TestCase):
+    """Test emit_code_from_ir method for Cypher.
+
+    We follow the test schema (defined in test_helpers.py) for these tests so that we can construct
+    objects correctly (e.g. when setting the type field for a LocationInfo object). When we call
+
+    """
     def setUp(self):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
@@ -304,16 +310,17 @@ class EmitCypherTests(unittest.TestCase):
     def test_simple_immediate_output(self):
         # corresponds to:
         # graphql_string = '''{
-        #     Foo {
-        #         name @output(out_name: "foo_name")
+        #     Animal {
+        #         name @output(out_name: "animal_name")
         #     }
         # }'''
 
-        base_location = Location(('Foo',))
+        base_location = Location(('Animal',))
         base_name_location = base_location.navigate_to_field('name')
+        schema = get_schema()
         base_location_info = LocationInfo(
             parent_location=None,
-            type=GraphQLObjectType(name='Foo', fields={'name': GraphQLString}),
+            type=schema.get_type(base_name_location.field),
             coerced_from_type=None,
             optional_scopes_depth=0,
             recursive_scopes_depth=0,
@@ -321,10 +328,10 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         ir_blocks = [
-            QueryRoot({'Foo'}),
+            QueryRoot({'Animal'}),
             MarkLocation(base_location),
             GlobalOperationsStart(),  # necessary for Cypher. Filter/output blocks come after this.
-            ConstructResult({'foo_name': OutputContextField(base_name_location, GraphQLString)}),
+            ConstructResult({'animal_name': OutputContextField(base_name_location, GraphQLString)}),
         ]
         query_metadata_table = QueryMetadataTable(
             root_location=base_location, root_location_info=base_location_info
@@ -334,8 +341,8 @@ class EmitCypherTests(unittest.TestCase):
         received_cypher = emit_cypher.emit_code_from_ir(cypher_query, None)
 
         expected_cypher = '''
-            MATCH (Foo___1:Foo)
-            RETURN Foo___1.name AS `foo_name`
+            MATCH (Animal___1:Animal)
+            RETURN Animal___1.name AS `animal_name`
         '''
 
         compare_cypher(self, expected_cypher, received_cypher)
@@ -343,30 +350,32 @@ class EmitCypherTests(unittest.TestCase):
     def test_simple_traverse_filter_output(self):
         # corresponds to:
         # graphql_string = '''{
-        #     Foo {
+        #     Animal {
         #         name @tag(tag_name: "name")
-        #              @output(out_name: "foo_name")
-        #         out_Foo_Bar {
+        #              @output(out_name: "animal_name")
+        #         out_Animal_BornAt {
         #             name @filter(op_name: "=", value: ["%name"])
         #         }
         #     }
         # }'''
 
-        base_location = Location(('Foo',))
+        base_location = Location(('Animal',))
         base_name_location = base_location.navigate_to_field('name')
+        schema = get_schema()
         base_location_info = LocationInfo(
             parent_location=None,
-            type=GraphQLObjectType(name='Foo', fields={'name': GraphQLString}),
+            type=schema.get_type(base_name_location.field),
             coerced_from_type=None,
             optional_scopes_depth=0,
             recursive_scopes_depth=0,
             is_within_fold=False,
         )
 
-        child_location = base_location.navigate_to_subpath('out_Foo_Bar')
+        child_location = base_location.navigate_to_subpath('out_Animal_BornAt')
+        child_name_location = child_location.navigate_to_field('name')
         child_location_info = LocationInfo(
             parent_location=base_location,
-            type=GraphQLObjectType(name='Bar', fields={'name': GraphQLString}),
+            type=schema.get_type(child_name_location.field),
             coerced_from_type=None,
             optional_scopes_depth=1,
             recursive_scopes_depth=0,
@@ -374,11 +383,11 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         ir_blocks = [
-            QueryRoot({'Foo'}),
+            QueryRoot({'Animal'}),
             MarkLocation(base_location),
-            Traverse('out', 'Foo_Bar'),
+            Traverse('out', 'Animal_BornAt'),
             CoerceType(
-                {'Bar'}
+                {'BornAt'}
             ),  # see compiler.ir_lowering_cypher's insert_explicit_type_bounds method
             Filter(
                 BinaryComposition(
@@ -393,7 +402,7 @@ class EmitCypherTests(unittest.TestCase):
             MarkLocation(child_location),
             Backtrack(base_location),
             GlobalOperationsStart(),
-            ConstructResult({'foo_name': OutputContextField(base_name_location, GraphQLString)}),
+            ConstructResult({'animal_name': OutputContextField(base_name_location, GraphQLString)}),
         ]
         query_metadata_table = QueryMetadataTable(
             root_location=base_location, root_location_info=base_location_info
@@ -404,38 +413,40 @@ class EmitCypherTests(unittest.TestCase):
         received_cypher = emit_cypher.emit_code_from_ir(cypher_query, None)
 
         expected_cypher = '''
-            MATCH (Foo___1:Foo)
-            MATCH (Foo___1)-[:Foo_Bar]->(Foo__out_Foo_Bar___1:Bar)
-              WHERE (Foo__out_Foo_Bar___1.name = Foo___1.name)
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Animal_BornAt]->(Animal__out_Animal_BornAt___1:BornAt)
+              WHERE (Animal__out_Animal_BornAt___1.name = Animal___1.name)
             RETURN
-              Foo___1.name AS `foo_name`
+              Animal___1.name AS `animal_name`
         '''
         compare_cypher(self, expected_cypher, received_cypher)
 
     def test_output_inside_optional_traversal(self):
         # corresponds to:
         # graphql_string = '''{
-        #     Foo {
-        #         out_Foo_Bar @optional {
-        #             name @output(out_name: "bar_name")
+        #     Animal {
+        #         out_Animal_BornAt @optional {
+        #             name @output(out_name: "bornat_name")
         #         }
         #     }
         # }'''
-        base_location = Location(('Foo',))
+        base_location = Location(('Animal',))
+        base_name_location = base_location.navigate_to_field('name')
+        schema = get_schema()
         base_location_info = LocationInfo(
             parent_location=None,
-            type=GraphQLObjectType(name='Foo', fields={'name': GraphQLString}),
+            type=schema.get_type(base_name_location.field),
             coerced_from_type=None,
             optional_scopes_depth=0,
             recursive_scopes_depth=0,
             is_within_fold=False,
         )
 
-        child_location = base_location.navigate_to_subpath('out_Foo_Bar')
+        child_location = base_location.navigate_to_subpath('out_Animal_BornAt')
         child_name_location = child_location.navigate_to_field('name')
         child_location_info = LocationInfo(
             parent_location=base_location,
-            type=GraphQLObjectType(name='Bar', fields={'name': GraphQLString}),
+            type=child_name_location.field,
             coerced_from_type=None,
             optional_scopes_depth=1,
             recursive_scopes_depth=0,
@@ -443,11 +454,11 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         ir_blocks = [
-            QueryRoot({'Foo'}),
+            QueryRoot({'Animal'}),
             MarkLocation(base_location),
-            Traverse('out', 'Foo_Bar', optional=True),
+            Traverse('out', 'Animal_BornAt', optional=True),
             CoerceType(
-                {'Bar'}
+                {'BornAt'}
             ),  # see compiler.ir_lowering_cypher's insert_explicit_type_bounds method
             MarkLocation(child_location),
             Backtrack(base_location, optional=True),
@@ -456,7 +467,7 @@ class EmitCypherTests(unittest.TestCase):
             GlobalOperationsStart(),
             ConstructResult(
                 {
-                    'bar_name': TernaryConditional(
+                    'bornat_name': TernaryConditional(
                         BinaryComposition(
                             u'!=',
                             # HACK(predrag): The type given to OutputContextVertex here is wrong,
@@ -480,28 +491,29 @@ class EmitCypherTests(unittest.TestCase):
         received_cypher = emit_cypher.emit_code_from_ir(cypher_query, None)
 
         expected_cypher = '''
-            MATCH (Foo___1:Foo)
-            OPTIONAL MATCH (Foo___1)-[:Foo_Bar]->(Foo__out_Foo_Bar___1:Bar)
-            RETURN
-                (CASE WHEN (Foo__out_Foo_Bar___1 IS NOT null)
-                THEN Foo__out_Foo_Bar___1.name ELSE null END) AS `bar_name`
-        '''
+              MATCH (Animal___1:Animal)
+              OPTIONAL MATCH (Animal___1)-[:Animal_BornAt]->(Animal__out_Animal_BornAt___1:BornAt)
+              RETURN
+                  (CASE WHEN (Animal__out_Animal_BornAt___1 IS NOT null)
+                  THEN Animal__out_Animal_BornAt___1.name ELSE null END) AS `bornat_name`
+          '''
 
         compare_cypher(self, expected_cypher, received_cypher)
 
     def test_datetime_output_representation(self):
         # corresponds to:
         # graphql_string = '''{
-        #     Event {
+        #     BirthEvent {
         #         event_date @output(out_name: "event_date")
         #     }
         # }'''
 
-        base_location = Location(('Event',))
+        base_location = Location(('BirthEvent',))
         base_event_date_location = base_location.navigate_to_field('event_date')
+        schema = get_schema()
         base_location_info = LocationInfo(
             parent_location=None,
-            type=GraphQLObjectType(name='Foo', fields={'name': GraphQLString}),
+            type=schema.get_type(base_event_date_location.field),
             coerced_from_type=None,
             optional_scopes_depth=0,
             recursive_scopes_depth=0,
@@ -509,7 +521,7 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         ir_blocks = [
-            QueryRoot({'Event'}),
+            QueryRoot({'BirthEvent'}),
             MarkLocation(base_location),
             GlobalOperationsStart(),
             ConstructResult(
@@ -524,9 +536,9 @@ class EmitCypherTests(unittest.TestCase):
         received_cypher = emit_cypher.emit_code_from_ir(cypher_query, None)
 
         expected_cypher = '''
-            MATCH (Event___1:Event)
-            RETURN
-            Event___1.event_date AS `event_date`
-        '''
+              MATCH (BirthEvent___1:BirthEvent)
+              RETURN
+              BirthEvent___1.event_date AS `event_date`
+          '''
 
         compare_cypher(self, expected_cypher, received_cypher)
