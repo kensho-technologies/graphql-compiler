@@ -160,11 +160,11 @@ def _represent_argument(directive_location, context, argument, inferred_type):
         raise GraphQLCompilationError(u'Invalid argument found: {}. The compiler supports only '
                                       u'runtime arguments, which must begin with the $ character, '
                                       u'and tagged arguments, which must begin with the % '
-                                      u'character. Literal arguments, (ex. 10, \'Kensho '
+                                      u'character. Literal arguments, (e.g. 10, \'Kensho '
                                       u'Technologies\', \'2018-01-01\'), are currently not '
                                       u'supported. Please use runtime arguments and pass in the '
                                       u'corresponding literal values as query parameters.'
-                                      u''.format(argument))
+                                      .format(argument))
 
 
 @scalar_leaf_only(u'comparison operator')
