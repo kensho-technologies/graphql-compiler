@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import re
+import string
 
 from graphql import build_ast_schema
 from graphql.language.ast import NamedType
@@ -7,8 +8,10 @@ from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
 import six
 
+from ..exceptions import GraphQLError
 
-class SchemaTransformError(Exception):
+
+class SchemaTransformError(GraphQLError):
     """Parent of specific error classes."""
 
 
@@ -33,7 +36,33 @@ class InvalidTypeNameError(SchemaTransformError):
 
 
 class SchemaNameConflictError(SchemaTransformError):
-    """Raised when renaming types or fields cause name conflicts."""
+    """Raised when renaming or merging types or fields cause name conflicts."""
+
+
+_alphanumeric_and_underscore = frozenset(six.text_type(string.ascii_letters + string.digits + '_'))
+
+
+def check_schema_identifier_is_valid(identifier):
+    """Check if input is a valid identifier, made of alphanumeric and underscore characters.
+
+    Args:
+        identifier: str, used for identifying input schemas when merging multiple schemas
+
+    Raises:
+        - ValueError if the name is the empty string, or if it consists of characters other
+          than alphanumeric characters and underscores
+    """
+    if not isinstance(identifier, str):
+        raise ValueError(u'Schema identifier "{}" is not a string.'.format(identifier))
+    if identifier == '':
+        raise ValueError(u'Schema identifier must be a nonempty string.')
+    illegal_characters = frozenset(identifier) - _alphanumeric_and_underscore
+    if illegal_characters:
+        raise ValueError(
+            u'Schema identifier "{}" contains illegal characters: {}'.format(
+                identifier, illegal_characters
+            )
+        )
 
 
 _graphql_type_name_pattern = re.compile(r'^[_a-zA-Z][_a-zA-Z0-9]*$')
