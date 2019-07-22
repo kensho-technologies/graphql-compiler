@@ -168,22 +168,22 @@ class EmitGremlinTests(unittest.TestCase):
         self.maxDiff = None
 
     def test_simple_immediate_output(self):
-        base_location = Location(('Foo',))
+        base_location = Location(('Animal',))
         base_name_location = base_location.navigate_to_field('name')
 
         ir_blocks = [
-            QueryRoot({'Foo'}),
+            QueryRoot({'Animal'}),
             MarkLocation(base_location),
             ConstructResult({
-                'foo_name': OutputContextField(base_name_location, GraphQLString),
+                'animal_name': OutputContextField(base_name_location, GraphQLString),
             })
         ]
 
         expected_gremlin = '''
-            g.V('@class', 'Foo')
-            .as('Foo___1')
+            g.V('@class', 'Animal')
+            .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                foo_name: m.Foo___1.name
+                animal_name: m.Animal___1.name
             ])}
         '''
 
@@ -191,14 +191,14 @@ class EmitGremlinTests(unittest.TestCase):
         compare_gremlin(self, expected_gremlin, received_match)
 
     def test_simple_traverse_filter_output(self):
-        base_location = Location(('Foo',))
+        base_location = Location(('Animal',))
         base_name_location = base_location.navigate_to_field('name')
-        child_location = base_location.navigate_to_subpath('out_Foo_Bar')
+        child_location = base_location.navigate_to_subpath('out_Animal_BornAt')
 
         ir_blocks = [
-            QueryRoot({'Foo'}),
+            QueryRoot({'Animal'}),
             MarkLocation(base_location),
-            Traverse('out', 'Foo_Bar'),
+            Traverse('out', 'Animal_BornAt'),
             Filter(BinaryComposition(
                 u'=',
                 LocalField(u'name', GraphQLString),
@@ -206,19 +206,19 @@ class EmitGremlinTests(unittest.TestCase):
             MarkLocation(child_location),
             Backtrack(base_location),
             ConstructResult({
-                'foo_name': OutputContextField(base_name_location, GraphQLString),
+                'animal_name': OutputContextField(base_name_location, GraphQLString),
             })
         ]
 
         expected_gremlin = '''
-            g.V('@class', 'Foo')
-            .as('Foo___1')
-            .out('Foo_Bar')
-            .filter{it, m -> (it.name == m.Foo___1.name)}
-            .as('Foo__out_Foo_Bar___1')
-            .back('Foo___1')
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .out('Animal_BornAt')
+            .filter{it, m -> (it.name == m.Animal___1.name)}
+            .as('Animal__out_Animal_BornAt___1')
+            .back('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                foo_name: m.Foo___1.name
+                animal_name: m.Animal___1.name
             ])}
         '''
 
@@ -226,20 +226,20 @@ class EmitGremlinTests(unittest.TestCase):
         compare_gremlin(self, expected_gremlin, received_match)
 
     def test_output_inside_optional_traversal(self):
-        base_location = Location(('Foo',))
+        base_location = Location(('Animal',))
         revisited_base_location = base_location.revisit()
-        child_location = base_location.navigate_to_subpath('out_Foo_Bar')
+        child_location = base_location.navigate_to_subpath('out_Animal_BornAt')
         child_name_location = child_location.navigate_to_field('name')
 
         ir_blocks = [
-            QueryRoot({'Foo'}),
+            QueryRoot({'Animal'}),
             MarkLocation(base_location),
-            Traverse('out', 'Foo_Bar', optional=True),
+            Traverse('out', 'Animal_BornAt', optional=True),
             MarkLocation(child_location),
             Backtrack(base_location, optional=True),
             MarkLocation(revisited_base_location),
             ConstructResult({
-                'bar_name': TernaryConditional(
+                'bornat_name': TernaryConditional(
                     BinaryComposition(
                         u'!=',
                         # HACK(predrag): The type given to OutputContextVertex here is wrong,
@@ -253,14 +253,14 @@ class EmitGremlinTests(unittest.TestCase):
         ]
 
         expected_gremlin = '''
-            g.V('@class', 'Foo')
-            .as('Foo___1')
-            .ifThenElse{it.out_Foo_Bar == null}{null}{it.out('Foo_Bar')}
-            .as('Foo__out_Foo_Bar___1')
-            .optional('Foo___1')
-            .as('Foo___2')
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .ifThenElse{it.out_Animal_BornAt == null}{null}{it.out('Animal_BornAt')}
+            .as('Animal__out_Animal_BornAt___1')
+            .optional('Animal___1')
+            .as('Animal___2')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                bar_name: ((m.Foo__out_Foo_Bar___1 != null) ? m.Foo__out_Foo_Bar___1.name : null)
+                bornat_name: ((m.Animal__out_Animal_BornAt___1 != null) ? m.Animal__out_Animal_BornAt___1.name : null)
             ])}
         '''
 
@@ -268,11 +268,11 @@ class EmitGremlinTests(unittest.TestCase):
         compare_gremlin(self, expected_gremlin, received_match)
 
     def test_datetime_output_representation(self):
-        base_location = Location(('Event',))
+        base_location = Location(('BirthEvent',))
         base_event_date_location = base_location.navigate_to_field('event_date')
 
         ir_blocks = [
-            QueryRoot({'Event'}),
+            QueryRoot({'BirthEvent'}),
             MarkLocation(base_location),
             ConstructResult({
                 'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)
@@ -280,10 +280,10 @@ class EmitGremlinTests(unittest.TestCase):
         ]
 
         expected_gremlin = '''
-            g.V('@class', 'Event')
-            .as('Event___1')
+            g.V('@class', 'BirthEvent')
+            .as('BirthEvent___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                event_date: m.Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                event_date: m.BirthEvent___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
             ])}
         '''
 
