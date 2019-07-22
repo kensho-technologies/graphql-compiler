@@ -1672,6 +1672,18 @@ compilation_result = compile_graphql_to_cypher(
 with neo4j_client.driver.session() as session:
     result = session.run(compilation_result.query, parameters)
 ```
+## Amending Parsed Custom Scalar Types
+Information about the description, serialization and parsing of custom scalar type
+objects is lost when a GraphQL schema is parsed from a string. This causes issues when
+working with custom scalar type objects. In order to avoid these issues, one can use the code 
+snippet below to amend the definitions of the custom scalar types used by the compiler. 
+
+```python
+from graphql_compiler.schema import CUSTOM_SCALAR_TYPES
+from graphql_compiler.schema_generation.utils import amend_custom_scalar_types
+
+amend_custom_scalar_types(your_schema, CUSTOM_SCALAR_TYPES)
+```
 
 ## FAQ
 
