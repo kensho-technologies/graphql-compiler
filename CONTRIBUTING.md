@@ -101,3 +101,24 @@ Then, re-run
 pipenv sync --dev
 ```
 to install the relevant dependencies.
+
+## Read the docs
+
+We are currently in the process of moving most of our documentation to Read the Docs, a web utility 
+that makes it easy to view and present documentation. We first plan to the Read the Docs 
+documentation up to date with the documentation present as of commit 
+d909919043c350fcdb93154341cbb9e5de507715 and then working on adding the documentation added since
+that commit. 
+
+The relevant source code lives in: 
+```
+docs/source
+```
+To build the website run:
+```
+cd docs
+make html
+``` 
+Then open ```docs/build/index.html``` with a web browser to view it. 
+
+
