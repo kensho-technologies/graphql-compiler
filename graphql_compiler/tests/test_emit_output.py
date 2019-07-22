@@ -170,6 +170,12 @@ class EmitGremlinTests(unittest.TestCase):
         self.maxDiff = None
 
     def test_simple_immediate_output(self):
+        # corresponds to:
+        # graphql_string = '''{
+        #     Animal {
+        #         name @output(out_name: "animal_name")
+        #     }
+        # }'''
         base_location = Location(('Animal',))
         base_name_location = base_location.navigate_to_field('name')
 
@@ -194,6 +200,16 @@ class EmitGremlinTests(unittest.TestCase):
         compare_gremlin(self, expected_gremlin, received_match)
 
     def test_simple_traverse_filter_output(self):
+        # corresponds to:
+        # graphql_string = '''{
+        #     Animal {
+        #         name @tag(tag_name: "name")
+        #              @output(out_name: "animal_name")
+        #         out_Animal_BornAt {
+        #             name @filter(op_name: "=", value: ["%name"])
+        #         }
+        #     }
+        # }'''
         base_location = Location(('Animal',))
         base_name_location = base_location.navigate_to_field('name')
         child_location = base_location.navigate_to_subpath('out_Animal_BornAt')
@@ -230,6 +246,14 @@ class EmitGremlinTests(unittest.TestCase):
         compare_gremlin(self, expected_gremlin, received_match)
 
     def test_output_inside_optional_traversal(self):
+        # corresponds to:
+        # graphql_string = '''{
+        #     Animal {
+        #         out_Animal_BornAt @optional {
+        #             name @output(out_name: "bornat_name")
+        #         }
+        #     }
+        # }'''
         base_location = Location(('Animal',))
         revisited_base_location = base_location.revisit()
         child_location = base_location.navigate_to_subpath('out_Animal_BornAt')
@@ -273,6 +297,12 @@ class EmitGremlinTests(unittest.TestCase):
         compare_gremlin(self, expected_gremlin, received_match)
 
     def test_datetime_output_representation(self):
+        # corresponds to:
+        # graphql_string = '''{
+        #     BirthEvent {
+        #         event_date @output(out_name: "event_date")
+        #     }
+        # }'''
         base_location = Location(('BirthEvent',))
         base_event_date_location = base_location.navigate_to_field('event_date')
 
