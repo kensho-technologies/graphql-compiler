@@ -143,7 +143,7 @@ class IntegrationTests(TestCase):
     # [0] https://oss.redislabs.com/redisgraph/cypher_support/#types
     # [1] https://neo4j.com/docs/cypher-manual/current/syntax/values/
     # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
-    @use_all_backends(except_backends=[test_backend.NEO4J, test_backend.REDISGRAPH])
+    @use_all_backends(except_backends=(test_backend.NEO4J, test_backend.REDISGRAPH))
     @integration_fixtures
     def test_simple_filter(self, backend_name):
         graphql_query = '''
@@ -187,7 +187,7 @@ class IntegrationTests(TestCase):
     # [0] https://oss.redislabs.com/redisgraph/cypher_support/#types
     # [1] https://neo4j.com/docs/cypher-manual/current/syntax/values/
     # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
-    @use_all_backends(except_backends=[test_backend.REDISGRAPH, test_backend.NEO4J])
+    @use_all_backends(except_backends=(test_backend.REDISGRAPH, test_backend.NEO4J))
     @integration_fixtures
     def test_two_filters(self, backend_name):
         graphql_query = '''
@@ -213,7 +213,7 @@ class IntegrationTests(TestCase):
 
     # RedisGraph doesn't support string function CONTAINS
     # https://oss.redislabs.com/redisgraph/cypher_support/#string-operators
-    @use_all_backends(except_backends=[test_backend.REDISGRAPH])
+    @use_all_backends(except_backends=(test_backend.REDISGRAPH))
     @integration_fixtures
     def test_has_substring_precedence(self, backend_name):
         graphql_query = '''
@@ -237,7 +237,7 @@ class IntegrationTests(TestCase):
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
     # RedisGraph doesn't support temporal types, so Date types aren't supported.
-    @use_all_backends(except_backends=[test_backend.REDISGRAPH])
+    @use_all_backends(except_backends=(test_backend.REDISGRAPH))
     @integration_fixtures
     def test_filter_on_date(self, backend_name):
         graphql_query = '''
