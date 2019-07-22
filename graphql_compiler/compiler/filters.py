@@ -98,12 +98,12 @@ def _represent_argument(directive_location, context, argument, inferred_type):
               expression that will evaluate to True if the argument is skipped as optional and
               therefore not present, and False otherwise.
     """
-    # Regardless of what kind of variable we are dealing with,
-    # we want to ensure its name is valid.
     argument_name = argument[1:]
-    validate_safe_string(argument_name)
 
     if is_runtime_parameter(argument):
+        # We want to validate the argument name after we validated that it is not a literal argument
+        # in order to possibly raise an error with a better explanation.
+        validate_safe_string(argument_name)
         existing_type = context['inputs'].get(argument_name, inferred_type)
         if not inferred_type.is_same_type(existing_type):
             raise GraphQLCompilationError(u'Incompatible types inferred for argument {}. '
@@ -114,6 +114,9 @@ def _represent_argument(directive_location, context, argument, inferred_type):
 
         return (expressions.Variable(argument, inferred_type), None)
     elif is_tagged_parameter(argument):
+        # We want to validate the argument name after we validated that it is not a literal argument
+        # in order to possibly raise an error with a better explanation.
+        validate_safe_string(argument_name)
         tag_info = context['metadata'].get_tag_info(argument_name)
         if tag_info is None:
             raise GraphQLCompilationError(u'Undeclared argument used: {}'.format(argument))
@@ -154,7 +157,14 @@ def _represent_argument(directive_location, context, argument, inferred_type):
         return (representation, non_existence_expression)
     else:
         # If we want to support literal arguments, add them here.
-        raise GraphQLCompilationError(u'Non-argument type found: {}'.format(argument))
+        raise GraphQLCompilationError(u'Invalid argument found: {}. The compiler supports only '
+                                      u'runtime arguments, which must begin with the $ character, '
+                                      u'and tagged arguments, which must begin with the % '
+                                      u'character. Literal arguments, (e.g. 10, \'Kensho '
+                                      u'Technologies\', \'2018-01-01\'), are currently not '
+                                      u'supported. Please use runtime arguments and pass in the '
+                                      u'corresponding literal values as query parameters.'
+                                      .format(argument))
 
 
 @scalar_leaf_only(u'comparison operator')
