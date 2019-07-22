@@ -968,7 +968,8 @@ class CompilerTests(unittest.TestCase):
         expected_cypher = '''
             CYPHER 3.5
             MATCH (Animal___1:Animal)
-                WHERE ((Animal___1.birthday >= DATE($lower)) AND (Animal___1.birthday <= DATE($upper)))
+                WHERE ((Animal___1.birthday >= DATE($lower)) AND
+                       (Animal___1.birthday <= DATE($upper)))
             RETURN
                 Animal___1.birthday AS `birthday`
         '''
@@ -1020,7 +1021,8 @@ class CompilerTests(unittest.TestCase):
         expected_cypher = '''
             CYPHER 3.5
             MATCH (Event___1:Event)
-                WHERE ((Event___1.event_date >= DATETIME($lower)) AND (Event___1.event_date <= DATETIME($upper)))
+                WHERE ((Event___1.event_date >= DATETIME($lower)) AND
+                       (Event___1.event_date <= DATETIME($upper)))
             RETURN
                 Event___1.event_date AS `event_date`
         '''
