@@ -139,7 +139,13 @@ def get_uniquely_named_objects_by_name(object_list):
 
 
 def safe_quoted_string(value):
-    """Return the provided string, surrounded by single quotes. Unsafe strings cause exceptions."""
+    """Return the provided string, surrounded by single quotes. Ensure string is safe."""
+    validate_safe_string(value)
+    return u'\'{}\''.format(value)
+
+
+def safe_or_special_quoted_string(value):
+    """Return the provided string, surrounded by single quotes. Ensure string is safe or special."""
     validate_safe_or_special_string(value)
     return u'\'{}\''.format(value)
 
@@ -161,6 +167,7 @@ def validate_safe_string(value, value_description='string'):
         raise GraphQLCompilationError(u'Encountered invalid {}: {}. It cannot start with a '
                                       u'digit.'.format(value_description, value))
 
+    # set(value) is used instead of frozenset(value) to avoid printing 'frozenset' in error message.
     disallowed_chars = set(value) - VARIABLE_ALLOWED_CHARS
     if disallowed_chars:
         raise GraphQLCompilationError(u'Encountered illegal characters {} in {}: {}. It is only '
