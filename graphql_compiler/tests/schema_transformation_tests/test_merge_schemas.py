@@ -109,8 +109,8 @@ class TestMergeSchemas(unittest.TestCase):
         ''')
         self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
 
-    def test_diff_query_type_name_merge(self):
-        diff_query_type_schema = dedent('''\
+    def test_different_query_type_name_merge(self):
+        different_query_type_schema = dedent('''\
             schema {
               query: RandomRootSchemaQueryName
             }
@@ -126,7 +126,7 @@ class TestMergeSchemas(unittest.TestCase):
         merged_schema = merge_schemas(
             OrderedDict([
                 ('first', parse(ISS.basic_schema)),
-                ('second', parse(diff_query_type_schema)),
+                ('second', parse(different_query_type_schema)),
             ])
         )
         merged_schema_string = dedent('''\
@@ -149,7 +149,7 @@ class TestMergeSchemas(unittest.TestCase):
         ''')
         self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
 
-    def test_type_conflict_merge(self):
+    def test_objects_merge_conflict(self):
         with self.assertRaises(SchemaNameConflictError):
             merge_schemas(
                 OrderedDict([
@@ -158,7 +158,7 @@ class TestMergeSchemas(unittest.TestCase):
                 ])
             )
 
-    def test_interface_type_conflict_merge(self):
+    def test_interface_object_merge_conflict(self):
         interface_conflict_schema = dedent('''\
             schema {
               query: SchemaQuery
@@ -187,7 +187,7 @@ class TestMergeSchemas(unittest.TestCase):
                 ])
             )
 
-    def test_enum_type_conflict_merge(self):
+    def test_enum_object_merge_conflict(self):
         enum_conflict_schema = dedent('''\
             schema {
               query: SchemaQuery
@@ -217,7 +217,7 @@ class TestMergeSchemas(unittest.TestCase):
                 ])
             )
 
-    def test_enum_interface_conflict_merge(self):
+    def test_enum_interface_merge_conflict(self):
         enum_conflict_schema = dedent('''\
             schema {
               query: SchemaQuery
@@ -247,7 +247,7 @@ class TestMergeSchemas(unittest.TestCase):
                 ])
             )
 
-    def test_type_scalar_conflict_merge(self):
+    def test_object_scalar_merge_conflict(self):
         scalar_conflict_schema = dedent('''\
             schema {
               query: SchemaQuery
@@ -274,7 +274,7 @@ class TestMergeSchemas(unittest.TestCase):
                 ])
             )
 
-    def test_interface_scalar_conflict_merge(self):
+    def test_interface_scalar_merge_conflict(self):
         scalar_conflict_schema = dedent('''\
             schema {
               query: SchemaQuery
@@ -301,7 +301,7 @@ class TestMergeSchemas(unittest.TestCase):
                 ])
             )
 
-    def test_enum_scalar_conflict_merge(self):
+    def test_enum_scalar_merge_conflict(self):
         scalar_conflict_schema = dedent('''\
             schema {
               query: SchemaQuery
@@ -458,3 +458,21 @@ class TestMergeSchemas(unittest.TestCase):
                     ('second', parse(extra_directive_schema)),
                 ])
             )
+
+    def test_invalid_identifiers(self):
+        with self.assertRaises(ValueError):
+            merge_schemas(OrderedDict([
+                ('', parse(ISS.basic_schema)),
+            ]))
+        with self.assertRaises(ValueError):
+            merge_schemas(OrderedDict([
+                ('hello\n', parse(ISS.basic_schema)),
+            ]))
+        with self.assertRaises(ValueError):
+            merge_schemas(OrderedDict([
+                ('<script>alert("hello world")</script>', parse(ISS.basic_schema)),
+            ]))
+        with self.assertRaises(ValueError):
+            merge_schemas(OrderedDict([
+                ('\t\b', parse(ISS.basic_schema)),
+            ]))
