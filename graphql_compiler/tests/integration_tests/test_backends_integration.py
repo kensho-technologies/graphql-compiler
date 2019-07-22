@@ -32,9 +32,6 @@ all_backends_list = [
     test_backend.REDISGRAPH,
 ]
 
-# Store the test parametrization for running against all backends. Individual tests can customize
-# the list of backends to test against with the full @parametrized.expand([...]) decorator.
-all_backends = parameterized.expand(all_backends_list)
 
 # Store the typical fixtures required for an integration tests.
 # Individual tests can supply the full @pytest.mark.usefixtures to override if necessary.
@@ -46,12 +43,15 @@ integration_fixtures = pytest.mark.usefixtures(
 )
 
 
-def almost_all_backends(excluded_backends):
-    """Decorator for test functions to use a specific backend.
+def use_all_backends(except_backends=()):
+    """Decorator for test functions to use specific backends.
+
+    By default, tests decorated with this function use all backends. However, some backends don't
+    support certain features, so it's useful to exclude certain backends for individual tests.
 
     Args:
-        excluded_backends: List[str], a list of backend strings from test_backend.py to exclude in
-                           testing.
+        except_backends: Tuple[str], optional argument. Tuple of backend strings from
+                         test_backend.py to exclude in testing.
 
     Returns:
         function that expands tests. parameterized.expand() takes in a list of test parameters (in
@@ -61,7 +61,7 @@ def almost_all_backends(excluded_backends):
     """
     non_excluded_backends = [
         backend for backend in all_backends_list
-        if backend not in excluded_backends
+        if backend not in except_backends
     ]
     return parameterized.expand(non_excluded_backends)
 
@@ -120,7 +120,7 @@ class IntegrationTests(TestCase):
             raise AssertionError(u'Unknown test backend {}.'.format(backend_name))
         return results
 
-    @all_backends
+    @use_all_backends()
     @integration_fixtures
     def test_simple_output(self, backend_name):
         graphql_query = '''
@@ -143,7 +143,7 @@ class IntegrationTests(TestCase):
     # [0] https://oss.redislabs.com/redisgraph/cypher_support/#types
     # [1] https://neo4j.com/docs/cypher-manual/current/syntax/values/
     # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
-    @almost_all_backends(excluded_backends=[test_backend.NEO4J, test_backend.REDISGRAPH])
+    @use_all_backends(except_backends=[test_backend.NEO4J, test_backend.REDISGRAPH])
     @integration_fixtures
     def test_simple_filter(self, backend_name):
         graphql_query = '''
@@ -187,7 +187,7 @@ class IntegrationTests(TestCase):
     # [0] https://oss.redislabs.com/redisgraph/cypher_support/#types
     # [1] https://neo4j.com/docs/cypher-manual/current/syntax/values/
     # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
-    @almost_all_backends(excluded_backends=[test_backend.REDISGRAPH, test_backend.NEO4J])
+    @use_all_backends(except_backends=[test_backend.REDISGRAPH, test_backend.NEO4J])
     @integration_fixtures
     def test_two_filters(self, backend_name):
         graphql_query = '''
@@ -213,7 +213,7 @@ class IntegrationTests(TestCase):
 
     # RedisGraph doesn't support string function CONTAINS
     # https://oss.redislabs.com/redisgraph/cypher_support/#string-operators
-    @almost_all_backends(excluded_backends=[test_backend.REDISGRAPH])
+    @use_all_backends(except_backends=[test_backend.REDISGRAPH])
     @integration_fixtures
     def test_has_substring_precedence(self, backend_name):
         graphql_query = '''
@@ -237,7 +237,7 @@ class IntegrationTests(TestCase):
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
     # RedisGraph doesn't support temporal types, so Date types aren't supported.
-    @almost_all_backends(excluded_backends=[test_backend.REDISGRAPH])
+    @use_all_backends(except_backends=[test_backend.REDISGRAPH])
     @integration_fixtures
     def test_filter_on_date(self, backend_name):
         graphql_query = '''
