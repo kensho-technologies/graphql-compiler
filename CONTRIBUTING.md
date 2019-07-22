@@ -100,7 +100,7 @@ Then, re-run
 ```
 pipenv sync --dev
 ```
-to install the relevant dependencies.
+to install the relevant dependencies. 
 
 ## Read the docs
 
