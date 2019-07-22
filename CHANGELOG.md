@@ -6,21 +6,19 @@
 
 - Release automatic GraphQL schema generation from OrientDB schema metadata. [#204](https://github.com/kensho-technologies/graphql-compiler/pull/204/files)
 - Release the SchemaGraph, a utility class designed for easy schema introspection. [#292](https://github.com/kensho-technologies/graphql-compiler/pull/292)
-- Release `not_in_collection` filter operation. [#350](https://github.com/kensho-technologies/graphql-compiler/pull/350)
-- Release `not_contains` filter operation. [#349](https://github.com/kensho-technologies/graphql-compiler/pull/349)
-- Allow out-of-order tags and filters in the same scope. [#351](https://github.com/kensho-technologies/graphql-compiler/pull/351)
-- Fix missing filter type coercions in MATCH compilation. [#332](https://github.com/kensho-technologies/graphql-compiler/pull/332)
-- Release `amend_custom_scalar_types`, a function made to amend the parsing and serialization of 
-  custom scalar types in schemas that have been parsed from text. [#398](https://github.com/kensho-technologies/graphql-compiler/pull/398)
+- Release `not_contains` and `not_in_collection` filter operations. [#349](https://github.com/kensho-technologies/graphql-compiler/pull/349) [#350](https://github.com/kensho-technologies/graphql-compiler/pull/350)
+- Allow out-of-order `@tag` and `@filter` when in the same scope. [#351](https://github.com/kensho-technologies/graphql-compiler/pull/351)
+- Fix a bug causing MATCH queries to have missing type coercions. [#332](https://github.com/kensho-technologies/graphql-compiler/pull/332)
+- Release functionality that is able to amend parsing and serialization of custom scalar types in schemas parsed from text form. [#398](https://github.com/kensho-technologies/graphql-compiler/pull/398)
 - Clean up README.md and update troubleshooting documentation.
 - Many maintainer quality-of-life improvements.
 
-Thanks to `0xflotus`, `pmantica1`, `LWProgramming`, `bojanserafimov`, `evantey`, and `Vladimir Maksimovski` for their contributions.
+Thanks to `0xflotus`, `bojanserafimov`, `evantey`, `LWProgramming`, `pmantica1`, `qqi0O0`, and `Vlad` for their contributions.
 
 ## v1.10.1
 
 - Fix `_x_count` and optional filter creating duplicate GlobalOperationsStart IR blocks. [#253](https://github.com/kensho-technologies/graphql-compiler/pull/253).
-- Raise error for unused @tag directives [#224](https://github.com/kensho-technologies/graphql-compiler/pull/224).
+- Raise error for unused `@tag` directives [#224](https://github.com/kensho-technologies/graphql-compiler/pull/224).
 - Much documentation cleanup and many maintainer quality-of-life improvements.
 
 Thanks to `bojanserafimov`, `evantey14`, `jeremy.meulemans`, and `pmantica1` for their contributions.
