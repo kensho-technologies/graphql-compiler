@@ -4,7 +4,9 @@ import unittest
 from graphql import GraphQLString
 
 from ..compiler import emit_gremlin, emit_match
-from ..compiler.blocks import Backtrack, ConstructResult, Filter, MarkLocation, QueryRoot, Traverse
+from ..compiler.blocks import (
+    Backtrack, ConstructResult, Filter, GlobalOperationsStart, MarkLocation, QueryRoot, Traverse
+)
 from ..compiler.expressions import (
     BinaryComposition, ContextField, LocalField, NullLiteral, OutputContextField,
     TernaryConditional, Variable
@@ -174,6 +176,7 @@ class EmitGremlinTests(unittest.TestCase):
         ir_blocks = [
             QueryRoot({'Animal'}),
             MarkLocation(base_location),
+            GlobalOperationsStart(),
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             })
@@ -205,6 +208,7 @@ class EmitGremlinTests(unittest.TestCase):
                 ContextField(base_location.navigate_to_field(u'name'), GraphQLString))),
             MarkLocation(child_location),
             Backtrack(base_location),
+            GlobalOperationsStart(),
             ConstructResult({
                 'animal_name': OutputContextField(base_name_location, GraphQLString),
             })
@@ -238,6 +242,7 @@ class EmitGremlinTests(unittest.TestCase):
             MarkLocation(child_location),
             Backtrack(base_location, optional=True),
             MarkLocation(revisited_base_location),
+            GlobalOperationsStart(),
             ConstructResult({
                 'bornat_name': TernaryConditional(
                     BinaryComposition(
@@ -274,6 +279,7 @@ class EmitGremlinTests(unittest.TestCase):
         ir_blocks = [
             QueryRoot({'BirthEvent'}),
             MarkLocation(base_location),
+            GlobalOperationsStart(),
             ConstructResult({
                 'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)
             })
