@@ -22,7 +22,7 @@ from ..expressions import (
 )
 from ..helpers import (
     STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation,
-    get_only_element_from_collection, strip_non_null_from_type, validate_safe_string
+    get_only_element_from_collection, strip_non_null_from_type, validate_safe_or_special_string
 )
 from ..ir_lowering_common.common import extract_folds_from_ir_blocks
 
@@ -176,7 +176,7 @@ class GremlinFoldedContextField(Expression):
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
         edge_direction, edge_name = self.fold_scope_location.get_first_folded_edge()
-        validate_safe_string(edge_name)
+        validate_safe_or_special_string(edge_name)
 
         inverse_direction_table = {
             'out': 'in',
@@ -185,10 +185,10 @@ class GremlinFoldedContextField(Expression):
         inverse_direction = inverse_direction_table[edge_direction]
 
         base_location_name, _ = self.fold_scope_location.base_location.get_location_name()
-        validate_safe_string(base_location_name)
+        validate_safe_or_special_string(base_location_name)
 
         _, field_name = self.fold_scope_location.get_location_name()
-        validate_safe_string(field_name)
+        validate_safe_or_special_string(field_name)
 
         if not self.folded_ir_blocks:
             # There is no filtering nor type coercions applied to this @fold scope.

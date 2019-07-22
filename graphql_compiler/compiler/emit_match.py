@@ -6,7 +6,7 @@ import six
 
 from .blocks import Filter, MarkLocation, QueryRoot, Recurse, Traverse
 from .expressions import TrueLiteral
-from .helpers import get_only_element_from_collection, validate_safe_string
+from .helpers import get_only_element_from_collection, validate_safe_or_special_string
 
 
 def _get_vertex_location_name(location):
@@ -111,10 +111,10 @@ def _represent_fold(fold_location, fold_ir_blocks):
     mark_name, _ = fold_location.get_location_name()
     base_location_name, _ = fold_location.base_location.get_location_name()
 
-    validate_safe_string(mark_name)
-    validate_safe_string(base_location_name)
-    validate_safe_string(edge_direction)
-    validate_safe_string(edge_name)
+    validate_safe_or_special_string(mark_name)
+    validate_safe_or_special_string(base_location_name)
+    validate_safe_or_special_string(edge_direction)
+    validate_safe_or_special_string(edge_name)
 
     template_data = {
         'mark_name': mark_name,
