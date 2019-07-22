@@ -1,11 +1,11 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-import re
 import string
 
 from graphql import build_ast_schema
 from graphql.language.ast import NamedType
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
+from graphql.utils.assert_valid_name import COMPILED_NAME_PATTERN
 import six
 
 from ..exceptions import GraphQLError
@@ -65,9 +65,6 @@ def check_schema_identifier_is_valid(identifier):
         )
 
 
-_graphql_type_name_pattern = re.compile(r'^[_a-zA-Z][_a-zA-Z0-9]*$')
-
-
 def check_type_name_is_valid(name):
     """Check if input is a valid, nonreserved GraphQL type name.
 
@@ -80,7 +77,7 @@ def check_type_name_is_valid(name):
     """
     if not isinstance(name, str):
         raise InvalidTypeNameError(u'Name "{}" is not a string.'.format(name))
-    if not _graphql_type_name_pattern.match(name):
+    if not COMPILED_NAME_PATTERN.match(name):
         raise InvalidTypeNameError(u'"{}" is not a valid GraphQL name.'.format(name))
     if name.startswith('__'):
         raise InvalidTypeNameError(u'"{}" starts with two underscores, which is reserved for '
