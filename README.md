@@ -1602,7 +1602,7 @@ would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`
 ### SchemaGraph 
 When building a GraphQL schema from the database metadata, we first build a `SchemaGraph` from 
 the metadata and then, from the `SchemaGraph`, build the GraphQL schema. The `SchemaGraph` is also 
-an encoding of the underlying database schema, but it has three main advantages that make it a 
+a representation of the underlying database schema, but it has three main advantages that make it a 
 more powerful schema introspection tool:
  1. It's able to store and expose a schema's index information. The interface for accessing index 
     information is provisional though and might change in the near future.
@@ -1640,12 +1640,12 @@ print(schema_graph.get_subclass_set('Animal'))
 print(schema_graph.get_vertex_schema_element_or_raise('Animal').out_connections)
 # {'Animal_Eats', 'Animal_FedAt', 'Animal_LivesIn'}
 
-# Get the vertex classes allowed as the tail vertex of an edge class.
-print(schema_graph.get_edge_schema_element_or_raise('Animal_Eats').in_connections)
+# Get the vertex classes allowed as the destination vertex of an edge class.
+print(schema_graph.get_edge_schema_element_or_raise('Animal_Eats').out_connections)
 # {'Fruit', 'Food'}
 
-# Get the superclass of all classes allowed as the tail vertex of an edge class.
-print(schema_graph.get_edge_schema_element_or_raise('Animal_Eats').base_in_connection)
+# Get the superclass of all classes allowed as the destination vertex of an edge class.
+print(schema_graph.get_edge_schema_element_or_raise('Animal_Eats').base_out_connection)
 # Food
 
 # Get the unique indexes defined on a class.
