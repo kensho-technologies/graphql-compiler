@@ -102,13 +102,17 @@ pipenv sync --dev
 ```
 to install the relevant dependencies.
 
-## Read the docs
+## Read the Docs
 
 We are currently in the process of moving most of our documentation to Read the Docs, a web utility 
 that makes it easy to view and present documentation. We first plan to get the Read the Docs 
 documentation up to date with the documentation present as of commit 
 d909919043c350fcdb93154341cbb9e5de507715 and then working on adding the documentation added since
 that commit. 
+
+Furthermore, every time someone adds a section to the Read the Docs, he or she must 
+remove the corresponding section from the markdown documentation in order to keep track of what is 
+left to add. 
 
 The relevant source code lives in: 
 ```
