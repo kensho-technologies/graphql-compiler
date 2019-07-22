@@ -161,12 +161,6 @@ def validate_safe_string(value, value_description='string'):
         raise GraphQLCompilationError(u'Encountered invalid {}: {}. It cannot start with a '
                                       u'digit.'.format(value_description, value))
 
-    # We add a separate error message for spaces to avoid any confusion.
-    if ' ' in value:
-        raise GraphQLCompilationError(u'Encountered a space character in {}: {}. It is not allowed '
-                                      u'to have any spaces.'
-                                      .format(value_description, value))
-
     disallowed_chars = set(value) - VARIABLE_ALLOWED_CHARS
     if disallowed_chars:
         raise GraphQLCompilationError(u'Encountered illegal characters {} in {}: {}. It is only '
