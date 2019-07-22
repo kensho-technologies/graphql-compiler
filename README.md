@@ -57,7 +57,7 @@ For a more detailed overview and getting started guide, please see
      * [\_x_count](#_x_count)
   * [The GraphQL schema](#the-graphql-schema)
   * [Query cost estimation](#query-cost-estimation)
-     * [Usage of query cost estimation](#usage-of-query-cost-estimation)
+     * [Example of query cost estimation](#example-of-query-cost-estimation)
      * [Statistics](#statistics)
      * [Required statistics](#required-statistics)
      * [Optional statistics](#optional-statistics)
@@ -1112,18 +1112,20 @@ However, the following rules of thumb are useful to keep in mind:
 
 ## Query cost estimation
 
+NOTE: this functionality is still experimental, and its interface and implementation may change.
+Please use at your own risk.
+
 Some GraphQL queries executed over a database may use a lot of memory and/or have a long execution
 time. In such cases, it's better to warn the user, and suggest they revise their query. So it's
 worthwhile to estimate a query's cost (in terms of time taken and memory used) using statistics
-without executing the query on the database.
+about the database without executing the query on the database.
 
 To this end, a prototypical version for cost estimation is included in
-`graphql_compiler/cost_estimation/`. As the current cost estimation functionality is still
-experimental, the interface may change. Please use at your own risk.
+`graphql_compiler/cost_estimation/`. 
 
 Since the time and memory required for query execution varies much depending on the database the
-query is being executed on, as a rough proxy, the cost estimator estimates the query's cardinality
-(the number of rows in the result).
+query is being executed on, the cost estimator estimates the query's cardinality
+(i.e. the number of rows in the result) as a rough proxy for time/memory usage. 
 
 To get estimates for the number of result rows for a given query and statistics object, use the
 `estimate_query_result_cardinality()` function in
@@ -1140,34 +1142,47 @@ from graphql_compiler.cost_estimation.statistics import LocalStatistics
 # schema_graph = ...obtain_schema_graph_for_animals...()
 
 # This is the query and parameters that the estimator will produce a cardinality estimate for.
-graphql_query = """
+graphql_query = '''
 {
     Animal {
         name @filter(op_name: "in_collection", value: ["$name_params"])
-        out_Animal_FedAt {
-            name @output(out_name: "feeding_name")
-            uuid @output(out_name: "feeding_id")
+        out_Animal_ImportantEvent {
+            ... on Event {
+                name @output(out_name: "event_name")
+                uuid @output(out_name: "event_id")
+            }
         }
     }
 }
-"""
-params = {'name_params': ['Alice', 'Bob', 'Charlie']}
+'''
+params = {'name_params': ['Albert', 'Betty', 'Charlie']}
 
-class_count = {
-    'Animal': 4,
-    'Animal_FedAt': 20,
-    'FeedingEvent': 10,
+# This dictionary describes the number of Animal vertices, Animal_ImportantEvent
+# edges, and Event vertices.
+
+class_counts = {
+    'Animal': 6,
+    'Animal_ImportantEvent': 20,
+    'Event': 8,
 }
 
-statistics_object = LocalStatistics(class_count)
+# This dictionary describes the number of Animal_ImportantEvent edges connecting Animal and Event
+# vertices.
+vertex_edge_vertex_counts = {
+    ('Animal', 'Animal_ImportantEvent', 'Event'): 10,
+}
+
+# We include statistics for class_counts and vertex_edge_vertex_counts.
+statistics_object = LocalStatistics(class_counts, 
+                                    vertex_edge_vertex_counts=vertex_edge_vertex_counts)
 
 print(estimate_query_result_cardinality(schema_graph, statistics_object, graphql_query, params))
-# Result will be a Float with value 15.0.
+# The estimator expects approximately 5.0 rows in the result.
 ```
 
 As the current cost estimator is still an experimental release, this example's estimate value may
 change. For details on how this estimate was generated, a description of the current
-implementation's mechanism is in `graphql_compiler/cost_estimation/__init__.py`.
+implementation is in `graphql_compiler/cost_estimation/__init__.py`.
 
 ### Statistics
 
@@ -1186,23 +1201,29 @@ estimation. The other two are optional, as they can be roughly approximated.
 
 - `get_class_count(class)`: 
   Given the name of a vertex or edge class, return the number of objects of that type. If the given
-  class is an interface, the objects that inherit from this class should also be included. So if
-  `get_class_count('Entity')` is called, it should also include the number of `Animal` objects,
-  'Food' objects, etc.
+  class is an interface, the objects that inherit from this class should also be included. 
+
+  For example, if `get_class_count('Entity')` is called, and `Animal` and `Food` inherit from
+  `Entity`, the count should also include the number of `Animal` objects, and `Food` objects.
 
 ### Optional statistics
 
-- `get_vertex_edge_vertex_count(source vertex class, edge class, target vertex class)`:
-  Given the names of two vertex classes and an edge class, return the number of edges of type `edge
-  class` whose source endpoint is of type `source vertex class`, and the destination endpoint is of
-  type `target vertex class`. For example, `get_vertex_edge_vertex_count('Animal', 'Entity_Related',
-  'BirthEvent')` should provide the number of `Entity_Related` edges that start from a vertex of
-  type 'Animal' and end at a vertex of type `BirthEvent`.
-- `get_distinct_field_values_count(vertex class, field name)`:
-  Given a vertex class, and a property field on that vertex class, return how many distinct values  
-  the given property field has. E.g. If `get_distinct_field_values_count('Animal', 'name')` is
-  called, and there are 3 `Animals`, two named 'Alice', and one called 'Bob', then the result should
-  be 2, as there are 2 distinct values for an `Animal`'s name.
+- `get_vertex_edge_vertex_count(source_vertex_class, edge_class, target_vertex_class)`:
+  Given the names of two vertex classes and an edge class, return the number of edges of type
+  `edge_class` whose source endpoint is of type `source_vertex_class`, and the destination endpoint
+  is of type `target_vertex_class`. 
+
+  For example, `get_vertex_edge_vertex_count('Animal',
+  'Entity_Related', 'BirthEvent')` should provide the number of `Entity_Related` edges that start
+  from a vertex of type `Animal` and end at a vertex of type `BirthEvent`.
+
+- `get_distinct_field_values_count(vertex_class, field_name)`:
+  Given the name of a vertex class and a property field on that vertex class, return how many
+  distinct values the given property field has. 
+
+  For example, if `get_distinct_field_values_count('Animal', 'name')` is called, and there are 3
+  `Animals`, two named `Alice`, and one called `Bob`, then the result should be 2, as there are 2
+  distinct values for an `Animal`'s name.
 
 ## Execution model
 
