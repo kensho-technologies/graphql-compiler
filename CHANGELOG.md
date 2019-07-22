@@ -4,7 +4,7 @@
 
 ## v1.11.0
 
-- Release automatic GraphQL schema generation from OrientDB schema metadata. [#204](https://github.com/kensho-technologies/graphql-compiler/pull/204/files)
+- Release automatic GraphQL schema generation from OrientDB schema metadata. [#204](https://github.com/kensho-technologies/graphql-compiler/pull/204)
 - Release the SchemaGraph, a utility class designed for easy schema introspection. [#292](https://github.com/kensho-technologies/graphql-compiler/pull/292)
 - Release `not_contains` and `not_in_collection` filter operations. [#349](https://github.com/kensho-technologies/graphql-compiler/pull/349) [#350](https://github.com/kensho-technologies/graphql-compiler/pull/350)
 - Allow out-of-order `@tag` and `@filter` when in the same scope. [#351](https://github.com/kensho-technologies/graphql-compiler/pull/351)
