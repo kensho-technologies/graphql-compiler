@@ -54,15 +54,15 @@ def use_all_backends(except_backends=()):
                          test_backend.py to exclude in testing.
 
     Returns:
-        function that expands tests. parameterized.expand() takes in a list of test parameters (in
-        this case, backend strings specifying which backends to use for the test) and
-        auto-generates a test function for each backend. For more information see
-        https://github.com/wolever/parameterized
+        function that expands tests for each non-excluded backend.
     """
     non_excluded_backends = [
         backend for backend in all_backends_list
         if backend not in except_backends
     ]
+    # parameterized.expand() takes in a list of test parameters (in this case, backend strings
+    # specifying which backends to use for the test) and auto-generates a test function for each
+    # backend. For more information see https://github.com/wolever/parameterized
     return parameterized.expand(non_excluded_backends)
 
 
