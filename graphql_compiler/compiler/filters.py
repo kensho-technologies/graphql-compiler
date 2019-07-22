@@ -102,6 +102,8 @@ def _represent_argument(directive_location, context, argument, inferred_type):
     argument_name = argument[1:]
 
     if is_runtime_parameter(argument):
+        # We want to validate the argument name after we validated that it is not a literal argument
+        # in order to possibly raise an error with a better explanation.
         validate_runtime_argument_name(argument_name)
         existing_type = context['inputs'].get(argument_name, inferred_type)
         if not inferred_type.is_same_type(existing_type):
@@ -113,6 +115,8 @@ def _represent_argument(directive_location, context, argument, inferred_type):
 
         return (expressions.Variable(argument, inferred_type), None)
     elif is_tagged_parameter(argument):
+        # We want to validate the argument name after we validated that it is not a literal argument
+        # in order to possibly raise an error with a better explanation.
         validate_tagged_argument_name(argument_name)
         tag_info = context['metadata'].get_tag_info(argument_name)
         if tag_info is None:
@@ -154,7 +158,14 @@ def _represent_argument(directive_location, context, argument, inferred_type):
         return (representation, non_existence_expression)
     else:
         # If we want to support literal arguments, add them here.
-        raise GraphQLCompilationError(u'Non-argument type found: {}'.format(argument))
+        raise GraphQLCompilationError(u'Invalid argument found: {}. The compiler supports only '
+                                      u'runtime arguments, which must begin with the $ character, '
+                                      u'and tagged arguments, which must begin with the % '
+                                      u'character. Literal arguments, (e.g. 10, \'Kensho '
+                                      u'Technologies\', \'2018-01-01\'), are currently not '
+                                      u'supported. Please use runtime arguments and pass in the '
+                                      u'corresponding literal values as query parameters.'
+                                      .format(argument))
 
 
 @scalar_leaf_only(u'comparison operator')
