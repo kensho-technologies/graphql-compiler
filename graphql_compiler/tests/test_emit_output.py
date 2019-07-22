@@ -4,8 +4,9 @@ import unittest
 from graphql import GraphQLString
 
 from ..compiler import emit_gremlin, emit_match
-from ..compiler.blocks import Backtrack, ConstructResult, Filter, GlobalOperationsStart, \
-    MarkLocation, QueryRoot, Traverse
+from ..compiler.blocks import (
+    Backtrack, ConstructResult, Filter, GlobalOperationsStart, MarkLocation, QueryRoot, Traverse
+)
 from ..compiler.expressions import (
     BinaryComposition, ContextField, LocalField, NullLiteral, OutputContextField,
     TernaryConditional, Variable
