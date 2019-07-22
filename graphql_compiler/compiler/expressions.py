@@ -422,7 +422,7 @@ class ContextField(Expression):
         mark_name, field_name = self.location.get_location_name()
 
         if field_name is not None:
-            validate_safe_or_special_string(field_name)
+            validate_safe_string(field_name)
             template = u'{mark_name}.{field_name}'
         else:
             template = u'{mark_name}'
@@ -525,7 +525,7 @@ class OutputContextField(Expression):
 
         mark_name, field_name = self.location.get_location_name()
         validate_safe_string(mark_name)
-        validate_safe_or_special_string(field_name)
+        validate_safe_string(field_name)
 
         template = u'{mark_name}.{field_name}'
 
