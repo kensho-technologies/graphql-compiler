@@ -289,7 +289,7 @@ class EmitGremlinTests(unittest.TestCase):
             .optional('Animal___1')
             .as('Animal___2')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                bornat_name: ((m.Animal__out_Animal_BornAt___1 != null) ? 
+                bornat_name: ((m.Animal__out_Animal_BornAt___1 != null) ?
                 m.Animal__out_Animal_BornAt___1.name : null)
             ])}
         '''
