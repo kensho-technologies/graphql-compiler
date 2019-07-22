@@ -1112,21 +1112,62 @@ However, the following rules of thumb are useful to keep in mind:
 
 ## Query cost estimation
 
-Due to GraphQL's easy-to-use nature, queries that use a lot of memory and/or have a long execution
-time can happen often. For better user-friendliness, it's worthwhile to estimate a query's cost (in
-terms of time taken and memory used) using statistics without executing the query on the database.
-Since the time and memory required for query execution varies depending on the underlying database,
-as a rough proxy, the cost estimator estimates the number of result rows for the given query i.e.
-the query's cardinality.
+Some GraphQL queries executed over a database may use a lot of memory and/or have a long execution
+time. In such cases, it's better to warn the user, and suggest they revise their query. So it's
+worthwhile to estimate a query's cost (in terms of time taken and memory used) using statistics
+without executing the query on the database.
 
-These estimates can be used to improve user-friendliness for query execution.
-For example, the estimates can be used to warn users about a query that asks for too many results.
+To this end, a prototypical version for cost estimation is included in
+`graphql_compiler/cost_estimation/`. As the current cost estimation functionality is still
+experimental, the interface may change. Please use at your own risk.
 
-### Usage of query cost estimation
+Since the time and memory required for query execution varies much depending on the database the
+query is being executed on, as a rough proxy, the cost estimator estimates the query's cardinality
+(the number of rows in the result).
 
 To get estimates for the number of result rows for a given query and statistics object, use the
 `estimate_query_result_cardinality()` function in
 `graphql_compiler/cost_estimation/cardinality_estimator.py`.
+
+### Example of query cost estimation
+
+```python
+from graphql_compiler.cost_estimation.cardinality_estimator import estimate_query_result_cardinality
+from graphql_compiler.cost_estimation.statistics import LocalStatistics
+
+# The estimator needs a SchemaGraph for estimate generation. To get the SchemaGraph for the
+# 'Animals' database, check the 'SchemaGraph' section of this README.
+# schema_graph = ...obtain_schema_graph_for_animals...()
+
+# This is the query and parameters that the estimator will produce a cardinality estimate for.
+graphql_query = """
+{
+    Animal {
+        name @filter(op_name: "in_collection", value: ["$name_params"])
+        out_Animal_FedAt {
+            name @output(out_name: "feeding_name")
+            uuid @output(out_name: "feeding_id")
+        }
+    }
+}
+"""
+params = {'name_params': ['Alice', 'Bob', 'Charlie']}
+
+class_count = {
+    'Animal': 4,
+    'Animal_FedAt': 20,
+    'FeedingEvent': 10,
+}
+
+statistics_object = LocalStatistics(class_count)
+
+print(estimate_query_result_cardinality(schema_graph, statistics_object, graphql_query, params))
+# Result will be a Float with value 15.0.
+```
+
+As the current cost estimator is still an experimental release, this example's estimate value may
+change. For details on how this estimate was generated, a description of the current
+implementation's mechanism is in `graphql_compiler/cost_estimation/__init__.py`.
 
 ### Statistics
 
@@ -1134,7 +1175,7 @@ Before estimates can be generated, you need to provide statistics about the grap
 applicable classes are in `graphql_compiler/cost_estimation/statistics.py`. Currently, two classes
 are implemented:
 - `Statistics`, an abstract base class that describes the interface the cost estimator expects for
-  statistics. This allows users to create their own implementations for the statistic class.
+  statistics. This allows users to freely create their own implementations of statistics.
 - `LocalStatistics`, an implementation of `Statistics`, where the statistics are provided during
   initialization, and can't be modified thereafter.
 
@@ -1146,7 +1187,7 @@ estimation. The other two are optional, as they can be roughly approximated.
 - `get_class_count(class)`: 
   Given the name of a vertex or edge class, return the number of objects of that type. If the given
   class is an interface, the objects that inherit from this class should also be included. So if
-  `get_class_count('Entity')` is called, it should also include the number of 'Animal' objects,
+  `get_class_count('Entity')` is called, it should also include the number of `Animal` objects,
   'Food' objects, etc.
 
 ### Optional statistics
@@ -1155,13 +1196,13 @@ estimation. The other two are optional, as they can be roughly approximated.
   Given the names of two vertex classes and an edge class, return the number of edges of type `edge
   class` whose source endpoint is of type `source vertex class`, and the destination endpoint is of
   type `target vertex class`. For example, `get_vertex_edge_vertex_count('Animal', 'Entity_Related',
-  'BirthEvent')` should provide the number of 'Entity_Related' edges that start from a vertex of
-  type 'Animal' and end at a vertex of type 'BirthEvent'.
+  'BirthEvent')` should provide the number of `Entity_Related` edges that start from a vertex of
+  type 'Animal' and end at a vertex of type `BirthEvent`.
 - `get_distinct_field_values_count(vertex class, field name)`:
   Given a vertex class, and a property field on that vertex class, return how many distinct values  
   the given property field has. E.g. If `get_distinct_field_values_count('Animal', 'name')` is
-  called, and there are 3 animals, two named 'Alice', and one called 'Bob', then the result should
-  be 2, as there are 2 distinct values for an Animal's name.
+  called, and there are 3 `Animals`, two named 'Alice', and one called 'Bob', then the result should
+  be 2, as there are 2 distinct values for an `Animal`'s name.
 
 ## Execution model
 
