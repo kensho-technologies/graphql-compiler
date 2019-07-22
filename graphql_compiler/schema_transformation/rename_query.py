@@ -10,13 +10,13 @@ from ..exceptions import GraphQLValidationError
 def rename_query(ast, renamings):
     """Translate names of types and root vertex fields using renamings.
 
-    Besides root vertex fields (fields of the query type), no field will be renamed.
+    Besides root vertex fields (fields of the query type), no other fields will be renamed.
 
     Args:
         ast: Document, representing a valid query. It is assumed to have passed GraphQL's
-             builtin validation -- validate(schema, ast), in that it has the structure of a
-             valid query, does not reference non-existent types or fields, and passes type
-             checks. The ast is not modified by this function
+             builtin validation -- validate(schema, ast) in graphql/validation/validation.py --
+             in that it has the structure of a valid query, does not reference non-existent
+             types or fields, and passes type checks. The ast is not modified by this function
         renamings: Dict[str, str], mapping original type/root vertex field names to renamed
                    names. Names not appearing in the dict will be unchanged
 
@@ -27,10 +27,6 @@ def rename_query(ast, renamings):
         - GraphQLValidationError if the ast does not have the expected form; in particular,
           if the AST contains Fragments, or if it contains an InlineFragment at the root level
     """
-    # NOTE: There is a validation section in graphql-core that takes in a schema and a
-    # query ast, and checks whether the query is valid -- for example, type names are known in
-    # the schema, all leaf nodes are scalars, arguments are of the correct type, etc.
-    # We assume this validation step has been done.
     if len(ast.definitions) > 1:  # includes either multiple queries, or fragment definitions
         raise GraphQLValidationError(
             u'Only one query may be included, and fragments are not allowed.'
