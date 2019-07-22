@@ -1,5 +1,4 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-import re
 import string
 
 from graphql import build_ast_schema
