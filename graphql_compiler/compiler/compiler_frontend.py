@@ -311,7 +311,6 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
         if context['metadata'].get_output_info(output_name):
             raise GraphQLCompilationError(u'Cannot reuse output name: '
                                           u'{}, {}'.format(output_name, context))
-        validate_safe_string(output_name)
         validate_output_name(output_name)
 
         graphql_type = strip_non_null_from_type(current_schema_type)
