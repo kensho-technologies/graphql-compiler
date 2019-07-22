@@ -162,17 +162,44 @@ def validate_safe_string(value):
     if not set(value).issubset(VARIABLE_ALLOWED_CHARS) and \
             value not in legal_strings_with_special_chars:
         raise GraphQLCompilationError(u'Encountered illegal characters in string: {}. '
-                                      u'In general, strings are only allowed to have underscores, '
-                                      u'digits and, upper and lower case alphabetical letters.'
                                       .format(value))
 
 
-def validate_output_name(value):
+def _validate_safe_argument_or_output_name(name, name_description):
+    """Ensure that the provided argument or output name does not have illegal characters."""
+    if not name:
+        raise GraphQLCompilationError(u'Empty {} names are not allowed!'
+                                      .format(name_description))
+
+    if name[0] in string.digits:
+        raise GraphQLCompilationError(u'Encountered invalid {} name: {}. It cannot start with a '
+                                      u'digit.'
+                                      .format(name_description, name))
+
+    if not set(name).issubset(VARIABLE_ALLOWED_CHARS):
+        raise GraphQLCompilationError(u'Encountered illegal characters in {} name: {}. It is only '
+                                      u'allowed to have upper and lower case letters, '
+                                      u'digits and underscores. '
+                                      .format(name_description, name))
+
+
+def validate_runtime_argument_name(name):
+    """Ensure that the provided string is valid for use as a runtime argument name."""
+    _validate_safe_argument_or_output_name(name, 'runtime argument')
+
+
+def validate_tagged_argument_name(name):
+    """Ensure that provided string is valid as a tagged argument name"""
+    _validate_safe_argument_or_output_name(name, 'tagged argument')
+
+
+def validate_output_name(name):
     """Ensure that the provided string is valid for use as an output name."""
     internal_name_prefix = u'___'
-    if value.startswith(internal_name_prefix):
+    if name.startswith(internal_name_prefix):
         raise GraphQLCompilationError(
             u'The prefix "___" (three underscores) for output names is reserved by the compiler.')
+    _validate_safe_argument_or_output_name(name, 'output')
 
 
 def validate_edge_direction(edge_direction):
