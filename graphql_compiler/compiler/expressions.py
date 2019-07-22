@@ -335,7 +335,7 @@ class GlobalContextField(Expression):
 
         mark_name, field_name = self.location.get_location_name()
         validate_safe_string(mark_name)
-        validate_safe_string(field_name)
+        validate_safe_or_special_string(field_name)
 
         return u'%s.%s' % (mark_name, field_name)
 
@@ -393,7 +393,7 @@ class ContextField(Expression):
         if field_name is None:
             return u'$matched.%s' % (mark_name,)
         else:
-            validate_safe_string(field_name)
+            validate_safe_or_special_string(field_name)
             return u'$matched.%s.%s' % (mark_name, field_name)
 
     def to_gremlin(self):
@@ -403,7 +403,7 @@ class ContextField(Expression):
         mark_name, field_name = self.location.get_location_name()
 
         if field_name is not None:
-            validate_safe_string(field_name)
+            validate_safe_or_special_string(field_name)
             if '@' in field_name:
                 template = u'm.{mark_name}[\'{field_name}\']'
             else:
@@ -422,7 +422,7 @@ class ContextField(Expression):
         mark_name, field_name = self.location.get_location_name()
 
         if field_name is not None:
-            validate_safe_string(field_name)
+            validate_safe_or_special_string(field_name)
             template = u'{mark_name}.{field_name}'
         else:
             template = u'{mark_name}'
@@ -484,7 +484,7 @@ class OutputContextField(Expression):
 
         mark_name, field_name = self.location.get_location_name()
         validate_safe_string(mark_name)
-        validate_safe_string(field_name)
+        validate_safe_or_special_string(field_name)
 
         stripped_field_type = strip_non_null_from_type(self.field_type)
         if GraphQLDate.is_same_type(stripped_field_type):
@@ -500,7 +500,7 @@ class OutputContextField(Expression):
 
         mark_name, field_name = self.location.get_location_name()
         validate_safe_string(mark_name)
-        validate_safe_string(field_name)
+        validate_safe_or_special_string(field_name)
 
         if '@' in field_name:
             template = u'm.{mark_name}[\'{field_name}\']'
@@ -525,7 +525,7 @@ class OutputContextField(Expression):
 
         mark_name, field_name = self.location.get_location_name()
         validate_safe_string(mark_name)
-        validate_safe_string(field_name)
+        validate_safe_or_special_string(field_name)
 
         template = u'{mark_name}.{field_name}'
 
