@@ -1,7 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import unittest
 
-from graphql import GraphQLObjectType, GraphQLString
+from graphql import GraphQLString
 
 from ..compiler import emit_cypher, emit_gremlin, emit_match
 from ..compiler.blocks import (
