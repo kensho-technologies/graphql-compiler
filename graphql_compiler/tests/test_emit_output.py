@@ -296,6 +296,50 @@ class EmitGremlinTests(unittest.TestCase):
         received_match = emit_gremlin.emit_code_from_ir(ir_blocks, None)
         compare_gremlin(self, expected_gremlin, received_match)
 
+    def test_datetime_variable_representation(self):
+        # corresponds to:
+        # graphql_string = '''{
+        #     BirthEvent {
+        #         name @output(out_name: "name")
+        #         event_date @filter(op_name: "between", value: ["$start", "$end"])
+        #     }
+        # }'''
+        base_location = Location(('BirthEvent',))
+        base_name_location = base_location.navigate_to_field('name')
+
+        ir_blocks = [
+            QueryRoot({'BirthEvent'}),
+            MarkLocation(base_location),
+            Filter(
+                BinaryComposition(
+                    u'&&',
+                    BinaryComposition(u'>=',
+                                      LocalField('event_date', GraphQLDateTime),
+                                      Variable('$start', GraphQLDateTime)),
+                    BinaryComposition(u'<=',
+                                      LocalField('event_date', GraphQLDateTime),
+                                      Variable('$end', GraphQLDateTime))
+                )
+            ),
+            GlobalOperationsStart(),
+            ConstructResult({
+                'name': OutputContextField(base_name_location, GraphQLString)
+            }),
+        ]
+
+        expected_gremlin = '''
+             g.V('@class', 'BirthEvent')
+            .as('BirthEvent___1')
+            .filter{it, m -> ((it.event_date >= Date.parse("yyyy-MM-dd'T'HH:mm:ssX", $start)) &&
+                              (it.event_date <= Date.parse("yyyy-MM-dd'T'HH:mm:ssX", $end)))}
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.BirthEvent___1.name
+            ])}
+        '''
+
+        received_gremlin = emit_gremlin.emit_code_from_ir(ir_blocks, None)
+        compare_gremlin(self, expected_gremlin, received_gremlin)
+
     def test_datetime_output_representation(self):
         # corresponds to:
         # graphql_string = '''{
