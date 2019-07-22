@@ -37,7 +37,7 @@ class EmitMatchTests(unittest.TestCase):
         ir_blocks = [
             QueryRoot({'Animal'}),
             MarkLocation(base_location),
-            GlobalOperationsStart(),  # necessary for Cypher. Filter/output blocks come after this.
+            GlobalOperationsStart(),
             ConstructResult({'animal_name': OutputContextField(base_name_location, GraphQLString)}),
         ]
         match_query = convert_to_match_query(ir_blocks)
