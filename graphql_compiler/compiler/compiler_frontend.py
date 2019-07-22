@@ -91,7 +91,7 @@ from .helpers import (
     FoldScopeLocation, Location, get_edge_direction_and_name, get_field_type_from_schema,
     get_parameter_name, get_uniquely_named_objects_by_name, get_vertex_field_type, invert_dict,
     is_tagged_parameter, strip_non_null_from_type, validate_output_name,
-    validate_safe_or_special_string
+    validate_safe_string
 )
 from .metadata import LocationInfo, OutputInfo, QueryMetadataTable, RecurseInfo, TagInfo
 
@@ -271,7 +271,7 @@ def _process_tag_directive(context, current_schema_type, location, tag_directive
     tag_name = tag_directive.arguments[0].value.value
     if context['metadata'].get_tag_info(tag_name) is not None:
         raise GraphQLCompilationError(u'Cannot reuse tag name: {}'.format(tag_name))
-    validate_safe_or_special_string(tag_name)
+    validate_safe_string(tag_name)
     context['metadata'].record_tag_info(tag_name, TagInfo(
         location=location,
         optional=is_in_optional_scope(context),

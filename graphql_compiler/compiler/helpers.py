@@ -89,7 +89,7 @@ def get_edge_direction_and_name(vertex_field_name):
     else:
         raise AssertionError(u'Unreachable condition reached:', vertex_field_name)
 
-    validate_safe_or_special_string(edge_name)
+    validate_safe_string(edge_name)
 
     return edge_direction, edge_name
 
@@ -167,9 +167,9 @@ def validate_safe_string(value, value_description='string'):
                                       u'to have any spaces.'
                                       .format(value_description, value))
 
-    disallowed_chars = frozenset(value) - VARIABLE_ALLOWED_CHARS
+    disallowed_chars = set(value) - VARIABLE_ALLOWED_CHARS
     if disallowed_chars:
-        raise GraphQLCompilationError(u'Encountered illegal characters "{}" in {}: {}. It is only '
+        raise GraphQLCompilationError(u'Encountered illegal characters {} in {}: {}. It is only '
                                       u'allowed to have upper and lower case letters, '
                                       u'digits and underscores.'
                                       .format(disallowed_chars, value_description, value))

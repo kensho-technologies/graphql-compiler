@@ -6,7 +6,7 @@ import six
 from .compiler_entities import BasicBlock, Expression, MarkerBlock
 from .helpers import (
     FoldScopeLocation, ensure_unicode_string, safe_quoted_string, validate_edge_direction,
-    validate_marked_location, validate_safe_or_special_string
+    validate_marked_location, validate_safe_string
 )
 
 
@@ -39,7 +39,7 @@ class QueryRoot(BasicBlock):
                 type(self.start_class).__name__, self.start_class))
 
         for cls in self.start_class:
-            validate_safe_or_special_string(cls)
+            validate_safe_string(cls)
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this block."""
@@ -84,7 +84,7 @@ class CoerceType(BasicBlock):
                 type(self.target_class).__name__, self.target_class))
 
         for cls in self.target_class:
-            validate_safe_or_special_string(cls)
+            validate_safe_string(cls)
 
     def to_gremlin(self):
         """Not implemented, should not be used."""
@@ -102,7 +102,7 @@ class ConstructResult(BasicBlock):
 
         Args:
             fields: dict, variable name string -> Expression
-                    see rules for variable names in validate_safe_or_special_string().
+                    see rules for variable names in validate_safe_string().
 
         Returns:
             new ConstructResult object
@@ -124,7 +124,7 @@ class ConstructResult(BasicBlock):
                 type(self.fields).__name__, self.fields))
 
         for key, value in six.iteritems(self.fields):
-            validate_safe_or_special_string(key)
+            validate_safe_string(key)
             if not isinstance(value, Expression):
                 raise TypeError(
                     u'Expected Expression values in the fields dict, got: '
@@ -230,7 +230,7 @@ class Traverse(BasicBlock):
 
         Args:
             direction: string, 'in' or 'out'
-            edge_name: string obeying variable name rules (see validate_safe_or_special_string).
+            edge_name: string obeying variable name rules (see validate_safe_string).
             optional: optional bool, specifying whether the traversal to the given location
                       is optional (i.e. non-filtering) or mandatory (filtering).
 
@@ -253,7 +253,7 @@ class Traverse(BasicBlock):
                 type(self.direction).__name__, self.direction))
 
         validate_edge_direction(self.direction)
-        validate_safe_or_special_string(self.edge_name)
+        validate_safe_string(self.edge_name)
 
         if not isinstance(self.optional, bool):
             raise TypeError(u'Expected bool optional, got: {} {}'.format(
@@ -315,7 +315,7 @@ class Recurse(BasicBlock):
 
         Args:
             direction: string, 'in' or 'out'.
-            edge_name: string obeying variable name rules (see validate_safe_or_special_string).
+            edge_name: string obeying variable name rules (see validate_safe_string).
             depth: int, always greater than or equal to 1.
 
         Returns:
@@ -333,7 +333,7 @@ class Recurse(BasicBlock):
     def validate(self):
         """Ensure that the Traverse block is valid."""
         validate_edge_direction(self.direction)
-        validate_safe_or_special_string(self.edge_name)
+        validate_safe_string(self.edge_name)
 
         if not isinstance(self.within_optional_scope, bool):
             raise TypeError(u'Expected bool within_optional_scope, got: {} '

@@ -8,7 +8,7 @@ from .compiler_entities import Expression
 from .helpers import (
     STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
     ensure_unicode_string, is_graphql_type, safe_quoted_string, strip_non_null_from_type,
-    validate_safe_or_special_string
+    validate_safe_string, validate_safe_or_special_string
 )
 
 
@@ -141,7 +141,7 @@ class Variable(Expression):
 
         Args:
             variable_name: string, should start with '$' and then obey variable naming rules
-                           (see validate_safe_or_special_string())
+                           (see validate_safe_string())
             inferred_type: GraphQL type object, specifying the inferred type of the variable
 
         Returns:
@@ -164,7 +164,7 @@ class Variable(Expression):
             raise GraphQLCompilationError(u'Cannot use reserved MATCH keyword {} as variable '
                                           u'name!'.format(self.variable_name))
 
-        validate_safe_or_special_string(self.variable_name[1:])
+        validate_safe_string(self.variable_name[1:])
 
         if not is_graphql_type(self.inferred_type):
             raise ValueError(u'Invalid value of "inferred_type": {}'.format(self.inferred_type))
@@ -331,7 +331,7 @@ class GlobalContextField(Expression):
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
-        validate_safe_or_special_string(mark_name)
+        validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
 
         return u'%s.%s' % (mark_name, field_name)
@@ -385,7 +385,7 @@ class ContextField(Expression):
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
-        validate_safe_or_special_string(mark_name)
+        validate_safe_string(mark_name)
 
         if field_name is None:
             return u'$matched.%s' % (mark_name,)
@@ -408,7 +408,7 @@ class ContextField(Expression):
         else:
             template = u'm.{mark_name}'
 
-        validate_safe_or_special_string(mark_name)
+        validate_safe_string(mark_name)
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
@@ -424,7 +424,7 @@ class ContextField(Expression):
         else:
             template = u'{mark_name}'
 
-        validate_safe_or_special_string(mark_name)
+        validate_safe_string(mark_name)
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
@@ -480,7 +480,7 @@ class OutputContextField(Expression):
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
-        validate_safe_or_special_string(mark_name)
+        validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
 
         stripped_field_type = strip_non_null_from_type(self.field_type)
@@ -496,7 +496,7 @@ class OutputContextField(Expression):
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
-        validate_safe_or_special_string(mark_name)
+        validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
 
         if '@' in field_name:
@@ -521,7 +521,7 @@ class OutputContextField(Expression):
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
-        validate_safe_or_special_string(mark_name)
+        validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
 
         template = u'{mark_name}.{field_name}'
@@ -595,7 +595,7 @@ class FoldedContextField(Expression):
         self.validate()
 
         mark_name, field_name = self.fold_scope_location.get_location_name()
-        validate_safe_or_special_string(mark_name)
+        validate_safe_string(mark_name)
 
         template = u'$%(mark_name)s.%(field_name)s'
         template_data = {
@@ -675,7 +675,7 @@ class FoldCountContextField(Expression):
         self.validate()
 
         mark_name, _ = self.fold_scope_location.get_location_name()
-        validate_safe_or_special_string(mark_name)
+        validate_safe_string(mark_name)
 
         template = u'$%(mark_name)s.size()'
         template_data = {

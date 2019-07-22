@@ -8,7 +8,7 @@ from ..blocks import (
 from ..expressions import (
     BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, NullLiteral, TrueLiteral
 )
-from ..helpers import validate_safe_or_special_string
+from ..helpers import validate_safe_string
 
 
 def merge_consecutive_filter_clauses(ir_blocks):
@@ -44,7 +44,7 @@ class OutputContextVertex(ContextField):
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
-        validate_safe_or_special_string(mark_name)
+        validate_safe_string(mark_name)
 
         if field_name is not None:
             raise AssertionError(u'Vertex location has non-None field_name: '
