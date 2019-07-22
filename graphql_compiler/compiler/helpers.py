@@ -155,13 +155,11 @@ def validate_safe_or_special_string(value, value_description='string'):
 def validate_safe_string(value, value_description='string'):
     """Ensure that the provided string not have illegal characters."""
     if not value:
-        raise GraphQLCompilationError(u'Empty {}s are not allowed!'
-                                      .format(value_description))
+        raise GraphQLCompilationError(u'Empty {}s are not allowed!'.format(value_description))
 
     if value[0] in string.digits:
         raise GraphQLCompilationError(u'Encountered invalid {}: {}. It cannot start with a '
-                                      u'digit.'
-                                      .format(value_description, value))
+                                      u'digit.'.format(value_description, value))
 
     if not set(value).issubset(VARIABLE_ALLOWED_CHARS):
         raise GraphQLCompilationError(u'Encountered illegal characters in {}: {}. It is only '
@@ -176,7 +174,7 @@ def validate_runtime_argument_name(name):
 
 
 def validate_tagged_argument_name(name):
-    """Ensure that provided string is valid as a tagged argument name"""
+    """Ensure that provided string is valid for use as a tagged argument name"""
     validate_safe_string(name, 'tagged argument name')
 
 
