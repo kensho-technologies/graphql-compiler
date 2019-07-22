@@ -27,6 +27,15 @@ MATCH_BACKENDS = {
     test_backend.ORIENTDB,
 }
 
+# Split Neo4j and RedisGraph because RedisGraph doesn't support all Neo4j features.
+NEO4J_BACKENDS = {
+    test_backend.NEO4J,
+}
+
+REDISGRAPH_BACKENDS = {
+    test_backend.REDISGRAPH,
+}
+
 SQL_BACKEND_TO_CONNECTION_STRING = {
     test_backend.POSTGRES:
         u'postgresql://postgres:{password}@localhost:5432'.format(password=DEFAULT_ROOT_PASSWORD),
