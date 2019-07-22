@@ -4,7 +4,8 @@ import unittest
 from graphql import GraphQLString
 
 from ..compiler import emit_gremlin, emit_match
-from ..compiler.blocks import Backtrack, ConstructResult, Filter, MarkLocation, QueryRoot, Traverse
+from ..compiler.blocks import Backtrack, ConstructResult, Filter, GlobalOperationsStart, \
+    MarkLocation, QueryRoot, Traverse
 from ..compiler.expressions import (
     BinaryComposition, ContextField, LocalField, NullLiteral, OutputContextField,
     TernaryConditional, Variable
@@ -29,6 +30,7 @@ class EmitMatchTests(unittest.TestCase):
         ir_blocks = [
             QueryRoot({'Foo'}),
             MarkLocation(base_location),
+            GlobalOperationsStart(),
             ConstructResult({
                 'foo_name': OutputContextField(base_name_location, GraphQLString),
             }),
@@ -66,6 +68,7 @@ class EmitMatchTests(unittest.TestCase):
 
             QueryRoot({'Foo'}),
             MarkLocation(base_location),
+            GlobalOperationsStart(),
             ConstructResult({
                 'foo_name': OutputContextField(base_name_location, GraphQLString),
             }),
@@ -110,6 +113,7 @@ class EmitMatchTests(unittest.TestCase):
                 )
             ),
             MarkLocation(base_location),
+            GlobalOperationsStart(),
             ConstructResult({
                 'name': OutputContextField(base_name_location, GraphQLString)
             }),
@@ -141,6 +145,7 @@ class EmitMatchTests(unittest.TestCase):
         ir_blocks = [
             QueryRoot({'Event'}),
             MarkLocation(base_location),
+            GlobalOperationsStart(),
             ConstructResult({
                 'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)
             }),
@@ -174,6 +179,7 @@ class EmitGremlinTests(unittest.TestCase):
         ir_blocks = [
             QueryRoot({'Foo'}),
             MarkLocation(base_location),
+            GlobalOperationsStart(),
             ConstructResult({
                 'foo_name': OutputContextField(base_name_location, GraphQLString),
             })
@@ -205,6 +211,7 @@ class EmitGremlinTests(unittest.TestCase):
                 ContextField(base_location.navigate_to_field(u'name'), GraphQLString))),
             MarkLocation(child_location),
             Backtrack(base_location),
+            GlobalOperationsStart(),
             ConstructResult({
                 'foo_name': OutputContextField(base_name_location, GraphQLString),
             })
@@ -238,6 +245,7 @@ class EmitGremlinTests(unittest.TestCase):
             MarkLocation(child_location),
             Backtrack(base_location, optional=True),
             MarkLocation(revisited_base_location),
+            GlobalOperationsStart(),
             ConstructResult({
                 'bar_name': TernaryConditional(
                     BinaryComposition(
@@ -274,6 +282,7 @@ class EmitGremlinTests(unittest.TestCase):
         ir_blocks = [
             QueryRoot({'Event'}),
             MarkLocation(base_location),
+            GlobalOperationsStart(),
             ConstructResult({
                 'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)
             })
