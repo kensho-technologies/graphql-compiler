@@ -10,6 +10,8 @@
 - Release `not_contains` filter operation. [#349](https://github.com/kensho-technologies/graphql-compiler/pull/349)
 - Allow out-of-order tags and filters in the same scope. [#351](https://github.com/kensho-technologies/graphql-compiler/pull/351)
 - Fix missing filter type coercions in MATCH compilation. [#332](https://github.com/kensho-technologies/graphql-compiler/pull/332)
+- Release `amend_custom_scalar_types`, a function made to amend the parsing and serialization of 
+  custom scalar types in schemas that have been parsed from text. [#398](https://github.com/kensho-technologies/graphql-compiler/pull/398)
 - Clean up README.md and update troubleshooting documentation.
 - Many maintainer quality-of-life improvements.
 
