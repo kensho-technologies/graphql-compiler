@@ -1137,9 +1137,9 @@ To get estimates for the number of result rows for a given query and statistics 
 from graphql_compiler.cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from graphql_compiler.cost_estimation.statistics import LocalStatistics
 
-# The estimator needs a SchemaGraph for estimate generation. To get the SchemaGraph for the
-# 'Animals' database, check the 'SchemaGraph' section of this README.
-# schema_graph = ...obtain_schema_graph_for_animals...()
+# The cost estimator needs the schema graph for information about the classes in the schema. 
+# Get schema graph from hypothetical Animals database.
+schema_graph = obtain_schema_graph_from_animals_database()
 
 # This is the query and parameters that the estimator will produce a cardinality estimate for.
 graphql_query = '''
