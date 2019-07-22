@@ -73,14 +73,13 @@ class EmitMatchTests(unittest.TestCase):
 
         ir_blocks = [
             QueryRoot({'Animal'}),
+            MarkLocation(base_location),
+            Traverse('out', 'Animal_BornAt'),
             Filter(BinaryComposition(
                 u'=',
                 LocalField(u'name', GraphQLString),
-                Variable('$desired_name', GraphQLString))),
-            MarkLocation(base_location),
-            Traverse('out', 'Animal_BornAt'),
+                ContextField(base_name_location, GraphQLString))),
             MarkLocation(child_location),
-
             QueryRoot({'Animal'}),
             MarkLocation(base_location),
             GlobalOperationsStart(),
@@ -95,9 +94,9 @@ class EmitMatchTests(unittest.TestCase):
             SELECT Animal___1.name AS `animal_name` FROM (
                 MATCH {{
                     class: Animal,
-                    where: ((name = {desired_name})),
                     as: Animal___1
                 }}.out('Animal_BornAt') {{
+                    where: ((name = $matched.Animal___1.name)),
                     as: Animal__out_Animal_BornAt___1
                 }} , {{
                     class: Animal,
