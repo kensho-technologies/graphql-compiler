@@ -89,12 +89,20 @@ def _merge_selection_sets(selection_set_a, selection_set_b):
     # having an empty selection in a vertex field. We remove pro-forma fields if they are
     # no longer necessary.
     if len(merged_selection_dict) > 1:  # Otherwise we need a pro-forma field
-        merged_selection_dict = {
+        non_pro_forma_fields = {
             name: ast
             for name, ast in six.iteritems(merged_selection_dict)
             if ast.selection_set is not None or len(ast.directives) > 0
             # If there's selections or directives under the field, it is not pro-forma.
         }
+        if non_pro_forma_fields:
+            merged_selection_dict = non_pro_forma_fields
+        else:
+            # There's multiple pro-forma fields. Pick one of them (the one with smallest name).
+            lexicographically_first_name = min(merged_selection_dict.keys())
+            merged_selection_dict = {
+                lexicographically_first_name: merged_selection_dict[lexicographically_first_name]
+            }
 
     # Get a deterministic ordering of the merged selections
     selection_name_order = list(chain((
