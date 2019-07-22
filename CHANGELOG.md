@@ -10,6 +10,8 @@
 - Allow out-of-order `@tag` and `@filter` when in the same scope. [#351](https://github.com/kensho-technologies/graphql-compiler/pull/351)
 - Fix a bug causing MATCH queries to have missing type coercions. [#332](https://github.com/kensho-technologies/graphql-compiler/pull/332)
 - Release functionality that is able to amend parsing and serialization of custom scalar types in schemas parsed from text form. [#398](https://github.com/kensho-technologies/graphql-compiler/pull/398)
+- Improve validation error messages for output and parameter names. [#414](https://github.com/kensho-technologies/graphql-compiler/pull/414) [#416](https://github.com/kensho-technologies/graphql-compiler/pull/416)
+- Alpha (unstable) release of query cost estimation functionality. [#345](https://github.com/kensho-technologies/graphql-compiler/pull/345)
 - Clean up README.md and update troubleshooting documentation.
 - Many maintainer quality-of-life improvements.
 
