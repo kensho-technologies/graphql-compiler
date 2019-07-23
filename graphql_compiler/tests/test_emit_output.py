@@ -301,7 +301,9 @@ class EmitCypherTests(unittest.TestCase):
 
     We follow the test schema (defined in test_helpers.py) for these tests so that we can construct
     objects correctly (e.g. when setting the type field for a LocationInfo object). When we call
-
+    schema.get_type(), we get a reference to an object, which is not the case if we wrote something
+    like `GraphQLObjectType(name='Foo', fields={'name': GraphQLString}` instead. This is useful if
+    we need to compare two LocationInfo objects because equality comparison compares references.
     """
     def setUp(self):
         """Disable max diff limits for all tests."""
