@@ -28,7 +28,7 @@ all_backends_list = [
     test_backend.MYSQL,
     test_backend.SQLITE,
     test_backend.MSSQL,
-    test_backend.NEO4J,
+    # test_backend.NEO4J,
     test_backend.REDISGRAPH,
 ]
 
@@ -36,7 +36,7 @@ all_backends_list = [
 # Store the typical fixtures required for an integration tests.
 # Individual tests can supply the full @pytest.mark.usefixtures to override if necessary.
 integration_fixtures = pytest.mark.usefixtures(
-    'integration_neo4j_client',
+    # 'integration_neo4j_client',
     'integration_orientdb_client',
     'integration_redisgraph_client',
     'sql_integration_data',
