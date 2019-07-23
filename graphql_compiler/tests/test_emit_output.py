@@ -316,7 +316,6 @@ class EmitCypherTests(unittest.TestCase):
         #         name @output(out_name: "animal_name")
         #     }
         # }'''
-
         base_location = Location(('Animal',))
         base_name_location = base_location.navigate_to_field('name')
         schema = get_schema()
@@ -360,7 +359,6 @@ class EmitCypherTests(unittest.TestCase):
         #         }
         #     }
         # }'''
-
         base_location = Location(('Animal',))
         base_name_location = base_location.navigate_to_field('name')
         schema = get_schema()
@@ -509,7 +507,6 @@ class EmitCypherTests(unittest.TestCase):
         #         event_date @output(out_name: "event_date")
         #     }
         # }'''
-
         base_location = Location(('BirthEvent',))
         base_event_date_location = base_location.navigate_to_field('event_date')
         schema = get_schema()
