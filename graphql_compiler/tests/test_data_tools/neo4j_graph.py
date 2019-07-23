@@ -13,7 +13,7 @@ class Neo4jClient(object):
     def __init__(self, graph_name):
         url = get_neo4j_url(graph_name)
         # We remove encryption to deal with: https://github.com/neo4j/neo4j/issues/9233
-        self.driver = GraphDatabase.driver(url, auth=(NEO4J_USER, NEO4J_PASSWORD), encrypted=0)
+        self.driver = GraphDatabase.driver(url, auth=(NEO4J_USER, NEO4J_PASSWORD), encrypted=False)
 
 
 def get_neo4j_url(database_name):
