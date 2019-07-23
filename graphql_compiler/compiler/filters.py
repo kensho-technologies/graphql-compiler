@@ -10,7 +10,8 @@ from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from ..schema import is_vertex_field_name
 from .helpers import (
     get_uniquely_named_objects_by_name, is_runtime_parameter, is_tagged_parameter,
-    is_vertex_field_type, strip_non_null_from_type, validate_safe_string
+    is_vertex_field_type, strip_non_null_from_type, validate_runtime_argument_name,
+    validate_tagged_argument_name
 )
 from .metadata import FilterInfo
 
@@ -103,7 +104,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
     if is_runtime_parameter(argument):
         # We want to validate the argument name after we validated that it is not a literal argument
         # in order to possibly raise an error with a better explanation.
-        validate_safe_string(argument_name)
+        validate_runtime_argument_name(argument_name)
         existing_type = context['inputs'].get(argument_name, inferred_type)
         if not inferred_type.is_same_type(existing_type):
             raise GraphQLCompilationError(u'Incompatible types inferred for argument {}. '
@@ -116,7 +117,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
     elif is_tagged_parameter(argument):
         # We want to validate the argument name after we validated that it is not a literal argument
         # in order to possibly raise an error with a better explanation.
-        validate_safe_string(argument_name)
+        validate_tagged_argument_name(argument_name)
         tag_info = context['metadata'].get_tag_info(argument_name)
         if tag_info is None:
             raise GraphQLCompilationError(u'Undeclared argument used: {}'.format(argument))
