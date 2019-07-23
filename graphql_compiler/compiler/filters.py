@@ -567,7 +567,7 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
     if not base_field_type.is_same_type(GraphQLString):
         raise GraphQLCompilationError(u'Cannot apply "contains" to non-list '
                                       u'type String. Consider using the "has_substring" '
-                                      u'operator instead')
+                                      u'operator instead.')
 
     if not isinstance(base_field_type, GraphQLList):
         raise GraphQLCompilationError(u'Cannot apply "contains" to non-list '
