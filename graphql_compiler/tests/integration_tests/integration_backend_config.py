@@ -29,7 +29,7 @@ MATCH_BACKENDS = {
 
 # Split Neo4j and RedisGraph because RedisGraph doesn't support all Neo4j features.
 NEO4J_BACKENDS = {
-    test_backend.NEO4J,
+    # test_backend.NEO4J,
 }
 
 REDISGRAPH_BACKENDS = {
