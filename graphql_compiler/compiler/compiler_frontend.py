@@ -173,7 +173,9 @@ def _get_fields(ast):
             # If we ever allow repeated field names,
             # then we have to change the Location naming scheme to reflect the repetitions
             # and disambiguate between Recurse and Traverse visits to a Location.
-            raise GraphQLCompilationError(u'Encountered repeated field name: {}'.format(name))
+            raise GraphQLCompilationError(u'Encountered repeated field name: {}. To use '
+                                          u'multiple directives on a field, write the other '
+                                          u'directives directly below the first one.'.format(name))
         seen_field_names.add(name)
 
         # Vertex fields start with 'out_' or 'in_', denoting the edge direction to that vertex.
