@@ -3,7 +3,6 @@ import unittest
 
 from graphql import GraphQLString
 
-
 from ..compiler import emit_cypher, emit_gremlin, emit_match
 from ..compiler.blocks import (
     Backtrack, CoerceType, ConstructResult, Filter, GlobalOperationsStart, MarkLocation, QueryRoot,
