@@ -18,7 +18,8 @@ class TestMergeSchemas(unittest.TestCase):
             OrderedDict([
                 ('basic', parse(ISS.basic_schema)),
                 ('enum', parse(ISS.enum_schema)),
-            ])
+            ]),
+            [],
         )
         merged_schema_string = dedent('''\
             schema {
@@ -47,14 +48,15 @@ class TestMergeSchemas(unittest.TestCase):
         self.assertEqual({'Droid': 'enum', 'Height': 'enum', 'Human': 'basic'},
                          merged_schema.name_to_schema_id)
 
-    def test_originals_unmodified(self):
+    def test_original_unmodified(self):
         basic_ast = parse(ISS.basic_schema)
         enum_ast = parse(ISS.enum_schema)
         merge_schemas(
             OrderedDict([
                 ('basic', basic_ast),
                 ('enum', enum_ast),
-            ])
+            ]),
+            [],
         )
         self.assertEqual(basic_ast, parse(ISS.basic_schema))
         self.assertEqual(enum_ast, parse(ISS.enum_schema))
@@ -66,7 +68,8 @@ class TestMergeSchemas(unittest.TestCase):
                 ('second', parse(ISS.enum_schema)),
                 ('third', parse(ISS.interface_schema)),
                 ('fourth', parse(ISS.non_null_schema)),
-            ])
+            ]),
+            [],
         )
         merged_schema_string = dedent('''\
             schema {
@@ -127,7 +130,8 @@ class TestMergeSchemas(unittest.TestCase):
             OrderedDict([
                 ('first', parse(ISS.basic_schema)),
                 ('second', parse(different_query_type_schema)),
-            ])
+            ]),
+            [],
         )
         merged_schema_string = dedent('''\
             schema {
@@ -155,7 +159,8 @@ class TestMergeSchemas(unittest.TestCase):
                 OrderedDict([
                     ('first', parse(ISS.basic_schema)),
                     ('second', parse(ISS.basic_schema)),
-                ])
+                ]),
+                [],
             )
 
     def test_interface_object_merge_conflict(self):
@@ -177,14 +182,16 @@ class TestMergeSchemas(unittest.TestCase):
                 OrderedDict([
                     ('basic', parse(ISS.basic_schema)),
                     ('bad', parse(interface_conflict_schema)),
-                ])
+                ]),
+                [],
             )
         with self.assertRaises(SchemaNameConflictError):
             merge_schemas(
                 OrderedDict([
                     ('bad', parse(interface_conflict_schema)),
                     ('basic', parse(ISS.basic_schema)),
-                ])
+                ]),
+                [],
             )
 
     def test_enum_object_merge_conflict(self):
@@ -207,14 +214,16 @@ class TestMergeSchemas(unittest.TestCase):
                 OrderedDict([
                     ('basic', parse(ISS.basic_schema)),
                     ('bad', parse(enum_conflict_schema)),
-                ])
+                ]),
+                [],
             )
         with self.assertRaises(SchemaNameConflictError):
             merge_schemas(
                 OrderedDict([
                     ('bad', parse(enum_conflict_schema)),
                     ('basic', parse(ISS.basic_schema)),
-                ])
+                ]),
+                [],
             )
 
     def test_enum_interface_merge_conflict(self):
@@ -237,14 +246,16 @@ class TestMergeSchemas(unittest.TestCase):
                 OrderedDict([
                     ('interface', parse(ISS.interface_schema)),
                     ('bad', parse(enum_conflict_schema)),
-                ])
+                ]),
+                [],
             )
         with self.assertRaises(SchemaNameConflictError):
             merge_schemas(
                 OrderedDict([
                     ('bad', parse(enum_conflict_schema)),
                     ('interface', parse(ISS.interface_schema)),
-                ])
+                ]),
+                [],
             )
 
     def test_object_scalar_merge_conflict(self):
@@ -264,14 +275,16 @@ class TestMergeSchemas(unittest.TestCase):
                 OrderedDict([
                     ('basic', parse(ISS.basic_schema)),
                     ('bad', parse(scalar_conflict_schema)),
-                ])
+                ]),
+                [],
             )
         with self.assertRaises(SchemaNameConflictError):
             merge_schemas(
                 OrderedDict([
                     ('bad', parse(scalar_conflict_schema)),
                     ('basic', parse(ISS.basic_schema)),
-                ])
+                ]),
+                [],
             )
 
     def test_interface_scalar_merge_conflict(self):
@@ -291,14 +304,16 @@ class TestMergeSchemas(unittest.TestCase):
                 OrderedDict([
                     ('interface', parse(ISS.interface_schema)),
                     ('bad', parse(scalar_conflict_schema)),
-                ])
+                ]),
+                [],
             )
         with self.assertRaises(SchemaNameConflictError):
             merge_schemas(
                 OrderedDict([
                     ('bad', parse(scalar_conflict_schema)),
                     ('interface', parse(ISS.interface_schema)),
-                ])
+                ]),
+                [],
             )
 
     def test_enum_scalar_merge_conflict(self):
@@ -318,14 +333,16 @@ class TestMergeSchemas(unittest.TestCase):
                 OrderedDict([
                     ('enum', parse(ISS.enum_schema)),
                     ('bad', parse(scalar_conflict_schema)),
-                ])
+                ]),
+                [],
             )
         with self.assertRaises(SchemaNameConflictError):
             merge_schemas(
                 OrderedDict([
                     ('bad', parse(scalar_conflict_schema)),
                     ('enum', parse(ISS.enum_schema)),
-                ])
+                ]),
+                [],
             )
 
     def test_dedup_scalars(self):
@@ -350,7 +367,8 @@ class TestMergeSchemas(unittest.TestCase):
             OrderedDict([
                 ('first', parse(ISS.scalar_schema)),
                 ('second', parse(extra_scalar_schema)),
-            ])
+            ]),
+            [],
         )
         merged_schema_string = dedent('''\
             schema {
@@ -401,7 +419,8 @@ class TestMergeSchemas(unittest.TestCase):
             OrderedDict([
                 ('first', parse(ISS.directive_schema)),
                 ('second', parse(extra_directive_schema)),
-            ])
+            ]),
+            [],
         )
         merged_schema_string = dedent('''\
             schema {
@@ -456,23 +475,36 @@ class TestMergeSchemas(unittest.TestCase):
                 OrderedDict([
                     ('first', parse(ISS.directive_schema)),
                     ('second', parse(extra_directive_schema)),
-                ])
+                ]),
+                [],
             )
 
     def test_invalid_identifiers(self):
         with self.assertRaises(ValueError):
-            merge_schemas(OrderedDict([
-                ('', parse(ISS.basic_schema)),
-            ]))
+            merge_schemas(
+                OrderedDict([
+                    ('', parse(ISS.basic_schema)),
+                ]),
+                [],
+            )
         with self.assertRaises(ValueError):
-            merge_schemas(OrderedDict([
-                ('hello\n', parse(ISS.basic_schema)),
-            ]))
+            merge_schemas(
+                OrderedDict([
+                    ('hello\n', parse(ISS.basic_schema)),
+                ]),
+                [],
+            )
         with self.assertRaises(ValueError):
-            merge_schemas(OrderedDict([
-                ('<script>alert("hello world")</script>', parse(ISS.basic_schema)),
-            ]))
+            merge_schemas(
+                OrderedDict([
+                    ('<script>alert("hello world")</script>', parse(ISS.basic_schema)),
+                ]),
+                [],
+            )
         with self.assertRaises(ValueError):
-            merge_schemas(OrderedDict([
-                ('\t\b', parse(ISS.basic_schema)),
-            ]))
+            merge_schemas(
+                OrderedDict([
+                    ('\t\b', parse(ISS.basic_schema)),
+                ]),
+                [],
+            )
