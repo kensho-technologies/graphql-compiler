@@ -16,7 +16,8 @@ from .utils import (
 MergedSchemaDescriptor = namedtuple(
     'MergedSchemaDescriptor', (
         'schema_ast',  # Document, AST representing the merged schema
-        'name_to_schema_id',  # Dict[str, str], type name to id of the schema the type is from
+        'type_name_to_schema_id',
+        # Dict[str, str], mapping type name to the id of the schema that the type is from
     )
 )
 
@@ -24,8 +25,8 @@ MergedSchemaDescriptor = namedtuple(
 CrossSchemaEdgeDescriptor = namedtuple(
     'CrossSchemaEdgeDescriptor', (
         'edge_name',  # str, name used for the corresponding in and out fields
-        'outbound_side',  # FieldReference for the outbound (source) field
-        'inbound_side',  # FieldReference for the inbound (sink) field
+        'outbound_side',  # FieldReference namedtuple for the outbound (source) field
+        'inbound_side',  # FieldReference namedtuple for the inbound (sink) field
         'out_edge_only',  # bool, whether or not the edge is bidirectional
     )
 )
@@ -34,7 +35,7 @@ CrossSchemaEdgeDescriptor = namedtuple(
 FieldReference = namedtuple(
     'FieldReference', (
         'schema_id',  # str, identifier for the schema of the field
-        'type_name',  # str, name of the type of the field
+        'type_name',  # str, name of the type that the field belongs to
         'field_name',  # str, name of the field, used in the stich directive
     )
 )
@@ -80,21 +81,21 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges):
     query_type = 'RootSchemaQuery'
     merged_schema_ast = _get_basic_schema_ast(query_type)  # Document
 
-    name_to_schema_id = {}  # Dict[str, str], name of type/interface/enum/union to schema id
+    type_name_to_schema_id = {}  # Dict[str, str], name of object/interface/enum/union to schema id
     scalars = {'String', 'Int', 'Float', 'Boolean', 'ID'}  # Set[str], user defined + builtins
     directives = {}  # Dict[str, DirectiveDefinition]
 
     for current_schema_id, current_ast in six.iteritems(schema_id_to_ast):
         current_ast = deepcopy(current_ast)
-        _merge_single_schema(merged_schema_ast, name_to_schema_id, scalars, directives,
-                             current_schema_id, current_ast)
+        _accumulate_types(merged_schema_ast, type_name_to_schema_id, scalars, directives,
+                          current_schema_id, current_ast)
 
-    _merge_cross_schema_edges(merged_schema_ast, name_to_schema_id, scalars, cross_schema_edges,
-                              query_type)
+    _add_cross_schema_edges(merged_schema_ast, type_name_to_schema_id, scalars,
+                            cross_schema_edges, query_type)
 
     return MergedSchemaDescriptor(
         schema_ast=merged_schema_ast,
-        name_to_schema_id=name_to_schema_id
+        type_name_to_schema_id=type_name_to_schema_id
     )
 
 
@@ -135,18 +136,19 @@ def _get_basic_schema_ast(query_type):
     return blank_ast
 
 
-def _merge_single_schema(merged_schema_ast, name_to_schema_id, scalars, directives,
-                         current_schema_id, current_ast):
-    """Merge current_ast into merged_schema_ast, update all records accordingly.
+def _accumulate_types(merged_schema_ast, type_name_to_schema_id, scalars, directives,
+                      current_schema_id, current_ast):
+    """Add all types and query type fields of current_ast into merged_schema_ast.
 
     Args:
-        merged_schema_ast: Document; modified by this function as current_ast is incorporated
-        name_to_schema_id: Dict[str, str], mapping type name to id of the schema that the
-                           type is from; modified by this function
-        scalars: Set[str], names of all scalars in the merged_schema so far; potentially
+        merged_schema_ast: Document. It is modified by this function as current_ast is
+                           incorporated
+        type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that
+                                the type is from. It is modified by this function
+        scalars: Set[str], names of all scalars in the merged_schema so far. It is potentially
                  modified by this function
-        directives: Dict[str, DirectiveDefinition], mapping directive name to definition;
-                    potentially modified by this function
+        directives: Dict[str, DirectiveDefinition], mapping directive name to definition.
+                    It is potentially modified by this function
         current_schema_id: str, identifier of the schema being merged
         current_ast: Document, representing the schema being merged into merged_schema_ast
 
@@ -190,7 +192,7 @@ def _merge_single_schema(merged_schema_ast, name_to_schema_id, scalars, directiv
             )
         elif isinstance(new_definition, ast_types.ScalarTypeDefinition):
             _process_scalar_definition(
-                new_definition, scalars, name_to_schema_id, merged_schema_ast
+                new_definition, scalars, type_name_to_schema_id, merged_schema_ast
             )
         elif isinstance(new_definition, (
             ast_types.EnumTypeDefinition,
@@ -199,7 +201,8 @@ def _merge_single_schema(merged_schema_ast, name_to_schema_id, scalars, directiv
             ast_types.UnionTypeDefinition,
         )):
             _process_generic_type_definition(
-                new_definition, current_schema_id, scalars, name_to_schema_id, merged_schema_ast
+                new_definition, current_schema_id, scalars, type_name_to_schema_id,
+                merged_schema_ast
             )
         else:  # All definition types should've been covered
             raise AssertionError(
@@ -224,8 +227,9 @@ def _process_directive_definition(directive, existing_directives, merged_schema_
     Args:
         directive: DirectiveDefinition, an AST node representing the definition of a directive
         existing_directives: Dict[str, DirectiveDefinition], mapping the name of each existing
-                             directive to the AST node defining it; modified by this function
-        merged_schema_ast: Document, AST representing a schema; modified by this function
+                             directive to the AST node defining it. It is modified by this
+                            function
+        merged_schema_ast: Document, AST representing a schema. It is modified by this function
     """
     directive_name = directive.name.value
     if directive_name in existing_directives:
@@ -245,27 +249,28 @@ def _process_directive_definition(directive, existing_directives, merged_schema_
     existing_directives[directive_name] = directive
 
 
-def _process_scalar_definition(scalar, existing_scalars, name_to_schema_id, merged_schema_ast):
+def _process_scalar_definition(scalar, existing_scalars, type_name_to_schema_id,
+                               merged_schema_ast):
     """Compare new scalar against existing scalars and types, update records and schema.
 
     Args:
         scalar: ScalarDefinition, an AST node representing the definition of a scalar
-        existing_scalars: Set[str], set of names of all existing scalars; modified by this
+        existing_scalars: Set[str], set of names of all existing scalars. It is modified by this
                           function
-        name_to_schema_id: Dict[str, str], mapping names of types to the identifier of the schema
-                           that they came from
-        merged_schema_ast: Document, AST representing a schema; modified by this function
+        type_name_to_schema_id: Dict[str, str], mapping names of types to the identifier of the
+                                schema that they came from
+        merged_schema_ast: Document, AST representing a schema. It is modified by this function
     """
     scalar_name = scalar.name.value
     if scalar_name in existing_scalars:
         return
-    if scalar_name in name_to_schema_id:
+    if scalar_name in type_name_to_schema_id:
         raise SchemaNameConflictError(
             u'New scalar "{}" clashes with existing type "{}" in schema "{}". Consider '
             u'renaming type "{}" in schema "{}" using the tool rename_schema before merging '
             u'to avoid conflicts.'.format(
-                scalar_name, scalar_name, name_to_schema_id[scalar_name],
-                scalar_name, name_to_schema_id[scalar_name]
+                scalar_name, scalar_name, type_name_to_schema_id[scalar_name],
+                scalar_name, type_name_to_schema_id[scalar_name]
             )
         )
     # new, valid scalar
@@ -274,7 +279,7 @@ def _process_scalar_definition(scalar, existing_scalars, name_to_schema_id, merg
 
 
 def _process_generic_type_definition(generic_type, schema_id, existing_scalars,
-                                     name_to_schema_id, merged_schema_ast):
+                                     type_name_to_schema_id, merged_schema_ast):
     """Compare new type against existing scalars and types, update records and schema.
 
     Args:
@@ -282,9 +287,9 @@ def _process_generic_type_definition(generic_type, schema_id, existing_scalars,
                       or UnionTypeDefinition, an AST node representing the definition of a type
         schema_id: str, the identifier of the schema that this type came from
         existing_scalars: Set[str], set of names of all existing scalars
-        name_to_schema_id: Dict[str, str], mapping names of types to the identifier of the schema
-                           that they came from; modified by this function
-        merged_schema_ast: Document, AST representing a schema; modified by this function
+        type_name_to_schema_id: Dict[str, str], mapping names of types to the identifier of the
+                                schema that they came from. It is modified by this function
+        merged_schema_ast: Document, AST representing a schema. It is modified by this function
     """
     type_name = generic_type.name.value
     if type_name in existing_scalars:
@@ -295,38 +300,38 @@ def _process_generic_type_definition(generic_type, schema_id, existing_scalars,
                 type_name, schema_id, type_name, schema_id
             )
         )
-    if type_name in name_to_schema_id:
+    if type_name in type_name_to_schema_id:
         raise SchemaNameConflictError(
             u'New type "{}" in schema "{}" clashes with existing type "{}" in schema "{}". '
             u'Consider renaming type "{}" in either schema before merging to avoid '
             u'conflicts.'.format(
-                type_name, schema_id, type_name, name_to_schema_id[type_name], type_name
+                type_name, schema_id, type_name, type_name_to_schema_id[type_name], type_name
             )
         )
     merged_schema_ast.definitions.append(generic_type)
-    name_to_schema_id[type_name] = schema_id
+    type_name_to_schema_id[type_name] = schema_id
 
 
-def _merge_cross_schema_edges(schema_ast, name_to_schema_id, scalars, cross_schema_edges,
-                              query_type):
+def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_schema_edges,
+                            query_type):
     """Add cross schema edges into the schema AST.
 
     Each cross schema edge will be incorporated into the schema by adding additional fields
-    with a @stitch directive to relevant fields.
+    with a @stitch directive to relevant types.
 
     Args:
-        scheam_ast: Document; modified by this function
-        name_to_schema_id: Dict[str, str], mapping type name to id of the schema that the
-                           type is from
+        scheam_ast: Document. It is modified by this function
+        type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that the
+                                type is from
         scalars: Set[str], names of all scalars in the merged_schema so far
         cross_schema_edges: List[CrossSchemaEdgeDescriptor], containing all edges connecting
                             fields in multiple schemas to be added to the merged schema
         query_type: str, name of the query type in the merged schema
 
     Raises:
-        - SchemaNameConflictError if some cross schema edge name causes a name conflict with
+        - SchemaNameConflictError if any cross schema edge name causes a name conflict with
           fields
-        - InvalidCrossSchemaEdgeError if some cross schema edge lies within one schema, refers
+        - InvalidCrossSchemaEdgeError if any cross schema edge lies within one schema, refers
           nonexistent schemas, types, fields, stitches together fields that are not of a
           scalar type, or stitched together fields that are of different scalar types
     """
@@ -347,8 +352,8 @@ def _merge_cross_schema_edges(schema_ast, name_to_schema_id, scalars, cross_sche
 
     # Iterate through edges list, incorporate each edge on one or both sides
     for cross_schema_edge in cross_schema_edges:
-        _check_cross_schema_edge_is_valid(type_name_to_definition, name_to_schema_id, scalars,
-                                          cross_schema_edge)
+        _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_schema_id,
+                                          scalars, cross_schema_edge)
 
         edge_name = cross_schema_edge.edge_name
         outbound_side = cross_schema_edge.outbound_side
@@ -364,28 +369,29 @@ def _merge_cross_schema_edges(schema_ast, name_to_schema_id, scalars, cross_sche
                             outbound_side.field_name, edge_name, 'in')
 
 
-def _check_cross_schema_edge_is_valid(type_name_to_definition, name_to_schema_id, scalars,
+def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_schema_id, scalars,
                                       cross_schema_edge):
     """Check that the edge crosses schemas and has valid field references of correct types.
 
     Args:
         type_name_to_definition: Dict[str, (Interface/Object/Union)TypeDefinition], mapping
                                  name of types to their definitions
-        name_to_schema_id: Dict[str, str], mapping type name to id of the schema that the
-                           type is from
+        type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that the
+                                type is from
         scalars: Set[str], names of all scalars in the merged_schema so far
-        cross_schema_edge: CrossSchemaEdge, the edge that we check the validity of
+        cross_schema_edge: CrossSchemaEdgeDescriptor namedtuple, the edge that we check the
+                           validity of
 
     Raises:
-        - InvalidCrossSchemaEdgeError if some cross schema edge lies within one schema, refers
+        - InvalidCrossSchemaEdgeError if the cross schema edge lies within one schema, refers
           nonexistent schemas, types, fields, stitches together fields that are not of a
           scalar type, or stitched together fields that are of different scalar types
     """
     outbound_side = cross_schema_edge.outbound_side
     inbound_side = cross_schema_edge.inbound_side
 
-    _check_field_reference_is_valid(type_name_to_definition, name_to_schema_id, outbound_side)
-    _check_field_reference_is_valid(type_name_to_definition, name_to_schema_id, inbound_side)
+    _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema_id, outbound_side)
+    _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema_id, inbound_side)
 
     if outbound_side.schema_id == inbound_side.schema_id:  # not cross schema
         raise InvalidCrossSchemaEdgeError(
@@ -395,7 +401,8 @@ def _check_cross_schema_edge_is_valid(type_name_to_definition, name_to_schema_id
     _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cross_schema_edge)
 
 
-def _check_field_reference_is_valid(type_name_to_definition, name_to_schema_id, field_reference):
+def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema_id,
+                                    field_reference):
     """Check that the field reference refers to a valid field.
 
     In particular, check that the field reference is on a type that exists in the correct
@@ -404,9 +411,9 @@ def _check_field_reference_is_valid(type_name_to_definition, name_to_schema_id, 
     Args:
         type_name_to_definition: Dict[str, (Interface/Object/Union)TypeDefinition], mapping
                                  name of types to their definitions
-        name_to_schema_id: Dict[str, str], mapping type name to id of the schema that the
-                           type is from
-        field_reference: FieldReference, what we check the validity of
+        type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that the
+                                type is from
+        field_reference: FieldReference namedtuple, what we check the validity of
 
     Raises:
         - InvalidCrossSchemaEdgeError if the field reference refers nonexistent schemas,
@@ -425,12 +432,11 @@ def _check_field_reference_is_valid(type_name_to_definition, name_to_schema_id, 
         )
 
     # Error if the type is in a wrong or nonexistent schema
-    if name_to_schema_id[type_name] != schema_id:
+    if type_name_to_schema_id[type_name] != schema_id:
         raise InvalidCrossSchemaEdgeError(
             u'Type "{}" specified in the field reference "{}" is expected to be in '
             u'schema "{}", but is instead bound in schema "{}"'.format(
-                type_name, field_reference, schema_id,
-                name_to_schema_id[type_name]
+                type_name, field_reference, schema_id, type_name_to_schema_id[type_name]
             )
         )
 
@@ -455,7 +461,8 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
         type_name_to_definition: Dict[str, (Interface/Object/Union)TypeDefinition], mapping
                                  name of types to their definitions
         scalars: Set[str], names of all scalars in the merged_schema so far
-        cross_schema_edge: CrossSchemaEdge, the edge that we check the validity of
+        cross_schema_edge: CrossSchemaEdgeDescriptor namedtuple, the edge that we check the
+                           validity of
 
     Raises:
         - InvalidCrossSchemaEdgeError if the cross schema edge stitches together fields that are
@@ -507,7 +514,7 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
     if field_type_names[0] != field_type_names[1]:  # fields return different scalars
         raise InvalidCrossSchemaEdgeError(
             u'The outbound and inbound fields of edge "{}" are of different types, '
-            u'"{}" and "{}"; they are expected to be of the same scalar type.'.format(
+            u'"{}" and "{}". They are expected to be of the same scalar type.'.format(
                 cross_schema_edge, field_type_names[0], field_type_names[1]
             )
         )
@@ -519,7 +526,8 @@ def _add_edge_field(source_type_node, sink_type_node, source_field_name, sink_fi
 
     Args:
         source_type_node: (Interface/Object/Union)TypeDefinition, where a new field representing
-                          one direction of the edge will be added; modified by this function
+                          one direction of the edge will be added. It is modified by this
+                          function
         sink_type_node: (Interface/Object/Union)TypeDefinition, representing the other end of
                         the edge
         source_field_name: str, name of the source side field that will be stitched
@@ -537,7 +545,7 @@ def _add_edge_field(source_type_node, sink_type_node, source_field_name, sink_fi
     sink_type_name = sink_type_node.name.value
 
     # Error if new edge causes a field name clash
-    if any(field.name.value==new_edge_field_name for field in type_fields):
+    if any(field.name.value == new_edge_field_name for field in type_fields):
         raise SchemaNameConflictError(
             u'New field "{}" under type "{}" created by the {}bound field of edge named '
             u'"{}" clashes with an existing field of the same name.'.format(
