@@ -228,14 +228,26 @@ class Variable(Expression):
         # definition and rely on Cypher to insert the value.
         self.validate()
 
-        # We can't directly pass a Date or a DateTime object, so we have to pass it as a string
-        # and then parse it inline.
-        if GraphQLDate.is_same_type(self.inferred_type):
-            return u'DATE({})'.format(self.variable_name)
-        elif GraphQLDateTime.is_same_type(self.inferred_type):
-            return u'DATETIME({})'.format(self.variable_name)
-        else:
-            return u'{}'.format(self.variable_name)
+        # The Neo4j client allows us to pass dates and datetimes directly as arguments. E.g. this
+        # would work:
+        #
+        # import datetime
+        # query = 'match(n) where n.birthday=$birthday return n'
+        # params = {'birthday': datetime.date(1975, 3, 3)}
+        # with driver.session() as session:
+        #     result = session.run(query, params)
+        #
+        # Note that `birthday must map to either a date or datetime-- this will fail if we pass in
+        # a string like '1975-03-03'.
+        #
+        # Meanwhile, RedisGraph (for which we're manually interpolating parameters since RedisGraph
+        # doesn't support query parameters [0]) doesn't support dates [1] anyways.
+        #
+        # Either way, we don't need to do any special handling for temporal values here.
+        #
+        # [0] https://github.com/RedisGraph/RedisGraph/issues/544
+        # [1] https://oss.redislabs.com/redisgraph/cypher_support/#types
+        return u'{}'.format(self.variable_name)
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
