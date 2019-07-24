@@ -173,9 +173,15 @@ def _get_fields(ast):
             # If we ever allow repeated field names,
             # then we have to change the Location naming scheme to reflect the repetitions
             # and disambiguate between Recurse and Traverse visits to a Location.
-            raise GraphQLCompilationError(u'Encountered repeated field name: {}. To use '
-                                          u'multiple directives on a field, write the other '
-                                          u'directives directly below the first one.'.format(name))
+            raise GraphQLCompilationError(u'Encountered repeated field name: {}. If you are '
+                                          u'attempting to specify multiple directives on a single '
+                                          u'property field, one way to do so is to follow the '
+                                          u'format: fieldName directive1 directive2 ...'
+                                          u'However, note that all whitespace sequences, '
+                                          u'(e.g. spaces, tabs and newline characters),  are '
+                                          u'treated in the same way as delimiters in GraphQL, '
+                                          u'so feel free to space out directives in a different '
+                                          u'fashion.'.format(name))
         seen_field_names.add(name)
 
         # Vertex fields start with 'out_' or 'in_', denoting the edge direction to that vertex.
