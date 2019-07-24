@@ -370,7 +370,7 @@ class EmitGremlinTests(unittest.TestCase):
                 event_date: m.BirthEvent___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
             ])}
         '''
-        
+
         received_gremlin = emit_gremlin.emit_code_from_ir(ir_blocks, None)
         compare_gremlin(self, expected_gremlin, received_gremlin)
 
