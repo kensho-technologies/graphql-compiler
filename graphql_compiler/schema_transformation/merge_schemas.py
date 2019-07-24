@@ -480,7 +480,7 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
                 field_type = field.type
                 while isinstance(field_type, ast_types.NonNullType):  # strip NonNull
                     field_type = field_type.type
-            break
+                break
 
         if field_type is None:  # should never happen after _check_field_reference_is_valid
             raise AssertionError(u'Field "{}" unexpectedly not found.'.format(field_name))
