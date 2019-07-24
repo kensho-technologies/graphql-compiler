@@ -176,7 +176,7 @@ def _get_fields(ast):
             raise GraphQLCompilationError(u'Encountered repeated field name: {}. If you are '
                                           u'attempting to specify multiple directives on a single '
                                           u'property field, one way to do so is to follow the '
-                                          u'format: fieldName directive1 directive2 ...'
+                                          u'format: propertyField directive1 directive2 ...'
                                           u'However, note that all whitespace sequences, '
                                           u'(e.g. spaces, tabs and newline characters),  are '
                                           u'treated in the same way as delimiters in GraphQL, '
