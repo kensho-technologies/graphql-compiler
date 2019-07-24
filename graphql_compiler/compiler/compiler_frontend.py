@@ -169,30 +169,30 @@ def _get_fields(ast):
             continue
 
         name = get_ast_field_name(field_ast)
-        if name in seen_field_names:
-            # If we ever allow repeated field names,
-            # then we have to change the Location naming scheme to reflect the repetitions
-            # and disambiguate between Recurse and Traverse visits to a Location.
-            raise GraphQLCompilationError(u'Encountered repeated field name: {}. If you are '
-                                          u'attempting to specify multiple directives on a single '
-                                          u'property field, one way to do so is to follow the '
-                                          u'format: propertyField directive1 directive2 ...'
-                                          u'However, note that all whitespace sequences, '
-                                          u'(e.g. spaces, tabs and newline characters),  are '
-                                          u'treated in the same way as delimiters in GraphQL, '
-                                          u'so feel free to space out directives in a different '
-                                          u'fashion.'.format(name))
-        seen_field_names.add(name)
+        seen_already = name in seen_field_names
 
         # Vertex fields start with 'out_' or 'in_', denoting the edge direction to that vertex.
         if is_vertex_field_name(name):
+            if seen_already:
+                raise GraphQLCompilationError('Encountered repeated vertex field: {}.'.format(name))
             switched_to_vertices = True
             vertex_fields.append(field_ast)
         else:
+            if seen_already:
+                # If we ever allow repeated field names,
+                # then we have to change the Location naming scheme to reflect the repetitions
+                # and disambiguate between Recurse and Traverse visits to a Location.
+                raise GraphQLCompilationError(u'Encountered repeated property field: {}. If you '
+                                              u'are attempting to specify multiple directives on a '
+                                              u'single property field, one way to do so is to '
+                                              u'follow the format: propertyField directive1 '
+                                              u'directive2 ...'.format(name))
             if switched_to_vertices:
                 raise GraphQLCompilationError(u'Encountered property field {} '
                                               u'after vertex fields!'.format(name))
             property_fields.append(field_ast)
+
+        seen_field_names.add(name)
 
     return vertex_fields, property_fields
 
