@@ -955,8 +955,8 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
-                WHERE ((Animal___1.birthday >= DATE($lower)) AND
-                       (Animal___1.birthday <= DATE($upper)))
+                WHERE ((Animal___1.birthday >= $lower) AND
+                       (Animal___1.birthday <= $upper))
             RETURN
                 Animal___1.birthday AS `birthday`
         '''
@@ -1007,8 +1007,8 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_cypher = '''
             MATCH (Event___1:Event)
-                WHERE ((Event___1.event_date >= DATETIME($lower)) AND
-                       (Event___1.event_date <= DATETIME($upper)))
+                WHERE ((Event___1.event_date >= $lower) AND
+                       (Event___1.event_date <= $upper))
             RETURN
                 Event___1.event_date AS `event_date`
         '''
@@ -6489,7 +6489,7 @@ class CompilerTests(unittest.TestCase):
         expected_cypher = '''
             MATCH (Animal___1:Animal)
                 WHERE (((Animal___1.uuid >= $uuid_lower) AND (Animal___1.uuid <= $uuid_upper))
-                        AND (Animal___1.birthday >= DATE($earliest_modified_date)))
+                        AND (Animal___1.birthday >= $earliest_modified_date))
             RETURN
                 Animal___1.name AS `animal_name`
         '''
