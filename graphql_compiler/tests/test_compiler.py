@@ -954,7 +954,6 @@ class CompilerTests(unittest.TestCase):
                 AND animal_1.birthday <= :upper
         '''
         expected_cypher = '''
-            CYPHER 3.5
             MATCH (Animal___1:Animal)
                 WHERE ((Animal___1.birthday >= DATE($lower)) AND
                        (Animal___1.birthday <= DATE($upper)))
@@ -1007,7 +1006,6 @@ class CompilerTests(unittest.TestCase):
                 AND event_1.event_date <= :upper
         '''
         expected_cypher = '''
-            CYPHER 3.5
             MATCH (Event___1:Event)
                 WHERE ((Event___1.event_date >= DATETIME($lower)) AND
                        (Event___1.event_date <= DATETIME($upper)))
@@ -6489,7 +6487,6 @@ class CompilerTests(unittest.TestCase):
                 AND animal_1.birthday >= :earliest_modified_date
         '''
         expected_cypher = '''
-            CYPHER 3.5
             MATCH (Animal___1:Animal)
                 WHERE (((Animal___1.uuid >= $uuid_lower) AND (Animal___1.uuid <= $uuid_upper))
                         AND (Animal___1.birthday >= DATE($earliest_modified_date)))
