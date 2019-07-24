@@ -26,12 +26,9 @@ CrossSchemaEdgeDescriptor = namedtuple(
         'edge_name',  # str, name used for the corresponding in and out fields
         'outbound_side',  # FieldReference for the outbound (source) field
         'inbound_side',  # FieldReference for the inbound (sink) field
-        'out_edge_only',  # bool, defaults to False, whether to not add the in-edge
+        'out_edge_only',  # bool, whether or not the edge is bidirectional
     )
 )
-
-
-CrossSchemaEdgeDescriptor.__new__.__defaults__ = (False,)
 
 
 FieldReference = namedtuple(
@@ -46,14 +43,14 @@ FieldReference = namedtuple(
 def merge_schemas(schema_id_to_ast, cross_schema_edges):
     """Merge all input schemas and add all cross schema edges.
 
-    The merged schema will contain all type, interface, union, enum, scalar, and directive
+    The merged schema will contain all object, interface, union, enum, scalar, and directive
     definitions from input schemas. The fields of its query type will be the union of the
     fields of the query types of each input schema.
 
     Args:
         schema_id_to_ast: OrderedDict[str, Document], where keys are names/identifiers of
                           schemas, and values are ASTs describing schemas. The ASTs will not
-                          be modified by this funcion
+                          be modified by this function
         cross_schema_edges: List[CrossSchemaEdgeDescriptor], containing all edges connecting
                             fields in multiple schemas to be added to the merged schema
 
