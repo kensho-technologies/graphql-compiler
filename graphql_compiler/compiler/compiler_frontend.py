@@ -185,8 +185,8 @@ def _get_fields(ast):
                 raise GraphQLCompilationError(u'Encountered repeated property field: {}. If you '
                                               u'are attempting to specify multiple directives on a '
                                               u'single property field, one way to do so is to '
-                                              u'follow the format: propertyField directive1 '
-                                              u'directive2 ...'.format(name))
+                                              u'follow the format: propertyField @directive1 '
+                                              u'@directive2 ...'.format(name))
             if switched_to_vertices:
                 raise GraphQLCompilationError(u'Encountered property field {} '
                                               u'after vertex fields!'.format(name))
