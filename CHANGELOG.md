@@ -2,25 +2,10 @@
 
 ## Current development version
 
-## v1.11.0
-
-- Release automatic GraphQL schema generation from OrientDB schema metadata. [#204](https://github.com/kensho-technologies/graphql-compiler/pull/204)
-- Release the SchemaGraph, a utility class designed for easy schema introspection. [#292](https://github.com/kensho-technologies/graphql-compiler/pull/292)
-- Release `not_contains` and `not_in_collection` filter operations. [#349](https://github.com/kensho-technologies/graphql-compiler/pull/349) [#350](https://github.com/kensho-technologies/graphql-compiler/pull/350)
-- Allow out-of-order `@tag` and `@filter` when in the same scope. [#351](https://github.com/kensho-technologies/graphql-compiler/pull/351)
-- Fix a bug causing MATCH queries to have missing type coercions. [#332](https://github.com/kensho-technologies/graphql-compiler/pull/332)
-- Release functionality that is able to amend parsing and serialization of custom scalar types in schemas parsed from text form. [#398](https://github.com/kensho-technologies/graphql-compiler/pull/398)
-- Improve validation error messages for output and parameter names. [#414](https://github.com/kensho-technologies/graphql-compiler/pull/414) [#416](https://github.com/kensho-technologies/graphql-compiler/pull/416)
-- Alpha (unstable) release of query cost estimation functionality. [#345](https://github.com/kensho-technologies/graphql-compiler/pull/345)
-- Clean up README.md and update troubleshooting documentation.
-- Many maintainer quality-of-life improvements.
-
-Thanks to `0xflotus`, `bojanserafimov`, `evantey`, `LWProgramming`, `pmantica1`, `qqi0O0`, and `Vlad` for their contributions.
-
 ## v1.10.1
 
 - Fix `_x_count` and optional filter creating duplicate GlobalOperationsStart IR blocks. [#253](https://github.com/kensho-technologies/graphql-compiler/pull/253).
-- Raise error for unused `@tag` directives [#224](https://github.com/kensho-technologies/graphql-compiler/pull/224).
+- Raise error for unused @tag directives [#224](https://github.com/kensho-technologies/graphql-compiler/pull/224).
 - Much documentation cleanup and many maintainer quality-of-life improvements.
 
 Thanks to `bojanserafimov`, `evantey14`, `jeremy.meulemans`, and `pmantica1` for their contributions.

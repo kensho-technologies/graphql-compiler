@@ -10,8 +10,7 @@ from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from ..schema import is_vertex_field_name
 from .helpers import (
     get_uniquely_named_objects_by_name, is_runtime_parameter, is_tagged_parameter,
-    is_vertex_field_type, strip_non_null_from_type, validate_runtime_argument_name,
-    validate_tagged_argument_name
+    is_vertex_field_type, strip_non_null_from_type, validate_safe_string
 )
 from .metadata import FilterInfo
 
@@ -99,12 +98,12 @@ def _represent_argument(directive_location, context, argument, inferred_type):
               expression that will evaluate to True if the argument is skipped as optional and
               therefore not present, and False otherwise.
     """
+    # Regardless of what kind of variable we are dealing with,
+    # we want to ensure its name is valid.
     argument_name = argument[1:]
+    validate_safe_string(argument_name)
 
     if is_runtime_parameter(argument):
-        # We want to validate the argument name after we validated that it is not a literal argument
-        # in order to possibly raise an error with a better explanation.
-        validate_runtime_argument_name(argument_name)
         existing_type = context['inputs'].get(argument_name, inferred_type)
         if not inferred_type.is_same_type(existing_type):
             raise GraphQLCompilationError(u'Incompatible types inferred for argument {}. '
@@ -115,9 +114,6 @@ def _represent_argument(directive_location, context, argument, inferred_type):
 
         return (expressions.Variable(argument, inferred_type), None)
     elif is_tagged_parameter(argument):
-        # We want to validate the argument name after we validated that it is not a literal argument
-        # in order to possibly raise an error with a better explanation.
-        validate_tagged_argument_name(argument_name)
         tag_info = context['metadata'].get_tag_info(argument_name)
         if tag_info is None:
             raise GraphQLCompilationError(u'Undeclared argument used: {}'.format(argument))
@@ -158,14 +154,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
         return (representation, non_existence_expression)
     else:
         # If we want to support literal arguments, add them here.
-        raise GraphQLCompilationError(u'Invalid argument found: {}. The compiler supports only '
-                                      u'runtime arguments, which must begin with the $ character, '
-                                      u'and tagged arguments, which must begin with the % '
-                                      u'character. Literal arguments, (e.g. 10, \'Kensho '
-                                      u'Technologies\', \'2018-01-01\'), are currently not '
-                                      u'supported. Please use runtime arguments and pass in the '
-                                      u'corresponding literal values as query parameters.'
-                                      .format(argument))
+        raise GraphQLCompilationError(u'Non-argument type found: {}'.format(argument))
 
 
 @scalar_leaf_only(u'comparison operator')
@@ -563,12 +552,6 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
     filtered_field_name = filter_operation_info.field_name
 
     base_field_type = strip_non_null_from_type(filtered_field_type)
-
-    if base_field_type.is_same_type(GraphQLString):
-        raise GraphQLCompilationError(u'Cannot apply "contains" to non-list '
-                                      u'type String. Consider using the "has_substring" '
-                                      u'operator instead.')
-
     if not isinstance(base_field_type, GraphQLList):
         raise GraphQLCompilationError(u'Cannot apply "contains" to non-list '
                                       u'type {}'.format(filtered_field_type))
@@ -611,7 +594,7 @@ def _process_not_contains_filter_directive(filter_operation_info, location, cont
 
     base_field_type = strip_non_null_from_type(filtered_field_type)
     if not isinstance(base_field_type, GraphQLList):
-        raise GraphQLCompilationError(u'Cannot apply "not_contains" to non-list '
+        raise GraphQLCompilationError(u'Cannot apply "contains" to non-list '
                                       u'type {}'.format(filtered_field_type))
 
     argument_inferred_type = strip_non_null_from_type(base_field_type.of_type)
