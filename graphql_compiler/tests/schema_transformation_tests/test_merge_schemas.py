@@ -46,7 +46,7 @@ class TestMergeSchemas(unittest.TestCase):
         ''')
         self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
         self.assertEqual({'Droid': 'enum', 'Height': 'enum', 'Human': 'basic'},
-                         merged_schema.name_to_schema_id)
+                         merged_schema.type_name_to_schema_id)
 
     def test_original_unmodified(self):
         basic_ast = parse(ISS.basic_schema)
@@ -395,7 +395,7 @@ class TestMergeSchemas(unittest.TestCase):
         ''')
         self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
         self.assertEqual({'Human': 'first', 'Kid': 'second'},
-                         merged_schema.name_to_schema_id)
+                         merged_schema.type_name_to_schema_id)
 
     def test_dedup_same_directives(self):
         extra_directive_schema = dedent('''\
@@ -452,7 +452,7 @@ class TestMergeSchemas(unittest.TestCase):
         ''')
         self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
         self.assertEqual({'Human': 'first', 'Droid': 'first', 'Kid': 'second'},
-                         merged_schema.name_to_schema_id)
+                         merged_schema.type_name_to_schema_id)
 
     def test_clashing_directives(self):
         extra_directive_schema = dedent('''\

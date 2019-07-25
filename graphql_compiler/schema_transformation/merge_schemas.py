@@ -9,7 +9,7 @@ import six
 
 from .subclass import compute_subclass_sets
 from .utils import (
-    SchemaNameConflictError, InvalidCrossSchemaEdgeError, check_ast_schema_is_valid,
+    InvalidCrossSchemaEdgeError, SchemaNameConflictError, check_ast_schema_is_valid,
     check_schema_identifier_is_valid, get_query_type_name
 )
 
@@ -503,7 +503,7 @@ def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema
     # Error if the type doesn't have the expected field
     type_definition = type_name_to_definition[type_name]
     type_fields = type_definition.fields
-    if not any(field.name.value==field_name for field in type_fields):
+    if not any(field.name.value == field_name for field in type_fields):
         raise InvalidCrossSchemaEdgeError(
             u'Field "{}" is not found under type "{}" in schema "{}", as expected by the '
             u'field reference "{}".'.format(
