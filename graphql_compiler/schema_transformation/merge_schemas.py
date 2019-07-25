@@ -49,6 +49,11 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
     definitions from input schemas. The fields of its query type will be the union of the
     fields of the query types of each input schema.
 
+    Cross schema edges will be incorporated by adding vertex fields with a @stitch directive
+    to appropriate vertices (types). New fields will be named out_ or in_ concatenated
+    with the edge name. New vertex fields will be added to the specified outbound and inbound
+    vertices and to all of their subclass vertices.
+
     Args:
         schema_id_to_ast: OrderedDict[str, Document], where keys are names/identifiers of
                           schemas, and values are ASTs describing schemas. The ASTs will not
@@ -77,8 +82,8 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
           same name as the type that it queries, if the schema contains type extensions or
           input object definitions, or if the schema contains mutations or subscriptions
         - SchemaNameConflictError if there are conflicts between the names of
-          types/interfaces/enums/scalars or fields, or conflicts between the definition of
-          directives with the same name
+          types/interfaces/enums/scalars, conflicts between the names of fields, or conflicts
+          between the definition of directives with the same name
         - InvalidCrossSchemaEdgeError if some cross schema edge provided lies within one schema,
           refers nonexistent schemas, types, fields, or connects non-scalar or non-matching
           fields
@@ -326,8 +331,19 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
                             type_equivalence_hints, query_type):
     """Add cross schema edges into the schema AST.
 
-    Each cross schema edge will be incorporated into the schema by adding additional fields
-    with a @stitch directive to relevant types.
+    Each cross schema edge will be incorporated into the schema by adding vertex fields
+    with a @stitch directive to relevant vertices (types). New fields will be named out_
+    or in_ concatenated with the edge name.
+
+    The type of the new field will either be the type of the opposing vertex specified in
+    the cross schema edge, or the equivalent union type of the type of the opposing vertex
+    if such a union type is specified by type_equivalence_hints.
+
+    New vertex fields will be added to not only each vertex specified by the cross schema
+    edge, but to all of their subclass vertices as well.
+
+    For examples demonstrating the above behaviors, see tests in test_merge_schemas.py that
+    involve subclasses.
 
     Args:
         scheam_ast: Document. It is modified by this function
@@ -347,7 +363,7 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
 
     Raises:
         - SchemaNameConflictError if any cross schema edge name causes a name conflict with
-          fields
+          existing fields, or fields created by previous cross schema edges
         - InvalidCrossSchemaEdgeError if any cross schema edge lies within one schema, refers
           to nonexistent schemas, types, or fields, refers to Union types, stitches together
           fields that are not of a scalar type, or stitches together fields that are of
@@ -355,8 +371,8 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
     """
     # Build map of definitions for ease of modification
     type_name_to_definition = {}  # Dict[str, (Interface/Object)TypeDefinition]
-    # fieldless_type_names = set()  # Set[str], contains Union, Enum scalar
-    # above is just for better error messages, low priorty
+    # fieldless_type_names = set()  # Set[str], contains Union, Enum, Scalar
+    # The above is just for better error messages
 
     for definition in schema_ast.definitions:
         if (
@@ -580,8 +596,8 @@ def _add_edge_field(source_type_node, sink_type_name, source_field_name, sink_fi
         direction: str, either 'in' or 'out'
 
     Raises:
-        - SchemaNameConflictError if the new edge name causes a name conflict with existing
-          fields
+        - SchemaNameConflictError if the new cross schema edge name causes a name conflict with
+          existing fields, or fields created by previous cross schema edges
     """
     type_fields = source_type_node.fields
     new_edge_field_name = direction + '_' + edge_name
