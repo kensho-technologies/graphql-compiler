@@ -59,10 +59,11 @@ class Statistics(object):
     ):
         """Return the count of edges of the given class connecting vertex_source to vertex_target.
 
-        This statistic is optional, as the estimator can roughly predict this statistic using
-        get_class_count(). In some cases of traversal between two vertices using an edge connecting
-        the vertices' superclasses, the estimates generated using get_class_count() may be off by
-        several orders of magnitude. In such cases, this statistic should be provided.
+        This statistic is optional, as the estimator can roughly predict this statistic using calls
+        to get_vertex_count() and get_edge_count(). In some cases of traversal between two vertices
+        using an edge connecting the vertices' superclasses, the estimates generated using
+        get_vertex_count() and get_edge_count() may be off by several orders of magnitude. In such
+        cases, this statistic should be provided.
 
         Args:
             vertex_source_class_name: str, vertex class name.
@@ -161,10 +162,11 @@ class LocalStatistics(Statistics):
     ):
         """Return the count of edges of the given class connecting vertex_source to vertex_target.
 
-        This statistic is optional, as the estimator can roughly predict this statistic using
-        get_class_count(). In some cases of traversal between two vertices using an edge connecting
-        the vertices' superclasses, the estimates generated using get_class_count() may be off by
-        several orders of magnitude. In such cases, this statistic should be provided.
+        This statistic is optional, as the estimator can roughly predict this statistic using calls
+        to get_vertex_count() and get_edge_count(). In some cases of traversal between two vertices
+        using an edge connecting the vertices' superclasses, the estimates generated using
+        get_vertex_count() and get_edge_count() may be off by several orders of magnitude. In such
+        cases, this statistic should be provided.
 
         Args:
             vertex_source_class_name: str, vertex class name.

@@ -116,7 +116,7 @@ def _probe_statistics_for_vertex_edge_vertex_count(
     return probe_result
 
 
-def _estimate_vertex_edge_vertex_count_using_class_count(
+def _estimate_vertex_edge_vertex_count(
     schema_graph, statistics, query_metadata, child_location, parent_location
 ):
     """Estimate the count of edges that connect parent_location and child_location vertices.
@@ -189,7 +189,7 @@ def _estimate_children_per_parent(
     )
 
     if edge_counts is None:
-        edge_counts = _estimate_vertex_edge_vertex_count_using_class_count(
+        edge_counts = _estimate_vertex_edge_vertex_count(
             schema_graph, statistics, query_metadata, child_location, parent_location
         )
 
