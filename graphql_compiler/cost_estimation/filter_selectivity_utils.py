@@ -66,7 +66,7 @@ def _estimate_filter_selectivity_of_equality(
 
     unique_indexes = schema_graph.get_unique_indexes_for_class(location_name)
     if _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
-        # TODO(evan): don't return a higher absolute selectivity than class counts.
+        # TODO(evan): don't return a higher absolute selectivity than vertex counts.
         all_selectivities.append(Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0))
 
     for field_name in filter_fields:
