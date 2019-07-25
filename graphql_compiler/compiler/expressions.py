@@ -228,29 +228,15 @@ class Variable(Expression):
         # definition and rely on Cypher to insert the value.
         self.validate()
 
-        # The Neo4j client allows us to pass dates and datetimes directly as arguments. E.g. this
-        # code would return all nodes with a `birthday` field matching the given date.
-        #
-        # import datetime
-        # from neo4j import GraphDatabase
-        #
-        # url = 'bolt://localhost/animals'
-        # NEO4J_USER = 'neo4j'
-        # NEO4J_PASSWORD = 'root'
-        # driver = GraphDatabase.driver(url, auth=(NEO4J_USER, NEO4J_PASSWORD))
-        #
-        # query = 'MATCH (n) WHERE n.birthday=$birthday RETURN n'
-        # params = {'birthday': datetime.date(1975, 3, 3)}
-        # with driver.session() as session:
-        #     result = session.run(query, params)
-        #
-        # Note that `birthday` must map to either a date or datetime-- this query will give the
-        # wrong result if we pass in a string like '1975-03-03'.
+        # The Neo4j client allows us to pass dates and datetimes directly as arguments. See the
+        # compile_and_run_neo4j_query function in integration_test_helpers.py for an example of
+        # how this is done.
         #
         # Meanwhile, RedisGraph (for which we're manually interpolating parameters since RedisGraph
         # doesn't support query parameters [0]) doesn't support dates [1] anyways.
         #
-        # Either way, we don't need to do any special handling for temporal values here.
+        # Either way, we don't need to do any special handling for temporal values here-- either
+        # we don't need to do it ourselves, or they're not supported at all.
         #
         # [0] https://github.com/RedisGraph/RedisGraph/issues/544
         # [1] https://oss.redislabs.com/redisgraph/cypher_support/#types
