@@ -125,6 +125,11 @@ def insert_arguments_into_query(compilation_result, arguments):
     Returns:
         string, a query in the appropriate output language, with inserted argument data
     """
+    if not isinstance(arguments, dict):
+        raise GraphQLInvalidArgumentError(u'Expected arguments to be passed through a dictionary. '
+                                          u'Got {} with type {} instead.'
+                                          .format(arguments, type(arguments).__name__))
+
     ensure_arguments_are_provided(compilation_result.input_metadata, arguments)
 
     if compilation_result.language == MATCH_LANGUAGE:
