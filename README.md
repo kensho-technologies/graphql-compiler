@@ -47,8 +47,10 @@ For a more detailed overview and getting started guide, please see
      * [name_or_alias](#name_or_alias)
      * [between](#between)
      * [in_collection](#in_collection)
+     * [not_in_collection](#not_in_collection)
      * [has_substring](#has_substring)
      * [contains](#contains)
+     * [not_contains](#not_contains)
      * [intersects](#intersects)
      * [has_edge_degree](#has_edge_degree)
   * [Type coercions](#type-coercions)
@@ -66,6 +68,7 @@ For a more detailed overview and getting started guide, please see
      * [Expanding `@optional` vertex fields](#expanding-optional-vertex-fields)
      * [Optional `type_equivalence_hints` compilation parameter](#optional-type_equivalence_hints-parameter)
      * [SchemaGraph](#schemagraph)
+     * [Cypher query parameters](#cypher-query-parameters)
   * [FAQ](#faq)
   * [License](#license)
 
@@ -440,8 +443,8 @@ Consider the following query:
     }
 }
 ```
-It returns one row for every `Animal` that has a color equal to `$animal_color`,
-containing the animal's name in a column named `animal_name`. The parameter `$animal_color` is
+It returns one row for every `Animal` vertex that has a color equal to `$animal_color`. Each row
+contains the animal's name in a column named `animal_name`. The parameter `$animal_color` is
 a runtime parameter -- the user must pass in a value (e.g. `{"animal_color": "blue"}`) that
 will be inserted into the query before querying the database.
 
@@ -643,7 +646,7 @@ Supported comparison operators:
 }
 ```
 This returns one row for every `Species` whose name is equal to the value of the `$species_name`
-parameter, containing the `uuid` of the `Species` in a column named `species_uuid`.
+parameter. Each row contains the `uuid` of the `Species` in a column named `species_uuid`.
 
 ##### Greater than or equal to (`>=`):
 ```
@@ -655,8 +658,8 @@ parameter, containing the `uuid` of the `Species` in a column named `species_uui
     }
 }
 ```
-This returns one row for every `Animal` that was born after or on a `$point_in_time`,
-containing the animal's name and birthday in columns named `name` and `birthday`, respectively.
+This returns one row for every `Animal` vertex that was born after or on a `$point_in_time`.
+Each row contains the animal's name and birthday in columns named `name` and `birthday`, respectively.
 
 #### Constraints and Rules
 - All comparison operators must be on a property field.
@@ -674,8 +677,8 @@ Allows you to filter on vertices which contain the exact string `$wanted_name_or
     }
 }
 ```
-This returns one row for every `Animal` whose name and/or alias is equal to `$wanted_name_or_alias`,
-containing the animal's name in a column named `name`.
+This returns one row for every `Animal` vertex whose name and/or alias is equal to `$wanted_name_or_alias`.
+Each row contains the animal's name in a column named `name`.
 
 The value provided for `$wanted_name_or_alias` must be the full name and/or alias of the `Animal`.
 Substrings will not be matched.
@@ -695,8 +698,8 @@ Substrings will not be matched.
 }
 ```
 This returns:
-- One row for every `Animal` whose birthday is in between `$lower` and `$upper` dates (inclusive),
-containing the animal's name in a column named `name`.
+- One row for every `Animal` vertex whose birthday is in between `$lower` and `$upper` dates (inclusive).
+Each row contains the animal's name in a column named `name`.
 
 #### Constraints and Rules
 - Must be on a property field.
@@ -714,8 +717,25 @@ containing the animal's name in a column named `name`.
     }
 }
 ```
-This returns one row for every `Animal` which has a color contained in a list of colors,
-containing the `Animal`'s name and color in columns named `animal_name` and `color`, respectively.
+This returns one row for every `Animal` vertex which has a color contained in a list of colors.
+Each row contains the `Animal`'s name and color in columns named `animal_name` and `color`, respectively.
+
+#### Constraints and Rules
+- Must be on a property field that is not of list type.
+
+### not_in_collection
+#### Example Use
+```graphql
+{
+    Animal {
+        name @output(out_name: "animal_name")
+        color @output(out_name: "color")
+              @filter(op_name: "not_in_collection", value: ["$colors"])
+    }
+}
+```
+This returns one row for every `Animal` vertex which has a color not contained in a list of colors.
+Each row contains the `Animal`'s name and color in columns named `animal_name` and `color`, respectively.
 
 #### Constraints and Rules
 - Must be on a property field that is not of list type.
@@ -730,7 +750,7 @@ containing the `Animal`'s name and color in columns named `animal_name` and `col
     }
 }
 ```
-This returns one row for every `Animal` whose name contains the value supplied
+This returns one row for every `Animal` vertex whose name contains the value supplied
 for the `$substring` parameter. Each row contains the matching `Animal`'s name
 in a column named `animal_name`.
 
@@ -747,7 +767,24 @@ in a column named `animal_name`.
     }
 }
 ```
-This returns one row for every `Animal` whose list of aliases contains the value supplied
+This returns one row for every `Animal` vertex whose list of aliases contains the value supplied
+for the `$wanted` parameter. Each row contains the matching `Animal`'s name
+in a column named `animal_name`.
+
+#### Constraints and Rules
+- Must be on a property field of list type.
+
+### not_contains
+#### Example Use
+```graphql
+{
+    Animal {
+        alias @filter(op_name: "not_contains", value: ["$wanted"])
+        name @output(out_name: "animal_name")
+    }
+}
+```
+This returns one row for every `Animal` vertex whose list of aliases does not contain the value supplied
 for the `$wanted` parameter. Each row contains the matching `Animal`'s name
 in a column named `animal_name`.
 
@@ -764,7 +801,7 @@ in a column named `animal_name`.
     }
 }
 ```
-This returns one row for every `Animal` whose list of aliases has a non-empty intersection
+This returns one row for every `Animal` vertex whose list of aliases has a non-empty intersection
 with the list of values supplied for the `$wanted` parameter.
 Each row contains the matching `Animal`'s name in a column named `animal_name`.
 
@@ -784,7 +821,7 @@ Each row contains the matching `Animal`'s name in a column named `animal_name`.
     }
 }
 ```
-This returns one row for every `Animal` that has exactly `$child_count` children
+This returns one row for every `Animal` vertex that has exactly `$child_count` children
 (i.e. where the `out_Animal_ParentOf` edge appears exactly `$child_count` times).
 Each row contains the matching `Animal`'s name, in a column named `animal_name`.
 
@@ -930,7 +967,7 @@ insert_meta_fields_into_existing_schema(existing_schema)
     }
 }
 ```
-This query returns one row for each `Animal` vertex, containing its name, and the number and names
+This query returns one row for each `Animal` vertex. Each row contains its name, and the number and names
 of its children. While the output type of the `child_names` selection is a list of strings,
 the output type of the `number_of_children` selection is an integer.
 
@@ -1563,16 +1600,17 @@ would enable the use of a `@fold` on the `adjacent_animal` vertex field of `Foo`
 ```
 
 ### SchemaGraph 
-The `SchemaGraph` is a utility class that encodes a database schema and allows for better schema 
-introspection than the GraphQL schema. The  `SchemaGraph` has three main advantages:
+When building a GraphQL schema from the database metadata, we first build a `SchemaGraph` from 
+the metadata and then, from the `SchemaGraph`, build the GraphQL schema. The `SchemaGraph` is also 
+a representation of the underlying database schema, but it has three main advantages that make it a 
+more powerful schema introspection tool:
  1. It's able to store and expose a schema's index information. The interface for accessing index 
     information is provisional though and might change in the near future.
  2. Its classes are allowed to inherit from non-abstract classes.
  3. It exposes many utility functions, such as `get_subclass_set`, that make it easier to explore 
     the schema.
 
-We plan to add `SchemaGraph` generation from SQLAlchemy metadata and can currently generate a 
-`SchemaGraph` from OrientDB schema metadata as exemplified by the following mock example. 
+See below for a mock example of how to build and use the `SchemaGraph`: 
 
 ```python
 from graphql_compiler.schema_generation.orientdb.schema_graph_builder import (
@@ -1591,16 +1629,61 @@ schema_data = [record.oRecordData for record in schema_records]
 index_records = client.command(ORIENTDB_INDEX_RECORDS_QUERY)
 index_query_data = [record.oRecordData for record in index_records]
 
+# Build SchemaGraph.
 schema_graph = get_orientdb_schema_graph(schema_data, index_query_data)
 
+# Get all the subclasses of a class.
 print(schema_graph.get_subclass_set('Animal'))
 # {'Animal', 'Dog'}
 
+# Get all the outgoing edge classes of a vertex class.
+print(schema_graph.get_vertex_schema_element_or_raise('Animal').out_connections)
+# {'Animal_Eats', 'Animal_FedAt', 'Animal_LivesIn'}
+
+# Get the vertex classes allowed as the destination vertex of an edge class.
+print(schema_graph.get_edge_schema_element_or_raise('Animal_Eats').out_connections)
+# {'Fruit', 'Food'}
+
+# Get the superclass of all classes allowed as the destination vertex of an edge class.
+print(schema_graph.get_edge_schema_element_or_raise('Animal_Eats').base_out_connection)
+# Food
+
+# Get the unique indexes defined on a class.
 print(schema_graph.get_unique_indexes_for_class('Animal'))
 # [IndexDefinition(name='uuid', 'base_classname'='Animal', fields={'uuid'}, unique=True, ordered=False, ignore_nulls=False)]
 ```
 
-For more information about the `SchemaGraph`, please see the class documentation. 
+In the future, we plan to add `SchemaGraph` generation from SQLAlchemy metadata. We also plan to 
+add a mechanism where one can query a `SchemaGraph` using GraphQL queries.
+
+### Cypher query parameters
+RedisGraph [doesn't support query parameters](https://github.com/RedisGraph/RedisGraph/issues/544#issuecomment-507963576), so we perform manual parameter interpolation in the
+`graphql_to_redisgraph_cypher` function. However, for Neo4j, we can use Neo4j's client to do
+parameter interpolation on its own so that we don't reinvent the wheel.
+
+The function `insert_arguments_into_query` does so based on the query language, which isn't
+fine-grained enough here-- for Cypher backends, we only want to insert parameters if the backend
+is RedisGraph, but not if it's Neo4j.
+
+Instead, the correct approach for Neo4j Cypher is as follows, given a Neo4j Python client called `neo4j_client`:
+```python
+compilation_result = compile_graphql_to_cypher(
+    schema, graphql_query, type_equivalence_hints=type_equivalence_hints)
+with neo4j_client.driver.session() as session:
+    result = session.run(compilation_result.query, parameters)
+```
+## Amending Parsed Custom Scalar Types
+Information about the description, serialization and parsing of custom scalar type
+objects is lost when a GraphQL schema is parsed from a string. This causes issues when
+working with custom scalar type objects. In order to avoid these issues, one can use the code 
+snippet below to amend the definitions of the custom scalar types used by the compiler. 
+
+```python
+from graphql_compiler.schema import CUSTOM_SCALAR_TYPES
+from graphql_compiler.schema_generation.utils import amend_custom_scalar_types
+
+amend_custom_scalar_types(your_schema, CUSTOM_SCALAR_TYPES)
+```
 
 ## FAQ
 

@@ -96,3 +96,8 @@ lockfiles for both Python versions. The easiest way to do so is with the followi
 ```
 ./scripts/make_pipenv_lockfiles.sh
 ```
+Then, re-run 
+```
+pipenv sync --dev
+```
+to install the relevant dependencies.
