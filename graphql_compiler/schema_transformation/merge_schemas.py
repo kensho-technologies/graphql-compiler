@@ -7,6 +7,7 @@ from graphql.language import ast as ast_types
 from graphql.language.printer import print_ast
 import six
 
+from .subclass import compute_subclass_sets
 from .utils import (
     SchemaNameConflictError, InvalidCrossSchemaEdgeError, check_ast_schema_is_valid,
     check_schema_identifier_is_valid, get_query_type_name
@@ -35,13 +36,13 @@ CrossSchemaEdgeDescriptor = namedtuple(
 FieldReference = namedtuple(
     'FieldReference', (
         'schema_id',  # str, identifier for the schema of the field
-        'type_name',  # str, name of the type that the field belongs to
+        'type_name',  # str, name of the object or interface that the field belongs to
         'field_name',  # str, name of the field, used in the stich directive
     )
 )
 
 
-def merge_schemas(schema_id_to_ast, cross_schema_edges):
+def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=None):
     """Merge all input schemas and add all cross schema edges.
 
     The merged schema will contain all object, interface, union, enum, scalar, and directive
@@ -54,6 +55,13 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges):
                           be modified by this function
         cross_schema_edges: List[CrossSchemaEdgeDescriptor], containing all edges connecting
                             fields in multiple schemas to be added to the merged schema
+        type_equivalence_hints: Dict[GraphQLObjectType, GraphQLUnionType].
+                                Used as a workaround for GraphQL's lack of support for
+                                inheritance across "types" (i.e. non-interfaces).
+                                The key-value pairs in the dict specify that the "key" type
+                                is equivalent to the "value" type, i.e. that the GraphQL type or
+                                interface in the key is the most-derived common supertype
+                                of every GraphQL type in the "value" GraphQL union
 
     Returns:
         MergedSchemaDescriptor, a namedtuple that contains the AST of the merged schema,
@@ -90,8 +98,10 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges):
         _accumulate_types(merged_schema_ast, type_name_to_schema_id, scalars, directives,
                           current_schema_id, current_ast)
 
+    if type_equivalence_hints is None:
+        type_equivalence_hints = {}
     _add_cross_schema_edges(merged_schema_ast, type_name_to_schema_id, scalars,
-                            cross_schema_edges, query_type)
+                            cross_schema_edges, type_equivalence_hints, query_type)
 
     return MergedSchemaDescriptor(
         schema_ast=merged_schema_ast,
@@ -313,7 +323,7 @@ def _process_generic_type_definition(generic_type, schema_id, existing_scalars,
 
 
 def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_schema_edges,
-                            query_type):
+                            type_equivalence_hints, query_type):
     """Add cross schema edges into the schema AST.
 
     Each cross schema edge will be incorporated into the schema by adding additional fields
@@ -326,17 +336,28 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
         scalars: Set[str], names of all scalars in the merged_schema so far
         cross_schema_edges: List[CrossSchemaEdgeDescriptor], containing all edges connecting
                             fields in multiple schemas to be added to the merged schema
+        type_equivalence_hints: Dict[GraphQLObjectType, GraphQLUnionType].
+                                Used as a workaround for GraphQL's lack of support for
+                                inheritance across "types" (i.e. non-interfaces).
+                                The key-value pairs in the dict specify that the "key" type
+                                is equivalent to the "value" type, i.e. that the GraphQL type or
+                                interface in the key is the most-derived common supertype
+                                of every GraphQL type in the "value" GraphQL union
         query_type: str, name of the query type in the merged schema
 
     Raises:
         - SchemaNameConflictError if any cross schema edge name causes a name conflict with
           fields
         - InvalidCrossSchemaEdgeError if any cross schema edge lies within one schema, refers
-          nonexistent schemas, types, fields, stitches together fields that are not of a
-          scalar type, or stitched together fields that are of different scalar types
+          to nonexistent schemas, types, or fields, refers to Union types, stitches together
+          fields that are not of a scalar type, or stitches together fields that are of
+          different scalar types
     """
     # Build map of definitions for ease of modification
-    type_name_to_definition = {}  # Dict[str, (Interface/Object/Union)TypeDefinition]
+    type_name_to_definition = {}  # Dict[str, (Interface/Object)TypeDefinition]
+    # fieldless_type_names = set()  # Set[str], contains Union, Enum scalar
+    # above is just for better error messages, low priorty
+
     for definition in schema_ast.definitions:
         if (
             isinstance(definition, ast_types.ObjectTypeDefinition) and
@@ -346,9 +367,17 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
         if isinstance(definition, (
             ast_types.InterfaceTypeDefinition,
             ast_types.ObjectTypeDefinition,
-            ast_types.UnionTypeDefinition,
         )):
             type_name_to_definition[definition.name.value] = definition
+
+    # NOTE: All merge_schemas needs is the dict mapping names to names, not the dict mapping
+    # GraphQLObjects to GraphQLObjects. However, elsewhere in the repo, type_equivalence_hints
+    # is a map of objects to objects, and thus we use that same input for consistency
+    equivalent_type_names = {
+        object_type.name: union_type.name
+        for object_type, union_type in six.iteritems(type_equivalence_hints)
+    }
+    subclass_sets = compute_subclass_sets(build_ast_schema(schema_ast), type_equivalence_hints)
 
     # Iterate through edges list, incorporate each edge on one or both sides
     for cross_schema_edge in cross_schema_edges:
@@ -359,14 +388,29 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
         outbound_side = cross_schema_edge.outbound_side
         inbound_side = cross_schema_edge.inbound_side
 
-        outbound_side_node = type_name_to_definition[outbound_side.type_name]
-        inbound_side_node = type_name_to_definition[inbound_side.type_name]
+        # Get name of the type referenced by the edges in either direction
+        # This is equal to the sink side's equivalent union type if it has one
+        outbound_edge_sink_type_name = equivalent_type_names.get(
+            inbound_side.type_name, inbound_side.type_name
+        )
+        inbound_edge_sink_type_name = equivalent_type_names.get(
+            outbound_side.type_name, outbound_side.type_name
+        )
 
-        _add_edge_field(outbound_side_node, inbound_side_node, outbound_side.field_name,
-                        inbound_side.field_name, edge_name, 'out')
+        # Get set of names subclasses, aka all the types that need the new edge field
+        outbound_edge_source_type_names = subclass_sets.get(outbound_side.type_name)
+        inbound_edge_source_type_names = subclass_sets.get(inbound_side.type_name)
+
+        for outbound_edge_source_type_name in outbound_edge_source_type_names:
+            source_type_node = type_name_to_definition[outbound_edge_source_type_name]
+            _add_edge_field(source_type_node, outbound_edge_sink_type_name,
+                            outbound_side.field_name, inbound_side.field_name, edge_name, 'out')
+
         if not cross_schema_edge.out_edge_only:
-            _add_edge_field(inbound_side_node, outbound_side_node, inbound_side.field_name,
-                            outbound_side.field_name, edge_name, 'in')
+            for inbound_edge_source_type_name in inbound_edge_source_type_names:
+                source_type_node = type_name_to_definition[inbound_edge_source_type_name]
+                _add_edge_field(source_type_node, inbound_edge_sink_type_name,
+                                inbound_side.field_name, outbound_side.field_name, edge_name, 'in')
 
 
 def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_schema_id, scalars,
@@ -384,8 +428,9 @@ def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_sche
 
     Raises:
         - InvalidCrossSchemaEdgeError if the cross schema edge lies within one schema, refers
-          nonexistent schemas, types, fields, stitches together fields that are not of a
-          scalar type, or stitched together fields that are of different scalar types
+          to nonexistent schemas, types, or fields, refers to Union types, stitches together
+          fields that are not of a scalar type, or stitches together fields that are of
+          different scalar types
     """
     outbound_side = cross_schema_edge.outbound_side
     inbound_side = cross_schema_edge.inbound_side
@@ -416,15 +461,15 @@ def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema
         field_reference: FieldReference namedtuple, what we check the validity of
 
     Raises:
-        - InvalidCrossSchemaEdgeError if the field reference refers nonexistent schemas,
-          types, or fields
+        - InvalidCrossSchemaEdgeError if the cross schema edge refers to nonexistent schemas,
+          types, or fields, or refers to Union types
     """
     schema_id = field_reference.schema_id
     type_name = field_reference.type_name
     field_name = field_reference.field_name
 
     # Error if the type is nonexistent (includes if type is an enum or scalar)
-    # TODO: Consider improving error message if type is an enum or scalar
+    # TODO: Consider improving error message if type is a union or enum or scalar
     if type_name not in type_name_to_definition:
         raise InvalidCrossSchemaEdgeError(
             u'Type "{}" specified in the field reference "{}" is not found '
@@ -520,16 +565,15 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
         )
 
 
-def _add_edge_field(source_type_node, sink_type_node, source_field_name, sink_field_name,
+def _add_edge_field(source_type_node, sink_type_name, source_field_name, sink_field_name,
                     edge_name, direction):
     """Add one direction of the specified edge as a field of the source type.
 
     Args:
-        source_type_node: (Interface/Object/Union)TypeDefinition, where a new field representing
+        source_type_node: (Interface/Object)TypeDefinition, where a new field representing
                           one direction of the edge will be added. It is modified by this
                           function
-        sink_type_node: (Interface/Object/Union)TypeDefinition, representing the other end of
-                        the edge
+        sink_type_name: str, name of the type that the edge leads to
         source_field_name: str, name of the source side field that will be stitched
         sink_field_name: str, name of the sink side field that will be stitched
         edge_name: str, name of the edge that will be used to name the new field
@@ -541,8 +585,6 @@ def _add_edge_field(source_type_node, sink_type_node, source_field_name, sink_fi
     """
     type_fields = source_type_node.fields
     new_edge_field_name = direction + '_' + edge_name
-
-    sink_type_name = sink_type_node.name.value
 
     # Error if new edge causes a field name clash
     if any(field.name.value == new_edge_field_name for field in type_fields):
