@@ -38,16 +38,3 @@ services:
     environment:
       ACCEPT_EULA: "yes"
       MSSQL_SA_PASSWORD: Root-secure1  # password requirements are more stringent for MSSQL image
-  neo4j:
-    image: neo4j:3.5.6
-    restart: always
-    ports:
-      - "127.0.0.1:7474:7474"
-      - "127.0.0.1:7687:7687"
-    environment:
-      NEO4J_AUTH: neo4j/root
-  redisgraph:
-    image: redislabs/redisgraph:1.2.2
-    restart: always
-    ports:
-      - "127.0.0.1:6379:6379"

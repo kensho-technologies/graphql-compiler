@@ -1,22 +1,16 @@
 # Copyright 2018-present Kensho Technologies, LLC.
+import sys
+import time
 
-from funcy import retry
 import pytest
 import six
 
 from .test_data_tools.data_tool import (
-    generate_neo4j_integration_data, generate_orient_integration_data,
-    generate_orient_snapshot_data, generate_redisgraph_integration_data,
-    generate_sql_integration_data, init_sql_integration_test_backends,
-    tear_down_integration_test_backends
+    generate_orient_integration_data, generate_orient_snapshot_data, generate_sql_integration_data,
+    init_sql_integration_test_backends, tear_down_integration_test_backends
 )
-from .test_data_tools.neo4j_graph import get_test_neo4j_graph
 from .test_data_tools.orientdb_graph import get_test_orientdb_graph
-from .test_data_tools.redisgraph_graph import get_test_redisgraph_graph
 from .test_data_tools.schema import load_schema
-
-
-GRAPH_NAME = 'animals'  # Name for integration test database
 
 
 # Pytest fixtures depend on name redefinitions to work,
@@ -36,45 +30,25 @@ def init_integration_orientdb_client():
     return _init_orientdb_client(load_schema, generate_orient_integration_data)
 
 
-# retry is a decorator that attempts to call the decorated function repeatedly, and it takes a
-# parameter "call". Call is the function being decorated, so we don't need to specify which
-# parameters the retry decorator takes. So, we can disable pylint's warning about
-# missing parameters here.
-@retry(20, timeout=1)  # pylint: disable=no-value-for-parameter
 def _init_orientdb_client(load_schema_func, generate_data_func):
-    """Set up a database and return a client that can query the database."""
-    orientdb_client = get_test_orientdb_graph(GRAPH_NAME, load_schema_func, generate_data_func)
+    graph_name = 'animals'
+
+    # Try to set up the database for the test up to 20 times before giving up.
+    set_up_successfully = False
+    for _ in range(20):
+        try:
+            orientdb_client = get_test_orientdb_graph(graph_name, load_schema_func,
+                                                      generate_data_func)
+            set_up_successfully = True
+            break
+        except Exception as e:  # pylint: disable=broad-except
+            sys.stderr.write(u'Failed to set up test DB: {}'.format(e))
+            time.sleep(1)
+
+    if not set_up_successfully:
+        raise AssertionError(u'Failed to set up database without raising an exception!')
+
     return orientdb_client
-
-
-@pytest.fixture(scope='session')
-def init_integration_neo4j_client():
-    """Return a client for an initialized db, with all test data imported."""
-    return _init_neo4j_client(generate_neo4j_integration_data)
-
-
-# We can disable pylint's warning about missing parameters here because retry is a decorator. See
-# _init_orientdb_client function comment.
-@retry(20, timeout=1)  # pylint: disable=no-value-for-parameter
-def _init_neo4j_client(generate_data_func):
-    """Set up a database and return a client that can query the database."""
-    neo4j_client = get_test_neo4j_graph(GRAPH_NAME, generate_data_func)
-    return neo4j_client
-
-
-@pytest.fixture(scope='session')
-def init_integration_redisgraph_client():
-    """Return a client for an initialized db, with all test data imported."""
-    return _init_redisgraph_client(generate_redisgraph_integration_data)
-
-
-# We can disable pylint's warning about missing parameters here because retry is a decorator. See
-# _init_orientdb_client function comment.
-@retry(20, timeout=1)  # pylint: disable=no-value-for-parameter
-def _init_redisgraph_client(generate_data_func):
-    """Set up a database and return a client that can query the database."""
-    redisgraph_client = get_test_redisgraph_graph(GRAPH_NAME, generate_data_func)
-    return redisgraph_client
 
 
 @pytest.fixture(scope='class')
@@ -87,18 +61,6 @@ def snapshot_orientdb_client(request, init_snapshot_orientdb_client):
 def integration_orientdb_client(request, init_integration_orientdb_client):
     """Get a client for an initialized db, with all test data imported."""
     request.cls.orientdb_client = init_integration_orientdb_client
-
-
-@pytest.fixture(scope='class')
-def integration_neo4j_client(request, init_integration_neo4j_client):
-    """Get a client for an initialized db, with all test data imported."""
-    request.cls.neo4j_client = init_integration_neo4j_client
-
-
-@pytest.fixture(scope='class')
-def integration_redisgraph_client(request, init_integration_redisgraph_client):
-    """Get a client for an initialized db, with all test data imported."""
-    request.cls.redisgraph_client = init_integration_redisgraph_client
 
 
 @pytest.fixture(scope='class')

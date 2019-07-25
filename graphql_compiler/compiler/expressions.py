@@ -7,8 +7,8 @@ from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression
 from .helpers import (
     STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
-    ensure_unicode_string, is_graphql_type, safe_or_special_quoted_string, strip_non_null_from_type,
-    validate_safe_or_special_string, validate_safe_string
+    ensure_unicode_string, is_graphql_type, safe_quoted_string, strip_non_null_from_type,
+    validate_safe_string
 )
 
 
@@ -77,7 +77,7 @@ class Literal(Expression):
 
         # Literal safe strings are correctly representable and supported.
         if isinstance(self.value, six.string_types):
-            validate_safe_or_special_string(self.value)
+            validate_safe_string(self.value)
             return
 
         # Literal ints are correctly representable and supported.
@@ -89,7 +89,7 @@ class Literal(Expression):
         if isinstance(self.value, list):
             if len(self.value) > 0:
                 for x in self.value:
-                    validate_safe_or_special_string(x)
+                    validate_safe_string(x)
             return
 
         raise GraphQLCompilationError(u'Cannot represent literal: {}'.format(self.value))
@@ -106,17 +106,14 @@ class Literal(Expression):
         elif self.value is False:
             return u'false'
         elif isinstance(self.value, six.string_types):
-            return safe_or_special_quoted_string(self.value)
+            return safe_quoted_string(self.value)
         elif isinstance(self.value, int):
             return six.text_type(self.value)
         elif isinstance(self.value, list):
             if len(self.value) == 0:
                 return '[]'
             elif all(isinstance(x, six.string_types) for x in self.value):
-                list_contents = ', '.join(
-                    safe_or_special_quoted_string(x)
-                    for x in sorted(self.value)
-                )
+                list_contents = ', '.join(safe_quoted_string(x) for x in sorted(self.value))
                 return '[' + list_contents + ']'
         else:
             pass  # Fall through to assertion error below.
@@ -268,7 +265,7 @@ class LocalField(Expression):
 
     def validate(self):
         """Validate that the LocalField is correctly representable."""
-        validate_safe_or_special_string(self.field_name)
+        validate_safe_string(self.field_name)
         if self.field_type is not None and not is_graphql_type(self.field_type):
             raise ValueError(u'Invalid value {} of "field_type": {}'.format(self.field_type, self))
 
@@ -335,7 +332,7 @@ class GlobalContextField(Expression):
 
         mark_name, field_name = self.location.get_location_name()
         validate_safe_string(mark_name)
-        validate_safe_or_special_string(field_name)
+        validate_safe_string(field_name)
 
         return u'%s.%s' % (mark_name, field_name)
 
@@ -393,7 +390,7 @@ class ContextField(Expression):
         if field_name is None:
             return u'$matched.%s' % (mark_name,)
         else:
-            validate_safe_or_special_string(field_name)
+            validate_safe_string(field_name)
             return u'$matched.%s.%s' % (mark_name, field_name)
 
     def to_gremlin(self):
@@ -403,7 +400,7 @@ class ContextField(Expression):
         mark_name, field_name = self.location.get_location_name()
 
         if field_name is not None:
-            validate_safe_or_special_string(field_name)
+            validate_safe_string(field_name)
             if '@' in field_name:
                 template = u'm.{mark_name}[\'{field_name}\']'
             else:
@@ -484,7 +481,7 @@ class OutputContextField(Expression):
 
         mark_name, field_name = self.location.get_location_name()
         validate_safe_string(mark_name)
-        validate_safe_or_special_string(field_name)
+        validate_safe_string(field_name)
 
         stripped_field_type = strip_non_null_from_type(self.field_type)
         if GraphQLDate.is_same_type(stripped_field_type):
@@ -500,7 +497,7 @@ class OutputContextField(Expression):
 
         mark_name, field_name = self.location.get_location_name()
         validate_safe_string(mark_name)
-        validate_safe_or_special_string(field_name)
+        validate_safe_string(field_name)
 
         if '@' in field_name:
             template = u'm.{mark_name}[\'{field_name}\']'
