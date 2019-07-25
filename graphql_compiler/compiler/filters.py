@@ -563,6 +563,12 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
     filtered_field_name = filter_operation_info.field_name
 
     base_field_type = strip_non_null_from_type(filtered_field_type)
+
+    if base_field_type.is_same_type(GraphQLString):
+        raise GraphQLCompilationError(u'Cannot apply "contains" to non-list '
+                                      u'type String. Consider using the "has_substring" '
+                                      u'operator instead.')
+
     if not isinstance(base_field_type, GraphQLList):
         raise GraphQLCompilationError(u'Cannot apply "contains" to non-list '
                                       u'type {}'.format(filtered_field_type))
@@ -605,7 +611,7 @@ def _process_not_contains_filter_directive(filter_operation_info, location, cont
 
     base_field_type = strip_non_null_from_type(filtered_field_type)
     if not isinstance(base_field_type, GraphQLList):
-        raise GraphQLCompilationError(u'Cannot apply "contains" to non-list '
+        raise GraphQLCompilationError(u'Cannot apply "not_contains" to non-list '
                                       u'type {}'.format(filtered_field_type))
 
     argument_inferred_type = strip_non_null_from_type(base_field_type.of_type)
