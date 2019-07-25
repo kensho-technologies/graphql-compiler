@@ -11,9 +11,9 @@ class Statistics(object):
     """Abstract class for statistics regarding GraphQL objects.
 
     For the purposes of query cardinality estimation, we need statistics to provide better
-    cardinality estimates when operations like edge traversal or @filter directives are used.
-    All statistics except get_class_count() are optional, so if the statistic doesn't exist, a
-    value of None should be returned.
+    cardinality estimates when operations like edge traversal or @filter directives are used. All
+    statistics except get_vertex_count() and get_edge_count() are optional, so if the statistic
+    doesn't exist, a value of None should be returned.
     """
     def __str__(self):
         """Return a human-readable unicode representation of the Statistics object."""
@@ -24,18 +24,32 @@ class Statistics(object):
         return self.__str__()
 
     @abstractmethod
-    def get_class_count(self, class_name):
-        """Return how many vertex or edge instances have, or inherit, the given class name.
+    def get_vertex_count(self, class_name):
+        """Return how many vertex instances have, or inherit, the given class name.
 
         Args:
-            class_name: str, either a vertex class name or an edge class name defined in the
-                        GraphQL schema.
+            class_name: str, a vertex class name defined in the GraphQL schema.
 
         Returns:
-            - int, count of vertex or edge instances having, or inheriting, the given class name.
+            - int, count of vertex instances having, or inheriting, the given class name.
 
         Raises:
-            AssertionError, if the count statistic for the given vertex/edge class does not exist.
+            AssertionError, if the count statistic for the given vertex class does not exist.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_edge_count(self, class_name):
+        """Return how many edge instances have, or inherit, the given class name.
+
+        Args:
+            class_name: str, a edge class name defined in the GraphQL schema.
+
+        Returns:
+            - int, count of edge instances having, or inheriting, the given class name.
+
+        Raises:
+            AssertionError, if the count statistic for the given edge class does not exist.
         """
         raise NotImplementedError()
 
@@ -83,13 +97,14 @@ class Statistics(object):
 class LocalStatistics(Statistics):
     """Provides statistics using ones given at initialization."""
     def __init__(
-        self, class_counts, vertex_edge_vertex_counts=None,
+        self, vertex_counts, edge_counts, vertex_edge_vertex_counts=None,
         distinct_field_values_counts=None
     ):
         """Initializes statistics with the given data.
 
         Args:
-            class_counts: dict, str -> int, mapping vertex/edge class name to class count.
+            vertex_counts: dict, str -> int, mapping vertex class name to count of vertex instances.
+            edge_counts: dict, str -> int, mapping edge class name to count of edge instances.
             vertex_edge_vertex_counts: optional dict, (str, str, str) -> int, mapping
                 tuple of (vertex source class name, edge class name, vertex target class name) to
                 count of edge instances of given class connecting instances of two vertex classes.
@@ -102,27 +117,44 @@ class LocalStatistics(Statistics):
         if distinct_field_values_counts is None:
             distinct_field_values_counts = dict()
 
-        self._class_counts = frozendict(class_counts)
+        self._vertex_counts = frozendict(vertex_counts)
+        self._edge_counts = frozendict(edge_counts)
         self._vertex_edge_vertex_counts = frozendict(vertex_edge_vertex_counts)
         self._distinct_field_values_counts = frozendict(distinct_field_values_counts)
 
-    def get_class_count(self, class_name):
-        """Return how many vertex or edge instances have, or inherit, the given class name.
+    def get_vertex_count(self, class_name):
+        """Return how many vertex instances have, or inherit, the given class name.
 
         Args:
-            class_name: str, either a vertex class name or an edge class name defined in the
-                        GraphQL schema.
+            class_name: str, a vertex class name defined in the GraphQL schema.
 
         Returns:
-            - int, count of vertex or edge instances having, or inheriting, the given class name.
+            - int, count of vertex instances having, or inheriting, the given class name.
 
         Raises:
-            AssertionError, if the count statistic for the given vertex/edge class does not exist.
+            AssertionError, if the count statistic for the given vertex class does not exist.
         """
-        if class_name not in self._class_counts:
-            raise AssertionError(u'Class count statistic is required, but entry not found for: '
+        if class_name not in self._vertex_counts:
+            raise AssertionError(u'Vertex count statistic is required, but entry not found for: '
                                  u'{}'.format(class_name))
-        return self._class_counts[class_name]
+        return self._vertex_counts[class_name]
+
+    def get_edge_count(self, class_name):
+        """Return how many edge instances have, or inherit, the given class name.
+
+        Args:
+            class_name: str, a edge class name defined in the GraphQL schema.
+
+        Returns:
+            - int, count of edge instances having, or inheriting, the given class name.
+
+        Raises:
+            AssertionError, if the count statistic for the given edge class does not exist.
+        """
+        if class_name not in self._edge_counts:
+            raise AssertionError(u'Edge count statistic is required, but entry not found for: '
+                                 u'{}'.format(class_name))
+        return self._edge_counts[class_name]
 
     def get_vertex_edge_vertex_count(
         self, vertex_source_class_name, edge_class_name, vertex_target_class_name

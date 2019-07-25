@@ -122,11 +122,11 @@ def _estimate_vertex_edge_vertex_count_using_class_count(
     """Estimate the count of edges that connect parent_location and child_location vertices.
 
     Given a parent location of class A and a child location of class B, this function estimates the
-    number of AB edges using class counts. If A and B are subclasses of the edge's endpoint classes
-    (which we'll name C and D respectively), we only have statistics for CD edges. So estimates for
-    the number of AB edges will be made using the assumption that CD edges are distributed
-    independently of whether or not the vertex of class C is also of class A and likewise for D and
-    B. In the general case, we estimate the statistic as
+    number of AB edges using vertex and edge counts. If A and B are subclasses of the edge's
+    endpoint classes (which we'll name C and D respectively), we only have statistics for CD edges.
+    So estimates for the number of AB edges will be made using the assumption that CD edges are
+    distributed independently of whether or not the vertex of class C is also of class A and
+    likewise for D and B. In the general case, we estimate the statistic as
     (# of AB edges) = (# of CD edges) * (# of A vertices) / (# of C vertices) *
                                         (# of B vertices) / (# of D vertices).
 
@@ -141,7 +141,7 @@ def _estimate_vertex_edge_vertex_count_using_class_count(
         float, estimate for (# of AB edges)
     """
     _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
-    edge_counts = statistics.get_class_count(edge_name)
+    edge_counts = statistics.get_edge_count(edge_name)
 
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     child_name_from_location = query_metadata.get_location_info(child_location).type.name
@@ -151,14 +151,14 @@ def _estimate_vertex_edge_vertex_count_using_class_count(
     # Scale edge_counts if child_location's type is a subclass of the edge's endpoint type.
     if child_name_from_location != child_base_classname:
         edge_counts *= (
-            float(statistics.get_class_count(child_name_from_location)) /
-            statistics.get_class_count(child_base_classname)
+            float(statistics.get_vertex_count(child_name_from_location)) /
+            statistics.get_vertex_count(child_base_classname)
         )
     # Scale edge_counts if parent_location's type is a subclass of the edge's endpoint type.
     if parent_name_from_location != parent_base_classname:
         edge_counts *= (
-            float(statistics.get_class_count(parent_name_from_location)) /
-            statistics.get_class_count(parent_base_classname)
+            float(statistics.get_vertex_count(parent_name_from_location)) /
+            statistics.get_vertex_count(parent_base_classname)
         )
 
     return edge_counts
@@ -195,7 +195,7 @@ def _estimate_children_per_parent(
 
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     # Count the number of parents, over which we assume the edges are uniformly distributed.
-    parent_location_counts = statistics.get_class_count(parent_name_from_location)
+    parent_location_counts = statistics.get_vertex_count(parent_name_from_location)
 
     # TODO(evan): edges are not necessarily uniformly distributed, so record more statistics
     child_counts_per_parent = float(edge_counts) / parent_location_counts
@@ -328,7 +328,7 @@ def estimate_query_result_cardinality(
 
     # First, count the vertices corresponding to the root location that pass relevant filters
     root_name = query_metadata.get_location_info(root_location).type.name
-    root_counts = statistics.get_class_count(root_name)
+    root_counts = statistics.get_vertex_count(root_name)
     root_counts = adjust_counts_for_filters(
         schema_graph, statistics, query_metadata.get_filter_infos(root_location), parameters,
         root_name, root_counts

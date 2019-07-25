@@ -29,10 +29,10 @@ class CostEstimationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         test_data = test_input_data.immediate_output()
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 3,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(vertex_count_data, dict())
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, test_data.graphql_input, dict()
@@ -47,11 +47,13 @@ class CostEstimationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         test_data = test_input_data.traverse_and_output()
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 3,
+        }
+        edge_count_data = {
             'Animal_ParentOf': 5,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, test_data.graphql_input, dict()
@@ -68,13 +70,15 @@ class CostEstimationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         test_data = test_input_data.simple_union()
 
-        count_data = {
+        vertex_count_data = {
             'Species': 3,
-            'Species_Eats': 5,
             'Food': 11,
             'FoodOrSpecies': 14,
         }
-        statistics = LocalStatistics(count_data)
+        edge_count_data = {
+            'Species_Eats': 5,
+        }
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, test_data.graphql_input, dict()
@@ -105,18 +109,20 @@ class CostEstimationTests(unittest.TestCase):
             }
         }'''
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 19,
-            'Entity_Related': 3,
             'Food': 5,
             'FoodOrSpecies': 16,
             'Entity': 47,
-            'Species_Eats': 7,
             'Species': 11,
-            'Animal_BornAt': 13,
             'BirthEvent': 17
         }
-        statistics = LocalStatistics(count_data)
+        edge_count_data = {
+            'Entity_Related': 3,
+            'Species_Eats': 7,
+            'Animal_BornAt': 13,
+        }
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -133,7 +139,7 @@ class CostEstimationTests(unittest.TestCase):
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_traversal_provided_both_statistics(self):
-        """Test type coercion provided both class_counts and vertex_edge_vertex_counts."""
+        """Test type coercion provided both edge_counts and vertex_edge_vertex_counts."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_input = '''{
             Animal {
@@ -146,17 +152,19 @@ class CostEstimationTests(unittest.TestCase):
         }'''
         params = {}
 
-        count_data = {
+        vertex_count_data = {
             'Entity': 19,
             'Animal': 3,
             'Event': 7,
-            'Entity_Related': 11
+        }
+        edge_count_data = {
+            'Entity_Related': 11,
         }
         vertex_edge_vertex_data = {
             ('Animal', 'Entity_Related', 'Event'): 2
         }
         statistics = LocalStatistics(
-            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+            vertex_count_data, edge_count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -183,17 +191,19 @@ class CostEstimationTests(unittest.TestCase):
         }'''
         params = {}
 
-        count_data = {
+        vertex_count_data = {
             'Entity': 19,
             'Animal': 3,
             'Event': 7,
-            'Entity_Related': 11
+        }
+        edge_count_data = {
+            'Entity_Related': 11,
         }
         vertex_edge_vertex_data = {
             ('Animal', 'Entity_Related', 'Event'): 0
         }
         statistics = LocalStatistics(
-            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+            vertex_count_data, edge_count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -220,17 +230,19 @@ class CostEstimationTests(unittest.TestCase):
         }'''
         params = {}
 
-        count_data = {
+        vertex_count_data = {
             'Entity': 19,
             'Animal': 3,
             'Event': 7,
-            'Entity_Related': 11
+        }
+        edge_count_data = {
+            'Entity_Related': 11,
         }
         vertex_edge_vertex_data = {
             ('Animal', 'Entity_Related', 'Event'): 2
         }
         statistics = LocalStatistics(
-            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+            vertex_count_data, edge_count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -262,18 +274,20 @@ class CostEstimationTests(unittest.TestCase):
         }'''
         params = {}
 
-        count_data = {
+        vertex_count_data = {
             'Entity': 19,
             'Animal': 3,
             'Event': 7,
-            'Entity_Related': 11,
             'Location': 13
+        }
+        edge_count_data = {
+            'Entity_Related': 11,
         }
         vertex_edge_vertex_data = {
             ('Animal', 'Entity_Related', 'Event'): 2
         }
         statistics = LocalStatistics(
-            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+            vertex_count_data, edge_count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
         )
 
         cardinality_estimate = estimate_query_result_cardinality(
@@ -303,12 +317,14 @@ class CostEstimationTests(unittest.TestCase):
             }
         }'''
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 5,
+        }
+        edge_count_data = {
             'Animal_BornAt': 7,
             'Animal_FedAt': 3,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -339,16 +355,18 @@ class CostEstimationTests(unittest.TestCase):
             }
         }'''
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 3,
-            'Entity_Related': 23,
             'Food': 7,
             'FoodOrSpecies': 13,
             'Entity': 11,
-            'Species_Eats': 5,
             'Species': 97,
         }
-        statistics = LocalStatistics(count_data)
+        edge_count_data = {
+            'Entity_Related': 23,
+            'Species_Eats': 5,
+        }
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -360,15 +378,17 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 3.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 3,
-            'Entity_Related': 23,
             'Food': 7,
             'FoodOrSpecies': 13,
             'Entity': 11,
+        }
+        edge_count_data = {
+            'Entity_Related': 23,
             'Species_Eats': 17,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -394,13 +414,15 @@ class CostEstimationTests(unittest.TestCase):
             }
         }'''
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 5,
-            'Animal_BornAt': 7,
-            'Animal_FedAt': 3,
             'FeedingEvent': 11
         }
-        statistics = LocalStatistics(count_data)
+        edge_count_data = {
+            'Animal_BornAt': 7,
+            'Animal_FedAt': 3,
+        }
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -431,15 +453,17 @@ class CostEstimationTests(unittest.TestCase):
             }
         }'''
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 3,
-            'Entity_Related': 23,
             'Food': 7,
             'FoodOrSpecies': 13,
             'Entity': 11,
+        }
+        edge_count_data = {
+            'Entity_Related': 23,
             'Species_Eats': 5,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -451,15 +475,17 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 3.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 3,
-            'Entity_Related': 23,
             'Food': 7,
             'FoodOrSpecies': 13,
             'Entity': 11,
+        }
+        edge_count_data = {
+            'Entity_Related': 23,
             'Species_Eats': 17,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -482,11 +508,13 @@ class CostEstimationTests(unittest.TestCase):
             }
         }'''
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 7,
+        }
+        edge_count_data = {
             'Animal_ParentOf': 11,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -513,12 +541,14 @@ class CostEstimationTests(unittest.TestCase):
             }
         }'''
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 7,
+        }
+        edge_count_data = {
             'Animal_ParentOf': 11,
             'Animal_BornAt': 13,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, dict()
@@ -546,10 +576,10 @@ class CostEstimationTests(unittest.TestCase):
             'uuid': '00000000-0000-0000-0000-000000000000',
         }
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 3,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(vertex_count_data, dict())
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -579,18 +609,22 @@ class CostEstimationTests(unittest.TestCase):
             'uuid': '00000000-0000-0000-0000-000000000000',
         }
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 3,
-            'Animal_BornAt': 5,
-            'Event_RelatedEvent': 7,
             'Event': 17,
             'FeedingEvent': 11,
             'BirthEvent': 13
         }
+        edge_count_data = {
+            'Animal_BornAt': 5,
+            'Event_RelatedEvent': 7,
+        }
         vertex_edge_vertex_data = {
             ('Animal', 'Animal_BornAt', 'BirthEvent'): 2
         }
-        statistics = LocalStatistics(count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data)
+        statistics = LocalStatistics(
+            vertex_count_data, edge_count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+        )
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -617,10 +651,10 @@ class CostEstimationTests(unittest.TestCase):
             'worth': 100.0,
         }
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 3,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(vertex_count_data, dict())
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -651,15 +685,17 @@ class CostEstimationTests(unittest.TestCase):
             'uuid': '00000000-0000-0000-0000-000000000000',
         }
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 5,
-            'Animal_BornAt': 2,
-            'Event_RelatedEvent': 11,
             'Event': 7,
             'FeedingEvent': 6,
             'BirthEvent': 13
         }
-        statistics = LocalStatistics(count_data)
+        edge_count_data = {
+            'Animal_BornAt': 2,
+            'Event_RelatedEvent': 11,
+        }
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -694,15 +730,17 @@ class CostEstimationTests(unittest.TestCase):
         }
 
         # Test that a filter correctly triggers the optional check for <1 subexpansion result.
-        count_data = {
+        vertex_count_data = {
             'Animal': 5,
-            'Animal_BornAt': 3,
-            'Event_RelatedEvent': 23,
             'Event': 7,
             'FeedingEvent': 6,
             'BirthEvent': 13
         }
-        statistics = LocalStatistics(count_data)
+        edge_count_data = {
+            'Animal_BornAt': 3,
+            'Event_RelatedEvent': 23,
+        }
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -736,15 +774,17 @@ class CostEstimationTests(unittest.TestCase):
             'uuid': '00000000-0000-0000-0000-000000000000',
         }
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 5,
-            'Animal_BornAt': 2,
-            'Event_RelatedEvent': 11,
             'Event': 7,
             'FeedingEvent': 6,
             'BirthEvent': 13
         }
-        statistics = LocalStatistics(count_data)
+        edge_count_data = {
+            'Animal_BornAt': 2,
+            'Event_RelatedEvent': 11,
+        }
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -779,15 +819,17 @@ class CostEstimationTests(unittest.TestCase):
         }
 
         # Test that a filter correctly triggers the fold check for <1 subexpansion result.
-        count_data = {
+        vertex_count_data = {
             'Animal': 5,
-            'Animal_BornAt': 3,
-            'Event_RelatedEvent': 23,
             'Event': 7,
             'FeedingEvent': 6,
             'BirthEvent': 11
         }
-        statistics = LocalStatistics(count_data)
+        edge_count_data = {
+            'Animal_BornAt': 3,
+            'Event_RelatedEvent': 23,
+        }
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -819,12 +861,14 @@ class CostEstimationTests(unittest.TestCase):
             'uuid': '00000000-0000-0000-0000-000000000000',
         }
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 7,
+        }
+        edge_count_data = {
             'Animal_ParentOf': 11,
             'Animal_BornAt': 13,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -854,12 +898,14 @@ class CostEstimationTests(unittest.TestCase):
             'uuid': '00000000-0000-0000-0000-000000000000',
         }
 
-        count_data = {
+        vertex_count_data = {
             'Animal': 7,
+        }
+        edge_count_data = {
             'Animal_ParentOf': 11,
             'Animal_BornAt': 13,
         }
-        statistics = LocalStatistics(count_data)
+        statistics = LocalStatistics(vertex_count_data, edge_count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -927,7 +973,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         classname = 'Animal'
 
-        empty_statistics = LocalStatistics(dict())
+        empty_statistics = LocalStatistics(dict(), dict())
         params = dict()
 
         # If we '='-filter on a property that isn't an index, with no distinct-field-values-count
@@ -954,7 +1000,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             ('Animal', 'birthday'): 3
         }
         statistics_with_distinct_birthday_values_data = LocalStatistics(
-            dict(), distinct_field_values_counts=distinct_birthday_values_data
+            dict(), dict(), distinct_field_values_counts=distinct_birthday_values_data
         )
         # If we '='-filter on a property that's non-uniquely indexed, but has only 3 distinct field
         # values, return a fractional selectivity of 1.0 / 3.0.
@@ -978,7 +1024,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             ('Animal', 'uuid'): 3
         }
         statistics_with_distinct_uuid_values_data = LocalStatistics(
-            dict(), distinct_field_values_counts=distinct_uuid_values_data
+            dict(), dict(), distinct_field_values_counts=distinct_uuid_values_data
         )
         # If we '='-filter on a property that is both uniquely indexed, and has 3 distinct field
         # values, expect exactly 1 result, since the index overrides the statistic.
@@ -994,7 +1040,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
     def test_get_in_collection_filter_selectivity(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         classname = 'Animal'
-        empty_statistics = LocalStatistics(dict())
+        empty_statistics = LocalStatistics(dict(), dict())
         nonunique_filter = FilterInfo(fields=('birthday',), op_name='in_collection',
                                       args=('$birthday_collection',))
         nonunique_params = {
@@ -1015,7 +1061,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             ('Animal', 'birthday'): 3
         }
         statistics_with_distinct_birthday_values_data = LocalStatistics(
-            dict(), distinct_field_values_counts=distinct_birthday_values_data
+            dict(), dict(), distinct_field_values_counts=distinct_birthday_values_data
         )
         # If we use an in_collection-filter using a collection with 2 elements on a property that is
         # not uniquely indexed, but has 3 distinct values, return a fractional
@@ -1028,7 +1074,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         self.assertEqual(expected_selectivity, selectivity)
 
         statistics_with_distinct_birthday_values_data = LocalStatistics(
-            dict(), distinct_birthday_values_data
+            dict(), dict(), distinct_birthday_values_data
         )
         # If we use an in_collection-filter with 4 elements on a property that is not uniquely
         # indexed, but has 3 distinct values, return a fractional selectivity of 1.0.
