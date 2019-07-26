@@ -47,7 +47,9 @@ discarded_block_types = (Unfold, OutputSource, EndOptional)
 
 def _get_all_supertypes_of_exact_type(query_metadata_table, exact_type):
     """Return the set of all supertypes of the given exact type."""
-    # TODO(predrag): Plumb the SchemaGraph work through here.
+    # TODO(predrag): Plumb the SchemaGraph work through here. When/ if this implementation changes,
+    # we may also need to modify how CypherStep objects for fold directives are constructed in
+    # emit_cypher.emit_code_from_ir() based on the comment there.
     return {exact_type}
 
 

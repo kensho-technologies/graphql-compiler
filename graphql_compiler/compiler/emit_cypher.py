@@ -1,8 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 """Convert lowered IR basic blocks to Cypher query strings."""
-from graphql_compiler.compiler.cypher_query import CypherStep
-from graphql_compiler.compiler.helpers import get_only_element_from_collection
 from .blocks import Fold, QueryRoot, Recurse, Traverse
+from .cypher_query import _make_cypher_step
 
 
 def _emit_code_from_cypher_step(cypher_step):
@@ -126,18 +125,18 @@ def emit_code_from_ir(cypher_query, compiler_metadata):
 
     if cypher_query.folds:
         for fold_scope_location in cypher_query.folds:
-            # cypher step:     ('linked_location', 'step_block', 'step_types', 'where_block', 'as_block'))
             linked_location = fold_scope_location.base_location
             step_block = Fold(fold_scope_location)
-            coercion_block, mark_location_block = cypher_query.folds[fold_scope_location]
-            exact_step_type = get_only_element_from_collection(coercion_block.target_class) # we are following code in cypher_query.py, todo. lends credence to the idea that we should probably do this elsewhere.
-            step_types = {exact_step_type} # todo-- what if there are multiple labels? see _get_all_supertypes_of_exact_type(), but rn that's not really supported see type coercions.
-            where_block = None # todo-- change this depending on whether or not we need to filter here.
-            as_block = mark_location_block # todo: i don't like the idea of hard-coding this-- it just happens that markLocation is the second block in the list, but we don't know that to be always true.
-            cypher_step = CypherStep(linked_location, step_block, step_types, where_block, as_block)   # TODO: maybe could build this CypherStep somewhere else? Intentionally leaving this line too long so the linter complains and reminds me to look at this.
+            current_step_blocks = [step_block] + cypher_query.folds[fold_scope_location]
+            query_metadata_table = None  # In _make_cypher_step, this is needed for only two
+            # things: making a query root CypherStep and getting all the supertypes of the type
+            # specified in the coercion block. However, this is not a root block because we're
+            # dealing with a fold directive. Cypher also doesn't really support inheritance with
+            # its types, which makes _get_all_supertypes_of_exact_type() return a set containing
+            # only the type specified in the coercion block. When/if that changes, the
+            # query_metadata_table may also need to change.
+            cypher_step = _make_cypher_step(query_metadata_table, linked_location, current_step_blocks)
             query_data.append(_emit_code_from_cypher_step(cypher_step))
-        # raise NotImplementedError()
-        pass
 
     if cypher_query.global_where_block is not None:
         query_data.extend(_emit_with_clause_components(cypher_query.steps))
