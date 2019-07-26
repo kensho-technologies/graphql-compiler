@@ -628,8 +628,23 @@ class FoldedContextField(Expression):
                              u'in Gremlin, so this is a bug. This function should not be called.')
 
     def to_cypher(self):
-        """Not implemented yet."""
-        raise NotImplementedError()
+        """Return a unicode object with the Cypher representation of this expression."""
+        self.validate()
+
+        mark_name, field_name = self.fold_scope_location.get_location_name()
+        validate_safe_string(mark_name)
+
+        template = u'collect(%(mark_name)s.%(field_name)s)'
+        template_data = {
+            'mark_name': mark_name,
+        }
+
+        if field_name == COUNT_META_FIELD_NAME:
+            raise NotImplementedError()  # TODO Leon-- _x_count.
+        else:
+            template_data['field_name'] = field_name
+
+        return template % template_data
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
