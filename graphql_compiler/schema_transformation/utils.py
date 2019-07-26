@@ -36,7 +36,21 @@ class InvalidTypeNameError(SchemaTransformError):
 
 
 class SchemaNameConflictError(SchemaTransformError):
-    """Raised when renaming or merging types or fields cause name conflicts."""
+    """Raised when renaming or merging types or fields cause name conflicts.
+
+    This may be raised if a field or type is renamed to conflict with another field or type,
+    if two merged schemas share an identically named field or type, or if a
+    CrossSchemaEdgeDescriptor provided when merging schemas has an edge name that causes a
+    name conflict with an existing field.
+    """
+
+
+class InvalidCrossSchemaEdgeError(SchemaTransformError):
+    """Raised when a CrossSchemaEdge provided when merging schemas is invalid.
+
+    This may be raised if the provided CrossSchemaEdge refers to nonexistent types, types in
+    wrong/nonexistent schemas, or nonexistent fields.
+    """
 
 
 _alphanumeric_and_underscore = frozenset(six.text_type(string.ascii_letters + string.digits + '_'))
