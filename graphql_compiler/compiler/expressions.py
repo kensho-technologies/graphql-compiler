@@ -228,12 +228,12 @@ class Variable(Expression):
         # definition and rely on Cypher to insert the value.
         self.validate()
 
-        # The Neo4j client allows us to pass dates and datetimes directly as arguments. See the
-        # compile_and_run_neo4j_query function in integration_test_helpers.py for an example of
+        # The Neo4j client allows us to pass date and datetime objects directly as arguments. See
+        # the compile_and_run_neo4j_query function in integration_test_helpers.py for an example of
         # how this is done.
         #
         # Meanwhile, RedisGraph (for which we're manually interpolating parameters since RedisGraph
-        # doesn't support query parameters [0]) doesn't support dates [1] anyways.
+        # doesn't support query parameters [0]) doesn't support date objects [1] anyways.
         #
         # Either way, we don't need to do any special handling for temporal values here-- either
         # we don't need to do it ourselves, or they're not supported at all.
