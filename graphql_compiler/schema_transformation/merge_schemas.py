@@ -16,7 +16,7 @@ from .utils import (
 MergedSchemaDescriptor = namedtuple(
     'MergedSchemaDescriptor', (
         'schema_ast',  # Document, AST representing the merged schema
-        'type_name_to_schema_id', # Dict[str, str], mapping type name to the id of its schema
+        'type_name_to_schema_id',  # Dict[str, str], mapping type name to the id of its schema
     )
 )
 
