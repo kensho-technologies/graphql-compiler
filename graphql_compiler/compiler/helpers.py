@@ -139,37 +139,60 @@ def get_uniquely_named_objects_by_name(object_list):
 
 
 def safe_quoted_string(value):
-    """Return the provided string, surrounded by single quotes. Unsafe strings cause exceptions."""
+    """Return the provided string, surrounded by single quotes. Ensure string is safe."""
     validate_safe_string(value)
     return u'\'{}\''.format(value)
 
 
-def validate_safe_string(value):
-    """Ensure the provided string does not have illegal characters."""
+def safe_or_special_quoted_string(value):
+    """Return the provided string, surrounded by single quotes. Ensure string is safe or special."""
+    validate_safe_or_special_string(value)
+    return u'\'{}\''.format(value)
+
+
+def validate_safe_or_special_string(value, value_description='string'):
+    """Ensure the string does not have illegal characters or is in a set of allowed strings."""
     # The following strings are explicitly allowed, despite having otherwise-illegal chars.
     legal_strings_with_special_chars = frozenset({'@rid', '@class', '@this', '%'})
+    if value not in legal_strings_with_special_chars:
+        validate_safe_string(value, value_description=value_description)
 
-    if not isinstance(value, six.string_types):
-        raise TypeError(u'Expected string value, got: {} {}'.format(
-            type(value).__name__, value))
 
+def validate_safe_string(value, value_description='string'):
+    """Ensure that the provided string not have illegal characters."""
     if not value:
-        raise GraphQLCompilationError(u'Empty strings are not allowed!')
+        raise GraphQLCompilationError(u'Empty {}s are not allowed!'.format(value_description))
 
     if value[0] in string.digits:
-        raise GraphQLCompilationError(u'String values cannot start with a digit: {}'.format(value))
+        raise GraphQLCompilationError(u'Encountered invalid {}: {}. It cannot start with a '
+                                      u'digit.'.format(value_description, value))
 
-    if not set(value).issubset(VARIABLE_ALLOWED_CHARS) and \
-            value not in legal_strings_with_special_chars:
-        raise GraphQLCompilationError(u'Encountered illegal characters in string: {}'.format(value))
+    # set(value) is used instead of frozenset(value) to avoid printing 'frozenset' in error message.
+    disallowed_chars = set(value) - VARIABLE_ALLOWED_CHARS
+    if disallowed_chars:
+        raise GraphQLCompilationError(u'Encountered illegal characters {} in {}: {}. It is only '
+                                      u'allowed to have upper and lower case letters, '
+                                      u'digits and underscores.'
+                                      .format(disallowed_chars, value_description, value))
 
 
-def validate_output_name(value):
+def validate_runtime_argument_name(name):
+    """Ensure that the provided string is valid for use as a runtime argument name."""
+    validate_safe_string(name, value_description='runtime argument name')
+
+
+def validate_tagged_argument_name(name):
+    """Ensure that provided string is valid for use as a tagged argument name"""
+    validate_safe_string(name, value_description='tagged argument name')
+
+
+def validate_output_name(name):
     """Ensure that the provided string is valid for use as an output name."""
     internal_name_prefix = u'___'
-    if value.startswith(internal_name_prefix):
+    if name.startswith(internal_name_prefix):
         raise GraphQLCompilationError(
             u'The prefix "___" (three underscores) for output names is reserved by the compiler.')
+    validate_safe_string(name, value_description='output name')
 
 
 def validate_edge_direction(edge_direction):
