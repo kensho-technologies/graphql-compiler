@@ -227,6 +227,19 @@ class Variable(Expression):
         # Cypher has built-in support for variable expansion, so we'll just emit a variable
         # definition and rely on Cypher to insert the value.
         self.validate()
+
+        # The Neo4j client allows us to pass date and datetime objects directly as arguments. See
+        # the compile_and_run_neo4j_query function in integration_test_helpers.py for an example of
+        # how this is done.
+        #
+        # Meanwhile, RedisGraph (for which we're manually interpolating parameters since RedisGraph
+        # doesn't support query parameters [0]) doesn't support date objects [1] anyways.
+        #
+        # Either way, we don't need to do any special handling for temporal values here-- either
+        # we don't need to do it ourselves, or they're not supported at all.
+        #
+        # [0] https://github.com/RedisGraph/RedisGraph/issues/544
+        # [1] https://oss.redislabs.com/redisgraph/cypher_support/#types
         return u'{}'.format(self.variable_name)
 
     def __eq__(self, other):
