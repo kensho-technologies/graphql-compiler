@@ -7,6 +7,7 @@ from graphql.language import ast as ast_types
 from graphql.language.printer import print_ast
 import six
 
+from ..compiler.helpers import OUTBOUND_EDGE_DIRECTION, INBOUND_EDGE_DIRECTION
 from .subclass import compute_subclass_sets
 from .utils import (
     InvalidCrossSchemaEdgeError, SchemaNameConflictError, check_ast_schema_is_valid,
@@ -17,8 +18,7 @@ from .utils import (
 MergedSchemaDescriptor = namedtuple(
     'MergedSchemaDescriptor', (
         'schema_ast',  # Document, AST representing the merged schema
-        'type_name_to_schema_id',
-        # Dict[str, str], mapping type name to the id of the schema that the type is from
+        'type_name_to_schema_id', # Dict[str, str], mapping type name to the id of its schema
     )
 )
 
@@ -26,8 +26,8 @@ MergedSchemaDescriptor = namedtuple(
 CrossSchemaEdgeDescriptor = namedtuple(
     'CrossSchemaEdgeDescriptor', (
         'edge_name',  # str, name used for the corresponding in and out fields
-        'outbound_side',  # FieldReference namedtuple for the outbound (source) field
-        'inbound_side',  # FieldReference namedtuple for the inbound (sink) field
+        'outbound_field_reference',  # FieldReference namedtuple for the outbound field
+        'inbound_field_reference',  # FieldReference namedtuple for the inbound field
         'out_edge_only',  # bool, whether or not the edge is bidirectional
     )
 )
@@ -50,7 +50,7 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
     fields of the query types of each input schema.
 
     Cross schema edges will be incorporated by adding vertex fields with a @stitch directive
-    to appropriate vertices (types). New fields will be named out_ or in_ concatenated
+    to appropriate vertex types. New fields will be named out_ or in_ concatenated
     with the edge name. New vertex fields will be added to the specified outbound and inbound
     vertices and to all of their subclass vertices.
 
@@ -82,8 +82,9 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
           same name as the type that it queries, if the schema contains type extensions or
           input object definitions, or if the schema contains mutations or subscriptions
         - SchemaNameConflictError if there are conflicts between the names of
-          types/interfaces/enums/scalars, conflicts between the names of fields, or conflicts
-          between the definition of directives with the same name
+          types/interfaces/enums/scalars, conflicts between the names of fields (including
+          fields created by cross schema edges), or conflicts between the definition of
+          directives with the same name
         - InvalidCrossSchemaEdgeError if some cross schema edge provided lies within one schema,
           refers nonexistent schemas, types, fields, or connects non-scalar or non-matching
           fields
@@ -332,7 +333,7 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
     """Add cross schema edges into the schema AST.
 
     Each cross schema edge will be incorporated into the schema by adding vertex fields
-    with a @stitch directive to relevant vertices (types). New fields will be named out_
+    with a @stitch directive to relevant vertex types. New fields will be named out_
     or in_ concatenated with the edge name.
 
     The type of the new field will either be the type of the opposing vertex specified in
@@ -363,7 +364,7 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
 
     Raises:
         - SchemaNameConflictError if any cross schema edge name causes a name conflict with
-          existing fields, or fields created by previous cross schema edges
+          existing fields, or with fields created by previous cross schema edges
         - InvalidCrossSchemaEdgeError if any cross schema edge lies within one schema, refers
           to nonexistent schemas, types, or fields, refers to Union types, stitches together
           fields that are not of a scalar type, or stitches together fields that are of
@@ -401,31 +402,37 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
                                           scalars, cross_schema_edge)
 
         edge_name = cross_schema_edge.edge_name
-        outbound_side = cross_schema_edge.outbound_side
-        inbound_side = cross_schema_edge.inbound_side
+        outbound_field_reference = cross_schema_edge.outbound_field_reference
+        inbound_field_reference = cross_schema_edge.inbound_field_reference
 
         # Get name of the type referenced by the edges in either direction
         # This is equal to the sink side's equivalent union type if it has one
         outbound_edge_sink_type_name = equivalent_type_names.get(
-            inbound_side.type_name, inbound_side.type_name
+            inbound_field_reference.type_name, inbound_field_reference.type_name
         )
         inbound_edge_sink_type_name = equivalent_type_names.get(
-            outbound_side.type_name, outbound_side.type_name
+            outbound_field_reference.type_name, outbound_field_reference.type_name
         )
 
         # Get set of all the types that need the new edge field
-        outbound_edge_source_type_names = subclass_sets[outbound_side.type_name]
+        outbound_edge_source_type_names = subclass_sets[outbound_field_reference.type_name]
         for outbound_edge_source_type_name in outbound_edge_source_type_names:
             source_type_node = type_name_to_definition[outbound_edge_source_type_name]
-            _add_edge_field(source_type_node, outbound_edge_sink_type_name,
-                            outbound_side.field_name, inbound_side.field_name, edge_name, 'out')
+            _add_edge_field(
+                source_type_node, outbound_edge_sink_type_name,
+                outbound_field_reference.field_name, inbound_field_reference.field_name,
+                edge_name, OUTBOUND_EDGE_DIRECTION
+            )
 
         if not cross_schema_edge.out_edge_only:
-            inbound_edge_source_type_names = subclass_sets[inbound_side.type_name]
+            inbound_edge_source_type_names = subclass_sets[inbound_field_reference.type_name]
             for inbound_edge_source_type_name in inbound_edge_source_type_names:
                 source_type_node = type_name_to_definition[inbound_edge_source_type_name]
-                _add_edge_field(source_type_node, inbound_edge_sink_type_name,
-                                inbound_side.field_name, outbound_side.field_name, edge_name, 'in')
+                _add_edge_field(
+                    source_type_node, inbound_edge_sink_type_name,
+                    inbound_field_reference.field_name, outbound_field_reference.field_name,
+                    edge_name, INBOUND_EDGE_DIRECTION
+                )
 
 
 def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_schema_id, scalars,
@@ -433,7 +440,7 @@ def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_sche
     """Check that the edge crosses schemas and has valid field references of correct types.
 
     Args:
-        type_name_to_definition: Dict[str, (Interface/Object/Union)TypeDefinition], mapping
+        type_name_to_definition: Dict[str, (Interface/Object)TypeDefinition], mapping
                                  name of types to their definitions
         type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that the
                                 type is from
@@ -447,13 +454,17 @@ def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_sche
           fields that are not of a scalar type, or stitches together fields that are of
           different scalar types
     """
-    outbound_side = cross_schema_edge.outbound_side
-    inbound_side = cross_schema_edge.inbound_side
+    outbound_field_reference = cross_schema_edge.outbound_field_reference
+    inbound_field_reference = cross_schema_edge.inbound_field_reference
 
-    _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema_id, outbound_side)
-    _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema_id, inbound_side)
+    _check_field_reference_is_valid(
+        type_name_to_definition, type_name_to_schema_id, outbound_field_reference
+    )
+    _check_field_reference_is_valid(
+        type_name_to_definition, type_name_to_schema_id, inbound_field_reference
+    )
 
-    if outbound_side.schema_id == inbound_side.schema_id:  # not cross schema
+    if outbound_field_reference.schema_id == inbound_field_reference.schema_id:  # not cross schema
         raise InvalidCrossSchemaEdgeError(
             u'Edge "{}" does not cross schemas.'.format(cross_schema_edge)
         )
@@ -469,7 +480,7 @@ def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema
     schema, and that the type contains the field of the expected name.
 
     Args:
-        type_name_to_definition: Dict[str, (Interface/Object/Union)TypeDefinition], mapping
+        type_name_to_definition: Dict[str, (Interface/Object)TypeDefinition], mapping
                                  name of types to their definitions
         type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that the
                                 type is from
@@ -518,7 +529,7 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
     It is also legal for fields to be of a NonNull wrapped scalar type.
 
     Args:
-        type_name_to_definition: Dict[str, (Interface/Object/Union)TypeDefinition], mapping
+        type_name_to_definition: Dict[str, (Interface/Object)TypeDefinition], mapping
                                  name of types to their definitions
         scalars: Set[str], names of all scalars in the merged_schema so far
         cross_schema_edge: CrossSchemaEdgeDescriptor namedtuple, the edge that we check the
@@ -531,8 +542,8 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
     field_type_names = []
 
     for direction, field_reference in (
-        ('out', cross_schema_edge.outbound_side),
-        ('in', cross_schema_edge.inbound_side),
+        (OUTBOUND_EDGE_DIRECTION, cross_schema_edge.outbound_field_reference),
+        (INBOUND_EDGE_DIRECTION, cross_schema_edge.inbound_field_reference),
     ):
         type_name = field_reference.type_name
         field_name = field_reference.field_name
@@ -592,13 +603,21 @@ def _add_edge_field(source_type_node, sink_type_name, source_field_name, sink_fi
         source_field_name: str, name of the source side field that will be stitched
         sink_field_name: str, name of the sink side field that will be stitched
         edge_name: str, name of the edge that will be used to name the new field
-        direction: str, either 'in' or 'out'
+        direction: str, either OUTBOUND_EDGE_DIRECTION or INBOUND_EDGE_DIRECTION ('out'
+                   or 'in')
 
     Raises:
         - SchemaNameConflictError if the new cross schema edge name causes a name conflict with
           existing fields, or fields created by previous cross schema edges
     """
     type_fields = source_type_node.fields
+
+    if direction not in (OUTBOUND_EDGE_DIRECTION, INBOUND_EDGE_DIRECTION):
+        raise AssertionError(
+            u'Input "direction" must be either "{}" or "{}".'.format(
+                OUTBOUND_EDGE_DIRECTION, INBOUND_EDGE_DIRECTION
+            )
+        )
     new_edge_field_name = direction + '_' + edge_name
 
     # Error if new edge causes a field name clash
