@@ -8,7 +8,7 @@ import six
 @six.python_2_unicode_compatible
 @six.add_metaclass(ABCMeta)
 class Statistics(object):
-    """Abstract class for statistics regarding GraphQL objects.
+    """Abstract class for statistics regarding GraphQL types, interfaces, and fields.
 
     For the purposes of query cardinality estimation, we need statistics to provide better
     cardinality estimates when operations like edge traversal or @filter directives are used.
