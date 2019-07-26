@@ -69,63 +69,138 @@ def _get_last_edge_direction_and_name_to_location(location):
     return edge_direction, edge_name
 
 
-def _get_parent_and_child_name_from_edge(schema_graph, child_location):
+def _get_parent_and_child_base_classnames_from_edge(schema_graph, child_location):
     """Get the base classname of a location and its parent from the last edge information."""
     edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     edge_element = schema_graph.get_edge_schema_element_or_raise(edge_name)
     if edge_direction == INBOUND_EDGE_DIRECTION:
-        parent_name_from_edge = edge_element.base_out_connection
-        child_name_from_edge = edge_element.base_in_connection
+        parent_base_classname = edge_element.base_out_connection
+        child_base_classname = edge_element.base_in_connection
     elif edge_direction == OUTBOUND_EDGE_DIRECTION:
-        parent_name_from_edge = edge_element.base_in_connection
-        child_name_from_edge = edge_element.base_out_connection
-    return parent_name_from_edge, child_name_from_edge
+        parent_base_classname = edge_element.base_in_connection
+        child_base_classname = edge_element.base_out_connection
+    else:
+        raise AssertionError(u'Expected edge direction to be either inbound or outbound.'
+                             u'Found: edge {} with direction {}'.format(edge_name, edge_direction))
+    return parent_base_classname, child_base_classname
+
+
+def _get_outbound_and_inbound_names_from_locations(query_metadata, child_location, parent_location):
+    """Get the out and in classnames of a location and its parent from the last edge information."""
+    edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
+    parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
+    child_name_from_location = query_metadata.get_location_info(child_location).type.name
+    if edge_direction == INBOUND_EDGE_DIRECTION:
+        outbound_vertex_name = child_name_from_location
+        inbound_vertex_name = parent_name_from_location
+    elif edge_direction == OUTBOUND_EDGE_DIRECTION:
+        outbound_vertex_name = parent_name_from_location
+        inbound_vertex_name = child_name_from_location
+    else:
+        raise AssertionError(u'Expected edge direction to be either inbound or outbound.'
+                             u'Found: edge {} with direction {}'.format(edge_name, edge_direction))
+    return outbound_vertex_name, inbound_vertex_name
+
+
+def _probe_statistics_for_vertex_edge_vertex_count(
+    statistics, query_metadata, child_location, parent_location
+):
+    """Probe for the count of edges that connect parent_location and child_location vertices."""
+    _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
+    outbound_vertex_name, inbound_vertex_name = _get_outbound_and_inbound_names_from_locations(
+        query_metadata, child_location, parent_location
+    )
+    probe_result = statistics.get_vertex_edge_vertex_count(
+        outbound_vertex_name, edge_name, inbound_vertex_name
+    )
+    return probe_result
+
+
+def _estimate_vertex_edge_vertex_count_using_class_count(
+    schema_graph, statistics, query_metadata, child_location, parent_location
+):
+    """Estimate the count of edges that connect parent_location and child_location vertices.
+
+    Given a parent location of class A and a child location of class B, this function estimates the
+    number of AB edges using class counts. If A and B are subclasses of the edge's endpoint classes
+    (which we'll name C and D respectively), we only have statistics for CD edges. So estimates for
+    the number of AB edges will be made using the assumption that CD edges are distributed
+    independently of whether or not the vertex of class C is also of class A and likewise for D and
+    B. In the general case, we estimate the statistic as
+    (# of AB edges) = (# of CD edges) * (# of A vertices) / (# of C vertices) *
+                                        (# of B vertices) / (# of D vertices).
+
+    Args:
+        schema_graph: SchemaGraph object
+        statistics: Statistics object
+        query_metadata: QueryMetadataTable object
+        child_location: BaseLocation object
+        parent_location: BaseLocation object
+
+    Returns:
+        float, estimate for (# of AB edges)
+    """
+    _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
+    edge_counts = statistics.get_class_count(edge_name)
+
+    parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
+    child_name_from_location = query_metadata.get_location_info(child_location).type.name
+    parent_base_classname, child_base_classname = _get_parent_and_child_base_classnames_from_edge(
+        schema_graph, child_location
+    )
+    # Scale edge_counts if child_location's type is a subclass of the edge's endpoint type.
+    if child_name_from_location != child_base_classname:
+        edge_counts *= (
+            float(statistics.get_class_count(child_name_from_location)) /
+            statistics.get_class_count(child_base_classname)
+        )
+    # Scale edge_counts if parent_location's type is a subclass of the edge's endpoint type.
+    if parent_name_from_location != parent_base_classname:
+        edge_counts *= (
+            float(statistics.get_class_count(parent_name_from_location)) /
+            statistics.get_class_count(parent_base_classname)
+        )
+
+    return edge_counts
 
 
 def _estimate_children_per_parent(
-    schema_graph, lookup_class_counts, query_metadata, parameters, child_location, parent_location
+    schema_graph, statistics, query_metadata, parameters, child_location, parent_location
 ):
     """Estimate the number of edges per parent_location that connect to child_location vertices.
 
     Given a parent location of type A and child location of type B, assume all AB edges are
     distributed evenly over A vertices, so the expected number of child edges per parent vertex is
-    (# of AB edges) / (# of A vertices). If A and B are subclasses of C and D respectively, we only
-    have access to CD edges, so in general, we'll use (# of CD edges) / (# of C vertices), but since
-    we're only interested in edges to Bs, we'll scale this result by the fraction of Bs over Ds.
+    (# of AB edges) / (# of A vertices).
 
     Args:
         schema_graph: SchemaGraph object
-        lookup_class_counts: function, string -> int, that accepts a class name and returns the
-                             total number of instances plus subclass instances
+        statistics: Statistics object
         query_metadata: QueryMetadataTable object
         parameters: dict, parameters with which query will be executed
         child_location: BaseLocation object
+        parent_location: BaseLocation object
 
     Returns:
         float, expected number of child_location vertices connected to each parent_location vertex.
     """
-    # Count the number of edges between child_location and parent_location type vertices.
-    _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
-    # TODO(evan): If edge is recursed over, we need a more detailed statistic
-    edge_counts = lookup_class_counts(edge_name)
-
-    # Scale edge_counts if child_location's type is a subclass of the edge's endpoint type.
-    parent_name_from_edge, child_name_from_edge = _get_parent_and_child_name_from_edge(
-        schema_graph, child_location
+    edge_counts = _probe_statistics_for_vertex_edge_vertex_count(
+        statistics, query_metadata, child_location, parent_location
     )
-    child_name_from_location = query_metadata.get_location_info(child_location).type.name
-    if child_name_from_edge != child_name_from_location:
-        edge_counts *= (
-            float(lookup_class_counts(child_name_from_location)) /
-            lookup_class_counts(child_name_from_edge)
+
+    if edge_counts is None:
+        edge_counts = _estimate_vertex_edge_vertex_count_using_class_count(
+            schema_graph, statistics, query_metadata, child_location, parent_location
         )
 
+    parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     # Count the number of parents, over which we assume the edges are uniformly distributed.
-    parent_counts = lookup_class_counts(parent_name_from_edge)
+    parent_location_counts = statistics.get_class_count(parent_name_from_location)
 
     # TODO(evan): edges are not necessarily uniformly distributed, so record more statistics
-    child_counts_per_parent = float(edge_counts) / parent_counts
+    child_counts_per_parent = float(edge_counts) / parent_location_counts
 
+    # TODO(evan): If edge is recursed over, we need a more detailed statistic
     # Recursion always starts with depth = 0, so we should treat the parent result set itself as a
     # child result set to be expanded (so add 1 to child_counts).
     is_recursive = _is_subexpansion_recursive(query_metadata, child_location, parent_location)
@@ -133,9 +208,10 @@ def _estimate_children_per_parent(
         child_counts_per_parent += 1
 
     # Adjust the counts for filters at child_location.
+    child_name_from_location = query_metadata.get_location_info(child_location).type.name
     child_filters = query_metadata.get_filter_infos(child_location)
     child_counts_per_parent = adjust_counts_for_filters(
-        schema_graph, lookup_class_counts, child_filters, parameters, child_name_from_location,
+        schema_graph, statistics, child_filters, parameters, child_name_from_location,
         child_counts_per_parent
     )
 
@@ -143,14 +219,13 @@ def _estimate_children_per_parent(
 
 
 def _estimate_subexpansion_cardinality(
-    schema_graph, lookup_class_counts, query_metadata, parameters, child_location, parent_location
+    schema_graph, statistics, query_metadata, parameters, child_location, parent_location
 ):
     """Estimate the cardinality associated with the subexpansion of a child_location vertex.
 
     Args:
         schema_graph: SchemaGraph object
-        lookup_class_counts: function, string -> int, that accepts a class name and returns the
-                             total number of instances plus subclass instances
+        statistics: Statistics object
         query_metadata: QueryMetadataTable object
         parameters: dict, parameters with which query will be executed
         child_location: BaseLocation object, child of parent_location corresponding to the
@@ -166,12 +241,12 @@ def _estimate_subexpansion_cardinality(
         (expected number of B-vertices) * (expected number of result sets per B-vertex).
     """
     child_counts_per_parent = _estimate_children_per_parent(
-        schema_graph, lookup_class_counts, query_metadata, parameters, child_location,
+        schema_graph, statistics, query_metadata, parameters, child_location,
         parent_location
     )
 
     results_per_child = _estimate_expansion_cardinality(
-        schema_graph, lookup_class_counts, query_metadata, parameters, child_location
+        schema_graph, statistics, query_metadata, parameters, child_location
     )
 
     subexpansion_cardinality = child_counts_per_parent * results_per_child
@@ -188,14 +263,13 @@ def _estimate_subexpansion_cardinality(
 
 
 def _estimate_expansion_cardinality(
-    schema_graph, lookup_class_counts, query_metadata, parameters, current_location
+    schema_graph, statistics, query_metadata, parameters, current_location
 ):
     """Estimate the cardinality of fully expanding a vertex corresponding to current_location.
 
     Args:
         schema_graph: SchemaGraph object
-        lookup_class_counts: function, string -> int, that accepts a class name and returns the
-                             total number of instances plus subclass instances
+        statistics: Statistics object
         query_metadata: QueryMetadataTable object
         parameters: dict, parameters with which query will be executed
         current_location: BaseLocation object, corresponding to the vertex we're expanding
@@ -210,7 +284,7 @@ def _estimate_expansion_cardinality(
         # each subexpansion (e.g. If we expect each current vertex to have 2 children of type A and
         # 3 children of type B, we'll return 6 distinct result sets per current vertex).
         subexpansion_cardinality = _estimate_subexpansion_cardinality(
-            schema_graph, lookup_class_counts, query_metadata, parameters, child_location,
+            schema_graph, statistics, query_metadata, parameters, child_location,
             current_location
         )
         expansion_cardinality *= subexpansion_cardinality
@@ -218,15 +292,14 @@ def _estimate_expansion_cardinality(
 
 
 def estimate_query_result_cardinality(
-    schema_graph, lookup_class_counts, graphql_query, parameters,
+    schema_graph, statistics, graphql_query, parameters,
     class_to_field_type_overrides=None, hidden_classes=None
 ):
     """Estimate the cardinality of a GraphQL query's result using database statistics.
 
     Args:
         schema_graph: SchemaGraph object
-        lookup_class_counts: function, string -> int, that accepts a class name and returns the
-                             total number of instances plus subclass instances
+        statistics: Statistics object
         graphql_query: string, a valid GraphQL query
         parameters: dict, parameters with which query will be executed.
         class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
@@ -239,7 +312,6 @@ def estimate_query_result_cardinality(
         float, expected query result cardinality. Equal to the number of root vertices multiplied by
         the expected number of result sets per full expansion of a root vertex.
     """
-    # TODO(evan): replace lookup_class_counts with statistics class so we can use more stats
     if class_to_field_type_overrides is None:
         class_to_field_type_overrides = dict()
     if hidden_classes is None:
@@ -256,15 +328,15 @@ def estimate_query_result_cardinality(
 
     # First, count the vertices corresponding to the root location that pass relevant filters
     root_name = query_metadata.get_location_info(root_location).type.name
-    root_counts = lookup_class_counts(root_name)
+    root_counts = statistics.get_class_count(root_name)
     root_counts = adjust_counts_for_filters(
-        schema_graph, lookup_class_counts, query_metadata.get_filter_infos(root_location),
-        parameters, root_name, root_counts
+        schema_graph, statistics, query_metadata.get_filter_infos(root_location), parameters,
+        root_name, root_counts
     )
 
     # Next, find the number of expected result sets per root vertex when fully expanded
     results_per_root = _estimate_expansion_cardinality(
-        schema_graph, lookup_class_counts, query_metadata, parameters, root_location
+        schema_graph, statistics, query_metadata, parameters, root_location
     )
 
     expected_query_result_cardinality = root_counts * results_per_root
