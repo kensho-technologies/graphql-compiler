@@ -82,7 +82,6 @@ class LocalStatistics(Statistics):
         self._class_counts = frozendict(class_counts)
         self._vertex_edge_vertex_counts = frozendict(vertex_edge_vertex_counts)
 
-
     def get_class_count(self, class_name):
         """Return how many vertex or edge instances have, or inherit, the given class name.
 
