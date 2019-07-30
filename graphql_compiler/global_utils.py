@@ -5,16 +5,19 @@ from itertools import chain
 import six
 
 
-def _get_dag_with_keys_in_reverse_topological_order(dag):
-    """Return an OrderedDict representing a DAG with keys ordered in reversed topological order.
+def _get_vertices_in_reverse_topological_order(dag):
+    """Return the vertices in the directed acyclic graph in reverse topological order.
+
+    In other words, in the resulting list, each vertex will appear after every vertex it has an
+    edge to.
 
     Args:
         dag: dict, string -> set of strings, mapping each vertex in the directed acyclic graph to
              the set of vertices it has a directed edge to.
 
     Returns:
-        OrderedDict, str -> str, representing a directed acyclic graph (DAG) with keys ordered in
-        reversed topological order.
+        list of strings, representing the vertices in the directed acyclic graph in reverse
+        topological order.
     """
     def traverse_vertex_subgraph(vertex_name, processed_vertices, current_trace):
         """Traverse a vertex and its edges recursively in a depth-first-search manner.
@@ -28,7 +31,7 @@ def _get_dag_with_keys_in_reverse_topological_order(dag):
 
         Returns:
             list of strings, representing the set of vertices that have been first visited in this
-            traversal ordered in the reverse order they were visited.
+            traversal ordered in the reverse order in which they were visited.
         """
         if vertex_name in processed_vertices:
             return []
@@ -37,24 +40,23 @@ def _get_dag_with_keys_in_reverse_topological_order(dag):
             raise AssertionError(
                 'Encountered self-reference in dependency chain of {}'.format(vertex_name))
 
-        vertex_list = []
+        visited_vertices = []
 
         current_trace.add(vertex_name)
         for adjacent_vertex_name in dag[vertex_name]:
-            vertex_list.extend(traverse_vertex_subgraph(
+            visited_vertices.extend(traverse_vertex_subgraph(
                 adjacent_vertex_name, processed_vertices, current_trace)
             )
         current_trace.remove(vertex_name)
-        vertex_list.append(vertex_name)
+        visited_vertices.append(vertex_name)
         processed_vertices.add(vertex_name)
 
-        return vertex_list
+        return visited_vertices
 
     vertices_in_reverse_topological_order = []
     for name in dag.keys():
         vertices_in_reverse_topological_order.extend(traverse_vertex_subgraph(name, set(), set()))
-    return OrderedDict((class_name, dag[class_name])
-                       for class_name in vertices_in_reverse_topological_order)
+    return vertices_in_reverse_topological_order
 
 
 def get_transitive_closure(dag):
@@ -71,10 +73,11 @@ def get_transitive_closure(dag):
         dict, string -> set of strings, representing the transitive closure of the directed
         acyclic graph.
     """
-    reversed_toposorted_dag = _get_dag_with_keys_in_reverse_topological_order(dag)
     transitive_closure = dict()
-    for vertex_name, adjacent_vertices in six.iteritems(reversed_toposorted_dag):
-        transitive_closure[vertex_name] = adjacent_vertices
+    for vertex_name in _get_vertices_in_reverse_topological_order(dag):
+        adjacent_vertices = dag[vertex_name]
+        transitive_closure[vertex_name] = set()
+        transitive_closure[vertex_name].update(adjacent_vertices)
         transitive_closure[vertex_name].update(set(chain.from_iterable(
             transitive_closure[adjacent_vertex_name]
             for adjacent_vertex_name in adjacent_vertices
