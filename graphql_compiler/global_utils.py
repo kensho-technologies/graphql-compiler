@@ -13,10 +13,11 @@ def _get_vertices_in_reverse_topological_order(dag):
 
     Args:
         dag: dict, string -> set of strings, mapping each vertex in the directed acyclic graph to
-             the set of vertices it has a directed edge to.
+             the set of vertices it has a directed edge to. This function does not regard
+             reflexive edges as cycles.
 
     Returns:
-        list of strings, representing the vertices in the directed acyclic graph in reverse
+        iterable of strings, representing the vertices in the directed acyclic graph in reverse
         topological order.
     """
     def traverse_vertex_subgraph(vertex_name, processed_vertices, current_trace):
@@ -40,23 +41,25 @@ def _get_vertices_in_reverse_topological_order(dag):
             raise AssertionError(
                 'Encountered self-reference in dependency chain of {}'.format(vertex_name))
 
-        visited_vertices = []
+        vertices_in_reverse_topological_order = []
 
         current_trace.add(vertex_name)
         for adjacent_vertex_name in dag[vertex_name]:
-            visited_vertices.extend(traverse_vertex_subgraph(
-                adjacent_vertex_name, processed_vertices, current_trace)
-            )
+            # Disregard reflexive edges.
+            if adjacent_vertex_name != vertex_name:
+                vertices_in_reverse_topological_order.extend(traverse_vertex_subgraph(
+                    adjacent_vertex_name, processed_vertices, current_trace)
+                )
         current_trace.remove(vertex_name)
-        visited_vertices.append(vertex_name)
+        vertices_in_reverse_topological_order.append(vertex_name)
         processed_vertices.add(vertex_name)
 
-        return visited_vertices
+        return vertices_in_reverse_topological_order
 
-    vertices_in_reverse_topological_order = []
-    for name in dag.keys():
-        vertices_in_reverse_topological_order.extend(traverse_vertex_subgraph(name, set(), set()))
-    return vertices_in_reverse_topological_order
+    return chain.from_iterable(
+        traverse_vertex_subgraph(vertex_name, set(), set())
+        for vertex_name in dag
+    )
 
 
 def get_transitive_closure(dag):
@@ -67,10 +70,11 @@ def get_transitive_closure(dag):
 
     Args:
         dag: dict, string -> set of strings, mapping each vertex in the directed acyclic graph to
-             the set of vertices it has a directed edge to.
+             the set of vertices it has a directed edge to. This function does not regard
+             reflexive edges as cycles.
 
     Returns:
-        dict, string -> set of strings, representing the transitive closure of the directed
+        dict, string -> frozenset of strings, representing the transitive closure of the directed
         acyclic graph.
     """
     transitive_closure = dict()
@@ -82,4 +86,5 @@ def get_transitive_closure(dag):
             transitive_closure[adjacent_vertex_name]
             for adjacent_vertex_name in adjacent_vertices
         )))
+        transitive_closure[vertex_name] = frozenset(transitive_closure[vertex_name])
     return transitive_closure

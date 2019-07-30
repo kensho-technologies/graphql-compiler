@@ -449,10 +449,10 @@ class InheritanceStructure(object):
             an InheritanceStructure object.
         """
         direct_superclass_sets = dict(direct_superclass_sets)
-        self._superclass_sets = get_transitive_closure(direct_superclass_sets)
         # Each class is in its own superclass set.
-        for class_name in self._superclass_sets:
-            self._superclass_sets[class_name].add(class_name)
+        for class_name in direct_superclass_sets:
+            direct_superclass_sets[class_name].add(class_name)
+        self._superclass_sets = get_transitive_closure(direct_superclass_sets)
         self._subclass_sets = _get_subclass_sets_from_superclass_sets(self._superclass_sets)
 
     @property
