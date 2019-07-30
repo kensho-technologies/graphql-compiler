@@ -74,9 +74,9 @@ def get_transitive_closure(dag):
     reversed_toposorted_dag = _get_dag_with_keys_in_reverse_topological_order(dag)
     transitive_closure = dict()
     for vertex_name, adjacent_vertices in six.iteritems(reversed_toposorted_dag):
-        transitive_closure[vertex_name] = set(chain.from_iterable(
+        transitive_closure[vertex_name] = adjacent_vertices
+        transitive_closure[vertex_name].update(set(chain.from_iterable(
             transitive_closure[adjacent_vertex_name]
             for adjacent_vertex_name in adjacent_vertices
-        ))
-        transitive_closure[vertex_name].update(adjacent_vertices)
+        )))
     return transitive_closure
