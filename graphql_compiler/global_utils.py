@@ -50,11 +50,11 @@ def _get_dag_with_keys_in_reverse_topological_order(dag):
 
         return vertex_list
 
-    toposorted = []
+    vertices_in_reverse_topological_order = []
     for name in dag.keys():
-        toposorted.extend(traverse_vertex_subgraph(name, set(), set()))
+        vertices_in_reverse_topological_order.extend(traverse_vertex_subgraph(name, set(), set()))
     return OrderedDict((class_name, dag[class_name])
-                       for class_name in toposorted)
+                       for class_name in vertices_in_reverse_topological_order)
 
 
 def get_transitive_closure(dag):
