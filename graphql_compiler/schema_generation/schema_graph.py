@@ -1,10 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from ..global_utils import get_transitive_closure
 
 import six
 
+from ..global_utils import get_transitive_closure
 from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPropertyError
 
 

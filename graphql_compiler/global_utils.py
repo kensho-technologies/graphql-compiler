@@ -1,7 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-import six
-from itertools import chain
 from collections import OrderedDict
+from itertools import chain
+
+import six
 
 
 def _get_dag_with_keys_in_reverse_topological_order(dag):
@@ -16,10 +17,10 @@ def _get_dag_with_keys_in_reverse_topological_order(dag):
         reversed topological order.
     """
     def traverse_vertex_subgraph(vertex_name, processed_vertices, current_trace):
-        """Transverse a vertex and its edges recursively in a depth-first-search manner.
+        """Traverse a vertex and its edges recursively in a depth-first-search manner.
 
         Args:
-            vertex_name: string, the name of the vertex whose subgraph is transversed.
+            vertex_name: string, the name of the vertex whose subgraph is traversed.
             processed_vertices: set of strings, a set of vertices that have already been visited.
                                 May be mutated by this function.
             current_trace: list of strings, list of vertices visited during the traversal.
@@ -64,7 +65,7 @@ def get_transitive_closure(dag):
 
     Args:
         dag: dict, string -> set of strings, mapping each vertex in the directed acyclic graph to
-        the set of vertices it has a directed edge to.
+             the set of vertices it has a directed edge to.
 
     Returns:
         dict, string -> set of strings, representing the transitive closure of the directed
