@@ -88,7 +88,7 @@ def get_orientdb_schema_graph(schema_data, index_data):
     }
 
     direct_superclass_sets = {
-        class_name: get_superclasses_from_class_definition(class_definition)
+        class_name: set(get_superclasses_from_class_definition(class_definition))
         for class_name, class_definition in six.iteritems(class_name_to_definition)
     }
 
