@@ -26,7 +26,7 @@ def _get_dag_with_keys_in_reverse_topological_order(dag):
                            May be mutated by this function.
 
         Returns:
-            list of strings, representing the set of vertices that have been visited first in this
+            list of strings, representing the set of vertices that have been first visited in this
             traversal ordered in the reverse order they were visited.
         """
         if vertex_name in processed_vertices:
@@ -71,11 +71,11 @@ def get_transitive_closure(dag):
         acyclic graph.
     """
     reversed_toposorted_dag = _get_dag_with_keys_in_reverse_topological_order(dag)
-    print(reversed_toposorted_dag)
     transitive_closure = dict()
     for vertex_name, adjacent_vertices in six.iteritems(reversed_toposorted_dag):
         transitive_closure[vertex_name] = set(chain.from_iterable(
             transitive_closure[adjacent_vertex_name]
             for adjacent_vertex_name in adjacent_vertices
         ))
+        transitive_closure[vertex_name].update(adjacent_vertices)
     return transitive_closure
