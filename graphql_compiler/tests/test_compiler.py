@@ -3834,9 +3834,13 @@ class CompilerTests(unittest.TestCase):
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             MATCH (Animal__in_Animal_ParentOf___1)-[:Animal_ParentOf]->(Animal__in_Animal_ParentOf___1___out_Animal_ParentOf:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              Animal__in_Animal_ParentOf___1 AS Animal__in_Animal_ParentOf___1,
+              collect(Animal__in_Animal_ParentOf___1___out_Animal_ParentOf.name) AS collected_Animal__in_Animal_ParentOf___1___out_Animal_ParentOf_name
             RETURN
               Animal___1.name AS `animal_name`,
-              collect(Animal__in_Animal_ParentOf___1___out_Animal_ParentOf.name) AS `sibling_and_self_names_list`
+              collected_Animal__in_Animal_ParentOf___1___out_Animal_ParentOf_name AS `sibling_and_self_names_list`
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
