@@ -48,8 +48,8 @@ class SchemaNameConflictError(SchemaTransformError):
 class InvalidCrossSchemaEdgeError(SchemaTransformError):
     """Raised when a CrossSchemaEdge provided when merging schemas is invalid.
 
-    This may be raised if the provided CrossSchemaEdge refers to nonexistent types, types in
-    wrong/nonexistent schemas, or nonexistent fields.
+    This may be raised if the provided CrossSchemaEdge refers to nonexistent schemas,
+    types not found in the specified schema, or fields not found in the specified type.
     """
 
 

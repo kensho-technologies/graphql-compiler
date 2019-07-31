@@ -7,7 +7,8 @@ from graphql.language import ast as ast_types
 from graphql.language.printer import print_ast
 import six
 
-from ..compiler.helpers import OUTBOUND_EDGE_DIRECTION, INBOUND_EDGE_DIRECTION
+from ..ast_manipulation import get_ast_with_non_null_stripped
+from ..compiler.helpers import INBOUND_EDGE_DIRECTION, OUTBOUND_EDGE_DIRECTION
 from .subclass import compute_subclass_sets
 from .utils import (
     InvalidCrossSchemaEdgeError, SchemaNameConflictError, check_ast_schema_is_valid,
@@ -18,7 +19,7 @@ from .utils import (
 MergedSchemaDescriptor = namedtuple(
     'MergedSchemaDescriptor', (
         'schema_ast',  # Document, AST representing the merged schema
-        'type_name_to_schema_id', # Dict[str, str], mapping type name to the id of its schema
+        'type_name_to_schema_id',  # Dict[str, str], mapping type name to the id of its schema
     )
 )
 
@@ -231,9 +232,13 @@ def _accumulate_types(merged_schema_ast, type_name_to_schema_id, scalars, direct
     if new_query_type_fields is None:
         raise AssertionError(u'Query type "{}" field definitions unexpected not '
                              u'found.'.format(current_query_type))
+
     # Note that as field names and type names have been confirmed to match up, and types
     # were merged without name conflicts, query type fields can also be safely merged.
-    query_type_index = 1  # Query type is the second entry in the list of definitions
+
+    # Query type is the second entry in the list of definitions of the merged_schema_ast,
+    # as guaranteed by _get_basic_schema_ast
+    query_type_index = 1
     merged_schema_ast.definitions[query_type_index].fields.extend(new_query_type_fields)
 
 
@@ -372,8 +377,7 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
     """
     # Build map of definitions for ease of modification
     type_name_to_definition = {}  # Dict[str, (Interface/Object)TypeDefinition]
-    # fieldless_type_names = set()  # Set[str], contains Union, Enum, Scalar
-    # The above is just for better error messages
+    union_type_names = set()  # Set[str], contains names of union types, used for error messages
 
     for definition in schema_ast.definitions:
         if (
@@ -386,6 +390,10 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
             ast_types.ObjectTypeDefinition,
         )):
             type_name_to_definition[definition.name.value] = definition
+        elif isinstance(definition, (
+            ast_types.UnionTypeDefinition,
+        )):
+            union_type_names.add(definition.name.value)
 
     # NOTE: All merge_schemas needs is the dict mapping names to names, not the dict mapping
     # GraphQLObjects to GraphQLObjects. However, elsewhere in the repo, type_equivalence_hints
@@ -399,7 +407,7 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
     # Iterate through edges list, incorporate each edge on one or both sides
     for cross_schema_edge in cross_schema_edges:
         _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_schema_id,
-                                          scalars, cross_schema_edge)
+                                          scalars, union_type_names, cross_schema_edge)
 
         edge_name = cross_schema_edge.edge_name
         outbound_field_reference = cross_schema_edge.outbound_field_reference
@@ -436,7 +444,7 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
 
 
 def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_schema_id, scalars,
-                                      cross_schema_edge):
+                                      union_type_names, cross_schema_edge):
     """Check that the edge crosses schemas and has valid field references of correct types.
 
     Args:
@@ -444,7 +452,10 @@ def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_sche
                                  name of types to their definitions
         type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that the
                                 type is from
-        scalars: Set[str], names of all scalars in the merged_schema so far
+        scalars: Set[str], names of all scalars in the merged_schema, including both built in
+                 and user defined scalars
+        union_type_names: Set[str], names of all union types in the merged schema, used for
+                          informative error messages
         cross_schema_edge: CrossSchemaEdgeDescriptor namedtuple, the edge that we check the
                            validity of
 
@@ -458,10 +469,10 @@ def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_sche
     inbound_field_reference = cross_schema_edge.inbound_field_reference
 
     _check_field_reference_is_valid(
-        type_name_to_definition, type_name_to_schema_id, outbound_field_reference
+        type_name_to_definition, type_name_to_schema_id, union_type_names, outbound_field_reference
     )
     _check_field_reference_is_valid(
-        type_name_to_definition, type_name_to_schema_id, inbound_field_reference
+        type_name_to_definition, type_name_to_schema_id, union_type_names, inbound_field_reference
     )
 
     if outbound_field_reference.schema_id == inbound_field_reference.schema_id:  # not cross schema
@@ -473,7 +484,7 @@ def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_sche
 
 
 def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema_id,
-                                    field_reference):
+                                    union_type_names, field_reference):
     """Check that the field reference refers to a valid field.
 
     In particular, check that the field reference is on a type that exists in the correct
@@ -484,6 +495,8 @@ def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema
                                  name of types to their definitions
         type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that the
                                 type is from
+        union_type_names: Set[str], names of all union types in the merged schema, used for
+                          informative error messages
         field_reference: FieldReference namedtuple, what we check the validity of
 
     Raises:
@@ -494,8 +507,15 @@ def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema
     type_name = field_reference.type_name
     field_name = field_reference.field_name
 
-    # Error if the type is nonexistent (includes if type is an enum or scalar)
-    # TODO: Consider improving error message if type is a union or enum or scalar
+    # Error if the type is a union, with suggestions on how to fix the problem
+    if type_name in union_type_names:
+        raise InvalidCrossSchemaEdgeError(
+            u'Type "{}" specified in the field reference "{}" is a union type, which may not '
+            u'be used in a cross schema edge. Consider using the object type that is equivalent '
+            u'to this union type instead.'.format(type_name, field_reference)
+        )
+
+    # Error if the type is nonexistent
     if type_name not in type_name_to_definition:
         raise InvalidCrossSchemaEdgeError(
             u'Type "{}" specified in the field reference "{}" is not found '
@@ -531,7 +551,8 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
     Args:
         type_name_to_definition: Dict[str, (Interface/Object)TypeDefinition], mapping
                                  name of types to their definitions
-        scalars: Set[str], names of all scalars in the merged_schema so far
+        scalars: Set[str], names of all scalars in the merged_schema, including both built in
+                 and user defined scalars
         cross_schema_edge: CrossSchemaEdgeDescriptor namedtuple, the edge that we check the
                            validity of
 
@@ -552,9 +573,7 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
         field_type = None
         for field in fields:
             if field.name.value == field_name:
-                field_type = field.type
-                while isinstance(field_type, ast_types.NonNullType):  # strip NonNull
-                    field_type = field_type.type
+                field_type = get_ast_with_non_null_stripped(field.type)
                 break
 
         if field_type is None:  # should never happen after _check_field_reference_is_valid
@@ -577,18 +596,38 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
                 )
         else:  # since NonNull is stripped, field_type can only be ListType or NamedType
             raise AssertionError(
-                u'Field has missed type "{}"'.format(type(field_type).__name__)
+                u'Unreachable code reached. Field has missed '
+                u'type "{}"'.format(type(field_type).__name__)
             )
 
         field_type_names.append(field_type.name.value)
 
-    if field_type_names[0] != field_type_names[1]:  # fields return different scalars
+    outbound_field_type_name, inbound_field_type_name = field_type_names
+    if not _scalars_match(outbound_field_type_name, inbound_field_type_name):
         raise InvalidCrossSchemaEdgeError(
             u'The outbound and inbound fields of edge "{}" are of different types, '
             u'"{}" and "{}". They are expected to be of the same scalar type.'.format(
-                cross_schema_edge, field_type_names[0], field_type_names[1]
+                cross_schema_edge, outbound_field_type_name, inbound_field_type_name
             )
         )
+
+
+def _scalars_match(scalar_name1, scalar_name2):
+    """Return True if the two input scalars are considered to be the same, False otherwise.
+
+    For now, two input scalars are considered to be the same if they're the same scalar, if
+    one is ID and the other is String, or if one is ID and the other is Int. This may be
+    extended in the future.
+    """
+    if scalar_name1 == scalar_name2:
+        return True
+    scalar_names = frozenset((scalar_name1, scalar_name2))
+    if (
+        scalar_names == frozenset(('String', 'ID')) or
+        scalar_names == frozenset(('Int', 'ID'))
+    ):
+        return True
+    return False
 
 
 def _add_edge_field(source_type_node, sink_type_name, source_field_name, sink_field_name,
