@@ -8,7 +8,7 @@ import six
 def _get_vertices_in_reverse_topological_order(dag):
     """Return the vertices in the directed acyclic graph in reverse topological order.
 
-    In other words, in the resulting list, each vertex will appear after every vertex it has an
+    In other words, in the resulting iterable, each vertex will appear after every vertex it has an
     edge to.
 
     Args:
