@@ -8,7 +8,7 @@ import six
 def _get_vertices_in_reverse_topological_order(dag):
     """Return the vertices in the directed acyclic graph in reverse topological order.
 
-    In other words, in the resulting iterable, each vertex will appear after every vertex it has an
+    In other words, in the resulting iterable   , each vertex will appear after every vertex it has an
     edge to.
 
     Args:
@@ -27,12 +27,12 @@ def _get_vertices_in_reverse_topological_order(dag):
             vertex_name: string, the name of the vertex whose subgraph is traversed.
             processed_vertices: set of strings, a set of vertices that have already been visited.
                                 May be mutated by this function.
-            current_trace: list of strings, list of vertices visited during the traversal.
+            current_trace: set of strings, set of vertices visited during the traversal.
                            May be mutated by this function.
 
         Returns:
-            list of strings, representing the set of vertices that have been first visited in this
-            traversal ordered in the reverse order in which they were visited.
+            iterable of strings, representing the set of vertices that have been first visited in
+            this traversal ordered in the reverse order in which they were visited.
         """
         if vertex_name in processed_vertices:
             return []
