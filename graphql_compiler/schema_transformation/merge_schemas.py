@@ -224,9 +224,13 @@ def _accumulate_types(merged_schema_ast, type_name_to_schema_id, scalars, direct
     if new_query_type_fields is None:
         raise AssertionError(u'Query type "{}" field definitions unexpected not '
                              u'found.'.format(current_query_type))
+
     # Note that as field names and type names have been confirmed to match up, and types
     # were merged without name conflicts, query type fields can also be safely merged.
-    query_type_index = 1  # Query type is the second entry in the list of definitions
+
+    # Query type is the second entry in the list of definitions of the merged_schema_ast,
+    # as guaranteed by _get_basic_schema_ast
+    query_type_index = 1
     merged_schema_ast.definitions[query_type_index].fields.extend(new_query_type_fields)
 
 
