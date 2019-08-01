@@ -39,7 +39,6 @@ class Statistics(object):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def get_vertex_edge_vertex_count(
         self, vertex_source_class_name, edge_class_name, vertex_target_class_name
     ):
@@ -62,7 +61,6 @@ class Statistics(object):
         """
         return None
 
-    @abstractmethod
     def get_distinct_field_values_count(self, vertex_name, field_name):
         """Return the count of distinct values a vertex's property field has over all instances.
 
