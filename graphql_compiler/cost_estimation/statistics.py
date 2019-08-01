@@ -51,9 +51,9 @@ class Statistics(object):
         several orders of magnitude. In such cases, this statistic should be provided.
 
         Args:
-            vertex_source_class_name: str, vertex class name.
-            edge_class_name: str, edge class name.
-            vertex_target_class_name: str, vertex class name.
+            vertex_source_class_name: str, vertex class name defined in the GraphQL schema.
+            edge_class_name: str, edge class name defined in the GraphQL schema.
+            vertex_target_class_name: str, vertex class name defined in the GraphQL schema.
 
         Returns:
             - int, count of edges of class edge_class with the two vertex classes as its endpoints
@@ -70,7 +70,7 @@ class Statistics(object):
         values using equality operators like '=', '!=', and 'in_collection'.
 
         Args:
-            vertex_name: str, name of a vertex.
+            vertex_name: str, name of a vertex defined in the GraphQL schema.
             field_name: str, name of a vertex field.
 
         Returns:
