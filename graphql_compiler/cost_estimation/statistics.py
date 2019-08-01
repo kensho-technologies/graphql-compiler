@@ -8,7 +8,7 @@ import six
 @six.python_2_unicode_compatible
 @six.add_metaclass(ABCMeta)
 class Statistics(object):
-    """Abstract class for statistics regarding the data in all backend instances.
+    """Abstract class for statistics regarding the data in all backend instances for one schema.
 
     For the purposes of query cardinality estimation, we need statistics to provide better
     cardinality estimates when operations like edge traversal or @filter directives are used.
@@ -42,12 +42,15 @@ class Statistics(object):
     def get_vertex_edge_vertex_count(
         self, vertex_source_class_name, edge_class_name, vertex_target_class_name
     ):
-        """Return count of edge_class edges connecting vertex_source and vertex_target vertices.
+        """Return count of edge_class instances linking vertex_source and vertex_target instances.
 
         This statistic is optional, as the estimator can roughly predict this statistic using
         get_class_count(). In some cases of traversal between two vertices using an edge connecting
         the vertices' superclasses, the estimates generated using get_class_count() may be off by
         several orders of magnitude. In such cases, this statistic should be provided.
+
+        Note that vertices that inherit from vertex_source and vertex_target should also be
+        considered as vertex_source vertices, and should be included in the statistic.
 
         Args:
             vertex_source_class_name: str, vertex class name defined in the GraphQL schema.
@@ -55,7 +58,7 @@ class Statistics(object):
             vertex_target_class_name: str, vertex class name defined in the GraphQL schema.
 
         Returns:
-            - int, count of edges of class edge_class with the two vertex classes as its endpoints
+            - int, count of edge_class edges with the two vertex classes as its endpoints
                    if the statistic exists.
             - None otherwise.
         """
@@ -88,13 +91,14 @@ class LocalStatistics(Statistics):
 
         Args:
             class_counts: dict, str -> int, mapping vertex/edge class name to count of
-                instances of that class.
-            vertex_edge_vertex_counts: optional dict, (str, str, str) -> int, mapping
-                tuple of (vertex source class name, edge class name, vertex target class name) to
-                count of edge instances of given class connecting instances of two vertex classes.
+                          instances of that class.
+            vertex_edge_vertex_counts: optional dict, (str, str, str) -> int, mapping tuple of
+                                       (vertex source class name, edge class name, vertex target
+                                       class name) to count of edge instances of given class
+                                       connecting instances of two vertex classes.
             distinct_field_values_counts: optional dict, (str, str) -> int, mapping vertex class
-                name and property field name to the count of distinct values of that vertex class's
-                property field.
+                                          name and property field name to the count of distinct
+                                          values of that vertex class's property field.
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
