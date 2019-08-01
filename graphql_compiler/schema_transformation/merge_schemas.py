@@ -99,8 +99,8 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
 
     for current_schema_id, current_ast in six.iteritems(schema_id_to_ast):
         current_ast = deepcopy(current_ast)
-        _accumulate_types(merged_schema_ast, type_name_to_schema_id, scalars, directives,
-                          current_schema_id, current_ast)
+        _accumulate_types(merged_schema_ast, query_type, type_name_to_schema_id, scalars,
+                          directives, current_schema_id, current_ast)
 
     return MergedSchemaDescriptor(
         schema_ast=merged_schema_ast,
@@ -145,13 +145,14 @@ def _get_basic_schema_ast(query_type):
     return blank_ast
 
 
-def _accumulate_types(merged_schema_ast, type_name_to_schema_id, scalars, directives,
-                      current_schema_id, current_ast):
+def _accumulate_types(merged_schema_ast, merged_query_type_name, type_name_to_schema_id, scalars,
+                      directives, current_schema_id, current_ast):
     """Add all types and query type fields of current_ast into merged_schema_ast.
 
     Args:
         merged_schema_ast: Document. It is modified by this function as current_ast is
                            incorporated
+        merged_query_type_name: str, name of the query type in the merged_schema_ast
         type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that
                                 the type is from. It is modified by this function
         scalars: Set[str], names of all scalars in the merged_schema so far. It is potentially
@@ -215,23 +216,32 @@ def _accumulate_types(merged_schema_ast, type_name_to_schema_id, scalars, direct
             )
         else:  # All definition types should've been covered
             raise AssertionError(
-                u'Missed definition type: "{}"'.format(type(new_definition).__name__)
+                u'Unreachable code reached. Missed definition type: '
+                u'"{}"'.format(type(new_definition).__name__)
             )
 
     # Concatenate all query type fields.
     # Since query_type was taken from the schema built from the input AST, the query type
     # should never be not found.
     if new_query_type_fields is None:
-        raise AssertionError(u'Query type "{}" field definitions unexpected not '
-                             u'found.'.format(current_query_type))
+        raise AssertionError(u'Unreachable code reached. Query type "{}" field definitions '
+                             u'unexpectedly not found.'.format(current_query_type))
 
     # Note that as field names and type names have been confirmed to match up, and types
     # were merged without name conflicts, query type fields can also be safely merged.
-
+    #
     # Query type is the second entry in the list of definitions of the merged_schema_ast,
-    # as guaranteed by _get_basic_schema_ast
+    # as guaranteed by _get_basic_schema_ast()
     query_type_index = 1
-    merged_schema_ast.definitions[query_type_index].fields.extend(new_query_type_fields)
+    merged_query_type_definition = merged_schema_ast.definitions[query_type_index]
+    if merged_query_type_definition.name.value != merged_query_type_name:
+        raise AssertionError(
+            u'Unreachable code reached. The second definition in the schema is unexpectedly '
+            u'not the query type "{}", but is instead "{}".'.format(
+                merged_query_type_name, merged_query_type_definition.name.value
+            )
+        )
+    merged_query_type_definition.fields.extend(new_query_type_fields)
 
 
 def _process_directive_definition(directive, existing_directives, merged_schema_ast):
