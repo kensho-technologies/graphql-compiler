@@ -953,7 +953,13 @@ class CompilerTests(unittest.TestCase):
                 animal_1.birthday >= :lower
                 AND animal_1.birthday <= :upper
         '''
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+                WHERE ((Animal___1.birthday >= $lower) AND
+                       (Animal___1.birthday <= $upper))
+            RETURN
+                Animal___1.birthday AS `birthday`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -999,7 +1005,13 @@ class CompilerTests(unittest.TestCase):
                 event_1.event_date >= :lower
                 AND event_1.event_date <= :upper
         '''
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Event___1:Event)
+                WHERE ((Event___1.event_date >= $lower) AND
+                       (Event___1.event_date <= $upper))
+            RETURN
+                Event___1.event_date AS `event_date`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -6474,7 +6486,13 @@ class CompilerTests(unittest.TestCase):
                 AND animal_1.uuid <= :uuid_upper
                 AND animal_1.birthday >= :earliest_modified_date
         '''
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+                WHERE (((Animal___1.uuid >= $uuid_lower) AND (Animal___1.uuid <= $uuid_upper))
+                        AND (Animal___1.birthday >= $earliest_modified_date))
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)

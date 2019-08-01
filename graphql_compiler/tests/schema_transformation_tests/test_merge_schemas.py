@@ -12,7 +12,7 @@ from graphql_compiler.schema_transformation.utils import SchemaNameConflictError
 from .input_schema_strings import InputSchemaStrings as ISS
 
 
-class TestMergeSchemas(unittest.TestCase):
+class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
     def test_basic_merge(self):
         merged_schema = merge_schemas(
             OrderedDict([
