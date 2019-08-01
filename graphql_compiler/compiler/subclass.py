@@ -46,6 +46,7 @@ def compute_subclass_sets(schema, type_equivalence_hints=None):
             raise AssertionError(u'Unexpected type {}'.format(type(equivalent_type)))
 
     # The inheritance structure in the GraphQL schema is flat. Union type encompass all of the
-    # subclasses of their equivalent object type and interface types are implemented by all their
-    # subclasses. Therefore, subclass_sets is already a transitive closure.
+    # object type subclasses of their equivalent object type and cannot encompass other
+    # union types. Interface types are implemented by all their object type subclasses and cannot
+    # be implemented by other interface types. Therefore, subclass_sets is a transitive closure.
     return subclass_set
