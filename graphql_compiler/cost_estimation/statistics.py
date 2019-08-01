@@ -86,7 +86,7 @@ class LocalStatistics(Statistics):
         self, class_counts, vertex_edge_vertex_counts=None,
         distinct_field_values_counts=None
     ):
-        """Initializes statistics with the given data.
+        """Initialize statistics with the given data.
 
         Args:
             class_counts: dict, str -> int, mapping vertex/edge class name to class count.
