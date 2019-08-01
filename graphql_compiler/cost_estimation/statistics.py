@@ -87,7 +87,8 @@ class LocalStatistics(Statistics):
         """Initialize statistics with the given data.
 
         Args:
-            class_counts: dict, str -> int, mapping vertex/edge class name to class count.
+            class_counts: dict, str -> int, mapping vertex/edge class name to count of
+                instances of that class.
             vertex_edge_vertex_counts: optional dict, (str, str, str) -> int, mapping
                 tuple of (vertex source class name, edge class name, vertex target class name) to
                 count of edge instances of given class connecting instances of two vertex classes.
