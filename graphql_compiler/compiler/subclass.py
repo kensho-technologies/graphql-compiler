@@ -1,16 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
-from graphql.type.definition import GraphQLObjectType, GraphQLUnionType
+from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 import six
-
-
-def _add_transitive_closure(graph):
-    """Compute in-place the transitive closure of a reflexive graph represented as dict."""
-    # Floyd-Warshall O(N^3)
-    for k, k_out in six.iteritems(graph):
-        for i, i_out in six.iteritems(graph):
-            for j, _ in six.iteritems(graph):
-                if k in i_out and j in k_out:
-                    graph[i].add(j)
 
 
 def compute_subclass_sets(schema, type_equivalence_hints=None):
@@ -37,7 +27,8 @@ def compute_subclass_sets(schema, type_equivalence_hints=None):
     # A class is a subclass of itself
     subclass_set = {
         classname: {classname}
-        for classname in six.iterkeys(schema.get_type_map())
+        for classname, graphql_type in six.iterkeys(schema.get_type_map())
+        if isinstance(graphql_type, (GraphQLInterfaceType, GraphQLObjectType))
     }
 
     # A class is a subclass of interfaces it implements
@@ -54,6 +45,7 @@ def compute_subclass_sets(schema, type_equivalence_hints=None):
         else:
             raise AssertionError(u'Unexpected type {}'.format(type(equivalent_type)))
 
-    # If B subclasses A, and C subclasses B, then C subclasses A
-    _add_transitive_closure(subclass_set)
+    # The inheritance structure in the GraphQL schema is flat. Union type encompass all of the
+    # subclasses of their equivalent object type and interface types are implemented by all their
+    # subclasses. Therefore, subclass_sets is already a transitive closure.
     return subclass_set
