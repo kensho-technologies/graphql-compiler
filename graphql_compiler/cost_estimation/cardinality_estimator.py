@@ -192,13 +192,18 @@ def _estimate_children_per_parent(
         edge_counts = _estimate_vertex_edge_vertex_count_using_class_count(
             schema_graph, statistics, query_metadata, child_location, parent_location
         )
+        # pylint: enable=old-division
 
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     # Count the number of parents, over which we assume the edges are uniformly distributed.
     parent_location_counts = statistics.get_class_count(parent_name_from_location)
 
+    # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
+    # pylint: disable=old-division
+    #
     # TODO(evan): edges are not necessarily uniformly distributed, so record more statistics
-    child_counts_per_parent = float(edge_counts) / parent_location_counts
+    child_counts_per_parent = float(edge_counts) / parent_counts
+    # pylint: enable=old-division
 
     # TODO(evan): If edge is recursed over, we need a more detailed statistic
     # Recursion always starts with depth = 0, so we should treat the parent result set itself as a
