@@ -50,7 +50,8 @@ class Statistics(object):
         several orders of magnitude. In such cases, this statistic should be provided.
 
         Note that vertices that inherit from vertex_source and vertex_target should also be
-        considered as vertex_source vertices, and should be included in the statistic.
+        considered as vertex_source or vertex_target vertices respectively, and should be included
+        in the statistic.
 
         Args:
             vertex_source_class_name: str, vertex class name defined in the GraphQL schema.
