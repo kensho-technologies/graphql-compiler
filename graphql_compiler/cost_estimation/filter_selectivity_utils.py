@@ -45,14 +45,13 @@ def _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
 
 
 def _get_filter_selectivity(
-    schema_graph, lookup_class_counts, filter_info, parameters, location_name
+    schema_graph, statistics, filter_info, parameters, location_name
 ):
     """Calculate the selectivity of an individual filter at a given location.
 
     Args:
         schema_graph: SchemaGraph object
-        lookup_class_counts: function, string -> int, that accepts a class name and returns the
-                             total number of instances plus subclass instances
+        statistics: Statistics object
         filter_info: FilterInfo object, filter on the location being filtered
         parameters: dict, parameters with which query will be executed
         location_name: string, type of the location being filtered
@@ -106,14 +105,13 @@ def _combine_filter_selectivities(selectivities):
 
 
 def adjust_counts_for_filters(
-    schema_graph, lookup_class_counts, filter_infos, parameters, location_name, counts
+    schema_graph, statistics, filter_infos, parameters, location_name, counts
 ):
     """Adjust result counts for filters on a given location by calculating selectivities.
 
     Args:
         schema_graph: SchemaGraph object
-        lookup_class_counts: function, string -> int, that accepts a class name and returns the
-                             total number of instances plus subclass instances
+        statistics: Statistics object
         filter_infos: list of FilterInfos, filters on the location being filtered
         parameters: dict, parameters with which query will be executed
         location_name: string, type of the location being filtered
@@ -124,7 +122,7 @@ def adjust_counts_for_filters(
     """
     selectivities = [
         _get_filter_selectivity(
-            schema_graph, lookup_class_counts, filter_info, parameters, location_name
+            schema_graph, statistics, filter_info, parameters, location_name
         )
         for filter_info in filter_infos
     ]
