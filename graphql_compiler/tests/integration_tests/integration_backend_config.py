@@ -4,8 +4,8 @@ from collections import namedtuple
 from .. import test_backend
 
 
-DEFAULT_ROOT_PASSWORD = u'root'
-MSSQL_ROOT_PASSWORD = u'Root-secure1'  # mssql has stricter root password restrictions
+DEFAULT_ROOT_PASSWORD = u'root'  # nosec
+MSSQL_ROOT_PASSWORD = u'Root-secure1'  # mssql has stricter root password restrictions  # nosec
 
 SQL_BACKENDS = {
     test_backend.POSTGRES,

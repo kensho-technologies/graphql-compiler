@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "57dba32bd9aac6c9efac573edb5c10fa979003b52dfee64e641a6522d06ac249"
+            "sha256": "b740e06413320cced73b2bcf2036cd54a2eee7db0ff32fd16c99a3c2e925c80d"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -461,11 +461,11 @@
         },
         "pylint": {
             "hashes": [
-                "sha256:02c2b6d268695a8b64ad61847f92e611e6afcff33fd26c3a2125370c4662905d",
-                "sha256:ee1e85575587c5b58ddafa25e1c1b01691ef172e139fc25585e5d3f02451da93"
+                "sha256:367e3d49813d349a905390ac27989eff82ab84958731c5ef0bef867452cfdc42",
+                "sha256:97a42df23d436c70132971d1dcb9efad2fe5c0c6add55b90161e773caf729300"
             ],
             "index": "pypi",
-            "version": "==1.9.4"
+            "version": "==1.9.5"
         },
         "pymssql": {
             "hashes": [
@@ -632,6 +632,7 @@
                 "sha256:e547b1074e52c10f0581de415b509aa61e577f5248340a68b356938393d773c8",
                 "sha256:fcfe2c7a9fbf323f3520ef9766b82e80cd433d7f8c87ff084b18bcde716923af"
             ],
+            "markers": "python_version >= '3.5' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
             "version": "==0.3.0"
         },
         "wcwidth": {
