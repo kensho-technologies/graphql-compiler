@@ -2,12 +2,13 @@
 
 import six
 
-from .sql_tree import SqlNode, SqlQueryTree
 from .. import blocks
 from ...compiler import expressions
 from ...compiler.helpers import Location
 from ..ir_lowering_sql import constants
 from ..metadata import LocationInfo
+from .sql_tree import SqlNode, SqlQueryTree
+
 
 ##############
 # Public API #

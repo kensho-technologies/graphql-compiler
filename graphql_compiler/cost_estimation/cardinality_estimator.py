@@ -114,16 +114,23 @@ def _estimate_children_per_parent(
     )
     child_name_from_location = query_metadata.get_location_info(child_location).type.name
     if child_name_from_edge != child_name_from_location:
+        # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
+        # pylint: disable=old-division
         edge_counts *= (
             float(statistics.get_class_count(child_name_from_location)) /
             statistics.get_class_count(child_name_from_edge)
         )
+        # pylint: enable=old-division
 
     # Count the number of parents, over which we assume the edges are uniformly distributed.
     parent_counts = statistics.get_class_count(parent_name_from_edge)
 
+    # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
+    # pylint: disable=old-division
+    #
     # TODO(evan): edges are not necessarily uniformly distributed, so record more statistics
     child_counts_per_parent = float(edge_counts) / parent_counts
+    # pylint: enable=old-division
 
     # Recursion always starts with depth = 0, so we should treat the parent result set itself as a
     # child result set to be expanded (so add 1 to child_counts).
