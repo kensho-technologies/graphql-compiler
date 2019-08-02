@@ -74,6 +74,6 @@ TODOs
     - Estimate execution cost by augmenting the cardinality calculation.
     - Add recurse handling.
     - Improve field handling for non-unique indexes.
-    - Add additional statistics to improve directive coverage (e.g. histograms/field domain counts
+    - Add additional statistics to improve directive coverage (e.g. histograms
       to better model more filter operations).
 """
