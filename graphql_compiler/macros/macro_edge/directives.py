@@ -13,7 +13,8 @@ from ...schema import (
 MacroEdgeDirective = GraphQLDirective(
     name='macro_edge',
     locations=[
-        DirectiveLocation.FIELD,
+        # Used to mark edges that are defined via macros in the schema.
+        DirectiveLocation.FIELD_DEFINITION,
     ],
 )
 
