@@ -83,7 +83,7 @@ def _get_parent_and_child_name_from_edge(schema_graph, child_location):
 
 
 def _estimate_children_per_parent(
-    schema_graph, lookup_class_counts, query_metadata, parameters, child_location, parent_location
+    schema_graph, statistics, query_metadata, parameters, child_location, parent_location
 ):
     """Estimate the number of edges per parent_location that connect to child_location vertices.
 
@@ -95,8 +95,7 @@ def _estimate_children_per_parent(
 
     Args:
         schema_graph: SchemaGraph object
-        lookup_class_counts: function, string -> int, that accepts a class name and returns the
-                             total number of instances plus subclass instances
+        statistics: Statistics object
         query_metadata: QueryMetadataTable object
         parameters: dict, parameters with which query will be executed
         child_location: BaseLocation object
@@ -107,7 +106,7 @@ def _estimate_children_per_parent(
     # Count the number of edges between child_location and parent_location type vertices.
     _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     # TODO(evan): If edge is recursed over, we need a more detailed statistic
-    edge_counts = lookup_class_counts(edge_name)
+    edge_counts = statistics.get_class_count(edge_name)
 
     # Scale edge_counts if child_location's type is a subclass of the edge's endpoint type.
     parent_name_from_edge, child_name_from_edge = _get_parent_and_child_name_from_edge(
@@ -118,13 +117,13 @@ def _estimate_children_per_parent(
         # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
         # pylint: disable=old-division
         edge_counts *= (
-            float(lookup_class_counts(child_name_from_location)) /
-            lookup_class_counts(child_name_from_edge)
+            float(statistics.get_class_count(child_name_from_location)) /
+            statistics.get_class_count(child_name_from_edge)
         )
         # pylint: enable=old-division
 
     # Count the number of parents, over which we assume the edges are uniformly distributed.
-    parent_counts = lookup_class_counts(parent_name_from_edge)
+    parent_counts = statistics.get_class_count(parent_name_from_edge)
 
     # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
     # pylint: disable=old-division
@@ -142,7 +141,7 @@ def _estimate_children_per_parent(
     # Adjust the counts for filters at child_location.
     child_filters = query_metadata.get_filter_infos(child_location)
     child_counts_per_parent = adjust_counts_for_filters(
-        schema_graph, lookup_class_counts, child_filters, parameters, child_name_from_location,
+        schema_graph, statistics, child_filters, parameters, child_name_from_location,
         child_counts_per_parent
     )
 
@@ -150,14 +149,13 @@ def _estimate_children_per_parent(
 
 
 def _estimate_subexpansion_cardinality(
-    schema_graph, lookup_class_counts, query_metadata, parameters, child_location, parent_location
+    schema_graph, statistics, query_metadata, parameters, child_location, parent_location
 ):
     """Estimate the cardinality associated with the subexpansion of a child_location vertex.
 
     Args:
         schema_graph: SchemaGraph object
-        lookup_class_counts: function, string -> int, that accepts a class name and returns the
-                             total number of instances plus subclass instances
+        statistics: Statistics object
         query_metadata: QueryMetadataTable object
         parameters: dict, parameters with which query will be executed
         child_location: BaseLocation object, child of parent_location corresponding to the
@@ -173,12 +171,12 @@ def _estimate_subexpansion_cardinality(
         (expected number of B-vertices) * (expected number of result sets per B-vertex).
     """
     child_counts_per_parent = _estimate_children_per_parent(
-        schema_graph, lookup_class_counts, query_metadata, parameters, child_location,
+        schema_graph, statistics, query_metadata, parameters, child_location,
         parent_location
     )
 
     results_per_child = _estimate_expansion_cardinality(
-        schema_graph, lookup_class_counts, query_metadata, parameters, child_location
+        schema_graph, statistics, query_metadata, parameters, child_location
     )
 
     subexpansion_cardinality = child_counts_per_parent * results_per_child
@@ -195,14 +193,13 @@ def _estimate_subexpansion_cardinality(
 
 
 def _estimate_expansion_cardinality(
-    schema_graph, lookup_class_counts, query_metadata, parameters, current_location
+    schema_graph, statistics, query_metadata, parameters, current_location
 ):
     """Estimate the cardinality of fully expanding a vertex corresponding to current_location.
 
     Args:
         schema_graph: SchemaGraph object
-        lookup_class_counts: function, string -> int, that accepts a class name and returns the
-                             total number of instances plus subclass instances
+        statistics: Statistics object
         query_metadata: QueryMetadataTable object
         parameters: dict, parameters with which query will be executed
         current_location: BaseLocation object, corresponding to the vertex we're expanding
@@ -217,7 +214,7 @@ def _estimate_expansion_cardinality(
         # each subexpansion (e.g. If we expect each current vertex to have 2 children of type A and
         # 3 children of type B, we'll return 6 distinct result sets per current vertex).
         subexpansion_cardinality = _estimate_subexpansion_cardinality(
-            schema_graph, lookup_class_counts, query_metadata, parameters, child_location,
+            schema_graph, statistics, query_metadata, parameters, child_location,
             current_location
         )
         expansion_cardinality *= subexpansion_cardinality
@@ -225,15 +222,14 @@ def _estimate_expansion_cardinality(
 
 
 def estimate_query_result_cardinality(
-    schema_graph, lookup_class_counts, graphql_query, parameters,
+    schema_graph, statistics, graphql_query, parameters,
     class_to_field_type_overrides=None, hidden_classes=None
 ):
     """Estimate the cardinality of a GraphQL query's result using database statistics.
 
     Args:
         schema_graph: SchemaGraph object
-        lookup_class_counts: function, string -> int, that accepts a class name and returns the
-                             total number of instances plus subclass instances
+        statistics: Statistics object
         graphql_query: string, a valid GraphQL query
         parameters: dict, parameters with which query will be executed.
         class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
@@ -246,7 +242,6 @@ def estimate_query_result_cardinality(
         float, expected query result cardinality. Equal to the number of root vertices multiplied by
         the expected number of result sets per full expansion of a root vertex.
     """
-    # TODO(evan): replace lookup_class_counts with statistics class so we can use more stats
     if class_to_field_type_overrides is None:
         class_to_field_type_overrides = dict()
     if hidden_classes is None:
@@ -263,15 +258,15 @@ def estimate_query_result_cardinality(
 
     # First, count the vertices corresponding to the root location that pass relevant filters
     root_name = query_metadata.get_location_info(root_location).type.name
-    root_counts = lookup_class_counts(root_name)
+    root_counts = statistics.get_class_count(root_name)
     root_counts = adjust_counts_for_filters(
-        schema_graph, lookup_class_counts, query_metadata.get_filter_infos(root_location),
+        schema_graph, statistics, query_metadata.get_filter_infos(root_location),
         parameters, root_name, root_counts
     )
 
     # Next, find the number of expected result sets per root vertex when fully expanded
     results_per_root = _estimate_expansion_cardinality(
-        schema_graph, lookup_class_counts, query_metadata, parameters, root_location
+        schema_graph, statistics, query_metadata, parameters, root_location
     )
 
     expected_query_result_cardinality = root_counts * results_per_root
