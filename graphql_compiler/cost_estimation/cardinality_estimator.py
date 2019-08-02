@@ -202,7 +202,7 @@ def _estimate_children_per_parent(
     # pylint: disable=old-division
     #
     # TODO(evan): edges are not necessarily uniformly distributed, so record more statistics
-    child_counts_per_parent = float(edge_counts) / parent_counts
+    child_counts_per_parent = float(edge_counts) / parent_location_counts
     # pylint: enable=old-division
 
     # TODO(evan): If edge is recursed over, we need a more detailed statistic
