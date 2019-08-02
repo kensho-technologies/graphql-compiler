@@ -1,4 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
+import datetime
 from decimal import Decimal
 from unittest import TestCase
 
@@ -11,29 +12,58 @@ from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX
 from ...tests import test_backend
 from ...tests.test_helpers import generate_schema, generate_schema_graph
 from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
-from .integration_backend_config import MATCH_BACKENDS, SQL_BACKENDS
+from .integration_backend_config import (
+    MATCH_BACKENDS, NEO4J_BACKENDS, REDISGRAPH_BACKENDS, SQL_BACKENDS
+)
 from .integration_test_helpers import (
-    compile_and_run_match_query, compile_and_run_sql_query, sort_db_results
+    compile_and_run_match_query, compile_and_run_neo4j_query, compile_and_run_redisgraph_query,
+    compile_and_run_sql_query, sort_db_results
 )
 
 
-# Store the test parametrization for running against all backends. Individual tests can customize
-# the list of backends to test against with the full @parametrized.expand([...]) decorator.
-all_backends = parameterized.expand([
+all_backends_list = [
     test_backend.ORIENTDB,
     test_backend.POSTGRES,
     test_backend.MARIADB,
     test_backend.MYSQL,
     test_backend.SQLITE,
     test_backend.MSSQL,
-])
+    test_backend.NEO4J,
+    test_backend.REDISGRAPH,
+]
+
 
 # Store the typical fixtures required for an integration tests.
 # Individual tests can supply the full @pytest.mark.usefixtures to override if necessary.
 integration_fixtures = pytest.mark.usefixtures(
-    'integration_graph_client',
+    'integration_neo4j_client',
+    'integration_orientdb_client',
+    'integration_redisgraph_client',
     'sql_integration_data',
 )
+
+
+def use_all_backends(except_backends=()):
+    """Decorator for test functions to use specific backends.
+
+    By default, tests decorated with this function use all backends. However, some backends don't
+    support certain features, so it's useful to exclude certain backends for individual tests.
+
+    Args:
+        except_backends: Tuple[str], optional argument. Tuple of backend strings from
+                         test_backend.py to exclude in testing.
+
+    Returns:
+        function that expands tests for each non-excluded backend.
+    """
+    non_excluded_backends = [
+        backend for backend in all_backends_list
+        if backend not in except_backends
+    ]
+    # parameterized.expand() takes in a list of test parameters (in this case, backend strings
+    # specifying which backends to use for the test) and auto-generates a test function for each
+    # backend. For more information see https://github.com/wolever/parameterized
+    return parameterized.expand(non_excluded_backends)
 
 
 # The following test class uses several fixtures adding members that pylint
@@ -79,12 +109,18 @@ class IntegrationTests(TestCase):
                 cls.schema, graphql_query, parameters, engine, cls.sql_metadata)
         elif backend_name in MATCH_BACKENDS:
             results = compile_and_run_match_query(
-                cls.schema, graphql_query, parameters, cls.graph_client)
+                cls.schema, graphql_query, parameters, cls.orientdb_client)
+        elif backend_name in NEO4J_BACKENDS:
+            results = compile_and_run_neo4j_query(
+                cls.schema, graphql_query, parameters, cls.neo4j_client)
+        elif backend_name in REDISGRAPH_BACKENDS:
+            results = compile_and_run_redisgraph_query(
+                cls.schema, graphql_query, parameters, cls.redisgraph_client)
         else:
             raise AssertionError(u'Unknown test backend {}.'.format(backend_name))
         return results
 
-    @all_backends
+    @use_all_backends()
     @integration_fixtures
     def test_simple_output(self, backend_name):
         graphql_query = '''
@@ -103,7 +139,11 @@ class IntegrationTests(TestCase):
         ]
         self.assertResultsEqual(graphql_query, {}, backend_name, expected_results)
 
-    @all_backends
+    # Cypher doesn't support Decimals (both Neo4j [1] and RedisGraph [2])
+    # [0] https://oss.redislabs.com/redisgraph/cypher_support/#types
+    # [1] https://neo4j.com/docs/cypher-manual/current/syntax/values/
+    # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
+    @use_all_backends(except_backends=(test_backend.NEO4J, test_backend.REDISGRAPH))
     @integration_fixtures
     def test_simple_filter(self, backend_name):
         graphql_query = '''
@@ -142,7 +182,12 @@ class IntegrationTests(TestCase):
 
         self.assertResultsEqual(graphql_query, parameters, test_backend.ORIENTDB, expected_results)
 
-    @all_backends
+    # Redisgraph doesn't support lists so in_collection doesn't make sense. [0]
+    # Cypher doesn't support Decimals (both Neo4j [1] and RedisGraph [2])
+    # [0] https://oss.redislabs.com/redisgraph/cypher_support/#types
+    # [1] https://neo4j.com/docs/cypher-manual/current/syntax/values/
+    # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
+    @use_all_backends(except_backends=(test_backend.REDISGRAPH, test_backend.NEO4J))
     @integration_fixtures
     def test_two_filters(self, backend_name):
         graphql_query = '''
@@ -166,7 +211,9 @@ class IntegrationTests(TestCase):
 
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
-    @all_backends
+    # RedisGraph doesn't support string function CONTAINS
+    # https://oss.redislabs.com/redisgraph/cypher_support/#string-operators
+    @use_all_backends(except_backends=(test_backend.REDISGRAPH))
     @integration_fixtures
     def test_has_substring_precedence(self, backend_name):
         graphql_query = '''
@@ -189,12 +236,32 @@ class IntegrationTests(TestCase):
         ]
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
+    # RedisGraph doesn't support temporal types, so Date types aren't supported.
+    @use_all_backends(except_backends=(test_backend.REDISGRAPH))
+    @integration_fixtures
+    def test_filter_on_date(self, backend_name):
+        graphql_query = '''
+        {
+            Animal {
+                name @output(out_name: "animal_name")
+                birthday @filter(op_name: "=", value: ["$birthday"])
+            }
+        }
+        '''
+        parameters = {
+            'birthday': datetime.date(1975, 3, 3),
+        }
+        expected_results = [
+            {'animal_name': 'Animal 3'},
+        ]
+        self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
+
     @integration_fixtures
     def test_snapshot_graphql_schema_from_orientdb_schema(self):
         class_to_field_type_overrides = {
             'UniquelyIdentifiable': {'uuid': GraphQLID}
         }
-        schema, _ = generate_schema(self.graph_client,
+        schema, _ = generate_schema(self.orientdb_client,
                                     class_to_field_type_overrides=class_to_field_type_overrides,
                                     hidden_classes={ORIENTDB_BASE_VERTEX_CLASS_NAME})
         compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
@@ -204,7 +271,7 @@ class IntegrationTests(TestCase):
         class_to_field_type_overrides = {
             'UniquelyIdentifiable': {'uuid': GraphQLID}
         }
-        schema, _ = generate_schema(self.graph_client,
+        schema, _ = generate_schema(self.orientdb_client,
                                     class_to_field_type_overrides=class_to_field_type_overrides)
         # Since Animal implements the UniquelyIdentifiable interface and since we we overrode
         # UniquelyIdentifiable's uuid field to be of type GraphQLID when we generated the schema,
@@ -213,18 +280,18 @@ class IntegrationTests(TestCase):
 
     @integration_fixtures
     def test_include_admissible_non_graph_class(self):
-        schema, _ = generate_schema(self.graph_client)
+        schema, _ = generate_schema(self.orientdb_client)
         # Included abstract non-vertex classes whose non-abstract subclasses are all vertexes.
         self.assertIsNotNone(schema.get_type('UniquelyIdentifiable'))
 
     @integration_fixtures
     def test_selectively_hide_classes(self):
-        schema, _ = generate_schema(self.graph_client, hidden_classes={'Animal'})
+        schema, _ = generate_schema(self.orientdb_client, hidden_classes={'Animal'})
         self.assertNotIn('Animal', schema.get_type_map())
 
     @integration_fixtures
     def test_parsed_schema_element_custom_fields(self):
-        schema_graph = generate_schema_graph(self.graph_client)
+        schema_graph = generate_schema_graph(self.orientdb_client)
         parent_of_edge = schema_graph.get_element_by_class_name('Animal_ParentOf')
         expected_custom_class_fields = {
             'human_name_in': 'Parent',

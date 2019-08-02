@@ -169,22 +169,31 @@ def _get_fields(ast):
             continue
 
         name = get_ast_field_name(field_ast)
-        if name in seen_field_names:
-            # If we ever allow repeated field names,
-            # then we have to change the Location naming scheme to reflect the repetitions
-            # and disambiguate between Recurse and Traverse visits to a Location.
-            raise GraphQLCompilationError(u'Encountered repeated field name: {}'.format(name))
-        seen_field_names.add(name)
+        seen_already = name in seen_field_names
 
         # Vertex fields start with 'out_' or 'in_', denoting the edge direction to that vertex.
         if is_vertex_field_name(name):
+            if seen_already:
+                raise GraphQLCompilationError('Encountered repeated vertex field: {}.'.format(name))
             switched_to_vertices = True
             vertex_fields.append(field_ast)
         else:
+            if seen_already:
+                # If we ever allow repeated field names,
+                # then we have to change the Location naming scheme to reflect the repetitions
+                # and disambiguate between Recurse and Traverse visits to a Location.
+                raise GraphQLCompilationError(u'Encountered repeated property field: {}. If you '
+                                              u'are attempting to specify multiple directives on a '
+                                              u'single property field, one way to do so is to '
+                                              u'place all of them adjacent to the property field '
+                                              u'as follows: propertyField @directive1 @directive2 '
+                                              u'...'.format(name))
             if switched_to_vertices:
                 raise GraphQLCompilationError(u'Encountered property field {} '
                                               u'after vertex fields!'.format(name))
             property_fields.append(field_ast)
+
+        seen_field_names.add(name)
 
     return vertex_fields, property_fields
 
@@ -311,7 +320,6 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
         if context['metadata'].get_output_info(output_name):
             raise GraphQLCompilationError(u'Cannot reuse output name: '
                                           u'{}, {}'.format(output_name, context))
-        validate_safe_string(output_name)
         validate_output_name(output_name)
 
         graphql_type = strip_non_null_from_type(current_schema_type)
@@ -1018,7 +1026,7 @@ def validate_schema_and_ast(schema, ast):
 
 
 def ast_to_ir(schema, ast, type_equivalence_hints=None):
-    """Convert the given GraphQL string into compiler IR, using the given schema object.
+    """Convert the given GraphQL AST object into compiler IR, using the given schema object.
 
     Args:
         schema: GraphQL schema object, created using the GraphQL library

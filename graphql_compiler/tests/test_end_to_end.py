@@ -3,7 +3,9 @@ import datetime
 from decimal import Decimal
 import unittest
 
-from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
+from graphql import (
+    GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLString
+)
 import pytz
 
 from .. import graphql_to_gremlin, graphql_to_match
@@ -199,3 +201,17 @@ class QueryFormattingTests(unittest.TestCase):
             for invalid_value in invalid_values:
                 with self.assertRaises(GraphQLInvalidArgumentError):
                     validate_argument_type(graphql_type, invalid_value)
+
+    def test_non_null_types_pass_validation(self):
+        type_and_value = [
+            (GraphQLString, 'abc'),  # sanity check
+            (GraphQLNonNull(GraphQLString), 'abc'),
+
+            (GraphQLList(GraphQLString), ['a', 'b', 'c']),  # sanity check
+            (GraphQLList(GraphQLNonNull(GraphQLString)), ['a', 'b', 'c']),
+            (GraphQLNonNull(GraphQLList(GraphQLString)), ['a', 'b', 'c']),
+            (GraphQLNonNull(GraphQLList(GraphQLNonNull(GraphQLString))), ['a', 'b', 'c']),
+        ]
+
+        for graphql_type, value in type_and_value:
+            validate_argument_type(graphql_type, value)

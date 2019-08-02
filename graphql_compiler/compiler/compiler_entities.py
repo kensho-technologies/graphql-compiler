@@ -142,3 +142,10 @@ class MarkerBlock(BasicBlock):
         The effect of MarkerBlocks is applied during optimization and code generation steps.
         """
         return u''
+
+    def to_cypher(self):
+        """Return the Cypher representation of the block, which should almost always be empty.
+
+        The effect of MarkerBlocks is applied during optimization and code generation steps.
+        """
+        return u''

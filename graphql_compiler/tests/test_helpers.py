@@ -12,10 +12,12 @@ from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
+from ..schema import CUSTOM_SCALAR_TYPES
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
 from ..schema_generation.orientdb.utils import (
     ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
 )
+from ..schema_generation.utils import amend_custom_scalar_types
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
@@ -363,6 +365,12 @@ def compare_gremlin(test_case, expected, received):
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
+def compare_cypher(test_case, expected, received):
+    """Compare the expected and received Cypher query, ignoring whitespace."""
+    msg = '\n{}\n\n!=\n\n{}'.format(expected, received)
+    compare_ignoring_whitespace(test_case, expected, received, msg)
+
+
 def compare_input_metadata(test_case, expected, received):
     """Compare two dicts of input metadata, using proper GraphQL type comparison operators."""
     # First, assert that the sets of keys in both dicts are equal.
@@ -386,21 +394,22 @@ def get_schema():
     """Get a schema object for testing."""
     ast = parse(SCHEMA_TEXT)
     schema = build_ast_schema(ast)
+    amend_custom_scalar_types(schema, CUSTOM_SCALAR_TYPES)  # Mutates the schema.
     return schema
 
 
-def generate_schema_graph(graph_client):
+def generate_schema_graph(orientdb_client):
     """Generate SchemaGraph from a pyorient client"""
-    schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+    schema_records = orientdb_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
-    index_records = graph_client.command(ORIENTDB_INDEX_RECORDS_QUERY)
+    index_records = orientdb_client.command(ORIENTDB_INDEX_RECORDS_QUERY)
     index_query_data = [x.oRecordData for x in index_records]
     return get_orientdb_schema_graph(schema_data, index_query_data)
 
 
-def generate_schema(graph_client, class_to_field_type_overrides=None, hidden_classes=None):
+def generate_schema(orientdb_client, class_to_field_type_overrides=None, hidden_classes=None):
     """Generate schema and type equivalence dict from a pyorient client"""
-    schema_records = graph_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
+    schema_records = orientdb_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
     return get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_type_overrides,
                                                         hidden_classes)
