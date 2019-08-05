@@ -23,7 +23,7 @@ QueryConnection = namedtuple(
 
 
 class SubQueryNode(object):
-    def __init__(self, query_ast):  # schema_id?
+    def __init__(self, query_ast):
         """Represents one piece of a larger query, targeting one schema.
 
         Args:
