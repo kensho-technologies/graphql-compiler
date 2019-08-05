@@ -2,28 +2,30 @@
 import six
 
 from ..blocks import Filter
-from ..ir_lowering_common.common import (extract_optional_location_root_info,
-                                         extract_simple_optional_location_info,
-                                         lower_context_field_existence,
-                                         merge_consecutive_filter_clauses,
-                                         optimize_boolean_expression_comparisons,
-                                         remove_end_optionals)
-from .ir_lowering import (lower_backtrack_blocks,
-                          lower_folded_coerce_types_into_filter_blocks,
-                          lower_has_substring_binary_compositions,
-                          remove_backtrack_blocks_from_fold,
-                          rewrite_binary_composition_inside_ternary_conditional,
-                          truncate_repeated_single_step_traversals,
-                          truncate_repeated_single_step_traversals_in_sub_queries)
+from ..ir_lowering_common.common import (
+    extract_optional_location_root_info, extract_simple_optional_location_info,
+    lower_context_field_existence, merge_consecutive_filter_clauses,
+    optimize_boolean_expression_comparisons, remove_end_optionals
+)
 from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
-from .between_lowering import lower_comparisons_to_between
-from .optional_traversal import (collect_filters_to_first_location_occurrence,
-                                 convert_optional_traversals_to_compound_match_query,
-                                 lower_context_field_expressions, prune_non_existent_outputs)
 from ..match_query import convert_to_match_query
-from ..workarounds import (orientdb_class_with_while, orientdb_eval_scheduling,
-                           orientdb_query_execution)
+from ..workarounds import (
+    orientdb_class_with_while, orientdb_eval_scheduling, orientdb_query_execution
+)
+from .between_lowering import lower_comparisons_to_between
+from .ir_lowering import (
+    lower_backtrack_blocks, lower_folded_coerce_types_into_filter_blocks,
+    lower_has_substring_binary_compositions, remove_backtrack_blocks_from_fold,
+    rewrite_binary_composition_inside_ternary_conditional, truncate_repeated_single_step_traversals,
+    truncate_repeated_single_step_traversals_in_sub_queries
+)
+from .optional_traversal import (
+    collect_filters_to_first_location_occurrence,
+    convert_optional_traversals_to_compound_match_query, lower_context_field_expressions,
+    prune_non_existent_outputs
+)
 from .utils import construct_where_filter_predicate
+
 
 ##############
 # Public API #

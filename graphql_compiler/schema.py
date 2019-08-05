@@ -2,6 +2,7 @@
 from collections import OrderedDict
 from datetime import date, datetime
 from decimal import Decimal
+from itertools import chain
 
 import arrow
 from graphql import (
@@ -360,15 +361,19 @@ def insert_meta_fields_into_existing_schema(graphql_schema):
 
 def _check_for_nondefault_directive_names(directives):
     """Check if any user-created directives are present"""
-    # Include compiler-supported directives, and the default directives graphql defines.
+    # Include compiler-supported directives, and the default directives GraphQL defines.
     expected_directive_names = {
         directive.name
-        for directive in DIRECTIVES + tuple(specified_directives)
+        for directive in chain(DIRECTIVES, specified_directives)
     }
 
-    directive_names = {directive.name for directive in directives}
+    directive_names = {
+        directive.name
+        for directive in directives
+    }
 
     nondefault_directives_found = directive_names - expected_directive_names
-    if nondefault_directives_found != set():
-        raise AssertionError(u'Unexpected non-default directives found: {}'.format(
-            nondefault_directives_found))
+    if nondefault_directives_found:
+        raise AssertionError(
+            u'Unsupported directives found: {}'
+            .format(nondefault_directives_found))

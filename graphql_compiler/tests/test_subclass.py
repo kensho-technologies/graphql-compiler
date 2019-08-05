@@ -1,4 +1,4 @@
-# Copyright 2018-present Kensho Technologies, LLC.
+# Copyright 2019-present Kensho Technologies, LLC.
 import unittest
 
 from ..compiler.subclass import compute_subclass_sets
