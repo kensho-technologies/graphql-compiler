@@ -1,27 +1,22 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Commonly-used functions and data types from this package."""
 from .compiler import (  # noqa
-    CompilationResult,
-    OutputMetadata,
-    compile_graphql_to_gremlin,
-    compile_graphql_to_match,
-    compile_graphql_to_sql,
-    compile_graphql_to_cypher,
+    CompilationResult, OutputMetadata, compile_graphql_to_cypher, compile_graphql_to_gremlin,
+    compile_graphql_to_match, compile_graphql_to_sql
 )
-from .query_formatting import insert_arguments_into_query  # noqa
-from .query_formatting.graphql_formatting import pretty_print_graphql  # noqa
 from .exceptions import (  # noqa
     GraphQLCompilationError, GraphQLError, GraphQLInvalidArgumentError, GraphQLParsingError,
     GraphQLValidationError
 )
+from .query_formatting import insert_arguments_into_query  # noqa
+from .query_formatting.graphql_formatting import pretty_print_graphql  # noqa
 from .schema import (  # noqa
     DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal,
     insert_meta_fields_into_existing_schema, is_meta_field
 )
 from .schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-from .schema_generation.orientdb.schema_graph_builder import (
-    get_orientdb_schema_graph
-)
+from .schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
+
 
 __package_name__ = 'graphql-compiler'
 __version__ = '1.11.0'
