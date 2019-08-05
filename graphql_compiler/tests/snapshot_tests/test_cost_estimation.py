@@ -206,7 +206,7 @@ class CostEstimationTests(unittest.TestCase):
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
-    def test_traversal_in_reverse_direction_provided_both_statistics(self):
+    def test_traversal_in_inbound_direction_provided_both_statistics(self):
         """Test traversal in inbound direction provided multiple statistics."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_input = '''{

@@ -69,7 +69,7 @@ def _get_last_edge_direction_and_name_to_location(location):
     return edge_direction, edge_name
 
 
-def _get_parent_and_child_base_classnames_from_edge(schema_graph, child_location):
+def _get_base_classnames_of_parent_and_child_from_edge(schema_graph, child_location):
     """Get the base classname of a location and its parent from the last edge information."""
     edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     edge_element = schema_graph.get_edge_schema_element_or_raise(edge_name)
@@ -145,9 +145,10 @@ def _estimate_vertex_edge_vertex_count_using_class_count(
 
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     child_name_from_location = query_metadata.get_location_info(child_location).type.name
-    parent_base_classname, child_base_classname = _get_parent_and_child_base_classnames_from_edge(
-        schema_graph, child_location
-    )
+    parent_base_classname, child_base_classname = \
+        _get_base_classnames_of_parent_and_child_from_edge(
+            schema_graph, child_location
+        )
     # Scale edge_counts if child_location's type is a subclass of the edge's endpoint type.
     if child_name_from_location != child_base_classname:
         edge_counts *= (
