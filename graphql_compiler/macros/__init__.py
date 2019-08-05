@@ -1,25 +1,28 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 from copy import copy
-import six
 
-from graphql.language.ast import (FieldDefinition, Name, NamedType,
-                                  ObjectTypeDefinition, InterfaceTypeDefinition,
-                                  Directive, ListType)
 from graphql import parse
+from graphql.language.ast import (
+    Directive, FieldDefinition, InterfaceTypeDefinition, ListType, Name, NamedType,
+    ObjectTypeDefinition
+)
 from graphql.language.printer import print_ast
 from graphql.utils.build_ast_schema import build_ast_schema
 from graphql.utils.schema_printer import print_schema
+import six
 
-from ..compiler.compiler_frontend import validate_schema_and_ast
 from ..ast_manipulation import safe_parse_graphql
-from .macro_edge import make_macro_edge_descriptor
-from .macro_edge.helpers import get_type_at_macro_edge_target
-from .macro_edge.directives import (MacroEdgeDirective, DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION,
-                                    DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION)
-from ..schema import _check_for_nondefault_directive_names
-from .macro_expansion import expand_macros_in_query_ast
+from ..compiler.compiler_frontend import validate_schema_and_ast
 from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
+from ..schema import _check_for_nondefault_directive_names
+from .macro_edge import make_macro_edge_descriptor
+from .macro_edge.directives import (
+    DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
+    MacroEdgeDirective
+)
+from .macro_edge.helpers import get_type_at_macro_edge_target
+from .macro_expansion import expand_macros_in_query_ast
 
 
 MacroRegistry = namedtuple(
