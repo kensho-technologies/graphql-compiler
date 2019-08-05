@@ -9,7 +9,7 @@ import six
 
 from ..ast_manipulation import get_ast_with_non_null_stripped
 from ..compiler.helpers import INBOUND_EDGE_DIRECTION, OUTBOUND_EDGE_DIRECTION
-from .subclass import compute_subclass_sets
+from ..compiler.subclass import compute_subclass_sets
 from .utils import (
     InvalidCrossSchemaEdgeError, SchemaNameConflictError, check_ast_schema_is_valid,
     check_schema_identifier_is_valid, get_query_type_name
@@ -587,7 +587,8 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
                 break
 
         if field_type is None:  # should never happen after _check_field_reference_is_valid
-            raise AssertionError(u'Field "{}" unexpectedly not found.'.format(field_name))
+            raise AssertionError(u'Unreachable code reached. Field "{}" unexpectedly '
+                                 u'not found.'.format(field_name))
 
         if isinstance(field_type, ast_types.ListType):
             raise InvalidCrossSchemaEdgeError(
