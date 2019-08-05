@@ -3,30 +3,43 @@ from copy import deepcopy
 
 from graphql.language import ast as ast_types
 from graphql.language.visitor import Visitor, visit
+from graphql.validation import validate
 
 from ..exceptions import GraphQLValidationError
 
 
-def rename_query(ast, renamings):
-    """Translate names of types and root vertex fields using renamings.
+def rename_query(ast, renamed_schema_descriptor):
+    """Translate names of types using reverse_name_map of the input RenamedSchemaDescriptor.
 
-    Besides root vertex fields (fields of the query type), no other fields will be renamed.
+    The direction in which types and fields are renamed is opposite of the process that
+    produced the renamed schema descriptor. If a type X was renamed to Y in the schema, then
+    any occurances of type Y in the input query ast will be renamed to X.
+
+    All type names (including ones in type coercions), as well as root vertex fields (fields
+    of the query type) will be renamed. No other field names will be renamed.
 
     Args:
-        ast: Document, representing a valid query. It is assumed to have passed GraphQL's
-             builtin validation -- validate(schema, ast) in graphql/validation/validation.py --
-             in that it has the structure of a valid query, does not reference non-existent
-             types or fields, and passes type checks. The ast is not modified by this function
-        renamings: Dict[str, str], mapping original type/root vertex field names to renamed
-                   names. Names not appearing in the dict will be unchanged
+        ast: Document, representing a query
+        renamed_schema_descriptor: RenamedSchemaDescriptor, a namedtuple including the
+                                   attribute reverse_name_map, which maps the new, renamed
+                                   names of types to their original names. This function will
+                                   revert these renamed types in the query ast back to their
+                                   original names
 
     Returns:
         Document, a new AST representing the renamed query
 
     Raises:
-        - GraphQLValidationError if the ast does not have the expected form; in particular,
-          if the AST contains Fragments, or if it contains an InlineFragment at the root level
+        - GraphQLValidationError if the AST does not have the expected form; in particular,
+          if the AST fails GraphQL's builtin validation against the provided schema, if it
+          contains Fragments, or if it contains an InlineFragment at the root level
     """
+    built_in_validation_errors = validate(renamed_schema_descriptor.schema, ast)
+    if len(built_in_validation_errors) > 0:
+        raise GraphQLValidationError(
+            u'AST does not validate: {}'.format(built_in_validation_errors)
+        )
+
     if len(ast.definitions) > 1:  # includes either multiple queries, or fragment definitions
         raise GraphQLValidationError(
             u'Only one query may be included, and fragments are not allowed.'
@@ -37,13 +50,13 @@ def rename_query(ast, renamings):
     for selection in query_definition.selection_set.selections:
         if not isinstance(selection, ast_types.Field):  # possibly an InlineFragment
             raise GraphQLValidationError(
-                u'Each root selections must be of type "Field", not "{}" as in '
+                u'Each root selection must be of type "Field", not "{}" as in '
                 u'selection "{}"'.format(type(selection).__name__, selection)
             )
 
     ast = deepcopy(ast)
 
-    visitor = RenameQueryVisitor(renamings)
+    visitor = RenameQueryVisitor(renamed_schema_descriptor.reverse_name_map)
     visit(ast, visitor)
 
     return ast
@@ -54,7 +67,8 @@ class RenameQueryVisitor(Visitor):
         """Create a visitor for renaming types and root vertex fields in a query AST.
 
         Args:
-            renamings: Dict[str, str], mapping from original type name to renamed type name.
+            renamings: Dict[str, str]. Any type or root field of the AST whose name appears as
+                       a key in the dict will be renamed to the corresponding value in the dict.
                        Any name not in the dict will be unchanged
         """
         self.renamings = renamings
