@@ -149,6 +149,10 @@ def _estimate_vertex_edge_vertex_count_using_class_count(
         _get_base_classnames_of_parent_and_child_from_edge(
             schema_graph, child_location
         )
+
+    # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
+    # pylint: disable=old-division
+    #
     # Scale edge_counts if child_location's type is a subclass of the edge's endpoint type.
     if child_name_from_location != child_base_classname:
         edge_counts *= (
@@ -161,6 +165,7 @@ def _estimate_vertex_edge_vertex_count_using_class_count(
             float(statistics.get_class_count(parent_name_from_location)) /
             statistics.get_class_count(parent_base_classname)
         )
+    # pylint: enable=old-division
 
     return edge_counts
 
@@ -193,7 +198,6 @@ def _estimate_children_per_parent(
         edge_counts = _estimate_vertex_edge_vertex_count_using_class_count(
             schema_graph, statistics, query_metadata, child_location, parent_location
         )
-        # pylint: enable=old-division
 
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     # Count the number of parents, over which we assume the edges are uniformly distributed.
