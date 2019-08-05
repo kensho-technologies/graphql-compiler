@@ -417,6 +417,20 @@ Moving the `_x_count` field to the innermost scope results in the following vali
 }
 ```
 
+Here is an example of query whose `@fold` does not output any data; it returns the names of all
+animals that have more than `count` children whose names contain the substring `substr`:
+```graphql
+{
+    Animal {
+        name @output(out_name: "animal_name")
+        out_Animal_ParentOf {
+            _x_count @filter(op_name: ">=", value: ["$count"])
+            name @filter(op_name: "has_substring", value: ["$substr"])
+        }
+    }
+}
+```
+
 ### @tag
 
 The `@tag` directive enables filtering based on values encountered elsewhere in the same query.
