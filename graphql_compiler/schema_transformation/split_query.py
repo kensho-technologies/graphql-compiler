@@ -77,8 +77,6 @@ def split_query(query_ast, merged_schema_descriptor):
     # Construct full tree of SubQueryNodes in a dfs pattern
     while len(query_nodes_to_visit) > 0:
         current_node_to_visit = query_nodes_to_visit.pop()
-        # visit will break down the ast included inside current_node_to_visit into potentially
-        # multiple query nodes, all added to child_query_nodes list of current_node_to_visit
         split_query_visitor = SplitQueryVisitor(
             type_info, edge_to_stitch_fields, merged_schema_descriptor.type_name_to_schema_id,
             current_node_to_visit
@@ -175,12 +173,12 @@ class SplitQueryVisitor(Visitor):
         """
         self._check_directives_supported(node.directives)
 
-        # Get root vertex field name and selection set of current branch of the AST
+        # Get root vertex field name and selection set of the current branch of the AST
         child_type_name, child_selection_set = \
             self._get_child_root_vertex_field_name_and_selection_set(node)
 
         if self._try_get_stitch_fields(node) is None:
-            # Check or set the schema id of the type at the end of the edge
+            # The type at the end of the edge doesn't cross schemas, check its schema id
             self._check_or_set_schema_id(child_type_name)
             return
 
@@ -200,10 +198,13 @@ class SplitQueryVisitor(Visitor):
         # Process parent field, and get parent field path
         if parent_field is None:
             # Change current field to stitch source property field
-            # Existing directives are passed down
             node.name.value = parent_field_name
             node.selection_set = []
             parent_field_path = copy(path)
+            # Valid existing directives are passed down
+            edge_directives = node.directives
+            node.directives = []
+            self._add_directives_from_edge(node, edge_directives)
         else:
             # Remove stump field, pass its directives to the stitch source property field
             # Deleting the field interferes with the visitor's traversal and any existing field
