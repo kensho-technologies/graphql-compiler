@@ -19,6 +19,7 @@ from .utils import (
 MergedSchemaDescriptor = namedtuple(
     'MergedSchemaDescriptor', (
         'schema_ast',  # Document, AST representing the merged schema
+        'schema',  # GraphQLSchema, representing the same schema as schema_ast
         'type_name_to_schema_id',  # Dict[str, str], mapping type name to the id of its schema
     )
 )
@@ -112,6 +113,7 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
 
     return MergedSchemaDescriptor(
         schema_ast=merged_schema_ast,
+        schema=build_ast_schema(merged_schema_ast),
         type_name_to_schema_id=type_name_to_schema_id
     )
 
