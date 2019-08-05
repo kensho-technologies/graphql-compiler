@@ -838,7 +838,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             ]
         }
         # If we use an in_collection-filter on a property that is not uniquely indexed, with no
-        # distinct field values count statistic, return a fractional selectivity of 1.
+        # distinct_field_values_count statistic, return a fractional selectivity of 1.
         selectivity = _get_filter_selectivity(
             schema_graph, empty_statistics, nonunique_filter, nonunique_params, classname
         )

@@ -49,9 +49,9 @@ def _estimate_filter_selectivity_of_equality(
 ):
     """Calculate the selectivity of equality filter(s) at a given location.
 
-    Using the available unique indexes, and the distinct-field-values-count statistic, this function
-    extracts the current location's selectivites, and then combines them, returning one Selectivity
-    object.
+    Using the available unique indexes and/or the distinct_field_values_count statistic, this
+    function extracts the current location's selectivites, and then combines them, returning one
+    Selectivity object.
 
     Args:
         schema_graph: SchemaGraph object
