@@ -8,7 +8,7 @@ from graphql_compiler.exceptions import GraphQLValidationError
 from graphql_compiler.schema_transformation.rename_query import rename_query
 from graphql_compiler.schema_transformation.rename_schema import rename_schema
 
-from .example_schema import basic_schema, basic_renamed_schema
+from .example_schema import basic_renamed_schema, basic_schema
 
 
 class TestRenameQuery(unittest.TestCase):
