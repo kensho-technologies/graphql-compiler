@@ -183,10 +183,10 @@ class SplitQueryVisitor(Visitor):
             return
 
         if child_selection_set is None:
-            raise GraphQLValidationError(
-                u'The edge "{}" is unexpectedly a property field with no further '
-                u'selection set, but edges marked with @stitch must connect vertex fields '
-                u'between schemas.'.format(node)
+            raise SchemaStructureError(
+                u'The edge "{}" is unexpectedly a property field with no further selection '
+                u'set, but edges marked with @stitch must be vertex fields, connecting '
+                u'vertices between schemas.'.format(node)
             )
 
         parent_field_name, child_field_name = self._try_get_stitch_fields(node)
@@ -196,10 +196,10 @@ class SplitQueryVisitor(Visitor):
             parent, parent_field_name, ast_types.Field
         )
         # Process parent field, and get parent field path
-        if parent_field is None:
-            # Change current field to stitch source property field
+        if parent_field is None:  # No existing source property field
+            # Change current field to stitch's source property field
             node.name.value = parent_field_name
-            node.selection_set = []
+            node.selection_set = None
             parent_field_path = copy(path)
             # Valid existing directives are passed down
             edge_directives = node.directives
@@ -240,7 +240,7 @@ class SplitQueryVisitor(Visitor):
         self._add_query_connections(self.root_query_node, child_query_node, parent_field_path,
                                     child_field_path)
 
-        # Returning False causes visit to skip visiting the rest of the branch
+        # Returning False causes `visit` to skip visiting the rest of the branch
         return False
 
     def _check_directives_supported(self, directives):
