@@ -195,11 +195,10 @@ def _estimate_edges_to_children_per_parent(
     (# of AB edges) / (# of A vertices).
 
     Args:
-        schema_graph: SchemaGraph object
-        statistics: Statistics object, facilitates estimate generation using get_class_count() and
-                    get_vertex_edge_vertex_count().
-        query_metadata: QueryMetadataTable object
-        parameters: dict, parameters with which query will be executed
+        schema_graph: SchemaGraph object.
+        statistics: Statistics object.
+        query_metadata: QueryMetadataTable object.
+        parameters: dict, parameters with which query will be executed.
         parent_location: BaseLocation, corresponding to the location the edge traversal begins from.
         child_location: BaseLocation, child of parent_location corresponding to the location the
                         edge traversal ends at.
