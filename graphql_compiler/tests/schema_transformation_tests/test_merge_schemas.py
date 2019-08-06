@@ -10,7 +10,7 @@ import six
 from ...schema_transformation.merge_schemas import (
     CrossSchemaEdgeDescriptor, FieldReference, merge_schemas
 )
-from ...schema_transformation.utils import InvalidCrossSchemaEdgeError, SchemaNameConflictError
+from ...schema_transformation.utils import SchemaNameConflictError
 from .input_schema_strings import InputSchemaStrings as ISS
 
 
