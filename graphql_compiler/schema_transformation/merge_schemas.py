@@ -467,7 +467,7 @@ def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_sche
 
     Args:
         type_name_to_definition: Dict[str, (Interface/Object)TypeDefinition], mapping
-                                 name of Interfae and Object types to their definitions
+                                 names of Interface and Object types to their definitions
         type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that
                                 the type is from. Contains not just Interface and Object type
                                 definitions, but also Union and Enum types
@@ -512,7 +512,7 @@ def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema
 
     Args:
         type_name_to_definition: Dict[str, (Interface/Object)TypeDefinition], mapping
-                                 name of Interfae and Object types to their definitions
+                                 names of Interface and Object types to their definitions
         type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that
                                 the type is from. Contains not just Interface and Object type
                                 definitions, but also Union and Enum types
