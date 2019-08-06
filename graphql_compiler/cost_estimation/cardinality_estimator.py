@@ -268,7 +268,7 @@ def _estimate_subexpansion_cardinality(
         estimate this recursively as:
         (expected number of B-vertices) * (expected number of result sets per B-vertex).
     """
-    child_counts_per_parent = _estimate_children_per_parent(
+    child_counts_per_parent = _estimate_edges_to_children_per_parent(
         schema_graph, statistics, query_metadata, parameters, child_location,
         parent_location
     )
