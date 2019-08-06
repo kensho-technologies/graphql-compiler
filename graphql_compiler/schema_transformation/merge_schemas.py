@@ -20,7 +20,9 @@ MergedSchemaDescriptor = namedtuple(
     'MergedSchemaDescriptor', (
         'schema_ast',  # Document, AST representing the merged schema
         'schema',  # GraphQLSchema, representing the same schema as schema_ast
-        'type_name_to_schema_id',  # Dict[str, str], mapping type name to the id of its schema
+        'type_name_to_schema_id',
+        # Dict[str, str], mapping type name to the id of its schema, includes Interface, Object,
+        # Union, and Enum types
     )
 )
 
@@ -45,7 +47,7 @@ FieldReference = namedtuple(
 
 
 def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=None):
-    """Merge all input schemas and add all cross schema edges.
+    """Merge all input schemas and add all cross-schema edges.
 
     The merged schema will contain all object, interface, union, enum, scalar, and directive
     definitions from input schemas. The fields of its query type will be the union of the
@@ -85,9 +87,9 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
           input object definitions, or if the schema contains mutations or subscriptions
         - SchemaNameConflictError if there are conflicts between the names of
           types/interfaces/enums/scalars, conflicts between the names of fields (including
-          fields created by cross schema edges), or conflicts between the definition of
+          fields created by cross-schema edges), or conflicts between the definition of
           directives with the same name
-        - InvalidCrossSchemaEdgeError if some cross schema edge provided lies within one schema,
+        - InvalidCrossSchemaEdgeError if some cross-schema edge provided lies within one schema,
           refers nonexistent schemas, types, fields, or connects non-scalar or non-matching
           fields
     """
@@ -347,26 +349,30 @@ def _process_generic_type_definition(generic_type, schema_id, existing_scalars,
 
 def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_schema_edges,
                             type_equivalence_hints, query_type):
-    """Add cross schema edges into the schema AST.
+    """Add cross-schema edges into the schema AST.
 
-    Each cross schema edge will be incorporated into the schema by adding vertex fields
-    with a @stitch directive to relevant vertex types. New fields will be named out_
-    or in_ concatenated with the edge name.
+    Each cross-schema edge will be incorporated into the schema by adding vertex fields
+    with a @stitch directive to relevant vertex types. The new fields corresponding to the
+    added cross-schema edges will have names constructed from the edge name, prefixed with
+    "out_" on the edge's outbound side, and "in_" on the edge's inbound side.
 
     The type of the new field will either be the type of the opposing vertex specified in
-    the cross schema edge, or the equivalent union type of the type of the opposing vertex
+    the cross-schema edge, or the equivalent union type of the type of the opposing vertex
     if such a union type is specified by type_equivalence_hints.
 
-    New vertex fields will be added to not only each vertex specified by the cross schema
+    New vertex fields will be added to not only each vertex specified by the cross-schema
     edge, but to all of their subclass vertices as well.
 
     For examples demonstrating the above behaviors, see tests in test_merge_schemas.py that
     involve subclasses.
 
     Args:
-        schema_ast: Document. It is modified by this function
-        type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that the
-                                type is from
+        schema_ast: Document, representing a schema, satisfying various structural requirements
+                    as demanded by `check_ast_schema_is_valid` in utils.py. It is modified by
+                    this function
+        type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that
+                                the type is from. Contains all Interface, Object, Union, and
+                                Enum types
         scalars: Set[str], names of all scalars in the merged_schema so far
         cross_schema_edges: List[CrossSchemaEdgeDescriptor], containing all edges connecting
                             fields in multiple schemas to be added to the merged schema
@@ -380,9 +386,9 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
         query_type: str, name of the query type in the merged schema
 
     Raises:
-        - SchemaNameConflictError if any cross schema edge name causes a name conflict with
-          existing fields, or with fields created by previous cross schema edges
-        - InvalidCrossSchemaEdgeError if any cross schema edge lies within one schema, refers
+        - SchemaNameConflictError if any cross-schema edge name causes a name conflict with
+          existing fields, or with fields created by previous cross-schema edges
+        - InvalidCrossSchemaEdgeError if any cross-schema edge lies within one schema, refers
           to nonexistent schemas, types, or fields, refers to Union types, stitches together
           fields that are not of a scalar type, or stitches together fields that are of
           different scalar types
@@ -461,9 +467,10 @@ def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_sche
 
     Args:
         type_name_to_definition: Dict[str, (Interface/Object)TypeDefinition], mapping
-                                 name of types to their definitions
-        type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that the
-                                type is from
+                                 name of Interfae and Object types to their definitions
+        type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that
+                                the type is from. Contains not just Interface and Object type
+                                definitions, but also Union and Enum types
         scalars: Set[str], names of all scalars in the merged_schema, including both built in
                  and user defined scalars
         union_type_names: Set[str], names of all union types in the merged schema, used for
@@ -472,7 +479,7 @@ def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_sche
                            validity of
 
     Raises:
-        - InvalidCrossSchemaEdgeError if the cross schema edge lies within one schema, refers
+        - InvalidCrossSchemaEdgeError if the cross-schema edge lies within one schema, refers
           to nonexistent schemas, types, or fields, refers to Union types, stitches together
           fields that are not of a scalar type, or stitches together fields that are of
           different scalar types
@@ -487,9 +494,10 @@ def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_sche
         type_name_to_definition, type_name_to_schema_id, union_type_names, inbound_field_reference
     )
 
-    if outbound_field_reference.schema_id == inbound_field_reference.schema_id:  # not cross schema
+    if outbound_field_reference.schema_id == inbound_field_reference.schema_id:  # not cross-schema
         raise InvalidCrossSchemaEdgeError(
-            u'Edge "{}" does not cross schemas.'.format(cross_schema_edge)
+            u'Edge "{}" does not cross schemas. All CrossSchemaEdgeDescriptors provided must '
+            u'connect together types from different schemas.'.format(cross_schema_edge)
         )
 
     _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cross_schema_edge)
@@ -504,15 +512,16 @@ def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema
 
     Args:
         type_name_to_definition: Dict[str, (Interface/Object)TypeDefinition], mapping
-                                 name of types to their definitions
-        type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that the
-                                type is from
+                                 name of Interfae and Object types to their definitions
+        type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that
+                                the type is from. Contains not just Interface and Object type
+                                definitions, but also Union and Enum types
         union_type_names: Set[str], names of all union types in the merged schema, used for
                           informative error messages
         field_reference: FieldReference namedtuple, what we check the validity of
 
     Raises:
-        - InvalidCrossSchemaEdgeError if the cross schema edge refers to nonexistent schemas,
+        - InvalidCrossSchemaEdgeError if the cross-schema edge refers to nonexistent schemas,
           types, or fields, or refers to Union types
     """
     schema_id = field_reference.schema_id
@@ -523,7 +532,7 @@ def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema
     if type_name in union_type_names:
         raise InvalidCrossSchemaEdgeError(
             u'Type "{}" specified in the field reference "{}" is a union type, which may not '
-            u'be used in a cross schema edge. Consider using the object type that is equivalent '
+            u'be used in a cross-schema edge. Consider using the object type that is equivalent '
             u'to this union type instead.'.format(type_name, field_reference)
         )
 
@@ -556,7 +565,7 @@ def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema
 
 
 def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cross_schema_edge):
-    """Check that stitched fields in a cross schema edge are of the same scalar type.
+    """Check that stitched fields in a cross-schema edge are of the same scalar type.
 
     It is also legal for fields to be of a NonNull wrapped scalar type.
 
@@ -569,7 +578,7 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
                            validity of
 
     Raises:
-        - InvalidCrossSchemaEdgeError if the cross schema edge stitches together fields that are
+        - InvalidCrossSchemaEdgeError if the cross-schema edge stitches together fields that are
           not of a scalar type, or stitched together fields that are of different scalar types
     """
     field_type_names = []
@@ -594,7 +603,7 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
 
         if isinstance(field_type, ast_types.ListType):
             raise InvalidCrossSchemaEdgeError(
-                u'The {}bound field of cross schema edge "{}" gives a list, while it '
+                u'The {}bound field of cross-schema edge "{}" gives a list, while it '
                 u'should be a single scalar'.format(
                     direction, cross_schema_edge
                 )
@@ -602,7 +611,7 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
         elif isinstance(field_type, ast_types.NamedType):
             if field_type.name.value not in scalars:
                 raise InvalidCrossSchemaEdgeError(
-                    u'The {}bound field of cross schema edge "{}" is of type "{}", which '
+                    u'The {}bound field of cross-schema edge "{}" is of type "{}", which '
                     u'is not a scalar'.format(
                         direction, cross_schema_edge, field_type.name.value
                     )
@@ -626,11 +635,18 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
 
 
 def _scalars_match(scalar_name1, scalar_name2):
-    """Return True if the two input scalars are considered to be the same, False otherwise.
+    """Return whether the two input scalars are considered to be the same.
 
     For now, two input scalars are considered to be the same if they're the same scalar, if
     one is ID and the other is String, or if one is ID and the other is Int. This may be
     extended in the future.
+
+    Args:
+        scalar_name1: str, name of a scalar, may be built-in or user defined
+        scalar_name2: str, name of a scalar, may be built-in or user defined
+
+    Returns:
+        True if the two scalars are considered the same, False otherwise
     """
     if scalar_name1 == scalar_name2:
         return True
@@ -659,8 +675,8 @@ def _add_edge_field(source_type_node, sink_type_name, source_field_name, sink_fi
                    or 'in')
 
     Raises:
-        - SchemaNameConflictError if the new cross schema edge name causes a name conflict with
-          existing fields, or fields created by previous cross schema edges
+        - SchemaNameConflictError if the new cross-schema edge name causes a name conflict with
+          existing fields, or fields created by previous cross-schema edges
     """
     type_fields = source_type_node.fields
 

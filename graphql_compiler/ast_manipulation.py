@@ -98,12 +98,14 @@ def get_only_selection_from_ast(ast, desired_error_type):
 
 
 def get_ast_with_non_null_stripped(ast):
-    """Strip a NonNullType layer around the ast if there is one, return the underlying ast."""
+    """Strip a NonNullType layer around the AST if there is one, return the underlying AST."""
     if isinstance(ast, NonNullType):
         stripped_ast = ast.type
         if isinstance(stripped_ast, NonNullType):
-            raise AssertionError(u'NonNullType may not be wrapped around another NonNullType, '
-                                 u'as in ast {}.'.format(ast))
+            raise AssertionError(
+                u'NonNullType is unexpectedly found to wrap around another NonNullType in AST '
+                u'{}, which is not allowed.'.format(ast)
+            )
         return stripped_ast
     else:
         return ast
