@@ -16,7 +16,7 @@ class TestRenameQuery(unittest.TestCase):
         query_string = dedent('''\
             {
               Animal {
-                color
+                color @output(out_name: "color")
               }
             }
         ''')
@@ -27,7 +27,7 @@ class TestRenameQuery(unittest.TestCase):
         query_string = dedent('''\
             {
               NewAnimal {
-                color
+                color @output(out_name: "color")
               }
             }
         ''')
@@ -39,7 +39,7 @@ class TestRenameQuery(unittest.TestCase):
         query_string = dedent('''\
             {
               NewAnimal {
-                color
+                color @output(out_name: "color")
               }
             }
         ''')
@@ -47,7 +47,7 @@ class TestRenameQuery(unittest.TestCase):
         renamed_query_string = dedent('''\
             {
               Animal {
-                color
+                color @output(out_name: "color")
               }
             }
         ''')
@@ -57,7 +57,7 @@ class TestRenameQuery(unittest.TestCase):
         query_string = dedent('''\
             query AnimalQuery {
               NewAnimal {
-                color
+                color @output(out_name: "color")
               }
             }
         ''')
@@ -65,7 +65,7 @@ class TestRenameQuery(unittest.TestCase):
         renamed_query_string = dedent('''\
             query AnimalQuery {
               Animal {
-                color
+                color @output(out_name: "color")
               }
             }
         ''')
@@ -75,12 +75,12 @@ class TestRenameQuery(unittest.TestCase):
         query_string = dedent('''\
             {
               NewAnimal {
-                name
+                name @output(out_name: "name")
                 out_Animal_ParentOf {
-                  name
-                  description
+                  name @output(out_name: "parent_name")
+                  description @output(out_name: "parent_description")
                   out_Animal_LivesIn {
-                    description
+                    description @output(out_name: "parent_location")
                   }
                 }
               }
@@ -90,12 +90,12 @@ class TestRenameQuery(unittest.TestCase):
         renamed_query_string = dedent('''\
             {
               Animal {
-                name
+                name @output(out_name: "name")
                 out_Animal_ParentOf {
-                  name
-                  description
+                  name @output(out_name: "parent_name")
+                  description @output(out_name: "parent_description")
                   out_Animal_LivesIn {
-                    description
+                    description @output(out_name: "parent_location")
                   }
                 }
               }
@@ -109,7 +109,7 @@ class TestRenameQuery(unittest.TestCase):
               NewEntity {
                 out_Entity_Related {
                   ... on NewAnimal {
-                    color
+                    color @output(out_name: "color")
                   }
                 }
               }
@@ -121,7 +121,7 @@ class TestRenameQuery(unittest.TestCase):
               Entity {
                 out_Entity_Related {
                   ... on Animal {
-                    color
+                    color @output(out_name: "color")
                   }
                 }
               }
@@ -137,7 +137,7 @@ class TestRenameQuery(unittest.TestCase):
                   ... on NewAnimal {
                     out_Animal_ImportantEvent {
                       ... on NewBirthEvent {
-                        event_date
+                        event_date @output(out_name: "date")
                       }
                     }
                   }
@@ -153,7 +153,7 @@ class TestRenameQuery(unittest.TestCase):
                   ... on Animal {
                     out_Animal_ImportantEvent {
                       ... on BirthEvent {
-                        event_date
+                        event_date @output(out_name: "date")
                       }
                     }
                   }
@@ -195,11 +195,13 @@ class TestRenameQuery(unittest.TestCase):
         ''')
         self.assertEqual(renamed_query_string, print_ast(renamed_query))
 
+
+class TestRenameQueryInvalidQuery(unittest.TestCase):
     def test_invalid_query_type_not_in_schema(self):
         query_string = dedent('''\
            {
               RandomType {
-                name
+                name @output(out_name: "name")
               }
             }
         ''')
@@ -210,7 +212,7 @@ class TestRenameQuery(unittest.TestCase):
         query_string = dedent('''\
            {
               Animal {
-                age
+                age @output(out_name: "age")
               }
             }
         ''')
@@ -233,7 +235,7 @@ class TestRenameQuery(unittest.TestCase):
             {
               ... on RootSchemaQuery {
                 Animal {
-                  name
+                  color @output(out_name: "color")
                 }
               }
             }
@@ -250,7 +252,7 @@ class TestRenameQuery(unittest.TestCase):
             }
 
             fragment AnimalFragment on Animal {
-              name
+              color @output(out_name: "color")
             }
         ''')
         with self.assertRaises(GraphQLValidationError):
