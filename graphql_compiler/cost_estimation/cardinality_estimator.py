@@ -71,7 +71,7 @@ def _get_last_edge_direction_and_name_to_location(location):
 
 def _get_base_class_names_of_parent_and_child_from_edge(schema_graph, current_location):
     """Return the base class names of a location's last traversed edge's endpoint vertices."""
-    edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
+    edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(current_location)
     edge_element = schema_graph.get_edge_schema_element_or_raise(edge_name)
     if edge_direction == INBOUND_EDGE_DIRECTION:
         parent_base_class_name = edge_element.base_out_connection
@@ -158,7 +158,7 @@ def _estimate_vertex_edge_vertex_count_using_class_count(
         float, estimate for number of edges connecting parent_location and child_location.
     """
     _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
-    edge_counts = statistics.get_class_count(edge_na.me)
+    edge_counts = statistics.get_class_count(edge_name)
 
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     child_name_from_location = query_metadata.get_location_info(child_location).type.name
@@ -207,13 +207,13 @@ def _estimate_edges_to_children_per_parent(
         float, expected number of edges per parent_location vertex that connect to child_location
                vertices.
     """
-    edge_counts = _probe_statistics_for_vertex_edge_vertex_count(
-        statistics, query_metadata, child_location, parent_location
+    edge_counts = _query_statistics_for_vertex_edge_vertex_count(
+        statistics, query_metadata, parent_location, child_location
     )
 
     if edge_counts is None:
         edge_counts = _estimate_vertex_edge_vertex_count_using_class_count(
-            schema_graph, statistics, query_metadata, child_location, parent_location
+            schema_graph, statistics, query_metadata, parent_location, child_location
         )
 
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
@@ -230,7 +230,7 @@ def _estimate_edges_to_children_per_parent(
     # TODO(evan): If edge is recursed over, we need a more detailed statistic
     # Recursion always starts with depth = 0, so we should treat the parent result set itself as a
     # child result set to be expanded (so add 1 to child_counts).
-    is_recursive = _is_subexpansion_recursive(query_metadata, child_location, parent_location)
+    is_recursive = _is_subexpansion_recursive(query_metadata, parent_location, child_location)
     if is_recursive:
         child_counts_per_parent += 1
 
@@ -268,8 +268,7 @@ def _estimate_subexpansion_cardinality(
         (expected number of B-vertices) * (expected number of result sets per B-vertex).
     """
     child_counts_per_parent = _estimate_edges_to_children_per_parent(
-        schema_graph, statistics, query_metadata, parameters, child_location,
-        parent_location
+        schema_graph, statistics, query_metadata, parameters, parent_location, child_location
     )
 
     results_per_child = _estimate_expansion_cardinality(
@@ -281,7 +280,7 @@ def _estimate_subexpansion_cardinality(
     # If child_location is the root of an optional or folded subexpansion, the empty result set will
     # be returned if no other result sets exist, so return at least 1.
     # TODO(evan): @filters on _x_count inside @folds can reduce result size.
-    is_optional = _is_subexpansion_optional(query_metadata, child_location, parent_location)
+    is_optional = _is_subexpansion_optional(query_metadata, parent_location, child_location)
     is_folded = _is_subexpansion_folded(child_location)
     if is_optional or is_folded:
         subexpansion_cardinality = max(subexpansion_cardinality, 1)
@@ -311,8 +310,7 @@ def _estimate_expansion_cardinality(
         # each subexpansion (e.g. If we expect each current vertex to have 2 children of type A and
         # 3 children of type B, we'll return 6 distinct result sets per current vertex).
         subexpansion_cardinality = _estimate_subexpansion_cardinality(
-            schema_graph, statistics, query_metadata, parameters, child_location,
-            current_location
+            schema_graph, statistics, query_metadata, parameters, current_location, child_location
         )
         expansion_cardinality *= subexpansion_cardinality
     return expansion_cardinality
