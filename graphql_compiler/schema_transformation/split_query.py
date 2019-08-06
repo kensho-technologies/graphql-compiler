@@ -16,8 +16,12 @@ from .utils import SchemaStructureError, try_get_ast, try_get_ast_and_index
 QueryConnection = namedtuple(
     'QueryConnection', (
         'sink_query_node',  # SubQueryNode
-        'source_field_path',  # List[Union[int, str]]
-        'sink_field_path',  # List[Union[int, str]]
+        'source_field_path',
+        # List[Union[int, str]], the attribute names or list indices used to access the property
+        # field used in the stitch, starting from the root of the source AST
+        'sink_field_path',
+        # List[Union[int, str]], the attribute names or list indices used to access the property
+        # field used in the stitch, starting from the root of the sink AST
     )
 )
 
@@ -40,10 +44,10 @@ class SubQueryNode(object):
 def split_query(query_ast, merged_schema_descriptor):
     """Split input query AST into a tree of SubQueryNodes targeting each individual schema.
 
-    Additional @output and @filter directives will not be added in this step. Fields that make
-    up the stitch will be added if necessary. The connection between SubQueryNodes will contain
-    the path to get those fields used in stitching, so that they can be modified to include
-    more directives.
+    Additional @output and @filter directives will not be added in this step. Property fields
+    used in the stitch will be added if not already present. The connection between
+    SubQueryNodes will contain the paths used to reach these property fields, so that they can
+    be modified to include more directives.
 
     Args:
         query_ast: Document, representing a GraphQL query to split
