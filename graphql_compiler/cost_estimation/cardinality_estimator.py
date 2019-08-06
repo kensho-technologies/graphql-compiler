@@ -70,7 +70,7 @@ def _get_last_edge_direction_and_name_to_location(location):
 
 
 def _get_base_class_names_of_parent_and_child_from_edge(schema_graph, current_location):
-    """Return the base class names of current_location's last traversed edge's endpoint vertices."""
+    """Return the base class names of a location's last traversed edge's endpoint vertices."""
     edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     edge_element = schema_graph.get_edge_schema_element_or_raise(edge_name)
     if edge_direction == INBOUND_EDGE_DIRECTION:
@@ -90,7 +90,7 @@ def _query_statistics_for_vertex_edge_vertex_count(
 ):
     """Query statistics for the count of edges connecting parent and child_location vertices.
 
-    Given a start location and a target location, there are three constraints on each edge
+    Given a parent location and a child location, there are three constraints on each edge directly
     connecting the two:
     1. The edge class must be the same as the target location's last traversed edge.
     2. The parent_location vertex class must inherit from the edge endpoint the traversal began at.
@@ -101,9 +101,9 @@ def _query_statistics_for_vertex_edge_vertex_count(
     Args:
         statistics: Statistics object, used for querying over get_vertex_edge_vertex_count().
         query_metadata: QueryMetadataTable object.
-        parent_location: BaseLocation, corresponding to the location the edge traversal began at.
+        parent_location: BaseLocation, corresponding to the location the edge traversal begins from.
         child_location: BaseLocation, child of parent_location corresponding to the location the
-                        edge traversal ended at.
+                        edge traversal ends at.
 
     Returns:
         - int, count of edges connecting parent and child_location vertices if the statistic exists.
@@ -147,13 +147,12 @@ def _estimate_vertex_edge_vertex_count_using_class_count(
                                         (# of B vertices) / (# of D vertices).
 
     Args:
-        schema_graph: SchemaGraph object
-        statistics: Statistics object
-        query_metadata: QueryMetadataTable object
-        parent_location: BaseLocation object, start location that the edges being estimated should
-                        connect to.
-        child_location: BaseLocation object, target location that the edges being estimated should
-                        connect to.
+        schema_graph: SchemaGraph object.
+        statistics: Statistics object.
+        query_metadata: QueryMetadataTable object.
+        parent_location: BaseLocation, corresponding to the location the edge traversal begins from.
+        child_location: BaseLocation, child of parent_location corresponding to the location the
+                        edge traversal ends at.
 
     Returns:
         float, estimate for number of edges connecting parent_location and child_location.
@@ -201,8 +200,9 @@ def _estimate_edges_to_children_per_parent(
                     get_vertex_edge_vertex_count().
         query_metadata: QueryMetadataTable object
         parameters: dict, parameters with which query will be executed
-        parent_location: BaseLocation object, corresponding to the vertex
-        child_location: BaseLocation object, child of parent_location corresponding
+        parent_location: BaseLocation, corresponding to the location the edge traversal begins from.
+        child_location: BaseLocation, child of parent_location corresponding to the location the
+                        edge traversal ends at.
 
     Returns:
         float, expected number of edges per parent_location vertex that connect to child_location
