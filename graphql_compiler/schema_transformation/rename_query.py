@@ -13,7 +13,7 @@ def rename_query(ast, renamed_schema_descriptor):
 
     The direction in which types and fields are renamed is opposite of the process that
     produced the renamed schema descriptor. If a type X was renamed to Y in the schema, then
-    any occurances of type Y in the input query ast will be renamed to X.
+    any occurrences of type Y in the input query ast will be renamed to X.
 
     All type names (including ones in type coercions), as well as root vertex fields (fields
     of the query type) will be renamed. No other field names will be renamed.
