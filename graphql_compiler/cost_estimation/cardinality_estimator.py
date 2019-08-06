@@ -10,7 +10,7 @@ from ..schema_generation.graphql_schema import get_graphql_schema_from_schema_gr
 from .filter_selectivity_utils import adjust_counts_for_filters
 
 
-def _is_subexpansion_optional(query_metadata, child_location, parent_location):
+def _is_subexpansion_optional(query_metadata, parent_location, child_location):
     """Return True if child_location is the root of an optional subexpansion."""
     child_optional_depth = query_metadata.get_location_info(child_location).optional_scopes_depth
     parent_optional_depth = query_metadata.get_location_info(parent_location).optional_scopes_depth
@@ -22,7 +22,7 @@ def _is_subexpansion_folded(location):
     return isinstance(location, FoldScopeLocation) and len(location.fold_path) == 1
 
 
-def _is_subexpansion_recursive(query_metadata, child_location, parent_location):
+def _is_subexpansion_recursive(query_metadata, parent_location, child_location):
     """Return True if child_location is the root of a recursive subexpansion."""
     edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     for recurse_info in query_metadata.get_recurse_infos(parent_location):
@@ -36,7 +36,7 @@ def _get_all_original_child_locations(query_metadata, start_location):
 
     Args:
         query_metadata: QueryMetadataTable object
-        start_location: Location object, where we're looking for children
+        start_location: Location object, where we're looking for child locations
 
     Returns:
         list of child Locations. Given start_location, get all revisits to start_location, then for
@@ -69,27 +69,53 @@ def _get_last_edge_direction_and_name_to_location(location):
     return edge_direction, edge_name
 
 
-def _get_base_classnames_of_parent_and_child_from_edge(schema_graph, child_location):
-    """Get the base classname of a location and its parent from the last edge information."""
+def _get_base_class_names_of_parent_and_child_from_edge(schema_graph, current_location):
+    """Return the base class names of current_location's last traversed edge's endpoint vertices."""
     edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     edge_element = schema_graph.get_edge_schema_element_or_raise(edge_name)
     if edge_direction == INBOUND_EDGE_DIRECTION:
-        parent_base_classname = edge_element.base_out_connection
-        child_base_classname = edge_element.base_in_connection
+        parent_base_class_name = edge_element.base_out_connection
+        child_base_class_name = edge_element.base_in_connection
     elif edge_direction == OUTBOUND_EDGE_DIRECTION:
-        parent_base_classname = edge_element.base_in_connection
-        child_base_classname = edge_element.base_out_connection
+        parent_base_class_name = edge_element.base_in_connection
+        child_base_class_name = edge_element.base_out_connection
     else:
         raise AssertionError(u'Expected edge direction to be either inbound or outbound.'
                              u'Found: edge {} with direction {}'.format(edge_name, edge_direction))
-    return parent_base_classname, child_base_classname
+    return parent_base_class_name, child_base_class_name
 
 
-def _get_outbound_and_inbound_names_from_locations(query_metadata, child_location, parent_location):
-    """Get the out and in classnames of a location and its parent from the last edge information."""
+def _query_statistics_for_vertex_edge_vertex_count(
+    statistics, query_metadata, parent_location, child_location
+):
+    """Query statistics for the count of edges connecting parent and child_location vertices.
+
+    Given a start location and a target location, there are three constraints on each edge
+    connecting the two:
+    1. The edge class must be the same as the target location's last traversed edge.
+    2. The parent_location vertex class must inherit from the edge endpoint the traversal began at.
+    3. The child_location vertex class must inherit from the edge endpoint the traversal ended at.
+    Using get_vertex_edge_vertex_count(), we find the number of edges satisfying these three
+    constraints.
+
+    Args:
+        statistics: Statistics object, used for querying over get_vertex_edge_vertex_count().
+        query_metadata: QueryMetadataTable object.
+        parent_location: BaseLocation, corresponding to the location the edge traversal began at.
+        child_location: BaseLocation, child of parent_location corresponding to the location the
+                        edge traversal ended at.
+
+    Returns:
+        - int, count of edges connecting parent and child_location vertices if the statistic exists.
+        - None otherwise.
+    """
     edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     child_name_from_location = query_metadata.get_location_info(child_location).type.name
+
+    # Since we need to provide the source vertex class and target vertex class in the same order
+    # regardless of the direction of edge traversal, we first provide the outbound vertex (i.e. the
+    # vertex the edge starts from), then the inbound vertex (i.e. the vertex the edge ends at).
     if edge_direction == INBOUND_EDGE_DIRECTION:
         outbound_vertex_name = child_name_from_location
         inbound_vertex_name = parent_name_from_location
@@ -99,27 +125,17 @@ def _get_outbound_and_inbound_names_from_locations(query_metadata, child_locatio
     else:
         raise AssertionError(u'Expected edge direction to be either inbound or outbound.'
                              u'Found: edge {} with direction {}'.format(edge_name, edge_direction))
-    return outbound_vertex_name, inbound_vertex_name
 
-
-def _probe_statistics_for_vertex_edge_vertex_count(
-    statistics, query_metadata, child_location, parent_location
-):
-    """Probe for the count of edges that connect parent_location and child_location vertices."""
-    _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
-    outbound_vertex_name, inbound_vertex_name = _get_outbound_and_inbound_names_from_locations(
-        query_metadata, child_location, parent_location
-    )
-    probe_result = statistics.get_vertex_edge_vertex_count(
+    query_result = statistics.get_vertex_edge_vertex_count(
         outbound_vertex_name, edge_name, inbound_vertex_name
     )
-    return probe_result
+    return query_result
 
 
 def _estimate_vertex_edge_vertex_count_using_class_count(
-    schema_graph, statistics, query_metadata, child_location, parent_location
+    schema_graph, statistics, query_metadata, parent_location, child_location
 ):
-    """Estimate the count of edges that connect parent_location and child_location vertices.
+    """Estimate the count of edges connecting parent_location and child_location vertices.
 
     Given a parent location of class A and a child location of class B, this function estimates the
     number of AB edges using class counts. If A and B are subclasses of the edge's endpoint classes
@@ -134,44 +150,46 @@ def _estimate_vertex_edge_vertex_count_using_class_count(
         schema_graph: SchemaGraph object
         statistics: Statistics object
         query_metadata: QueryMetadataTable object
-        child_location: BaseLocation object
-        parent_location: BaseLocation object
+        parent_location: BaseLocation object, start location that the edges being estimated should
+                        connect to.
+        child_location: BaseLocation object, target location that the edges being estimated should
+                        connect to.
 
     Returns:
-        float, estimate for (# of AB edges)
+        float, estimate for number of edges connecting parent_location and child_location.
     """
     _, edge_name = _get_last_edge_direction_and_name_to_location(child_location)
-    edge_counts = statistics.get_class_count(edge_name)
+    edge_counts = statistics.get_class_count(edge_na.me)
 
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     child_name_from_location = query_metadata.get_location_info(child_location).type.name
-    parent_base_classname, child_base_classname = \
-        _get_base_classnames_of_parent_and_child_from_edge(schema_graph, child_location)
+    parent_base_class_name, child_base_class_name = \
+        _get_base_class_names_of_parent_and_child_from_edge(schema_graph, child_location)
 
     # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
     # pylint: disable=old-division
     #
     # Scale edge_counts if child_location's type is a subclass of the edge's endpoint type.
-    if child_name_from_location != child_base_classname:
+    if child_name_from_location != child_base_class_name:
         edge_counts *= (
             float(statistics.get_class_count(child_name_from_location)) /
-            statistics.get_class_count(child_base_classname)
+            statistics.get_class_count(child_base_class_name)
         )
     # Scale edge_counts if parent_location's type is a subclass of the edge's endpoint type.
-    if parent_name_from_location != parent_base_classname:
+    if parent_name_from_location != parent_base_class_name:
         edge_counts *= (
             float(statistics.get_class_count(parent_name_from_location)) /
-            statistics.get_class_count(parent_base_classname)
+            statistics.get_class_count(parent_base_class_name)
         )
     # pylint: enable=old-division
 
     return edge_counts
 
 
-def _estimate_children_per_parent(
-    schema_graph, statistics, query_metadata, parameters, child_location, parent_location
+def _estimate_edges_to_children_per_parent(
+    schema_graph, statistics, query_metadata, parameters, parent_location, child_location
 ):
-    """Estimate the number of edges per parent_location that connect to child_location vertices.
+    """Estimate the count of edges per parent_location that connect to child_location vertices.
 
     Given a parent location of type A and child location of type B, assume all AB edges are
     distributed evenly over A vertices, so the expected number of child edges per parent vertex is
@@ -179,14 +197,16 @@ def _estimate_children_per_parent(
 
     Args:
         schema_graph: SchemaGraph object
-        statistics: Statistics object
+        statistics: Statistics object, facilitates estimate generation using get_class_count() and
+                    get_vertex_edge_vertex_count().
         query_metadata: QueryMetadataTable object
         parameters: dict, parameters with which query will be executed
-        child_location: BaseLocation object
-        parent_location: BaseLocation object
+        parent_location: BaseLocation object, corresponding to the vertex
+        child_location: BaseLocation object, child of parent_location corresponding
 
     Returns:
-        float, expected number of child_location vertices connected to each parent_location vertex.
+        float, expected number of edges per parent_location vertex that connect to child_location
+               vertices.
     """
     edge_counts = _probe_statistics_for_vertex_edge_vertex_count(
         statistics, query_metadata, child_location, parent_location
@@ -227,7 +247,7 @@ def _estimate_children_per_parent(
 
 
 def _estimate_subexpansion_cardinality(
-    schema_graph, statistics, query_metadata, parameters, child_location, parent_location
+    schema_graph, statistics, query_metadata, parameters, parent_location, child_location
 ):
     """Estimate the cardinality associated with the subexpansion of a child_location vertex.
 
@@ -236,9 +256,9 @@ def _estimate_subexpansion_cardinality(
         statistics: Statistics object
         query_metadata: QueryMetadataTable object
         parameters: dict, parameters with which query will be executed
+        parent_location: BaseLocation object, location corresponding to the vertex being expanded
         child_location: BaseLocation object, child of parent_location corresponding to the
                         subexpansion root
-        parent_location: BaseLocation object, location corresponding to the vertex being expanded
 
     Returns:
         float, number of expected result sets found when a vertex corresponding to parent_location
