@@ -15,6 +15,7 @@ from .utils import (
 RenamedSchemaDescriptor = namedtuple(
     'RenamedSchemaDescriptor', (
         'schema_ast',  # Document, AST representing the renamed schema
+        'schema',  # GraphQLSchema, representing the same schema as schema_ast
         'reverse_name_map',  # Dict[str, str], renamed type/query type field name to original name
         # reverse_name_map only contains names that were changed
     )
@@ -75,7 +76,9 @@ def rename_schema(ast, renamings):
     _rename_query_type_fields(ast, renamings, query_type)
 
     return RenamedSchemaDescriptor(
-        schema_ast=ast, reverse_name_map=reverse_name_map_changed_names_only
+        schema_ast=ast,
+        schema=build_ast_schema(ast),
+        reverse_name_map=reverse_name_map_changed_names_only,
     )
 
 
