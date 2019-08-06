@@ -114,8 +114,9 @@ def _query_statistics_for_vertex_edge_vertex_count(
     child_name_from_location = query_metadata.get_location_info(child_location).type.name
 
     # Since we need to provide the source vertex class and target vertex class in the same order
-    # regardless of the direction of edge traversal, we first provide the outbound vertex (i.e. the
-    # vertex the edge starts from), then the inbound vertex (i.e. the vertex the edge ends at).
+    # regardless of the direction of edge traversal, we first provide the class of the outbound
+    # vertex (i.e. the vertex the edge starts from), then the class of the inbound vertex(i.e. the
+    # vertex the edge ends at).
     if edge_direction == INBOUND_EDGE_DIRECTION:
         outbound_vertex_name = child_name_from_location
         inbound_vertex_name = parent_name_from_location
