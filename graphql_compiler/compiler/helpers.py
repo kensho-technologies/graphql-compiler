@@ -510,6 +510,23 @@ class FoldScopeLocation(BaseLocation):
         first_folded_edge_direction, first_folded_edge_name = self.fold_path[0]
         return first_folded_edge_direction, first_folded_edge_name
 
+    def get_full_path_location_name(self):
+        """Return a tuple of a unique name with the full traversal path, and the current field name (or None)."""
+        # get_location_name only uses the first edge in the traversal, which doesn't work for
+        # Cypher because we need to explicitly label every intermediate node.
+        # Thus if we have a path a -> b -> c and we're folding at b, then this will
+        # output different names for the vertex at b and the vertex at c.
+        base_location = self.base_location
+        base_query_path = base_location.query_path  # in the above example, would just be a.
+        fold_path = self.fold_path  # in the above example, corresponds to b -> c
+        full_path = base_query_path + tuple(u'_'.join(edge_name) for edge_name in fold_path)
+        location = Location(full_path, field=base_location.field,
+                            visit_counter=base_location.visit_counter)
+        # Note that base_location.field will be None since this is used for traversing vertices, not fields.
+        # TODO: Leon code smell
+        step_location_name, _ = location.get_location_name()
+        return (step_location_name, self.field)
+
     def at_vertex(self):
         """Get the FoldScopeLocation ignoring its field component."""
         if not self.field:

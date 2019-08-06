@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 """Convert lowered IR basic blocks to Cypher query strings."""
+from graphql_compiler.compiler.helpers import FoldScopeLocation, Location
 from .blocks import Fold, QueryRoot, Recurse, Traverse
 from .cypher_query import _make_cypher_step
 
@@ -25,8 +26,14 @@ def _emit_code_from_cypher_step(cypher_step):
                              u'it should have moved the filtering to the global operations '
                              u'section. {}'.format(cypher_step))
 
+    is_fold_step = isinstance(cypher_step.as_block.location, FoldScopeLocation)  # CypherStep generated from within a fold scope.
+
     step_location = cypher_step.as_block.location
-    step_location_name, _ = step_location.get_location_name()
+    if is_fold_step:
+        # Then step_location is a FoldScopeLocation and we want the full path in the location name.
+        step_location_name, _ = step_location.get_full_path_location_name()
+    else:
+        step_location_name, _ = step_location.get_location_name()
 
     template_data = {
         'step_location': step_location_name,
@@ -45,14 +52,21 @@ def _emit_code_from_cypher_step(cypher_step):
             u'%(left_edge_mark)s-[:%(edge_type)s%(quantifier)s]-%(right_edge_mark)s' +
             step_vertex_pattern
         )
-        linked_location_name, _ = cypher_step.linked_location.get_location_name()
+        if isinstance(cypher_step.linked_location, FoldScopeLocation):
+            # If this is the first CypherStep object in a fold scope, then linked_location will
+            # be a Location and not a FoldScopeLocation. Therefore we need to check the type for
+            # linked_location and not if this is within a fold scope.
+            linked_location_name, _ = cypher_step.linked_location.get_full_path_location_name()
+        else:
+            linked_location_name, _ = cypher_step.linked_location.get_location_name()
         template_data['linked_location'] = linked_location_name
 
     if has_where_block:
         pattern += u'\n  WHERE %(predicate)s'
         template_data['predicate'] = cypher_step.where_block.predicate.to_cypher()
 
-    if is_optional_step:
+    if is_optional_step or is_fold_step:
+        # OPTIONAL for fold too because if there is no such path for the given fold traversal, we still want to return an empty list. Without OPTIONAL, the entire row would be missing from the output
         pattern = u'OPTIONAL ' + pattern
 
     if isinstance(cypher_step.step_block, (Traverse, Recurse, Fold)):
@@ -125,18 +139,8 @@ def emit_code_from_ir(cypher_query, compiler_metadata):
 
     if cypher_query.folds:
         for fold_scope_location in cypher_query.folds:
-            linked_location = fold_scope_location.base_location
-            step_block = Fold(fold_scope_location)
-            current_step_blocks = [step_block] + cypher_query.folds[fold_scope_location]
-            query_metadata_table = None  # In _make_cypher_step, this is needed for only two
-            # things: making a query root CypherStep and getting all the supertypes of the type
-            # specified in the coercion block. However, this is not a root block because we're
-            # dealing with a fold directive. Cypher also doesn't really support inheritance with
-            # its types, which makes _get_all_supertypes_of_exact_type() return a set containing
-            # only the type specified in the coercion block. When/if that changes, the
-            # query_metadata_table may also need to change.
-            cypher_step = _make_cypher_step(query_metadata_table, linked_location, current_step_blocks)
-            query_data.append(_emit_code_from_cypher_step(cypher_step))
+            for cypher_step in cypher_query.folds[fold_scope_location]:
+                query_data.append(_emit_code_from_cypher_step(cypher_step))
 
     if cypher_query.global_where_block is not None:
         query_data.extend(_emit_with_clause_components(cypher_query.steps))
