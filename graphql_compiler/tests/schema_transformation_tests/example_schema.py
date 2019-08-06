@@ -1,4 +1,4 @@
-# Copyright 2019-present Kensho Technologies, LLC
+# Copyright 2019-present Kensho Technologies, LLC.
 from graphql import parse
 
 from ...schema_transformation.rename_schema import rename_schema
