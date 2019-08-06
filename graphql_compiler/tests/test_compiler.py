@@ -6441,9 +6441,9 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name,
                 child_names_list: (
-                    (m.Animal___2.out_Animal_ParentOf == null) ?
+                    (m.Animal___1.out_Animal_ParentOf == null) ?
                         [] :
-                        (m.Animal___2.out_Animal_ParentOf.collect{entry -> entry.inV.next().name})
+                        (m.Animal___1.out_Animal_ParentOf.collect{entry -> entry.inV.next().name})
                 ),
                 parent_name: (
                     (m.Animal__in_Animal_ParentOf___1 != null) ?
