@@ -3,12 +3,14 @@ from collections import OrderedDict
 from textwrap import dedent
 import unittest
 
-from graphql import parse
+from graphql import build_ast_schema, parse
 from graphql.language.printer import print_ast
+import six
 
-from graphql_compiler.schema_transformation.merge_schemas import merge_schemas
-from graphql_compiler.schema_transformation.utils import SchemaNameConflictError
-
+from ...schema_transformation.merge_schemas import (
+    CrossSchemaEdgeDescriptor, FieldReference, merge_schemas
+)
+from ...schema_transformation.utils import InvalidCrossSchemaEdgeError, SchemaNameConflictError
 from .input_schema_strings import InputSchemaStrings as ISS
 
 
@@ -508,3 +510,445 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
                 ]),
                 [],
             )
+        with self.assertRaises(ValueError):
+            merge_schemas(
+                OrderedDict([
+                    (42, parse(ISS.basic_schema)),
+                ]),
+                [],
+            )
+
+
+class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
+    def test_simple_cross_schema_edge_descriptor(self):
+        merged_schema = merge_schemas(
+            OrderedDict([
+                ('first', parse(ISS.basic_schema)),
+                ('second', parse(ISS.same_field_schema)),
+            ]),
+            [
+                CrossSchemaEdgeDescriptor(
+                    edge_name='example_edge',
+                    outbound_field_reference=FieldReference(
+                        schema_id='first',
+                        type_name='Human',
+                        field_name='id',
+                    ),
+                    inbound_field_reference=FieldReference(
+                        schema_id='second',
+                        type_name='Person',
+                        field_name='identifier',
+                    ),
+                    out_edge_only=False,
+                ),
+            ]
+        )
+        merged_schema_string = dedent('''\
+            schema {
+              query: RootSchemaQuery
+            }
+
+            type RootSchemaQuery {
+              Human: Human
+              Person: Person
+            }
+
+            type Human {
+              id: String
+              out_example_edge: [Person] @stitch(source_field: "id", sink_field: "identifier")
+            }
+
+            type Person {
+              identifier: String
+              in_example_edge: [Human] @stitch(source_field: "identifier", sink_field: "id")
+            }
+        ''')
+        self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
+
+    def test_original_unmodified_when_edges_added(self):
+        basic_schema_ast = parse(ISS.basic_schema)
+        same_field_schema_ast = parse(ISS.same_field_schema)
+        merge_schemas(
+            OrderedDict([
+                ('first', basic_schema_ast),
+                ('second', same_field_schema_ast),
+            ]),
+            [
+                CrossSchemaEdgeDescriptor(
+                    edge_name='example_edge',
+                    outbound_field_reference=FieldReference(
+                        schema_id='first',
+                        type_name='Human',
+                        field_name='id',
+                    ),
+                    inbound_field_reference=FieldReference(
+                        schema_id='second',
+                        type_name='Person',
+                        field_name='identifier',
+                    ),
+                    out_edge_only=False,
+                ),
+            ]
+        )
+        self.assertEqual(ISS.basic_schema, print_ast(basic_schema_ast))
+        self.assertEqual(ISS.same_field_schema, print_ast(same_field_schema_ast))
+
+    def test_one_directional_cross_schema_edge_descriptor(self):
+        merged_schema = merge_schemas(
+            OrderedDict([
+                ('first', parse(ISS.basic_schema)),
+                ('second', parse(ISS.same_field_schema)),
+            ]),
+            [
+                CrossSchemaEdgeDescriptor(
+                    edge_name='example_edge',
+                    outbound_field_reference=FieldReference(
+                        schema_id='first',
+                        type_name='Human',
+                        field_name='id',
+                    ),
+                    inbound_field_reference=FieldReference(
+                        schema_id='second',
+                        type_name='Person',
+                        field_name='identifier',
+                    ),
+                    out_edge_only=True,
+                ),
+            ]
+        )
+        merged_schema_string = dedent('''\
+            schema {
+              query: RootSchemaQuery
+            }
+
+            type RootSchemaQuery {
+              Human: Human
+              Person: Person
+            }
+
+            type Human {
+              id: String
+              out_example_edge: [Person] @stitch(source_field: "id", sink_field: "identifier")
+            }
+
+            type Person {
+              identifier: String
+            }
+        ''')
+        self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
+
+    def test_multiple_fields_cross_schema_edge_descriptor(self):
+        multiple_fields_schema = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Person {
+              age: Int
+              name: String!
+              identifier: String
+              friends: [Person]
+            }
+
+            type SchemaQuery {
+              Person: Person
+            }
+        ''')
+        merged_schema = merge_schemas(
+            OrderedDict([
+                ('first', parse(ISS.basic_schema)),
+                ('second', parse(multiple_fields_schema)),
+            ]),
+            [
+                CrossSchemaEdgeDescriptor(
+                    edge_name='example_edge',
+                    outbound_field_reference=FieldReference(
+                        schema_id='first',
+                        type_name='Human',
+                        field_name='id',
+                    ),
+                    inbound_field_reference=FieldReference(
+                        schema_id='second',
+                        type_name='Person',
+                        field_name='identifier',
+                    ),
+                    out_edge_only=False,
+                ),
+            ]
+        )
+        merged_schema_string = dedent('''\
+            schema {
+              query: RootSchemaQuery
+            }
+
+            type RootSchemaQuery {
+              Human: Human
+              Person: Person
+            }
+
+            type Human {
+              id: String
+              out_example_edge: [Person] @stitch(source_field: "id", sink_field: "identifier")
+            }
+
+            type Person {
+              age: Int
+              name: String!
+              identifier: String
+              friends: [Person]
+              in_example_edge: [Human] @stitch(source_field: "identifier", sink_field: "id")
+            }
+        ''')
+        self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
+
+    def test_non_null_scalar_match_normal_scalar(self):
+        non_null_field_schema = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Person {
+              identifier: String!
+            }
+
+            type SchemaQuery {
+              Person: Person
+            }
+        ''')
+        merged_schema = merge_schemas(
+            OrderedDict([
+                ('first', parse(ISS.basic_schema)),
+                ('second', parse(non_null_field_schema)),
+            ]),
+            [
+                CrossSchemaEdgeDescriptor(
+                    edge_name='example_edge',
+                    outbound_field_reference=FieldReference(
+                        schema_id='first',
+                        type_name='Human',
+                        field_name='id',
+                    ),
+                    inbound_field_reference=FieldReference(
+                        schema_id='second',
+                        type_name='Person',
+                        field_name='identifier',
+                    ),
+                    out_edge_only=False,
+                ),
+            ]
+        )
+        merged_schema_string = dedent('''\
+            schema {
+              query: RootSchemaQuery
+            }
+
+            type RootSchemaQuery {
+              Human: Human
+              Person: Person
+            }
+
+            type Human {
+              id: String
+              out_example_edge: [Person] @stitch(source_field: "id", sink_field: "identifier")
+            }
+
+            type Person {
+              identifier: String!
+              in_example_edge: [Human] @stitch(source_field: "identifier", sink_field: "id")
+            }
+        ''')
+        self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
+
+    def test_matching_user_defined_scalar(self):
+        additional_scalar_schema = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Person {
+              age: Int
+              bday: Date
+            }
+
+            scalar Date
+
+            type SchemaQuery {
+              Person: Person
+            }
+        ''')
+        merged_schema = merge_schemas(
+            OrderedDict([
+                ('first', parse(ISS.scalar_schema)),
+                ('second', parse(additional_scalar_schema)),
+            ]),
+            [
+                CrossSchemaEdgeDescriptor(
+                    edge_name='example_edge',
+                    outbound_field_reference=FieldReference(
+                        schema_id='first',
+                        type_name='Human',
+                        field_name='birthday',
+                    ),
+                    inbound_field_reference=FieldReference(
+                        schema_id='second',
+                        type_name='Person',
+                        field_name='bday',
+                    ),
+                    out_edge_only=False,
+                ),
+            ]
+        )
+        merged_schema_string = dedent('''\
+            schema {
+              query: RootSchemaQuery
+            }
+
+            type RootSchemaQuery {
+              Human: Human
+              Person: Person
+            }
+
+            type Human {
+              id: String
+              birthday: Date
+              out_example_edge: [Person] @stitch(source_field: "birthday", sink_field: "bday")
+            }
+
+            scalar Date
+
+            type Person {
+              age: Int
+              bday: Date
+              in_example_edge: [Human] @stitch(source_field: "bday", sink_field: "birthday")
+            }
+        ''')
+        self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
+
+    def test_id_match_string(self):
+        id_field_schema = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Person {
+              identifier: ID
+            }
+
+            type SchemaQuery {
+              Person: Person
+            }
+        ''')
+        merged_schema = merge_schemas(
+            OrderedDict([
+                ('first', parse(ISS.basic_schema)),
+                ('second', parse(id_field_schema)),
+            ]),
+            [
+                CrossSchemaEdgeDescriptor(
+                    edge_name='example_edge',
+                    outbound_field_reference=FieldReference(
+                        schema_id='first',
+                        type_name='Human',
+                        field_name='id',
+                    ),
+                    inbound_field_reference=FieldReference(
+                        schema_id='second',
+                        type_name='Person',
+                        field_name='identifier',
+                    ),
+                    out_edge_only=False,
+                ),
+            ]
+        )
+        merged_schema_string = dedent('''\
+            schema {
+              query: RootSchemaQuery
+            }
+
+            type RootSchemaQuery {
+              Human: Human
+              Person: Person
+            }
+
+            type Human {
+              id: String
+              out_example_edge: [Person] @stitch(source_field: "id", sink_field: "identifier")
+            }
+
+            type Person {
+              identifier: ID
+              in_example_edge: [Human] @stitch(source_field: "identifier", sink_field: "id")
+            }
+        ''')
+        self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
+
+    def test_id_match_int(self):
+        int_field_schema = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Human {
+              id: Int
+            }
+
+            type SchemaQuery {
+              Human: Human
+            }
+        ''')
+        id_field_schema = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Person {
+              identifier: ID
+            }
+
+            type SchemaQuery {
+              Person: Person
+            }
+        ''')
+        merged_schema = merge_schemas(
+            OrderedDict([
+                ('first', parse(int_field_schema)),
+                ('second', parse(id_field_schema)),
+            ]),
+            [
+                CrossSchemaEdgeDescriptor(
+                    edge_name='example_edge',
+                    outbound_field_reference=FieldReference(
+                        schema_id='first',
+                        type_name='Human',
+                        field_name='id',
+                    ),
+                    inbound_field_reference=FieldReference(
+                        schema_id='second',
+                        type_name='Person',
+                        field_name='identifier',
+                    ),
+                    out_edge_only=False,
+                ),
+            ]
+        )
+        merged_schema_string = dedent('''\
+            schema {
+              query: RootSchemaQuery
+            }
+
+            type RootSchemaQuery {
+              Human: Human
+              Person: Person
+            }
+
+            type Human {
+              id: Int
+              out_example_edge: [Person] @stitch(source_field: "id", sink_field: "identifier")
+            }
+
+            type Person {
+              identifier: ID
+              in_example_edge: [Human] @stitch(source_field: "identifier", sink_field: "id")
+            }
+        ''')
+        self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
