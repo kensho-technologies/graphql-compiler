@@ -35,6 +35,7 @@ def check_test_data(
 
     result = compile_graphql_to_match(test_case.schema, test_data.graphql_input,
                                       type_equivalence_hints=schema_based_type_equivalence_hints)
+
     compare_match(test_case, expected_match, result.query)
     test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
     compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
@@ -3320,6 +3321,76 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
+                        expected_cypher)
+
+    def test_is_null_op_filter(self):
+        test_data = test_input_data.is_null_op_filter()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`
+            FROM  (
+                MATCH  {{ class: Animal,
+                    where: ((net_worth IS null)),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (it.net_worth == null)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        expected_sql = NotImplementedError
+
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            WHERE (Animal___1.net_worth IS null)
+            RETURN Animal___1.name AS `name`
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
+                        expected_cypher)
+
+    def test_is_not_null_op_filter(self):
+        test_data = test_input_data.is_not_null_op_filter()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`
+            FROM  (
+                MATCH  {{ class: Animal,
+                    where: ((net_worth IS NOT null)),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (it.net_worth != null)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        expected_sql = NotImplementedError
+
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            WHERE (Animal___1.net_worth IS NOT null)
+            RETURN Animal___1.name AS `name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
