@@ -279,3 +279,17 @@ class InputSchemaStrings(object):
           Giraffe: Giraffe
         }
     ''')
+
+    same_field_schema = dedent('''\
+        schema {
+          query: SchemaQuery
+        }
+
+        type Person {
+          identifier: String
+        }
+
+        type SchemaQuery {
+          Person: Person
+        }
+    ''')
