@@ -17,11 +17,11 @@ from ..compiler.compiler_frontend import validate_schema_and_ast
 from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
 from ..schema import _check_for_nondefault_directive_names
 from .macro_edge import make_macro_edge_descriptor
+from .macro_edge.ast_traversal import get_type_at_macro_edge_target
 from .macro_edge.directives import (
     DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
     MacroEdgeDirective
 )
-from .macro_edge.ast_traversal import get_type_at_macro_edge_target
 from .macro_expansion import expand_macros_in_query_ast
 
 

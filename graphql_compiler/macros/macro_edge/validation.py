@@ -16,12 +16,12 @@ from ...compiler.compiler_frontend import ast_to_ir
 from ...exceptions import GraphQLInvalidMacroError
 from ...query_formatting.common import ensure_arguments_are_provided
 from ...schema import VERTEX_FIELD_PREFIXES, FoldDirective, is_vertex_field_name
+from .ast_rewriting import remove_directives_from_ast
+from .ast_traversal import get_directives_for_ast
 from .directives import (
     DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
     MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
 )
-from .ast_rewriting import remove_directives_from_ast
-from .ast_traversal import get_directives_for_ast
 
 
 def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):

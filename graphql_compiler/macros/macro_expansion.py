@@ -12,10 +12,10 @@ from ..ast_manipulation import (
 from ..compiler.helpers import get_uniquely_named_objects_by_name, get_vertex_field_type
 from ..exceptions import GraphQLCompilationError, GraphQLInvalidMacroError
 from ..schema import FilterDirective, FoldDirective, OutputSourceDirective, is_vertex_field_name
-from .macro_edge.directives import MacroEdgeTargetDirective
-from .macro_edge.name_generation import generate_disambiguations
 from .macro_edge.ast_rewriting import find_target_and_copy_path_to_it, replace_tag_names
 from .macro_edge.ast_traversal import get_all_tag_names, get_type_at_macro_edge_target
+from .macro_edge.directives import MacroEdgeTargetDirective
+from .macro_edge.name_generation import generate_disambiguations
 
 
 def _merge_non_overlapping_dicts(merge_target, new_data):
