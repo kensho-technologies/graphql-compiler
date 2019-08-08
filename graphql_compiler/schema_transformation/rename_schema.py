@@ -3,7 +3,7 @@ from collections import namedtuple
 from copy import copy
 
 from graphql import build_ast_schema
-from graphql.language import ast as ast_types
+from graphql.language.ast import Name
 from graphql.language.visitor import Visitor, visit
 import six
 
@@ -204,8 +204,8 @@ class RenameSchemaTypesVisitor(Visitor):
                   .name attribute corresponding to an AST node of type Name.
 
         Returns:
-            None, if the name was not changed; a Node object that is nearly identical to the
-            input node but with a new name, if the name was changed
+            Node object, identical to the input node, except with possibly a new name. If the
+            name was not changed, the returned object is the exact same object as the input
 
         Raises:
             - InvalidTypeNameError if either the node's current name or renamed name is invalid
@@ -215,7 +215,7 @@ class RenameSchemaTypesVisitor(Visitor):
         name_string = node.name.value
 
         if name_string == self.query_type or name_string in self.scalar_types:
-            return
+            return node
 
         new_name_string = self.renamings.get(name_string, name_string)  # Default use original
         check_type_name_is_valid(new_name_string)
@@ -238,7 +238,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
         self.reverse_name_map[new_name_string] = name_string
         if new_name_string == name_string:
-            return None
+            return node
         else:  # Make copy of node with the changed name, return the copy
             node_with_new_name = _get_copy_of_node_with_new_name(node, new_name_string)
             return node_with_new_name
@@ -251,11 +251,11 @@ class RenameSchemaTypesVisitor(Visitor):
             return None
         elif node_type in self.rename_types:
             # Rename node, put name pair into record
-            # If the name was not changed, the following line will return None, `visit` will
-            # continue traversal with no changes
-            # If the name was changed, the following line will return a Node object with the
-            # new name, and `visit` will replace the current node with the output
-            return self._rename_name_and_add_to_record(node)
+            renamed_node = self._rename_name_and_add_to_record(node)
+            if renamed_node is node:  # Name unchanged, continue traversal
+                return None
+            else:  # Name changed, return new node, `visit` will make shallow copies along path
+                return renamed_node
         else:
             # All Node types should've been taken care of, this line should never be reached
             raise AssertionError(u'Unreachable code reached. Missed type: "{}"'.format(node_type))
@@ -306,10 +306,25 @@ def _get_copy_of_node_with_new_name(node, new_name):
     Args:
         node: type Node, with a .name attribute. Not modified by this function
         new_name: str, name to give to the output node
+
+    Returns:
+        Node, with new_name as its name and otherwise identical to the input node
     """
+    node_type = type(node).__name__
+    allowed_types = frozenset((
+        'EnumTypeDefinition',
+        'FieldDefinition',
+        'InterfaceTypeDefinition',
+        'NamedType',
+        'ObjectTypeDefinition',
+        'UnionTypeDefinition',
+    ))
+    if node_type not in allowed_types:
+        raise AssertionError(
+            u'Input node {} of type {} is not allowed.'.format(
+                node, type(node).__name__, allowed_types
+            )
+        )
     node_with_new_name = copy(node)  # shallow copy is enough
-    try:
-        node_with_new_name.name = ast_types.Name(value=new_name)
-    except AttributeError:
-        raise AssertionError(u'Input node {} should have an `name` attribute.'.format(node))
+    node_with_new_name.name = Name(value=new_name)
     return node_with_new_name
