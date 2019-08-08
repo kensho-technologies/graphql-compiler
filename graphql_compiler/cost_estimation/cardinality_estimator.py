@@ -70,7 +70,7 @@ def _get_last_edge_direction_and_name_to_location(location):
 
 
 def _get_base_class_names_of_parent_and_child_from_edge(schema_graph, current_location):
-    """Return the base class names of a location's last traversed edge's endpoint vertices."""
+    """Return the base class names of a location and its parent from last edge information."""
     edge_direction, edge_name = _get_last_edge_direction_and_name_to_location(current_location)
     edge_element = schema_graph.get_edge_schema_element_or_raise(edge_name)
     if edge_direction == INBOUND_EDGE_DIRECTION:
