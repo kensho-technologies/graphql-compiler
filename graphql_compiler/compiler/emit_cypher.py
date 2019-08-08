@@ -99,7 +99,7 @@ def _emit_with_clause_components(cypher_steps):
     if not cypher_steps:
         return []
 
-    result = [u'WITH']
+    result = []
     location_names = set()
     for cypher_step in cypher_steps:
         location = cypher_step.as_block.location
@@ -153,7 +153,9 @@ def _emit_fold_scope(cypher_query):
         current_fold_scope_cyphersteps = cypher_query.folds[fold_scope_location]
         for cypher_step in current_fold_scope_cyphersteps:
             query_data.append(_emit_code_from_cypher_step(cypher_step))
-        # Now create the WITH clause, first for all non-fold-scope CypherSteps
+        # Now create the WITH clause
+        query_data.append(u'WITH')
+        # First for all non-fold-scope CypherSteps
         query_data.extend(_emit_with_clause_components(cypher_query.steps))
 
         # And then for all fold scope CypherSteps not in this particular fold scope
