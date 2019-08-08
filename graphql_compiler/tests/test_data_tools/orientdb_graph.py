@@ -7,7 +7,7 @@ from pyorient.ogm import Config, Graph
 ORIENTDB_SERVER = 'localhost'
 ORIENTDB_PORT = 2424
 ORIENTDB_USER = 'root'
-ORIENTDB_PASSWORD = 'root'
+ORIENTDB_PASSWORD = 'root'  # nosec
 
 
 def get_orientdb_url(database_name):

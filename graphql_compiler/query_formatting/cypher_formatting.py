@@ -40,23 +40,11 @@ def _safe_cypher_decimal(argument_value):
 
 def _safe_cypher_date_and_datetime(graphql_type, expected_python_types, value):
     """Represent date and datetime objects as Cypher strings."""
-    # Python datetime.datetime is a subclass of datetime.date,
-    # but in this case, the two are not interchangeable.
-    # Rather than using isinstance, we will therefore check for exact type equality.
-    value_type = type(value)
-    if not any(value_type == x for x in expected_python_types):
-        raise GraphQLInvalidArgumentError(u'Expected value to be exactly one of '
-                                          u'python types {}, but was {}: '
-                                          u'{}'.format(expected_python_types, value_type, value))
-
-    # The serialize() method of GraphQLDate and GraphQLDateTime produces the correct
-    # ISO-8601 format that MATCH expects. We then simply represent it as a regular string.
-    try:
-        serialized_value = graphql_type.serialize(value)
-    except ValueError as e:
-        raise GraphQLInvalidArgumentError(e)
-
-    return _safe_cypher_string(serialized_value)
+    # Note: since Neo4j's python client can handle parameters on its own, we only need to insert
+    # query parameters manually for RedisGraph. RedisGraph doesn't support temporal values, so we
+    # raise an error if we get a temporal value.
+    raise NotImplementedError(u'RedisGraph currently doesn\'t support temporal types like Date '
+                              u'and Datetime.')
 
 
 def _safe_cypher_list(inner_type, argument_value):
@@ -125,9 +113,9 @@ def insert_arguments_into_cypher_query_redisgraph(compilation_result, arguments)
     """Insert the arguments into the compiled Cypher query to form a complete query.
 
     This is only for Redisgraph because Neo4j's client can do this on its own.
-    Redisgraph doesn't support parameterized queries (see here:
-    https://github.com/RedisGraph/RedisGraph/issues/544#issuecomment-507963576).
-    Work to support parameters is expected to start in August 2019.
+    Redisgraph doesn't support parameterized queries (as described in the Github issue:
+    https://github.com/RedisGraph/RedisGraph/issues/544#issuecomment-507963576
+    work is only expected to start in August 2019).
 
     Args:
         compilation_result: a CompilationResult object derived from the GraphQL compiler

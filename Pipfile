@@ -4,26 +4,33 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-bandit = "==1.5.1"
-coveralls = "==1.5.1"
 # The Cython dependency of pymssql is not correctly resolved on all systems
 # so it is explicitly included here.
 cython = "==0.29.2"
-flake8 = "==3.6.0"
-flake8-print = "==3.1.0"
-flake8-quotes = "==1.0.0"
+
+# Test requirements that are not otherwise necessary when using the package.
 frozendict = "==1.2"
-isort = "==4.3.4"
 mysqlclient = "==1.3.14"
-parameterized = "==0.6.1"
+neo4j = ">=1.7.4,<2"
 psycopg2 = "==2.7.5"
-pydocstyle = "==2.1.1"
-pylint = "==1.8.2"
 pymssql = "==2.1.4"
 pyorient = "==1.5.5"
-pytest = "==4.1.0"
-pytest-cov = "==2.6.1"
-snapshottest = "==0.5.0"
+redis = ">=3.2.1,<4"
+redisgraph = ">=1.7,<1.9"
+
+# Linters and other development tools
+bandit = ">=1.5.1,<2"
+coveralls = ">=1.5.1,<2"
+flake8 = ">=3.6.0,<4"
+flake8-print = ">=3.1.0,<4"
+flake8-quotes = ">=1.0.0,<2"
+isort = ">=4.3.4,<5"
+parameterized = ">=0.6.1,<1"
+pydocstyle = ">=2.1.1,<3"
+pylint = "==1.9.4"  # v1.9.5 is marked as "python_requires < 3.7", update this after we're Py3+ only
+pytest = ">=4.1.0,<5"
+pytest-cov = ">=2.6.1,<3"
+snapshottest = ">=0.5.1,<1"
 
 [packages]
 arrow = ">=0.10.0,<1"
