@@ -677,7 +677,7 @@ def _process_is_null_filter_directive(filter_operation_info, location, context, 
                                       u'Received parameter(s) {}'.format(parameters))
 
     comparison_expression = expressions.BinaryComposition(
-        u'is_null',
+        u'=',
         expressions.LocalField(filtered_field_name, filtered_field_type),
         expressions.NullLiteral)
 
@@ -707,7 +707,7 @@ def _process_is_not_null_filter_directive(filter_operation_info, location, conte
                                       u'Received parameter(s) {}'.format(parameters))
 
     comparison_expression = expressions.BinaryComposition(
-        u'is_not_null',
+        u'!=',
         expressions.LocalField(filtered_field_name, filtered_field_type),
         expressions.NullLiteral)
 

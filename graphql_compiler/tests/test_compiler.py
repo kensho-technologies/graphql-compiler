@@ -57,7 +57,7 @@ def check_test_data(
     if expected_sql == SKIP_TEST:
         pass
     elif expected_sql == NotImplementedError:
-        with test_case.assertRaises(expected_sql):
+        with test_case.assertRaises(NotImplementedError):
             compile_graphql_to_sql(
                 test_case.schema,
                 test_data.graphql_input,

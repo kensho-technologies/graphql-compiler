@@ -2849,7 +2849,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.Filter(
                 expressions.BinaryComposition(
-                    u'is_null',
+                    u'=',
                     expressions.LocalField('net_worth', GraphQLDecimal),
                     expressions.NullLiteral
                 )
@@ -2876,7 +2876,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.QueryRoot({'Animal'}),
             blocks.Filter(
                 expressions.BinaryComposition(
-                    u'is_not_null',
+                    u'!=',
                     expressions.LocalField('net_worth', GraphQLDecimal),
                     expressions.NullLiteral
                 )
