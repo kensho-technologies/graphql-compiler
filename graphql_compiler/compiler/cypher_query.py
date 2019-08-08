@@ -76,6 +76,7 @@ def _make_cypher_step(query_metadata_table, linked_location, current_step_blocks
 
     exact_step_type = get_only_element_from_collection(coercion_block.target_class)
     step_types = _get_all_supertypes_of_exact_type(query_metadata_table, exact_step_type)
+
     return CypherStep(
         linked_location=linked_location, step_block=step_block, step_types=step_types,
         where_block=where_block, as_block=as_block)
