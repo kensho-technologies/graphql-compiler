@@ -823,7 +823,6 @@ class BinaryComposition(Expression):
     SUPPORTED_OPERATORS = frozenset({
         u'=', u'!=', u'>=', u'<=', u'>', u'<', u'+', u'||', u'&&',
         u'contains', u'not_contains', u'intersects', u'has_substring', u'LIKE', u'INSTANCEOF',
-        u'is_null', u'is_not_null',
     })
 
     __slots__ = ('operator', 'left', 'right')
@@ -889,8 +888,6 @@ class BinaryComposition(Expression):
             translation_table = {
                 u'=': (u'IS', regular_operator_format),
                 u'!=': (u'IS NOT', regular_operator_format),
-                u'is_null': (u'IS', regular_operator_format),
-                u'is_not_null': (u'IS NOT', regular_operator_format),
             }
         else:
             translation_table = {
@@ -951,8 +948,6 @@ class BinaryComposition(Expression):
                 u'not_contains': (u'contains', negated_dotted_operator_format),
                 u'intersects': (u'intersect', intersects_operator_format),
                 u'has_substring': (u'contains', dotted_operator_format),
-                u'is_null': (u'==', immediate_operator_format),
-                u'is_not_null': (u'!=', immediate_operator_format),
             }
 
         gremlin_operator, format_spec = translation_table.get(self.operator, (None, None))
@@ -984,8 +979,6 @@ class BinaryComposition(Expression):
             translation_table = {
                 u'=': (u'IS', regular_operator_format),
                 u'!=': (u'IS NOT', regular_operator_format),
-                u'is_null': (u'IS', regular_operator_format),
-                u'is_not_null': (u'IS NOT', regular_operator_format),
             }
         else:
             translation_table = {
