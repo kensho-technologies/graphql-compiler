@@ -31,7 +31,7 @@ def _emit_code_from_cypher_step(cypher_step):
     step_location = cypher_step.as_block.location
     if is_fold_step:
         # Then step_location is a FoldScopeLocation and we want the full path in the location name.
-        step_location_name, _ = step_location.get_full_path_location_name()
+        step_location_name = step_location.get_full_path_location_name()
     else:
         step_location_name, _ = step_location.get_location_name()
 
@@ -56,7 +56,7 @@ def _emit_code_from_cypher_step(cypher_step):
             # If this is the first CypherStep object in a fold scope, then linked_location will
             # be a Location and not a FoldScopeLocation. Therefore we need to check the type for
             # linked_location and not if this is within a fold scope.
-            linked_location_name, _ = cypher_step.linked_location.get_full_path_location_name()
+            linked_location_name = cypher_step.linked_location.get_full_path_location_name()
         else:
             linked_location_name, _ = cypher_step.linked_location.get_location_name()
         template_data['linked_location'] = linked_location_name

@@ -511,21 +511,22 @@ class FoldScopeLocation(BaseLocation):
         return first_folded_edge_direction, first_folded_edge_name
 
     def get_full_path_location_name(self):
-        """Return a tuple of a unique name with the full traversal path, and the current field name (or None)."""
+        """Return a unique name with the full traversal path to this FoldScopeLocation."""
+        # This is specifically for use for folds in Cypher.
         # get_location_name only uses the first edge in the traversal, which doesn't work for
-        # Cypher because we need to explicitly label every intermediate node.
-        # Thus if we have a path a -> b -> c and we're folding at b, then this will
-        # output different names for the vertex at b and the vertex at c.
+        # Cypher because we need to explicitly label every intermediate vertex.
+        # For other query languages like MATCH and Gremlin, the fold directive doesn't require
+        # us to name all the intermediate vertices on the path.
         base_location = self.base_location
-        base_query_path = base_location.query_path  # in the above example, would just be a.
-        fold_path = self.fold_path  # in the above example, corresponds to b -> c
+        base_query_path = base_location.query_path  # the path traversed so far
+        fold_path = self.fold_path  # the path specified at or within the folded scope.
         full_path = base_query_path + tuple(u'_'.join(edge_name) for edge_name in fold_path)
         location = Location(full_path, field=base_location.field,
                             visit_counter=base_location.visit_counter)
-        # Note that base_location.field will be None since this is used for traversing vertices, not fields.
-        # TODO: Leon code smell
+        # Note that base_location.field will be None since this method is used to traverse vertices
+        # for a fold scope, so at no point do we navigate to a field.
         step_location_name, _ = location.get_location_name()
-        return (step_location_name, self.field)
+        return step_location_name
 
     def at_vertex(self):
         """Get the FoldScopeLocation ignoring its field component."""
