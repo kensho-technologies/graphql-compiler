@@ -644,10 +644,11 @@ class FoldedContextField(Expression):
         """Return a unicode object with the Cypher representation of this expression."""
         self.validate()
 
-        mark_name, field_name = self.fold_scope_location.get_location_name()
+        _, field_name = self.fold_scope_location.get_location_name()
+        mark_name = u'collected_' + self.fold_scope_location.get_full_path_location_name()
         validate_safe_string(mark_name)
 
-        template = u'collect(%(mark_name)s.%(field_name)s)'
+        template = u'[x IN %(mark_name)s | x.%(field_name)s]'
         template_data = {
             'mark_name': mark_name,
         }
