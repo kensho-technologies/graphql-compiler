@@ -144,8 +144,8 @@ def _estimate_vertex_edge_vertex_count_using_class_count(
     the number of AB edges will be made using the assumption that CD edges are distributed
     independently of whether or not the vertex of class C is also of class A and likewise for D and
     B. In the general case, we estimate the statistic as
-    (# of AB edges) = (# of CD edges) * (# of A vertices) / (# of C vertices) *
-                                        (# of B vertices) / (# of D vertices).
+    (number of AB edges) = (number of CD edges) * (number of A vertices) / (number of C vertices) *
+                                                  (number of B vertices) / (number of D vertices).
 
     Args:
         schema_graph: SchemaGraph object.
