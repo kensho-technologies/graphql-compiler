@@ -106,7 +106,7 @@ def _make_query_root_cypher_step(query_metadata_table, linked_location, current_
         where_block=where_block, as_block=as_block)
 
 
-def _generate_CypherStep_list_from_ir_blocks(fold_scope_ir_blocks_dict):
+def _generate_cypherstep_list_from_ir_blocks(fold_scope_ir_blocks_dict):
     """Generate CypherStep object list for each FoldScopeLocation's list of IR blocks.
 
     Args:
@@ -163,7 +163,7 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
     next_linked_location = None
 
     fold_scope_ir_blocks_dict, remaining_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
-    folds = _generate_CypherStep_list_from_ir_blocks(fold_scope_ir_blocks_dict)  # TODO Leon: should CypherStep be capitalized?
+    folds = _generate_cypherstep_list_from_ir_blocks(fold_scope_ir_blocks_dict)
 
     global_operations_index = None
 
