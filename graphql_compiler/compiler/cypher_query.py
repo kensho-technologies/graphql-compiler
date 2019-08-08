@@ -2,13 +2,12 @@
 """Create Cypher query objects from partially-lowered IR blocks, for easier manipulation."""
 
 from collections import namedtuple
-from copy import deepcopy
 
 from .blocks import (
-    Backtrack, CoerceType, ConstructResult, EndOptional, Filter, GlobalOperationsStart,
-    MarkLocation, OutputSource, QueryRoot, Recurse, Traverse, Unfold,
-    Fold)
-from .helpers import get_only_element_from_collection, FoldScopeLocation, Location
+    Backtrack, CoerceType, ConstructResult, EndOptional, Filter, Fold, GlobalOperationsStart,
+    MarkLocation, OutputSource, QueryRoot, Recurse, Traverse, Unfold
+)
+from .helpers import get_only_element_from_collection
 from .ir_lowering_common.common import extract_folds_from_ir_blocks
 
 
@@ -110,7 +109,8 @@ def _generate_cypherstep_list_from_ir_blocks(fold_scope_ir_blocks_dict):
     """Generate CypherStep object list for each FoldScopeLocation's list of IR blocks.
 
     Args:
-        fold_scope_ir_blocks_dict: dict of FoldScopeLocation -> list of IR blocks corresponding to that @fold scope.
+        fold_scope_ir_blocks_dict: dict of FoldScopeLocation ->
+                                   list of IR blocks corresponding to that @fold scope.
 
     Returns:
         dict of FoldScopeLocation -> list of CypherStep objects corresponding to that @fold scope.
