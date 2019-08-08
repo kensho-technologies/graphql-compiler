@@ -81,7 +81,7 @@ For a more detailed overview and getting started guide, please see
 * **GraphQL Language Features:**  We prioritized and implemented a subset of all functionality supported by the GraphQL language. We hope to add more functionality over time.
 
 ## End-to-End Example
-Even though this example specifically targets an OrientDB database, it is meant as a generic
+Even though this example specifically targets an OrientDB database, it is meant to be a generic
 end-to-end example of how to use the GraphQL compiler.
 
 ```python
@@ -308,18 +308,20 @@ more details.
 {
     Animal {
         name @output(out_name: "animal_name")
-        out_Animal_ParentOf @fold {
-            _x_count @output(out_name: "child_count")
-            name @output(out_name: "child_names")
+        out_Entity_Related @fold {
+            ... on Location {
+                _x_count @output(out_name: "location_count")
+                name @output(out_name: "location_names")
+            }
         }
     }
 }
 ```
 Each returned row has three columns: `animal_name` with the name of each `Animal` in the graph,
-`child_count` with the number of children for that `Animal`, and
-`child_names` with a list of the names of all children of the `Animal` named `animal_name`.
-If a given `Animal` has no children, its `child_names` list is empty and
-the `child_count` value is 0.
+`location_count` with the related locations for that `Animal`, and `location_names` with
+a list of the names of all related locations of the `Animal` named `animal_name`.
+If a given `Animal` has no related locations, its `location_names` list is empty and
+the `location_count` value is 0.
 
 #### Constraints and Rules
 - `@fold` can only be applied to vertex fields, except the root vertex field.
@@ -337,7 +339,7 @@ the `child_count` value is 0.
   number of results within that fold.
 - Marking for `@output` any field other than the `_x_count` meta field produces a list of results,
   where the number of elements in that list is equal to the value of the `_x_count` meta field,
-  if it were output.
+  if it were selected for output.
 - If multiple fields (other than `_x_count`) are marked `@output`, the resulting output lists
   are parallel: the `i`th element of each such list is the value of the corresponding field of
   the `i`th element of the `@fold`, for some fixed order of elements. The order of elements
@@ -1367,8 +1369,8 @@ for a possible option to resolve such naming discrepancies.
 ### End-To-End SQL Example
 An end-to-end example including relevant GraphQL schema and SQLAlchemy engine preparation follows.
 
-This is intended to show the setup steps for the SQL backend of the GraphQL compiler, and
-does not represent best practices for configuring and running SQLAlchemy in a production system.
+This is intended as a basic example of the setup steps for the SQL backend of the GraphQL compiler.
+It does not represent best practices for configuring and running SQLAlchemy in a production system.
 
 ```python
 from graphql import parse
