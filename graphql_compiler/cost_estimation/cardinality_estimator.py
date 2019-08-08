@@ -36,7 +36,7 @@ def _get_all_original_child_locations(query_metadata, start_location):
 
     Args:
         query_metadata: QueryMetadataTable object
-        start_location: Location object, where we're looking for child locations
+        start_location: Location object, where we're looking for child Locations
 
     Returns:
         list of child Locations. Given start_location, get all revisits to start_location, then for
