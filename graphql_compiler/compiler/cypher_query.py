@@ -155,7 +155,6 @@ def _generate_CypherStep_list_from_ir_blocks(fold_scope_ir_blocks_dict):
 # Public API #
 ##############
 
-
 def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     """Convert the list of IR blocks into a CypherQuery object, for easier manipulation."""
     steps = []
