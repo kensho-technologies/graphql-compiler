@@ -704,8 +704,24 @@ class FoldCountContextField(Expression):
         raise NotImplementedError()
 
     def to_cypher(self):
-        """Not supported yet."""
-        raise NotImplementedError()
+        """Return a unicode object with the Cypher representation of this expression."""
+        self.validate()
+
+        _, field_name = self.fold_scope_location.get_location_name()
+        mark_name = u'collected_' + self.fold_scope_location.get_full_path_location_name()
+        validate_safe_string(mark_name)
+
+        template = u'[x IN %(mark_name)s | x.%(field_name)s]'
+        template_data = {
+            'mark_name': mark_name,
+        }
+
+        if field_name == COUNT_META_FIELD_NAME:
+            raise NotImplementedError()  # TODO Leon-- _x_count.
+        else:
+            template_data['field_name'] = field_name
+
+        return template % template_data
 
 
 class ContextFieldExistence(Expression):
