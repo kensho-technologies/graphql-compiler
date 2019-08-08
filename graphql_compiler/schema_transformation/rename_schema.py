@@ -321,7 +321,7 @@ def _get_copy_of_node_with_new_name(node, new_name):
     ))
     if node_type not in allowed_types:
         raise AssertionError(
-            u'Input node {} of type {} is not allowed.'.format(
+            u'Input node {} of type {} is not allowed, only {} are allowed.'.format(
                 node, type(node).__name__, allowed_types
             )
         )
