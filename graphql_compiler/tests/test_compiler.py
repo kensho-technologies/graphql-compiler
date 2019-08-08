@@ -3349,7 +3349,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
 
-        expected_sql = NotImplementedError
+        expected_sql = SKIP_TEST
 
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -3384,7 +3384,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
 
-        expected_sql = NotImplementedError
+        expected_sql = SKIP_TEST
 
         expected_cypher = '''
             MATCH (Animal___1:Animal)
