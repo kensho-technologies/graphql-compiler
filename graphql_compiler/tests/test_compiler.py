@@ -6380,19 +6380,19 @@ class CompilerTests(unittest.TestCase):
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
-            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal___1___out_Animal_ParentOf:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
             WITH
               Animal___1 AS Animal___1,
               Animal__in_Animal_ParentOf___1 AS Animal__in_Animal_ParentOf___1,
-              collect(Animal___1___out_Animal_ParentOf) AS collected_Animal___1___out_Animal_ParentOf
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
             RETURN
               Animal___1.name AS `animal_name`,
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_names_list`,
               (CASE 
                 WHEN (Animal__in_Animal_ParentOf___1 IS NOT null)
                   THEN Animal__in_Animal_ParentOf___1.name
                   ELSE null 
-                END) AS `parent_name`,
-              [x IN collected_Animal___1___out_Animal_ParentOf | x.name] AS `child_names_list`
+                END) AS `parent_name`
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
