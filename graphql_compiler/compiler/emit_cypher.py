@@ -199,6 +199,7 @@ def emit_code_from_ir(cypher_query, compiler_metadata):
         query_data.extend(_emit_fold_scope(cypher_query))
 
     if cypher_query.global_where_block is not None:
+        query_data.append(u'WITH')
         query_data.extend(_emit_with_clause_components(cypher_query.steps))
 
         query_data.append(u'WHERE ')
