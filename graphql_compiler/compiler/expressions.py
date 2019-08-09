@@ -949,22 +949,21 @@ class BinaryComposition(Expression):
             raise AssertionError(
                 u'The left expression cannot be a NullLiteral! Received operator '
                 u'{} and right expression {}.'.format(self.operator, self.right))
-        else:
-            translation_table = {
-                u'=': (u'==', immediate_operator_format),
-                u'!=': (u'!=', immediate_operator_format),
-                u'>=': (u'>=', immediate_operator_format),
-                u'<=': (u'<=', immediate_operator_format),
-                u'>': (u'>', immediate_operator_format),
-                u'<': (u'<', immediate_operator_format),
-                u'+': (u'+', immediate_operator_format),
-                u'||': (u'||', immediate_operator_format),
-                u'&&': (u'&&', immediate_operator_format),
-                u'contains': (u'contains', dotted_operator_format),
-                u'not_contains': (u'contains', negated_dotted_operator_format),
-                u'intersects': (u'intersect', intersects_operator_format),
-                u'has_substring': (u'contains', dotted_operator_format),
-            }
+        translation_table = {
+            u'=': (u'==', immediate_operator_format),
+            u'!=': (u'!=', immediate_operator_format),
+            u'>=': (u'>=', immediate_operator_format),
+            u'<=': (u'<=', immediate_operator_format),
+            u'>': (u'>', immediate_operator_format),
+            u'<': (u'<', immediate_operator_format),
+            u'+': (u'+', immediate_operator_format),
+            u'||': (u'||', immediate_operator_format),
+            u'&&': (u'&&', immediate_operator_format),
+            u'contains': (u'contains', dotted_operator_format),
+            u'not_contains': (u'contains', negated_dotted_operator_format),
+            u'intersects': (u'intersect', intersects_operator_format),
+            u'has_substring': (u'contains', dotted_operator_format),
+        }
 
         gremlin_operator, format_spec = translation_table.get(self.operator, (None, None))
         if not gremlin_operator:
