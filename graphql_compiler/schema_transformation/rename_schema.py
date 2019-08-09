@@ -192,7 +192,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.builtin_types = frozenset({'String', 'Int', 'Float', 'Boolean', 'ID'})
 
     def _rename_name_and_add_to_record(self, node):
-        """Return a copy of input node with a new name, and add the name pair to reverse_name_map.
+        """Change the name of the input node if necessary, add the name pair to reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
 
@@ -322,7 +322,7 @@ def _get_copy_of_node_with_new_name(node, new_name):
     if node_type not in allowed_types:
         raise AssertionError(
             u'Input node {} of type {} is not allowed, only {} are allowed.'.format(
-                node, type(node).__name__, allowed_types
+                node, node_type, allowed_types
             )
         )
     node_with_new_name = copy(node)  # shallow copy is enough
