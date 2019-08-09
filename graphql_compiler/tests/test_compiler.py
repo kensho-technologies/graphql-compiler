@@ -6457,7 +6457,7 @@ class CompilerTests(unittest.TestCase):
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
             WITH
               Animal___1 AS Animal___1,
-              collect(collected_Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             RETURN
               Animal___1.name AS `animal_name`,
