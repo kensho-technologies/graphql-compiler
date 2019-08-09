@@ -711,17 +711,12 @@ class FoldCountContextField(Expression):
         mark_name = u'collected_' + self.fold_scope_location.get_full_path_location_name()
         validate_safe_string(mark_name)
 
-        template = u'[x IN %(mark_name)s | x.%(field_name)s]'
-        template_data = {
-            'mark_name': mark_name,
-        }
+        template = u'[x IN {mark_name} | x.{field_name}]'
 
         if field_name == COUNT_META_FIELD_NAME:
             raise NotImplementedError()
-        else:
-            template_data['field_name'] = field_name
 
-        return template % template_data
+        return template.format(mark_name=mark_name, field_name=field_name)
 
 
 class ContextFieldExistence(Expression):
