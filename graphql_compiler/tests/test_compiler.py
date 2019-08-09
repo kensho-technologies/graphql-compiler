@@ -3343,8 +3343,9 @@ class CompilerTests(unittest.TestCase):
         expected_match = '''
             SELECT
                 Animal___1.name AS `name`
-            FROM  (
-                MATCH  {{ class: Animal,
+            FROM (
+                MATCH {{
+                    class: Animal,
                     where: ((net_worth IS null)),
                     as: Animal___1
                 }}
@@ -3378,8 +3379,9 @@ class CompilerTests(unittest.TestCase):
         expected_match = '''
             SELECT
                 Animal___1.name AS `name`
-            FROM  (
-                MATCH  {{ class: Animal,
+            FROM (
+                MATCH {{
+                    class: Animal,
                     where: ((net_worth IS NOT null)),
                     as: Animal___1
                 }}
