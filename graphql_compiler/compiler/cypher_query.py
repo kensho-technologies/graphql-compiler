@@ -124,14 +124,23 @@ def _generate_cypher_step_list_from_ir_blocks(fold_scope_location, ir_blocks, qu
         if not isinstance(block, MarkLocation):
             # MarkLocation is the last block needed for the next CypherStep object.
             continue
-        # The complete list of IR blocks need not end with a MarkLocation block, e.g. if you
-        # have a Backtrack block at the end. That's fine; Backtrack is unused here anyways.
+
         cypher_step = _make_cypher_step(query_metadata_table, linked_location,
                                         current_step_ir_blocks)
         folded_cypher_steps.append(cypher_step)
 
         linked_location = block.location
         current_step_ir_blocks = []
+    for block in current_step_ir_blocks:
+        # Sanity check any leftover blocks.
+        # The complete list of IR blocks need not end with a MarkLocation block, e.g. if you
+        # have a Backtrack block at the end. That's fine; Backtrack is unused here anyways.
+        # What we want to avoid is having any leftover blocks here that we should've used.
+        if block not in discarded_block_types and not(isinstance(block, Backtrack)):
+            raise AssertionError(u'Expected leftover blocks in folded scope after generating'
+                                 u'CypherSteps to all be of discarded type or Backtrack type.'
+                                 u'Instead, got block {} in list of leftover blocks {}'
+                                 .format(block, current_step_ir_blocks))
     return folded_cypher_steps
 
 
