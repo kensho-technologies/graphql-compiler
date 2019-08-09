@@ -48,9 +48,7 @@ discarded_block_types = (Unfold, OutputSource, EndOptional)
 
 def _get_all_supertypes_of_exact_type(query_metadata_table, exact_type):
     """Return the set of all supertypes of the given exact type."""
-    # TODO(predrag): Plumb the SchemaGraph work through here. When/ if this implementation changes,
-    # we may also need to modify how CypherStep objects for fold directives are constructed in
-    # _generate_cypher_step_list_from_ir_blocks based on the comment there.
+    # TODO(predrag): Plumb the SchemaGraph work through here.
     return {exact_type}
 
 
@@ -105,7 +103,7 @@ def _make_query_root_cypher_step(query_metadata_table, linked_location, current_
         where_block=where_block, as_block=as_block)
 
 
-def _generate_cypher_step_list_from_ir_blocks(fold_scope_location, ir_blocks):
+def _generate_cypher_step_list_from_ir_blocks(fold_scope_location, ir_blocks, query_metadata_table):
     """Given FoldScopeLocation and list of IR blocks, generate corresponding CypherStep objects.
 
     Args:
@@ -119,13 +117,6 @@ def _generate_cypher_step_list_from_ir_blocks(fold_scope_location, ir_blocks):
     linked_location = fold_scope_location.base_location
     step_block = Fold(fold_scope_location)  # for first CypherStep object in this fold scope.
     fold_scope_ir_blocks = [step_block] + ir_blocks
-    query_metadata_table = None  # In _make_cypher_step, this is needed for only two
-    # things: making a query root CypherStep and getting all the supertypes of the type
-    # specified in the coercion block. However, this is not a root block because we're
-    # dealing with a fold directive. Cypher also doesn't really support inheritance with
-    # its types, which makes _get_all_supertypes_of_exact_type() return a set containing
-    # only the type specified in the coercion block. When/if that changes, the
-    # query_metadata_table may also need to change (as well as the comment there)
     current_step_ir_blocks = []  # IR blocks for the next CypherStep object.
 
     for block in fold_scope_ir_blocks:
@@ -158,7 +149,9 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
     fold_scope_ir_blocks_dict, remaining_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
     folds = {
         fold_scope_location: _generate_cypher_step_list_from_ir_blocks(
-            fold_scope_location, fold_scope_ir_blocks_dict[fold_scope_location]
+            fold_scope_location,
+            fold_scope_ir_blocks_dict[fold_scope_location],
+            query_metadata_table
         )
         for fold_scope_location in fold_scope_ir_blocks_dict
     }
