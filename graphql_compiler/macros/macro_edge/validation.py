@@ -1,5 +1,4 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import namedtuple
 from copy import copy
 from itertools import chain
 
@@ -12,12 +11,14 @@ from graphql.validation import validate
 from ...ast_manipulation import (
     get_ast_field_name, get_human_friendly_ast_field_name, get_only_selection_from_ast
 )
+from ...compiler.helpers import get_only_element_from_collection
 from ...compiler.compiler_frontend import ast_to_ir
 from ...exceptions import GraphQLInvalidMacroError
 from ...query_formatting.common import ensure_arguments_are_provided
 from ...schema import VERTEX_FIELD_PREFIXES, FoldDirective, is_vertex_field_name
 from .ast_rewriting import remove_directives_from_ast
 from .ast_traversal import get_directives_for_ast
+from .descriptor import create_descriptor_from_ast_and_args
 from .directives import (
     DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
     MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
@@ -192,21 +193,10 @@ def _get_minimal_query_ast_from_macro_ast(macro_ast):
     query_ast.selection_set = SelectionSet([root_level_selection])
     return Document([query_ast])
 
+
 # ############
 # Public API #
 # ############
-
-
-MacroEdgeDescriptor = namedtuple(
-    'MacroEdgeDescriptor', (
-        'expansion_ast',  # GraphQL AST object defining how the macro edge
-                          # should be expanded starting from its base type. The
-                          # selections must be merged (on both endpoints of the
-                          # macro edge) with the user-supplied GraphQL input.
-        'macro_args',     # Dict[str, Any] containing any arguments required by the macro
-    )
-)
-
 
 def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
                                      type_equivalence_hints=None):
@@ -243,10 +233,12 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     _validate_macro_ast_with_macro_directives(schema, ast, macro_directives)
     _validate_macro_ast_directives(ast)
 
-    macro_defn_ast, macro_defn_directive = macro_directives[MacroEdgeDefinitionDirective.name][0]
-    # macro_target_ast, _ = macro_directives[MacroEdgeTargetDirective.name][0]
+    # Guaranteed to only have one macro definition directive,
+    # otherwise validation should have failed in the previous steps.
+    macro_defn_ast, macro_defn_directive = get_only_element_from_collection(
+        macro_directives[MacroEdgeDefinitionDirective.name])
 
-    # Check that the macro successfully compiles to IR
+    # Ensure that the macro successfully compiles to IR.
     _, input_metadata, _, _ = ast_to_ir(schema, _get_minimal_query_ast_from_macro_ast(ast),
                                         type_equivalence_hints=type_equivalence_hints)
     ensure_arguments_are_provided(input_metadata, macro_edge_args)
@@ -254,22 +246,10 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     _validate_class_selection_ast(
         get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast)
     class_name = get_ast_field_name(macro_defn_ast)
-    macro_edge_name = macro_defn_directive.arguments[0].value.value
+    macro_edge_name = get_only_element_from_collection(macro_defn_directive.arguments).value.value
 
     _validate_macro_edge_name_for_class_name(schema, class_name, macro_edge_name)
 
-    descriptor = _make_macro_edge_descriptor(macro_defn_ast, macro_edge_args)
+    descriptor = create_descriptor_from_ast_and_args(macro_defn_ast, macro_edge_args)
 
     return class_name, macro_edge_name, descriptor
-
-
-def _make_macro_edge_descriptor(macro_definition_ast, macro_edge_args):
-    """Remove all macro edge directives except for the target, and return a MacroEdgeDescriptor."""
-    directives_to_remove = {
-        directive.name
-        for directive in MACRO_EDGE_DIRECTIVES
-        if directive.name != MacroEdgeTargetDirective.name
-    }
-    new_ast = remove_directives_from_ast(macro_definition_ast, directives_to_remove)
-
-    return MacroEdgeDescriptor(new_ast, macro_edge_args)
