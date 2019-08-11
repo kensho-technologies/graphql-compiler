@@ -1,6 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
-from itertools import chain
 
 from graphql.language.ast import (
     Argument, Directive, Document, Field, InlineFragment, Name, OperationDefinition, SelectionSet,
@@ -21,7 +20,8 @@ from .ast_traversal import get_directives_for_ast
 from .descriptor import create_descriptor_from_ast_and_args
 from .directives import (
     DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
-    MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective
+    MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective,
+    get_schema_for_macro_edge_definitions
 )
 
 
@@ -38,15 +38,9 @@ def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
             u'Unexpectedly found variable definitions at the top level of the GraphQL input. '
             u'This is not supported. Variable definitions: {}'.format(ast.variable_definitions))
 
-    # TODO(vlad): Replace with get_schema_for_macro_definitions
-    #             without creating circular dependencies.
-    # pylint: disable=protected-access
-    schema_with_macro_directives = copy(schema)
-    schema_with_macro_directives._directives = list(chain(
-        schema_with_macro_directives._directives, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION))
-    # pylint: enable=protected-access
+    schema_with_macro_edge_directives = get_schema_for_macro_edge_definitions(schema)
 
-    validation_errors = validate(schema_with_macro_directives, ast)
+    validation_errors = validate(schema_with_macro_edge_directives, ast)
     if validation_errors:
         raise GraphQLInvalidMacroError(
             u'Macro edge failed validation: {}'.format(validation_errors))
