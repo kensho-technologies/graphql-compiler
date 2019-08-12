@@ -4622,14 +4622,16 @@ class CompilerTests(unittest.TestCase):
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
-            WHERE Animal__out_Animal_ParentOf___1.name = $desired
+            WHERE (
+              Animal__out_Animal_ParentOf___1.name = $desired
+            )
             WITH
               Animal___1 AS Animal___1,
-              collect(Animal__out_Animal_ParentOf___1) as collected_Animal__out_Animal_ParentOf___1
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
             RETURN
-              Animal___1.name AS `name`,
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.description] AS `child_descriptions`,
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_list`,
-              [x IN collected_Animal__out_Animal_ParentOf___1 | x.description] as `child_descriptions`
+              Animal___1.name AS `name`
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -4681,8 +4683,8 @@ class CompilerTests(unittest.TestCase):
               Animal___1 AS Animal___1,
               collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
             RETURN
-              Animal___1.name AS `name`,
-              [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_list`
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_list`,
+              Animal___1.name AS `name`
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
