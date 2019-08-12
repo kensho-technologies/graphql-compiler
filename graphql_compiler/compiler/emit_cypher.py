@@ -5,7 +5,7 @@ from graphql_compiler.compiler.helpers import FoldScopeLocation, Location
 from .blocks import Fold, QueryRoot, Recurse, Traverse
 
 
-def _get_full_path_location_name(fold_scope_location):
+def fold_scope_location_full_path_name(fold_scope_location):
     """Return a unique name with the full traversal path to this FoldScopeLocation."""
     # HACK(Leon): Get a unique name for each vertex in a fold traversal in Cypher.
     # For FoldScopeLocation objects, get_location_name() only uses the first edge in the traversal,
@@ -54,7 +54,7 @@ def _emit_code_from_cypher_step(cypher_step):
     step_location = cypher_step.as_block.location
     if is_fold_step:
         # Then step_location is a FoldScopeLocation and we want the full path in the location name.
-        step_location_name = _get_full_path_location_name(step_location)
+        step_location_name = fold_scope_location_full_path_name(step_location)
     else:
         step_location_name, _ = step_location.get_location_name()
 
@@ -79,7 +79,7 @@ def _emit_code_from_cypher_step(cypher_step):
             # If this is the first CypherStep object in a fold scope, then linked_location will
             # be a Location and not a FoldScopeLocation. Therefore we need to check the type for
             # linked_location and not if this is within a fold scope.
-            linked_location_name = _get_full_path_location_name(cypher_step.linked_location)
+            linked_location_name = fold_scope_location_full_path_name(cypher_step.linked_location)
         else:
             linked_location_name, _ = cypher_step.linked_location.get_location_name()
         template_data['linked_location'] = linked_location_name
@@ -132,7 +132,7 @@ def _emit_with_clause_components(cypher_steps):
             location_name = location.get_location_name()[0]
         else:
             # must be a FoldScopeLocation because as_block is a MarkLocation block.
-            location_name = u'collected_' + _get_full_path_location_name(location)
+            location_name = u'collected_' + fold_scope_location_full_path_name(location)
         location_names.add(location_name)
 
     # Sort the locations, to ensure a deterministic order.
@@ -157,7 +157,7 @@ def _emit_with_clause_components_for_current_fold_scope(current_fold_scope_cyphe
     vertex_names = {}
     for cypher_step in current_fold_scope_cyphersteps:
         fold_scope_location = cypher_step.as_block.location
-        full_vertex_name = _get_full_path_location_name(fold_scope_location)
+        full_vertex_name = fold_scope_location_full_path_name(fold_scope_location)
         vertex_names[u'collect(' + full_vertex_name + ')'] = u'collected_' + full_vertex_name
 
     # Sort the locations, to ensure a deterministic order.

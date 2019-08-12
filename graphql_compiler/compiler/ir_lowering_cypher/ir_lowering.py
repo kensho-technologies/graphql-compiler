@@ -135,18 +135,18 @@ class CypherFoldScopeContextField(Expression):
 
     def to_gremlin(self):
         """Should never be called, since this is Cypher-specific."""
-        pass
+        raise NotImplementedError()
 
     def to_match(self):
         """Should never be called, since this is Cypher-specific."""
-        raise
+        raise NotImplementedError()
 
     def to_cypher(self):
         """Return a unicode object with the Cypher representation of this expression."""
         self.validate()
 
         _, field_name = self.fold_scope_location.get_location_name()
-        mark_name = emit_cypher._get_full_path_location_name(self.fold_scope_location)
+        mark_name = emit_cypher.fold_scope_location_full_path_name(self.fold_scope_location)
         validate_safe_string(mark_name)
         template = u'{mark_name}.{field_name}'
         return template.format(mark_name=mark_name, field_name=field_name)
