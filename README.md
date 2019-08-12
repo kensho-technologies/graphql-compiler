@@ -53,6 +53,8 @@ For a more detailed overview and getting started guide, please see
      * [not_contains](#not_contains)
      * [intersects](#intersects)
      * [has_edge_degree](#has_edge_degree)
+     * [is_null](#is_null)
+     * [is_not_null](#is_not_null)
   * [Type coercions](#type-coercions)
   * [Meta fields](#meta-fields)
      * [\__typename](#__typename)
@@ -841,6 +843,39 @@ no valid result sets can be produced, and the resulting query will return no res
 - Tagged values are not supported as parameters for this filter.
 - If the runtime parameter for this operator can be `0`, it is *strongly recommended* to also apply
 `@optional` to the vertex field being filtered (see N.B. above for details).
+
+### is_null
+#### Example Use
+```graphql
+{
+    Animal {
+        name @output(out_name: "animal_name")
+        color @filter(op_name: "is_null", value: [])
+    }
+}
+```
+This returns one row for every `Animal` that does not have a color defined.
+
+#### Constraints and Rules
+- Must be applied on a property field.
+- `value` must be empty.
+
+### is_not_null
+#### Example Use
+```graphql
+{
+    Animal {
+        name @output(out_name: "animal_name")
+        color @filter(op_name: "is_not_null", value: [])
+    }
+}
+```
+This returns one row for every `Animal` that has a color defined.
+
+#### Constraints and Rules
+- Must be applied on a property field.
+- `value` must be empty.
+
 
 ## Type coercions
 
