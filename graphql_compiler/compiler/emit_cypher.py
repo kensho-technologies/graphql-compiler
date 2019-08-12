@@ -1,11 +1,11 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 """Convert lowered IR basic blocks to Cypher query strings."""
-from graphql_compiler.compiler.helpers import Location
+from graphql_compiler.compiler.helpers import FoldScopeLocation, Location
 
 from .blocks import Fold, QueryRoot, Recurse, Traverse
 
 
-def _get_full_path_location_name(fold_scope_location):
+def fold_scope_location_full_path_name(fold_scope_location):
     """Return a unique name with the full traversal path to this FoldScopeLocation."""
     # HACK(Leon): Get a unique name for each vertex in a fold traversal in Cypher.
     # For FoldScopeLocation objects, get_location_name() only uses the first edge in the traversal,
@@ -48,8 +48,15 @@ def _emit_code_from_cypher_step(cypher_step):
                              u'it should have moved the filtering to the global operations '
                              u'section. {}'.format(cypher_step))
 
+    # if CypherStep was generated from blocks within a fold scope.
+    is_fold_step = isinstance(cypher_step.as_block.location, FoldScopeLocation)
+
     step_location = cypher_step.as_block.location
-    step_location_name, _ = step_location.get_location_name()
+    if is_fold_step:
+        # Then step_location is a FoldScopeLocation and we want the full path in the location name.
+        step_location_name = fold_scope_location_full_path_name(step_location)
+    else:
+        step_location_name, _ = step_location.get_location_name()
 
     template_data = {
         'step_location': step_location_name,
@@ -68,14 +75,23 @@ def _emit_code_from_cypher_step(cypher_step):
             u'%(left_edge_mark)s-[:%(edge_type)s%(quantifier)s]-%(right_edge_mark)s' +
             step_vertex_pattern
         )
-        linked_location_name, _ = cypher_step.linked_location.get_location_name()
+        if isinstance(cypher_step.linked_location, FoldScopeLocation):
+            # If this is the first CypherStep object in a fold scope, then linked_location will
+            # be a Location and not a FoldScopeLocation. Therefore we need to check the type for
+            # linked_location and not if this is within a fold scope.
+            linked_location_name = fold_scope_location_full_path_name(cypher_step.linked_location)
+        else:
+            linked_location_name, _ = cypher_step.linked_location.get_location_name()
         template_data['linked_location'] = linked_location_name
 
     if has_where_block:
         pattern += u'\n  WHERE %(predicate)s'
         template_data['predicate'] = cypher_step.where_block.predicate.to_cypher()
 
-    if is_optional_step:
+    if is_optional_step or is_fold_step:
+        # OPTIONAL for fold too because if there is no such path for the given fold traversal, we
+        # still want to return an empty list. Without OPTIONAL, the entire row would be missing
+        # from the output.
         pattern = u'OPTIONAL ' + pattern
 
     if isinstance(cypher_step.step_block, (Traverse, Recurse, Fold)):
@@ -108,11 +124,16 @@ def _emit_with_clause_components(cypher_steps):
     if not cypher_steps:
         return []
 
-    result = [u'WITH']
-    location_names = {
-        cypher_step.as_block.location.get_location_name()[0]
-        for cypher_step in cypher_steps
-    }
+    result = []
+    location_names = set()
+    for cypher_step in cypher_steps:
+        location = cypher_step.as_block.location
+        if isinstance(location, Location):
+            location_name = location.get_location_name()[0]
+        else:
+            # must be a FoldScopeLocation because as_block is a MarkLocation block.
+            location_name = u'collected_' + fold_scope_location_full_path_name(location)
+        location_names.add(location_name)
 
     # Sort the locations, to ensure a deterministic order.
     for index, location_name in enumerate(sorted(location_names)):
@@ -127,9 +148,63 @@ def _emit_with_clause_components(cypher_steps):
     return result
 
 
+def _emit_with_clause_components_for_current_fold_scope(current_fold_scope_cyphersteps):
+    """Emit the component strings for Cypher WITH clause for current fold."""
+    # At this point we should already have emitted all component strings from previous CypherSteps,
+    # whether or not they were in fold scopes or not.
+    result = []
+
+    vertex_names = {}
+    for cypher_step in current_fold_scope_cyphersteps:
+        fold_scope_location = cypher_step.as_block.location
+        full_vertex_name = fold_scope_location_full_path_name(fold_scope_location)
+        vertex_names[u'collect(' + full_vertex_name + ')'] = u'collected_' + full_vertex_name
+
+    # Sort the locations, to ensure a deterministic order.
+    for index, collect_call in enumerate(sorted(vertex_names)):
+        # haha get it? collect_call because we're calling the function collect()?
+        if index > 0:
+            result.append(u',')
+        result.append(u'\n  %(collect_call)s AS %(collected_name)s' %
+                      {'collect_call': collect_call, 'collected_name': vertex_names[collect_call]})
+    return result
+
+
+def _emit_fold_scope(cypher_query):
+    """Return a Cypher query pattern match expression for each fold scope in cypher_query."""
+    query_data = []
+    previous_fold_scope_cypher_steps = []
+    for fold_scope_location in cypher_query.folds:
+        current_fold_scope_cyphersteps = cypher_query.folds[fold_scope_location]
+        for cypher_step in current_fold_scope_cyphersteps:
+            query_data.append(_emit_code_from_cypher_step(cypher_step))
+        # Now create the WITH clause
+        query_data.append(u'WITH')
+        # First for all non-fold-scope CypherSteps
+        query_data.extend(_emit_with_clause_components(cypher_query.steps))
+
+        # And then for all fold scope CypherSteps not in this particular fold scope
+        if previous_fold_scope_cypher_steps:
+            query_data.append(u',')
+        query_data.extend(_emit_with_clause_components(previous_fold_scope_cypher_steps))
+
+        # And finally for all current fold scope CypherSteps
+        if current_fold_scope_cyphersteps:
+            query_data.append(u',')
+        query_data.extend(
+            _emit_with_clause_components_for_current_fold_scope(current_fold_scope_cyphersteps))
+
+        query_data.append(u'\n')
+
+        # Now that we've finished out this fold scope, we need to ensure these vertices get
+        # passed on through all later WITH clauses as well.
+        previous_fold_scope_cypher_steps.extend(current_fold_scope_cyphersteps)
+    return query_data
+
 ##############
 # Public API #
 ##############
+
 
 def emit_code_from_ir(cypher_query, compiler_metadata):
     """Return a Cypher query string from a CypherQuery object."""
@@ -147,9 +222,10 @@ def emit_code_from_ir(cypher_query, compiler_metadata):
         query_data.append(_emit_code_from_cypher_step(cypher_step))
 
     if cypher_query.folds:
-        raise NotImplementedError()
+        query_data.extend(_emit_fold_scope(cypher_query))
 
     if cypher_query.global_where_block is not None:
+        query_data.append(u'WITH')
         query_data.extend(_emit_with_clause_components(cypher_query.steps))
 
         query_data.append(u'WHERE ')

@@ -2,6 +2,7 @@
 from graphql import GraphQLInt, GraphQLList, GraphQLNonNull
 import six
 
+from . import emit_cypher
 from ..exceptions import GraphQLCompilationError
 from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression
@@ -641,8 +642,25 @@ class FoldedContextField(Expression):
                              u'in Gremlin, so this is a bug. This function should not be called.')
 
     def to_cypher(self):
-        """Not implemented yet."""
-        raise NotImplementedError()
+        """Return a unicode object with the Cypher representation of this expression."""
+        self.validate()
+
+        _, field_name = self.fold_scope_location.get_location_name()
+        mark_name = u'collected_' +\
+                    emit_cypher.fold_scope_location_full_path_name(self.fold_scope_location)
+        validate_safe_string(mark_name)
+
+        template = u'[x IN %(mark_name)s | x.%(field_name)s]'
+        template_data = {
+            'mark_name': mark_name,
+        }
+
+        if field_name == COUNT_META_FIELD_NAME:
+            raise NotImplementedError()  # TODO(leon): _x_count.
+        else:
+            template_data['field_name'] = field_name
+
+        return template % template_data
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
