@@ -1,6 +1,30 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 """Convert lowered IR basic blocks to Cypher query strings."""
+from graphql_compiler.compiler.helpers import Location
+
 from .blocks import Fold, QueryRoot, Recurse, Traverse
+
+
+def _get_full_path_location_name(fold_scope_location):
+    """Return a unique name with the full traversal path to this FoldScopeLocation."""
+    # HACK(Leon): Get a unique name for each vertex in a fold traversal in Cypher.
+    # For FoldScopeLocation objects, get_location_name() only uses the first edge in the traversal,
+    # which doesn't work for Cypher because we need to explicitly label every intermediate vertex
+    # along that path.
+    # For other query languages like MATCH and Gremlin, the fold directive doesn't require
+    # us to name all the intermediate vertices on the path, which is why this is Cypher-specific.
+    base_location = fold_scope_location.base_location
+    base_query_path = base_location.query_path  # the path traversed so far
+    fold_path = fold_scope_location.fold_path  # the path specified at or within the folded scope.
+    full_path = base_query_path + tuple(u'_'.join(edge_name) for edge_name in fold_path)
+    location = Location(full_path, field=base_location.field,
+                        visit_counter=base_location.visit_counter)
+    if base_location.field is not None:
+        raise ValueError(u'Expected base_location\'s field to be None since this method is used to '
+                         u'traverse vertices for a fold scope and at no point do we navigate to a '
+                         u'field. However, field was {}'.format(base_location.field))
+    step_location_name, _ = location.get_location_name()
+    return step_location_name
 
 
 def _emit_code_from_cypher_step(cypher_step):
