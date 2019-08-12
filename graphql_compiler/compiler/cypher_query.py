@@ -105,50 +105,45 @@ def _make_query_root_cypher_step(query_metadata_table, linked_location, current_
         where_block=where_block, as_block=as_block)
 
 
-def _generate_cypherstep_list_from_ir_blocks(fold_scope_ir_blocks_dict):
-    """Generate CypherStep object list for each FoldScopeLocation's list of IR blocks.
+def _generate_cypher_step_list_from_ir_blocks(fold_scope_location, ir_blocks, query_metadata_table):
+    """Given FoldScopeLocation and list of IR blocks, generate corresponding CypherStep objects.
 
     Args:
-        fold_scope_ir_blocks_dict: dict of FoldScopeLocation ->
-                                   list of IR blocks corresponding to that @fold scope.
+        fold_scope_location: FoldScopeLocation object
+        ir_blocks: list of IR blocks corresponding to that fold scope.
 
     Returns:
-        dict of FoldScopeLocation -> list of CypherStep objects corresponding to that @fold scope.
+        list of CypherStep objects corresponding to those IR blocks.
     """
-    if not isinstance(fold_scope_ir_blocks_dict, dict):
-        raise TypeError(u'Expected arguments to be passed through a dictionary. Got {} with type '
-                        u'{} instead.'
-                        .format(fold_scope_ir_blocks_dict,
-                                type(fold_scope_ir_blocks_dict).__name__))
-    for fold_scope_location in fold_scope_ir_blocks_dict:
-        folded_cypher_steps = []  # list of CypherStep objects corresponding to this fold scope.
-        linked_location = fold_scope_location.base_location
-        step_block = Fold(fold_scope_location)  # for first CypherStep object in this fold scope.
-        fold_scope_ir_blocks = [step_block] + fold_scope_ir_blocks_dict[fold_scope_location]
-        query_metadata_table = None  # In _make_cypher_step, this is needed for only two
-        # things: making a query root CypherStep and getting all the supertypes of the type
-        # specified in the coercion block. However, this is not a root block because we're
-        # dealing with a fold directive. Cypher also doesn't really support inheritance with
-        # its types, which makes _get_all_supertypes_of_exact_type() return a set containing
-        # only the type specified in the coercion block. When/if that changes, the
-        # query_metadata_table may also need to change (as well as the comment there)
-        current_step_ir_blocks = []  # IR blocks for the next CypherStep object.
+    folded_cypher_steps = []  # list of CypherStep objects corresponding to this fold scope.
+    linked_location = fold_scope_location.base_location
+    step_block = Fold(fold_scope_location)  # for first CypherStep object in this fold scope.
+    fold_scope_ir_blocks = [step_block] + ir_blocks
+    current_step_ir_blocks = []  # IR blocks for the next CypherStep object.
 
-        for block in fold_scope_ir_blocks:
-            current_step_ir_blocks.append(block)
-            if not isinstance(block, MarkLocation):
-                # MarkLocation is the last block needed for the next CypherStep object.
-                continue
-            # The complete list of IR blocks need not end with a MarkLocation block, e.g. if you
-            # have a Backtrack block at the end. That's fine; Backtrack is unused here anyways.
-            cypher_step = _make_cypher_step(query_metadata_table, linked_location,
-                                            current_step_ir_blocks)
-            folded_cypher_steps.append(cypher_step)
+    for block in fold_scope_ir_blocks:
+        current_step_ir_blocks.append(block)
+        if not isinstance(block, MarkLocation):
+            # MarkLocation is the last block needed for the next CypherStep object.
+            continue
 
-            linked_location = block.location
-            current_step_ir_blocks = []
-        fold_scope_ir_blocks_dict[fold_scope_location] = folded_cypher_steps
-    return fold_scope_ir_blocks_dict
+        cypher_step = _make_cypher_step(query_metadata_table, linked_location,
+                                        current_step_ir_blocks)
+        folded_cypher_steps.append(cypher_step)
+
+        linked_location = block.location
+        current_step_ir_blocks = []
+    for block in current_step_ir_blocks:
+        # Sanity check any leftover blocks.
+        # The complete list of IR blocks need not end with a MarkLocation block, e.g. if you
+        # have a Backtrack block at the end. That's fine; Backtrack is unused here anyways.
+        # What we want to avoid is having any leftover blocks here that we should've used.
+        if block not in discarded_block_types and not(isinstance(block, Backtrack)):
+            raise AssertionError(u'Expected leftover blocks in folded scope after generating'
+                                 u'CypherSteps to all be of discarded type or Backtrack type.'
+                                 u'Instead, got block {} in list of leftover blocks {}'
+                                 .format(block, current_step_ir_blocks))
+    return folded_cypher_steps
 
 
 ##############
@@ -163,7 +158,15 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
     next_linked_location = None
 
     fold_scope_ir_blocks_dict, remaining_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
-    folds = _generate_cypherstep_list_from_ir_blocks(fold_scope_ir_blocks_dict)
+
+    folds = {
+        fold_scope_location: _generate_cypher_step_list_from_ir_blocks(
+            fold_scope_location,
+            fold_scope_ir_blocks_dict[fold_scope_location],
+            query_metadata_table
+        )
+        for fold_scope_location in fold_scope_ir_blocks_dict
+    }
 
     global_operations_index = None
 
