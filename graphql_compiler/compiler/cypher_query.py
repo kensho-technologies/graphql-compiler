@@ -48,9 +48,7 @@ discarded_block_types = (Unfold, OutputSource, EndOptional)
 
 def _get_all_supertypes_of_exact_type(query_metadata_table, exact_type):
     """Return the set of all supertypes of the given exact type."""
-    # TODO(predrag): Plumb the SchemaGraph work through here. When/ if this implementation changes,
-    # we may also need to modify how CypherStep objects for fold directives are constructed in
-    # _generate_CypherStep_list_from_ir_blocks based on the comment there.
+    # TODO(predrag): Plumb the SchemaGraph work through here.
     return {exact_type}
 
 
@@ -158,7 +156,6 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
     next_linked_location = None
 
     fold_scope_ir_blocks_dict, remaining_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
-
     folds = {
         fold_scope_location: _generate_cypher_step_list_from_ir_blocks(
             fold_scope_location,
