@@ -3,7 +3,6 @@
 from graphql_compiler.compiler.helpers import FoldScopeLocation, Location
 
 from .blocks import Fold, QueryRoot, Recurse, Traverse
-from .cypher_query import _make_cypher_step
 
 
 def _get_full_path_location_name(fold_scope_location):
@@ -49,7 +48,8 @@ def _emit_code_from_cypher_step(cypher_step):
                              u'it should have moved the filtering to the global operations '
                              u'section. {}'.format(cypher_step))
 
-    is_fold_step = isinstance(cypher_step.as_block.location, FoldScopeLocation)  # CypherStep generated from within a fold scope.
+    # if CypherStep was generated from blocks within a fold scope.
+    is_fold_step = isinstance(cypher_step.as_block.location, FoldScopeLocation)
 
     step_location = cypher_step.as_block.location
     if is_fold_step:
@@ -89,7 +89,9 @@ def _emit_code_from_cypher_step(cypher_step):
         template_data['predicate'] = cypher_step.where_block.predicate.to_cypher()
 
     if is_optional_step or is_fold_step:
-        # OPTIONAL for fold too because if there is no such path for the given fold traversal, we still want to return an empty list. Without OPTIONAL, the entire row would be missing from the output
+        # OPTIONAL for fold too because if there is no such path for the given fold traversal, we
+        # still want to return an empty list. Without OPTIONAL, the entire row would be missing
+        # from the output.
         pattern = u'OPTIONAL ' + pattern
 
     if isinstance(cypher_step.step_block, (Traverse, Recurse, Fold)):
@@ -189,7 +191,8 @@ def _emit_fold_scope(cypher_query):
         # And finally for all current fold scope CypherSteps
         if current_fold_scope_cyphersteps:
             query_data.append(u',')
-        query_data.extend(_emit_with_clause_components_for_current_fold_scope(current_fold_scope_cyphersteps))
+        query_data.extend(
+            _emit_with_clause_components_for_current_fold_scope(current_fold_scope_cyphersteps))
 
         query_data.append(u'\n')
 
