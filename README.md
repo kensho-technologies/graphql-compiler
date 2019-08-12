@@ -855,9 +855,10 @@ no valid result sets can be produced, and the resulting query will return no res
 }
 ```
 This returns one row for every `Animal` that does not have a color defined.
+
 #### Constraints and Rules
-* Must be applied on a property field.
-* `value` must be empty.
+- Must be applied on a property field.
+- `value` must be empty.
 
 ### is_not_null
 #### Example Use
@@ -870,9 +871,10 @@ This returns one row for every `Animal` that does not have a color defined.
 }
 ```
 This returns one row for every `Animal` that has a color defined.
+
 #### Constraints and Rules
-* Must be applied on a property field.
-* `value` must be empty.
+- Must be applied on a property field.
+- `value` must be empty.
 
 
 ## Type coercions
