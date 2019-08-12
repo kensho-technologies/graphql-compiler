@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 """Convert lowered IR basic blocks to Cypher query strings."""
 from graphql_compiler.compiler.helpers import Location
+
 from .blocks import Fold, QueryRoot, Recurse, Traverse
 
 
@@ -19,8 +20,8 @@ def _get_full_path_location_name(fold_scope_location):
     location = Location(full_path, field=base_location.field,
                         visit_counter=base_location.visit_counter)
     if base_location.field is not None:
-        raise ValueError(u'Expected base_location\'s field to be None since this method is used to'
-                         u'traverse vertices for a fold scope and at no point do we navigate to a'
+        raise ValueError(u'Expected base_location\'s field to be None since this method is used to '
+                         u'traverse vertices for a fold scope and at no point do we navigate to a '
                          u'field. However, field was {}'.format(base_location.field))
     step_location_name, _ = location.get_location_name()
     return step_location_name
