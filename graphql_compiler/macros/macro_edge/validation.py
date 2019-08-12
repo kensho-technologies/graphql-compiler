@@ -10,8 +10,8 @@ from graphql.validation import validate
 from ...ast_manipulation import (
     get_ast_field_name, get_human_friendly_ast_field_name, get_only_selection_from_ast
 )
-from ...compiler.helpers import get_only_element_from_collection
 from ...compiler.compiler_frontend import ast_to_ir
+from ...compiler.helpers import get_only_element_from_collection
 from ...exceptions import GraphQLInvalidMacroError
 from ...query_formatting.common import ensure_arguments_are_provided
 from ...schema import VERTEX_FIELD_PREFIXES, FoldDirective, is_vertex_field_name

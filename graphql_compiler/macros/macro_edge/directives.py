@@ -4,8 +4,7 @@ from copy import copy
 from itertools import chain
 
 from graphql import (
-    DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLNonNull, GraphQLSchema,
-    GraphQLString
+    DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLNonNull, GraphQLString
 )
 
 from ...schema import (

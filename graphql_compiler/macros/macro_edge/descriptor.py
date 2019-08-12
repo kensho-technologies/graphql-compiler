@@ -2,9 +2,7 @@
 from collections import namedtuple
 
 from .ast_rewriting import remove_directives_from_ast
-from .directives import (
-    MACRO_EDGE_DIRECTIVES, MacroEdgeTargetDirective
-)
+from .directives import MACRO_EDGE_DIRECTIVES, MacroEdgeTargetDirective
 
 
 MacroEdgeDescriptor = namedtuple(
