@@ -650,17 +650,12 @@ class FoldedContextField(Expression):
                     emit_cypher.fold_scope_location_full_path_name(self.fold_scope_location)
         validate_safe_string(mark_name)
 
-        template = u'[x IN %(mark_name)s | x.%(field_name)s]'
-        template_data = {
-            'mark_name': mark_name,
-        }
+        template = u'[x IN {mark_name} | x.{field_name}]'
 
         if field_name == COUNT_META_FIELD_NAME:
-            raise NotImplementedError()  # TODO(leon): _x_count.
-        else:
-            template_data['field_name'] = field_name
+            raise NotImplementedError()
 
-        return template % template_data
+        return template.format(mark_name=mark_name, field_name=field_name)
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
