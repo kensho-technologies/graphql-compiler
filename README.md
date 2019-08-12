@@ -342,9 +342,14 @@ the `location_count` value is 0.
   if it were selected for output.
 - If multiple fields (other than `_x_count`) are marked `@output`, the resulting output lists
   are parallel: the `i`th element of each such list is the value of the corresponding field of
-  the `i`th element of the `@fold`, for some fixed order of elements. The order of elements
-  within the output of a `@fold` is not specified and not guaranteed to be stable between multiple
-  runs of the same query, or even between result sets in the same run.
+  the `i`th element of the `@fold`, for some fixed order of elements in that `@fold`.
+  The order of elements within the output of a `@fold` is only fixed for a particular execution of
+  a given query, for the results of a given `@fold` that are part of a single result set.
+  There is no guarantee of consistent ordering of elements for the same `@fold` in any of
+  the following situations:
+    - across two or more result sets that are both the result of the execution of the same query;
+    - across different executions of the same query, or
+    - across different queries that contain the same `@fold` scope.
 - Use of type coercions or `@filter` at or within the vertex field marked `@fold` is allowed.
   The order of operations is conceptually as follows:
   - First, type coercions and filters (except `@filter` on the `_x_count` meta field) are applied,
