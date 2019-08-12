@@ -264,7 +264,7 @@ def _split_query_ast_one_level_recursive(
 
     if made_changes:
         ast_copy = copy(ast)
-        ast_copy.selection_set.selections = new_selections
+        ast_copy.selection_set = ast_types.SelectionSet(selections=new_selections)
         return ast_copy
     else:
         return ast
