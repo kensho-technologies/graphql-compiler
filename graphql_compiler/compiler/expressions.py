@@ -905,9 +905,13 @@ class BinaryComposition(Expression):
         negated_regular_operator_format = '(NOT (%(left)s %(operator)s %(right)s))'
         # pylint: enable=unused-variable
 
+        # Comparing null to a value does not make sense.
+        if self.left == NullLiteral:
+            raise AssertionError(u'The left expression cannot be a NullLiteral! Received operator '
+                                 u'{} and right expression {}.'.format(self.operator, self.right))
         # Null literals use the OrientDB 'IS/IS NOT' (in)equality operators,
         # while other values use the OrientDB '=/<>' operators.
-        if self.left == NullLiteral or self.right == NullLiteral:
+        elif self.right == NullLiteral:
             translation_table = {
                 u'=': (u'IS', regular_operator_format),
                 u'!=': (u'IS NOT', regular_operator_format),
@@ -951,6 +955,11 @@ class BinaryComposition(Expression):
         intersects_operator_format = u'(!{left}.{operator}({right}).empty)'
         negated_dotted_operator_format = u'!{left}.{operator}({right})'
 
+        # Comparing null to a value does not make sense.
+        if self.left == NullLiteral:
+            raise AssertionError(
+                u'The left expression cannot be a NullLiteral! Received operator '
+                u'{} and right expression {}.'.format(self.operator, self.right))
         translation_table = {
             u'=': (u'==', immediate_operator_format),
             u'!=': (u'!=', immediate_operator_format),
@@ -986,8 +995,13 @@ class BinaryComposition(Expression):
         negated_inverted_operator_format = u'(NOT ({right} {operator} {left}))'
         intersects_operator_format = u'any(_ {operator} {left} WHERE _ {operator} {right})'
 
+        # Comparing null to a value does not make sense.
+        if self.left == NullLiteral:
+            raise AssertionError(
+                u'The left expression cannot be a NullLiteral! Received operator '
+                u'{} and right expression {}.'.format(self.operator, self.right))
         # Null literals use 'is/is not' as (in)equality operators, while other values use '=/<>'.
-        if self.left == NullLiteral or self.right == NullLiteral:
+        elif self.right == NullLiteral:
             translation_table = {
                 u'=': (u'IS', regular_operator_format),
                 u'!=': (u'IS NOT', regular_operator_format),
