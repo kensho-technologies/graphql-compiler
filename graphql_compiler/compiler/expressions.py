@@ -646,7 +646,8 @@ class FoldedContextField(Expression):
         self.validate()
 
         _, field_name = self.fold_scope_location.get_location_name()
-        mark_name = u'collected_' + emit_cypher._get_full_path_location_name(self.fold_scope_location)
+        mark_name = u'collected_' +\
+                    emit_cypher._get_full_path_location_name(self.fold_scope_location)
         validate_safe_string(mark_name)
 
         template = u'[x IN %(mark_name)s | x.%(field_name)s]'

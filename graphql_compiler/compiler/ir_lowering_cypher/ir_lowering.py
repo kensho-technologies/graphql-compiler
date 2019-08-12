@@ -2,17 +2,17 @@
 from functools import partial
 
 from .. import emit_cypher
+from ...schema import COUNT_META_FIELD_NAME
 from ..blocks import CoerceType, Filter, Fold, MarkLocation, Recurse, Traverse
 from ..compiler_entities import Expression
-from ..expressions import (
-    BinaryComposition, ContextField, LocalField, NullLiteral
+from ..expressions import BinaryComposition, ContextField, LocalField, NullLiteral
+from ..helpers import (
+    FoldScopeLocation, get_only_element_from_collection, is_graphql_type, validate_safe_string
 )
-from ..helpers import FoldScopeLocation, get_only_element_from_collection, is_graphql_type, validate_safe_string
 from ..ir_lowering_common.common import merge_consecutive_filter_clauses
 from ..ir_lowering_common.location_renaming import (
     make_location_rewriter_visitor_fn, make_revisit_location_translations
 )
-from ...schema import COUNT_META_FIELD_NAME
 
 
 ##################################
