@@ -163,8 +163,9 @@ def _estimate_vertex_edge_vertex_count_using_class_count(
 
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     child_name_from_location = query_metadata.get_location_info(child_location).type.name
-    parent_base_class_name, child_base_class_name = \
+    parent_base_class_name, child_base_class_name = (
         _get_base_class_names_of_parent_and_child_from_edge(schema_graph, child_location)
+    )
 
     # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
     # pylint: disable=old-division
