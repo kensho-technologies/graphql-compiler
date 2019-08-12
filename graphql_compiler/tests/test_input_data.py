@@ -1523,6 +1523,48 @@ def has_edge_degree_op_filter_with_fold():
         type_equivalence_hints=None)
 
 
+def is_null_op_filter():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "name")
+            net_worth @filter(op_name: "is_null", value: [])
+        }
+    }'''
+
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False)
+    }
+
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def is_not_null_op_filter():
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "name")
+            net_worth @filter(op_name: "is_not_null", value: [])
+        }
+    }'''
+
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False)
+    }
+
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def fold_on_output_variable():
     graphql_input = '''{
         Animal {
