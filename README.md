@@ -54,7 +54,7 @@ For a more detailed overview and getting started guide, please see
      * [intersects](#intersects)
      * [has_edge_degree](#has_edge_degree)
      * [is_null](#is_null)
-     * [is_not_null](#is_null)
+     * [is_not_null](#is_not_null)
   * [Type coercions](#type-coercions)
   * [Meta fields](#meta-fields)
      * [\__typename](#__typename)
@@ -854,7 +854,7 @@ no valid result sets can be produced, and the resulting query will return no res
     }
 }
 ```
-This returns one row for every `Animal` that has a color defined.
+This returns one row for every `Animal` that does not have a color defined.
 #### Constraints and Rules
 * Must be applied on a property field.
 * `value` must be empty.
@@ -869,7 +869,7 @@ This returns one row for every `Animal` that has a color defined.
     }
 }
 ```
-This returns one row for every `Animal` that does not have a color defined.
+This returns one row for every `Animal` that has a color defined.
 #### Constraints and Rules
 * Must be applied on a property field.
 * `value` must be empty.
