@@ -132,6 +132,26 @@ def get_scalar_names(schema):
     return scalars
 
 
+def try_get_ast(asts, target_name, target_type):
+    """Return the ast in the list with the desired name and type, if found.
+
+    Args:
+        asts: List[Node] or None
+        target_name: str, name of the AST we're looking for
+        target_type: Node, the type of the AST we're looking for. Must be a type with a .name
+                     attribute, e.g. Field, Directive
+
+    Returns:
+        Node, an element in the input list with the correct name and type, or None if not found
+    """
+    if asts is None:
+        return None
+    for ast in asts:
+        if isinstance(ast, target_type) and ast.name.value == target_name:
+            return ast
+    return None
+
+
 class CheckValidTypesAndNamesVisitor(Visitor):
     """Check that the AST does not contain invalid types or types with invalid names.
 
