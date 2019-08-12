@@ -1,11 +1,14 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from functools import partial
 
+from .. import emit_cypher
+from ...schema import COUNT_META_FIELD_NAME
 from ..blocks import CoerceType, Filter, Fold, MarkLocation, Recurse, Traverse
-from ..expressions import (
-    BinaryComposition, ContextField, FoldedContextField, LocalField, NullLiteral
+from ..compiler_entities import Expression
+from ..expressions import BinaryComposition, ContextField, LocalField, NullLiteral
+from ..helpers import (
+    FoldScopeLocation, get_only_element_from_collection, is_graphql_type, validate_safe_string
 )
-from ..helpers import FoldScopeLocation, get_only_element_from_collection
 from ..ir_lowering_common.common import merge_consecutive_filter_clauses
 from ..ir_lowering_common.location_renaming import (
     make_location_rewriter_visitor_fn, make_revisit_location_translations
@@ -89,8 +92,81 @@ def remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_tabl
     return new_ir_blocks
 
 
+class CypherFoldScopeContextField(Expression):
+    """An expression for a field captured in a @fold scope for non _x_count filtering."""
+
+    __slots__ = ('fold_scope_location', 'field_type')
+
+    def __init__(self, fold_scope_location, field_type):
+        """Construct a new CypherFoldScopeContextField object for this folded field.
+
+        Args:
+            fold_scope_location: FoldScopeLocation specifying the location of
+                                 the context field being output.
+            field_type: GraphQL type object, specifying the type of the field being output.
+
+        Returns:
+            new CypherFoldScopeContextField object
+        """
+        super(CypherFoldScopeContextField, self).__init__(fold_scope_location, field_type)
+        self.fold_scope_location = fold_scope_location
+        self.field_type = field_type
+        self.validate()
+
+    def validate(self):
+        """Validate that the CypherFoldScopeContextField is correctly representable."""
+        if not isinstance(self.fold_scope_location, FoldScopeLocation):
+            raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
+                type(self.fold_scope_location), self.fold_scope_location))
+
+        if self.fold_scope_location.field is None:
+            raise ValueError(u'Expected FoldScopeLocation at a field, but got: {}'
+                             .format(self.fold_scope_location))
+
+        if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
+            raise TypeError(u'Expected fold_scope_location field to not be the _x_count meta-field '
+                            u'because CypherFoldedContextField is specifically for filtering on '
+                            u'individual vertices\' fields in a fold scope, not for filtering on '
+                            u'the size of the list. Got FoldScopeLocation: {}'
+                            .format(self.fold_scope_location))
+
+        if not is_graphql_type(self.field_type):
+            raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
+
+    def to_gremlin(self):
+        """Should never be called, since this is Cypher-specific."""
+        raise NotImplementedError()
+
+    def to_match(self):
+        """Should never be called, since this is Cypher-specific."""
+        raise NotImplementedError()
+
+    def to_cypher(self):
+        """Return a unicode object with the Cypher representation of this expression."""
+        self.validate()
+
+        _, field_name = self.fold_scope_location.get_location_name()
+        mark_name = emit_cypher.fold_scope_location_full_path_name(self.fold_scope_location)
+        validate_safe_string(mark_name)
+        template = u'{mark_name}.{field_name}'
+        return template.format(mark_name=mark_name, field_name=field_name)
+
+    def __eq__(self, other):
+        """Return True if the given object is equal to this one, and False otherwise."""
+        # Since this object has a GraphQL type as a variable, which doesn't implement
+        # the equality operator, we have to override equality and call is_same_type() here.
+        return (type(self) == type(other) and
+                self.fold_scope_location == other.fold_scope_location and
+                self.field_type.is_same_type(other.field_type))
+
+    def __ne__(self, other):
+        """Check another object for non-equality against this one."""
+        return not self.__eq__(other)
+
+
 def replace_local_fields_with_context_fields(ir_blocks):
     """Rewrite LocalField expressions into ContextField expressions referencing that location."""
+
     def visitor_func_base(location, expression):
         """Rewriter function that converts LocalFields into ContextFields at the given location."""
         if not isinstance(expression, LocalField):
@@ -98,7 +174,7 @@ def replace_local_fields_with_context_fields(ir_blocks):
 
         location_at_field = location.navigate_to_field(expression.field_name)
         if isinstance(location, FoldScopeLocation):
-            return FoldedContextField(location_at_field, expression.field_type)
+            return CypherFoldScopeContextField(location_at_field, expression.field_type)
         else:
             return ContextField(location_at_field, expression.field_type)
 
