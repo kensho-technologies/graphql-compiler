@@ -655,7 +655,7 @@ class FoldedContextField(Expression):
         }
 
         if field_name == COUNT_META_FIELD_NAME:
-            raise NotImplementedError()  # TODO Leon-- _x_count.
+            raise NotImplementedError()  # TODO(leon): _x_count.
         else:
             template_data['field_name'] = field_name
 
