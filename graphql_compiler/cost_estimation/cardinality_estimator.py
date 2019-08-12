@@ -194,7 +194,7 @@ def _estimate_edges_to_children_per_parent(
 
     Given a parent location of type A and child location of type B, assume all AB edges are
     distributed evenly over A vertices, so the expected number of child edges per parent vertex is
-    (# of AB edges) / (# of A vertices).
+    (number of AB edges) / (number of A vertices).
 
     Args:
         schema_graph: SchemaGraph object.
@@ -207,7 +207,7 @@ def _estimate_edges_to_children_per_parent(
 
     Returns:
         float, expected number of edges per parent_location vertex that connect to child_location
-               vertices.
+        vertices.
     """
     edge_counts = _query_statistics_for_vertex_edge_vertex_count(
         statistics, query_metadata, parent_location, child_location
