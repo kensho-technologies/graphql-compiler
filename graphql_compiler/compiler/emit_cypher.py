@@ -205,19 +205,19 @@ def _emit_fold_scope(cypher_query):
 
     For each fold scope, the structure generally works as follows:
 
-    First, traverse to the vertex just outside the fold scope. Each traversal is mandatory here, so
-    each traversal here is represented by a MATCH clause. Corresponds to:
+    step 1. First, traverse to the vertex just outside the fold scope. Each traversal is mandatory
+    here, so each traversal here is represented by a MATCH clause. Corresponds to:
         MATCH (Animal___1:Animal)
 
-    Then, for each vertex at/ inside the fold scope, add a corresponding OPTIONAL MATCH clause.
-    This traversal is marked OPTIONAL MATCH and not MATCH since we want the result to be an empty
-    list and still show up in the final result even if nothing matches the traversal. Corresponds
-    to:
+    step 2. Then, for each vertex at/ inside the fold scope, add a corresponding OPTIONAL MATCH
+    clause. This traversal is marked OPTIONAL MATCH and not MATCH since we want the result to be an
+    empty list and still show up in the final result even if nothing matches the traversal.
+    Corresponds to:
         OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
 
-    After traversing to the innermost scope (at which point all the OPTIONAL MATCH clauses are
-    generated, create a WITH clause. For each previously-expanded vertex V not in a fold scope, pass
-    it through the WITH clause as itself (i.e. `V AS V`). For each vertex at or inside a
+    step 3. After traversing to the innermost scope (at which point all the OPTIONAL MATCH clauses
+    are generated, create a WITH clause. For each previously-expanded vertex V not in a fold scope,
+    pass it through the WITH clause as itself (i.e. `V AS V`). For each vertex at or inside a
     previously-seen fold scope, return the name given to the list. For vertices at or inside the
     current fold scope, collect the vertices in the WITH clause as well, which materializes the list
     and guarantees that the order of elements within the output of a @fold is stable within each
@@ -226,7 +226,7 @@ def _emit_fold_scope(cypher_query):
           Animal___1 AS Animal___1,
           collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
 
-    This process is repeated for other fold scopes in the query. Corresponds to:
+    step 4. This process is repeated for other fold scopes in the query. Corresponds to:
         OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
         WITH
           Animal___1 AS Animal___1,
@@ -245,10 +245,12 @@ def _emit_fold_scope(cypher_query):
     query_data = []
     previous_fold_scope_cypher_steps = []
     for fold_scope_location in cypher_query.folds:
+        # step 2
         current_fold_scope_cypher_steps = cypher_query.folds[fold_scope_location]
         for cypher_step in current_fold_scope_cypher_steps:
             query_data.append(_emit_code_from_cypher_step(cypher_step))
-        # Now create the WITH clause
+
+        # step 3
         query_data.append(u'WITH')
 
         # First for all non-fold-scope CypherSteps, then all previous fold scope CypherSteps
@@ -263,6 +265,7 @@ def _emit_fold_scope(cypher_query):
 
         query_data.append(u'\n')
 
+        # step 4 preparation:
         # Now that we've finished out this fold scope, we need to ensure these vertices get
         # passed on through all later WITH clauses as well.
         previous_fold_scope_cypher_steps.extend(current_fold_scope_cypher_steps)
@@ -285,6 +288,8 @@ def emit_code_from_ir(cypher_query, compiler_metadata):
     # [2] https://github.com/RedisGraph/RedisGraph/issues/552
     query_data = [u'']
 
+    # if we have any fold directives in the query, this loop corresponds to step 1 described in
+    # the comment in the function _emit_fold_scope().
     for cypher_step in cypher_query.steps:
         query_data.append(_emit_code_from_cypher_step(cypher_step))
 
