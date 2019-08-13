@@ -92,7 +92,7 @@ def remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_tabl
     return new_ir_blocks
 
 
-class CypherFoldScopeContextFieldBeforeFolding(Expression):
+class FoldedContextFieldBeforeFolding(Expression):
     """An expression for a field captured in a @fold scope before it's folded.
 
     This differs from a regular FoldedContextField because the field_type for FoldedContextField
@@ -107,7 +107,7 @@ class CypherFoldScopeContextFieldBeforeFolding(Expression):
     __slots__ = ('fold_scope_location', 'field_type')
 
     def __init__(self, fold_scope_location, field_type):
-        """Construct a new CypherFoldScopeContextField object for this folded field.
+        """Construct a new FoldedContextFieldBeforeFolding object for this folded field.
 
         Args:
             fold_scope_location: FoldScopeLocation specifying the location of
@@ -115,16 +115,16 @@ class CypherFoldScopeContextFieldBeforeFolding(Expression):
             field_type: GraphQL type object, specifying the type of the field being output.
 
         Returns:
-            new CypherFoldScopeContextField object
+            new FoldedContextFieldBeforeFolding object
         """
-        super(CypherFoldScopeContextFieldBeforeFolding, self).__init__(
+        super(FoldedContextFieldBeforeFolding, self).__init__(
             fold_scope_location, field_type)
         self.fold_scope_location = fold_scope_location
         self.field_type = field_type
         self.validate()
 
     def validate(self):
-        """Validate that the CypherFoldScopeContextField is correctly representable."""
+        """Validate that the FoldedContextFieldBeforeFolding is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
             raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
                 type(self.fold_scope_location), self.fold_scope_location))
@@ -135,9 +135,9 @@ class CypherFoldScopeContextFieldBeforeFolding(Expression):
 
         if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
             raise TypeError(u'Expected fold_scope_location field to not be the _x_count meta-field '
-                            u'because CypherFoldedContextField is specifically for filtering on '
-                            u'individual vertices\' fields in a fold scope, not for filtering on '
-                            u'the size of the list. Got FoldScopeLocation: {}'
+                            u'because FoldedContextFieldBeforeFolding is specifically for '
+                            u'filtering on individual vertices\' fields in a fold scope, not for '
+                            u'filtering on the size of the list. Got FoldScopeLocation: {}'
                             .format(self.fold_scope_location))
 
         if not is_graphql_type(self.field_type):
@@ -183,8 +183,8 @@ def replace_local_fields_with_context_fields(ir_blocks):
 
         location_at_field = location.navigate_to_field(expression.field_name)
         if isinstance(location, FoldScopeLocation):
-            return CypherFoldScopeContextFieldBeforeFolding(location_at_field,
-                                                            expression.field_type)
+            return FoldedContextFieldBeforeFolding(location_at_field,
+                                                   expression.field_type)
         else:
             return ContextField(location_at_field, expression.field_type)
 
