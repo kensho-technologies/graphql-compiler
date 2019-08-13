@@ -371,8 +371,6 @@ def _get_property_field(selections, field_name, directives_from_edge):
                     new_field.directives.append(directive)
             elif directive.name.value == u'filter':
                 new_field.directives.append(directive)
-            elif directive.name.value == u'stitch':
-                continue
             else:
                 raise AssertionError(
                     u'Unreachable code reached. Directive "{}" is of an unsupported type, and '
@@ -647,7 +645,7 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
     """Check the query only has supported directives, and its fields are correctly ordered."""
     # This is very restrictive for now. Other cases (e.g. tags not crossing boundaries) are
     # also ok, but temporarily not allowed
-    supported_directives = frozenset(('filter', 'output', 'optional', 'stitch'))
+    supported_directives = frozenset(('filter', 'output', 'optional'))
 
     def enter_Directive(self, node, *args):
         """Check that the directive is supported."""
