@@ -66,8 +66,7 @@ def _emit_code_from_cypher_step(cypher_step):
                              u'it should have moved the filtering to the global operations '
                              u'section. {}'.format(cypher_step))
 
-    # if CypherStep was generated from blocks within a fold scope.
-    step_location = cypher_step.as_block.location
+    step_location = cypher_step.as_block.location  # destination vertex for current step's traversal
     step_location_name = get_unique_vertex_name_from_location(step_location)
 
     is_fold_step = isinstance(step_location, FoldScopeLocation)
