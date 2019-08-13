@@ -1,4 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+"""Helper functions for Cypher, such as generating unique vertex names within fold scopes."""
 from graphql_compiler.compiler.helpers import FoldScopeLocation, Location
 
 
