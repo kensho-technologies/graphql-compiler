@@ -5,12 +5,13 @@ from copy import copy
 from graphql.language import ast as ast_types
 from graphql.language.visitor import TypeInfoVisitor, Visitor, visit
 from graphql.utils.type_info import TypeInfo
-from graphql.validation import validate
 
 from ..ast_manipulation import get_only_query_definition
 from ..compiler.helpers import strip_non_null_and_list_from_type
 from ..exceptions import GraphQLValidationError
-from .utils import SchemaStructureError, try_get_ast
+from .utils import (
+    SchemaStructureError, check_query_is_valid_to_split, is_property_field, try_get_ast
+)
 
 
 QueryConnection = namedtuple(
@@ -69,7 +70,7 @@ def split_query(query_ast, merged_schema_descriptor):
         - SchemaStructureError if the input merged_schema_descriptor appears to be invalid
           or inconsistent
     """
-    _check_query_is_valid_to_split(merged_schema_descriptor.schema, query_ast)
+    check_query_is_valid_to_split(merged_schema_descriptor.schema, query_ast)
 
     # If schema directives are correctly represented in the schema object, type_info is all
     # that's needed to detect and address stitching fields. However, before this issue is
@@ -247,7 +248,7 @@ def _split_query_ast_one_level_recursive(
 
         if new_selection is not selection:
             made_changes = True
-            if _is_property_field(new_selection):
+            if is_property_field(new_selection):
                 # If a property field is returned and is different from the input, then this is
                 # a property field used in stitching. If no existing field has this name, insert
                 # the new property field to end of property fields. If some existing field has
@@ -423,33 +424,6 @@ def _get_child_type_and_selections(ast, type_info):
     return child_type_name, child_selection_set.selections
 
 
-def _is_property_field(selection):
-    """Return True if selection is a property field, False if a vertex field or type coercion.
-
-    Args:
-        selection: an element occuring inside a SelectionSet, which should be of type Field or
-                   InlineFragment
-
-    Returns:
-        True if the selection is a property field, False if it's a vertex field or type coercion
-    """
-    if isinstance(selection, ast_types.InlineFragment):
-        return False
-    if isinstance(selection, ast_types.Field):
-        if (
-            selection.selection_set is None or
-            selection.selection_set.selections is None or
-            selection.selection_set.selections == []
-        ):
-            return True
-        else:
-            return False
-    else:
-        raise AssertionError(
-            u'Input selection "{}" is not of type Field or InlineFragment.'.format(selection)
-        )
-
-
 def _get_edge_to_stitch_fields(merged_schema_descriptor):
     """Get a map from type/field of each cross schema edge, to the fields that the edge stitches.
 
@@ -508,7 +482,7 @@ def _replace_or_insert_property_field(selections, new_field):
         ):
             selections[index] = new_field
             return selections
-        if not _is_property_field(selection):
+        if not is_property_field(selection):
             selections.insert(index, new_field)
             return selections
     # No vertex fields and no property fields of the same name
@@ -612,64 +586,6 @@ class IntermediateOutNameAssigner(object):
         self.intermediate_output_count += 1
         self.intermediate_output_names.add(out_name)
         return out_name
-
-
-def _check_query_is_valid_to_split(schema, query_ast):
-    """Check the query is valid for splitting.
-
-    In particular, ensure that the query validates against the schema, does not contain
-    unsupported directives, and that in each selection, all property fields occur before all
-    vertex fields.
-
-    Args:
-        schema: GraphQLSchema object
-        query_ast: Document
-
-    Raises:
-        GraphQLValidationError if the query doesn't validate against the schema, contains
-        unsupported directives, or some property field occurs after a vertex field in some
-        selection
-    """
-    # Check builtin errors
-    built_in_validation_errors = validate(schema, query_ast)
-    if len(built_in_validation_errors) > 0:
-        raise GraphQLValidationError(
-            u'AST does not validate: {}'.format(built_in_validation_errors)
-        )
-    # Check no bad directives and fields are in order
-    visitor = CheckQueryIsValidToSplitVisitor()
-    visit(query_ast, visitor)
-
-
-class CheckQueryIsValidToSplitVisitor(Visitor):
-    """Check the query only has supported directives, and its fields are correctly ordered."""
-    # This is very restrictive for now. Other cases (e.g. tags not crossing boundaries) are
-    # also ok, but temporarily not allowed
-    supported_directives = frozenset(('filter', 'output', 'optional'))
-
-    def enter_Directive(self, node, *args):
-        """Check that the directive is supported."""
-        if node.name.value not in self.supported_directives:
-            raise GraphQLValidationError(
-                u'Directive "{}" is not yet supported, only "{}" are currently '
-                u'supported.'.format(node.name.value, self.supported_directives)
-            )
-
-    def enter_SelectionSet(self, node, *args):
-        """Check property fields occur before vertex fields and type coercions in selection."""
-        past_property_fields = False  # Whether we're seen a vertex field
-        for field in node.selections:
-            if _is_property_field(field):
-                if past_property_fields:
-                    raise GraphQLValidationError(
-                        u'In the selections {}, the property field {} occurs after a vertex '
-                        u'field or a type coercion statement, which is not allowed, as all '
-                        u'property fields must appear before all vertex fields.'.format(
-                            node.selections, field
-                        )
-                    )
-            else:
-                past_property_fields = True
 
 
 class SchemaIdSetterVisitor(Visitor):
