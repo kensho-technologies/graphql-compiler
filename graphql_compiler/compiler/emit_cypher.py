@@ -36,8 +36,8 @@ def get_unique_vertex_name_from_location(location):
     elif isinstance(location, Location):
         location_name, _ = location.get_location_name()
         return location_name
-    raise AssertionError(u'Expected location to be of type Location or FoldScopeLocation. Instead '
-                         u'got type {} for location {}'.format(type(location), location))
+    raise TypeError(u'Expected location to be of type Location or FoldScopeLocation. Instead got '
+                    u'type {} for location {}'.format(type(location), location))
 
 
 def get_collected_vertex_list_name(full_path_name):
