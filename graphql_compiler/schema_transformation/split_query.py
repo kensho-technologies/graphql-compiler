@@ -182,7 +182,7 @@ def _split_query_ast_one_level_recursive(
         ast: type Node, the AST that we are trying to split into child components. It is not
              modified by this function
         parent_selections: List[Node], containing all property fields (and possibly some vertex
-                           fields) in the level of selections that contains the input ast. If
+                           fields) in the level of selections that contains the input ast. It
                            is not modified by this function
         type_info: TypeInfo, used to get information about the types of fields while traversing
                    the query ast
