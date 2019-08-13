@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from functools import partial
 
-from .. import emit_cypher
+from .. import cypher_helpers
 from ...schema import COUNT_META_FIELD_NAME
 from ..blocks import CoerceType, Filter, Fold, MarkLocation, Recurse, Traverse
 from ..compiler_entities import Expression
@@ -146,7 +146,7 @@ class CypherFoldScopeContextField(Expression):
         self.validate()
 
         _, field_name = self.fold_scope_location.get_location_name()
-        mark_name = emit_cypher.fold_scope_location_full_path_name(self.fold_scope_location)
+        mark_name = cypher_helpers.fold_scope_location_full_path_name(self.fold_scope_location)
         validate_safe_string(mark_name)
         template = u'{mark_name}.{field_name}'
         return template.format(mark_name=mark_name, field_name=field_name)
@@ -166,7 +166,6 @@ class CypherFoldScopeContextField(Expression):
 
 def replace_local_fields_with_context_fields(ir_blocks):
     """Rewrite LocalField expressions into ContextField expressions referencing that location."""
-
     def visitor_func_base(location, expression):
         """Rewriter function that converts LocalFields into ContextFields at the given location."""
         if not isinstance(expression, LocalField):
