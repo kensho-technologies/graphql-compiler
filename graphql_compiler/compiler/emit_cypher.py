@@ -2,6 +2,7 @@
 """Convert lowered IR basic blocks to Cypher query strings."""
 from itertools import chain
 
+from graphql_compiler.compiler.cypher_query import CypherStep
 from graphql_compiler.compiler.helpers import FoldScopeLocation, Location
 
 from .blocks import Fold, QueryRoot, Recurse, Traverse
@@ -15,6 +16,10 @@ def get_fold_scope_location_full_path_name(fold_scope_location):
     # along that path.
     # For other query languages like MATCH and Gremlin, the fold directive doesn't require
     # us to name all the intermediate vertices on the path, which is why this is Cypher-specific.
+    if not (isinstance(fold_scope_location, FoldScopeLocation)):
+        raise TypeError(u'Expected cypher_step.as_block.location to be of type '
+                        u'FoldScopeLocation. Instead, got object {} of type {}.'
+                        .format(fold_scope_location, type(fold_scope_location)))
     base_location = fold_scope_location.base_location
     base_query_path = base_location.query_path  # the path traversed so far
     fold_path = fold_scope_location.fold_path  # the path specified at or within the folded scope.
@@ -163,6 +168,12 @@ def _emit_with_clause_components_for_current_fold_scope(current_fold_scope_cyphe
 
     vertex_names = {}
     for cypher_step in current_fold_scope_cypher_steps:
+        if not(isinstance(cypher_step, CypherStep)):
+            raise TypeError(u'Expected current_fold_scope_cypher_steps to contain only CypherStep '
+                            u'objects. Instead, got object {} of type {}. '
+                            u'current_fold_scope_cypher_steps: {}'
+                            .format(cypher_step, type(cypher_step),
+                                    current_fold_scope_cypher_steps))
         fold_scope_location = cypher_step.as_block.location
         full_vertex_name = get_fold_scope_location_full_path_name(fold_scope_location)
         collected_name = get_collected_vertex_list_name(full_vertex_name)
