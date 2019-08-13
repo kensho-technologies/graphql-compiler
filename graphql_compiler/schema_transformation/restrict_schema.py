@@ -34,11 +34,12 @@ def restrict_schema(schema_ast, types_to_keep):
     schema = build_ast_schema(schema_ast)
     query_type_name = get_query_type_name(schema)
     scalar_names = get_scalar_names(schema)
+
     visitor = RestrictSchemaVisitor(
         types_to_keep, query_type_name, scalar_names
     )
     restricted_schema = visit(schema_ast, visitor)
-    # The restricted schema may contain types with no fields left
+
     try:
         build_ast_schema(schema_ast)
     except Exception as e:  # Can't be more specific, build_ast_schema throws Exceptions
