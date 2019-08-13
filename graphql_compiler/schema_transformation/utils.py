@@ -1,17 +1,16 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from copy import copy
 import string
 
 from graphql import build_ast_schema
-from graphql.language.ast import Field, InlineFragment, Name, NamedType
+from graphql.language.ast import Field, InlineFragment, NamedType
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
 from graphql.utils.assert_valid_name import COMPILED_NAME_PATTERN
 from graphql.validation import validate
 import six
 
-from ..schema import FilterDirective, OutputDirective, OptionalDirective
 from ..exceptions import GraphQLError, GraphQLValidationError
+from ..schema import FilterDirective, OptionalDirective, OutputDirective
 
 
 class SchemaTransformError(GraphQLError):
@@ -334,10 +333,10 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
 
     def enter_SelectionSet(self, node, *args):
         """Check property fields occur before vertex fields and type coercions in selection."""
-        past_property_fields = False  # Whether we're seen a vertex field
+        seen_non_property_field = False  # Whether we're seen a vertex field/type coercion
         for field in node.selections:
             if is_property_field_ast(field):
-                if past_property_fields:
+                if seen_non_property_field:
                     raise GraphQLValidationError(
                         u'In the selections {}, the property field {} occurs after a vertex '
                         u'field or a type coercion statement, which is not allowed, as all '
@@ -346,7 +345,7 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
                         )
                     )
             else:
-                past_property_fields = True
+                seen_non_property_field = True
 
 
 def check_query_is_valid_to_split(schema, query_ast):
