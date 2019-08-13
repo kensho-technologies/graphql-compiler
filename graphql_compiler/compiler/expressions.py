@@ -2,7 +2,8 @@
 from graphql import GraphQLInt, GraphQLList, GraphQLNonNull
 import six
 
-from . import emit_cypher
+from graphql_compiler.compiler import cypher_helpers
+
 from ..exceptions import GraphQLCompilationError
 from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression
@@ -646,8 +647,8 @@ class FoldedContextField(Expression):
         self.validate()
 
         _, field_name = self.fold_scope_location.get_location_name()
-        mark_name = emit_cypher.get_collected_vertex_list_name(
-            emit_cypher.get_fold_scope_location_full_path_name(self.fold_scope_location))
+        mark_name = cypher_helpers.get_collected_vertex_list_name(
+            cypher_helpers.get_fold_scope_location_full_path_name(self.fold_scope_location))
         validate_safe_string(mark_name)
 
         template = u'[x IN {mark_name} | x.{field_name}]'
