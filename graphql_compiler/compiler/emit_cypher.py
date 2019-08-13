@@ -127,7 +127,7 @@ def _emit_code_from_cypher_step(cypher_step):
 
 
 def _emit_with_clause_components(cypher_steps):
-    """Emit a list of strings, one for each vertex or list passing through a WITH clause."""
+    """Emit a list of strings, one for each vertex or list that passes through a WITH clause."""
     if not cypher_steps:
         return []
 
