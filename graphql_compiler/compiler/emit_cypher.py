@@ -139,10 +139,9 @@ def _emit_with_clause_components(cypher_steps):
         if isinstance(location, FoldScopeLocation):
             location_name = get_collected_vertex_list_name(location_name)
         else:
-            raise AssertionError(u'Expected cypher_step\'s as_block\'s location to be either of '
-                                 u'type Location or FoldScopeLocation. Instead, got type: {} for '
-                                 u'location field: {}'
-                                 .format(type(location), location))
+            raise TypeError(u'Expected cypher_step\'s as_block\'s location to be either of type '
+                            u'Location or FoldScopeLocation. Instead, got type {} for location {}'
+                            .format(type(location), location))
         location_names.add(location_name)
 
     # Sort the locations, to ensure a deterministic order.
