@@ -92,8 +92,17 @@ def remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_tabl
     return new_ir_blocks
 
 
-class CypherFoldScopeContextField(Expression):
-    """An expression for a field captured in a @fold scope for non _x_count filtering."""
+class CypherFoldScopeContextFieldBeforeFolding(Expression):
+    """An expression for a field captured in a @fold scope before it's folded.
+
+    This differs from a regular FoldedContextField because the field_type for FoldedContextField
+    must be of type GraphQLList, i.e. the result of the fold. In this case, we may want to filter
+    on the result set before folding the vertices into a list, which means the field type need not
+    be a GraphQLList.
+
+    In test_input_data.filter_within_fold_scope() we have an example GraphQL query that requires us
+    to filter before folding, so compiling that to Cypher would require this Expression.
+    """
 
     __slots__ = ('fold_scope_location', 'field_type')
 
@@ -108,7 +117,7 @@ class CypherFoldScopeContextField(Expression):
         Returns:
             new CypherFoldScopeContextField object
         """
-        super(CypherFoldScopeContextField, self).__init__(fold_scope_location, field_type)
+        super(CypherFoldScopeContextFieldBeforeFolding, self).__init__(fold_scope_location, field_type)
         self.fold_scope_location = fold_scope_location
         self.field_type = field_type
         self.validate()
@@ -173,7 +182,7 @@ def replace_local_fields_with_context_fields(ir_blocks):
 
         location_at_field = location.navigate_to_field(expression.field_name)
         if isinstance(location, FoldScopeLocation):
-            return CypherFoldScopeContextField(location_at_field, expression.field_type)
+            return CypherFoldScopeContextFieldBeforeFolding(location_at_field, expression.field_type)
         else:
             return ContextField(location_at_field, expression.field_type)
 
