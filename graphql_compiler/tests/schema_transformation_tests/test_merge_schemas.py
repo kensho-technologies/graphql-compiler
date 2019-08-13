@@ -959,18 +959,19 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(InvalidCrossSchemaEdgeError):
             merge_schemas(
                 OrderedDict([
-                    ('schema', parse(ISS.union_schema)),
+                    ('first', parse(ISS.union_schema)),
+                    ('second', parse(ISS.interface_schema)),
                 ]),
                 [
                     CrossSchemaEdgeDescriptor(
                         edge_name='example_edge',
                         outbound_field_reference=FieldReference(
-                            schema_id='schema',
+                            schema_id='first',
                             type_name='Human',
                             field_name='id',
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id='schema',
+                            schema_id='first',
                             type_name='Droid',
                             field_name='id',
                         ),
