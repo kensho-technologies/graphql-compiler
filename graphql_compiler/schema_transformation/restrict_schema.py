@@ -1,8 +1,7 @@
 from copy import copy
 
 from graphql import build_ast_schema
-from graphql.language import ast as ast_types
-from graphql.language.visitor import REMOVE, visit, Visitor
+from graphql.language.visitor import REMOVE, Visitor, visit
 
 from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from .utils import SchemaStructureError, get_query_type_name, get_scalar_names
