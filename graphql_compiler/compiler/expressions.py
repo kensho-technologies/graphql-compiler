@@ -2,8 +2,7 @@
 from graphql import GraphQLInt, GraphQLList, GraphQLNonNull
 import six
 
-from graphql_compiler.compiler import cypher_helpers
-
+from . import cypher_helpers
 from ..exceptions import GraphQLCompilationError
 from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression

@@ -2,11 +2,10 @@
 """Convert lowered IR basic blocks to Cypher query strings."""
 from itertools import chain
 
-from graphql_compiler.compiler import cypher_helpers
-from graphql_compiler.compiler.cypher_query import CypherStep
-from graphql_compiler.compiler.helpers import FoldScopeLocation
-
+from . import cypher_helpers
 from .blocks import Fold, QueryRoot, Recurse, Traverse
+from .cypher_query import CypherStep
+from .helpers import FoldScopeLocation
 
 
 def _emit_code_from_cypher_step(cypher_step):
@@ -124,7 +123,7 @@ def _emit_with_clause_components_for_current_fold_scope(current_fold_scope_cyphe
 
     vertex_names = {}
     for cypher_step in current_fold_scope_cypher_steps:
-        if not(isinstance(cypher_step, CypherStep)):
+        if not isinstance(cypher_step, CypherStep):
             raise TypeError(u'Expected current_fold_scope_cypher_steps to contain only CypherStep '
                             u'objects. Instead, got object {} of type {}. '
                             u'current_fold_scope_cypher_steps: {}'
@@ -140,8 +139,8 @@ def _emit_with_clause_components_for_current_fold_scope(current_fold_scope_cyphe
     for index, collect_call in enumerate(sorted(vertex_names)):
         if index > 0:
             result.append(u',')
-        result.append(u'\n  %(collect_call)s AS %(collected_name)s' %
-                      {'collect_call': collect_call, 'collected_name': vertex_names[collect_call]})
+        result.append(u'\n  {collect_call} AS {collected_name}'
+                      .format(collect_call=collect_call, collected_name=vertex_names[collect_call]))
     return result
 
 
