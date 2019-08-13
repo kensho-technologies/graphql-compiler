@@ -10,7 +10,7 @@ import six
 from ...schema_transformation.merge_schemas import (
     CrossSchemaEdgeDescriptor, FieldReference, merge_schemas
 )
-from ...schema_transformation.utils import SchemaNameConflictError
+from ...schema_transformation.utils import InvalidCrossSchemaEdgeError, SchemaNameConflictError
 from .input_schema_strings import InputSchemaStrings as ISS
 
 
@@ -952,6 +952,513 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
             }
         ''')
         self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
+
+
+class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
+    def test_invalid_edge_within_single_schema(self):
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('schema', parse(ISS.union_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='example_edge',
+                        outbound_field_reference=FieldReference(
+                            schema_id='schema',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='schema',
+                            type_name='Droid',
+                            field_name='id',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_nonexistent_schema(self):
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(ISS.same_field_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='example_edge',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='third',
+                            type_name='Person',
+                            field_name='identifier',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_type_in_wrong_schema(self):
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(ISS.same_field_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='example_edge',
+                        outbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Person',
+                            field_name='identifier',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_nonexistent_type(self):
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(ISS.same_field_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='example_edge',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Droid',
+                            field_name='identifier',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_vertex_field_scalar_type(self):
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(ISS.same_field_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='example_edge',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='String',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Droid',
+                            field_name='identifier',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_vertex_field_enum_type(self):
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(ISS.enum_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='example_edge',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Height',
+                            field_name='identifier',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_vertex_field_union_type(self):
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.union_schema)),
+                    ('second', parse(ISS.interface_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='example_edge',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='HumanOrDroid',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Kid',
+                            field_name='id',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_nonexistent_property_field(self):
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(ISS.same_field_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='example_edge',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Person',
+                            field_name='name',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_new_vertex_field_clash_with_existing_field(self):
+        clashing_field_schema = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Person {
+              identifier: String
+              in_clashing_name: Int
+            }
+
+            type SchemaQuery {
+              Person: Person
+            }
+        ''')
+        with self.assertRaises(SchemaNameConflictError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(clashing_field_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='clashing_name',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Person',
+                            field_name='identifier',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_new_vertex_field_clash_with_previous_edge_vertex_field(self):
+        with self.assertRaises(SchemaNameConflictError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(ISS.same_field_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='clashing_name',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Person',
+                            field_name='identifier',
+                        ),
+                        out_edge_only=False,
+                    ),
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='clashing_name',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Person',
+                            field_name='identifier',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_property_field_not_scalar_type(self):
+        not_scalar_field_schema = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Person {
+              friend: Person
+            }
+
+            type SchemaQuery {
+              Person: Person
+            }
+        ''')
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(not_scalar_field_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='clashing_name',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Person',
+                            field_name='friend',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_property_field_list_of_types(self):
+        not_scalar_field_schema = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Person {
+              friend: [Person]
+            }
+
+            type SchemaQuery {
+              Person: Person
+            }
+        ''')
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(not_scalar_field_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='clashing_name',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Person',
+                            field_name='friend',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_property_field_list_of_scalars(self):
+        not_scalar_field_schema = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Person {
+              id: [String]
+            }
+
+            type SchemaQuery {
+              Person: Person
+            }
+        ''')
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(not_scalar_field_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='clashing_name',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Person',
+                            field_name='id',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_property_field_non_null_type(self):
+        not_scalar_field_schema = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Person {
+              friend: Person!
+            }
+
+            type SchemaQuery {
+              Person: Person
+            }
+        ''')
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(not_scalar_field_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='clashing_name',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Person',
+                            field_name='friend',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_property_fields_mismatched_scalars(self):
+        mismatched_scalar_schema = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Person {
+              identifier: Int
+            }
+
+            type SchemaQuery {
+              Person: Person
+            }
+        ''')
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(mismatched_scalar_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='clashing_name',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Person',
+                            field_name='identifier',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
+
+    def test_invalid_edge_property_fields_non_null_scalar_mismatch_normal_scalar(self):
+        non_null_field_schema = dedent('''\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Person {
+              identifier: Int!
+            }
+
+            type SchemaQuery {
+              Person: Person
+            }
+        ''')
+        with self.assertRaises(InvalidCrossSchemaEdgeError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
+                    ('second', parse(non_null_field_schema)),
+                ]),
+                [
+                    CrossSchemaEdgeDescriptor(
+                        edge_name='example_edge',
+                        outbound_field_reference=FieldReference(
+                            schema_id='first',
+                            type_name='Human',
+                            field_name='id',
+                        ),
+                        inbound_field_reference=FieldReference(
+                            schema_id='second',
+                            type_name='Person',
+                            field_name='identifier',
+                        ),
+                        out_edge_only=False,
+                    ),
+                ]
+            )
 
 
 class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
