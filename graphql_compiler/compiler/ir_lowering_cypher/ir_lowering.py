@@ -117,7 +117,8 @@ class CypherFoldScopeContextFieldBeforeFolding(Expression):
         Returns:
             new CypherFoldScopeContextField object
         """
-        super(CypherFoldScopeContextFieldBeforeFolding, self).__init__(fold_scope_location, field_type)
+        super(CypherFoldScopeContextFieldBeforeFolding, self).__init__(
+            fold_scope_location, field_type)
         self.fold_scope_location = fold_scope_location
         self.field_type = field_type
         self.validate()
@@ -182,7 +183,8 @@ def replace_local_fields_with_context_fields(ir_blocks):
 
         location_at_field = location.navigate_to_field(expression.field_name)
         if isinstance(location, FoldScopeLocation):
-            return CypherFoldScopeContextFieldBeforeFolding(location_at_field, expression.field_type)
+            return CypherFoldScopeContextFieldBeforeFolding(location_at_field,
+                                                            expression.field_type)
         else:
             return ContextField(location_at_field, expression.field_type)
 
