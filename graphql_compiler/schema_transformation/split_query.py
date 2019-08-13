@@ -238,7 +238,7 @@ def _split_query_ast_one_level_recursive(
     type_info.enter(ast.selection_set)
     for selection in selections:  # Recurse on children
         type_info.enter(selection)
-        # NOTE: By the time we reach any cross schema edge fields, new_selections contains all
+        # By the time we reach any cross schema edge fields, new_selections contains all
         # property fields, including any new property fields created by previous cross schema
         # edge fields, and therefore will not create duplicate new fields
         new_selection = _split_query_ast_one_level_recursive(
@@ -329,7 +329,7 @@ def _get_property_field(selections, field_name, directives_from_edge):
     """Return a Field object with field_name, sharing directives with any such existing field.
 
     Any valid directives in directives_on_edge will be transferred over to the new field.
-    If there is an existing Field in parent_selection with field_name, the returned new Field
+    If there is an existing Field in selection with field_name, the returned new Field
     will also contain all directives of the existing field with that name.
 
     Args:
@@ -554,6 +554,9 @@ def _get_out_name_optionally_add_output(field, intermediate_out_name_assigner):
 
     Args:
         field: Field object, whose directives we may modify by adding an @output directive
+        intermediate_out_name_assigner: IntermediateOutNameAssigner, which will be used to
+                                        generate an out_name, if it's necessary to create a
+                                        new @output directive
 
     Returns:
         str, name of the out_name of the @output directive, either pre-existing or newly
