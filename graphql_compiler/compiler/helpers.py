@@ -76,6 +76,13 @@ def strip_non_null_from_type(graphql_type):
     return graphql_type
 
 
+def strip_non_null_and_list_from_type(graphql_type):
+    """Return the GraphQL type stripped of its GraphQLNonNull and GraphQLList annotations."""
+    while isinstance(graphql_type, (GraphQLNonNull, GraphQLList)):
+        graphql_type = graphql_type.of_type
+    return graphql_type
+
+
 def get_edge_direction_and_name(vertex_field_name):
     """Get the edge direction and name from a non-root vertex field name."""
     edge_direction = None
