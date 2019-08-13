@@ -156,7 +156,7 @@ class CypherFoldScopeContextFieldBeforeFolding(Expression):
         self.validate()
 
         _, field_name = self.fold_scope_location.get_location_name()
-        mark_name = cypher_helpers.fold_scope_location_full_path_name(self.fold_scope_location)
+        mark_name = cypher_helpers.get_fold_scope_location_full_path_name(self.fold_scope_location)
         validate_safe_string(mark_name)
         template = u'{mark_name}.{field_name}'
         return template.format(mark_name=mark_name, field_name=field_name)
