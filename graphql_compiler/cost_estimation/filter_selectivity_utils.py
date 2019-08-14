@@ -70,10 +70,7 @@ def _convert_uuid_string_to_int(uuid_string):
 def _get_selectivity_of_integer_inequality_filter(
     domain_interval, parameter_values, filter_operator
 ):
-    """Return the selectivity of a given integer inequality filter for a given interval of integers.
-
-    Preconditions:
-        1. filter_operator is a valid inequality filter operator.
+    """Return the selectivity of a given integer inequality filter filtering over a given interval.
 
     Args:
         domain_interval: tuple of (int, int), describing the inclusive lower and upper bound of the
@@ -114,6 +111,11 @@ def _get_selectivity_of_integer_inequality_filter(
     if query_interval[0] > query_interval[1]:
         field_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=0.0)
         return field_selectivity
+
+    if not domain_interval[0] <= query_interval[0] <= query_interval[1] <= domain_interval[1]:
+        raise AssertionError(u'Query interval {} is not'
+                             u'a subset of the given domain interval {}.'
+                             .format(query_interval, domain_interval))
 
     # Assumption: the values of the integers being filtered are evenly distributed among the domain
     # of valid values.
