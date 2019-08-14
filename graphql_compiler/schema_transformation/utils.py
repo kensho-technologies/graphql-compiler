@@ -240,7 +240,7 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
             field_name = node.name.value
             type_node = node.type
             # NamedType node may be wrapped in several layers of NonNullType or ListType
-            while not isinstance(type_node, ast_types.NamedType):
+            while not isinstance(type_node, NamedType):
                 type_node = type_node.type
             queried_type_name = type_node.name.value
             if field_name != queried_type_name:
