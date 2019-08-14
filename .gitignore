@@ -50,3 +50,10 @@ dist/
 *.vim
 *.swp
 *.swo
+
+# Jupyter notebook checkpoint files
+**/.ipynb_checkpoints/
+
+# Put anything in this directory to explicitly have it excluded.
+# Jupyter notebook files for local prototyping are a good use case.
+localdata/
