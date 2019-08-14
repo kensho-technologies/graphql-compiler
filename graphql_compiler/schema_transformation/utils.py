@@ -12,7 +12,7 @@ import six
 
 from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from ..exceptions import GraphQLError, GraphQLValidationError
-from ..schema import FilterDirective, OutputDirective, OptionalDirective
+from ..schema import FilterDirective, OptionalDirective, OutputDirective
 
 
 class SchemaTransformError(GraphQLError):
