@@ -1,7 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
-from graphql.language import ast as ast_types
+from graphql.language.ast import (
+    Argument, Directive, Document, Field, Name, OperationDefinition, SelectionSet, StringValue
+)
 
 from ..schema import OutputDirective
 
@@ -34,12 +36,12 @@ class SubQueryNode(object):
 
 def _get_output_directive(out_name):
     """Return a Directive representing an @output with the input out_name."""
-    return ast_types.Directive(
-        name=ast_types.Name(value=OutputDirective.name),
+    return Directive(
+        name=Name(value=OutputDirective.name),
         arguments=[
-            ast_types.Argument(
-                name=ast_types.Name(value=u'out_name'),
-                value=ast_types.StringValue(value=out_name),
+            Argument(
+                name=Name(value=u'out_name'),
+                value=StringValue(value=out_name),
             ),
         ],
     )
@@ -47,15 +49,15 @@ def _get_output_directive(out_name):
 
 def _get_query_document(root_vertex_field_name, root_selections):
     """Return a Document representing a query with the specified name and selections."""
-    return ast_types.Document(
+    return Document(
         definitions=[
-            ast_types.OperationDefinition(
+            OperationDefinition(
                 operation='query',
-                selection_set=ast_types.SelectionSet(
+                selection_set=SelectionSet(
                     selections=[
-                        ast_types.Field(
-                            name=ast_types.Name(value=root_vertex_field_name),
-                            selection_set=ast_types.SelectionSet(
+                        Field(
+                            name=Name(value=root_vertex_field_name),
+                            selection_set=SelectionSet(
                                 selections=root_selections,
                             ),
                             directives=[],
@@ -70,6 +72,20 @@ def _get_query_document(root_vertex_field_name, root_selections):
 def _add_query_connections(parent_query_node, child_query_node, parent_field_out_name,
                            child_field_out_name):
     """Modify parent and child SubQueryNodes by adding QueryConnections between them."""
+    if child_query_node.parent_query_connection is not None:
+        raise AssertionError(
+            u'The input child query node already has a parent connection, {}'.format(
+                child_query_node.parent_query_connection
+            )
+        )
+    if any(
+        query_connection_from_parent.sink_query_node is child_query_node
+        for query_connection_from_parent in parent_query_node.child_query_connections
+    ):
+        raise AssertionError(
+            u'The input parent query node already has the child query node in a child query '
+            u'connection.'
+        )
     # Create QueryConnections
     new_query_connection_from_parent = QueryConnection(
         sink_query_node=child_query_node,
