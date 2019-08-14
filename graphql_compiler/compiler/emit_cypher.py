@@ -209,7 +209,7 @@ def _emit_fold_scope(cypher_query):
     """
     query_data = []
     previous_fold_scope_cypher_steps = []
-    for fold_scope_location in cypher_query.folds:
+    for fold_scope_location in sorted(cypher_query.folds.keys()):
         # step 2
         current_fold_scope_cypher_steps = cypher_query.folds[fold_scope_location]
         for cypher_step in current_fold_scope_cypher_steps:

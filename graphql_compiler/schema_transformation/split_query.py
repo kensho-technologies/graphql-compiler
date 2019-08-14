@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
+<<<<<<< HEAD
 from copy import copy
 
 from graphql.language import ast as ast_types
@@ -15,6 +16,15 @@ from .utils import (
     try_get_ast_by_name_and_type
 )
 
+=======
+
+from graphql.language.ast import (
+    Argument, Directive, Document, Field, Name, OperationDefinition, SelectionSet, StringValue
+)
+
+from ..schema import OutputDirective
+
+>>>>>>> 9d96be0e7b99c7d561625f22021aef9d292ba0f2
 
 QueryConnection = namedtuple(
     'QueryConnection', (
@@ -42,6 +52,7 @@ class SubQueryNode(object):
         # List[SubQueryNode], the queries that depend on the current query
 
 
+<<<<<<< HEAD
 def split_query(query_ast, merged_schema_descriptor):
     """Split input query AST into a tree of SubQueryNodes targeting each individual schema.
 
@@ -534,6 +545,16 @@ def _get_output_directive(out_name):
             ast_types.Argument(
                 name=ast_types.Name(value=u'out_name'),
                 value=ast_types.StringValue(value=out_name),
+=======
+def _get_output_directive(out_name):
+    """Return a Directive representing an @output with the input out_name."""
+    return Directive(
+        name=Name(value=OutputDirective.name),
+        arguments=[
+            Argument(
+                name=Name(value=u'out_name'),
+                value=StringValue(value=out_name),
+>>>>>>> 9d96be0e7b99c7d561625f22021aef9d292ba0f2
             ),
         ],
     )
@@ -541,6 +562,7 @@ def _get_output_directive(out_name):
 
 def _get_query_document(root_vertex_field_name, root_selections):
     """Return a Document representing a query with the specified name and selections."""
+<<<<<<< HEAD
     return ast_types.Document(
         definitions=[
             ast_types.OperationDefinition(
@@ -550,6 +572,17 @@ def _get_query_document(root_vertex_field_name, root_selections):
                         ast_types.Field(
                             name=ast_types.Name(value=root_vertex_field_name),
                             selection_set=ast_types.SelectionSet(
+=======
+    return Document(
+        definitions=[
+            OperationDefinition(
+                operation='query',
+                selection_set=SelectionSet(
+                    selections=[
+                        Field(
+                            name=Name(value=root_vertex_field_name),
+                            selection_set=SelectionSet(
+>>>>>>> 9d96be0e7b99c7d561625f22021aef9d292ba0f2
                                 selections=root_selections,
                             ),
                             directives=[],
@@ -564,6 +597,23 @@ def _get_query_document(root_vertex_field_name, root_selections):
 def _add_query_connections(parent_query_node, child_query_node, parent_field_out_name,
                            child_field_out_name):
     """Modify parent and child SubQueryNodes by adding QueryConnections between them."""
+<<<<<<< HEAD
+=======
+    if child_query_node.parent_query_connection is not None:
+        raise AssertionError(
+            u'The input child query node already has a parent connection, {}'.format(
+                child_query_node.parent_query_connection
+            )
+        )
+    if any(
+        query_connection_from_parent.sink_query_node is child_query_node
+        for query_connection_from_parent in parent_query_node.child_query_connections
+    ):
+        raise AssertionError(
+            u'The input parent query node already has the child query node in a child query '
+            u'connection.'
+        )
+>>>>>>> 9d96be0e7b99c7d561625f22021aef9d292ba0f2
     # Create QueryConnections
     new_query_connection_from_parent = QueryConnection(
         sink_query_node=child_query_node,
@@ -594,6 +644,7 @@ class IntermediateOutNameAssigner(object):
         self.intermediate_output_count += 1
         self.intermediate_output_names.add(out_name)
         return out_name
+<<<<<<< HEAD
 
 
 class SchemaIdSetterVisitor(Visitor):
@@ -645,3 +696,5 @@ class SchemaIdSetterVisitor(Visitor):
                         prior_type_schema_id
                     )
                 )
+=======
+>>>>>>> 9d96be0e7b99c7d561625f22021aef9d292ba0f2

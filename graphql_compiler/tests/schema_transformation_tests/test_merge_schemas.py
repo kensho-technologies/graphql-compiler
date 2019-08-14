@@ -486,6 +486,7 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             merge_schemas(
                 OrderedDict([
                     ('', parse(ISS.basic_schema)),
+                    ('enum', parse(ISS.enum_schema)),
                 ]),
                 [],
             )
@@ -493,6 +494,7 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             merge_schemas(
                 OrderedDict([
                     ('hello\n', parse(ISS.basic_schema)),
+                    ('enum', parse(ISS.enum_schema)),
                 ]),
                 [],
             )
@@ -500,6 +502,7 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             merge_schemas(
                 OrderedDict([
                     ('<script>alert("hello world")</script>', parse(ISS.basic_schema)),
+                    ('enum', parse(ISS.enum_schema)),
                 ]),
                 [],
             )
@@ -507,6 +510,7 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             merge_schemas(
                 OrderedDict([
                     ('\t\b', parse(ISS.basic_schema)),
+                    ('enum', parse(ISS.enum_schema)),
                 ]),
                 [],
             )
@@ -514,6 +518,21 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             merge_schemas(
                 OrderedDict([
                     (42, parse(ISS.basic_schema)),
+                    ('enum', parse(ISS.enum_schema)),
+                ]),
+                [],
+            )
+
+    def test_too_few_input_schemas(self):
+        with self.assertRaises(ValueError):
+            merge_schemas(
+                OrderedDict(),
+                [],
+            )
+        with self.assertRaises(ValueError):
+            merge_schemas(
+                OrderedDict([
+                    ('first', parse(ISS.basic_schema)),
                 ]),
                 [],
             )
