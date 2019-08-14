@@ -14,6 +14,14 @@ Selectivity = namedtuple('Selectivity', (
                 # fraction of results that pass the filter
 ))
 
+# IntegerInterval is used to denote a continuous non-empty interval of integers.
+IntegerInterval = namedtuple('IntegerInterval', (
+    'lower_bound',    # optional int, inclusive lower bound of integers in the interval.
+                      # Intervals that do not have a lower bound denote this by using None.
+    'upper_bound',    # optional int, inclusive upper bound of integers in the interval.
+                      # Intervals that do not have a upper bound denote this by using None.
+))
+
 ABSOLUTE_SELECTIVITY = 'absolute'
 FRACTIONAL_SELECTIVITY = 'fractional'
 
@@ -33,6 +41,24 @@ def _is_absolute(selectivity):
 def _is_fractional(selectivity):
     """Returns True if selectivity has kind fractional."""
     return selectivity.kind == FRACTIONAL_SELECTIVITY
+
+
+def _get_intersection_of_IntegerIntervals(interval_a, interval_b):
+    """Return the intersection of two IntegerIntervals, or None if the intervals are disjoint."""
+    if interval_a.upper_bound < interval_b.lower_bound or
+            interval_b.upper_bound < interval_a.lower_bound:
+        # These conditions imply the intervals are disjoint, so we return None to indicate this.
+        return None
+
+    intersection = interval_a
+    if interval_b.lower_bound is not None:
+        if intersection.lower_bound is None or intersection.lower_bound < interval_b.lower_bound:
+            intersection.lower_bound = interval_b.lower_bound
+    if interval_b.upper_bound is not None:
+        if intersection.upper_bound is None or intersection.upper_bound > interval_b.upper_bound:
+            intersection.upper_bound = interval_b.upper_bound
+
+    return intersection
 
 
 def _has_any_absolute(selectivities):
@@ -58,14 +84,96 @@ def _convert_uuid_string_to_int(uuid_string):
     return UUID(uuid_string).int
 
 
+def _get_query_interval_of_binary_integer_inequality_filter(
+    parameter_values, filter_operator
+):
+    """Return IntegerInterval of values passing through a binary integer inequality filter."""
+    if len(parameter_values) != 1:
+        raise ValueError(u'Binary inequality filter should have '
+                         u'exactly one parameter value: {} {}'
+                         .format(parameter_values, filter_operator))
+
+    parameter_value = parameter_values[0]
+    query_interval = IntegerInterval(None, None)
+    if filter_operator == '>':
+        # This (exclusively) constrains the lower bound of the values passing through the filter.
+        query_interval.lower_bound = parameter_value + 1
+    elif filter_operator == '>=':
+        # This (inclusively) constrains the lower bound of the values passing through the filter.
+        query_interval.lower_bound = parameter_value
+    elif filter_operator == '<':
+        # This (exclusively) constrains the upper bound of the values passing through the filter.
+        query_interval.upper_bound = parameter_value - 1
+    elif filter_operator == '<=':
+        # This (inclusively) constrains the upper bound of the values passing through the filter.
+        query_interval.upper_bound = parameter_value
+    else:
+        raise AssertionError(u'Cost estimator found unsupported '
+                             u'binary integer inequality operator {}.'
+                             .format(filter_operator))
+
+    return query_interval
+
+
+def _get_query_interval_of_ternary_integer_inequality_filter(
+    parameter_values, filter_operator
+):
+    """Return IntegerInterval of values passing through a ternary integer inequality filter."""
+    if len(parameter_values) != 2:
+        raise ValueError(u'Ternary inequality filter should have '
+                         u'exactly two parameter values: {} {}'
+                         .format(parameter_values, filter_operator))
+
+    query_interval = IntegerInterval(None, None)
+    if filter_operator == 'between':
+        # This (inclusively) constrains the lower and upper bounds of the
+        # values passing through the filter.
+        query_interval.lower_bound = parameter_values[0]
+        query_interval.upper_bound = parameter_values[1]
+    else:
+        raise AssertionError(u'Cost estimator found unsupported '
+                             u'ternary integer inequality operator {}.'
+                             .format(filter_operator))
+
+    return query_interval
+
+
+def _get_query_interval_of_integer_inequality_filter(parameter_values, filter_operator):
+    """Return IntegerInterval of values passing through a given integer inequality filter."""
+    if len(parameter_values) == 1:
+        query_interval = _get_query_interval_of_binary_integer_inequality_filter(
+            parameter_values, filter_operator
+        )
+    elif len(parameter_values) == 2:
+        query_interval = _get_query_interval_of_ternary_integer_inequality_filter(
+            parameter_values, filter_operator
+        )
+    else:
+        raise AssertionError(u'Cost estimator found filter operator {} with parameter values {}. '
+                             u'Currently, an operator must have either one or two parameter values.'
+                             .format(filter_operator))
+
+    return query_interval
+
+
 def _get_selectivity_of_integer_inequality_filter(
     domain_interval, parameter_values, filter_operator
 ):
     """Return the selectivity of a given integer inequality filter filtering over a given interval.
 
+    First, we represent the filter being done in terms of the set of numbers that pass through the
+    given filter as an IntegerInterval. If a lower or upper bound does not exist, this is indicated
+    using None in the interval representation. For example, a '<' filter with a parameter value of 4
+    would be represented as (None, 4).
+    After this, we find the intersection of the domain being filtered and the filter interval.
+    The larger the intersection relative to the domain interval, the higher the selectivity. For
+    example, if the intersection is half as big as the domain interval, this will correspond to a
+    Fractional Selectivity with a selectivity factor of 0.5 (i.e. roughly 50% of elements pass
+    through the filter).
+
     Args:
-        domain_interval: tuple of (int, int), describing the inclusive lower and upper bounds of the
-                         interval of integers being filtered.
+        domain_interval: IntegerInterval namedtuple, describing the interval of integers
+                         being filtered.
         parameter_values: List[int], describing the parameters for the inequality filter.
         filter_operator: str, describing the inequality filter operation being performed.
 
@@ -74,45 +182,29 @@ def _get_selectivity_of_integer_inequality_filter(
     """
     # Inequality filters on integers can also be represented by an interval for the subset of values
     # that pass through the filter. By representing the filter as an interval, we avoid considering
-    # the operators separately.
-    query_interval = (domain_interval[0], domain_interval[1])
-    if filter_operator == '>':
-        # This (exclusively) constrains the lower bound of the values passing through the filter.
-        query_interval[0] = max(query_interval[0], parameter_values[0] + 1)
-    elif filter_operator == '>=':
-        # This (inclusively) constrains the lower bound of the values passing through the filter.
-        query_interval[0] = max(query_interval[0], parameter_values[0])
-    elif filter_operator == '<':
-        # This (exclusively) constrains the upper bound of the values passing through the filter.
-        query_interval[1] = min(query_interval[1], parameter_values[0] - 1)
-    elif filter_operator == '<=':
-        # This (inclusively) constrains the upper bound of the values passing through the filter.
-        query_interval[1] = min(query_interval[1], parameter_values[0])
-    elif filter_operator == 'between':
-        # This (inclusively) constrains the lower and upper bounds of the
-        # values passing through the filter.
-        query_interval[0] = max(query_interval[0], parameter_values[0])
-        query_interval[1] = min(query_interval[1], parameter_values[1])
-    else:
-        raise AssertionError(u'Cost estimator found unsupported integer inequality operator {}'
-                             .format(filter_operator))
+    # the operators separately. If a lower or upper bound does not exist, we denote it using None.
+    query_interval = _get_query_interval_of_integer_inequality_filter(
+        parameter_values, filter_operator
+    )
+
+    intersection = _get_intersection_of_IntegerIntervals(domain_interval, query_interval)
 
     # If the interval of values passing through the filters is empty, no results will be
     # returned. This happens if the interval's upper bound is smaller than the lower bound.
-    if query_interval[0] > query_interval[1]:
+    if intersection is None:
         field_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=0.0)
         return field_selectivity
 
-    if not domain_interval[0] <= query_interval[0] <= query_interval[1] <= domain_interval[1]:
-        raise AssertionError(u'Query interval {} is not'
+    if not domain_interval[0] <= intersection[0] <= intersection[1] <= domain_interval[1]:
+        raise AssertionError(u'Query interval {} is not '
                              u'a subset of the given domain interval {}.'
-                             .format(query_interval, domain_interval))
+                             .format(intersection, domain_interval))
 
     # Assumption: the values of the integers being filtered are evenly distributed among the domain
     # of valid values.
-    query_interval_size = query_interval[1] - query_interval[0] + 1
+    intersection_size = intersection[1] - intersection[0] + 1
     domain_interval_size = domain_interval[1] - domain_interval[0] + 1
-    fraction_of_domain_queried = query_interval_size / domain_interval_size
+    fraction_of_domain_queried = intersection_size / domain_interval_size
 
     field_selectivity = Selectivity(
         kind=FRACTIONAL_SELECTIVITY,
@@ -147,10 +239,10 @@ def _estimate_inequality_filter_selectivity(
         field_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
 
         # TODO(vlad): Improve inequality estimation by implementing histograms.
+        # HACK(vlad): Currently, each UUID is assumed to have a name of 'uuid'. Using the schema
+        #             graph for knowledge about UUID fields would generalize better.
         if field_name == 'uuid':
-            # HACK(vlad): Currently, the min/max UUID values are hardcoded in this module. Once
-            #             histograms are implemented, we can remove the constants.
-            uuid_domain = (MIN_UUID_INT, MAX_UUID_INT)
+            uuid_domain = IntegerInterval(MIN_UUID_INT, MAX_UUID_INT)
 
             # Instead of working with UUIDs, we convert each occurence of UUID to its corresponding
             # integer representation.
