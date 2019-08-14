@@ -4305,17 +4305,15 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = '''
             MATCH (Animal___1:Animal)
-            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
-            WITH
-              Animal___1 AS Animal___1,
-              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             WITH
               Animal___1 AS Animal___1,
-              collected_Animal__out_Animal_ParentOf___1 AS
-                collected_Animal__out_Animal_ParentOf___1,
-              collect(Animal__in_Animal_ParentOf___1) AS
-                collected_Animal__in_Animal_ParentOf___1
+              collect(Animal__in_Animal_ParentOf___1) AS collected_Animal__in_Animal_ParentOf___1
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              collected_Animal__in_Animal_ParentOf___1 AS collected_Animal__in_Animal_ParentOf___1,
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
             RETURN
               Animal___1.name AS `animal_name`,
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_names_list`,
@@ -4403,27 +4401,26 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = '''
             MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH (Animal__in_Animal_ParentOf___1)-[:Animal_ParentOf]->
+              (Animal__in_Animal_ParentOf__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              collect(Animal__in_Animal_ParentOf___1) AS collected_Animal__in_Animal_ParentOf___1,
+              collect(Animal__in_Animal_ParentOf__out_Animal_ParentOf___1) AS
+                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
             OPTIONAL MATCH
               (Animal__out_Animal_ParentOf___1)<-[:Animal_ParentOf]-
               (Animal__out_Animal_ParentOf__in_Animal_ParentOf___1:Animal)
             WITH
               Animal___1 AS Animal___1,
+              collected_Animal__in_Animal_ParentOf___1 AS collected_Animal__in_Animal_ParentOf___1,
+              collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 AS
+                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1,
               collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1,
               collect(Animal__out_Animal_ParentOf__in_Animal_ParentOf___1) AS
                 collected_Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
-            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
-            OPTIONAL MATCH (Animal__in_Animal_ParentOf___1)-[:Animal_ParentOf]->
-              (Animal__in_Animal_ParentOf__out_Animal_ParentOf___1:Animal)
-            WITH
-              Animal___1 AS Animal___1,
-              collected_Animal__out_Animal_ParentOf___1 AS
-                collected_Animal__out_Animal_ParentOf___1,
-              collected_Animal__out_Animal_ParentOf__in_Animal_ParentOf___1 AS
-                collected_Animal__out_Animal_ParentOf__in_Animal_ParentOf___1,
-              collect(Animal__in_Animal_ParentOf___1) AS collected_Animal__in_Animal_ParentOf___1,
-              collect(Animal__in_Animal_ParentOf__out_Animal_ParentOf___1) AS
-                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
             RETURN
               Animal___1.name AS `animal_name`,
               [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.name] AS
@@ -4483,16 +4480,15 @@ class CompilerTests(unittest.TestCase):
         expected_sql = NotImplementedError
         expected_cypher = '''
             MATCH (Animal___1:Animal)
-            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
-            WITH
-              Animal___1 AS Animal___1,
-              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
             OPTIONAL MATCH (Animal___1)-[:Animal_FedAt]->(Animal__out_Animal_FedAt___1:FeedingEvent)
             WITH
               Animal___1 AS Animal___1,
-              collected_Animal__out_Animal_ParentOf___1 AS
-                collected_Animal__out_Animal_ParentOf___1,
               collect(Animal__out_Animal_FedAt___1) AS collected_Animal__out_Animal_FedAt___1
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              collected_Animal__out_Animal_FedAt___1 AS collected_Animal__out_Animal_FedAt___1,
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
             RETURN
               Animal___1.name AS `animal_name`,
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.birthday] AS
