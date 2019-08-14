@@ -66,7 +66,7 @@ def _get_selectivity_of_integer_inequality_filter(
     Args:
         domain_interval: tuple of (int, int), describing the inclusive lower and upper bounds of the
                          interval of integers being filtered.
-        parameter_values: tuple of integers, describing the parameters for the inequality filter.
+        parameter_values: List[int], describing the parameters for the inequality filter.
         filter_operator: str, describing the inequality filter operation being performed.
 
     Returns:
@@ -138,7 +138,7 @@ def _estimate_inequality_filter_selectivity(
     """
     filter_operator = filter_info.op_name
     if filter_operator not in INEQUALITY_OPERATORS:
-        raise ValueError(u'Inequality filter selectivity estimator received a filter'
+        raise ValueError(u'Inequality filter selectivity estimator received a filter '
                          u'with non-inequality filter operator {}: {} {}'
                          .format(filter_operator, filter_info, location_name))
 
@@ -148,14 +148,18 @@ def _estimate_inequality_filter_selectivity(
 
         # TODO(vlad): Improve inequality estimation by implementing histograms.
         if field_name == 'uuid':
-            # Instead of working with UUIDs, we convert each occurence of UUID to its corresponding
-            # integer representation.
+            # HACK(vlad): Currently, the min/max UUID values are hardcoded in this module. Once
+            #             histograms are implemented, we can remove the constants.
             uuid_domain = (MIN_UUID_INT, MAX_UUID_INT)
 
-            parameter_values_as_integers = tuple(
-                _convert_uuid_string_to_int(parameters[get_parameter_name(filter_argument)])
-                for parameter_value in parameter_values
-            )
+            # Instead of working with UUIDs, we convert each occurence of UUID to its corresponding
+            # integer representation.
+            parameter_values_as_integers = []
+            for filter_argument in filter_info.args:
+                parameter_name = get_parameter_name(filter_argument)
+                parameter_value = parameters[parameter_name]
+                parameter_value_as_integer = _convert_uuid_string_to_int(parameter_value)
+                parameter_values_as_integers.append(parameter_value_as_integer)
 
             # Assumption: UUID values are uniformly distributed among the set of valid UUIDs.
             # This implies e.g. if the query interval is half the size of the set of all valid
