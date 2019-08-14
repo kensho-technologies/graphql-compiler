@@ -18,8 +18,8 @@
 # -- Project information -----------------------------------------------------
 
 project = 'GraphQL Compiler'
-copyright = '2019, Predrag Gruevski, Pedro Mantica and Bojan Serafimov'
-author = 'Predrag Gruevski, Pedro Mantica and Bojan Serafimov'
+copyright = '2019-Present Kensho Technologies, LLC'
+author = 'Predrag Gruevski, Pedro Mantica, Amartya Shankha Biswas, and Jeremy Meulemans'
 
 
 # -- General configuration ---------------------------------------------------
