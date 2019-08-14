@@ -18,10 +18,10 @@
 # -- Project information -----------------------------------------------------
 
 project = 'GraphQL Compiler'
-# The copyright string gets displayed as "2019-present Kensho Technologies, LLC." in the browser,
+# The copyright string gets displayed as "2017-present Kensho Technologies, LLC." in the browser,
 # (with one dot at the end). If we add a dot after LLC in the copyright string, it will appears as
-# "2019-present Kensho Technologies, LLC.."
-copyright = '2019-present Kensho Technologies, LLC'
+# "2017-present Kensho Technologies, LLC.."
+copyright = '2017-present Kensho Technologies, LLC'
 author = 'Predrag Gruevski, Pedro Mantica, Amartya Shankha Biswas, and Jeremy Meulemans'
 
 
