@@ -1,15 +1,13 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from copy import copy
 
 from graphql import build_ast_schema
-from graphql.language.ast import Name
 from graphql.language.visitor import Visitor, visit
 import six
 
 from .utils import (
     SchemaNameConflictError, check_ast_schema_is_valid, check_type_name_is_valid,
-    get_query_type_name, get_scalar_names
+    get_copy_of_node_with_new_name, get_query_type_name, get_scalar_names
 )
 
 
@@ -240,7 +238,7 @@ class RenameSchemaTypesVisitor(Visitor):
         if new_name_string == name_string:
             return node
         else:  # Make copy of node with the changed name, return the copy
-            node_with_new_name = _get_copy_of_node_with_new_name(node, new_name_string)
+            node_with_new_name = get_copy_of_node_with_new_name(node, new_name_string)
             return node_with_new_name
 
     def enter(self, node, key, parent, path, ancestors):
@@ -296,35 +294,5 @@ class RenameQueryTypeFieldsVisitor(Visitor):
             if new_field_name == field_name:
                 return None
             else:  # Make copy of node with the changed name, return the copy
-                field_node_with_new_name = _get_copy_of_node_with_new_name(node, new_field_name)
+                field_node_with_new_name = get_copy_of_node_with_new_name(node, new_field_name)
                 return field_node_with_new_name
-
-
-def _get_copy_of_node_with_new_name(node, new_name):
-    """Return a node with new_name as its name and otherwise identical to the input node.
-
-    Args:
-        node: type Node, with a .name attribute. Not modified by this function
-        new_name: str, name to give to the output node
-
-    Returns:
-        Node, with new_name as its name and otherwise identical to the input node
-    """
-    node_type = type(node).__name__
-    allowed_types = frozenset((
-        'EnumTypeDefinition',
-        'FieldDefinition',
-        'InterfaceTypeDefinition',
-        'NamedType',
-        'ObjectTypeDefinition',
-        'UnionTypeDefinition',
-    ))
-    if node_type not in allowed_types:
-        raise AssertionError(
-            u'Input node {} of type {} is not allowed, only {} are allowed.'.format(
-                node, node_type, allowed_types
-            )
-        )
-    node_with_new_name = copy(node)  # shallow copy is enough
-    node_with_new_name.name = Name(value=new_name)
-    return node_with_new_name
