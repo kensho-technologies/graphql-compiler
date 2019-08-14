@@ -9,7 +9,7 @@ from graphql.utils.type_info import TypeInfo
 from ..ast_manipulation import get_only_query_definition
 from ..compiler.helpers import strip_non_null_and_list_from_type
 from ..exceptions import GraphQLValidationError
-from ..schema import FilterDirective, OutputDirective, OptionalDirective
+from ..schema import FilterDirective, OptionalDirective, OutputDirective
 from .utils import (
     SchemaStructureError, check_query_is_valid_to_split, is_property_field_ast,
     try_get_ast_by_name_and_type
@@ -373,7 +373,7 @@ def _get_property_field(selections, field_name, directives_from_edge):
                 )
             elif directive.name.value == OptionalDirective.name:
                 if try_get_ast_by_name_and_type(
-                    new_field.directives, OptinalDirective.name, ast_types.Directive
+                    new_field.directives, OptionalDirective.name, ast_types.Directive
                 ) is None:
                     # New optional directive
                     new_field.directives.append(directive)
