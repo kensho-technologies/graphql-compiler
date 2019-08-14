@@ -1,16 +1,18 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from copy import copy
 import string
 
 from graphql import build_ast_schema
-from graphql.language.ast import Field, InlineFragment, NamedType
+from graphql.language.ast import Field, InlineFragment, Name, NamedType
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
 from graphql.utils.assert_valid_name import COMPILED_NAME_PATTERN
 from graphql.validation import validate
 import six
 
+from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from ..exceptions import GraphQLError, GraphQLValidationError
-from ..schema import FilterDirective, OptionalDirective, OutputDirective
+from ..schema import FilterDirective, OutputDirective, OptionalDirective
 
 
 class SchemaTransformError(GraphQLError):
@@ -154,6 +156,37 @@ def try_get_ast_by_name_and_type(asts, target_name, target_type):
     return None
 
 
+def get_copy_of_node_with_new_name(node, new_name):
+    """Return a node with new_name as its name and otherwise identical to the input node.
+
+    Args:
+        node: type Node, with a .name attribute. Not modified by this function
+        new_name: str, name to give to the output node
+
+    Returns:
+        Node, with new_name as its name and otherwise identical to the input node
+    """
+    node_type = type(node).__name__
+    allowed_types = frozenset((
+        'EnumTypeDefinition',
+        'Field',
+        'FieldDefinition',
+        'InterfaceTypeDefinition',
+        'NamedType',
+        'ObjectTypeDefinition',
+        'UnionTypeDefinition',
+    ))
+    if node_type not in allowed_types:
+        raise AssertionError(
+            u'Input node {} of type {} is not allowed, only {} are allowed.'.format(
+                node, node_type, allowed_types
+            )
+        )
+    node_with_new_name = copy(node)  # shallow copy is enough
+    node_with_new_name.name = Name(value=new_name)
+    return node_with_new_name
+
+
 class CheckValidTypesAndNamesVisitor(Visitor):
     """Check that the AST does not contain invalid types or types with invalid names.
 
@@ -238,10 +271,7 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
         """
         if self.in_query_type:
             field_name = node.name.value
-            type_node = node.type
-            # NamedType node may be wrapped in several layers of NonNullType or ListType
-            while not isinstance(type_node, NamedType):
-                type_node = type_node.type
+            type_node = get_ast_with_non_null_and_list_stripped(node.type)
             queried_type_name = type_node.name.value
             if field_name != queried_type_name:
                 raise SchemaStructureError(
