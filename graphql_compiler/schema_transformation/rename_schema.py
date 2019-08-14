@@ -1,8 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from copy import deepcopy
+from copy import copy
 
 from graphql import build_ast_schema
+from graphql.language.ast import Name
 from graphql.language.visitor import Visitor, visit
 import six
 
@@ -15,6 +16,7 @@ from .utils import (
 RenamedSchemaDescriptor = namedtuple(
     'RenamedSchemaDescriptor', (
         'schema_ast',  # Document, AST representing the renamed schema
+        'schema',  # GraphQLSchema, representing the same schema as schema_ast
         'reverse_name_map',  # Dict[str, str], renamed type/query type field name to original name
         # reverse_name_map only contains names that were changed
     )
@@ -53,9 +55,6 @@ def rename_schema(ast, renamings):
           input object definitions, or if the schema contains mutations or subscriptions
         - SchemaNameConflictError if there are conflicts between the renamed types or fields
     """
-    # Prevent modifying input
-    ast = deepcopy(ast)
-
     # Check input schema satisfies various structural requirements
     check_ast_schema_is_valid(ast)
 
@@ -64,7 +63,7 @@ def rename_schema(ast, renamings):
     scalars = get_scalar_names(schema)
 
     # Rename types, interfaces, enums
-    reverse_name_map = _rename_types(ast, renamings, query_type, scalars)
+    ast, reverse_name_map = _rename_types(ast, renamings, query_type, scalars)
     reverse_name_map_changed_names_only = {
         renamed_name: original_name
         for renamed_name, original_name in six.iteritems(reverse_name_map)
@@ -72,10 +71,12 @@ def rename_schema(ast, renamings):
     }
 
     # Rename query type fields
-    _rename_query_type_fields(ast, renamings, query_type)
+    ast = _rename_query_type_fields(ast, renamings, query_type)
 
     return RenamedSchemaDescriptor(
-        schema_ast=ast, reverse_name_map=reverse_name_map_changed_names_only
+        schema_ast=ast,
+        schema=build_ast_schema(ast),
+        reverse_name_map=reverse_name_map_changed_names_only,
     )
 
 
@@ -84,10 +85,10 @@ def _rename_types(ast, renamings, query_type, scalars):
 
     The query type will not be renamed. Scalar types, field names, enum values will not be renamed.
 
-    ast will be modified as a result.
+    The input AST will not be modified.
 
     Args:
-        ast: Document, the schema AST that we modify
+        ast: Document, the schema that we're returning a modified version of
         renamings: Dict[str, str], mapping original type/interface/enum name to renamed name. If
                    a name does not appear in the dict, it will be unchanged
         query_type: str, name of the query type, e.g. 'RootSchemaQuery'
@@ -95,8 +96,9 @@ def _rename_types(ast, renamings, query_type, scalars):
                  scalars and and used builtin scalars, excluding unused builtins
 
     Returns:
-        Dict[str, str], the renamed type name to original type name map. Map contains all types,
-        including those that were not renamed.
+        Tuple[Document, Dict[str, str]], containing the modified version of the AST, and
+        the renamed type name to original type name map. Map contains all types, including
+        those that were not renamed.
 
     Raises:
         - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
@@ -104,24 +106,28 @@ def _rename_types(ast, renamings, query_type, scalars):
         - SchemaNameConflictError if the rename causes name conflicts
     """
     visitor = RenameSchemaTypesVisitor(renamings, query_type, scalars)
-    visit(ast, visitor)
+    renamed_ast = visit(ast, visitor)
 
-    return visitor.reverse_name_map
+    return renamed_ast, visitor.reverse_name_map
 
 
 def _rename_query_type_fields(ast, renamings, query_type):
     """Rename all fields of the query type.
 
-    ast will be modified as a result.
+    The input AST will not be modified.
 
     Args:
-        ast: Document, the schema AST that we modify
+        ast: Document, the schema that we're returning a modified version of
         renamings: Dict[str, str], mapping original field name to renamed name. If a name
                    does not appear in the dict, it will be unchanged
         query_type: string, name of the query type, e.g. 'RootSchemaQuery'
+
+    Returns:
+        Document, representing the modified version of the input schema AST
     """
     visitor = RenameQueryTypeFieldsVisitor(renamings, query_type)
-    visit(ast, visitor)
+    renamed_ast = visit(ast, visitor)
+    return renamed_ast
 
 
 class RenameSchemaTypesVisitor(Visitor):
@@ -186,25 +192,30 @@ class RenameSchemaTypesVisitor(Visitor):
         self.builtin_types = frozenset({'String', 'Int', 'Float', 'Boolean', 'ID'})
 
     def _rename_name_and_add_to_record(self, node):
-        """Rename the value of the node, and add the name pair to reverse_name_map.
+        """Change the name of the input node if necessary, add the name pair to reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
 
-        Modifies node and potentially modifies reverse_name_map.
+        The input node will not be modified. reverse_name_map may be modified.
 
         Args:
-            node: type Name (see graphql/language/ast), an object describing the name of an AST
-                  element such as type, interface, or scalar (user defined or builtin)
+            node: EnumTypeDefinition, InterfaceTypeDefinition, NamedTuple, ObjectTypeDefinition,
+                  or UnionTypeDefinition. An object representing an AST component, containing a
+                  .name attribute corresponding to an AST node of type Name.
+
+        Returns:
+            Node object, identical to the input node, except with possibly a new name. If the
+            name was not changed, the returned object is the exact same object as the input
 
         Raises:
             - InvalidTypeNameError if either the node's current name or renamed name is invalid
             - SchemaNameConflictError if the newly renamed node causes name conflicts with
               existing types, scalars, or builtin types
         """
-        name_string = node.value
+        name_string = node.name.value
 
         if name_string == self.query_type or name_string in self.scalar_types:
-            return
+            return node
 
         new_name_string = self.renamings.get(name_string, name_string)  # Default use original
         check_type_name_is_valid(new_name_string)
@@ -225,8 +236,12 @@ class RenameSchemaTypesVisitor(Visitor):
                 )
             )
 
-        node.value = new_name_string
         self.reverse_name_map[new_name_string] = name_string
+        if new_name_string == name_string:
+            return node
+        else:  # Make copy of node with the changed name, return the copy
+            node_with_new_name = _get_copy_of_node_with_new_name(node, new_name_string)
+            return node_with_new_name
 
     def enter(self, node, key, parent, path, ancestors):
         """Upon entering a node, operate depending on node type."""
@@ -235,11 +250,15 @@ class RenameSchemaTypesVisitor(Visitor):
             # Do nothing, continue traversal
             return None
         elif node_type in self.rename_types:
-            # Rename and put into record the name attribute of current node; continue traversal
-            self._rename_name_and_add_to_record(node.name)
+            # Rename node, put name pair into record
+            renamed_node = self._rename_name_and_add_to_record(node)
+            if renamed_node is node:  # Name unchanged, continue traversal
+                return None
+            else:  # Name changed, return new node, `visit` will make shallow copies along path
+                return renamed_node
         else:
             # All Node types should've been taken care of, this line should never be reached
-            raise AssertionError(u'Missed type: "{}"'.format(node_type))
+            raise AssertionError(u'Unreachable code reached. Missed type: "{}"'.format(node_type))
 
 
 class RenameQueryTypeFieldsVisitor(Visitor):
@@ -274,4 +293,38 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         if self.in_query_type:
             field_name = node.name.value
             new_field_name = self.renamings.get(field_name, field_name)  # Default use original
-            node.name.value = new_field_name
+            if new_field_name == field_name:
+                return None
+            else:  # Make copy of node with the changed name, return the copy
+                field_node_with_new_name = _get_copy_of_node_with_new_name(node, new_field_name)
+                return field_node_with_new_name
+
+
+def _get_copy_of_node_with_new_name(node, new_name):
+    """Return a node with new_name as its name and otherwise identical to the input node.
+
+    Args:
+        node: type Node, with a .name attribute. Not modified by this function
+        new_name: str, name to give to the output node
+
+    Returns:
+        Node, with new_name as its name and otherwise identical to the input node
+    """
+    node_type = type(node).__name__
+    allowed_types = frozenset((
+        'EnumTypeDefinition',
+        'FieldDefinition',
+        'InterfaceTypeDefinition',
+        'NamedType',
+        'ObjectTypeDefinition',
+        'UnionTypeDefinition',
+    ))
+    if node_type not in allowed_types:
+        raise AssertionError(
+            u'Input node {} of type {} is not allowed, only {} are allowed.'.format(
+                node, node_type, allowed_types
+            )
+        )
+    node_with_new_name = copy(node)  # shallow copy is enough
+    node_with_new_name.name = Name(value=new_name)
+    return node_with_new_name

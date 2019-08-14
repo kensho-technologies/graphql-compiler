@@ -2,6 +2,7 @@
 from graphql import GraphQLInt, GraphQLList, GraphQLNonNull
 import six
 
+from . import cypher_helpers
 from ..exceptions import GraphQLCompilationError
 from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression
@@ -227,6 +228,19 @@ class Variable(Expression):
         # Cypher has built-in support for variable expansion, so we'll just emit a variable
         # definition and rely on Cypher to insert the value.
         self.validate()
+
+        # The Neo4j client allows us to pass date and datetime objects directly as arguments. See
+        # the compile_and_run_neo4j_query function in integration_test_helpers.py for an example of
+        # how this is done.
+        #
+        # Meanwhile, RedisGraph (for which we're manually interpolating parameters since RedisGraph
+        # doesn't support query parameters [0]) doesn't support date objects [1] anyways.
+        #
+        # Either way, we don't need to do any special handling for temporal values here-- either
+        # we don't need to do it ourselves, or they're not supported at all.
+        #
+        # [0] https://github.com/RedisGraph/RedisGraph/issues/544
+        # [1] https://oss.redislabs.com/redisgraph/cypher_support/#types
         return u'{}'.format(self.variable_name)
 
     def __eq__(self, other):
@@ -628,8 +642,20 @@ class FoldedContextField(Expression):
                              u'in Gremlin, so this is a bug. This function should not be called.')
 
     def to_cypher(self):
-        """Not implemented yet."""
-        raise NotImplementedError()
+        """Return a unicode object with the Cypher representation of this expression."""
+        self.validate()
+
+        _, field_name = self.fold_scope_location.get_location_name()
+        mark_name = cypher_helpers.get_collected_vertex_list_name(
+            cypher_helpers.get_fold_scope_location_full_path_name(self.fold_scope_location))
+        validate_safe_string(mark_name)
+
+        template = u'[x IN {mark_name} | x.{field_name}]'
+
+        if field_name == COUNT_META_FIELD_NAME:
+            raise NotImplementedError()
+
+        return template.format(mark_name=mark_name, field_name=field_name)
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
@@ -881,9 +907,13 @@ class BinaryComposition(Expression):
         negated_regular_operator_format = '(NOT (%(left)s %(operator)s %(right)s))'
         # pylint: enable=unused-variable
 
+        # Comparing null to a value does not make sense.
+        if self.left == NullLiteral:
+            raise AssertionError(u'The left expression cannot be a NullLiteral! Received operator '
+                                 u'{} and right expression {}.'.format(self.operator, self.right))
         # Null literals use the OrientDB 'IS/IS NOT' (in)equality operators,
         # while other values use the OrientDB '=/<>' operators.
-        if self.left == NullLiteral or self.right == NullLiteral:
+        elif self.right == NullLiteral:
             translation_table = {
                 u'=': (u'IS', regular_operator_format),
                 u'!=': (u'IS NOT', regular_operator_format),
@@ -927,6 +957,11 @@ class BinaryComposition(Expression):
         intersects_operator_format = u'(!{left}.{operator}({right}).empty)'
         negated_dotted_operator_format = u'!{left}.{operator}({right})'
 
+        # Comparing null to a value does not make sense.
+        if self.left == NullLiteral:
+            raise AssertionError(
+                u'The left expression cannot be a NullLiteral! Received operator '
+                u'{} and right expression {}.'.format(self.operator, self.right))
         translation_table = {
             u'=': (u'==', immediate_operator_format),
             u'!=': (u'!=', immediate_operator_format),
@@ -962,8 +997,13 @@ class BinaryComposition(Expression):
         negated_inverted_operator_format = u'(NOT ({right} {operator} {left}))'
         intersects_operator_format = u'any(_ {operator} {left} WHERE _ {operator} {right})'
 
+        # Comparing null to a value does not make sense.
+        if self.left == NullLiteral:
+            raise AssertionError(
+                u'The left expression cannot be a NullLiteral! Received operator '
+                u'{} and right expression {}.'.format(self.operator, self.right))
         # Null literals use 'is/is not' as (in)equality operators, while other values use '=/<>'.
-        if self.left == NullLiteral or self.right == NullLiteral:
+        elif self.right == NullLiteral:
             translation_table = {
                 u'=': (u'IS', regular_operator_format),
                 u'!=': (u'IS NOT', regular_operator_format),
