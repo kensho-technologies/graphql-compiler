@@ -1,4 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from uuid import UUID
+
 from collections import namedtuple
 import sys
 
@@ -14,6 +16,11 @@ Selectivity = namedtuple('Selectivity', (
 
 ABSOLUTE_SELECTIVITY = 'absolute'
 FRACTIONAL_SELECTIVITY = 'fractional'
+
+INEQUALITY_OPERATORS = frozenset(['<', '<=', '>', '>=', 'between'])
+
+MIN_UUID_INT = 0
+MAX_UUID_INT = 2**128-1
 
 
 def _is_absolute(selectivity):
@@ -42,6 +49,136 @@ def _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
         if filter_fields_frozenset == unique_index.fields:
             return True
     return False
+
+
+def _try_obtain_parameter_value(argument_name, parameters):
+    """Return value of argument in parameters dict or raise ValueError."""
+    parameter_name = get_parameter_name(argument_name)
+    if parameter_name not in parameters:
+        raise ValueError(u'Parameter {} not found in'
+                         u'provided parameters dict {}: {}'
+                         .format(parameter_name, parameters, argument_name))
+
+    return parameters[parameter_name]
+
+
+def _convert_uuid_string_to_int(uuid_string):
+    """Return the integer representation of a UUID string."""
+    return UUID(uuid_string).int
+
+
+def _get_selectivity_of_integer_inequality_filter(
+    domain_interval, parameter_values, filter_operator
+):
+    """Return the selectivity of a given integer inequality filter for a given interval of integers.
+
+    Preconditions:
+        1. filter_operator is a valid inequality filter operator.
+
+    Args:
+        domain_interval: tuple of (int, int), describing the inclusive lower and upper bound of the
+                         domain of integers being filtered.
+        parameter_values: tuple of integers, describing the parameters for the inequality filter.
+        filter_operator: str, describing the inequality filter operation being performed.
+
+    Returns:
+        Selectivity object, describing the selectivity of the integer inequality filter.
+    """
+    # Inequality filters on integers can also be represented by an interval for the subset of values
+    # that pass through the filter. By representing the filter as an interval, we avoid considering
+    # the operators separately.
+    query_interval = (domain_interval[0], domain_interval[1])
+    if filter_operator == '>':
+        # This (exclusively) constrains the lower bound of the values passing through the filter.
+        query_interval[0] = max(query_interval[0], parameter_values[0] + 1)
+    elif filter_operator == '>=':
+        # This (inclusively) constrains the lower bound of the values passing through the filter.
+        query_interval[0] = max(query_interval[0], parameter_values[0])
+    elif filter_operator == '<':
+        # This (exclusively) constrains the upper bound of the values passing through the filter.
+        query_interval[1] = min(query_interval[1], parameter_values[0] - 1)
+    elif filter_operator == '<=':
+        # This (inclusively) constrains the upper bound of the values passing through the filter.
+        query_interval[1] = min(query_interval[1], parameter_values[0])
+    elif filter_operator == 'between':
+        # This (inclusively) constrains the lower and upper bounds of the
+        # values passing through the filter.
+        query_interval[0] = max(query_interval[0], parameter_values[0])
+        query_interval[1] = min(query_interval[1], parameter_values[1])
+    else:
+        raise AssertionError(u'Cost estimator found unsupported integer inequality operator {}'
+                             .format(filter_operator))
+
+    # If the interval of values passing through the filters is empty, no results will be
+    # returned. This happens if the interval's upper bound is smaller than the lower bound.
+    if query_interval[0] > query_interval[1]:
+        field_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=0.0)
+        return field_selectivity
+
+    # Assumption: the values of the integers being filtered are evenly distributed among the domain
+    # of valid values.
+    query_interval_size = query_interval[1] - query_interval[0] + 1
+    domain_interval_size = domain_interval[1] - domain_interval[0] + 1
+    fraction_of_domain_queried = query_interval_size / domain_interval_size
+
+    field_selectivity = Selectivity(
+        kind=FRACTIONAL_SELECTIVITY,
+        value=query_interval_size / domain_interval_size
+    )
+    return field_selectivity
+
+
+def _estimate_inequality_filter_selectivity(
+    schema_graph, statistics, filter_info, parameters, location_name
+):
+    """Calculate the selectivity of a specific inequality filter at a given location.
+
+    Args:
+        schema_graph: SchemaGraph object
+        statistics: Statistics object
+        filter_info: FilterInfo object, filter on the location being filtered
+        parameters: dict, parameters with which query will be executed
+        location_name: string, type of the location being filtered
+
+    Returns:
+        Selectivity object, the selectivity of a specific inequality filter at a given location.
+    """
+    filter_operator = filter_info.op_name
+    if filter_operator not in INEQUALITY_OPERATORS:
+        raise ValueError(u'Inequality filter selectivity estimator received a filter'
+                         u'with non-inequality filter operator {}: {} {}'
+                         .format(filter_operator, filter_info, location_name))
+
+    all_selectivities = []
+    for field_name in filter_info.fields:
+        field_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+
+        # TODO(vlad): Improve inequality estimation by implementing histograms.
+        if field_name == 'uuid':
+            # Instead of working with UUIDs, we convert each occurence of UUID to its corresponding
+            # integer representation.
+            uuid_domain = (MIN_UUID_INT, MAX_UUID_INT)
+
+            parameter_values = tuple(
+                _try_obtain_parameter_value(filter_argument, parameters)
+                for filter_argument in filter_info.args
+            )
+            parameter_values_as_integers = tuple(
+                _convert_uuid_string_to_int(parameter_value)
+                for parameter_value in parameter_values
+            )
+
+            # Assumption: UUID values are uniformly distributed among the set of valid UUIDs.
+            # This implies e.g. if the query interval is half the size of the set of all valid
+            # UUIDs, the Selectivity will be Fractional with a selectivity value of 0.5.
+            field_selectivity = _get_selectivity_of_integer_inequality_filter(
+                uuid_domain, parameter_values_as_integers, filter_operator
+            )
+
+        all_selectivities.append(field_selectivity)
+
+    result_selectivity = _combine_filter_selectivities(all_selectivities)
+    return result_selectivity
 
 
 def _estimate_filter_selectivity_of_equality(
@@ -130,6 +267,9 @@ def _get_filter_selectivity(
                 # The estimate may be above 1.0 in case of duplicates in the collection
                 # so we make sure the value is <= 1.0
             )
+    elif filter_info.op_name in INEQUALITY_OPERATORS:
+        result_selectivity = _estimate_inequality_filter_selectivity(
+            schema_graph, statistics, filter_info, parameters, location_name)
 
     return result_selectivity
 
