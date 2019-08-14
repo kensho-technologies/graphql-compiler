@@ -108,7 +108,7 @@ to install the relevant dependencies.
 We are currently in the process of moving most of our documentation to Read the Docs, a web utility 
 that makes it easy to view and present documentation. We first plan to get the Read the Docs 
 documentation up to date with the markdown documentation present as of commit 
-d909919043c350fcdb93154341cbb9e5de507715 and then working on adding the documentation added since
+16fd083e78551f866a0cf0c7397542aea1c214d9 and then working on adding the documentation added since
 that commit. 
 
 The relevant source code lives in: 
