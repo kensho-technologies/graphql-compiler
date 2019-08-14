@@ -1,8 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from uuid import UUID
-
 from collections import namedtuple
 import sys
+from uuid import UUID
 
 from ..compiler.helpers import get_parameter_name
 
@@ -30,7 +29,7 @@ INEQUALITY_OPERATORS = frozenset(['<', '<=', '>', '>=', 'between'])
 # UUIDs are defined in RFC-4122 as a 128-bit identifier. This means that the minimum UUID value
 # (represented as natural numbers) is 0, and the maximal value is 2^128-1.
 MIN_UUID_INT = 0
-MAX_UUID_INT = 2**128-1
+MAX_UUID_INT = 2**128 - 1
 
 
 def _is_absolute(selectivity):
@@ -45,8 +44,8 @@ def _is_fractional(selectivity):
 
 def _get_intersection_of_IntegerIntervals(interval_a, interval_b):
     """Return the intersection of two IntegerIntervals, or None if the intervals are disjoint."""
-    if interval_a.upper_bound < interval_b.lower_bound or
-            interval_b.upper_bound < interval_a.lower_bound:
+    if interval_a.upper_bound < interval_b.lower_bound or \
+        interval_b.upper_bound < interval_a.lower_bound:
         # These conditions imply the intervals are disjoint, so we return None to indicate this.
         return None
 
@@ -151,7 +150,7 @@ def _get_query_interval_of_integer_inequality_filter(parameter_values, filter_op
     else:
         raise AssertionError(u'Cost estimator found filter operator {} with parameter values {}. '
                              u'Currently, an operator must have either one or two parameter values.'
-                             .format(filter_operator))
+                             .format(filter_operator, parameter_values))
 
     return query_interval
 
@@ -206,10 +205,7 @@ def _get_selectivity_of_integer_inequality_filter(
     domain_interval_size = domain_interval[1] - domain_interval[0] + 1
     fraction_of_domain_queried = intersection_size / domain_interval_size
 
-    field_selectivity = Selectivity(
-        kind=FRACTIONAL_SELECTIVITY,
-        value=query_interval_size / domain_interval_size
-    )
+    field_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried)
     return field_selectivity
 
 
