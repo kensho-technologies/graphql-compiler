@@ -1,19 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from copy import copy
 
 from graphql.language import ast as ast_types
-from graphql.language.visitor import TypeInfoVisitor, Visitor, visit
-from graphql.utils.type_info import TypeInfo
 
-from ..ast_manipulation import get_only_query_definition
-from ..compiler.helpers import strip_non_null_and_list_from_type
-from ..exceptions import GraphQLValidationError
-from ..schema import FilterDirective, OptionalDirective, OutputDirective
-from .utils import (
-    SchemaStructureError, check_query_is_valid_to_split, is_property_field_ast,
-    try_get_ast_by_name_and_type
-)
+from ..schema import OutputDirective
 
 
 QueryConnection = namedtuple(
