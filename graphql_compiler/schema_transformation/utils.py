@@ -2,13 +2,15 @@
 import string
 
 from graphql import build_ast_schema
-from graphql.language.ast import NamedType
+from graphql.language.ast import Field, InlineFragment, NamedType
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
 from graphql.utils.assert_valid_name import COMPILED_NAME_PATTERN
+from graphql.validation import validate
 import six
 
-from ..exceptions import GraphQLError
+from ..exceptions import GraphQLError, GraphQLValidationError
+from ..schema import FilterDirective, OptionalDirective, OutputDirective
 
 
 class SchemaTransformError(GraphQLError):
@@ -130,6 +132,26 @@ def get_scalar_names(schema):
         if isinstance(type_object, GraphQLScalarType)
     }
     return scalars
+
+
+def try_get_ast_by_name_and_type(asts, target_name, target_type):
+    """Return the ast in the list with the desired name and type, if found.
+
+    Args:
+        asts: List[Node] or None
+        target_name: str, name of the AST we're looking for
+        target_type: Node, the type of the AST we're looking for. Must be a type with a .name
+                     attribute, e.g. Field, Directive
+
+    Returns:
+        Node, an element in the input list with the correct name and type, or None if not found
+    """
+    if asts is None:
+        return None
+    for ast in asts:
+        if isinstance(ast, target_type) and ast.name.value == target_name:
+            return ast
+    return None
 
 
 class CheckValidTypesAndNamesVisitor(Visitor):
@@ -263,3 +285,91 @@ def check_ast_schema_is_valid(ast):
 
     query_type = get_query_type_name(schema)
     visit(ast, CheckQueryTypeFieldsNameMatchVisitor(query_type))
+
+
+def is_property_field_ast(selection):
+    """Return True if selection is a property field, False if a vertex field or type coercion.
+
+    Args:
+        selection: type Field or InlineFragment. An element occuring inside a SelectionSet
+
+    Returns:
+        True if the selection is a property field, False if it's a vertex field or type coercion
+    """
+    if isinstance(selection, InlineFragment):
+        return False
+    if isinstance(selection, Field):
+        if (
+            selection.selection_set is None or
+            selection.selection_set.selections is None or
+            selection.selection_set.selections == []
+        ):
+            return True
+        else:
+            return False
+    else:
+        raise AssertionError(
+            u'Input selection "{}" is not of type Field or InlineFragment.'.format(selection)
+        )
+
+
+class CheckQueryIsValidToSplitVisitor(Visitor):
+    """Check the query only has supported directives, and its fields are correctly ordered."""
+    # This is very restrictive for now. Other cases (e.g. tags not crossing boundaries) are
+    # also ok, but temporarily not allowed
+    supported_directives = frozenset((
+        FilterDirective.name,
+        OutputDirective.name,
+        OptionalDirective.name,
+    ))
+
+    def enter_Directive(self, node, *args):
+        """Check that the directive is supported."""
+        if node.name.value not in self.supported_directives:
+            raise GraphQLValidationError(
+                u'Directive "{}" is not yet supported, only "{}" are currently '
+                u'supported.'.format(node.name.value, self.supported_directives)
+            )
+
+    def enter_SelectionSet(self, node, *args):
+        """Check property fields occur before vertex fields and type coercions in selection."""
+        seen_non_property_field = False  # Whether we're seen a vertex field/type coercion
+        for field in node.selections:
+            if is_property_field_ast(field):
+                if seen_non_property_field:
+                    raise GraphQLValidationError(
+                        u'In the selections {}, the property field {} occurs after a vertex '
+                        u'field or a type coercion statement, which is not allowed, as all '
+                        u'property fields must appear before all vertex fields.'.format(
+                            node.selections, field
+                        )
+                    )
+            else:
+                seen_non_property_field = True
+
+
+def check_query_is_valid_to_split(schema, query_ast):
+    """Check the query is valid for splitting.
+
+    In particular, ensure that the query validates against the schema, does not contain
+    unsupported directives, and that in each selection, all property fields occur before all
+    vertex fields.
+
+    Args:
+        schema: GraphQLSchema object
+        query_ast: Document
+
+    Raises:
+        GraphQLValidationError if the query doesn't validate against the schema, contains
+        unsupported directives, or some property field occurs after a vertex field in some
+        selection
+    """
+    # Check builtin errors
+    built_in_validation_errors = validate(schema, query_ast)
+    if len(built_in_validation_errors) > 0:
+        raise GraphQLValidationError(
+            u'AST does not validate: {}'.format(built_in_validation_errors)
+        )
+    # Check no bad directives and fields are in order
+    visitor = CheckQueryIsValidToSplitVisitor()
+    visit(query_ast, visitor)
