@@ -4121,7 +4121,7 @@ class CompilerTests(unittest.TestCase):
                 collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1,
               collect(Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1) AS
                 collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
-          RETURN
+            RETURN
               Animal___1.name AS `animal_name`,
               [x IN
                 collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
@@ -4665,9 +4665,9 @@ class CompilerTests(unittest.TestCase):
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
-            WHERE (
-              Animal__out_Animal_ParentOf___1.name = $desired
-            )
+                WHERE (
+                  Animal__out_Animal_ParentOf___1.name = $desired
+                )
             WITH
               Animal___1 AS Animal___1,
               collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
