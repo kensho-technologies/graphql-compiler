@@ -18,7 +18,7 @@ IntegerInterval = namedtuple('IntegerInterval', (
     'lower_bound',    # optional int, inclusive lower bound of integers in the interval.
                       # Intervals that do not have a lower bound denote this by using None.
     'upper_bound',    # optional int, inclusive upper bound of integers in the interval.
-                      # Intervals that do not have a upper bound denote this by using None.
+                      # Intervals that do not have an upper bound denote this by using None.
 ))
 
 ABSOLUTE_SELECTIVITY = 'absolute'
@@ -27,7 +27,7 @@ FRACTIONAL_SELECTIVITY = 'fractional'
 INEQUALITY_OPERATORS = frozenset(['<', '<=', '>', '>=', 'between'])
 
 # UUIDs are defined in RFC-4122 as a 128-bit identifier. This means that the minimum UUID value
-# (represented as natural numbers) is 0, and the maximal value is 2^128-1.
+# (represented as a natural number) is 0, and the maximal value is 2^128-1.
 MIN_UUID_INT = 0
 MAX_UUID_INT = 2**128 - 1
 
@@ -44,18 +44,23 @@ def _is_fractional(selectivity):
 
 def _get_intersection_of_IntegerIntervals(interval_a, interval_b):
     """Return the intersection of two IntegerIntervals, or None if the intervals are disjoint."""
-    if interval_a.upper_bound < interval_b.lower_bound or \
-        interval_b.upper_bound < interval_a.lower_bound:
-        # These conditions imply the intervals are disjoint, so we return None to indicate this.
-        return None
+    intersection = IntegerInterval(None, None)
 
-    intersection = interval_a
-    if interval_b.lower_bound is not None:
-        if intersection.lower_bound is None or intersection.lower_bound < interval_b.lower_bound:
-            intersection.lower_bound = interval_b.lower_bound
-    if interval_b.upper_bound is not None:
-        if intersection.upper_bound is None or intersection.upper_bound > interval_b.upper_bound:
-            intersection.upper_bound = interval_b.upper_bound
+    if interval_a.lower_bound is not None and interval_b.lower_bound is not None:
+        intersection = max(interval_a.lower_bound, interval_b.lower_bound)
+    elif interval_a.lower_bound is not None or interval_b.lower_bound is not None:
+        intersection = interval_a.lower_bound or interval_b.lower_bound
+
+    if interval_a.upper_bound is not None and interval_b.upper_bound is not None:
+        intersection = min(interval_a.upper_bound, interval_b.upper_bound)
+    elif interval_a.upper_bound is not None or interval_b.upper_bound is not None:
+        intersection = interval_a.upper_bound or interval_b.upper_bound
+
+    # If the intersection's lower bound is larger than its upper bound, then the intersection of the
+    # two intervals is empty, so we return None.
+    if intersection.lower_bound is not None and intersection.upper_bound is not None and
+        intersection.lower_bound > intersection.upper_bound:
+        intersection = None
 
     return intersection
 
@@ -170,8 +175,11 @@ def _get_selectivity_of_integer_inequality_filter(
     Fractional Selectivity with a selectivity factor of 0.5 (i.e. roughly 50% of elements pass
     through the filter).
 
+    Preconditions:
+        1. domain_interval is a finite interval i.e. it has a lower and an upper bound.
+
     Args:
-        domain_interval: IntegerInterval namedtuple, describing the interval of integers
+        domain_interval: IntegerInterval namedtuple, describing the finite interval of integers
                          being filtered.
         parameter_values: List[int], describing the parameters for the inequality filter.
         filter_operator: str, describing the inequality filter operation being performed.
