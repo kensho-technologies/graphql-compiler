@@ -19,6 +19,8 @@ FRACTIONAL_SELECTIVITY = 'fractional'
 
 INEQUALITY_OPERATORS = frozenset(['<', '<=', '>', '>=', 'between'])
 
+# UUIDs are defined in RFC-4122 as a 128-bit identifier. This means that the minimum UUID value
+# (represented as natural numbers) is 0, and the maximal value is 2^128-1.
 MIN_UUID_INT = 0
 MAX_UUID_INT = 2**128-1
 
