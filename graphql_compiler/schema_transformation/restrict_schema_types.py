@@ -1,4 +1,3 @@
-# Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 
 from graphql import build_ast_schema
@@ -8,7 +7,7 @@ from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from .utils import SchemaStructureError, get_query_type_name, get_scalar_names
 
 
-def restrict_schema(schema_ast, types_to_keep):
+def restrict_schema_types(schema_ast, types_to_keep):
     """Return new AST containing only a subset of types.
 
     In addition to all types named in types_to_keep, the query type will also be kept. All user
@@ -36,27 +35,30 @@ def restrict_schema(schema_ast, types_to_keep):
     query_type_name = get_query_type_name(schema)
     scalar_names = get_scalar_names(schema)
 
-    visitor = RestrictSchemaVisitor(
+    visitor = RestrictSchemaTypesVisitor(
         types_to_keep, query_type_name, scalar_names
     )
-    restricted_schema = visit(schema_ast, visitor)
+    restricted_schema_ast = visit(schema_ast, visitor)
 
     try:
-        build_ast_schema(schema_ast)
+        build_ast_schema(restricted_schema_ast)
     except Exception as e:  # Can't be more specific, build_ast_schema throws Exceptions
         raise SchemaStructureError(u'The resulting schema is invalid. Message: {}'.format(e))
 
     # Note that it is possible for some types in the restricted schema to be unreachable
-    return restricted_schema
+    return restricted_schema_ast
 
 
-class RestrictSchemaVisitor(Visitor):
+class RestrictSchemaTypesVisitor(Visitor):
     """Remove types that are not explicitly kept, and fields go these types."""
+
     def __init__(self, types_to_keep, query_type, scalars):
         """Create a visitor for removing types and fields.
 
         Args:
-            types_to_keep: Set[str], the set of names of types that we want to keep in the schema
+            types_to_keep: Set[str], the set of names of object, interface, and union types that
+                           we want to keep in the output schema. All scalar and enum types are
+                           kept by default
             query_type: str, name of the query type in the schema. The query type is always kept
             scalars: str, names of scalar types, both builtin and user defined. Used to identify
                      property fields, as such fields are kept
