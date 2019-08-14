@@ -80,7 +80,7 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
 
     Raises:
         - ValueError if some schema identifier is not a nonempty string of alphanumeric
-          characters and underscores
+          characters and underscores, or if there are no more than one input schema to merge
         - SchemaStructureError if the schema does not have the expected form; in particular, if
           the AST does not represent a valid schema, if any query type field does not have the
           same name as the type that it queries, if the schema contains type extensions or
@@ -93,8 +93,8 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
           refers nonexistent schemas, types, fields, or connects non-scalar or non-matching
           fields
     """
-    if len(schema_id_to_ast) == 0:
-        raise ValueError(u'Expected a nonzero number of schemas to merge.')
+    if len(schema_id_to_ast) <= 1:
+        raise ValueError(u'Expected at least two schemas to merge.')
 
     query_type = 'RootSchemaQuery'
     merged_schema_ast = _get_basic_schema_ast(query_type)  # Document
