@@ -73,8 +73,8 @@ def _get_selectivity_of_integer_inequality_filter(
     """Return the selectivity of a given integer inequality filter filtering over a given interval.
 
     Args:
-        domain_interval: tuple of (int, int), describing the inclusive lower and upper bound of the
-                         domain of integers being filtered.
+        domain_interval: tuple of (int, int), describing the inclusive lower and upper bounds of the
+                         interval of integers being filtered.
         parameter_values: tuple of integers, describing the parameters for the inequality filter.
         filter_operator: str, describing the inequality filter operation being performed.
 
