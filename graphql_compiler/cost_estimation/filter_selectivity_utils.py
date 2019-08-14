@@ -52,12 +52,12 @@ def _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
 
 
 def _try_obtain_parameter_value(argument_name, parameters):
-    """Return value of argument in parameters dict or raise ValueError."""
+    """Return value of argument in parameters dict or raise AssertionError."""
     parameter_name = get_parameter_name(argument_name)
     if parameter_name not in parameters:
-        raise ValueError(u'Parameter {} not found in'
-                         u'provided parameters dict {}: {}'
-                         .format(parameter_name, parameters, argument_name))
+        raise AssertionError(u'Parameter {} not found in'
+                             u'provided parameters dict {}: {}'
+                             .format(parameter_name, parameters, argument_name))
 
     return parameters[parameter_name]
 
