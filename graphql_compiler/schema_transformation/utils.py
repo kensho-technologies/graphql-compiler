@@ -3,7 +3,7 @@ from copy import copy
 import string
 
 from graphql import build_ast_schema
-from graphql.language.ast import Field, InlineFragment, Name, NamedType
+from graphql.language.ast import Field, InlineFragment, Name
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
 from graphql.utils.assert_valid_name import COMPILED_NAME_PATTERN
