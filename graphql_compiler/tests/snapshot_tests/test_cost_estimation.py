@@ -8,8 +8,9 @@ from .. import test_input_data
 from ...compiler.metadata import FilterInfo
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.filter_selectivity_utils import (
-    ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity, _combine_filter_selectivities,
-    _get_filter_selectivity
+    ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, IntegerInterval, Selectivity,
+    adjust_counts_for_filters, _combine_filter_selectivities, _get_filter_selectivity,
+    _get_intersection_of_IntegerIntervals, _is_IntegerInterval_empty
 )
 from ...cost_estimation.statistics import LocalStatistics
 from ..test_helpers import generate_schema_graph
@@ -660,95 +661,6 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 16.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-        graphql_input = '''{
-            Animal {
-                uuid @filter(op_name: "between", value:["$uuid_lower", "$uuid_upper"])
-                name @output(out_name: "name")
-            }
-        }'''
-        # The number of UUIDs between the two parameter values is effectively a quarter of all valid
-        # UUIDs.
-        params = {
-            'uuid_lower': '40000000-0000-0000-0000-000000000000',
-            'uuid_upper': '7fffffff-ffff-ffff-ffff-ffffffffffff',
-        }
-
-        count_data = {
-            'Animal': 32,
-        }
-        statistics = LocalStatistics(count_data)
-
-        cardinality_estimate = estimate_query_result_cardinality(
-            schema_graph, statistics, graphql_input, params
-        )
-
-        # There are 32 Animals, and an estimated quarter of them have a UUID between the parameters
-        # given in the parameters dict, so we get a result size of (32.0 * 0.25) = 8.0 results.
-        expected_cardinality_estimate = 8.0
-        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
-
-        # We ask the same query as the one above, but this time with '>=' and '<=' instead of
-        # 'between'. Even though the two queries are equivalent, the cost estimator assumes the '>='
-        # and '<=' filters have no correlation between themselves, and considers the product of each
-        # inequality filter's selectivity.
-        graphql_input = '''{
-            Animal {
-                uuid @filter(op_name: ">=", value:["$uuid_lower"])
-                     @filter(op_name: "<=", value:["$uuid_upper"])
-                name @output(out_name: "name")
-            }
-        }'''
-        # The number of UUIDs between the two parameter values is effectively a quarter of all valid
-        # UUIDs.
-        params = {
-            'uuid_lower': '40000000-0000-0000-0000-000000000000',
-            'uuid_upper': '7fffffff-ffff-ffff-ffff-ffffffffffff',
-        }
-
-        count_data = {
-            'Animal': 32,
-        }
-        statistics = LocalStatistics(count_data)
-
-        cardinality_estimate = estimate_query_result_cardinality(
-            schema_graph, statistics, graphql_input, params
-        )
-
-        # There are 32 Animals, and an estimated (3.0 / 4.0) have a UUID greater or equal to
-        # uuid_lower, and an estimated (1.0 / 2.0) have a UUID less than or equal to uuid_upper. The
-        # cost estimator considers both of these filters independently, so the result size is 32 *
-        # (3.0 / 4.0) * (1.0 / 2.0) = 12.0 results.
-        expected_cardinality_estimate = 12.0
-        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
-
-        graphql_input = '''{
-            Animal {
-                uuid @filter(op_name: "between", value:["$uuid_lower", "$uuid_upper"])
-                name @output(out_name: "name")
-            }
-        }'''
-        # Note that the the lower bound parameter is higher than the upper bound parameter, so the
-        # 'between' filter is impossible to satisfy.
-        params = {
-            'uuid_lower': 'ffffffff-ffff-ffff-ffff-ffffffffffff',
-            'uuid_upper': '00000000-0000-0000-0000-000000000000',
-        }
-
-        count_data = {
-            'Animal': 32,
-        }
-        statistics = LocalStatistics(count_data)
-
-        cardinality_estimate = estimate_query_result_cardinality(
-            schema_graph, statistics, graphql_input, params
-        )
-
-        # It's impossible for a UUID to simultaneously be below uuid_upper and above
-        # uuid_lower, as uuid_upper is smaller than uuid_lower, so the result set is
-        # empty.
-        expected_cardinality_estimate = 0.0
-        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
-
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_optional_and_filter(self):
         """Test an optional and filter on the same Location."""
@@ -1174,5 +1086,160 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
         self.assertEqual(expected_selectivity, selectivity)
 
+    def test_inequality_filters_on_uuid(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        classname = 'Animal'
+        between_filter = FilterInfo(fields=('uuid',), op_name='between',
+                                    args=('$uuid_lower', '$uuid_upper',))
+        filter_info_list = [between_filter]
+        # The number of UUIDs between the two parameter values is effectively a quarter of all valid
+        # UUIDs.
+        params = {
+            'uuid_lower': '40000000-0000-0000-0000-000000000000',
+            'uuid_upper': '7fffffff-ffff-ffff-ffff-ffffffffffff',
+        }
+        empty_statistics = LocalStatistics(dict())
+
+        result_counts = adjust_counts_for_filters(
+            schema_graph, empty_statistics, filter_info_list, params, classname, 32.0
+        )
+
+        # There are 32 Animals, and an estimated quarter of them have a UUID between the parameters
+        # given in the parameters dict, so we get a result size of (32.0 * 0.25) = 8.0 results.
+        expected_counts = 32.0 * (1.0 / 4.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # We ask the same query as the one above, but this time with '>=' and '<=' instead of
+        # 'between'. Even though the two queries are equivalent, the cost estimator assumes the '>='
+        # and '<=' filters are uncorrelated, and considers the product of each inequality filter's
+        # selectivity.
+        less_or_equal_to_filter = FilterInfo(fields=('uuid',), op_name='>=',
+                                             args=('$uuid_lower',))
+        greater_or_equal_to_filter = FilterInfo(fields=('uuid',), op_name='<=',
+                                             args=('$uuid_upper',))
+        filter_info_list = [less_or_equal_to_filter, greater_or_equal_to_filter]
+        # The number of UUIDs between the two parameter values is effectively a quarter of all valid
+        # UUIDs.
+        params = {
+            'uuid_lower': '40000000-0000-0000-0000-000000000000',
+            'uuid_upper': '7fffffff-ffff-ffff-ffff-ffffffffffff',
+        }
+
+        result_counts = adjust_counts_for_filters(
+            schema_graph, empty_statistics, filter_info_list, params, classname, 32.0
+        )
+
+        # There are 32 Animals, and an estimated (3.0 / 4.0) have a UUID greater or equal to
+        # uuid_lower, and an estimated (1.0 / 2.0) have a UUID less than or equal to uuid_upper. The
+        # cost estimator considers both of these filters independently, so the result size is 32 *
+        # (3.0 / 4.0) * (1.0 / 2.0) = 12.0 results.
+        expected_counts = 32.0 * (3.0 / 4.0) * (1.0 / 2.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        between_filter = FilterInfo(fields=('uuid',), op_name='between',
+                                    args=('$uuid_lower', '$uuid_upper',))
+        filter_info_list = [between_filter]
+        # Note that the the lower bound parameter is higher than the upper bound parameter, so the
+        # 'between' filter is impossible to satisfy.
+        params = {
+            'uuid_lower': 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+            'uuid_upper': '00000000-0000-0000-0000-000000000000',
+        }
+
+        result_counts = adjust_counts_for_filters(
+            schema_graph, empty_statistics, filter_info_list, params, classname, 32.0
+        )
+
+        # It's impossible for a UUID to simultaneously be below uuid_upper and above
+        # uuid_lower, as uuid_upper is smaller than uuid_lower, so the result set is
+        # empty.
+        expected_counts = 0.0
+        self.assertAlmostEqual(expected_counts, result_counts)
+
 
 # pylint: enable=no-member
+
+class IntegerIntervalTests(unittest.TestCase):
+    """Test methods that use IntegerIntervals."""
+
+    def test_intersection_when_overlapping(self):
+        """Test intersection computation for non-disjoint intervals."""
+        interval_a = IntegerInterval(1, 3)
+        interval_b = IntegerInterval(2, 4)
+
+        expected_intersection = IntegerInterval(2, 3)
+        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = IntegerInterval(4, 6)
+        interval_b = IntegerInterval(2, 4)
+
+        expected_intersection = IntegerInterval(4, 4)
+        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = IntegerInterval(4, 6)
+        interval_b = IntegerInterval(4, 6)
+
+        expected_intersection = IntegerInterval(4, 6)
+        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = IntegerInterval(0, None)
+        interval_b = IntegerInterval(4, 6)
+
+        expected_intersection = IntegerInterval(4, 6)
+        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = IntegerInterval(0, None)
+        interval_b = IntegerInterval(None, 6)
+
+        expected_intersection = IntegerInterval(0, 6)
+        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = IntegerInterval(None, None)
+        interval_b = IntegerInterval(None, 6)
+
+        expected_intersection = IntegerInterval(None, 6)
+        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+    def test_disjoint_intervals(self):
+        """Test intersection computation when disjoint intervals are given."""
+        interval_a = IntegerInterval(1, 3)
+        interval_b = IntegerInterval(5, 7)
+
+        expected_intersection = None
+        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = IntegerInterval(8, 10)
+        interval_b = IntegerInterval(5, 7)
+
+        expected_intersection = None
+        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = IntegerInterval(0, 0)
+        interval_b = IntegerInterval(1, 1)
+
+        expected_intersection = None
+        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+    def test_is_interval_empty(self):
+        """Test that empty intervals are detected correctly."""
+        interval = IntegerInterval(5, 1000)
+
+        self.assertFalse(_is_IntegerInterval_empty(interval))
+
+        interval = IntegerInterval(5, 5)
+
+        self.assertFalse(_is_IntegerInterval_empty(interval))
+
+        interval = IntegerInterval(5, 1)
+
+        self.assertTrue(_is_IntegerInterval_empty(interval))
+
