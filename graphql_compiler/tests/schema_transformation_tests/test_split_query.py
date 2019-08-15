@@ -1,15 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from textwrap import dedent
 import unittest
 
-from graphql import parse, print_ast
-
-from ...exceptions import GraphQLValidationError
-from ...schema_transformation.split_query import split_query
-from .example_schema import (
-    basic_merged_schema, interface_merged_schema, three_merged_schema, union_merged_schema
-)
+from graphql import print_ast
 
 
 # The below namedtuple is used to check the structure of SubQueryNodes in tests
