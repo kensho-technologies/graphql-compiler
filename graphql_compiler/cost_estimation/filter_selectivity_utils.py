@@ -222,12 +222,13 @@ def _get_selectivity_of_integer_inequality_filter(
     Raises:
         ValueError if:
             - The domain interval's lower or upper bound is not defined.
-            - The domain interval is empty.
+            - The domain interval is empty i.e. its lower bound is greater than its upper bound.
     """
     if domain_interval.lower_bound is None or domain_interval.upper_bound is None:
-        raise ValueError(u'Expected domain interval {} to have both a lower and upper bound.')
-    if _is_integer_interval_empty(domain_interval):
-        raise ValueError(u'Received empty domain interval {}.')
+        raise ValueError(u'Expected domain interval {} to have both a lower and upper bound.'
+                         .format(domain_interval))
+    if domain_interval.lower_bound > domain_interval.upper_bound:
+        raise ValueError(u'Received empty domain interval {}.'.format(domain_interval))
 
     query_interval = _get_query_interval_of_integer_inequality_filter(
         parameter_values, filter_operator
