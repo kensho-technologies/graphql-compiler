@@ -105,7 +105,7 @@ def _get_stronger_lower_bound(lower_bound_a, lower_bound_b):
     stronger_lower_bound = None
     if lower_bound_a is not None and lower_bound_b is not None:
         # If both lower bounds exist, the stronger lower bound is the larger bound of the two
-        # intervals' lower bounds.
+        # given lower bounds.
         stronger_lower_bound = max(lower_bound_a, lower_bound_b)
     elif lower_bound_a is not None:
         # If only one lower bound exists, the stronger lower bound equals it.
@@ -135,7 +135,7 @@ def _get_stronger_upper_bound(upper_bound_a, upper_bound_b):
     stronger_upper_bound = None
     if upper_bound_a is not None and upper_bound_b is not None:
         # If both upper bounds exist, the stronger upper bound is the smaller bound of the two
-        # intervals' upper bounds.
+        # given upper bounds.
         stronger_upper_bound = min(upper_bound_a, upper_bound_b)
     elif upper_bound_a is not None:
         # If only one upper bound exists, the stronger upper bound equals it.
