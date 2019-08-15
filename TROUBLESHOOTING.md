@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-## Issues starting MySQL or PostgreSQL with docker-compose
+## Issues starting MySQL, PostgreSQL, or redis server with docker-compose
 
 If you have any trouble starting the MySQL/PostgreSQL database or the redis server, make sure any database service is not already
 running outside of docker. On OSX, you can stop the MySQL, PostgreSQL, and redis server services by executing:
