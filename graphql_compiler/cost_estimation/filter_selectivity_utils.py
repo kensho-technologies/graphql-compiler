@@ -89,7 +89,7 @@ def _create_integer_interval(lower_bound, upper_bound):
 
 
 def _get_stronger_lower_bound(lower_bound_a, lower_bound_b):
-    """Return the larger of the two given lower bounds.
+    """Return the larger bound of the two given lower bounds.
 
     Args:
         lower_bound_a: int or None, describing one of the lower bounds. If the bound does not exist,
@@ -98,26 +98,27 @@ def _get_stronger_lower_bound(lower_bound_a, lower_bound_b):
                        the argument value should be None.
 
     Returns:
-        - int, the larger of the two lower bounds.
-        - None if both lower bounds do not exist.
+        - int, the larger of the two lower bounds, if one or more lower bounds have an integer
+          value.
+        - None if both lower bounds have a value of None.
     """
     stronger_lower_bound = None
     if lower_bound_a is not None and lower_bound_b is not None:
-        # If both lower bounds exist, the intersection's lower bound is the higher of the two
+        # If both lower bounds exist, the stronger lower bound is the larger bound of the two
         # intervals' lower bounds.
         stronger_lower_bound = max(lower_bound_a, lower_bound_b)
     elif lower_bound_a is not None:
-        # If only one lower bound exists, the intersection's lower bound equals it.
+        # If only one lower bound exists, the stronger lower bound equals it.
         stronger_lower_bound = lower_bound_a
     elif lower_bound_b is not None:
-        # If only one lower bound exists, the intersection's lower bound equals it.
+        # If only one lower bound exists, the stronger lower bound equals it.
         stronger_lower_bound = lower_bound_b
 
     return stronger_lower_bound
 
 
 def _get_stronger_upper_bound(upper_bound_a, upper_bound_b):
-    """Return the smaller of the two given upper bounds.
+    """Return the smaller bound of the two given upper bounds.
 
     Args:
         upper_bound_a: int or None, describing one of the upper bounds. If the bound does not exist,
@@ -126,20 +127,21 @@ def _get_stronger_upper_bound(upper_bound_a, upper_bound_b):
                        the argument value should be None.
 
     Returns:
-        - int, the smaller of the two upper bounds.
-        - None if both upper bounds do not exist.
+        - int, the smaller of the two upper bounds, if one or more upper bounds have an integer
+          value.
+        - None if both upper bounds have a value of None.
     """
 
     stronger_upper_bound = None
     if upper_bound_a is not None and upper_bound_b is not None:
-        # If both upper bounds exist, the intersection's upper bound is the upper of the two
+        # If both upper bounds exist, the stronger upper bound is the smaller bound of the two
         # intervals' upper bounds.
         stronger_upper_bound = min(upper_bound_a, upper_bound_b)
     elif upper_bound_a is not None:
-        # If only one upper bound exists, the intersection's upper bound equals it.
+        # If only one upper bound exists, the stronger upper bound equals it.
         stronger_upper_bound = upper_bound_a
     elif upper_bound_b is not None:
-        # If only one upper bound exists, the intersection's upper bound equals it.
+        # If only one upper bound exists, the stronger upper bound equals it.
         stronger_upper_bound = upper_bound_b
 
     return stronger_upper_bound
