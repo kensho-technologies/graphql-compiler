@@ -57,9 +57,12 @@ def _get_intersection_of_IntegerIntervals(interval_a, interval_b):
         intersection = interval_a.upper_bound or interval_b.upper_bound
 
     # If the intersection's lower bound is larger than its upper bound, then the intersection of the
-    # two intervals is empty, so we return None.
-    if intersection.lower_bound is not None and intersection.upper_bound is not None and
-        intersection.lower_bound > intersection.upper_bound:
+    # two intervals is empty, so we return None to indicate an empty set.
+    if (
+        intersection.lower_bound is not None and
+        intersection.upper_bound is not None and
+        intersection.lower_bound > intersection.upper_bound
+    ):
         intersection = None
 
     return intersection
