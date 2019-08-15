@@ -15,9 +15,9 @@ Selectivity = namedtuple('Selectivity', (
 
 # IntegerInterval is used to denote a continuous non-empty interval of integers.
 IntegerInterval = namedtuple('IntegerInterval', (
-    'lower_bound',    # optional int, inclusive lower bound of integers in the interval.
+    'lower_bound',    # int or None, inclusive lower bound of integers in the interval.
                       # Intervals that do not have a lower bound denote this by using None.
-    'upper_bound',    # optional int, inclusive upper bound of integers in the interval.
+    'upper_bound',    # int or None, inclusive upper bound of integers in the interval.
                       # Intervals that do not have an upper bound denote this by using None.
 ))
 
