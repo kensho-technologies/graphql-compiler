@@ -1151,7 +1151,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         )
 
         # It's impossible for a UUID to simultaneously be below uuid_upper and above
-        # uuid_lower, as uuid_upper is smaller than uuid_lower, so the result set is
+        # uuid_lower as uuid_upper is smaller than uuid_lower, so the result set is
         # empty.
         expected_counts = 0.0
         self.assertAlmostEqual(expected_counts, result_counts)
