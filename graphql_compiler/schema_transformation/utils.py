@@ -156,6 +156,43 @@ def try_get_ast_by_name_and_type(asts, target_name, target_type):
     return None
 
 
+def try_get_inline_fragment(selections):
+    """Return the unique inline fragment contained in selections, or None.
+
+    Args:
+        selections: List[Union[Field, InlineFragment]] or None
+
+    Returns:
+        InlineFragment if one is found in selections, None otherwise
+
+    Raises:
+        GraphQLValidationError if selections contains a InlineFragment along with a nonzero
+        number of fields, or contains multiple InlineFragments
+    """
+    if selections is None:
+        return None
+    inline_fragments_in_selection = [
+        selection
+        for selection in selections
+        if isinstance(selection, InlineFragment)
+    ]
+    if len(inline_fragments_in_selection) == 0:
+        return None
+    elif len(inline_fragments_in_selection) == 1:
+        if len(selections) == 1:
+            return inline_fragments_in_selection[0]
+        else:
+            raise GraphQLValidationError(
+                u'Input selections "{}" contains both InlineFragments and Fields, which may not '
+                u'coexist in one selection.'.format(selections)
+            )
+    else:
+        raise GraphQLValidationError(
+            u'Input selections "{}" contains multiple InlineFragments, which is not allowed.'
+            u''.format(selections)
+        )
+
+
 def get_copy_of_node_with_new_name(node, new_name):
     """Return a node with new_name as its name and otherwise identical to the input node.
 
