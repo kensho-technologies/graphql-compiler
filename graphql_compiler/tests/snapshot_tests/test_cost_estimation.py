@@ -8,9 +8,9 @@ from .. import test_input_data
 from ...compiler.metadata import FilterInfo
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.filter_selectivity_utils import (
-    ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity,
-    _combine_filter_selectivities, _create_integer_interval, _get_filter_selectivity,
-    _get_intersection_of_intervals, adjust_counts_for_filters
+    ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity, _combine_filter_selectivities,
+    _create_integer_interval, _get_filter_selectivity, _get_intersection_of_intervals,
+    adjust_counts_for_filters
 )
 from ...cost_estimation.statistics import LocalStatistics
 from ..test_helpers import generate_schema_graph
@@ -1160,8 +1160,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
 # pylint: enable=no-member
 
 class IntegerIntervalTests(unittest.TestCase):
-    """Test methods that use IntegerIntervals."""
-
+    """Test methods that create IntegerIntervals."""
 
     def test_interval_creation(self):
         """Test that intervals are created correctly, and that empty intervals are detected."""
@@ -1215,6 +1214,13 @@ class IntegerIntervalTests(unittest.TestCase):
         interval_b = _create_integer_interval(None, 6)
 
         expected_intersection = _create_integer_interval(None, 6)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = _create_integer_interval(None, None)
+        interval_b = _create_integer_interval(None, None)
+
+        expected_intersection = _create_integer_interval(None, None)
         received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
