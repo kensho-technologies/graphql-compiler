@@ -587,9 +587,6 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 0.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-
-
-
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_optional_and_filter(self):
         """Test an optional and filter on the same Location."""
