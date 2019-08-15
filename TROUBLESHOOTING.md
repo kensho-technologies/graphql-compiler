@@ -14,6 +14,15 @@ service mysql stop
 service postgresql stop
 ```
 
+If you have trouble starting the redis server, you can make sure it is not already running outside of docker by executing
+```bash
+brew services stop redis-server
+```
+on OSX, or:
+```bash
+service redis-server stop
+```
+on Ubuntu
 ## Issues installing the Python MySQL package
 
 Sometimes, precompiled wheels for the Python MySQL package are not available, and your pipenv may
