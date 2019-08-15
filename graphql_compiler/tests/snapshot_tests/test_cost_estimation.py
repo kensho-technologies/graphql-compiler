@@ -642,7 +642,7 @@ class CostEstimationTests(unittest.TestCase):
                 name @output(out_name: "name")
             }
         }'''
-        # This is the median UUID i.e. there's nearly an equal number of UUIDs below and above it.
+        # There's nearly an equal number of UUIDs below and above the UUID given in the params.
         params = {
             'uuid': '80000000-0000-0000-0000-000000000000',
         }
@@ -656,9 +656,9 @@ class CostEstimationTests(unittest.TestCase):
             schema_graph, statistics, graphql_input, params
         )
 
-        # There are 32 Animals, and an estimated half of them have a UUID below the one given in the
-        # parameters dict, so we get a result size of (32.0 * 0.5) = 16.0 results.
-        expected_cardinality_estimate = 16.0
+        # There are 32 Animals, and an estimated (1.0 / 2.0) of them have a UUID below the one given
+        # in the parameters dict, so we get a result size of 32.0 * (1.0 / 2.0) = 16.0 results.
+        expected_cardinality_estimate = 32.0 * (1.0 / 2.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
@@ -1104,15 +1104,16 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph, empty_statistics, filter_info_list, params, classname, 32.0
         )
 
-        # There are 32 Animals, and an estimated quarter of them have a UUID between the parameters
-        # given in the parameters dict, so we get a result size of (32.0 * 0.25) = 8.0 results.
+        # There are 32 Animals, and an estimated (1.0 / 4.0) of them have a UUID between the
+        # parameters given in the parameters dict, so we get a result size of 32.0 * (1.0 / 4.0) =
+        # 8.0 results.
         expected_counts = 32.0 * (1.0 / 4.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
-        # We ask the same query as the one above, but this time with '>=' and '<=' instead of
-        # 'between'. Even though the two queries are equivalent, the cost estimator assumes the '>='
-        # and '<=' filters are uncorrelated, and considers the product of each inequality filter's
-        # selectivity.
+        # We query for the same UUID filtering range as the one above, but this time with '>=' and
+        # '<=' instead of 'between'. Even though the two filter intervals are equivalent, the cost
+        # estimator assumes the '>=' and '<=' filters are uncorrelated, and considers the product of
+        # each individual inequality filter's selectivity.
         less_or_equal_to_filter = FilterInfo(fields=('uuid',), op_name='>=',
                                              args=('$uuid_lower',))
         greater_or_equal_to_filter = FilterInfo(fields=('uuid',), op_name='<=',
@@ -1150,9 +1151,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph, empty_statistics, filter_info_list, params, classname, 32.0
         )
 
-        # It's impossible for a UUID to simultaneously be below uuid_upper and above
-        # uuid_lower as uuid_upper is smaller than uuid_lower, so the result set is
-        # empty.
+        # It's impossible for a UUID to simultaneously be below uuid_upper and above uuid_lower as
+        # uuid_upper is smaller than uuid_lower, so the result set is empty.
         expected_counts = 0.0
         self.assertAlmostEqual(expected_counts, result_counts)
 
