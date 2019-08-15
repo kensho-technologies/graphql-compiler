@@ -499,8 +499,9 @@ def _get_filter_selectivity(
             )
     elif filter_info.op_name in INEQUALITY_OPERATORS:
         # TODO(vlad): Since we assume each filter is independent, we don't consider the correlation
-        #             inequality filters often have. For example, a 'between' filter and a
-        #             pair of '>=' and '<=' are handled differently.
+        #             inequality filters often have. For example, a 'between' filter and an
+        #             equivalent pair of '>=' and '<=' are estimated differently. Consult the cost
+        #             estimation tests for further information.
         result_selectivity = _estimate_inequality_filter_selectivity(
             schema_graph, statistics, filter_info, parameters, location_name
         )
