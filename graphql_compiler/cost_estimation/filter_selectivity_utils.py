@@ -44,27 +44,46 @@ def _is_fractional(selectivity):
 
 def _get_intersection_of_IntegerIntervals(interval_a, interval_b):
     """Return the intersection of two IntegerIntervals, or None if the intervals are disjoint."""
-    intersection = IntegerInterval(None, None)
-
-    if interval_a.lower_bound is not None and interval_b.lower_bound is not None:
-        intersection = max(interval_a.lower_bound, interval_b.lower_bound)
-    elif interval_a.lower_bound is not None or interval_b.lower_bound is not None:
-        intersection = interval_a.lower_bound or interval_b.lower_bound
-
-    if interval_a.upper_bound is not None and interval_b.upper_bound is not None:
-        intersection = min(interval_a.upper_bound, interval_b.upper_bound)
-    elif interval_a.upper_bound is not None or interval_b.upper_bound is not None:
-        intersection = interval_a.upper_bound or interval_b.upper_bound
-
-    # If the intersection's lower bound is larger than its upper bound, then the intersection of the
-    # two intervals is empty, so we return None to indicate an empty set.
+    # We check if the two intervals intersect at any point by seeing if either's interval upper
+    # bound is smaller than the other's lower bound, and return None to indicate empty intersection.
     if (
-        intersection.lower_bound is not None and
-        intersection.upper_bound is not None and
-        intersection.lower_bound > intersection.upper_bound
+        interval_a.upper_bound < interval_b.lower_bound or
+        interval_b.upper_bound < interval_a.lower_bound
     ):
-        intersection = None
+        return None
 
+    # After the check, we are certain that the intersection is not empty i.e. the intervals are not
+    # disjoint.
+    if interval_a.lower_bound is not None and interval_b.lower_bound is not None:
+        # If both lower bounds exist, the intersection's lower bound is the higher of the two
+        # intervals' lower bounds.
+        lower_bound = max(interval_a.lower_bound, interval_b.lower_bound)
+    elif interval_a.lower_bound is not None:
+        # If only one lower bound exists, the intersection's lower bound is equal to it.
+        lower_bound = interval_a.lower_bound
+    elif interval_b.lower_bound is not None:
+        # If only one lower bound exists, the intersection's lower bound is equal to it.
+        lower_bound = interval_b.lower_bound
+    else:
+        # If both lower bounds do not exist, the intersection's lower bound also does not exist.
+        lower_bound = None
+
+    upper_bound = None
+    if interval_a.upper_bound is not None and interval_b.upper_bound is not None:
+        # If both upper bounds exist, the intersection's upper bound is the upper of the two
+        # intervals' upper bounds.
+        upper_bound = max(interval_a.upper_bound, interval_b.upper_bound)
+    elif interval_a.upper_bound is not None:
+        # If only one upper bound exists, the intersection's upper bound is equal to it.
+        upper_bound = interval_a.upper_bound
+    elif interval_b.upper_bound is not None:
+        # If only one upper bound exists, the intersection's upper bound is equal to it.
+        upper_bound = interval_b.upper_bound
+    else:
+        # If both upper bounds do not exist, the intersection's upper bound also does not exist.
+        upper_bound = None
+
+    intersection = IntegerInterval(lower_bound, upper_bound)
     return intersection
 
 
@@ -100,24 +119,26 @@ def _get_query_interval_of_binary_integer_inequality_filter(
                          u'exactly one parameter value: {} {}'
                          .format(parameter_values, filter_operator))
 
+    lower_bound, upper_bound = None, None
+
     parameter_value = parameter_values[0]
-    query_interval = IntegerInterval(None, None)
     if filter_operator == '>':
         # This (exclusively) constrains the lower bound of the values passing through the filter.
-        query_interval.lower_bound = parameter_value + 1
+        lower_bound = parameter_value + 1
     elif filter_operator == '>=':
         # This (inclusively) constrains the lower bound of the values passing through the filter.
-        query_interval.lower_bound = parameter_value
+        lower_bound = parameter_value
     elif filter_operator == '<':
         # This (exclusively) constrains the upper bound of the values passing through the filter.
-        query_interval.upper_bound = parameter_value - 1
+        upper_bound = parameter_value - 1
     elif filter_operator == '<=':
         # This (inclusively) constrains the upper bound of the values passing through the filter.
-        query_interval.upper_bound = parameter_value
+        upper_bound = parameter_value
     else:
         raise AssertionError(u'Cost estimator found unsupported '
                              u'binary integer inequality operator {}.'
                              .format(filter_operator))
+    query_interval = IntegerInterval(lower_bound, upper_bound)
 
     return query_interval
 
@@ -131,16 +152,18 @@ def _get_query_interval_of_ternary_integer_inequality_filter(
                          u'exactly two parameter values: {} {}'
                          .format(parameter_values, filter_operator))
 
-    query_interval = IntegerInterval(None, None)
+    lower_bound, upper_bound = None, None
+
     if filter_operator == 'between':
         # This (inclusively) constrains the lower and upper bounds of the
         # values passing through the filter.
-        query_interval.lower_bound = parameter_values[0]
-        query_interval.upper_bound = parameter_values[1]
+        lower_bound = parameter_values[0]
+        upper_bound = parameter_values[1]
     else:
         raise AssertionError(u'Cost estimator found unsupported '
                              u'ternary integer inequality operator {}.'
                              .format(filter_operator))
+    query_interval = IntegerInterval(lower_bound, upper_bound)
 
     return query_interval
 
@@ -190,9 +213,9 @@ def _get_selectivity_of_integer_inequality_filter(
     Returns:
         Selectivity object, describing the selectivity of the integer inequality filter.
     """
-    # Inequality filters on integers can also be represented by an interval for the subset of values
-    # that pass through the filter. By representing the filter as an interval, we avoid considering
-    # the operators separately. If a lower or upper bound does not exist, we denote it using None.
+    if domain_interval.lower_bound is None or domain_interval.upper_bound:
+        raise AssertionError(u'Expected domain interval {} to have a lowerand upper bound.')
+
     query_interval = _get_query_interval_of_integer_inequality_filter(
         parameter_values, filter_operator
     )
@@ -212,8 +235,8 @@ def _get_selectivity_of_integer_inequality_filter(
 
     # Assumption: the values of the integers being filtered are evenly distributed among the domain
     # of valid values.
-    intersection_size = intersection[1] - intersection[0] + 1
-    domain_interval_size = domain_interval[1] - domain_interval[0] + 1
+    intersection_size = intersection.upper_bound - intersection.lower_bound + 1
+    domain_interval_size = domain_interval.upper_bound - domain_interval.lower_bound + 1
     fraction_of_domain_queried = intersection_size / domain_interval_size
 
     field_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried)
