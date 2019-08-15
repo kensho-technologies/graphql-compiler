@@ -77,11 +77,20 @@ def _split_query_ast_one_level_recursive(
     """
     type_info.enter(ast.selection_set)
     selections = ast.selection_set.selections
-    if try_get_inline_fragment(selections) is not None:
+
+    type_coercion = try_get_inline_fragment(selections)
+    if type_coercion is not None:
         # Case 1: type coercion
-        new_selections = _split_query_ast_one_level_recursive_type_coercion(
-            query_node, selections, type_info, edge_to_stitch_fields, name_assigner
+        type_info.enter(type_coercion)
+        new_type_coercion = _split_query_ast_one_level_recursive(
+            query_node, type_coercion, type_info, edge_to_stitch_fields, name_assigner
         )
+        type_info.leave(type_coercion)
+
+        if new_type_coercion is type_coercion:
+            new_selections = selections
+        else:
+            new_selections = [new_type_coercion]
     else:
         # Case 2: normal fields
         new_selections = _split_query_ast_one_level_recursive_normal_fields(
@@ -96,45 +105,6 @@ def _split_query_ast_one_level_recursive(
         return new_ast
     else:
         return ast
-
-
-def _split_query_ast_one_level_recursive_type_coercion(
-    query_node, selections, type_info, edge_to_stitch_fields, name_assigner
-):
-    """One case of splitting query, selections contains a single inline fragment.
-
-    _split_query_ast_one_level_recursive will be called recursively on the single selection.
-
-    Args:
-        query_node: SubQueryNode, whose list of child query connections may be modified to
-                    include new children
-        selections: List[InlineFragment], containing a single inline fragment (type coercion)
-        type_info: TypeInfo, used to get information about the types of fields while traversing
-                   the query AST
-        edge_to_stitch_fields: Dict[Tuple(str, str), Tuple(str, str)], mapping
-                               (type name, vertex field name) to
-                               (source field name, sink field name) used in the @stitch directive
-                               for each cross schema edge
-        name_assigner: IntermediateOutNameAssigner, object used to generate and keep track of
-                       names of newly created @output directives
-
-    Returns:
-        List[InlineFragment], containing a single inline fragment, used to replace the
-        list of selections in the SelectionSet one level above. If no changes were made, the
-        exact input list object will be returned
-    """
-    type_coercion = try_get_inline_fragment(selections)
-
-    type_info.enter(type_coercion)
-    new_type_coercion = _split_query_ast_one_level_recursive(
-        query_node, type_coercion, type_info, edge_to_stitch_fields, name_assigner
-    )
-    type_info.leave(type_coercion)
-
-    if new_type_coercion is not type_coercion:
-        return [new_type_coercion]
-    else:
-        return selections
 
 
 def _split_query_ast_one_level_recursive_normal_fields(
@@ -180,7 +150,7 @@ def _split_query_ast_one_level_recursive_normal_fields(
 
     made_changes = False
 
-    # First, collection all property fields, but don't make any changes to them yet
+    # First, collect all property fields, but don't make any changes to them yet
     property_fields_map, vertex_fields = _split_selections_property_and_vertex(selections)
 
     # Second, process cross schema fields. This will modify our record of property fields, and
