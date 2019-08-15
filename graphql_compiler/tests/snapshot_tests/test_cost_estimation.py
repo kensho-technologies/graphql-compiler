@@ -8,9 +8,9 @@ from .. import test_input_data
 from ...compiler.metadata import FilterInfo
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.filter_selectivity_utils import (
-    ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, IntegerInterval, Selectivity,
-    _combine_filter_selectivities, _get_filter_selectivity, _get_intersection_of_IntegerIntervals,
-    _is_IntegerInterval_empty, adjust_counts_for_filters
+    ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity,
+    _combine_filter_selectivities, _create_integer_interval, _get_filter_selectivity,
+    _get_intersection_of_intervals, adjust_counts_for_filters
 )
 from ...cost_estimation.statistics import LocalStatistics
 from ..test_helpers import generate_schema_graph
@@ -1162,83 +1162,81 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
 class IntegerIntervalTests(unittest.TestCase):
     """Test methods that use IntegerIntervals."""
 
+
+    def test_interval_creation(self):
+        """Test that intervals are created correctly, and that empty intervals are detected."""
+        interval = _create_integer_interval(5, 1000)
+        self.assertTrue(interval is not None)
+
+        interval = _create_integer_interval(5, 5)
+        self.assertTrue(interval is not None)
+
+        interval = _create_integer_interval(5, 1)
+        self.assertTrue(interval is None)
+
     def test_intersection_when_overlapping(self):
         """Test intersection computation for non-disjoint intervals."""
-        interval_a = IntegerInterval(1, 3)
-        interval_b = IntegerInterval(2, 4)
+        interval_a = _create_integer_interval(1, 3)
+        interval_b = _create_integer_interval(2, 4)
 
-        expected_intersection = IntegerInterval(2, 3)
-        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        expected_intersection = _create_integer_interval(2, 3)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = IntegerInterval(4, 6)
-        interval_b = IntegerInterval(2, 4)
+        interval_a = _create_integer_interval(4, 6)
+        interval_b = _create_integer_interval(2, 4)
 
-        expected_intersection = IntegerInterval(4, 4)
-        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        expected_intersection = _create_integer_interval(4, 4)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = IntegerInterval(4, 6)
-        interval_b = IntegerInterval(4, 6)
+        interval_a = _create_integer_interval(4, 6)
+        interval_b = _create_integer_interval(4, 6)
 
-        expected_intersection = IntegerInterval(4, 6)
-        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        expected_intersection = _create_integer_interval(4, 6)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = IntegerInterval(0, None)
-        interval_b = IntegerInterval(4, 6)
+        interval_a = _create_integer_interval(0, None)
+        interval_b = _create_integer_interval(4, 6)
 
-        expected_intersection = IntegerInterval(4, 6)
-        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        expected_intersection = _create_integer_interval(4, 6)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = IntegerInterval(0, None)
-        interval_b = IntegerInterval(None, 6)
+        interval_a = _create_integer_interval(0, None)
+        interval_b = _create_integer_interval(None, 6)
 
-        expected_intersection = IntegerInterval(0, 6)
-        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        expected_intersection = _create_integer_interval(0, 6)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = IntegerInterval(None, None)
-        interval_b = IntegerInterval(None, 6)
+        interval_a = _create_integer_interval(None, None)
+        interval_b = _create_integer_interval(None, 6)
 
-        expected_intersection = IntegerInterval(None, 6)
-        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        expected_intersection = _create_integer_interval(None, 6)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
     def test_disjoint_intervals(self):
         """Test intersection computation when disjoint intervals are given."""
-        interval_a = IntegerInterval(1, 3)
-        interval_b = IntegerInterval(5, 7)
+        interval_a = _create_integer_interval(1, 3)
+        interval_b = _create_integer_interval(5, 7)
 
         expected_intersection = None
-        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = IntegerInterval(8, 10)
-        interval_b = IntegerInterval(5, 7)
+        interval_a = _create_integer_interval(8, 10)
+        interval_b = _create_integer_interval(5, 7)
 
         expected_intersection = None
-        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = IntegerInterval(0, 0)
-        interval_b = IntegerInterval(1, 1)
+        interval_a = _create_integer_interval(0, 0)
+        interval_b = _create_integer_interval(1, 1)
 
         expected_intersection = None
-        received_intersection = _get_intersection_of_IntegerIntervals(interval_a, interval_b)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
-
-    def test_is_interval_empty(self):
-        """Test that empty intervals are detected correctly."""
-        interval = IntegerInterval(5, 1000)
-
-        self.assertFalse(_is_IntegerInterval_empty(interval))
-
-        interval = IntegerInterval(5, 5)
-
-        self.assertFalse(_is_IntegerInterval_empty(interval))
-
-        interval = IntegerInterval(5, 1)
-
-        self.assertTrue(_is_IntegerInterval_empty(interval))
