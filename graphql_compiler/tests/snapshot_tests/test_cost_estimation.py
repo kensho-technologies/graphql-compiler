@@ -132,163 +132,6 @@ class CostEstimationTests(unittest.TestCase):
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
-    def test_traversal_provided_both_statistics(self):
-        """Test type coercion provided both class_counts and vertex_edge_vertex_counts."""
-        schema_graph = generate_schema_graph(self.orientdb_client)
-        graphql_input = '''{
-            Animal {
-                out_Entity_Related {
-                    ... on Event {
-                        uuid @output(out_name: "event_id")
-                    }
-                }
-            }
-        }'''
-        params = {}
-
-        count_data = {
-            'Entity': 19,
-            'Animal': 3,
-            'Event': 7,
-            'Entity_Related': 11
-        }
-        vertex_edge_vertex_data = {
-            ('Animal', 'Entity_Related', 'Event'): 2
-        }
-        statistics = LocalStatistics(
-            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
-        )
-
-        cardinality_estimate = estimate_query_result_cardinality(
-            schema_graph, statistics, graphql_input, params
-        )
-
-        # For each Animal, vertex_edge_vertex counts tell us we should expect (2.0 / 3.0) Events
-        # when traversing using Entity_Related. This totals to 3.0 * (2.0 / 3.0) results.
-        expected_cardinality_estimate = 3.0 * (2.0 / 3.0)
-        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
-
-    @pytest.mark.usefixtures('snapshot_orientdb_client')
-    def test_traversal_with_no_results(self):
-        """Test type coercion where no results should be expected."""
-        schema_graph = generate_schema_graph(self.orientdb_client)
-        graphql_input = '''{
-            Animal {
-                out_Entity_Related {
-                    ... on Event {
-                        uuid @output(out_name: "event_id")
-                    }
-                }
-            }
-        }'''
-        params = {}
-
-        count_data = {
-            'Entity': 19,
-            'Animal': 3,
-            'Event': 7,
-            'Entity_Related': 11
-        }
-        vertex_edge_vertex_data = {
-            ('Animal', 'Entity_Related', 'Event'): 0
-        }
-        statistics = LocalStatistics(
-            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
-        )
-
-        cardinality_estimate = estimate_query_result_cardinality(
-            schema_graph, statistics, graphql_input, params
-        )
-
-        # Vertex_edge_vertex_data tells us that no Entity_Related edges connect Animals and Events,
-        # so the result set is empty.
-        expected_cardinality_estimate = 0.0
-        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
-
-    @pytest.mark.usefixtures('snapshot_orientdb_client')
-    def test_traversal_in_inbound_direction_provided_both_statistics(self):
-        """Test traversal in inbound direction provided multiple statistics."""
-        schema_graph = generate_schema_graph(self.orientdb_client)
-        graphql_input = '''{
-            Event {
-                in_Entity_Related {
-                    ... on Animal {
-                        uuid @output(out_name: "animal_id")
-                    }
-                }
-            }
-        }'''
-        params = {}
-
-        count_data = {
-            'Entity': 19,
-            'Animal': 3,
-            'Event': 7,
-            'Entity_Related': 11
-        }
-        vertex_edge_vertex_data = {
-            ('Animal', 'Entity_Related', 'Event'): 2
-        }
-        statistics = LocalStatistics(
-            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
-        )
-
-        cardinality_estimate = estimate_query_result_cardinality(
-            schema_graph, statistics, graphql_input, params
-        )
-
-        # For each Event, vertex_edge_vertex_count tells us we should expect (2.0 / 7.0) Animals
-        # when traversing using Entity_Related. This totals to 7.0 * (2.0 / 7.0) result sets.
-        expected_cardinality_estimate = 7.0 * (2.0 / 7.0)
-        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
-
-    @pytest.mark.usefixtures('snapshot_orientdb_client')
-    def test_traversals_with_different_statistics_combination(self):
-        """Test two traversals, where one has vertex_edge_vertex counts and the other doesn't."""
-        schema_graph = generate_schema_graph(self.orientdb_client)
-        graphql_input = '''{
-            Animal {
-                out_Entity_Related {
-                    ... on Event {
-                        uuid @output(out_name: "event_id")
-                        out_Entity_Related {
-                            ... on Location {
-                                name @output(out_name: "location_name")
-                            }
-                        }
-                    }
-                }
-            }
-        }'''
-        params = {}
-
-        count_data = {
-            'Entity': 19,
-            'Animal': 3,
-            'Event': 7,
-            'Entity_Related': 11,
-            'Location': 13
-        }
-        vertex_edge_vertex_data = {
-            ('Animal', 'Entity_Related', 'Event'): 2
-        }
-        statistics = LocalStatistics(
-            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
-        )
-
-        cardinality_estimate = estimate_query_result_cardinality(
-            schema_graph, statistics, graphql_input, params
-        )
-
-        # For each Animal, we expect (2.0 / 3.0) Events when traversing using Entity_Related edge.
-        # For each further Event, we estimate there are (11.0 / 19.0) outgoing Entity_Related
-        # edges. Of those, a total of (11.0 / 19.0) * (13.0 / 19.0) edges go into a Location.
-        # So our total is 3.0 * (2.0 / 3.0) * (11.0 / 19.0) * (13.0 / 19.0)
-
-        expected_cardinality_estimate = 3.0 * (2.0 / 3.0) * (11.0 / 19.0) * (13.0 / 19.0)
-        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
-
-    @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_optional(self):
         """Ensure we handle an optional edge correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)
@@ -398,7 +241,6 @@ class CostEstimationTests(unittest.TestCase):
             'Animal': 5,
             'Animal_BornAt': 7,
             'Animal_FedAt': 3,
-            'FeedingEvent': 11
         }
         statistics = LocalStatistics(count_data)
 
@@ -585,12 +427,8 @@ class CostEstimationTests(unittest.TestCase):
             'Event_RelatedEvent': 7,
             'Event': 17,
             'FeedingEvent': 11,
-            'BirthEvent': 13
         }
-        vertex_edge_vertex_data = {
-            ('Animal', 'Animal_BornAt', 'BirthEvent'): 2
-        }
-        statistics = LocalStatistics(count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data)
+        statistics = LocalStatistics(count_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -657,7 +495,6 @@ class CostEstimationTests(unittest.TestCase):
             'Event_RelatedEvent': 11,
             'Event': 7,
             'FeedingEvent': 6,
-            'BirthEvent': 13
         }
         statistics = LocalStatistics(count_data)
 
@@ -700,7 +537,6 @@ class CostEstimationTests(unittest.TestCase):
             'Event_RelatedEvent': 23,
             'Event': 7,
             'FeedingEvent': 6,
-            'BirthEvent': 13
         }
         statistics = LocalStatistics(count_data)
 
@@ -742,7 +578,6 @@ class CostEstimationTests(unittest.TestCase):
             'Event_RelatedEvent': 11,
             'Event': 7,
             'FeedingEvent': 6,
-            'BirthEvent': 13
         }
         statistics = LocalStatistics(count_data)
 
@@ -785,7 +620,6 @@ class CostEstimationTests(unittest.TestCase):
             'Event_RelatedEvent': 23,
             'Event': 7,
             'FeedingEvent': 6,
-            'BirthEvent': 11
         }
         statistics = LocalStatistics(count_data)
 
