@@ -155,7 +155,9 @@ def _get_intersection_of_intervals(interval_a, interval_b):
         interval_b: IntegerInterval namedtuple.
 
     Returns:
-        IntegerInterval namedtuple, intersection of the two given IntegerIntervals.
+        - IntegerInterval namedtuple, intersection of the two given IntegerIntervals, if the
+          intersection is not empty.
+        - None otherwise.
     """
     strong_lower_bound = _get_stronger_lower_bound(interval_a.lower_bound, interval_b.lower_bound)
     strong_upper_bound = _get_stronger_upper_bound(interval_a.upper_bound, interval_b.upper_bound)
@@ -167,7 +169,7 @@ def _get_intersection_of_intervals(interval_a, interval_b):
 def _get_query_interval_of_binary_integer_inequality_filter(
     parameter_values, filter_operator
 ):
-    """Return IntegerInterval of values passing through a binary integer inequality filter.
+    """Return IntegerInterval or None of values passing through a binary integer inequality filter.
 
     Args:
         parameter_values: List[int], describing the parameters for the inequality filter.
@@ -214,11 +216,11 @@ def _get_query_interval_of_binary_integer_inequality_filter(
 def _get_query_interval_of_ternary_integer_inequality_filter(
     parameter_values, filter_operator
 ):
-    """Return IntegerInterval of values passing through a ternary integer inequality filter.
+    """Return IntegerInterval or None of values passing through a ternary integer inequality filter.
 
     Args:
         parameter_values: List[int], describing the parameters for the inequality filter.
-        filter_operator: str, describing the inequality filter operation being performed.
+        filter_operator: str, describing the ternary inequality filter operation being performed.
 
     Returns:
         - IntegerInterval namedtuple, non-empty interval of values that pass through the filter.
@@ -251,7 +253,7 @@ def _get_query_interval_of_ternary_integer_inequality_filter(
 
 
 def _get_query_interval_of_integer_inequality_filter(parameter_values, filter_operator):
-    """Return IntegerInterval/None of values passing through a given integer inequality filter.
+    """Return IntegerInterval or None of values passing through a given integer inequality filter.
 
     Args:
         parameter_values: List[int], describing the parameters for the inequality filter.
@@ -363,7 +365,7 @@ def _estimate_inequality_filter_selectivity(
     Args:
         schema_graph: SchemaGraph object
         statistics: Statistics object
-        filter_info: FilterInfo object, filter on the location being filtered
+        filter_info: FilterInfo object, inequality filter on the location being filtered
         parameters: dict, parameters with which query will be executed
         location_name: string, type of the location being filtered
 
@@ -499,8 +501,10 @@ def _get_filter_selectivity(
             )
     elif filter_info.op_name in INEQUALITY_OPERATORS:
         # TODO(vlad): Since we assume each filter is independent, we don't consider the correlation
-        #             inequality filters often have. For example, a 'between' filter and a
-        #             pair of '>=' and '<=' are handled differently.
+        #             inequality filters often have. For example, a 'between' filter and an
+        #             equivalent pair of '>=' and '<=' are estimated differently. Consult the
+        #             FilterSelectivityTests/test_inequality_filters_on_uuid function for further
+        #             information.
         result_selectivity = _estimate_inequality_filter_selectivity(
             schema_graph, statistics, filter_info, parameters, location_name
         )
