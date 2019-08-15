@@ -18,10 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'GraphQL Compiler'
-# The copyright string gets displayed as "2017-present Kensho Technologies, LLC." in the browser,
-# (with one dot at the end). If we add a dot after LLC in the copyright string, it will appears as
-# "2017-present Kensho Technologies, LLC.."
-copyright = '2017-present Kensho Technologies, LLC'
+copyright = '2017-present Kensho Technologies, LLC.'
 author = 'Predrag Gruevski, Pedro Mantica, Amartya Shankha Biswas, and Jeremy Meulemans'
 
 
@@ -47,7 +44,7 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
