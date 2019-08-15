@@ -171,11 +171,15 @@ def _get_query_interval_of_binary_integer_inequality_filter(
 
     Args:
         parameter_values: List[int], describing the parameters for the inequality filter.
-        filter_operator: str, describing the inequality filter operation being performed.
+        filter_operator: str, describing the binary inequality filter operation being performed.
 
     Returns:
         - IntegerInterval namedtuple, non-empty interval of values that pass through the filter.
         - None if the interval is empty.
+
+    Raises:
+        - AssertionError if the given operator is unsupported.
+        - ValueError if the number of parameter values is not exactly one.
     """
 
     if len(parameter_values) != 1:
@@ -219,6 +223,10 @@ def _get_query_interval_of_ternary_integer_inequality_filter(
     Returns:
         - IntegerInterval namedtuple, non-empty interval of values that pass through the filter.
         - None if the interval is empty.
+
+    Raises:
+        - AssertionError if the given operator is unsupported.
+        - ValueError if the number of parameter values is not exactly two.
     """
 
     if len(parameter_values) != 2:
@@ -252,6 +260,9 @@ def _get_query_interval_of_integer_inequality_filter(parameter_values, filter_op
     Returns:
         - IntegerInterval namedtuple, non-empty interval of values that pass through the filter.
         - None if the interval is empty.
+
+    Raises:
+        - AssertionError if the number of parameter values is not exactly one or exactly two.
     """
     if len(parameter_values) == 1:
         query_interval = _get_query_interval_of_binary_integer_inequality_filter(
@@ -294,9 +305,10 @@ def _get_selectivity_of_integer_inequality_filter(
         Selectivity object, describing the selectivity of the integer inequality filter.
 
     Raises:
-        ValueError if:
+        - ValueError if:
             - The domain interval's lower or upper bound is not defined.
             - The domain interval is empty i.e. its lower bound is greater than its upper bound.
+        - AssertionError if the intersection interval is not a subset of the domain interval.
     """
     if domain_interval.lower_bound is None or domain_interval.upper_bound is None:
         raise ValueError(u'Expected domain interval {} to have both a lower and upper bound.'
@@ -324,7 +336,7 @@ def _get_selectivity_of_integer_inequality_filter(
         not domain_interval.lower_bound <= intersection.lower_bound <=
             intersection.upper_bound <= domain_interval.upper_bound
     ):
-        raise AssertionError(u'Query interval {} is not '
+        raise AssertionError(u'Intersection between domain interval and query interval {} is not '
                              u'a subset of the given domain interval {}.'
                              .format(intersection, domain_interval))
 
