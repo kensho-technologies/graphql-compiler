@@ -3332,7 +3332,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = SKIP_TEST  # has_edge_degree not implemented for Cypher yet.
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3853,7 +3853,16 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_names_list`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3897,7 +3906,22 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH
+              (Animal__in_Animal_ParentOf___1)-[:Animal_ParentOf]->
+              (Animal__in_Animal_ParentOf__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              Animal__in_Animal_ParentOf___1 AS Animal__in_Animal_ParentOf___1,
+              collect(Animal__in_Animal_ParentOf__out_Animal_ParentOf___1) AS
+                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.name] AS
+                `sibling_and_self_names_list`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3942,7 +3966,23 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH
+              (Animal__in_Animal_ParentOf___1)-[:Animal_ParentOf]->
+              (Animal__in_Animal_ParentOf__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              collect(Animal__in_Animal_ParentOf___1) AS
+                collected_Animal__in_Animal_ParentOf___1,
+              collect(Animal__in_Animal_ParentOf__out_Animal_ParentOf___1) AS
+                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.name] AS
+                `sibling_and_self_names_list`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -3990,7 +4030,29 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH
+              (Animal__in_Animal_ParentOf___1)-[:Animal_ParentOf]->
+              (Animal__in_Animal_ParentOf__out_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH
+              (Animal__in_Animal_ParentOf__out_Animal_ParentOf___1)-[:Animal_OfSpecies]->
+              (Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1:Species)
+            WITH
+              Animal___1 AS Animal___1,
+              collect(Animal__in_Animal_ParentOf___1) AS
+                collected_Animal__in_Animal_ParentOf___1,
+              collect(Animal__in_Animal_ParentOf__out_Animal_ParentOf___1) AS
+                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1,
+              collect(Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1) AS
+                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN
+                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
+                | x.name] AS `sibling_and_self_species_list`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4043,7 +4105,28 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH
+              (Animal__in_Animal_ParentOf___1)-[:Animal_ParentOf]->
+              (Animal__in_Animal_ParentOf__out_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH
+              (Animal__in_Animal_ParentOf__out_Animal_ParentOf___1)-[:Animal_OfSpecies]->
+              (Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1:Species)
+            WITH
+              Animal___1 AS Animal___1,
+              Animal__in_Animal_ParentOf___1 AS Animal__in_Animal_ParentOf___1,
+              collect(Animal__in_Animal_ParentOf__out_Animal_ParentOf___1) AS
+                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1,
+              collect(Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1) AS
+                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN
+                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
+                | x.name] AS `sibling_and_self_species_list`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4085,7 +4168,17 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_names_list`,
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.uuid] AS `child_uuids_list`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4140,7 +4233,24 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH
+              (Animal__in_Animal_ParentOf___1)-[:Animal_ParentOf]->
+              (Animal__in_Animal_ParentOf__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              collect(Animal__in_Animal_ParentOf___1) AS collected_Animal__in_Animal_ParentOf___1,
+              collect(Animal__in_Animal_ParentOf__out_Animal_ParentOf___1) AS
+                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.name] AS
+                `sibling_and_self_names_list`,
+              [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.uuid] AS
+                `sibling_and_self_uuids_list`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4193,7 +4303,24 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              collect(Animal__in_Animal_ParentOf___1) AS collected_Animal__in_Animal_ParentOf___1
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              collected_Animal__in_Animal_ParentOf___1 AS collected_Animal__in_Animal_ParentOf___1,
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_names_list`,
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.uuid] AS `child_uuids_list`,
+              [x IN collected_Animal__in_Animal_ParentOf___1 | x.name] AS `parent_names_list`,
+              [x IN collected_Animal__in_Animal_ParentOf___1 | x.uuid] AS `parent_uuids_list`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4272,7 +4399,39 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH (Animal__in_Animal_ParentOf___1)-[:Animal_ParentOf]->
+              (Animal__in_Animal_ParentOf__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              collect(Animal__in_Animal_ParentOf___1) AS collected_Animal__in_Animal_ParentOf___1,
+              collect(Animal__in_Animal_ParentOf__out_Animal_ParentOf___1) AS
+                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH
+              (Animal__out_Animal_ParentOf___1)<-[:Animal_ParentOf]-
+              (Animal__out_Animal_ParentOf__in_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              collected_Animal__in_Animal_ParentOf___1 AS collected_Animal__in_Animal_ParentOf___1,
+              collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 AS
+                collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1,
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1,
+              collect(Animal__out_Animal_ParentOf__in_Animal_ParentOf___1) AS
+                collected_Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.name] AS
+                `sibling_and_self_names_list`,
+              [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.uuid] AS
+                `sibling_and_self_uuids_list`,
+              [x IN collected_Animal__out_Animal_ParentOf__in_Animal_ParentOf___1 | x.name] AS
+                `spouse_and_self_names_list`,
+              [x IN collected_Animal__out_Animal_ParentOf__in_Animal_ParentOf___1 | x.uuid] AS
+                `spouse_and_self_uuids_list`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4319,7 +4478,24 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_FedAt]->(Animal__out_Animal_FedAt___1:FeedingEvent)
+            WITH
+              Animal___1 AS Animal___1,
+              collect(Animal__out_Animal_FedAt___1) AS collected_Animal__out_Animal_FedAt___1
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              collected_Animal__out_Animal_FedAt___1 AS collected_Animal__out_Animal_FedAt___1,
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.birthday] AS
+                `child_birthdays_list`,
+              [x IN collected_Animal__out_Animal_FedAt___1 | x.event_date] AS
+                `fed_at_datetimes_list`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4358,7 +4534,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4395,7 +4571,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4486,7 +4662,22 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE (
+                  Animal__out_Animal_ParentOf___1.name = $desired
+                )
+            WITH
+              Animal___1 AS Animal___1,
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
+            RETURN
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.description] AS
+                `child_descriptions`,
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS
+                `child_list`,
+              Animal___1.name AS `name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4526,7 +4717,20 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE (
+                    (Animal__out_Animal_ParentOf___1.name = $desired) OR
+                    ($desired IN Animal__out_Animal_ParentOf___1.alias)
+                )
+            WITH
+              Animal___1 AS Animal___1,
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
+            RETURN
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_list`,
+              Animal___1.name AS `name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4564,7 +4768,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4610,7 +4814,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4648,7 +4852,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4706,7 +4910,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4773,7 +4977,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4799,7 +5003,7 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = NotImplementedError
 
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4826,7 +5030,7 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = NotImplementedError
 
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4856,7 +5060,7 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = NotImplementedError
 
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -4884,7 +5088,7 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = NotImplementedError
 
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)

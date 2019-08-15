@@ -981,6 +981,10 @@ at that scope that are not of type `Food` are filtered out and discarded.
 In this query, the `out_Entity_Related` is of `Entity` type. However, the query only wants to
 return results where the related entity is a `Species`, which `... on Species` ensures is the case.
 
+#### Constraints and Rules
+- Must be the only selection in scope. No field may exist in the same scope as a type coercion. No
+scope may contain more than one type coercion.
+
 ## Meta fields
 
 ### \_\_typename
