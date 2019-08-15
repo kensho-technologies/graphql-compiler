@@ -8,7 +8,8 @@ from graphql import parse, print_ast
 from ...exceptions import GraphQLValidationError
 from ...schema_transformation.split_query import split_query
 from .example_schema import (
-    basic_merged_schema, interface_merged_schema, three_merged_schema, union_merged_schema
+    basic_merged_schema, interface_merged_schema, three_merged_schema,
+    stitch_arguments_flipped_schema, union_merged_schema
 )
 
 
@@ -127,6 +128,52 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), basic_merged_schema)
+        self._check_query_node_structure(query_node, example_query_node)
+        self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(2))
+
+    def test_stitch_arguments_flipped(self):
+        query_str = dedent('''\
+            {
+              Animal {
+                out_Animal_Creature {
+                  age @output(out_name: "age")
+                }
+              }
+            }
+        ''')
+        parent_str = dedent('''\
+            {
+              Animal {
+                uuid @output(out_name: "__intermediate_output_0")
+              }
+            }
+        ''')
+        child_str = dedent('''\
+            {
+              Creature {
+                age @output(out_name: "age")
+                id @output(out_name: "__intermediate_output_1")
+              }
+            }
+        ''')
+        example_query_node = ExampleQueryNode(
+            query_str=parent_str,
+            schema_id='first',
+            child_query_nodes_and_out_names=[
+                (
+                    ExampleQueryNode(
+                        query_str=child_str,
+                        schema_id='second',
+                        child_query_nodes_and_out_names=[]
+                    ),
+                    '__intermediate_output_0',
+                    '__intermediate_output_1',
+                )
+            ]
+        )
+        query_node, intermediate_outputs = split_query(
+            parse(query_str), stitch_arguments_flipped_schema
+        )
         self._check_query_node_structure(query_node, example_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(2))
 

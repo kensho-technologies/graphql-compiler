@@ -5,7 +5,7 @@ from graphql import build_ast_schema, parse
 import six
 
 from ...schema_transformation.merge_schemas import (
-    CrossSchemaEdgeDescriptor, FieldReference, merge_schemas
+    CrossSchemaEdgeDescriptor, FieldReference, MergedSchemaDescriptor, merge_schemas
 )
 from ...schema_transformation.rename_schema import rename_schema
 from ..test_helpers import SCHEMA_TEXT
@@ -240,4 +240,37 @@ three_merged_schema = merge_schemas(
             out_edge_only=False,
         ),
     ],
+)
+
+
+stitch_arguments_flipped_schema_str = '''
+schema {
+  query: SchemaQuery
+}
+
+type Animal {
+  uuid: String
+  name: String
+  out_Animal_Creature: Creature @stitch(sink_field: "id", source_field: "uuid")
+}
+
+type Creature {
+  id: String
+  age: Int
+  in_Animal_Creature: Animal @stitch(sink_field: "uuid", source_field: "id")
+}
+
+type SchemaQuery {
+  Animal: Animal
+  Creature: Creature
+}
+
+directive @output(out_name: String!) on FIELD
+'''
+
+
+stitch_arguments_flipped_schema = MergedSchemaDescriptor(
+    schema_ast=parse(stitch_arguments_flipped_schema_str),
+    schema=build_ast_schema(parse(stitch_arguments_flipped_schema_str)),
+    type_name_to_schema_id={'Animal': 'first', 'Creature': 'second'},
 )
