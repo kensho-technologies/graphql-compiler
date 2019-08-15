@@ -379,7 +379,7 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
             len(selections) == 1 and
             isinstance(selections[0], InlineFragment)
         ):
-            return None
+            return
         else:
             seen_vertex_field = False  # Whether we're seen a vertex field
             for field in selections:
