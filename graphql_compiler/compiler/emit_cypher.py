@@ -246,7 +246,7 @@ def emit_code_from_ir(cypher_query, compiler_metadata):
     # According to the Cypher Query Language Reference [0], the standard Cypher version is
     # Cypher 9 (page 196) and we should be able to specify the Cypher version in the query.
     # Unfortunately, this turns out to be invalid in both Neo4j and RedisGraph-- Neo4j supports
-    # Cypher version 2.3, 3.4, and 3.5 [1] while Redisgraph doesn't support the syntax at all [2].
+    # Cypher version 2.3, 3.4, and 3.5 [1] while RedisGraph doesn't support the syntax at all [2].
     # When this does eventually get resolved, we can change `query_data` back to `[u'CYPHER 9']`
     # [0] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
     # [1] https://github.com/neo4j/neo4j/issues/12239
