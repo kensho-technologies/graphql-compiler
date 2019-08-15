@@ -12,7 +12,9 @@ from graphql.validation import validate
 import six
 
 from ..ast_manipulation import get_only_query_definition
-from ..compiler.helpers import strip_non_null_and_list_from_type
+from ..compiler.helpers import (
+    strip_non_null_and_list_from_type, get_uniquely_named_objects_by_name
+)
 from ..exceptions import GraphQLValidationError
 from ..schema import FilterDirective, OptionalDirective, OutputDirective
 from .utils import (
@@ -60,9 +62,8 @@ def split_query(query_ast, merged_schema_descriptor):
         merged_schema_descriptor: MergedSchemaDescriptor namedtuple, containing:
                                   schema_ast: Document representing the merged schema
                                   schema: GraphQLSchema representing the merged schema
-                                  type_name_to_schema_id: Dict[str, str], mapping name of each
-                                                          type to the id of the schema it came
-                                                          from
+                                  type_name_to_schema_id: Dict[str, str], mapping type names to
+                                                          the id of the schema it came from
 
     Returns:
         Tuple[SubQueryNode, frozenset[str]]. The first element is the root of the tree of
@@ -131,8 +132,9 @@ def _get_edge_to_stitch_fields(merged_schema_descriptor):
                     field_definition.directives, u'stitch', Directive
                 )
                 if stitch_directive is not None:
-                    source_field_name = stitch_directive.arguments[0].value.value
-                    sink_field_name = stitch_directive.arguments[1].value.value
+                    fields_by_name = get_uniquely_named_objects_by_name(stitch_directive.arguments)
+                    source_field_name = fields_by_name['source_field'].value.value
+                    sink_field_name = fields_by_name['sink_field'].value.value
                     stitch_data_key = (type_definition.name.value, field_definition.name.value)
                     edge_to_stitch_fields[stitch_data_key] = (source_field_name, sink_field_name)
 
