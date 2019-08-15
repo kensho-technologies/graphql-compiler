@@ -12,9 +12,7 @@ from graphql.validation import validate
 import six
 
 from ..ast_manipulation import get_only_query_definition
-from ..compiler.helpers import (
-    strip_non_null_and_list_from_type, get_uniquely_named_objects_by_name
-)
+from ..compiler.helpers import get_uniquely_named_objects_by_name, strip_non_null_and_list_from_type
 from ..exceptions import GraphQLValidationError
 from ..schema import FilterDirective, OptionalDirective, OutputDirective
 from .utils import (
