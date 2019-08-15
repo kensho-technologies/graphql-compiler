@@ -9,8 +9,8 @@ from ...compiler.metadata import FilterInfo
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.filter_selectivity_utils import (
     ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, IntegerInterval, Selectivity,
-    adjust_counts_for_filters, _combine_filter_selectivities, _get_filter_selectivity,
-    _get_intersection_of_IntegerIntervals, _is_IntegerInterval_empty
+    _combine_filter_selectivities, _get_filter_selectivity, _get_intersection_of_IntegerIntervals,
+    _is_IntegerInterval_empty, adjust_counts_for_filters
 )
 from ...cost_estimation.statistics import LocalStatistics
 from ..test_helpers import generate_schema_graph
@@ -1116,7 +1116,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         less_or_equal_to_filter = FilterInfo(fields=('uuid',), op_name='>=',
                                              args=('$uuid_lower',))
         greater_or_equal_to_filter = FilterInfo(fields=('uuid',), op_name='<=',
-                                             args=('$uuid_upper',))
+                                                args=('$uuid_upper',))
         filter_info_list = [less_or_equal_to_filter, greater_or_equal_to_filter]
         # The number of UUIDs between the two parameter values is effectively a quarter of all valid
         # UUIDs.
@@ -1242,4 +1242,3 @@ class IntegerIntervalTests(unittest.TestCase):
         interval = IntegerInterval(5, 1)
 
         self.assertTrue(_is_IntegerInterval_empty(interval))
-
