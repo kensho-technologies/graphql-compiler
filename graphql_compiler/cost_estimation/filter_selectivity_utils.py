@@ -79,11 +79,12 @@ def _create_integer_interval(lower_bound, upper_bound):
           bounds.
         - None if the interval defined by the bounds is empty.
     """
-    interval = IntegerInterval(lower_bound, upper_bound)
-    # If the lower bound is greater than the upper bound, then the interval is empty, so we indicate
-    # this by returning None.
+    # If the lower bound is greater than the upper bound, then the interval is empty, which we
+    # indicate by returning None.
     if lower_bound is not None and upper_bound is not None and lower_bound > upper_bound:
         interval = None
+    else:
+        interval = IntegerInterval(lower_bound, upper_bound)
 
     return interval
 
@@ -104,14 +105,10 @@ def _get_stronger_lower_bound(lower_bound_a, lower_bound_b):
     """
     stronger_lower_bound = None
     if lower_bound_a is not None and lower_bound_b is not None:
-        # If both lower bounds exist, the stronger lower bound is the larger bound of the two
-        # given lower bounds.
         stronger_lower_bound = max(lower_bound_a, lower_bound_b)
     elif lower_bound_a is not None:
-        # If only one lower bound exists, the stronger lower bound equals it.
         stronger_lower_bound = lower_bound_a
     elif lower_bound_b is not None:
-        # If only one lower bound exists, the stronger lower bound equals it.
         stronger_lower_bound = lower_bound_b
 
     return stronger_lower_bound
@@ -134,14 +131,10 @@ def _get_stronger_upper_bound(upper_bound_a, upper_bound_b):
 
     stronger_upper_bound = None
     if upper_bound_a is not None and upper_bound_b is not None:
-        # If both upper bounds exist, the stronger upper bound is the smaller bound of the two
-        # given upper bounds.
         stronger_upper_bound = min(upper_bound_a, upper_bound_b)
     elif upper_bound_a is not None:
-        # If only one upper bound exists, the stronger upper bound equals it.
         stronger_upper_bound = upper_bound_a
     elif upper_bound_b is not None:
-        # If only one upper bound exists, the stronger upper bound equals it.
         stronger_upper_bound = upper_bound_b
 
     return stronger_upper_bound
@@ -180,8 +173,7 @@ def _get_query_interval_of_binary_integer_inequality_filter(
         - None if the interval is empty.
 
     Raises:
-        - AssertionError if the given operator is unsupported.
-        - ValueError if the number of parameter values is not exactly one.
+        ValueError if the number of parameter values is not exactly one.
     """
 
     if len(parameter_values) != 1:
@@ -193,16 +185,12 @@ def _get_query_interval_of_binary_integer_inequality_filter(
 
     parameter_value = parameter_values[0]
     if filter_operator == '>':
-        # This (exclusively) constrains the lower bound of the values passing through the filter.
         lower_bound = parameter_value + 1
     elif filter_operator == '>=':
-        # This (inclusively) constrains the lower bound of the values passing through the filter.
         lower_bound = parameter_value
     elif filter_operator == '<':
-        # This (exclusively) constrains the upper bound of the values passing through the filter.
         upper_bound = parameter_value - 1
     elif filter_operator == '<=':
-        # This (inclusively) constrains the upper bound of the values passing through the filter.
         upper_bound = parameter_value
     else:
         raise AssertionError(u'Cost estimator found unsupported '
@@ -227,8 +215,7 @@ def _get_query_interval_of_ternary_integer_inequality_filter(
         - None if the interval is empty.
 
     Raises:
-        - AssertionError if the given operator is unsupported.
-        - ValueError if the number of parameter values is not exactly two.
+        ValueError if the number of parameter values is not exactly two.
     """
 
     if len(parameter_values) != 2:
@@ -239,8 +226,6 @@ def _get_query_interval_of_ternary_integer_inequality_filter(
     lower_bound, upper_bound = None, None
 
     if filter_operator == 'between':
-        # This (inclusively) constrains the lower and upper bounds of the
-        # values passing through the filter.
         lower_bound = parameter_values[0]
         upper_bound = parameter_values[1]
     else:
@@ -262,9 +247,6 @@ def _get_query_interval_of_integer_inequality_filter(parameter_values, filter_op
     Returns:
         - IntegerInterval namedtuple, non-empty interval of values that pass through the filter.
         - None if the interval is empty.
-
-    Raises:
-        - AssertionError if the number of parameter values is not exactly one or exactly two.
     """
     if len(parameter_values) == 1:
         query_interval = _get_query_interval_of_binary_integer_inequality_filter(
@@ -307,10 +289,9 @@ def _get_selectivity_of_integer_inequality_filter(
         Selectivity object, describing the selectivity of the integer inequality filter.
 
     Raises:
-        - ValueError if:
+        ValueError if:
             - The domain interval's lower or upper bound is not defined.
             - The domain interval is empty i.e. its lower bound is greater than its upper bound.
-        - AssertionError if the intersection interval is not a subset of the domain interval.
     """
     if domain_interval.lower_bound is None or domain_interval.upper_bound is None:
         raise ValueError(u'Expected domain interval {} to have both a lower and upper bound.'
