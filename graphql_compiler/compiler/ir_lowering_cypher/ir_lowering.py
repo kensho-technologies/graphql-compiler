@@ -7,7 +7,8 @@ from ..blocks import CoerceType, Filter, Fold, MarkLocation, Recurse, Traverse
 from ..compiler_entities import Expression
 from ..expressions import BinaryComposition, ContextField, LocalField, NullLiteral
 from ..helpers import (
-    FoldScopeLocation, get_only_element_from_collection, is_graphql_type, validate_safe_string
+    FoldScopeLocation, Location, get_only_element_from_collection, is_graphql_type,
+    validate_safe_string
 )
 from ..ir_lowering_common.common import merge_consecutive_filter_clauses
 from ..ir_lowering_common.location_renaming import (
@@ -272,3 +273,47 @@ def move_filters_in_optional_locations_to_global_operations(cypher_query, query_
             merge_consecutive_filter_clauses(global_filters))
 
     return cypher_query._replace(steps=new_steps, global_where_block=new_global_where_block)
+
+
+def renumber_locations_to_one(ir_blocks):
+    """Re-number Locations' visit_counter to be 1 since Cypher handles optional edges properly.
+
+    Renumbering of locations are required by some backends (such as Gremlin) that do not natively
+    support pattern-matching operators, in order to correctly handle optional edges.
+    When pattern-matching is supported (as in Cypher, via the MATCH / OPTIONAL MATCH operators),
+    renumbering is unnecessary and may be safely removed.
+
+    When renumbering, it's important to ensure we don't have two MarkLocation objects with the same
+    location because that's equivalent to giving two different locations in the query the same name.
+
+    Args:
+        ir_blocks: List[BasicBlock] IR blocks
+
+    Returns:
+        List[BasicBlock] IR blocks after lowering
+    """
+    new_ir_blocks = []
+    locations_marked = set()
+
+    def get_block_base_location(block_location):
+        """Get the Location object from a Location/ FoldScopeLocation."""
+        if isinstance(block_location, FoldScopeLocation):
+            return block_location.base_location
+        elif isinstance(block_location, Location):
+            return block_location
+        else:
+            raise TypeError(u'Expected location to be of type Location or FoldScopeLocation.'
+                            u'Instead got type {} for location {}'
+                            .format(type(block_location), block_location))
+
+    for block in ir_blocks:
+        if not isinstance(block, MarkLocation):
+            new_ir_blocks.append(block)
+            continue
+        if block.location in locations_marked:
+            continue
+        location = get_block_base_location(block.location)
+        location.visit_counter = 1
+        locations_marked.add(block.location)
+        new_ir_blocks.append(block)
+    return new_ir_blocks
