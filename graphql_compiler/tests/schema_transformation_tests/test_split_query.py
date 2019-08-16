@@ -3,6 +3,7 @@ from collections import namedtuple
 import unittest
 
 from graphql import print_ast
+import six
 
 
 # The below namedtuple is used to check the structure of SubQueryNodes in tests
