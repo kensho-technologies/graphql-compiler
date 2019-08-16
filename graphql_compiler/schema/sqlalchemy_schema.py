@@ -3,7 +3,7 @@ from collections import namedtuple
 
 
 # Complete schema information sufficient to compile GraphQL queries to SQLAlchemy
-SQLAlchemyMetadata = namedtuple('SQLAlchemyMetadata', (
+SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
     'schema',  # GraphQLSchema
     'tables',  # dict mapping every graphql type in the schema to a sqlalchemy table
     'joins',   # dict mapping every graphql type in the schema to:
