@@ -3,14 +3,22 @@ from collections import OrderedDict, namedtuple
 from copy import copy
 
 from graphql.language.ast import (
-    Argument, Directive, Document, Field, Name, OperationDefinition, SelectionSet, StringValue
+    Argument, Directive, Document, Field, InterfaceTypeDefinition, Name, ObjectTypeDefinition,
+    OperationDefinition, SelectionSet, StringValue
 )
+from graphql.language.visitor import TypeInfoVisitor, Visitor, visit
+from graphql.utils.type_info import TypeInfo
+from graphql.validation import validate
 import six
 
-from ..compiler.helpers import strip_non_null_and_list_from_type
+from ..ast_manipulation import get_only_query_definition
+from ..compiler.helpers import get_uniquely_named_objects_by_name, strip_non_null_and_list_from_type
 from ..exceptions import GraphQLValidationError
 from ..schema import FilterDirective, OptionalDirective, OutputDirective
-from .utils import is_property_field_ast, try_get_ast_by_name_and_type, try_get_inline_fragment
+from .utils import (
+    SchemaStructureError, check_query_is_valid_to_split, is_property_field_ast,
+    try_get_ast_by_name_and_type, try_get_inline_fragment
+)
 
 
 QueryConnection = namedtuple(
@@ -37,6 +45,165 @@ class SubQueryNode(object):
         # SubQueryNode or None, the query that the current query depends on
         self.child_query_connections = []
         # List[SubQueryNode], the queries that depend on the current query
+
+
+def split_query(query_ast, merged_schema_descriptor):
+    """Split input query AST into a tree of SubQueryNodes targeting each individual schema.
+
+    Property fields used in the stitch will be added if not already present. @output directives
+    will be added on property fields if not already present. All output names of @output
+    directives will be unique, and thus used to identify fields later down the line for adding
+    @filter directives.
+
+    Args:
+        query_ast: Document, representing a GraphQL query to split
+        merged_schema_descriptor: MergedSchemaDescriptor namedtuple, containing:
+                                  schema_ast: Document representing the merged schema
+                                  schema: GraphQLSchema representing the merged schema
+                                  type_name_to_schema_id: Dict[str, str], mapping type names to
+                                                          the id of the schema it came from
+
+    Returns:
+        Tuple[SubQueryNode, frozenset[str]]. The first element is the root of the tree of
+        QueryNodes. Each node contains an AST representing a part of the overall query,
+        targeting a specific schema. The second element is the set of all intermediate output
+        names that are to be removed at the end
+
+    Raises:
+        - GraphQLValidationError if the query doesn't validate against the schema, contains
+          unsupported directives, some property field occurs after a vertex field in some
+          selection, or some inline fragment coexists with other fields or inline fragment
+          on the same scope
+        - SchemaStructureError if the input merged_schema_descriptor appears to be invalid
+          or inconsistent
+    """
+    check_query_is_valid_to_split(merged_schema_descriptor.schema, query_ast)
+
+    # If schema directives are correctly represented in the schema object, type_info is all
+    # that's needed to detect and address stitching fields. However, GraphQL currently ignores
+    # schema directives when converting an AST to a schema object. Until this issue is
+    # fixed, it's necessary to use additional information from pre-processing the schema AST
+    edge_to_stitch_fields = _get_edge_to_stitch_fields(merged_schema_descriptor)
+    name_assigner = IntermediateOutNameAssigner()
+
+    root_query_node = SubQueryNode(query_ast)
+    query_nodes_to_split = [root_query_node]
+
+    # Construct full tree of SubQueryNodes in a dfs pattern
+    while len(query_nodes_to_split) > 0:
+        current_node_to_split = query_nodes_to_split.pop()
+
+        _split_query_one_level(current_node_to_split, merged_schema_descriptor,
+                               edge_to_stitch_fields, name_assigner)
+
+        query_nodes_to_split.extend(
+            child_query_connection.sink_query_node
+            for child_query_connection in current_node_to_split.child_query_connections
+        )
+
+    return root_query_node, frozenset(name_assigner.intermediate_output_names)
+
+
+def _get_edge_to_stitch_fields(merged_schema_descriptor):
+    """Get a map from type/field of each cross schema edge, to the fields that the edge stitches.
+
+    This is necessary only because GraphQL currently doesn't process schema directives correctly.
+    Once schema directives are correctly added to GraphQLSchema objects, this part may be
+    removed as directives on a schema field can be directly accessed.
+
+    Args:
+        merged_schema_descriptor: MergedSchemaDescriptor namedtuple, containing a schema AST
+                                  and a map from names of types to their schema ids
+
+    Returns:
+        Dict[Tuple(str, str), Tuple(str, str)], mapping (type name, vertex field name) to
+        (source field name, sink field name) used in the @stitch directive, for each cross
+        schema edge
+    """
+    edge_to_stitch_fields = {}
+    for type_definition in merged_schema_descriptor.schema_ast.definitions:
+        if isinstance(type_definition, (
+            ObjectTypeDefinition, InterfaceTypeDefinition
+        )):
+            for field_definition in type_definition.fields:
+                stitch_directive = try_get_ast_by_name_and_type(
+                    field_definition.directives, u'stitch', Directive
+                )
+                if stitch_directive is not None:
+                    fields_by_name = get_uniquely_named_objects_by_name(stitch_directive.arguments)
+                    source_field_name = fields_by_name['source_field'].value.value
+                    sink_field_name = fields_by_name['sink_field'].value.value
+                    stitch_data_key = (type_definition.name.value, field_definition.name.value)
+                    edge_to_stitch_fields[stitch_data_key] = (source_field_name, sink_field_name)
+
+    return edge_to_stitch_fields
+
+
+def _split_query_one_level(query_node, merged_schema_descriptor, edge_to_stitch_fields,
+                           name_assigner):
+    """Split the query node, creating children out of all branches across cross schema edges.
+
+    The input query_node will be modified. Its query_ast will be replaced by a new AST with
+    branches leading out of cross schema edges removed, and new property fields and @output
+    directives added as necessary. Its child_query_connections will be modified by tacking
+    on SubQueryNodes created from these cut-off branches.
+
+    Args:
+        query_node: SubQueryNode that we're splitting into its child components. Its query_ast
+                    will be replaced (but the original AST will not be modified) and its
+                    child_query_connections will be modified
+        merged_schema_descriptor: MergedSchemaDescriptor, the schema that the query AST contained
+                                  in the input query_node targets
+        edge_to_stitch_fields: Dict[Tuple(str, str), Tuple(str, str)], mapping
+                               (type name, vertex field name) to
+                               (source field name, sink field name) used in the @stitch directive
+                               for each cross schema edge
+        name_assigner: IntermediateOutNameAssigner, object used to generate and keep track of
+                       names of newly created @output directive
+
+    Raises:
+        - GraphQLValidationError if the query AST contained in the input query_node is invalid,
+          for example, having an @output directive on a cross schema edge
+        - SchemaStructureError if the merged_schema_descriptor provided appears to be invalid
+          or inconsistent
+    """
+    type_info = TypeInfo(merged_schema_descriptor.schema)
+
+    operation_definition = get_only_query_definition(query_node.query_ast, GraphQLValidationError)
+
+    type_info.enter(operation_definition)
+    new_operation_definition = _split_query_ast_one_level_recursive(
+        query_node, operation_definition, type_info, edge_to_stitch_fields, name_assigner
+    )
+    type_info.leave(operation_definition)
+
+    if new_operation_definition is not operation_definition:
+        new_query_ast = copy(query_node.query_ast)
+        new_query_ast.definitions = [new_operation_definition]
+        query_node.query_ast = new_query_ast
+
+    # Check resulting AST is valid
+    validation_errors = validate(merged_schema_descriptor.schema, query_node.query_ast)
+    if len(validation_errors) > 0:
+        raise AssertionError(
+            u'The resulting split query "{}" is invalid, with the following error messages: {}'
+            u''.format(query_node.query_ast, validation_errors)
+        )
+
+    # Set schema id, check for consistency
+    visitor = TypeInfoVisitor(
+        type_info,
+        SchemaIdSetterVisitor(
+            type_info, query_node, merged_schema_descriptor.type_name_to_schema_id
+        )
+    )
+    visit(query_node.query_ast, visitor)
+
+    if query_node.schema_id is None:
+        raise AssertionError(
+            u'Unreachable code reached. The schema id of query piece "{}" has not been '
+            u'determined.'.format(query_node.query_ast)
+        )
 
 
 def _split_query_ast_one_level_recursive(
@@ -559,3 +726,54 @@ class IntermediateOutNameAssigner(object):
         self.intermediate_output_count += 1
         self.intermediate_output_names.add(out_name)
         return out_name
+
+
+class SchemaIdSetterVisitor(Visitor):
+    def __init__(self, type_info, query_node, type_name_to_schema_id):
+        """Create a visitor for setting the schema_id of the input query node.
+
+        Args:
+            type_info: TypeInfo, used to keep track of types of fields while traversing the AST
+            query_node: SubQueryNode, whose schema_id will be modified
+            type_name_to_schema_id: Dict[str, str], mapping the names of types to the id of the
+                                    schema that they came from
+        """
+        self.type_info = type_info
+        self.query_node = query_node
+        self.type_name_to_schema_id = type_name_to_schema_id
+
+    def enter_Field(self, *args):
+        """Check the schema of the type that the field leads to"""
+        child_type_name = strip_non_null_and_list_from_type(self.type_info.get_type()).name
+        self._check_or_set_schema_id(child_type_name)
+
+    def enter_InlineFragment(self, node, *args):
+        """Check the schema of the coerced type."""
+        self._check_or_set_schema_id(node.type_condition.name.value)
+
+    def _check_or_set_schema_id(self, type_name):
+        """Set the schema id of the root node if not yet set, otherwise check schema ids agree.
+
+        Args:
+            type_name: str, name of the type whose schema id we're comparing against the
+                       previously recorded schema id
+        """
+        if type_name in self.type_name_to_schema_id:  # It may be a scalar, and thus not found
+            current_type_schema_id = self.type_name_to_schema_id[type_name]
+            prior_type_schema_id = self.query_node.schema_id
+            if prior_type_schema_id is None:  # First time checking schema_id
+                self.query_node.schema_id = current_type_schema_id
+            elif current_type_schema_id != prior_type_schema_id:
+                # A single query piece has types from two schemas -- merged_schema_descriptor
+                # is invalid: an edge field without a @stitch directive crosses schemas,
+                # or type_name_to_schema_id is wrong
+                raise SchemaStructureError(
+                    u'The provided merged schema descriptor may be invalid. Perhaps some '
+                    u'vertex field that does not have a @stitch directive crosses schemas. As '
+                    u'a result, query piece "{}" appears to contain types from more than '
+                    u'one schema. Type "{}" belongs to schema "{}", while some other type '
+                    u'belongs to schema "{}".'.format(
+                        self.query_node.query_ast, type_name, current_type_schema_id,
+                        prior_type_schema_id
+                    )
+                )
