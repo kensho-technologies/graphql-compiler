@@ -4,6 +4,7 @@ from textwrap import dedent
 import unittest
 
 from graphql import parse, print_ast
+import six
 
 from ...exceptions import GraphQLValidationError
 from ...schema_transformation.split_query import split_query
@@ -14,41 +15,42 @@ from .example_schema import (
 
 
 # The below namedtuple is used to check the structure of SubQueryNodes in tests
-ExampleQueryNode = namedtuple(
-    'ExampleQueryNode', (
+ExpectedQueryNode = namedtuple(
+    'ExpectedQueryNode', (
         'query_str',
         'schema_id',
         'child_query_nodes_and_out_names',
-        # List[Tuple[ExampleQueryNode, str, str]]
-        # child example query node, parent out name, child out name
+        # List[Tuple[ExpectedQueryNode, str, str]]
+        # child expected query node, parent out name, child out name
     )
 )
 
 
 class TestSplitQuery(unittest.TestCase):
-    def _check_query_node_structure(self, root_query_node, root_example_query_node):
-        """Check root_query_node has no parent and has the same structure as the example input."""
-        self.assertIs(root_query_node.parent_query_connection, None)
-        self._check_query_node_structure_helper(root_query_node, root_example_query_node)
+    def _check_query_node_structure(self, root_query_node, root_expected_query_node):
+        """Check root_query_node has no parent and has the same structure as the expected input."""
+        self.assertIsNone(root_query_node.parent_query_connection)
+        self._check_query_node_structure_helper(root_query_node, root_expected_query_node)
 
-    def _check_query_node_structure_helper(self, query_node, example_query_node):
-        """Check query_node has the same structure as example_query_node."""
+    def _check_query_node_structure_helper(self, query_node, expected_query_node):
+        """Check query_node has the same structure as expected_query_node."""
         # Check AST and id of the parent
-        self.assertEqual(print_ast(query_node.query_ast), example_query_node.query_str)
-        self.assertEqual(query_node.schema_id, example_query_node.schema_id)
+        self.assertEqual(print_ast(query_node.query_ast), expected_query_node.query_str)
+        self.assertEqual(query_node.schema_id, expected_query_node.schema_id)
         # Check number of children matches
-        self.assertEqual(len(query_node.child_query_connections),
-                         len(example_query_node.child_query_nodes_and_out_names))
-        for i in range(len(query_node.child_query_connections)):
+        child_query_connections = query_node.child_query_connections
+        expected_child_data = expected_query_node.child_query_nodes_and_out_names
+        self.assertEqual(len(child_query_connections), len(expected_child_data))
+        for i, (child_query_connection, expected_child_data_piece) in enumerate(
+            six.moves.zip(child_query_connections, expected_child_data)
+        ):
             # Check child and parent connections
-            child_query_connection = query_node.child_query_connections[i]
             child_query_node = child_query_connection.sink_query_node
-            child_example_query_node, parent_out_name, child_out_name = \
-                example_query_node.child_query_nodes_and_out_names[i]
+            child_expected_query_node, parent_out_name, child_out_name = expected_child_data_piece
             self._check_query_node_edge(query_node, i, child_query_node, parent_out_name,
                                         child_out_name)
             # Recurse
-            self._check_query_node_structure_helper(child_query_node, child_example_query_node)
+            self._check_query_node_structure_helper(child_query_node, child_expected_query_node)
 
     def _check_query_node_edge(self, parent_query_node, parent_to_child_edge_index,
                                child_query_node, parent_out_name, child_out_name):
@@ -78,13 +80,13 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=query_str,
             schema_id='first',
             child_query_nodes_and_out_names=[]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), basic_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(0))
 
     def test_no_existing_fields_split(self):
@@ -112,12 +114,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -128,7 +130,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), basic_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(2))
 
     def test_stitch_arguments_flipped(self):
@@ -156,12 +158,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -174,7 +176,7 @@ class TestSplitQuery(unittest.TestCase):
         query_node, intermediate_outputs = split_query(
             parse(query_str), stitch_arguments_flipped_schema
         )
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(2))
 
     def test_original_unmodified(self):
@@ -217,12 +219,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -233,7 +235,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), basic_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(1))
 
     def test_existing_output_field_in_child(self):
@@ -262,12 +264,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -278,7 +280,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), basic_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(1))
 
     def test_existing_field_in_both(self):
@@ -309,12 +311,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -325,7 +327,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), basic_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(1))
 
     def test_nested_query(self):
@@ -365,12 +367,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -381,7 +383,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), basic_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(2))
 
     def test_existing_optional_on_edge(self):
@@ -409,12 +411,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -425,7 +427,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), basic_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(2))
 
     def test_existing_optional_on_edge_and_field(self):
@@ -455,12 +457,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -471,7 +473,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), basic_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(2))
 
     def test_type_coercion_before_edge(self):
@@ -503,12 +505,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -519,7 +521,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), basic_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(2))
 
     def test_interface_type_coercion_after_edge(self):
@@ -549,12 +551,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -565,7 +567,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), interface_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(2))
 
     def test_union_type_coercion_after_edge(self):
@@ -595,12 +597,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -611,7 +613,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), union_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(2))
 
     def test_two_children_stitch_on_same_field(self):
@@ -655,12 +657,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str1,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -669,7 +671,7 @@ class TestSplitQuery(unittest.TestCase):
                     '__intermediate_output_1',
                 ),
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str2,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -680,7 +682,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), basic_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(4))
 
     def test_cross_schema_edge_field_after_normal_vertex_field(self):
@@ -714,12 +716,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -730,7 +732,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), basic_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(2))
 
     def test_two_edges_on_same_field_in_V(self):
@@ -771,12 +773,12 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child1_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[]
@@ -785,7 +787,7 @@ class TestSplitQuery(unittest.TestCase):
                     '__intermediate_output_1',
                 ),
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child2_str,
                         schema_id='third',
                         child_query_nodes_and_out_names=[]
@@ -796,7 +798,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), three_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(3))
 
     def test_two_edges_on_same_field_in_chain(self):
@@ -838,17 +840,17 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=parent_str,
             schema_id='second',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=child1_str,
                         schema_id='first',
                         child_query_nodes_and_out_names=[
                             (
-                                ExampleQueryNode(
+                                ExpectedQueryNode(
                                     query_str=child2_str,
                                     schema_id='third',
                                     child_query_nodes_and_out_names=[]
@@ -864,7 +866,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), three_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(3))
 
     def test_complex_query_structure(self):
@@ -921,17 +923,17 @@ class TestSplitQuery(unittest.TestCase):
               }
             }
         ''')
-        example_query_node = ExampleQueryNode(
+        expected_query_node = ExpectedQueryNode(
             query_str=query_piece1_str,
             schema_id='first',
             child_query_nodes_and_out_names=[
                 (
-                    ExampleQueryNode(
+                    ExpectedQueryNode(
                         query_str=query_piece2_str,
                         schema_id='second',
                         child_query_nodes_and_out_names=[
                             (
-                                ExampleQueryNode(
+                                ExpectedQueryNode(
                                     query_str=query_piece3_str,
                                     schema_id='first',
                                     child_query_nodes_and_out_names=[]
@@ -940,7 +942,7 @@ class TestSplitQuery(unittest.TestCase):
                                 '__intermediate_output_2',
                             ),
                             (
-                                ExampleQueryNode(
+                                ExpectedQueryNode(
                                     query_str=query_piece4_str,
                                     schema_id='first',
                                     child_query_nodes_and_out_names=[]
@@ -956,7 +958,7 @@ class TestSplitQuery(unittest.TestCase):
             ]
         )
         query_node, intermediate_outputs = split_query(parse(query_str), basic_merged_schema)
-        self._check_query_node_structure(query_node, example_query_node)
+        self._check_query_node_structure(query_node, expected_query_node)
         self.assertEqual(intermediate_outputs, self._get_intermediate_outputs_set(5))
 
 
