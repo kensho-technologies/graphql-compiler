@@ -36,7 +36,7 @@ def validate_argument_type(expected_type, value, name=None, is_inner_value=False
               provide more descriptive error messages.
         is_inner_value: bool, whether this value corresponds to an element in a list argument.
     """
-    # TODO: pmantica1 make name parameter required in major version bump.
+    # TODO(pmantica1): make name parameter required in major version bump.
     if name is not None:
         if is_inner_value:
             error_message_prefix = u'Invalid type for element in list argument {}.'.format(name)
