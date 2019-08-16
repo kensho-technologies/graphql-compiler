@@ -22,7 +22,7 @@ from .sql_formatting import insert_arguments_into_sql_query
 ######
 
 
-def validate_argument_type(expected_type, value):
+def validate_argument_type(expected_type, value, name, is_inner_value=False):
     """Ensure the value has the expected type and is usable in any of our backends, or raise errors.
 
     Backends are the database languages we have the ability to compile to, like OrientDB MATCH,
@@ -32,39 +32,47 @@ def validate_argument_type(expected_type, value):
     Args:
         expected_type: GraphQLType we expect. All GraphQLNonNull type wrappers are stripped.
         value: object that can be interpreted as being of that type
+        name: string, describing the name of the argument.
+        is_inner_value: bool, whether this value corresponds to an element in a list argument.
     """
+    value_type = type(value).__name__
+    if is_inner_value:
+        invalid_type_error_message = u'Invalid type for argument {}. Expected {}. Got {}.'
+    else:
+        invalid_type_error_message = (u'Invalid type for element in list argument {}. '
+                                      u'Expected {}. Got {}.')
+
     stripped_type = strip_non_null_from_type(expected_type)
     if GraphQLString.is_same_type(stripped_type):
         if not isinstance(value, six.string_types):
-            raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
-                                              u'{}'.format(value))
+            raise GraphQLInvalidArgumentError(invalid_type_error_message
+                                              .format(value, 'string', value_type))
     elif GraphQLID.is_same_type(stripped_type):
         # IDs can be strings or numbers, but the GraphQL library coerces them to strings.
         # We will follow suit and treat them as strings.
         if not isinstance(value, six.string_types):
-            raise GraphQLInvalidArgumentError(u'Attempting to convert a non-string into a string: '
-                                              u'{}'.format(value))
+            raise GraphQLInvalidArgumentError(invalid_type_error_message
+                                              .format(value, 'string', value_type))
     elif GraphQLFloat.is_same_type(stripped_type):
         if not isinstance(value, float):
-            raise GraphQLInvalidArgumentError(u'Attempting to represent a non-float as a float: '
-                                              u'{} {}'.format(type(value), value))
+            raise GraphQLInvalidArgumentError(invalid_type_error_message
+                                              .format(value, 'float', value_type))
     elif GraphQLInt.is_same_type(stripped_type):
         # Special case: in Python, isinstance(True, int) returns True.
         # Safeguard against this with an explicit check against bool type.
         if isinstance(value, bool) or not isinstance(value, six.integer_types):
-            raise GraphQLInvalidArgumentError(u'Attempting to represent a non-int as an int: '
-                                              u'{} {}'.format(type(value), value))
+            raise GraphQLInvalidArgumentError(invalid_type_error_message
+                                              .format(value, 'int', value_type))
     elif GraphQLBoolean.is_same_type(stripped_type):
         if not isinstance(value, bool):
-            raise GraphQLInvalidArgumentError(u'Attempting to represent a non-bool as a bool: '
-                                              u'{} {}'.format(type(value), value))
+            raise GraphQLInvalidArgumentError(invalid_type_error_message
+                                              .format(value, 'bool', value_type))
     elif GraphQLDecimal.is_same_type(stripped_type):
         # Types we support are int, float, and Decimal, but not bool.
         # isinstance(True, int) returns True, so we explicitly forbid bool.
         if isinstance(value, bool):
-            raise GraphQLInvalidArgumentError(
-                u'Attempting to represent a non-decimal as a decimal: {} {}'
-                .format(type(value), value))
+            raise GraphQLInvalidArgumentError(invalid_type_error_message
+                                              .format(value, 'decimal', value_type))
         if not isinstance(value, decimal.Decimal):
             try:
                 decimal.Decimal(value)
@@ -73,28 +81,27 @@ def validate_argument_type(expected_type, value):
     elif GraphQLDate.is_same_type(stripped_type):
         # Datetimes pass as instances of date. We want to explicitly only allow dates.
         if isinstance(value, datetime.datetime) or not isinstance(value, datetime.date):
-            raise GraphQLInvalidArgumentError(u'Attempting to represent a non-date as a date: '
-                                              u'{} {}'.format(type(value), value))
+            raise GraphQLInvalidArgumentError(invalid_type_error_message
+                                              .format(value, 'date', value_type))
         try:
             stripped_type.serialize(value)
         except ValueError as e:
             raise GraphQLInvalidArgumentError(e)
     elif GraphQLDateTime.is_same_type(stripped_type):
         if not isinstance(value, (datetime.date, arrow.Arrow)):
-            raise GraphQLInvalidArgumentError(
-                u'Attempting to represent a non-datetime as a datetime: {} {}'
-                .format(type(value), value))
+            raise GraphQLInvalidArgumentError(invalid_type_error_message
+                                              .format(value, 'datetime', value_type))
         try:
             stripped_type.serialize(value)
         except ValueError as e:
             raise GraphQLInvalidArgumentError(e)
     elif isinstance(stripped_type, GraphQLList):
         if not isinstance(value, list):
-            raise GraphQLInvalidArgumentError(u'Attempting to represent a non-list as a list: '
-                                              u'{} {}'.format(type(value), value))
+            raise GraphQLInvalidArgumentError(invalid_type_error_message
+                                              .format(value, 'list', value_type))
         inner_type = strip_non_null_from_type(stripped_type.of_type)
         for element in value:
-            validate_argument_type(inner_type, element)
+            validate_argument_type(inner_type, element, name, is_inner_value=True)
     else:
         raise AssertionError(u'Could not safely represent the requested GraphQLType: '
                              u'{} {}'.format(stripped_type, value))
@@ -112,7 +119,7 @@ def ensure_arguments_are_provided(expected_types, arguments):
                                           u'missing {}, unexpected '
                                           u'{}'.format(missing_args, unexpected_args))
     for name in expected_arg_names:
-        validate_argument_type(expected_types[name], arguments[name])
+        validate_argument_type(expected_types[name], arguments[name], name)
 
 
 def insert_arguments_into_query(compilation_result, arguments):
