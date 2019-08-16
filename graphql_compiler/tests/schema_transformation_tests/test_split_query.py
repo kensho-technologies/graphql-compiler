@@ -46,8 +46,9 @@ class TestSplitQuery(unittest.TestCase):
     def _check_query_node_edge(self, parent_query_node, parent_to_child_edge_index,
                                child_query_node, parent_out_name, child_out_name):
         """Check the edge between parent and child is symmetric, with the right output names."""
-        parent_to_child_connection = \
-            parent_query_node.child_query_connections[parent_to_child_edge_index]
+        parent_to_child_connection = parent_query_node.child_query_connections[
+            parent_to_child_edge_index
+        ]
         child_to_parent_connection = child_query_node.parent_query_connection
 
         self.assertIs(parent_to_child_connection.sink_query_node, child_query_node)
