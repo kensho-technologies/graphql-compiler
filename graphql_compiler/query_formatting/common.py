@@ -22,7 +22,7 @@ from .sql_formatting import insert_arguments_into_sql_query
 ######
 
 
-def validate_argument_type(expected_type, value, name=None, is_inner_value=False):
+def validate_argument_type(expected_type, value, name=None):
     """Ensure the value has the expected type and is usable in any of our backends, or raise errors.
 
     Backends are the database languages we have the ability to compile to, like OrientDB MATCH,
@@ -34,19 +34,12 @@ def validate_argument_type(expected_type, value, name=None, is_inner_value=False
         value: object that can be interpreted as being of that type
         name: optional string. If it is a string, it is the name of the argument and will be used to
               provide more descriptive error messages.
-        is_inner_value: bool, whether this value corresponds to an element in a list argument.
     """
     # TODO(pmantica1): make name parameter required in major version bump.
     if name is not None:
-        if is_inner_value:
-            error_message_prefix = u'Invalid type for element in list argument {}.'.format(name)
-        else:
-            error_message_prefix = u'Invalid type for argument {}.'.format(name)
+        error_message_prefix = u'Invalid type for argument {}.'.format(name)
     else:
-        if is_inner_value:
-            error_message_prefix = u'Found element in list argument with invalid type.'
-        else:
-            error_message_prefix = u'Found element with invalid type.'
+        error_message_prefix = u'Found element with invalid type.'
     error_message_suffix = u'Got value {} of type {}.'.format(value, type(value).__name__)
     invalid_type_error_message = error_message_prefix + ' Expected {}. ' + error_message_suffix
 
@@ -100,7 +93,7 @@ def validate_argument_type(expected_type, value, name=None, is_inner_value=False
             raise GraphQLInvalidArgumentError(invalid_type_error_message.format('list'))
         inner_type = strip_non_null_from_type(stripped_type.of_type)
         for element in value:
-            validate_argument_type(inner_type, element, name=name, is_inner_value=True)
+            validate_argument_type(inner_type, element, name=name)
     else:
         raise AssertionError(u'Could not safely represent the requested GraphQLType: '
                              u'{} {}'.format(stripped_type, value))
