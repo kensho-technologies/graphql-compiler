@@ -3,7 +3,7 @@ from functools import partial
 
 from .. import cypher_helpers
 from ...schema import COUNT_META_FIELD_NAME
-from ..blocks import CoerceType, Filter, Fold, MarkLocation, Recurse, Traverse
+from ..blocks import Backtrack, CoerceType, Filter, Fold, MarkLocation, Recurse, Traverse
 from ..compiler_entities import Expression
 from ..expressions import BinaryComposition, ContextField, LocalField, NullLiteral
 from ..helpers import (
@@ -275,6 +275,20 @@ def move_filters_in_optional_locations_to_global_operations(cypher_query, query_
     return cypher_query._replace(steps=new_steps, global_where_block=new_global_where_block)
 
 
+def rewrite_locations_visit_counter_to_one(possible_location):
+    """If possible_location is a Location/FoldScopeLocation, update visit_counter to 1."""
+    if isinstance(possible_location, Location):
+        return Location(possible_location.query_path,
+                        field=possible_location.field,
+                        visit_counter=1)
+    elif isinstance(possible_location, FoldScopeLocation):
+        return FoldScopeLocation(
+            rewrite_locations_visit_counter_to_one(possible_location.base_location),
+            possible_location.fold_path,
+            field=possible_location.field)
+    return possible_location
+
+
 def renumber_locations_to_one(ir_blocks):
     """Re-number Locations' visit_counter to be 1 since Cypher handles optional edges properly.
 
@@ -293,27 +307,18 @@ def renumber_locations_to_one(ir_blocks):
         List[BasicBlock] IR blocks after lowering
     """
     new_ir_blocks = []
-    locations_marked = set()
-
-    def get_block_base_location(block_location):
-        """Get the Location object from a Location/ FoldScopeLocation."""
-        if isinstance(block_location, FoldScopeLocation):
-            return block_location.base_location
-        elif isinstance(block_location, Location):
-            return block_location
-        else:
-            raise TypeError(u'Expected location to be of type Location or FoldScopeLocation.'
-                            u'Instead got type {} for location {}'
-                            .format(type(block_location), block_location))
 
     for block in ir_blocks:
-        if not isinstance(block, MarkLocation):
-            new_ir_blocks.append(block)
-            continue
-        if block.location in locations_marked:
-            continue
-        location = get_block_base_location(block.location)
-        location.visit_counter = 1
-        locations_marked.add(block.location)
-        new_ir_blocks.append(block)
+        # Need to rewrite the directly-contained location within the block,
+        # since the location isn't contained within an Expression object
+        # and won't be affected by the visit_and_update_expressions() call.
+        new_block = block
+        if isinstance(block, Fold):
+            new_block = Fold(rewrite_locations_visit_counter_to_one(block.fold_scope_location))
+        elif isinstance(block, MarkLocation):
+            new_block = MarkLocation(rewrite_locations_visit_counter_to_one(block.location))
+        elif isinstance(block, Backtrack):
+            new_block = Backtrack(rewrite_locations_visit_counter_to_one(block.location))
+
+        new_ir_blocks.append(new_block)
     return new_ir_blocks
