@@ -3,11 +3,12 @@ from functools import partial
 
 from .. import cypher_helpers
 from ...schema import COUNT_META_FIELD_NAME
-from ..blocks import CoerceType, Filter, Fold, MarkLocation, Recurse, Traverse
+from ..blocks import Backtrack, CoerceType, Filter, Fold, MarkLocation, Recurse, Traverse
 from ..compiler_entities import Expression
 from ..expressions import BinaryComposition, ContextField, LocalField, NullLiteral
 from ..helpers import (
-    FoldScopeLocation, get_only_element_from_collection, is_graphql_type, validate_safe_string
+    FoldScopeLocation, Location, get_only_element_from_collection, is_graphql_type,
+    validate_safe_string
 )
 from ..ir_lowering_common.common import merge_consecutive_filter_clauses
 from ..ir_lowering_common.location_renaming import (
@@ -272,3 +273,52 @@ def move_filters_in_optional_locations_to_global_operations(cypher_query, query_
             merge_consecutive_filter_clauses(global_filters))
 
     return cypher_query._replace(steps=new_steps, global_where_block=new_global_where_block)
+
+
+def rewrite_locations_visit_counter_to_one(possible_location):
+    """If possible_location is a Location/FoldScopeLocation, update visit_counter to 1."""
+    if isinstance(possible_location, Location):
+        return Location(possible_location.query_path,
+                        field=possible_location.field,
+                        visit_counter=1)
+    elif isinstance(possible_location, FoldScopeLocation):
+        return FoldScopeLocation(
+            rewrite_locations_visit_counter_to_one(possible_location.base_location),
+            possible_location.fold_path,
+            field=possible_location.field)
+    return possible_location
+
+
+def renumber_locations_to_one(ir_blocks):
+    """Re-number Locations' visit_counter to be 1 since Cypher handles optional edges properly.
+
+    Renumbering of locations are required by some backends (such as Gremlin) that do not natively
+    support pattern-matching operators, in order to correctly handle optional edges.
+    When pattern-matching is supported (as in Cypher, via the MATCH / OPTIONAL MATCH operators),
+    renumbering is unnecessary and may be safely removed.
+
+    When renumbering, it's important to ensure we don't have two MarkLocation objects with the same
+    location because that's equivalent to giving two different locations in the query the same name.
+
+    Args:
+        ir_blocks: List[BasicBlock] IR blocks
+
+    Returns:
+        List[BasicBlock] IR blocks after lowering
+    """
+    new_ir_blocks = []
+
+    for block in ir_blocks:
+        # Need to rewrite the directly-contained location within the block,
+        # since the location isn't contained within an Expression object
+        # and won't be affected by the visit_and_update_expressions() call.
+        new_block = block
+        if isinstance(block, Fold):
+            new_block = Fold(rewrite_locations_visit_counter_to_one(block.fold_scope_location))
+        elif isinstance(block, MarkLocation):
+            new_block = MarkLocation(rewrite_locations_visit_counter_to_one(block.location))
+        elif isinstance(block, Backtrack):
+            new_block = Backtrack(rewrite_locations_visit_counter_to_one(block.location))
+
+        new_ir_blocks.append(new_block)
+    return new_ir_blocks
