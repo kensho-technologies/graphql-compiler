@@ -86,6 +86,7 @@ def lower_coerce_type_blocks(ir_blocks):
 
     return new_ir_blocks
 
+
 def lower_starts_with_binary_compositions(ir_blocks):
     """Lower Filter blocks that use the "starts_with" operation into MATCH-representable form."""
 
@@ -122,13 +123,14 @@ def lower_starts_with_binary_compositions(ir_blocks):
             )
         )
 
-
     new_ir_blocks = [
         block.visit_and_update_expressions(visitor_fn)
         for block in ir_blocks
     ]
 
     return new_ir_blocks
+
+
 def rewrite_filters_in_optional_blocks(ir_blocks):
     """In optional contexts, add a check for null that allows non-existent optional data through.
 

@@ -542,6 +542,7 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
 
     return blocks.Filter(filter_predicate)
 
+
 @scalar_leaf_only(u'starts_with')
 @takes_parameters(1)
 def _process_starts_with_filter_directive(filter_operation_info, location, context, parameters):
@@ -581,6 +582,7 @@ def _process_starts_with_filter_directive(filter_operation_info, location, conte
             u'||', non_existence_expression, filter_predicate)
 
     return blocks.Filter(filter_predicate)
+
 
 @takes_parameters(1)
 def _process_contains_filter_directive(filter_operation_info, location, context, parameters):

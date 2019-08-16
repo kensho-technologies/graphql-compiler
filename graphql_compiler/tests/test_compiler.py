@@ -2882,6 +2882,7 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
+
     def test_starts_with(self):
         self.test_starts_with_op_filter()
 

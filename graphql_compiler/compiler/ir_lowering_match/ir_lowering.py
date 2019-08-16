@@ -139,6 +139,7 @@ def lower_has_substring_binary_compositions(ir_blocks):
 
     return new_ir_blocks
 
+
 def lower_starts_with_binary_compositions(ir_blocks):
     """Lower Filter blocks that use the "starts_with" operation into MATCH-representable form."""
     def visitor_fn(expression):
@@ -176,6 +177,7 @@ def lower_starts_with_binary_compositions(ir_blocks):
     ]
 
     return new_ir_blocks
+
 
 def truncate_repeated_single_step_traversals(match_query):
     """Truncate one-step traversals that overlap a previous traversal location."""

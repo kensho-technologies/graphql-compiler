@@ -1356,6 +1356,7 @@ def not_contains_op_filter_with_optional_tag():
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
 
+
 def starts_with_op_filter():
     graphql_input = '''{
         Animal {
@@ -1375,6 +1376,7 @@ def starts_with_op_filter():
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
+
 
 def has_substring_op_filter():
     graphql_input = '''{
