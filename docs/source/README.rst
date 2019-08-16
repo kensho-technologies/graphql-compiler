@@ -45,7 +45,7 @@ Table of contents
    -  `@tag <#tag>`__
    -  `@filter <#filter>`__
    -  `@recurse <#recurse>`__
-   -  `@output\_source <#output\_source>`__
+   -  `@output\_source <#output_source>`__
 
 -  `Supported filtering operations <#supported-filtering-operations>`__
 
@@ -81,9 +81,9 @@ Table of contents
 
    -  `Pretty-Printing GraphQL
       Queries <#pretty-printing-graphql-queries>`__
-   -  `Expanding ``@optional`` vertex
+   -  `Expanding @optional vertex
       fields <#expanding-optional-vertex-fields>`__
-   -  `Optional ``type_equivalence_hints`` compilation
+   -  `Optional type_equivalence_hints compilation
       parameter <#optional-type_equivalence_hints-parameter>`__
    -  `SchemaGraph <#schemagraph>`__
    -  `Cypher query parameters <#cypher-query-parameters>`__
