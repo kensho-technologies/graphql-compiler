@@ -9,8 +9,8 @@ import six
 from ...exceptions import GraphQLValidationError
 from ...schema_transformation.split_query import split_query
 from .example_schema import (
-    basic_merged_schema, interface_merged_schema, three_merged_schema,
-    stitch_arguments_flipped_schema, union_merged_schema
+    basic_merged_schema, interface_merged_schema, stitch_arguments_flipped_schema,
+    three_merged_schema, union_merged_schema
 )
 
 
