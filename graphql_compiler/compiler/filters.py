@@ -542,6 +542,45 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
 
     return blocks.Filter(filter_predicate)
 
+@scalar_leaf_only(u'starts_with')
+@takes_parameters(1)
+def _process_starts_with_filter_directive(filter_operation_info, location, context, parameters):
+    """Return a Filter basic block that checks if the directive arg is the string prefix of the field.
+
+    Args:
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
+        location: Location where this filter is used.
+        context: dict, various per-compilation data (e.g. declared tags, whether the current block
+                 is optional, etc.). May be mutated in-place in this function!
+        parameters: list of 1 element, specifying the collection in which the value must exist;
+                    if the collection is optional and missing, the check will return True.
+
+    Returns:
+        a Filter basic block that performs the substring check
+    """
+    filtered_field_type = filter_operation_info.field_type
+    filtered_field_name = filter_operation_info.field_name
+
+    if not strip_non_null_from_type(filtered_field_type).is_same_type(GraphQLString):
+        raise GraphQLCompilationError(u'Cannot apply "starts_with" to non-string '
+                                      u'type {}'.format(filtered_field_type))
+    argument_inferred_type = GraphQLString
+
+    argument_expression, non_existence_expression = _represent_argument(
+        location, context, parameters[0], argument_inferred_type)
+
+    filter_predicate = expressions.BinaryComposition(
+        u'starts_with',
+        expressions.LocalField(filtered_field_name, filtered_field_type),
+        argument_expression)
+    if non_existence_expression is not None:
+        # The argument comes from an optional block and might not exist,
+        # in which case the filter expression should evaluate to True.
+        filter_predicate = expressions.BinaryComposition(
+            u'||', non_existence_expression, filter_predicate)
+
+    return blocks.Filter(filter_predicate)
 
 @takes_parameters(1)
 def _process_contains_filter_directive(filter_operation_info, location, context, parameters):
@@ -762,6 +801,7 @@ PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset({
     u'not_contains',
     u'intersects',
     u'has_substring',
+    u'starts_with',
     u'has_edge_degree',
     u'is_null',
     u'is_not_null',
@@ -817,6 +857,7 @@ def process_filter_directive(filter_operation_info, location, context):
         u'in_collection': _process_in_collection_filter_directive,
         u'not_in_collection': _process_not_in_collection_filter_directive,
         u'has_substring': _process_has_substring_filter_directive,
+        u'starts_with': _process_starts_with_filter_directive,
         u'contains': _process_contains_filter_directive,
         u'not_contains': _process_not_contains_filter_directive,
         u'intersects': _process_intersects_filter_directive,

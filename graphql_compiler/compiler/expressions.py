@@ -851,7 +851,7 @@ class BinaryComposition(Expression):
 
     SUPPORTED_OPERATORS = frozenset({
         u'=', u'!=', u'>=', u'<=', u'>', u'<', u'+', u'||', u'&&',
-        u'contains', u'not_contains', u'intersects', u'has_substring', u'LIKE', u'INSTANCEOF',
+        u'contains', u'not_contains', u'intersects', u'has_substring', u'starts_with', u'LIKE', u'INSTANCEOF',
     })
 
     __slots__ = ('operator', 'left', 'right')
@@ -933,7 +933,7 @@ class BinaryComposition(Expression):
                 u'not_contains': (u'CONTAINS', negated_regular_operator_format),
                 u'intersects': (u'intersect', intersects_operator_format),
                 u'has_substring': (None, None),  # must be lowered into compatible form using LIKE
-
+                u'starts_with': (None, None),  # must be lowered into compatible form using LIKE
                 # MATCH-specific operators
                 u'LIKE': (u'LIKE', regular_operator_format),
                 u'INSTANCEOF': (u'INSTANCEOF', regular_operator_format),
@@ -976,6 +976,7 @@ class BinaryComposition(Expression):
             u'not_contains': (u'contains', negated_dotted_operator_format),
             u'intersects': (u'intersect', intersects_operator_format),
             u'has_substring': (u'contains', dotted_operator_format),
+            u'starts_with': (u'==~', immediate_operator_format),
         }
 
         gremlin_operator, format_spec = translation_table.get(self.operator, (None, None))
@@ -1022,6 +1023,7 @@ class BinaryComposition(Expression):
                 u'not_contains': (u'IN', negated_inverted_operator_format),
                 u'intersects': (u'IN', intersects_operator_format),
                 u'has_substring': (u'CONTAINS', regular_operator_format),
+                u'starts_with': (u'STARTS WITH', regular_operator_format),
             }
 
         cypher_operator, format_spec = translation_table.get(self.operator, (None, None))

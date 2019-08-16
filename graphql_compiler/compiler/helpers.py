@@ -160,7 +160,7 @@ def safe_or_special_quoted_string(value):
 def validate_safe_or_special_string(value, value_description='string'):
     """Ensure the string does not have illegal characters or is in a set of allowed strings."""
     # The following strings are explicitly allowed, despite having otherwise-illegal chars.
-    legal_strings_with_special_chars = frozenset({'@rid', '@class', '@this', '%'})
+    legal_strings_with_special_chars = frozenset({'@rid', '@class', '@this', '%', '/^', '.*/'})
     if value not in legal_strings_with_special_chars:
         validate_safe_string(value, value_description=value_description)
 

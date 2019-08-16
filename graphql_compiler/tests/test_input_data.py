@@ -1356,6 +1356,25 @@ def not_contains_op_filter_with_optional_tag():
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
 
+def starts_with_op_filter():
+    graphql_input = '''{
+        Animal {
+            name @filter(op_name: "starts_with", value: ["$wanted"])
+                 @output(out_name: "animal_name")
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'wanted': GraphQLString,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
 
 def has_substring_op_filter():
     graphql_input = '''{

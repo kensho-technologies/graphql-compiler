@@ -55,6 +55,7 @@ SUPPORTED_OPERATORS = {
     u'<=': Operator(u'__le__', CARDINALITY_UNARY),
     u'>=': Operator(u'__ge__', CARDINALITY_UNARY),
     u'has_substring': Operator(u'contains', CARDINALITY_UNARY),
+    u'starts_with': Operator(u'startswith', CARDINALITY_UNARY),
 }
 
 
