@@ -7,8 +7,9 @@ from ..ir_lowering_common.common import (
 from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .ir_lowering import (
     insert_explicit_type_bounds, move_filters_in_optional_locations_to_global_operations,
-    remove_mark_location_after_optional_backtrack, replace_local_fields_with_context_fields,
-    renumber_locations_to_one)
+    remove_mark_location_after_optional_backtrack, renumber_locations_to_one,
+    replace_local_fields_with_context_fields
+)
 
 
 ##############
