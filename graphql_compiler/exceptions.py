@@ -11,6 +11,10 @@ class GraphQLValidationError(GraphQLError):
     """Exception raised when the provided GraphQL does not validate against the provided schema."""
 
 
+class GraphQLInvalidMacroError(GraphQLError):
+    """Exception raised when the provided GraphQL macro fails to adhere to macro requirements."""
+
+
 class GraphQLCompilationError(GraphQLError):
     """Exception raised when the provided GraphQL cannot be compiled.
 
