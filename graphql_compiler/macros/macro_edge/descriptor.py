@@ -17,7 +17,7 @@ MacroEdgeDescriptor = namedtuple(
 
 
 def create_descriptor_from_ast_and_args(macro_definition_ast, macro_edge_args):
-    """Remove edge definition directive, and return a MacroEdgeDescriptor."""
+    """Remove macro edge definition directive, and return a MacroEdgeDescriptor."""
     directives_to_remove = {MacroEdgeDefinitionDirective}
     new_ast = remove_directives_from_ast(macro_definition_ast, directives_to_remove)
     return MacroEdgeDescriptor(new_ast, macro_edge_args)
