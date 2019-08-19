@@ -3,6 +3,8 @@ from collections import namedtuple
 import sqlalchemy
 import six
 
+from . import is_vertex_field_name
+
 from graphql import GraphQLList
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 
@@ -47,21 +49,16 @@ def make_sqlalchemy_schema_info(schema, tables, junctions, validate=True):
         SQLAlchemySchemaInfo containing the input arguments provided
     """
     if validate:
-        types_mapped_to_tables = (GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType)
-        builtin_types = {
-            '__Schema',
-            '__Type',
-            '__Field',
-            '__InputValue',
-            '__EnumValue',
-            '__Directive',
-        }
+        types_to_map = (GraphQLInterfaceType, GraphQLObjectType)
         builtin_fields = {
             '_x_count',
         }
+        # TODO(bojanserafimov): More validation can be done:
+        # - are the types of the columns compatible with the GraphQL type of the property field?
+        # - do junctions join on columns on which the (=) operator makes sense?
         for type_name, graphql_type in six.iteritems(schema.get_type_map()):
-            if isinstance(graphql_type, types_mapped_to_tables):
-                if type_name != 'RootSchemaQuery' and type_name not in builtin_types:
+            if isinstance(graphql_type, types_to_map):
+                if type_name != 'RootSchemaQuery' and not type_name.startswith('__'):
                     # Check existence of sqlalchemy table for this type
                     if type_name not in tables:
                         raise AssertionError(u'Table for type {} not found'.format(type_name))
@@ -72,21 +69,15 @@ def make_sqlalchemy_schema_info(schema, tables, junctions, validate=True):
 
                     # Check existence of all fields
                     for field_name, field_type in six.iteritems(graphql_type.fields):
-                        is_vertex_field = (field_name.startswith('out_') or
-                                           field_name.startswith('in_'))
-                        if is_vertex_field:
-                            if field_name not in junctions[type_name]:
+                        if is_vertex_field_name(field_name):
+                            if field_name not in junctions.get(type_name, {}):
                                 raise AssertionError(u'No junction was specified for vertex '
                                                      u'field {} on type {}'
                                                      .format(field_name, type_name))
                         else:
-                            # TODO(bojanserafimov): We have no SQL representation of list types yet,
-                            #                       so they are excused.
-                            # XXX should I just remove list types from the schema?
-                            if not isinstance(field_type.type, GraphQLList):
-                                if field_name not in builtin_fields and field_name not in table.c:
-                                    raise AssertionError(u'Table for type {} has no column '
-                                                         u'for property field {}'
-                                                         .format(type_name, field_name))
+                            if field_name not in builtin_fields and field_name not in table.c:
+                                raise AssertionError(u'Table for type {} has no column '
+                                                     u'for property field {}'
+                                                     .format(type_name, field_name))
 
     return SQLAlchemySchemaInfo(schema, tables, junctions)
