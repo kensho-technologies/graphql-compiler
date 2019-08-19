@@ -286,7 +286,7 @@ def estimate_number_of_pages(schema_graph, statistics, graphql_query, params, pa
 
     Args:
         schema_graph: SchemaGraph instance.
-        statistics: Statistics object
+        statistics: Statistics object.
         graphql_query: str, valid GraphQL query to be estimated.
         params: dict, parameters for the given query.
         page_size: int, desired number of result rows per page.

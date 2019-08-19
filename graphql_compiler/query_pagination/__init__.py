@@ -1,3 +1,4 @@
+# Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
 from graphql.language.printer import print_ast
