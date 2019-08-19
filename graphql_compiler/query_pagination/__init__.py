@@ -38,16 +38,16 @@ def split_into_next_page_query_and_continuation_query(
 
     Returns:
         (QueryAndParameters, QueryAndParameters), describing two queries: one that when executed
-        will return roughly a page of results, and another that will return the rest of the results
-        of the original query. The union of the two queries' result data is equivalent to the given
-        query and parameter's result data. There are no guarantees on the order of the result rows
-        for the two generated queries.
+        will return roughly a page of results of the original query, and another that will return
+        the rest of the results of the original query. The union of the two queries' result data is
+        equivalent to the given query and parameter's result data. There are no guarantees on the
+        order of the result rows for the two generated queries.
     """
     parameterized_queries = generate_parameterized_queries(
         schema_graph, statistics, query_ast, parameters
     )
 
-    hydrated_parameters = _hydrate_parameters_of_parameterized_query(
+    hydrated_parameters = hydrate_parameters_of_parameterized_query(
         schema_graph, statistics, parameterized_queries, num_pages
     )
 

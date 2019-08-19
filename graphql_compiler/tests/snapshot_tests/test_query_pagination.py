@@ -5,7 +5,7 @@ import pytest
 
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
-from ...query_pagination import paginate_query
+from ...query_pagination import QueryAndParameters, paginate_query
 from ..test_helpers import generate_schema_graph
 
 
@@ -23,12 +23,11 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         test_data = '''{
             Animal {
-                uuid @filter(op_name: ">", value: ["$keva_brat"])
-                name @output(out_name: "animal") @filter(op_name: ">", value: ["$keva_brat"])
+                name @output(out_name: "animal")
             }
         }'''
         test_ast = safe_parse_graphql(test_data)
-        parameters = {'keva_brat': 'keva_kolku_dojde_sat'}
+        parameters = {}
 
         count_data = {
             'Animal': 4,
@@ -36,33 +35,37 @@ class QueryPaginationTests(unittest.TestCase):
 
         statistics = LocalStatistics(count_data)
 
-        paginated_queries = paginate_query(
-            schema_graph, statistics, test_ast, parameters, 1
-        )
+        # Since query pagination is still a skeleton, we expect a NotImplementedError for this test.
+        # Once query pagination is implemented, the result of this call should be equal to
+        # expected_query_list.
+        # pylint: disable=unused-variable
+        with self.assertRaises(NotImplementedError):
+            paginated_queries = paginate_query(                     # noqa: unused-variable
+                schema_graph, statistics, test_ast, parameters, 1
+            )
 
-        expected_query_list = [
-            (
+        expected_query_list = (                                     # noqa: unused-variable
+            QueryAndParameters(
                 '''{
                     Animal {
-                        uuid @filter(op_name: "<", value: ["$_paged_upper_param_on_Animal"])
+                        uuid @filter(op_name: "<", value: ["$_paged_upper_param_on_Animal_uuid"])
                         name @output(out_name: "animal")
                     }
                 }''',
                 {
-                    '_paged_upper_param_on_Animal': '40000000-0000-0000-0000-000000000000',
+                    '_paged_upper_param_on_Animal_uuid': '40000000-0000-0000-0000-000000000000',
                 }
             ),
-            (
+            QueryAndParameters(
                 '''{
                     Animal {
-                        uuid @filter(op_name: ">=", value: ["$_paged_lower_param_on_Animal"])
+                        uuid @filter(op_name: ">=", value: ["$_paged_lower_param_on_Animal_uuid"])
                         name @output(out_name: "animal")
                     }
                 }''',
                 {
-                    '_paged_lower_param_on_Animal': '40000000-0000-0000-0000-000000000000',
+                    '_paged_lower_param_on_Animal_uuid': '40000000-0000-0000-0000-000000000000',
                 }
             )
-        ]
-
-        self.assertEqual(expected_query_list, paginated_queries)
+        )
+        # pylint: enable=unused-variable
