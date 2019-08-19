@@ -2,7 +2,7 @@
 from collections import namedtuple
 
 from .ast_rewriting import remove_directives_from_ast
-from .directives import MACRO_EDGE_DIRECTIVES, MacroEdgeTargetDirective
+from .directives import MacroEdgeDefinitionDirective
 
 
 MacroEdgeDescriptor = namedtuple(
@@ -17,12 +17,7 @@ MacroEdgeDescriptor = namedtuple(
 
 
 def create_descriptor_from_ast_and_args(macro_definition_ast, macro_edge_args):
-    """Remove all macro edge directives except for the target, and return a MacroEdgeDescriptor."""
-    directives_to_remove = {
-        directive.name
-        for directive in MACRO_EDGE_DIRECTIVES
-        if directive.name != MacroEdgeTargetDirective.name
-    }
+    """Remove edge definition directive, and return a MacroEdgeDescriptor."""
+    directives_to_remove = {MacroEdgeDefinitionDirective}
     new_ast = remove_directives_from_ast(macro_definition_ast, directives_to_remove)
-
     return MacroEdgeDescriptor(new_ast, macro_edge_args)
