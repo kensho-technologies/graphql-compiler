@@ -56,6 +56,7 @@ def make_sqlalchemy_schema_info(schema, tables, junctions, validate=True):
         # TODO(bojanserafimov): More validation can be done:
         # - are the types of the columns compatible with the GraphQL type of the property field?
         # - do junctions join on columns on which the (=) operator makes sense?
+        # - do inherited columns have exactly the same type on the parent and child table?
         for type_name, graphql_type in six.iteritems(schema.get_type_map()):
             if isinstance(graphql_type, types_to_map):
                 if type_name != 'RootSchemaQuery' and not type_name.startswith('__'):

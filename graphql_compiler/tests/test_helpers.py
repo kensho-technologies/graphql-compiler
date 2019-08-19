@@ -405,6 +405,7 @@ def get_sqlalchemy_schema_info():
         ),
     }
 
+    # TODO(bojanserafimov): This information can be read from the schema instead of being hard-coded.
     subclasses = {
         'Entity': {
             'Entity',
@@ -429,6 +430,10 @@ def get_sqlalchemy_schema_info():
         },
     }
 
+    # HACK(bojanserafimov): Some of these edges are many-to-many, but I've represented them
+    #                       as many-to-one edges. If I didn't, I'd have to implement many-to-many
+    #                       edges before I can get any tests to run, because most tests use
+    #                       these edges.
     edges = [
         {
             'name': 'Animal_ParentOf',
@@ -499,6 +504,7 @@ def get_sqlalchemy_schema_info():
         }
 
     # Inherit junctions from superclasses
+    # TODO(bojanserafimov): Properties can be inherited too.
     for class_name, subclass_set in six.iteritems(subclasses):
         for subclass in subclass_set:
             for edge_name, join_info in six.iteritems(junctions[class_name]):
