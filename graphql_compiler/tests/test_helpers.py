@@ -6,10 +6,12 @@ import re
 from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
+import sqlalchemy
 
 from .. import get_graphql_schema_from_orientdb_schema_data
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..schema import CUSTOM_SCALAR_TYPES
+from ..schema.sqlalchemy_schema import make_sqlalchemy_schema_info
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
 from ..schema_generation.orientdb.utils import (
     ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
@@ -279,6 +281,174 @@ def get_schema():
     schema = build_ast_schema(ast)
     amend_custom_scalar_types(schema, CUSTOM_SCALAR_TYPES)  # Mutates the schema.
     return schema
+
+
+def get_sqlalchemy_schema_info():
+    """Get a SQLAlchemySchemaInfo for testing."""
+    schema = get_schema()
+    tables = {}
+    sqlalchemy_metadata = sqlalchemy.MetaData()
+
+    tables = {
+        'Animal': sqlalchemy.Table(
+            'Animal',
+            sqlalchemy_metadata,
+            sqlalchemy.Column('birthday', sqlalchemy.DateTime, nullable=False),
+            sqlalchemy.Column('color', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('parent', sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column('related_entity', sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('net_worth', sqlalchemy.Integer, nullable=True),
+            sqlalchemy.Column('fed_at', sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column('important_event', sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column('species', sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+            schema='db_1.schema_1'
+        ),
+        'BirthEvent': sqlalchemy.Table(
+            'BirthEvent',
+            sqlalchemy_metadata,
+            sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            schema='db_1.schema_1'
+        ),
+        'Entity': sqlalchemy.Table(
+            'Entity',
+            sqlalchemy_metadata,
+            sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('related_entity', sqlalchemy.String(36), nullable=True),
+            sqlalchemy.Column('__source_table_name', sqlalchemy.String(36), nullable=False),
+            schema='db_1.schema_1'
+        ),
+        'Event': sqlalchemy.Table(
+            'Event',
+            sqlalchemy_metadata,
+            sqlalchemy_metadata,
+            sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+            sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
+            schema='db_1.schema_1'
+        ),
+        'FeedingEvent': sqlalchemy.Table(
+            'FeedingEvent',
+            sqlalchemy_metadata,
+            sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
+            schema='db_1.schema_1'
+        ),
+        'Food': sqlalchemy.Table(
+            'Food',
+            sqlalchemy_metadata,
+            sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            schema='db_1.schema_1'
+        ),
+        'FoodOrSpecies': sqlalchemy.Table(
+            'FoodOrSpecies',
+            sqlalchemy_metadata,
+            sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            schema='db_1.schema_1'
+        ),
+        'Location': sqlalchemy.Table(
+            'Location',
+            sqlalchemy_metadata,
+            sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            schema='db_1.schema_1'
+        ),
+        'Species': sqlalchemy.Table(
+            'Species',
+            sqlalchemy_metadata,
+            sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('eats', sqlalchemy.String(36), nullable=True),
+            schema='db_1.schema_1'
+        ),
+        'UniquelyIdentifiable': sqlalchemy.Table(
+            'UniquelyIdentifiable',
+            sqlalchemy_metadata,
+            sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+            schema='db_1.schema_1'
+        ),
+        'Union__BirthEvent__Event__FeedingEvent': sqlalchemy.Table(
+            'Union__BirthEvent__Event__FeedingEvent',
+            sqlalchemy_metadata,
+            sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+            schema='db_1.schema_1'
+        ),
+        'Union__Food__FoodOrSpecies__Species': sqlalchemy.Table(
+            'Union__Food__FoodOrSpecies__Species',
+            sqlalchemy_metadata,
+            sqlalchemy.Column('uuid', sqlalchemy.String(36), primary_key=True),
+            schema='db_1.schema_1'
+        ),
+    }
+
+    subclasses = {
+        'Entity': {'Entity', 'Animal', 'Species', 'Event', 'Food'}
+    }
+
+    edges = [
+        {
+            'name': 'Animal_ParentOf',
+            'from_table': 'Animal',
+            'to_table': 'Animal',
+            'from_column': 'parent',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Animal_OfSpecies',
+            'from_table': 'Animal',
+            'to_table': 'Species',
+            'from_column': 'species',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Animal_FedAt',
+            'from_table': 'Animal',
+            'to_table': 'FeedingEvent',
+            'from_column': 'fed_at',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Animal_ImportantEvent',
+            'from_table': 'Animal',
+            'to_table': 'Union__BirthEvent__Event__FeedingEvent',
+            'from_column': 'important_event',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Species_Eats',
+            'from_table': 'Species',
+            'to_table': 'Union__Food__FoodOrSpecies__Species',
+            'from_column': 'eats',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Entity_Related',
+            'from_table': 'Entity',
+            'to_table': 'Entity',
+            'from_column': 'related_entity',
+            'to_column': 'uuid',
+        }
+    ]
+
+    junctions = {}
+    for edge in edges:
+        junctions.setdefault(edge['from_table'], {})['out_{}'.format(edge['name'])] = {
+            'from_column_name': edge['from_column'],
+            'to_column_name': edge['to_column'],
+        }
+        junctions.setdefault(edge['from_table'], {})['in_{}'.format(edge['name'])] = {
+            'from_column_name': edge['to_column'],
+            'to_column_name': edge['from_column'],
+        }
+
+    # Inherit junctions from superclasses
+    for class_name, subclass_set in six.iteritems(subclasses):
+        for subclass in subclass_set:
+            for edge_name, join_info in six.iteritems(junctions[class_name]):
+                junctions.setdefault(subclass, {})[edge_name] = join_info
+
+    return make_sqlalchemy_schema_info(schema, tables, junctions)
 
 
 def generate_schema_graph(orientdb_client):
