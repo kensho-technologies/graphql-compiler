@@ -20,8 +20,7 @@ from .ast_traversal import get_directives_for_ast
 from .descriptor import create_descriptor_from_ast_and_args
 from .directives import (
     DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
-    MACRO_EDGE_DIRECTIVES, MacroEdgeDefinitionDirective, MacroEdgeTargetDirective,
-    get_schema_for_macro_edge_definitions
+    MacroEdgeDefinitionDirective, MacroEdgeTargetDirective, get_schema_for_macro_edge_definitions
 )
 
 
