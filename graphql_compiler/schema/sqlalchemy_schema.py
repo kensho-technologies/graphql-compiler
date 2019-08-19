@@ -20,17 +20,28 @@ from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, Gra
 # - Builtin types like __Schema, __Type, etc. don't need corresponding tables.
 # - Builtin fields like _x_count do not need corresponding columns.
 SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
-    'schema',     # GraphQLSchema
-    'tables',     # dict mapping every graphql object type or interface type name in the schema to
-                  # a sqlalchemy table
-    'junctions',  # dict mapping every graphql object type or interface type name in the schema to:
-                  #    dict mapping every vertex field name at that type to a dict with keys:
-                  #        from_column_name: string, column name to join from
-                  #        to_column_name: string, column name to join to
+    # GraphQLSchema
+    'schema',
+
+    # dict mapping every graphql object type or interface type name in the schema to
+    # a sqlalchemy table
+    'tables',
+
+    # dict mapping every graphql object type or interface type name in the schema to:
+    #    dict mapping every vertex field name at that type to a dict with keys:
+    #        from_column_name: string, column name to join from
+    #        to_column_name: string, column name to join to
+    'junctions',
+
+    # dict mapping every graphql object type or interface type name in the schema to:
+    #    dict mapping every list-valued property field name to a dict with keys:
+    #        junction_name: string, previously specified junction that provides the set contents
+    #        value_column: string, the column in the junction target table that has the elements
+    'set_valued_fields',
 ))
 
 
-def make_sqlalchemy_schema_info(schema, tables, junctions, validate=True):
+def make_sqlalchemy_schema_info(schema, tables, junctions, set_valued_fields, validate=True):
     """Make a SQLAlchemySchemaInfo if the input provided is valid.
 
     Args:
@@ -44,6 +55,13 @@ def make_sqlalchemy_schema_info(schema, tables, junctions, validate=True):
         validate: Optional bool (default True), specifying whether to validate that the given
                   input is valid for creation of a SQLAlchemySchemaInfo. Consider not validating
                   to save on performance when dealing with a large schema.
+
+        set_valued_fields: dict mapping graphql object and interface type names in the schema to:
+                  dict mapping every list-valued property field name to a dict with keys:
+                      junction_name: string, previously specified junction that provides the
+                                     set contents
+                      value_column: strine, the column in the junction target table that has
+                                    the elements
 
     Returns:
         SQLAlchemySchemaInfo containing the input arguments provided
@@ -75,10 +93,23 @@ def make_sqlalchemy_schema_info(schema, tables, junctions, validate=True):
                                 raise AssertionError(u'No junction was specified for vertex '
                                                      u'field {} on type {}'
                                                      .format(field_name, type_name))
+                        elif isinstance(field_type.type, GraphQLList):
+                            if field_name not in set_valued_fields.get(type_name, {}):
+                                raise AssertionError(u'Set valued property field {} on type {} '
+                                                     u'has no implementation.'
+                                                     .format(field_name, type_name))
+                            set_implementation = set_valued_fields[type_name][field_name]
+                            junction = set_implementation['junction']
+                            value_column = set_implementation['value_column']
+                            if junction not in junctions.get(type_name, {}):
+                                raise AssertionError(u'Implementation for set valued property '
+                                                     u'field {} on type {} references junction {}, '
+                                                     u'which is not specified.'
+                                                     .format(field_name, type_name, junction))
                         else:
                             if field_name not in builtin_fields and field_name not in table.c:
                                 raise AssertionError(u'Table for type {} has no column '
                                                      u'for property field {}'
                                                      .format(type_name, field_name))
 
-    return SQLAlchemySchemaInfo(schema, tables, junctions)
+    return SQLAlchemySchemaInfo(schema, tables, junctions, set_valued_fields)

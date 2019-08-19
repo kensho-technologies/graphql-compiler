@@ -291,12 +291,19 @@ def get_sqlalchemy_schema_info():
     # Every SQLAlchemy Table needs to be attached to a MetaData object. We don't actually use it.
     # We use a mixture of two metadata objects to make sure our implementation does not rely
     # on all the tables sharing a metadata object.
-    sqlalchemy_metadata_1_1 = sqlalchemy.MetaData()
-    sqlalchemy_metadata_1_2 = sqlalchemy.MetaData()
+    sqlalchemy_metadata_1 = sqlalchemy.MetaData()
+    sqlalchemy_metadata_2 = sqlalchemy.MetaData()
 
     uuid_type = lambda: sqlalchemy.String(36)
 
     tables = {
+        'Alias': sqlalchemy.Table(
+            'Alias',
+            sqlalchemy_metadata_1,
+            sqlalchemy.Column('alias_name', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('alias_for', sqlalchemy.String(36), nullable=False),
+            schema='db1.schema_1'
+        ),
         'Animal': sqlalchemy.Table(
             'Animal',
             sqlalchemy_metadata_1,
@@ -489,6 +496,12 @@ def get_sqlalchemy_schema_info():
             'to_table': 'Union__BirthEvent__Event__FeedingEvent',
             'from_column': 'related_event',
             'to_column': 'uuid',
+        }, {
+            'name': 'Entity_Alias',
+            'from_table': 'Entity',
+            'to_table': 'Alias',
+            'from_column': 'uuid',
+            'to_column': 'alias_for',
         }
     ]
 
@@ -503,14 +516,25 @@ def get_sqlalchemy_schema_info():
             'to_column_name': edge['from_column'],
         }
 
+    sets = {
+        'Entity': {
+            'alias': {
+                'junction': 'out_Entity_Alias',
+                'value_column': 'alias_name',
+            }
+        }
+    }
+
     # Inherit junctions from superclasses
     # TODO(bojanserafimov): Properties can be inherited too.
     for class_name, subclass_set in six.iteritems(subclasses):
         for subclass in subclass_set:
             for edge_name, join_info in six.iteritems(junctions[class_name]):
                 junctions.setdefault(subclass, {})[edge_name] = join_info
+            for set_name, set_info in six.iteritems(sets.get(class_name, {})):
+                sets.setdefault(subclass, {})[set_name] = set_info
 
-    return make_sqlalchemy_schema_info(schema, tables, junctions)
+    return make_sqlalchemy_schema_info(schema, tables, junctions, sets)
 
 
 def generate_schema_graph(orientdb_client):
