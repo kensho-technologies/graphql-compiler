@@ -25,19 +25,22 @@ from .directives import (
 )
 
 
-def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
-    """Raise errors if the macro uses the macro directives incorrectly or is otherwise invalid."""
+def _validate_query_definition(ast):
+    """Raise errors if the query operation definition contains directives or variables."""
     if ast.directives:
         directive_names = [directive.name.value for directive in ast.directives]
         raise GraphQLInvalidMacroError(
             u'Unexpectedly found directives at the top level of the GraphQL input. '
             u'This is not supported. Directives: {}'.format(directive_names))
 
-    if ast.variable_definitions is not None:
+    if ast.variable_definitions:
         raise GraphQLInvalidMacroError(
             u'Unexpectedly found variable definitions at the top level of the GraphQL input. '
             u'This is not supported. Variable definitions: {}'.format(ast.variable_definitions))
 
+
+def _validate_ast_with_builtin_graphql_validation(schema, ast):
+    """Validate the ast against the schema with macro directives using GraphQL validate function."""
     schema_with_macro_edge_directives = get_schema_for_macro_edge_definitions(schema)
 
     validation_errors = validate(schema_with_macro_edge_directives, ast)
@@ -45,6 +48,9 @@ def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
         raise GraphQLInvalidMacroError(
             u'Macro edge failed validation: {}'.format(validation_errors))
 
+
+def _validate_that_macro_edge_definition_and_target_directives_appear_once(macro_directives):
+    """Validate that macro definition and target directives appear once in the ast."""
     for directive_definition in DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION:
         macro_data = macro_directives.get(directive_definition.name, None)
         if not macro_data:
@@ -59,11 +65,11 @@ def _validate_macro_ast_with_macro_directives(schema, ast, macro_directives):
                 .format(directive_definition.name, len(macro_data)))
 
 
-def _validate_macro_ast_directives(ast, inside_fold_scope=False):
-    """Check that the macro is using non-macro directives properly.
+def _validate_non_required_macro_definition_directives(ast, inside_fold_scope=False):
+    """Check that the macro is using non-required macro edge definition directives properly.
 
     Restrictions on use of directives:
-    - @output and @output_source are disallowed
+    - @macro_edge, @output and @output_source are disallowed
     - @macro_edge_target is not allowed to be inside a @fold scope
     - @macro_edge_target is not allowed to begin with a coercion
 
@@ -102,14 +108,14 @@ def _validate_macro_ast_directives(ast, inside_fold_scope=False):
     if isinstance(ast, (Field, InlineFragment, OperationDefinition)):
         if ast.selection_set is not None:
             for selection in ast.selection_set.selections:
-                _validate_macro_ast_directives(
+                _validate_non_required_macro_definition_directives(
                     selection, inside_fold_scope=subselection_inside_fold_scope)
     else:
         raise AssertionError(u'Unexpected AST type received: {} {}'.format(type(ast), ast))
 
 
-def _validate_class_selection_ast(ast, macro_defn_ast):
-    """Ensure that the macro's top-level selection AST adheres to our expectations."""
+def _validate_macro_edge_definition_is_only_top_level_field_directive(ast, macro_defn_ast):
+    """Ensure that @macro_edge_definition is the only directive in the top level field."""
     directive_names = [
         directive.name.value
         for directive in ast.directives
@@ -155,7 +161,7 @@ def _get_minimal_query_ast_from_macro_ast(macro_ast):
     """Get a query that should successfully compile to IR if the macro is valid."""
     ast_without_macro_directives = remove_directives_from_ast(macro_ast, {
         directive.name
-        for directive in MACRO_EDGE_DIRECTIVES
+        for directive in DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
     })
 
     # We will add this output directive to make the ast a valid query
@@ -224,8 +230,10 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     """
     macro_directives = get_directives_for_ast(ast)
 
-    _validate_macro_ast_with_macro_directives(schema, ast, macro_directives)
-    _validate_macro_ast_directives(ast)
+    _validate_query_definition(ast)
+    _validate_ast_with_builtin_graphql_validation(schema, ast)
+    _validate_that_macro_edge_definition_and_target_directives_appear_once(macro_directives)
+    _validate_non_required_macro_definition_directives(ast)
 
     # Guaranteed to only have one macro definition directive,
     # otherwise validation should have failed in the previous steps.
@@ -237,7 +245,7 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
                                         type_equivalence_hints=type_equivalence_hints)
     ensure_arguments_are_provided(input_metadata, macro_edge_args)
 
-    _validate_class_selection_ast(
+    _validate_macro_edge_definition_is_only_top_level_field_directive(
         get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast)
     class_name = get_ast_field_name(macro_defn_ast)
     macro_edge_name = get_only_element_from_collection(macro_defn_directive.arguments).value.value
