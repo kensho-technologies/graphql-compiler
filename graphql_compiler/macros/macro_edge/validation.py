@@ -113,7 +113,7 @@ def _validate_non_required_macro_definition_directives(ast, inside_fold_scope=Fa
         raise AssertionError(u'Unexpected AST type received: {} {}'.format(type(ast), ast))
 
 
-def _validate_macro_edge_definition_is_only_top_level_field_directive(ast, macro_defn_ast):
+def _validate_that_macro_edge_definition_is_only_top_level_field_directive(ast, macro_defn_ast):
     """Ensure that @macro_edge_definition is the only directive in the top level field."""
     directive_names = [
         directive.name.value
@@ -244,7 +244,7 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
                                         type_equivalence_hints=type_equivalence_hints)
     ensure_arguments_are_provided(input_metadata, macro_edge_args)
 
-    _validate_macro_edge_definition_is_only_top_level_field_directive(
+    _validate_that_macro_edge_definition_is_only_top_level_field_directive(
         get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast)
     class_name = get_ast_field_name(macro_defn_ast)
     macro_edge_name = get_only_element_from_collection(macro_defn_directive.arguments).value.value
