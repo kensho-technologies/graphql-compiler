@@ -1,11 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from copy import deepcopy
-
-from graphql.language import ast as ast_types
+from graphql.language.ast import Field
 from graphql.language.visitor import Visitor, visit
 from graphql.validation import validate
 
 from ..exceptions import GraphQLValidationError
+from .utils import get_copy_of_node_with_new_name
 
 
 def rename_query(ast, renamed_schema_descriptor):
@@ -48,18 +47,16 @@ def rename_query(ast, renamed_schema_descriptor):
     query_definition = ast.definitions[0]
 
     for selection in query_definition.selection_set.selections:
-        if not isinstance(selection, ast_types.Field):  # possibly an InlineFragment
+        if not isinstance(selection, Field):  # possibly an InlineFragment
             raise GraphQLValidationError(
                 u'Each root selection must be of type "Field", not "{}" as in '
                 u'selection "{}"'.format(type(selection).__name__, selection)
             )
 
-    ast = deepcopy(ast)
-
     visitor = RenameQueryVisitor(renamed_schema_descriptor.reverse_name_map)
-    visit(ast, visitor)
+    renamed_ast = visit(ast, visitor)
 
-    return ast
+    return renamed_ast
 
 
 class RenameQueryVisitor(Visitor):
@@ -75,20 +72,32 @@ class RenameQueryVisitor(Visitor):
         self.selection_set_level = 0
 
     def _rename_name(self, node):
-        """Modify node as according to renamings.
+        """Change the name of the input node if necessary, according to renamings.
 
         Args:
-            node: type Name, an AST Node object that describes the name of its parent node in
-                  the AST
+            node: Field, an object representing a field in an AST, containing a .name attribute
+                  corresponding to an AST node of type Name. It is not modified
+
+        Returns:
+            Field, possibly with a new name. If the name was not changed, the returned object
+            is the exact same object as the input
         """
-        name_string = node.value
+        name_string = node.name.value
         new_name_string = self.renamings.get(name_string, name_string)  # Default use original
-        node.value = new_name_string
+        if new_name_string == name_string:
+            return node
+        else:
+            node_with_new_name = get_copy_of_node_with_new_name(node, new_name_string)
+            return node_with_new_name
 
     def enter_NamedType(self, node, *args):
         """Rename name of node."""
         # NamedType nodes describe types in the schema, appearing in InlineFragments
-        self._rename_name(node.name)
+        renamed_node = self._rename_name(node)
+        if renamed_node is node:  # Name unchanged, continue traversal
+            return None
+        else:  # Name changed, return new node, `visit` will make shallow copies along path
+            return renamed_node
 
     def enter_SelectionSet(self, node, *args):
         """Record that we entered another nested level of selections."""
@@ -107,4 +116,8 @@ class RenameQueryVisitor(Visitor):
         # As a query may not start with an inline fragment, all first level selections are
         # fields
         if self.selection_set_level == 1:
-            self._rename_name(node.name)
+            renamed_node = self._rename_name(node)
+            if renamed_node is node:  # Name unchanged, continue traversal
+                return None
+            else:  # Name changed, return new node, `visit` will make shallow copies along path
+                return renamed_node

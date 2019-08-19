@@ -1,14 +1,18 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from copy import copy
 import string
 
 from graphql import build_ast_schema
-from graphql.language.ast import NamedType
+from graphql.language.ast import Field, InlineFragment, Name
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
 from graphql.utils.assert_valid_name import COMPILED_NAME_PATTERN
+from graphql.validation import validate
 import six
 
-from ..exceptions import GraphQLError
+from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
+from ..exceptions import GraphQLError, GraphQLValidationError
+from ..schema import FilterDirective, OptionalDirective, OutputDirective
 
 
 class SchemaTransformError(GraphQLError):
@@ -132,6 +136,94 @@ def get_scalar_names(schema):
     return scalars
 
 
+def try_get_ast_by_name_and_type(asts, target_name, target_type):
+    """Return the ast in the list with the desired name and type, if found.
+
+    Args:
+        asts: List[Node] or None
+        target_name: str, name of the AST we're looking for
+        target_type: Node, the type of the AST we're looking for. Must be a type with a .name
+                     attribute, e.g. Field, Directive
+
+    Returns:
+        Node, an element in the input list with the correct name and type, or None if not found
+    """
+    if asts is None:
+        return None
+    for ast in asts:
+        if isinstance(ast, target_type) and ast.name.value == target_name:
+            return ast
+    return None
+
+
+def try_get_inline_fragment(selections):
+    """Return the unique inline fragment contained in selections, or None.
+
+    Args:
+        selections: List[Union[Field, InlineFragment]] or None
+
+    Returns:
+        InlineFragment if one is found in selections, None otherwise
+
+    Raises:
+        GraphQLValidationError if selections contains a InlineFragment along with a nonzero
+        number of fields, or contains multiple InlineFragments
+    """
+    if selections is None:
+        return None
+    inline_fragments_in_selection = [
+        selection
+        for selection in selections
+        if isinstance(selection, InlineFragment)
+    ]
+    if len(inline_fragments_in_selection) == 0:
+        return None
+    elif len(inline_fragments_in_selection) == 1:
+        if len(selections) == 1:
+            return inline_fragments_in_selection[0]
+        else:
+            raise GraphQLValidationError(
+                u'Input selections "{}" contains both InlineFragments and Fields, which may not '
+                u'coexist in one selection.'.format(selections)
+            )
+    else:
+        raise GraphQLValidationError(
+            u'Input selections "{}" contains multiple InlineFragments, which is not allowed.'
+            u''.format(selections)
+        )
+
+
+def get_copy_of_node_with_new_name(node, new_name):
+    """Return a node with new_name as its name and otherwise identical to the input node.
+
+    Args:
+        node: type Node, with a .name attribute. Not modified by this function
+        new_name: str, name to give to the output node
+
+    Returns:
+        Node, with new_name as its name and otherwise identical to the input node
+    """
+    node_type = type(node).__name__
+    allowed_types = frozenset((
+        'EnumTypeDefinition',
+        'Field',
+        'FieldDefinition',
+        'InterfaceTypeDefinition',
+        'NamedType',
+        'ObjectTypeDefinition',
+        'UnionTypeDefinition',
+    ))
+    if node_type not in allowed_types:
+        raise AssertionError(
+            u'Input node {} of type {} is not allowed, only {} are allowed.'.format(
+                node, node_type, allowed_types
+            )
+        )
+    node_with_new_name = copy(node)  # shallow copy is enough
+    node_with_new_name.name = Name(value=new_name)
+    return node_with_new_name
+
+
 class CheckValidTypesAndNamesVisitor(Visitor):
     """Check that the AST does not contain invalid types or types with invalid names.
 
@@ -216,10 +308,7 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
         """
         if self.in_query_type:
             field_name = node.name.value
-            type_node = node.type
-            # NamedType node may be wrapped in several layers of NonNullType or ListType
-            while not isinstance(type_node, NamedType):
-                type_node = type_node.type
+            type_node = get_ast_with_non_null_and_list_stripped(node.type)
             queried_type_name = type_node.name.value
             if field_name != queried_type_name:
                 raise SchemaStructureError(
@@ -263,3 +352,116 @@ def check_ast_schema_is_valid(ast):
 
     query_type = get_query_type_name(schema)
     visit(ast, CheckQueryTypeFieldsNameMatchVisitor(query_type))
+
+
+def is_property_field_ast(field):
+    """Return True if selection is a property field, False if a vertex field.
+
+    Args:
+        field: Field object. It is considered to be a property field if it has no further
+               selections
+
+    Returns:
+        True if the selection is a property field, False if it's a vertex field.
+    """
+    if isinstance(field, Field):
+        if (
+            field.selection_set is None or
+            field.selection_set.selections is None or
+            field.selection_set.selections == []
+        ):
+            return True
+        else:
+            return False
+    else:
+        raise AssertionError(
+            u'Input selection "{}" is not a Field.'.format(field)
+        )
+
+
+class CheckQueryIsValidToSplitVisitor(Visitor):
+    """Check the query is valid.
+
+    In particular, check that it only contains supported directives, its property fields come
+    before vertex fields in every scope, and that any scope containing a InlineFragment has
+    nothing else in scope.
+    """
+    # This is very restrictive for now. Other cases (e.g. tags not crossing boundaries) are
+    # also ok, but temporarily not allowed
+    supported_directives = frozenset((
+        FilterDirective.name,
+        OutputDirective.name,
+        OptionalDirective.name,
+    ))
+
+    def enter_Directive(self, node, *args):
+        """Check that the directive is supported."""
+        if node.name.value not in self.supported_directives:
+            raise GraphQLValidationError(
+                u'Directive "{}" is not yet supported, only "{}" are currently '
+                u'supported.'.format(node.name.value, self.supported_directives)
+            )
+
+    def enter_SelectionSet(self, node, *args):
+        """Check selections are valid.
+
+        If selections contains an InlineFragment, check that it is the only inline fragment in
+        scope. Otherwise, check that property fields occur before vertex fields.
+
+        Args:
+            node: SelectionSet
+        """
+        selections = node.selections
+        if (
+            len(selections) == 1 and
+            isinstance(selections[0], InlineFragment)
+        ):
+            return
+        else:
+            seen_vertex_field = False  # Whether we're seen a vertex field
+            for field in selections:
+                if isinstance(field, InlineFragment):
+                    raise GraphQLValidationError(
+                        u'Inline fragments must be the only selection in scope. However, in '
+                        u'selections {}, an InlineFragment coexists with other selections.'.format(
+                            selections
+                        )
+                    )
+                if is_property_field_ast(field):
+                    if seen_vertex_field:
+                        raise GraphQLValidationError(
+                            u'In the selections {}, the property field {} occurs after a vertex '
+                            u'field or a type coercion statement, which is not allowed, as all '
+                            u'property fields must appear before all vertex fields.'.format(
+                                node.selections, field
+                            )
+                        )
+                else:
+                    seen_vertex_field = True
+
+
+def check_query_is_valid_to_split(schema, query_ast):
+    """Check the query is valid for splitting.
+
+    In particular, ensure that the query validates against the schema, does not contain
+    unsupported directives, and that in each selection, all property fields occur before all
+    vertex fields.
+
+    Args:
+        schema: GraphQLSchema object
+        query_ast: Document
+
+    Raises:
+        GraphQLValidationError if the query doesn't validate against the schema, contains
+        unsupported directives, or some property field occurs after a vertex field in some
+        selection
+    """
+    # Check builtin errors
+    built_in_validation_errors = validate(schema, query_ast)
+    if len(built_in_validation_errors) > 0:
+        raise GraphQLValidationError(
+            u'AST does not validate: {}'.format(built_in_validation_errors)
+        )
+    # Check no bad directives and fields are in order
+    visitor = CheckQueryIsValidToSplitVisitor()
+    visit(query_ast, visitor)
