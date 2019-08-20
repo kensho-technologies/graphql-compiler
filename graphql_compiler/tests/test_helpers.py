@@ -3,7 +3,8 @@
 from pprint import pformat
 import re
 
-from graphql import parse
+from graphql import GraphQLList, parse
+from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 import sqlalchemy
@@ -12,7 +13,7 @@ from sqlalchemy.dialects import mssql
 from .. import get_graphql_schema_from_orientdb_schema_data
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
-from ..schema import CUSTOM_SCALAR_TYPES
+from ..schema import CUSTOM_SCALAR_TYPES, is_vertex_field_name
 from ..schema.sqlalchemy_schema import make_sqlalchemy_schema_info
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
 from ..schema_generation.orientdb.utils import (
@@ -285,10 +286,31 @@ def get_schema():
     return schema
 
 
+def _get_schema_without_list_valued_property_fields():
+    """Get the default testing schema, skipping any list-valued property fields it has."""
+    schema = get_schema()
+
+    types_with_fields = (GraphQLInterfaceType, GraphQLObjectType)
+    for type_name, graphql_type in six.iteritems(schema.get_type_map()):
+        if isinstance(graphql_type, types_with_fields):
+            if type_name != 'RootSchemaQuery' and not type_name.startswith('__'):
+                fields_to_pop = []
+                for field_name, field_type in six.iteritems(graphql_type.fields):
+                    if not is_vertex_field_name(field_name):
+                        if isinstance(field_type.type, GraphQLList):
+                            fields_to_pop.append(field_name)
+                for field_to_pop in fields_to_pop:
+                    graphql_type.fields.pop(field_to_pop)
+
+    return schema
+
+
 def get_sqlalchemy_schema_info():
     """Get a SQLAlchemySchemaInfo for testing."""
-    schema = get_schema()
     tables = {}
+
+    # We don't support list-valued property fields in SQL for now.
+    schema = _get_schema_without_list_valued_property_fields()
 
     # Every SQLAlchemy Table needs to be attached to a MetaData object. We don't actually use it.
     # We use a mixture of two metadata objects to make sure our implementation does not rely
@@ -299,17 +321,9 @@ def get_sqlalchemy_schema_info():
     uuid_type = sqlalchemy.String(36)
 
     tables = {
-        'Alias': sqlalchemy.Table(
-            'Alias',
-            sqlalchemy_metadata_1,
-            sqlalchemy.Column('alias_name', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('alias_for', sqlalchemy.String(36), nullable=False),
-            schema='db1.schema_1'
-        ),
         'Animal': sqlalchemy.Table(
             'Animal',
             sqlalchemy_metadata_1,
-            sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('birthday', sqlalchemy.DateTime, nullable=False),
             sqlalchemy.Column('color', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
@@ -328,7 +342,6 @@ def get_sqlalchemy_schema_info():
         'BirthEvent': sqlalchemy.Table(
             'BirthEvent',
             sqlalchemy_metadata_2,
-            sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -339,7 +352,6 @@ def get_sqlalchemy_schema_info():
         'Entity': sqlalchemy.Table(
             'Entity',
             sqlalchemy_metadata_2,
-            sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -349,7 +361,6 @@ def get_sqlalchemy_schema_info():
         'Event': sqlalchemy.Table(
             'Event',
             sqlalchemy_metadata_2,
-            sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -360,7 +371,6 @@ def get_sqlalchemy_schema_info():
         'FeedingEvent': sqlalchemy.Table(
             'FeedingEvent',
             sqlalchemy_metadata_1,
-            sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -371,7 +381,6 @@ def get_sqlalchemy_schema_info():
         'Food': sqlalchemy.Table(
             'Food',
             sqlalchemy_metadata_1,
-            sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -380,7 +389,6 @@ def get_sqlalchemy_schema_info():
         'FoodOrSpecies': sqlalchemy.Table(
             'FoodOrSpecies',
             sqlalchemy_metadata_1,
-            sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -389,7 +397,6 @@ def get_sqlalchemy_schema_info():
         'Location': sqlalchemy.Table(
             'Location',
             sqlalchemy_metadata_1,
-            sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -398,7 +405,6 @@ def get_sqlalchemy_schema_info():
         'Species': sqlalchemy.Table(
             'Species',
             sqlalchemy_metadata_2,
-            sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -506,26 +512,15 @@ def get_sqlalchemy_schema_info():
             'to_column_name': edge['from_column'],
         }
 
-    set_valued_property_fields = {
-        'Entity': {
-            'alias': {
-                'junction': 'out_Entity_Alias',
-                'value_column': 'alias_name',
-            }
-        }
-    }
-
     # Inherit junctions from superclasses
     # TODO(bojanserafimov): Properties can be inferred too, instead of being explicitly inherited.
     for class_name, subclass_set in six.iteritems(subclasses):
         for subclass in subclass_set:
             for edge_name, join_info in six.iteritems(junctions.get(class_name, {})):
                 junctions.setdefault(subclass, {})[edge_name] = join_info
-            for set_name, set_info in six.iteritems(set_valued_property_fields.get(class_name, {})):
-                set_valued_property_fields.setdefault(subclass, {})[set_name] = set_info
 
     return make_sqlalchemy_schema_info(
-        schema, mssql.dialect(), tables, junctions, set_valued_property_fields)
+        schema, mssql.dialect(), tables, junctions)
 
 
 def generate_schema_graph(orientdb_client):
