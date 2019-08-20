@@ -14,7 +14,7 @@ from .. import get_graphql_schema_from_orientdb_schema_data
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..schema import CUSTOM_SCALAR_TYPES, is_vertex_field_name
-from ..schema.sqlalchemy_schema import make_sqlalchemy_schema_info
+from ..schema.sqlalchemy_schema import DirectJoinDescriptor, make_sqlalchemy_schema_info
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
 from ..schema_generation.orientdb.utils import (
     ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
@@ -499,26 +499,22 @@ def get_sqlalchemy_schema_info():
         }
     ]
 
-    junctions = {}
+    join_descriptors = {}
     for edge in edges:
-        junctions.setdefault(edge['from_table'], {})['out_{}'.format(edge['name'])] = {
-            'from_column_name': edge['from_column'],
-            'to_column_name': edge['to_column'],
-        }
-        junctions.setdefault(edge['to_table'], {})['in_{}'.format(edge['name'])] = {
-            'from_column_name': edge['to_column'],
-            'to_column_name': edge['from_column'],
-        }
+        join_descriptors.setdefault(edge['from_table'], {})['out_{}'.format(edge['name'])] = (
+            DirectJoinDescriptor(edge['from_column'], edge['to_column']))
+        join_descriptors.setdefault(edge['to_table'], {})['in_{}'.format(edge['name'])] = (
+            DirectJoinDescriptor(edge['to_column'], edge['from_column']))
 
-    # Inherit junctions from superclasses
+    # Inherit join_descriptors from superclasses
     # TODO(bojanserafimov): Properties can be inferred too, instead of being explicitly inherited.
     for class_name, subclass_set in six.iteritems(subclasses):
         for subclass in subclass_set:
-            for edge_name, join_info in six.iteritems(junctions.get(class_name, {})):
-                junctions.setdefault(subclass, {})[edge_name] = join_info
+            for edge_name, join_info in six.iteritems(join_descriptors.get(class_name, {})):
+                join_descriptors.setdefault(subclass, {})[edge_name] = join_info
 
     return make_sqlalchemy_schema_info(
-        schema, mssql.dialect(), tables, junctions)
+        schema, mssql.dialect(), tables, join_descriptors)
 
 
 def generate_schema_graph(orientdb_client):

@@ -9,6 +9,21 @@ import sqlalchemy
 from . import is_vertex_field_name
 
 
+# Describes the intent to join two tables on equality of a column of theirs.
+# The resulting join expression could be something like:
+# JOIN origin_table.from_column = destination_table.to_column
+#
+# The type of join (inner vs left, etc.) is not specified.
+# The tables are not specified.
+DirectJoinDescriptor = namedtuple('DirectJoinDescriptor', (
+    'from_column',  # The column in the source table we intend to join on.
+    'to_column',    # The column in the destination table we intend to join on.
+))
+
+
+# TODO(bojanserafimov): Define a JunctionJoinDescriptor
+
+
 # Complete schema information sufficient to compile GraphQL queries to SQLAlchemy
 #
 # It describes the tables that correspond to each type (object type, interface type or union type),
@@ -31,18 +46,15 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
     # a sqlalchemy table. Column types that do not exist for this dialect are not allowed.
     'tables',
 
-    # A junction describes a relationship between two tables by joining on a specific column
-    # of those tables being equal.
-    #
     # dict mapping every graphql object type or interface type name in the schema to:
-    #    dict mapping every vertex field name at that type to a dict with keys:
-    #        from_column_name: string, column name to join from
-    #        to_column_name: string, column name to join to
-    'junctions',
+    #    dict mapping every vertex field name at that type to a DirectJoinDescriptor. The
+    #    tables the join is to be performed on are not specified. They are inferred from
+    #    the schema and the tables dictionary.
+    'join_descriptors',
 ))
 
 
-def make_sqlalchemy_schema_info(schema, dialect, tables, junctions, validate=True):
+def make_sqlalchemy_schema_info(schema, dialect, tables, join_descriptors, validate=True):
     """Make a SQLAlchemySchemaInfo if the input provided is valid.
 
     See the documentation of SQLAlchemyschemaInfo for more detailed documentation of the args.
@@ -52,10 +64,10 @@ def make_sqlalchemy_schema_info(schema, dialect, tables, junctions, validate=Tru
         dialect: sqlalchemy.engine.interfaces.Dialect
         tables: dict mapping every graphql object type or interface type name in the schema to
                 a sqlalchemy table
-        junctions: dict mapping every graphql object type or interface type name in the schema to:
-                       dict mapping every vertex field name at that type to a dict with keys:
-                           from_column_name: string, column name to join from
-                           to_column_name: string, column name to join to
+        join_descriptors: dict mapping graphql object and interface type names in the schema to:
+                             dict mapping every vertex field name at that type to a
+                             DirectJoinDescriptor. The tables the join is to be performed on are not
+                             specified. They are inferred from the schema and the tables dictionary.
         validate: Optional bool (default True), specifying whether to validate that the given
                   input is valid for creation of a SQLAlchemySchemaInfo. Consider not validating
                   to save on performance when dealing with a large schema.
@@ -70,7 +82,7 @@ def make_sqlalchemy_schema_info(schema, dialect, tables, junctions, validate=Tru
         }
         # TODO(bojanserafimov): More validation can be done:
         # - are the types of the columns compatible with the GraphQL type of the property field?
-        # - do junctions join on columns on which the (=) operator makes sense?
+        # - do joins join on columns on which the (=) operator makes sense?
         # - do inherited columns have exactly the same type on the parent and child table?
         # - are all the column types available in this dialect?
         for type_name, graphql_type in six.iteritems(schema.get_type_map()):
@@ -87,8 +99,8 @@ def make_sqlalchemy_schema_info(schema, dialect, tables, junctions, validate=Tru
                     # Check existence of all fields
                     for field_name, field_type in six.iteritems(graphql_type.fields):
                         if is_vertex_field_name(field_name):
-                            if field_name not in junctions.get(type_name, {}):
-                                raise AssertionError(u'No junction was specified for vertex '
+                            if field_name not in join_descriptors.get(type_name, {}):
+                                raise AssertionError(u'No join descriptor was specified for vertex '
                                                      u'field {} on type {}'
                                                      .format(field_name, type_name))
                         else:
@@ -97,4 +109,4 @@ def make_sqlalchemy_schema_info(schema, dialect, tables, junctions, validate=Tru
                                                      u'for property field {}'
                                                      .format(type_name, field_name))
 
-    return SQLAlchemySchemaInfo(schema, dialect, tables, junctions)
+    return SQLAlchemySchemaInfo(schema, dialect, tables, join_descriptors)
