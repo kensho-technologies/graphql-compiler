@@ -1237,7 +1237,7 @@ coerce the enclosing scope into a different type. Type coercions are
 represented with GraphQL inline fragments.
 
 Example Use
-~~~~~~~~~~
+~~~~~~~~~~~
 
 .. code::
 
