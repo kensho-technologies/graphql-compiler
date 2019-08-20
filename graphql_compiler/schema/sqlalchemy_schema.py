@@ -25,8 +25,12 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
     # GraphQLSchema
     'schema',
 
+    # sqlalchemy.engine.interfaces.Dialect, specifying the flavor of database we wish
+    # to compile for (e.g. Postgres, MSSQL, etc.).
+    'dialect',
+
     # dict mapping every graphql object type or interface type name in the schema to
-    # a sqlalchemy table
+    # a sqlalchemy table. Column types that do not exist for this dialect are not allowed.
     'tables',
 
     # A junction describes a relationship between two tables by joining on a specific column
@@ -39,7 +43,9 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
     'junctions',
 
     # Set valued fields describe which junction to follow, and which column to look at in order
-    # to find the values of the set.
+    # to find the values of the set. If the dialect is sqlalchemy.dialects.postgresql.dialect(),
+    # you can use the ARRAY column type for array valued columns, in which case you don't need
+    # to use a junction.
     #
     # dict mapping every graphql object type or interface type name in the schema to:
     #    dict mapping every list-valued property field name to a dict with keys:
@@ -49,11 +55,15 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
 ))
 
 
-def make_sqlalchemy_schema_info(schema, tables, junctions, set_valued_fields, validate=True):
+def make_sqlalchemy_schema_info(schema, dialect, tables, junctions, set_valued_fields,
+                                validate=True):
     """Make a SQLAlchemySchemaInfo if the input provided is valid.
+
+    See the documentation of SQLAlchemyschemaInfo for more detailed documentation of the args.
 
     Args:
         schema: GraphQLSchema
+        dialect: sqlalchemy.engine.interfaces.Dialect
         tables: dict mapping every graphql object type or interface type name in the schema to
                 a sqlalchemy table
         junctions: dict mapping every graphql object type or interface type name in the schema to:
@@ -82,6 +92,7 @@ def make_sqlalchemy_schema_info(schema, tables, junctions, set_valued_fields, va
         # - are the types of the columns compatible with the GraphQL type of the property field?
         # - do junctions join on columns on which the (=) operator makes sense?
         # - do inherited columns have exactly the same type on the parent and child table?
+        # - are all the column types available in this dialect?
         for type_name, graphql_type in six.iteritems(schema.get_type_map()):
             if isinstance(graphql_type, types_to_map):
                 if type_name != 'RootSchemaQuery' and not type_name.startswith('__'):
@@ -118,4 +129,4 @@ def make_sqlalchemy_schema_info(schema, tables, junctions, set_valued_fields, va
                                                      u'for property field {}'
                                                      .format(type_name, field_name))
 
-    return SQLAlchemySchemaInfo(schema, tables, junctions, set_valued_fields)
+    return SQLAlchemySchemaInfo(schema, dialect, tables, junctions, set_valued_fields)

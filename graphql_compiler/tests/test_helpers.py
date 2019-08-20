@@ -7,6 +7,7 @@ from graphql import parse
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 import sqlalchemy
+from sqlalchemy.dialects import mssql
 
 from .. import get_graphql_schema_from_orientdb_schema_data
 from ..compiler.subclass import compute_subclass_sets
@@ -523,7 +524,8 @@ def get_sqlalchemy_schema_info():
             for set_name, set_info in six.iteritems(set_valued_property_fields.get(class_name, {})):
                 set_valued_property_fields.setdefault(subclass, {})[set_name] = set_info
 
-    return make_sqlalchemy_schema_info(schema, tables, junctions, set_valued_property_fields)
+    return make_sqlalchemy_schema_info(
+        schema, mssql.dialect(), tables, junctions, set_valued_property_fields)
 
 
 def generate_schema_graph(orientdb_client):
