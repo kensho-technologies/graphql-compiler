@@ -307,8 +307,6 @@ def _get_schema_without_list_valued_property_fields():
 
 def get_sqlalchemy_schema_info():
     """Get a SQLAlchemySchemaInfo for testing."""
-    tables = {}
-
     # We don't support list-valued property fields in SQL for now.
     schema = _get_schema_without_list_valued_property_fields()
 
