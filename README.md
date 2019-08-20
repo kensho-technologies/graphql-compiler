@@ -49,6 +49,8 @@ For a more detailed overview and getting started guide, please see
      * [in_collection](#in_collection)
      * [not_in_collection](#not_in_collection)
      * [has_substring](#has_substring)
+     * [starts_with](#starts_with)
+     * [ends_with](#ends_with)
      * [contains](#contains)
      * [not_contains](#not_contains)
      * [intersects](#intersects)
@@ -822,6 +824,40 @@ for the `$substring` parameter. Each row contains the matching `Animal`'s name
 in a column named `animal_name`.
 
 #### Constraints and Rules
+- Must be on a property field of string type.
+
+### starts_with
+#### Example Use
+```graphql
+{
+    Animal {
+        name @filter(op_name: "starts_with", value: ["$prefix"])
+             @output(out_name: "animal_name")
+    }
+}
+```
+This returns one row for every `Animal` vertex whose name starts with the value supplied
+for the `$prefix` parameter. Each row contains the matching `Animal`'s name
+in a column named `animal_name`.
+
+#### Constraints and Rules
+- Must be on a property field of string type.
+
+### ends_with
+#### Example Use
+```graphql
+{
+    Animal {
+        name @filter(op_name: "ends_with", value: ["suffix"])
+             @output(out_name: "animal_name")
+    }
+}
+```
+This returns one row for every `Animal` vertex whose name ends with the value supplied
+for the `$suffix` parameter. Each row contains the matching `Animal`'s name
+in a column named `animal_name`.
+
+#### Constraints and Rules$prefix
 - Must be on a property field of string type.
 
 ### contains
