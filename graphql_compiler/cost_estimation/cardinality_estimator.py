@@ -293,11 +293,14 @@ def estimate_number_of_pages(schema_graph, statistics, graphql_query, params, pa
 
     Returns:
         int, estimated number of pages if the query were executed.
+
+    Raises:
+        ValueError if page_size is below 1.
     """
     if page_size < 1:
-        raise AssertionError(u'Could not estimate number of pages for query {}'
-                             u' with page size lower than 1: {} {}'
-                             .format(graphql_query, page_size, params))
+        raise ValueError(u'Could not estimate number of pages for query {}'
+                         u' with page size lower than 1: {} {}'
+                         .format(graphql_query, page_size, params))
 
     result_size = estimate_query_result_cardinality(
         schema_graph, statistics, graphql_query, params
