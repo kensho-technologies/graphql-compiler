@@ -5,7 +5,7 @@ import pytest
 
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
-from ...query_pagination import QueryAndParameters, paginate_query
+from ...query_pagination import PaginationQueries, paginate_query
 from ..test_helpers import generate_schema_graph
 
 
@@ -44,28 +44,24 @@ class QueryPaginationTests(unittest.TestCase):
                 schema_graph, statistics, test_ast, parameters, 1
             )
 
-        expected_query_list = (                                     # noqa: unused-variable
-            QueryAndParameters(
-                '''{
-                    Animal {
-                        uuid @filter(op_name: "<", value: ["$_paged_upper_param_on_Animal_uuid"])
-                        name @output(out_name: "animal")
-                    }
-                }''',
-                {
-                    '_paged_upper_param_on_Animal_uuid': '40000000-0000-0000-0000-000000000000',
+        expected_query_list = PaginationQueries(                    # noqa: unused-variable
+            '''{
+                Animal {
+                    uuid @filter(op_name: "<", value: ["$_paged_upper_param_on_Animal_uuid"])
+                    name @output(out_name: "animal")
                 }
-            ),
-            QueryAndParameters(
-                '''{
-                    Animal {
-                        uuid @filter(op_name: ">=", value: ["$_paged_lower_param_on_Animal_uuid"])
-                        name @output(out_name: "animal")
-                    }
-                }''',
-                {
-                    '_paged_lower_param_on_Animal_uuid': '40000000-0000-0000-0000-000000000000',
+            }''',
+            {
+                '_paged_upper_param_on_Animal_uuid': '40000000-0000-0000-0000-000000000000',
+            },
+            '''{
+                Animal {
+                    uuid @filter(op_name: ">=", value: ["$_paged_lower_param_on_Animal_uuid"])
+                    name @output(out_name: "animal")
                 }
-            )
+            }''',
+            {
+                '_paged_lower_param_on_Animal_uuid': '40000000-0000-0000-0000-000000000000',
+            },
         )
         # pylint: enable=unused-variable
