@@ -5,7 +5,15 @@ from graphql_compiler.query_pagination.parameter_generator import (
     generate_parameters_for_parameterized_query
 )
 from graphql_compiler.query_pagination.query_parameterizer import generate_parameterized_queries
-from graphql_compiler.query_pagination import ASTWithParameters
+
+
+ASTWithParameters = namedtuple(
+    'ASTWithParameters',
+    (
+        'query_ast',        # Document, AST describing a GraphQL query.
+        'parameters',       # dict, parameters for executing the given query.
+    ),
+)
 
 
 def split_into_page_query_and_remainder_query(

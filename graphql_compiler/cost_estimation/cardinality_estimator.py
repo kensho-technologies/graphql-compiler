@@ -309,7 +309,6 @@ def estimate_number_of_pages(schema_graph, statistics, graphql_query, params, pa
         raise AssertionError(u'Received negative estimate {} for cardinality of query {}: {}'
                              .format(result_size, graphql_query, params))
 
-
     # Since using a // b returns the fraction rounded down, we instead use (a + b - 1) // b, which
     # returns the fraction value rounded up, which is the desired functionality.
     num_pages = int((result_size + page_size - 1) // page_size)

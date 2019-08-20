@@ -1,5 +1,4 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import namedtuple
 
 
 def generate_parameters_for_parameterized_query(

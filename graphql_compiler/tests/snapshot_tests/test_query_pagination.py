@@ -3,7 +3,6 @@ import unittest
 
 import pytest
 
-from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
 from ...query_pagination import QueryStringWithParameters, paginate_query
 from ..test_helpers import generate_schema_graph
