@@ -1,35 +1,25 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import namedtuple
 
 
-HydratedParameters = namedtuple(
-    'HydratedParameters',
-    (
-        'next_page_parameters',     # dict, parameters with which to execute the next page
-                                    # parameterized query.
-        'continuation_parameters',  # dict, parameters with which to execute the parameterized
-                                    # continuation query.
-    ),
-)
-
-
-def hydrate_parameters_of_parameterized_query(
+def generate_parameters_for_parameterized_query(
     schema_graph, statistics, parameterized_pagination_queries, num_pages
 ):
-    """Generate parameters combining the user's parameters and parameters for paging.
+    """Generate parameters for the given parameterized pagination queries.
 
     Args:
         schema_graph: SchemaGraph instance.
         statistics: Statistics object.
         parameterized_pagination_queries: ParameterizedPaginationQueries namedtuple, parameterized
-                                          queries whose parameters will be hydrated with pagination
-                                          parameters.
+                                          queries for which parameters are being generated.
         num_pages: int, number of pages to split the query into.
 
     Returns:
-        HydratedParameters namedtuple, containing two dicts with which to execute the next page
-        query and the continuation query respectively. The next page query parameters are generated
-        such that only a page of result data is generated of the original pagination query, while
-        the continuation query parameters generate the rest of the original query's result data.
+        two dicts:
+            - dict, parameters with which to execute the page query. The next page query's
+              parameters are generated such that only a page of the original query's result data is
+              produced when executed.
+            - dict, parameters with which to execute the remainder query. The remainder query
+              parameters are generated such that they produce the remainder of the original query's
+              result data when executed.
     """
     raise NotImplementedError()
