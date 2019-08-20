@@ -295,7 +295,7 @@ def get_sqlalchemy_schema_info():
     sqlalchemy_metadata_1 = sqlalchemy.MetaData()
     sqlalchemy_metadata_2 = sqlalchemy.MetaData()
 
-    uuid_type = lambda: sqlalchemy.String(36)
+    uuid_type = sqlalchemy.String(36)
 
     tables = {
         'Alias': sqlalchemy.Table(
@@ -316,12 +316,12 @@ def get_sqlalchemy_schema_info():
             sqlalchemy.Column('related_entity', sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('net_worth', sqlalchemy.Integer, nullable=True),
-            sqlalchemy.Column('fed_at', uuid_type(), nullable=True),
-            sqlalchemy.Column('born_at', uuid_type(), nullable=True),
-            sqlalchemy.Column('lives_in', uuid_type(), nullable=True),
+            sqlalchemy.Column('fed_at', uuid_type, nullable=True),
+            sqlalchemy.Column('born_at', uuid_type, nullable=True),
+            sqlalchemy.Column('lives_in', uuid_type, nullable=True),
             sqlalchemy.Column('important_event', sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column('species', sqlalchemy.String(40), nullable=True),
-            sqlalchemy.Column('uuid', uuid_type(), primary_key=True),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             schema='db_1.schema_1'
         ),
         'BirthEvent': sqlalchemy.Table(
@@ -329,10 +329,10 @@ def get_sqlalchemy_schema_info():
             sqlalchemy_metadata_2,
             sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type(), primary_key=True),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
-            sqlalchemy.Column('related_event', uuid_type(), primary_key=False),
+            sqlalchemy.Column('related_event', uuid_type, primary_key=False),
             schema='db_1.schema_1'
         ),
         'Entity': sqlalchemy.Table(
@@ -340,9 +340,9 @@ def get_sqlalchemy_schema_info():
             sqlalchemy_metadata_2,
             sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type(), primary_key=True),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('related_entity', uuid_type(), nullable=True),
+            sqlalchemy.Column('related_entity', uuid_type, nullable=True),
             schema='db_1.schema_1'
         ),
         'Event': sqlalchemy.Table(
@@ -350,10 +350,10 @@ def get_sqlalchemy_schema_info():
             sqlalchemy_metadata_2,
             sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type(), primary_key=True),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
-            sqlalchemy.Column('related_event', uuid_type(), primary_key=False),
+            sqlalchemy.Column('related_event', uuid_type, primary_key=False),
             schema='db_2.schema_1'
         ),
         'FeedingEvent': sqlalchemy.Table(
@@ -361,10 +361,10 @@ def get_sqlalchemy_schema_info():
             sqlalchemy_metadata_1,
             sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type(), primary_key=True),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
-            sqlalchemy.Column('related_event', uuid_type(), primary_key=False),
+            sqlalchemy.Column('related_event', uuid_type, primary_key=False),
             schema='db_2.schema_1'
         ),
         'Food': sqlalchemy.Table(
@@ -372,7 +372,7 @@ def get_sqlalchemy_schema_info():
             sqlalchemy_metadata_1,
             sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type(), primary_key=True),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             schema='db_2.schema_2'
         ),
@@ -381,7 +381,7 @@ def get_sqlalchemy_schema_info():
             sqlalchemy_metadata_1,
             sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type(), primary_key=True),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             schema='db_2.schema_2'
         ),
@@ -390,7 +390,7 @@ def get_sqlalchemy_schema_info():
             sqlalchemy_metadata_1,
             sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type(), primary_key=True),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             schema='db_1.schema_1'
         ),
@@ -399,16 +399,16 @@ def get_sqlalchemy_schema_info():
             sqlalchemy_metadata_2,
             sqlalchemy.Column('alias', sqlalchemy.ARRAY(sqlalchemy.String(40)), nullable=False),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type(), primary_key=True),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('eats', uuid_type(), nullable=True),
+            sqlalchemy.Column('eats', uuid_type, nullable=True),
             sqlalchemy.Column('limbs', sqlalchemy.Integer, nullable=False),
             schema='db_1.schema_1'
         ),
         'UniquelyIdentifiable': sqlalchemy.Table(
             'UniquelyIdentifiable',
             sqlalchemy_metadata_1,
-            sqlalchemy.Column('uuid', uuid_type(), primary_key=True),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             schema='db_1.schema_1'
         ),
     }

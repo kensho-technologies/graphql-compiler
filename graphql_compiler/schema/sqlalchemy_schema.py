@@ -2,7 +2,7 @@
 from collections import namedtuple
 
 from graphql import GraphQLList
-from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
+from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
 import six
 import sqlalchemy
 
@@ -100,7 +100,6 @@ def make_sqlalchemy_schema_info(schema, tables, junctions, set_valued_fields, va
                                                      .format(field_name, type_name))
                             set_implementation = set_valued_fields[type_name][field_name]
                             junction = set_implementation['junction']
-                            value_column = set_implementation['value_column']
                             if junction not in junctions.get(type_name, {}):
                                 raise AssertionError(u'Implementation for set valued property '
                                                      u'field {} on type {} references junction {}, '
