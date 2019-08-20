@@ -6,8 +6,7 @@ from ..ir_lowering_common.common import (
 from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
 from .ir_lowering import (
     lower_coerce_type_block_type_data, lower_coerce_type_blocks,
-    lower_ends_with_binary_compositions, lower_folded_outputs_and_context_fields,
-    lower_starts_with_binary_compositions, rewrite_filters_in_optional_blocks
+    lower_folded_outputs_and_context_fields, rewrite_filters_in_optional_blocks
 )
 
 
@@ -52,8 +51,6 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
 
     ir_blocks = lower_coerce_type_blocks(ir_blocks)
     ir_blocks = rewrite_filters_in_optional_blocks(ir_blocks)
-    ir_blocks = lower_starts_with_binary_compositions(ir_blocks)
-    ir_blocks = lower_ends_with_binary_compositions(ir_blocks)
     ir_blocks = merge_consecutive_filter_clauses(ir_blocks)
     ir_blocks = lower_folded_outputs_and_context_fields(ir_blocks)
 

@@ -2859,7 +2859,7 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
-            .filter{it, m -> (it.name ==~ ('/^' + ($wanted + '.*/')))}
+            .filter{it, m -> it.name.startsWith($wanted)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
@@ -2900,7 +2900,7 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_gremlin = '''
             g.V('@class', 'Animal')
-            .filter{it, m -> (it.name ==~ ('/.*' + ($wanted + '$/')))}
+            .filter{it, m -> it.name.endsWith($wanted)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name

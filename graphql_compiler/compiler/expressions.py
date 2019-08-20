@@ -978,8 +978,8 @@ class BinaryComposition(Expression):
             u'not_contains': (u'contains', negated_dotted_operator_format),
             u'intersects': (u'intersect', intersects_operator_format),
             u'has_substring': (u'contains', dotted_operator_format),
-            u'starts_with': (u'==~', immediate_operator_format),
-            u'ends_with': (u'==~', immediate_operator_format),
+            u'starts_with': (u'startsWith', dotted_operator_format),
+            u'ends_with': (u'endsWith', dotted_operator_format),
         }
 
         gremlin_operator, format_spec = translation_table.get(self.operator, (None, None))

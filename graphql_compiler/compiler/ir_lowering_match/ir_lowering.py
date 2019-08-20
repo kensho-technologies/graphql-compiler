@@ -144,7 +144,7 @@ def lower_ends_with_binary_compositions(ir_blocks):
     """Lower Filter blocks that use the "ends_with" operation into MATCH-representable form."""
     def visitor_fn(expression):
         """Rewrite BinaryComposition expressions with "ends_with" into representable form."""
-        # The implementation of "starts_with" must use the LIKE operator in MATCH, and must
+        # The implementation of "ends_with" must use the LIKE operator in MATCH, and must
         # prepend "%" symbols to the substring being matched.
         # We transform any structures that resemble the following:
         #    BinaryComposition(u'ends_with', X, Y)
