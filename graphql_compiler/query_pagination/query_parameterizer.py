@@ -19,7 +19,7 @@ ParameterizedPaginationQueries = namedtuple(
 PaginationFilter = namedtuple(
     'PaginationFilter',
     (
-        'vertex_field',                 # str, vertex class to which the property field belongs to.
+        'vertex_class',                 # str, vertex class to which the property field belongs to.
         'property_field',               # str, name of the property field filtering is done over.
         'next_page_query_filter',       # Directive, filter directive with '<' operator usable
                                         # for pagination in the next page query.

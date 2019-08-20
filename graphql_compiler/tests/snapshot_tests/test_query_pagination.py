@@ -5,7 +5,7 @@ import pytest
 
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
-from ...query_pagination import PaginationQueries, paginate_query
+from ...query_pagination import QueryStringWithParameters, paginate_query
 from ..test_helpers import generate_schema_graph
 
 
@@ -26,7 +26,6 @@ class QueryPaginationTests(unittest.TestCase):
                 name @output(out_name: "animal")
             }
         }'''
-        test_ast = safe_parse_graphql(test_data)
         parameters = {}
 
         count_data = {
@@ -41,27 +40,31 @@ class QueryPaginationTests(unittest.TestCase):
         # pylint: disable=unused-variable
         with self.assertRaises(NotImplementedError):
             paginated_queries = paginate_query(                     # noqa: unused-variable
-                schema_graph, statistics, test_ast, parameters, 1
+                schema_graph, statistics, test_data, parameters, 1
             )
 
-        expected_query_list = PaginationQueries(                    # noqa: unused-variable
-            '''{
-                Animal {
-                    uuid @filter(op_name: "<", value: ["$_paged_upper_param_on_Animal_uuid"])
-                    name @output(out_name: "animal")
-                }
-            }''',
-            {
-                '_paged_upper_param_on_Animal_uuid': '40000000-0000-0000-0000-000000000000',
-            },
-            '''{
-                Animal {
-                    uuid @filter(op_name: ">=", value: ["$_paged_lower_param_on_Animal_uuid"])
-                    name @output(out_name: "animal")
-                }
-            }''',
-            {
-                '_paged_lower_param_on_Animal_uuid': '40000000-0000-0000-0000-000000000000',
-            },
+        expected_query_list = (                                     # noqa: unused-variable
+            QueryStringWithParameters(
+                '''{
+                    Animal {
+                        uuid @filter(op_name: "<", value: ["$_paged_upper_param_on_Animal_uuid"])
+                        name @output(out_name: "animal")
+                    }
+                }''',
+                {
+                    '_paged_upper_param_on_Animal_uuid': '40000000-0000-0000-0000-000000000000',
+                },
+            ),
+            QueryStringWithParameters(
+                '''{
+                    Animal {
+                        uuid @filter(op_name: ">=", value: ["$_paged_lower_param_on_Animal_uuid"])
+                        name @output(out_name: "animal")
+                    }
+                }''',
+                {
+                    '_paged_lower_param_on_Animal_uuid': '40000000-0000-0000-0000-000000000000',
+                },
+            ),
         )
         # pylint: enable=unused-variable
