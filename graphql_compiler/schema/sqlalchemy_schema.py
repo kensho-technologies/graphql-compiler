@@ -13,7 +13,9 @@ from . import is_vertex_field_name
 #
 # It describes the tables that correspond to each type (object type, interface type or union type),
 # and gives instructions on how to perform joins for each vertex field. The property fields on each
-# type are implicitly mapped to columns with the same name on the corresponding table.
+# type are implicitly mapped to columns with the same name on the corresponding table, with the
+# exception of list/set valued property fields, that are mapped to junctions. See below for more
+# details.
 #
 # NOTES:
 # - RootSchemaQuery is a special type that does not need a corresponding table.
@@ -27,12 +29,18 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
     # a sqlalchemy table
     'tables',
 
+    # A junction describes a relationship between two tables by joining on a specific column
+    # of those tables being equal.
+    #
     # dict mapping every graphql object type or interface type name in the schema to:
     #    dict mapping every vertex field name at that type to a dict with keys:
     #        from_column_name: string, column name to join from
     #        to_column_name: string, column name to join to
     'junctions',
 
+    # Set valued fields describe which junction to follow, and which column to look at in order
+    # to find the values of the set.
+    #
     # dict mapping every graphql object type or interface type name in the schema to:
     #    dict mapping every list-valued property field name to a dict with keys:
     #        junction_name: string, previously specified junction that provides the set contents
