@@ -1,5 +1,11 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
+from copy import deepcopy
+
+from graphql.language.ast import Argument, Directive, Field, ListValue, Name, StringValue
+
+from graphql_compiler.ast_manipulation import get_only_query_definition, get_only_selection_from_ast
+from graphql_compiler.exceptions import GraphQLCompilationError
 
 
 RESERVED_PARAMETER_PREFIX = '_paged_'
@@ -68,9 +74,10 @@ def _get_or_create_primary_key_field(schema_graph, pagination_ast):
     primary_key_field_name = 'uuid'
     primary_key_field = _try_obtain_primary_key(pagination_ast, primary_key_field_name)
     if primary_key_field is None:
-        primary_key_field = _create_property_field(field_name)
+        primary_key_field = _create_property_field(primary_key_field_name)
         # We make sure to prepend the primary key field,
         # to avoid inserting a property field after a vertex field.
+        selections_list = pagination_ast.selection_set.selections
         selections_list.insert(0, primary_key_field)
 
     return primary_key_field
@@ -114,7 +121,7 @@ def _create_filter_for_next_page_query(vertex_name, property_field_name, paramet
             u'which is reserved for pagination.'.format(parameters, paged_upper_param))
 
     filter_ast = _get_binary_filter('<', paged_upper_param)
-    return filter_info, filter_ast
+    return filter_ast
 
 
 def _create_filter_for_continuation_query(vertex_name, property_field_name, parameters):
@@ -127,12 +134,11 @@ def _create_filter_for_continuation_query(vertex_name, property_field_name, para
             u'Parameter list {} already contains parameter {}, '
             u'which is reserved for pagination.'.format(parameters, paged_lower_param))
 
-    filter_info = FilterInfo(property_field_name)
     filter_ast = _get_binary_filter('>=', paged_lower_param)
-    return filter_info, filter_ast
+    return filter_ast
 
 
-def _generate_next_page_query_ast(query_ast, pagination_vertices, pagination_parameters):
+def _generate_next_page_query_ast(schema_graph, query_ast, pagination_vertices, pagination_parameters):
     """TODO Return an AST describing the query that will generate the next page of data.
 
 
@@ -141,26 +147,26 @@ def _generate_next_page_query_ast(query_ast, pagination_vertices, pagination_par
     """
     for pagination_vertex, pagination_parameter in zip(pagination_vertices, pagination_parameters):
         pagination_field = _get_or_create_primary_key_field(schema_graph, pagination_vertex)
-        pagination_field.directives = [related_filters, filter_for_next_page_query]
+        pagination_field.directives = [pagination_parameter.related_filters, pagination_parameter.next_page_query_filter]
 
     # We generate the next page query by adding all filter_for_next_page_query directives.
     next_page_query_ast = deepcopy(query_ast)
 
     for pagination_vertex, pagination_parameter in zip(pagination_vertices, pagination_parameters):
         pagination_field = _get_or_create_primary_key_field(schema_graph, pagination_vertex)
-        pagination_field.directives = related_filters
+        pagination_field.directives = pagination_parameter.related_filters
 
     return next_page_query_ast
 
 
-def _generate_continuation_query_ast(query_ast, pagination_vertices, pagination_parameters):
+def _generate_continuation_query_ast(schema_graph, query_ast, pagination_vertices, pagination_parameters):
     """TODO Return an AST describing the continuation query.
 
     Given a list of filters
     Args:
         query_ast: Document, query that is being paginated.
         pagination_vertices: List[Document], vertices where filters for pagination have been added.
-        pagination_parameters: List[PaginationParameter], describing which filters to add
+        pagination_parameters: List[PaginationFilter], describing which filters to add
                                to paginate over query_ast's result set.
 
     Returns:
@@ -168,13 +174,13 @@ def _generate_continuation_query_ast(query_ast, pagination_vertices, pagination_
     """
     for pagination_vertex, pagination_parameter in zip(pagination_vertices, pagination_parameters):
         pagination_field = _get_or_create_primary_key_field(schema_graph, pagination_vertex)
-        pagination_field.directives = [related_filters, filter_for_continuation_query]
+        pagination_field.directives = [pagination_parameter.related_filters, pagination_parameter.continuation_query_filter]
 
-    continuation = deepcopy(query_ast)
+    continuation_query_ast = deepcopy(query_ast)
 
     for pagination_vertex, pagination_parameter in zip(pagination_vertices, pagination_parameters):
         pagination_field = _get_or_create_primary_key_field(schema_graph, pagination_vertex)
-        pagination_field.directives = related_filters
+        pagination_field.directives = pagination_parameter.related_filters
 
     return continuation_query_ast
 
@@ -206,11 +212,11 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
     pagination_parameters = []
     for pagination_vertex in pagination_vertices:
         pagination_field = _get_or_create_primary_key_field(schema_graph, pagination_vertex)
-        related_filters = [
+        related_filters = deepcopy([
             directive
             for directive in pagination_field.directives
             if directive.name.value == 'filter'
-        ]
+        ])
 
         vertex_name = pagination_vertex.name.value
         field_name = pagination_field.name.value
@@ -221,17 +227,17 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
             vertex_name, field_name, parameters
         )
 
-        pagination_parameter = PaginationParameter(
+        pagination_parameter = PaginationFilter(
             vertex_name, field_name, filter_for_next_page_query, filter_for_continuation_query,
             related_filters
         )
         pagination_parameters.append(pagination_parameter)
 
     next_page_query_ast = _generate_next_page_query_ast(
-        query_ast, pagination_vertices, pagination_parameters
+        schema_graph, query_ast, pagination_vertices, pagination_parameters
     )
     continuation_query_ast = _generate_continuation_query_ast(
-        query_ast, pagination_vertices, pagination_parameters
+        schema_graph, query_ast, pagination_vertices, pagination_parameters
     )
 
     parameterized_queries = ParameterizedPaginationQueries(
