@@ -103,12 +103,13 @@ Features
    than gremlin, and has other desirable properties. See the Execution
    model section for more details.
 
-Support for relational databases including PostgreSQL, MySQL, SQLite,
-and Microsoft SQL Server is a work in progress. A subset of compiler
-features are available for these databases. See the `SQL <#sql>`__
-section for more details. \* **GraphQL Language Features:** We
-prioritized and implemented a subset of all functionality supported by
-the GraphQL language. We hope to add more functionality over time.
+   Support for relational databases including PostgreSQL, MySQL, SQLite,
+   and Microsoft SQL Server is a work in progress. A subset of compiler
+   features are available for these databases. See the `SQL <#sql>`__
+   section for more details.
+
+-  **GraphQL Language Features:** We prioritized and implemented a subset of all functionality
+   supported by the GraphQL language. We hope to add more functionality over time.
 
 End-to-End Example
 ------------------
