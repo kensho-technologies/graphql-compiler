@@ -47,11 +47,11 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
         parameters: dict, list of parameters for the given query.
 
     Returns:
-        ParameterizedPaginationQueries namedtuple, describing two new query ASTs that have additional
-        filters stored as PaginationFilters with which the query result size can be controlled.
-        Note that these filters are returned parameterized i.e. values for the filters' parameters
-        have yet to be generated. Additionally, a dict containing user-defined parameters is stored.
-        Since this function may modify the user parameters to ensure better pagination, the
-        user_parameters dict may differ from the one provided as an argument to this function.
+        ParameterizedPaginationQueries namedtuple, describing two new query ASTs that have
+        additional filters stored as PaginationFilters with which the query result size can be
+        controlled. Note that these filters are returned parameterized i.e. values for the filters'
+        parameters have yet to be generated. Additionally, a dict containing user-defined parameters
+        is stored. Since this function may modify the user parameters to ensure better pagination,
+        the user_parameters dict may differ from the one provided as an argument to this function.
     """
     raise NotImplementedError()
