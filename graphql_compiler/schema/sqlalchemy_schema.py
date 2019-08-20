@@ -55,7 +55,6 @@ def make_sqlalchemy_schema_info(schema, tables, junctions, set_valued_fields, va
         validate: Optional bool (default True), specifying whether to validate that the given
                   input is valid for creation of a SQLAlchemySchemaInfo. Consider not validating
                   to save on performance when dealing with a large schema.
-
         set_valued_fields: dict mapping graphql object and interface type names in the schema to:
                   dict mapping every list-valued property field name to a dict with keys:
                       junction_name: string, previously specified junction that provides the
