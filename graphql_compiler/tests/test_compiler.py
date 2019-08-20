@@ -6579,7 +6579,23 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              Animal__in_Animal_ParentOf___1 AS Animal__in_Animal_ParentOf___1,
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_names_list`,
+              (CASE
+                WHEN (Animal__in_Animal_ParentOf___1 IS NOT null)
+                  THEN Animal__in_Animal_ParentOf___1.name
+                  ELSE null
+                END) AS `parent_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -6638,7 +6654,23 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              Animal__in_Animal_ParentOf___1 AS Animal__in_Animal_ParentOf___1,
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_names_list`,
+              (CASE
+                WHEN (Animal__in_Animal_ParentOf___1 IS NOT null)
+                  THEN Animal__in_Animal_ParentOf___1.name
+                  ELSE null
+                END) AS `parent_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -6721,7 +6753,34 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH
+              (Animal__in_Animal_ParentOf___1)<-[:Animal_ParentOf]-
+              (Animal__in_Animal_ParentOf__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH
+              (Animal__out_Animal_ParentOf___1)-[:Animal_ParentOf]->
+              (Animal__out_Animal_ParentOf__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              Animal__in_Animal_ParentOf___1 AS Animal__in_Animal_ParentOf___1,
+              Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 AS
+                Animal__in_Animal_ParentOf__in_Animal_ParentOf___1,
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1,
+              collect(Animal__out_Animal_ParentOf__out_Animal_ParentOf___1) AS
+                collected_Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN collected_Animal__out_Animal_ParentOf__out_Animal_ParentOf___1 | x.name] AS
+                `grandchild_names_list`,
+              (CASE
+                WHEN (Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 IS NOT null)
+                  THEN Animal__in_Animal_ParentOf__in_Animal_ParentOf___1.name
+                  ELSE null
+                END) AS `grandparent_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
@@ -6798,7 +6857,35 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH
+              (Animal__in_Animal_ParentOf___1)<-[:Animal_ParentOf]-
+              (Animal__in_Animal_ParentOf__in_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH
+              (Animal__out_Animal_ParentOf___1)-[:Animal_ParentOf]->
+              (Animal__out_Animal_ParentOf__out_Animal_ParentOf___1:Animal)
+            WITH
+              Animal___1 AS Animal___1,
+              Animal__in_Animal_ParentOf___1 AS Animal__in_Animal_ParentOf___1,
+              Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 AS
+                Animal__in_Animal_ParentOf__in_Animal_ParentOf___1,
+              collect(Animal__out_Animal_ParentOf___1) AS
+                collected_Animal__out_Animal_ParentOf___1,
+              collect(Animal__out_Animal_ParentOf__out_Animal_ParentOf___1) AS
+                collected_Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
+            RETURN
+              Animal___1.name AS `animal_name`,
+              [x IN collected_Animal__out_Animal_ParentOf__out_Animal_ParentOf___1 | x.name] AS
+                `grandchild_names_list`,
+              (CASE
+                WHEN (Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 IS NOT null)
+                  THEN Animal__in_Animal_ParentOf__in_Animal_ParentOf___1.name
+                  ELSE null
+                END) AS `grandparent_name`
+        '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)

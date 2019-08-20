@@ -156,6 +156,43 @@ def try_get_ast_by_name_and_type(asts, target_name, target_type):
     return None
 
 
+def try_get_inline_fragment(selections):
+    """Return the unique inline fragment contained in selections, or None.
+
+    Args:
+        selections: List[Union[Field, InlineFragment]] or None
+
+    Returns:
+        InlineFragment if one is found in selections, None otherwise
+
+    Raises:
+        GraphQLValidationError if selections contains a InlineFragment along with a nonzero
+        number of fields, or contains multiple InlineFragments
+    """
+    if selections is None:
+        return None
+    inline_fragments_in_selection = [
+        selection
+        for selection in selections
+        if isinstance(selection, InlineFragment)
+    ]
+    if len(inline_fragments_in_selection) == 0:
+        return None
+    elif len(inline_fragments_in_selection) == 1:
+        if len(selections) == 1:
+            return inline_fragments_in_selection[0]
+        else:
+            raise GraphQLValidationError(
+                u'Input selections "{}" contains both InlineFragments and Fields, which may not '
+                u'coexist in one selection.'.format(selections)
+            )
+    else:
+        raise GraphQLValidationError(
+            u'Input selections "{}" contains multiple InlineFragments, which is not allowed.'
+            u''.format(selections)
+        )
+
+
 def get_copy_of_node_with_new_name(node, new_name):
     """Return a node with new_name as its name and otherwise identical to the input node.
 
@@ -317,34 +354,38 @@ def check_ast_schema_is_valid(ast):
     visit(ast, CheckQueryTypeFieldsNameMatchVisitor(query_type))
 
 
-def is_property_field_ast(selection):
-    """Return True if selection is a property field, False if a vertex field or type coercion.
+def is_property_field_ast(field):
+    """Return True if selection is a property field, False if a vertex field.
 
     Args:
-        selection: type Field or InlineFragment. An element occuring inside a SelectionSet
+        field: Field object. It is considered to be a property field if it has no further
+               selections
 
     Returns:
-        True if the selection is a property field, False if it's a vertex field or type coercion
+        True if the selection is a property field, False if it's a vertex field.
     """
-    if isinstance(selection, InlineFragment):
-        return False
-    if isinstance(selection, Field):
+    if isinstance(field, Field):
         if (
-            selection.selection_set is None or
-            selection.selection_set.selections is None or
-            selection.selection_set.selections == []
+            field.selection_set is None or
+            field.selection_set.selections is None or
+            field.selection_set.selections == []
         ):
             return True
         else:
             return False
     else:
         raise AssertionError(
-            u'Input selection "{}" is not of type Field or InlineFragment.'.format(selection)
+            u'Input selection "{}" is not a Field.'.format(field)
         )
 
 
 class CheckQueryIsValidToSplitVisitor(Visitor):
-    """Check the query only has supported directives, and its fields are correctly ordered."""
+    """Check the query is valid.
+
+    In particular, check that it only contains supported directives, its property fields come
+    before vertex fields in every scope, and that any scope containing a InlineFragment has
+    nothing else in scope.
+    """
     # This is very restrictive for now. Other cases (e.g. tags not crossing boundaries) are
     # also ok, but temporarily not allowed
     supported_directives = frozenset((
@@ -362,20 +403,41 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
             )
 
     def enter_SelectionSet(self, node, *args):
-        """Check property fields occur before vertex fields and type coercions in selection."""
-        seen_non_property_field = False  # Whether we're seen a vertex field/type coercion
-        for field in node.selections:
-            if is_property_field_ast(field):
-                if seen_non_property_field:
+        """Check selections are valid.
+
+        If selections contains an InlineFragment, check that it is the only inline fragment in
+        scope. Otherwise, check that property fields occur before vertex fields.
+
+        Args:
+            node: SelectionSet
+        """
+        selections = node.selections
+        if (
+            len(selections) == 1 and
+            isinstance(selections[0], InlineFragment)
+        ):
+            return
+        else:
+            seen_vertex_field = False  # Whether we're seen a vertex field
+            for field in selections:
+                if isinstance(field, InlineFragment):
                     raise GraphQLValidationError(
-                        u'In the selections {}, the property field {} occurs after a vertex '
-                        u'field or a type coercion statement, which is not allowed, as all '
-                        u'property fields must appear before all vertex fields.'.format(
-                            node.selections, field
+                        u'Inline fragments must be the only selection in scope. However, in '
+                        u'selections {}, an InlineFragment coexists with other selections.'.format(
+                            selections
                         )
                     )
-            else:
-                seen_non_property_field = True
+                if is_property_field_ast(field):
+                    if seen_vertex_field:
+                        raise GraphQLValidationError(
+                            u'In the selections {}, the property field {} occurs after a vertex '
+                            u'field or a type coercion statement, which is not allowed, as all '
+                            u'property fields must appear before all vertex fields.'.format(
+                                node.selections, field
+                            )
+                        )
+                else:
+                    seen_vertex_field = True
 
 
 def check_query_is_valid_to_split(schema, query_ast):
