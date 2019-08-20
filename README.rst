@@ -188,11 +188,11 @@ Definitions
 -----------
 
 -  **Vertex field**: A field corresponding to a vertex in the graph. In
-   the below example, ``Animal`` and ``out_Entity_Related`` are vertex
-   fields. The ``Animal`` field is the field at which querying starts,
+   the below example, :code:`Animal` and :code:`out_Entity_Related` are vertex
+   fields. The :code:`Animal` field is the field at which querying starts,
    and is therefore the **root vertex field**. In any scope, fields with
-   the prefix ``out_`` denote vertex fields connected by an outbound
-   edge, whereas ones with the prefix ``in_`` denote vertex fields
+   the prefix :code:`out_` denote vertex fields connected by an outbound
+   edge, whereas ones with the prefix :code:`in_` denote vertex fields
    connected by an inbound edge.
 
    .. code::
@@ -209,7 +209,7 @@ Definitions
        }
 
 -  **Property field**: A field corresponding to a property of a vertex
-   in the graph. In the above example, the ``name`` and ``description``
+   in the graph. In the above example, the :code:`name` and :code:`description`
    fields are property fields. In any given scope, **property fields
    must appear before vertex fields**.
 -  **Result set**: An assignment of vertices in the graph to scopes
@@ -221,17 +221,17 @@ Definitions
    result, by taking their values at all properties marked for output.
 -  **Scope**: The part of a query between any pair of curly braces. The
    compiler infers the type of each scope. For example, in the above
-   query, the scope beginning with ``Animal {`` is of type ``Animal``,
-   the one beginning with ``out_Entity_Related {`` is of type
-   ``Entity``, and the one beginning with ``... on Species {`` is of
-   type ``Species``.
+   query, the scope beginning with :code:`Animal {` is of type :code:`Animal`,
+   the one beginning with :code:`out_Entity_Related {` is of type
+   :code:`Entity`, and the one beginning with :code:`... on Species {` is of
+   type :code:`Species`.
 -  **Type coercion**: An operation that produces a new scope of narrower
    type than the scope in which it exists. Any result sets that cannot
    satisfy the narrower type are filtered out and not returned. In the
-   above query, ``... on Species`` is a type coercion which takes its
-   enclosing scope of type ``Entity``, and coerces it into a narrower
-   scope of type ``Species``. This is possible since ``Entity`` is an
-   interface, and ``Species`` is a type that implements the ``Entity``
+   above query, :code:`... on Species` is a type coercion which takes its
+   enclosing scope of type :code:`Entity`, and coerces it into a narrower
+   scope of type :code:`Species`. This is possible since :code:`Entity` is an
+   interface, and :code:`Species` is a type that implements the :code:`Entity`
    interface.
 
 Directives
@@ -261,44 +261,44 @@ Example Use
         }
     }
 
-For each ``Animal``: - if it is a parent of another animal, at least one
-row containing the parent and child animal's names, in the ``name`` and
-``child_name`` columns respectively; - if it is not a parent of another
-animal, a row with its name in the ``name`` column, and a ``null`` value
-in the ``child_name`` column.
+For each :code:`Animal`: - if it is a parent of another animal, at least one
+row containing the parent and child animal's names, in the :code:`name` and
+:code:`child_name` columns respectively; - if it is not a parent of another
+animal, a row with its name in the :code:`name` column, and a :code:`null` value
+in the :code:`child_name` column.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
--  ``@optional`` can only be applied to vertex fields, except the root
+-  :code:`@optional` can only be applied to vertex fields, except the root
    vertex field.
--  It is allowed to expand vertex fields within an ``@optional`` scope.
+-  It is allowed to expand vertex fields within an :code:`@optional` scope.
    However, doing so is currently associated with a performance penalty
-   in ``MATCH``. For more detail, see: `Expanding ``@optional`` vertex
+   in :code:`MATCH`. For more detail, see: `Expanding :code:`@optional` vertex
    fields <#expanding-optional-vertex-fields>`__.
--  ``@recurse``, ``@fold``, or ``@output_source`` may not be used at the
-   same vertex field as ``@optional``.
--  ``@output_source`` and ``@fold`` may not be used anywhere within a
-   scope marked ``@optional``.
+-  :code:`@recurse`, :code:`@fold`, or :code:`@output_source` may not be used at the
+   same vertex field as :code:`@optional`.
+-  :code:`@output_source` and :code:`@fold` may not be used anywhere within a
+   scope marked :code:`@optional`.
 
 If a given result set is unable to produce a value for a vertex field
-marked ``@optional``, any fields marked ``@output`` within that vertex
-field return the ``null`` value.
+marked :code:`@optional`, any fields marked :code:`@output` within that vertex
+field return the :code:`null` value.
 
-When filtering (via ``@filter``) or type coercion (via e.g.
-``... on Animal``) are applied at or within a vertex field marked
-``@optional``, the ``@optional`` is given precedence: - If a given
+When filtering (via :code:`@filter`) or type coercion (via e.g.
+:code:`... on Animal`) are applied at or within a vertex field marked
+:code:`@optional`, the :code:`@optional` is given precedence: - If a given
 result set cannot produce a value for the optional vertex field, it is
-preserved: the ``@optional`` directive is applied first, and no
+preserved: the :code:`@optional` directive is applied first, and no
 filtering or type coercion can happen. - If a given result set is able
-to produce a value for the optional vertex field, the ``@optional`` does
+to produce a value for the optional vertex field, the :code:`@optional` does
 not apply, and that value is then checked against the filtering or type
 coercion. These subsequent operations may then cause the result set to
 be discarded if it does not match.
 
-For example, suppose we have two ``Person`` vertices with names
-``Albert`` and ``Betty`` such that there is a ``Person_Knows`` edge from
-``Albert`` to ``Betty``.
+For example, suppose we have two :code:`Person` vertices with names
+:code:`Albert` and :code:`Betty` such that there is a :code:`Person_Knows` edge from
+:code:`Albert` to :code:`Betty`.
 
 Then the following query:
 
@@ -321,12 +321,12 @@ with runtime parameter
       "name": "Charles"
     }
 
-would output an empty list because the ``Person_Knows`` edge from
-``Albert`` to ``Betty`` satisfies the ``@optional`` directive, but
-``Betty`` doesn't match the filter checking for a node with name
-``Charles``.
+would output an empty list because the :code:`Person_Knows` edge from
+:code:`Albert` to :code:`Betty` satisfies the :code:`@optional` directive, but
+:code:`Betty` doesn't match the filter checking for a node with name
+:code:`Charles`.
 
-However, if no such ``Person_Knows`` edge existed from ``Albert``, then
+However, if no such :code:`Person_Knows` edge existed from :code:`Albert`, then
 the output would be
 
 .. code:: python
@@ -335,14 +335,14 @@ the output would be
       name: 'Albert'
     }
 
-because no such edge can satisfy the ``@optional`` directive, and no
+because no such edge can satisfy the :code:`@optional` directive, and no
 filtering happens.
 
 @output
 ~~~~~~~
 
 Denotes that the value of a property field should be included in the
-output. Its ``out_name`` argument specifies the name of the column in
+output. Its :code:`out_name` argument specifies the name of the column in
 which the output value should be returned.
 
 Example Use
@@ -356,39 +356,39 @@ Example Use
         }
     }
 
-This query returns the name of each ``Animal`` in the graph, in a column
-named ``animal_name``.
+This query returns the name of each :code:`Animal` in the graph, in a column
+named :code:`animal_name`.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
--  ``@output`` can only be applied to property fields.
--  The value provided for ``out_name`` may only consist of upper or
-   lower case letters (``A-Z``, ``a-z``), or underscores (``_``).
--  The value provided for ``out_name`` cannot be prefixed with ``___``
+-  :code:`@output` can only be applied to property fields.
+-  The value provided for :code:`out_name` may only consist of upper or
+   lower case letters (:code:`A-Z`, :code:`a-z`), or underscores (:code:`_`).
+-  The value provided for :code:`out_name` cannot be prefixed with :code:`___`
    (three underscores). This namespace is reserved for compiler internal
    use.
--  For any given query, all ``out_name`` values must be unique. In other
+-  For any given query, all :code:`out_name` values must be unique. In other
    words, output columns must have unique names.
 
-If the property field marked ``@output`` exists within a scope marked
-``@optional``, result sets that are unable to assign a value to the
-optional scope return the value ``null`` as the output of that property
+If the property field marked :code:`@output` exists within a scope marked
+:code:`@optional`, result sets that are unable to assign a value to the
+optional scope return the value :code:`null` as the output of that property
 field.
 
 @fold
 ~~~~~
 
-Applying ``@fold`` on a scope "folds" all outputs from within that
+Applying :code:`@fold` on a scope "folds" all outputs from within that
 scope: rather than appearing on separate rows in the query result, the
 folded outputs are coalesced into parallel lists starting at the scope
-marked ``@fold``.
+marked :code:`@fold`.
 
 It is also possible to output or apply filters to the number of results
-captured in a ``@fold``. The ``_x_count`` meta field that is available
-within ``@fold`` scopes represents the number of elements in the fold,
-and may be filtered or output as usual. As ``_x_count`` represents a
-count of elements, marking it ``@output`` will produce an integer value.
+captured in a :code:`@fold`. The :code:`_x_count` meta field that is available
+within :code:`@fold` scopes represents the number of elements in the fold,
+and may be filtered or output as usual. As :code:`_x_count` represents a
+count of elements, marking it :code:`@output` will produce an integer value.
 See the `\_x\_count <#_x_count>`__ section for more details.
 
 Example Use
@@ -408,70 +408,70 @@ Example Use
         }
     }
 
-Each returned row has three columns: ``animal_name`` with the name of
-each ``Animal`` in the graph, ``location_count`` with the related
-locations for that ``Animal``, and ``location_names`` with a list of the
-names of all related locations of the ``Animal`` named ``animal_name``.
-If a given ``Animal`` has no related locations, its ``location_names``
-list is empty and the ``location_count`` value is 0.
+Each returned row has three columns: :code:`animal_name` with the name of
+each :code:`Animal` in the graph, :code:`location_count` with the related
+locations for that :code:`Animal`, and :code:`location_names` with a list of the
+names of all related locations of the :code:`Animal` named :code:`animal_name`.
+If a given :code:`Animal` has no related locations, its :code:`location_names`
+list is empty and the :code:`location_count` value is 0.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
--  ``@fold`` can only be applied to vertex fields, except the root
+-  :code:`@fold` can only be applied to vertex fields, except the root
    vertex field.
--  May not exist at the same vertex field as ``@recurse``,
-   ``@optional``, or ``@output_source``.
--  Any scope that is either marked with ``@fold`` or is nested within a
-   ``@fold`` marked scope, may expand at most one vertex field.
--  "No no-op ``@fold`` scopes": within any ``@fold`` scope, there must
-   either be at least one field that is marked ``@output``, or there
-   must be a ``@filter`` applied to the ``_x_count`` field.
--  All ``@output`` fields within a ``@fold`` traversal must be present
+-  May not exist at the same vertex field as :code:`@recurse`,
+   :code:`@optional`, or :code:`@output_source`.
+-  Any scope that is either marked with :code:`@fold` or is nested within a
+   :code:`@fold` marked scope, may expand at most one vertex field.
+-  "No no-op :code:`@fold` scopes": within any :code:`@fold` scope, there must
+   either be at least one field that is marked :code:`@output`, or there
+   must be a :code:`@filter` applied to the :code:`_x_count` field.
+-  All :code:`@output` fields within a :code:`@fold` traversal must be present
    at the innermost scope. It is invalid to expand vertex fields within
-   a ``@fold`` after encountering an ``@output`` directive.
--  ``@tag``, ``@recurse``, ``@optional``, ``@output_source`` and
-   ``@fold`` may not be used anywhere within a scope marked ``@fold``.
--  The ``_x_count`` meta field may only appear at the innermost scope of
-   a ``@fold`` marked scope.
--  Marking the ``_x_count`` meta field with an ``@output`` produces an
+   a :code:`@fold` after encountering an :code:`@output` directive.
+-  :code:`@tag`, :code:`@recurse`, :code:`@optional`, :code:`@output_source` and
+   :code:`@fold` may not be used anywhere within a scope marked :code:`@fold`.
+-  The :code:`_x_count` meta field may only appear at the innermost scope of
+   a :code:`@fold` marked scope.
+-  Marking the :code:`_x_count` meta field with an :code:`@output` produces an
    integer value corresponding to the number of results within that
    fold.
--  Marking for ``@output`` any field other than the ``_x_count`` meta
+-  Marking for :code:`@output` any field other than the :code:`_x_count` meta
    field produces a list of results, where the number of elements in
-   that list is equal to the value of the ``_x_count`` meta field, if it
+   that list is equal to the value of the :code:`_x_count` meta field, if it
    were selected for output.
--  If multiple fields (other than ``_x_count``) are marked ``@output``,
-   the resulting output lists are parallel: the ``i``\ th element of
+-  If multiple fields (other than :code:`_x_count`) are marked :code:`@output`,
+   the resulting output lists are parallel: the :code:`i`\ th element of
    each such list is the value of the corresponding field of the
-   ``i``\ th element of the ``@fold``, for some fixed order of elements
-   in that ``@fold``. The order of elements within the output of a
-   ``@fold`` is only fixed for a particular execution of a given query,
-   for the results of a given ``@fold`` that are part of a single result
+   :code:`i`\ th element of the :code:`@fold`, for some fixed order of elements
+   in that :code:`@fold`. The order of elements within the output of a
+   :code:`@fold` is only fixed for a particular execution of a given query,
+   for the results of a given :code:`@fold` that are part of a single result
    set. There is no guarantee of consistent ordering of elements for the
-   same ``@fold`` in any of the following situations:
+   same :code:`@fold` in any of the following situations:
 
    -  across two or more result sets that are both the result of the
       execution of the same query;
    -  across different executions of the same query, or
-   -  across different queries that contain the same ``@fold`` scope.
+   -  across different queries that contain the same :code:`@fold` scope.
 
--  Use of type coercions or ``@filter`` at or within the vertex field
-   marked ``@fold`` is allowed. The order of operations is conceptually
+-  Use of type coercions or :code:`@filter` at or within the vertex field
+   marked :code:`@fold` is allowed. The order of operations is conceptually
    as follows:
--  First, type coercions and filters (except ``@filter`` on the
-   ``_x_count`` meta field) are applied, and any data that does not
+-  First, type coercions and filters (except :code:`@filter` on the
+   :code:`_x_count` meta field) are applied, and any data that does not
    satisfy such coercions and filters is discarded. At this point, the
    size of the fold (i.e. its number of results) is fixed.
--  Then, any ``@filter`` directives on the ``_x_count`` meta field are
+-  Then, any :code:`@filter` directives on the :code:`_x_count` meta field are
    applied, allowing filtering of result sets based on the fold size.
    Any result sets that do not match these filters are discarded.
 -  Finally, if the result set was not discarded by the previous step,
-   ``@output`` directives are processed, selecting folded data for
+   :code:`@output` directives are processed, selecting folded data for
    output.
 -  If the compiler is able to prove that a type coercion in the
-   ``@fold`` scope is actually a no-op, it may optimize it away. See the
-   `Optional ``type_equivalence_hints`` compilation
+   :code:`@fold` scope is actually a no-op, it may optimize it away. See the
+   `Optional :code:`type_equivalence_hints` compilation
    parameter <#optional-type_equivalence_hints-parameter>`__ section for
    more details.
 
@@ -479,10 +479,10 @@ Example
 ^^^^^^^
 
 The following GraphQL is *not allowed* and will produce a
-``GraphQLCompilationError``. This query is *invalid* for two separate
-reasons: - It expands vertex fields after an ``@output`` directive
-(outputting ``animal_name``) - The ``in_Animal_ParentOf`` scope, which
-is within a scope marked ``@fold``, expands two vertex fields instead of
+:code:`GraphQLCompilationError`. This query is *invalid* for two separate
+reasons: - It expands vertex fields after an :code:`@output` directive
+(outputting :code:`animal_name`) - The :code:`in_Animal_ParentOf` scope, which
+is within a scope marked :code:`@fold`, expands two vertex fields instead of
 at most one.
 
 .. code::
@@ -506,8 +506,8 @@ at most one.
     }
 
 The following GraphQL query is similarly *not allowed* and will produce
-a ``GraphQLCompilationError``, since the ``_x_count`` field is not
-within the innermost scope in the ``@fold``.
+a :code:`GraphQLCompilationError`, since the :code:`_x_count` field is not
+within the innermost scope in the :code:`@fold`.
 
 .. code::
 
@@ -524,8 +524,8 @@ within the innermost scope in the ``@fold``.
         }
     }
 
-Moving the ``_x_count`` field to the innermost scope results in the
-following valid use of ``@fold``:
+Moving the :code:`_x_count` field to the innermost scope results in the
+following valid use of :code:`@fold`:
 
 .. code::
 
@@ -542,9 +542,9 @@ following valid use of ``@fold``:
         }
     }
 
-Here is an example of query whose ``@fold`` does not output any data; it
-returns the names of all animals that have more than ``count`` children
-whose names contain the substring ``substr``:
+Here is an example of query whose :code:`@fold` does not output any data; it
+returns the names of all animals that have more than :code:`count` children
+whose names contain the substring :code:`substr`:
 
 .. code::
 
@@ -561,13 +561,13 @@ whose names contain the substring ``substr``:
 @tag
 ~~~~
 
-The ``@tag`` directive enables filtering based on values encountered
+The :code:`@tag` directive enables filtering based on values encountered
 elsewhere in the same query. Applied on a property field, it assigns a
 name to the value of that property field, allowing that value to then be
-used as part of a ``@filter`` directive.
+used as part of a :code:`@filter` directive.
 
-To supply a tagged value to a ``@filter`` directive, place the tag name
-(prefixed with a ``%`` symbol) in the ``@filter``'s ``value`` array. See
+To supply a tagged value to a :code:`@filter` directive, place the tag name
+(prefixed with a :code:`%` symbol) in the :code:`@filter`'s :code:`value` array. See
 `Passing parameters <#passing-parameters>`__ for more details.
 
 Example Use
@@ -585,20 +585,20 @@ Example Use
         }
     }
 
-Each row returned by this query contains, in the ``child_name`` column,
-the name of an ``Animal`` that is the child of another ``Animal``, and
+Each row returned by this query contains, in the :code:`child_name` column,
+the name of an :code:`Animal` that is the child of another :code:`Animal`, and
 has a name that is lexicographically smaller than the name of its
 parent.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
--  ``@tag`` can only be applied to property fields.
--  The value provided for ``tag_name`` may only consist of upper or
-   lower case letters (``A-Z``, ``a-z``), or underscores (``_``).
--  For any given query, all ``tag_name`` values must be unique.
--  Cannot be applied to property fields within a scope marked ``@fold``.
--  Using a ``@tag`` and a ``@filter`` that references the tag within the
+-  :code:`@tag` can only be applied to property fields.
+-  The value provided for :code:`tag_name` may only consist of upper or
+   lower case letters (:code:`A-Z`, :code:`a-z`), or underscores (:code:`_`).
+-  For any given query, all :code:`tag_name` values must be unique.
+-  Cannot be applied to property fields within a scope marked :code:`@fold`.
+-  Using a :code:`@tag` and a :code:`@filter` that references the tag within the
    same vertex is allowed, so long as the two do not appear on the exact
    same property field.
 
@@ -607,7 +607,7 @@ Constraints and Rules
 
 Allows filtering of the data to be returned, based on any of a set of
 filtering operations. Conceptually, it is the GraphQL equivalent of the
-SQL ``WHERE`` keyword.
+SQL :code:`WHERE` keyword.
 
 See `Supported filtering operations <#supported-filtering-operations>`__
 for details on the various types of filtering that the compiler
@@ -615,22 +615,22 @@ currently supports. These operations are currently hardcoded in the
 compiler; in the future, we may enable the addition of custom filtering
 operations via compiler plugins.
 
-Multiple ``@filter`` directives may be applied to the same field at
-once. Conceptually, it is as if the different ``@filter`` directives
-were joined by SQL ``AND`` keywords.
+Multiple :code:`@filter` directives may be applied to the same field at
+once. Conceptually, it is as if the different :code:`@filter` directives
+were joined by SQL :code:`AND` keywords.
 
-Using a ``@tag`` and a ``@filter`` that references the tag within the
+Using a :code:`@tag` and a :code:`@filter` that references the tag within the
 same vertex is allowed, so long as the two do not appear on the exact
 same property field.
 
 Passing Parameters
 ^^^^^^^^^^^^^^^^^^
 
-The ``@filter`` directive accepts two types of parameters: runtime
+The :code:`@filter` directive accepts two types of parameters: runtime
 parameters and tagged parameters.
 
-**Runtime parameters** are represented with a ``$`` prefix (e.g.
-``$foo``), and denote parameters whose values will be known at runtime.
+**Runtime parameters** are represented with a :code:`$` prefix (e.g.
+:code:`$foo`), and denote parameters whose values will be known at runtime.
 The compiler will compile the GraphQL query leaving a spot for the value
 to fill at runtime. After compilation, the user will have to supply
 values for all runtime parameters, and their values will be inserted
@@ -647,17 +647,17 @@ Consider the following query:
         }
     }
 
-It returns one row for every ``Animal`` vertex that has a color equal to
-``$animal_color``. Each row contains the animal's name in a column named
-``animal_name``. The parameter ``$animal_color`` is a runtime parameter
--- the user must pass in a value (e.g. ``{"animal_color": "blue"}``)
+It returns one row for every :code:`Animal` vertex that has a color equal to
+:code:`$animal_color`. Each row contains the animal's name in a column named
+:code:`animal_name`. The parameter :code:`$animal_color` is a runtime parameter
+-- the user must pass in a value (e.g. :code:`{"animal_color": "blue"}`)
 that will be inserted into the query before querying the database.
 
-**Tagged parameters** are represented with a ``%`` prefix (e.g.
-``%foo``) and denote parameters whose values are derived from a property
+**Tagged parameters** are represented with a :code:`%` prefix (e.g.
+:code:`%foo`) and denote parameters whose values are derived from a property
 field encountered elsewhere in the query. If the user marks a property
-field with a ``@tag`` directive and a suitable name, that value becomes
-available to use as a tagged parameter in all subsequent ``@filter``
+field with a :code:`@tag` directive and a suitable name, that value becomes
+available to use as a tagged parameter in all subsequent :code:`@filter`
 directives.
 
 Consider the following query:
@@ -676,15 +676,15 @@ Consider the following query:
 
 It returns the names of animals that contain their parent's name as a
 substring of their own. The database captures the value of the parent
-animal's name as the ``parent_name`` tag, and this value is then used as
-the ``%parent_name`` tagged parameter in the child animal's ``@filter``.
+animal's name as the :code:`parent_name` tag, and this value is then used as
+the :code:`%parent_name` tagged parameter in the child animal's :code:`@filter`.
 
 We considered and **rejected** the idea of allowing literal values (e.g.
-``123``) as ``@filter`` parameters, for several reasons: - The GraphQL
-type of the ``@filter`` directive's ``value`` field cannot reasonably
+:code:`123`) as :code:`@filter` parameters, for several reasons: - The GraphQL
+type of the :code:`@filter` directive's :code:`value` field cannot reasonably
 encompass all the different types of arguments that people might supply.
 Even counting scalar types only, there's already
-``ID, Int, Float, Boolean, String, Date, DateTime...`` -- way too many
+:code:`ID, Int, Float, Boolean, String, Date, DateTime...` -- way too many
 to include. - Literal values would be used when the parameter's value is
 known to be fixed. We can just as easily accomplish the same thing by
 using a runtime parameter with a fixed value. That approach has the
@@ -703,35 +703,35 @@ string interpolation, at an acceptable cost.
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
--  The value provided for ``op_name`` may only consist of upper or lower
-   case letters (``A-Z``, ``a-z``), or underscores (``_``).
--  Values provided in the ``value`` list must start with either ``$``
-   (denoting a runtime parameter) or ``%`` (denoting a tagged
+-  The value provided for :code:`op_name` may only consist of upper or lower
+   case letters (:code:`A-Z`, :code:`a-z`), or underscores (:code:`_`).
+-  Values provided in the :code:`value` list must start with either :code:`$`
+   (denoting a runtime parameter) or :code:`%` (denoting a tagged
    parameter), followed by exclusively upper or lower case letters
-   (``A-Z``, ``a-z``) or underscores (``_``).
--  The ``@tag`` directives corresponding to any tagged parameters in a
-   given ``@filter`` query must be applied to fields that appear either
-   at the same vertex as the one with the ``@filter``, or strictly
-   before the field with the ``@filter`` directive.
+   (:code:`A-Z`, :code:`a-z`) or underscores (:code:`_`).
+-  The :code:`@tag` directives corresponding to any tagged parameters in a
+   given :code:`@filter` query must be applied to fields that appear either
+   at the same vertex as the one with the :code:`@filter`, or strictly
+   before the field with the :code:`@filter` directive.
 -  "Can't compare apples and oranges" -- the GraphQL type of the
-   parameters supplied to the ``@filter`` must match the GraphQL types
-   the compiler infers based on the field the ``@filter`` is applied to.
--  If the ``@tag`` corresponding to a tagged parameter originates from
-   within a vertex field marked ``@optional``, the emitted code for the
-   ``@filter`` checks if the ``@optional`` field was assigned a value.
-   If no value was assigned to the ``@optional`` field, comparisons
-   against the tagged parameter from within that field return ``True``.
--  For example, assuming ``%from_optional`` originates from an
-   ``@optional`` scope, when no value is assigned to the ``@optional``
+   parameters supplied to the :code:`@filter` must match the GraphQL types
+   the compiler infers based on the field the :code:`@filter` is applied to.
+-  If the :code:`@tag` corresponding to a tagged parameter originates from
+   within a vertex field marked :code:`@optional`, the emitted code for the
+   :code:`@filter` checks if the :code:`@optional` field was assigned a value.
+   If no value was assigned to the :code:`@optional` field, comparisons
+   against the tagged parameter from within that field return :code:`True`.
+-  For example, assuming :code:`%from_optional` originates from an
+   :code:`@optional` scope, when no value is assigned to the :code:`@optional`
    field:
 
-   -  using ``@filter(op_name: "=", value: ["%from_optional"])`` is
+   -  using :code:`@filter(op_name: "=", value: ["%from_optional"])` is
       equivalent to not having the filter at all;
    -  using
-      ``@filter(op_name: "between", value: ["$lower", "%from_optional"])``
-      is equivalent to ``@filter(op_name: ">=", value: ["$lower"])``.
+      :code:`@filter(op_name: "between", value: ["$lower", "%from_optional"])`
+      is equivalent to :code:`@filter(op_name: ">=", value: ["$lower"])`.
 
--  Using a ``@tag`` and a ``@filter`` that references the tag within the
+-  Using a :code:`@tag` and a :code:`@filter` that references the tag within the
    same vertex is allowed, so long as the two do not appear on the exact
    same property field.
 
@@ -740,7 +740,7 @@ Constraints and Rules
 
 Applied to a vertex field, specifies that the edge connecting that
 vertex field to the current vertex should be visited repeatedly, up to
-``depth`` times. The recursion always starts at ``depth = 0``, i.e. the
+:code:`depth` times. The recursion always starts at :code:`depth = 0`, i.e. the
 current vertex -- see the below sections for a more thorough
 explanation.
 
@@ -748,7 +748,7 @@ Example Use
 ^^^^^^^^^^^
 
 Say the user wants to fetch the names of the children and grandchildren
-of each ``Animal``. That could be accomplished by running the following
+of each :code:`Animal`. That could be accomplished by running the following
 two queries and concatenating their results:
 
 .. code::
@@ -776,9 +776,9 @@ two queries and concatenating their results:
     }
 
 If the user then wanted to also add great-grandchildren to the
-``descendants`` output, that would require yet another query, and so on.
+:code:`descendants` output, that would require yet another query, and so on.
 Instead of concatenating the results of multiple queries, the user can
-simply use the ``@recurse`` directive. The following query returns the
+simply use the :code:`@recurse` directive. The following query returns the
 child and grandchild descendants:
 
 .. code::
@@ -794,32 +794,32 @@ child and grandchild descendants:
         }
     }
 
-Each row returned by this query contains the name of an ``Animal`` in
-the ``ancestor`` column and the name of its child or grandchild in the
-``descendant`` column. The ``out_Animal_ParentOf`` vertex field marked
-``@recurse`` is already enclosed within another ``out_Animal_ParentOf``
+Each row returned by this query contains the name of an :code:`Animal` in
+the :code:`ancestor` column and the name of its child or grandchild in the
+:code:`descendant` column. The :code:`out_Animal_ParentOf` vertex field marked
+:code:`@recurse` is already enclosed within another :code:`out_Animal_ParentOf`
 vertex field, so the recursion starts at the "child" level (the
-``out_Animal_ParentOf`` not marked with ``@recurse``). Therefore, the
-``descendant`` column contains the names of an ``ancestor``'s children
-(from ``depth = 0`` of the recursion) and the names of its grandchildren
-(from ``depth = 1``).
+:code:`out_Animal_ParentOf` not marked with :code:`@recurse`). Therefore, the
+:code:`descendant` column contains the names of an :code:`ancestor`'s children
+(from :code:`depth = 0` of the recursion) and the names of its grandchildren
+(from :code:`depth = 1`).
 
 Recursion using this directive is possible since the types of the
-enclosing scope and the recursion scope work out: the ``@recurse``
-directive is applied to a vertex field of type ``Animal`` and its vertex
-field is enclosed within a scope of type ``Animal``. Additional cases
+enclosing scope and the recursion scope work out: the :code:`@recurse`
+directive is applied to a vertex field of type :code:`Animal` and its vertex
+field is enclosed within a scope of type :code:`Animal`. Additional cases
 where recursion is allowed are described in detail below.
 
-The ``descendant`` column cannot have the name of the ``ancestor``
-animal since the ``@recurse`` is already within one
-``out_Animal_ParentOf`` and not at the root ``Animal`` vertex field.
+The :code:`descendant` column cannot have the name of the :code:`ancestor`
+animal since the :code:`@recurse` is already within one
+:code:`out_Animal_ParentOf` and not at the root :code:`Animal` vertex field.
 Similarly, it cannot have descendants that are more than two steps
-removed (e.g., great-grandchildren), since the ``depth`` parameter of
-``@recurse`` is set to ``1``.
+removed (e.g., great-grandchildren), since the :code:`depth` parameter of
+:code:`@recurse` is set to :code:`1`.
 
 Now, let's see what happens when we eliminate the outer
-``out_Animal_ParentOf`` vertex field and simply have the ``@recurse``
-applied on the ``out_Animal_ParentOf`` in the root vertex field scope:
+:code:`out_Animal_ParentOf` vertex field and simply have the :code:`@recurse`
+applied on the :code:`out_Animal_ParentOf` in the root vertex field scope:
 
 .. code::
 
@@ -832,36 +832,36 @@ applied on the ``out_Animal_ParentOf`` in the root vertex field scope:
         }
     }
 
-In this case, when the recursion starts at ``depth = 0``, the ``Animal``
-within the recursion scope will be the same ``Animal`` at the root
-vertex field, and therefore, in the ``depth = 0`` step of the recursion,
-the value of the ``self_or_descendant`` field will be equal to the value
-of the ``ancestor`` field.
+In this case, when the recursion starts at :code:`depth = 0`, the :code:`Animal`
+within the recursion scope will be the same :code:`Animal` at the root
+vertex field, and therefore, in the :code:`depth = 0` step of the recursion,
+the value of the :code:`self_or_descendant` field will be equal to the value
+of the :code:`ancestor` field.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
 -  "The types must work out" -- when applied within a scope of type
-   ``A``, to a vertex field of type ``B``, at least one of the following
+   :code:`A`, to a vertex field of type :code:`B`, at least one of the following
    must be true:
--  ``A`` is a GraphQL union;
--  ``B`` is a GraphQL interface, and ``A`` is a type that implements
+-  :code:`A` is a GraphQL union;
+-  :code:`B` is a GraphQL interface, and :code:`A` is a type that implements
    that interface;
--  ``A`` and ``B`` are the same type.
--  ``@recurse`` can only be applied to vertex fields other than the root
+-  :code:`A` and :code:`B` are the same type.
+-  :code:`@recurse` can only be applied to vertex fields other than the root
    vertex field of a query.
--  Cannot be used within a scope marked ``@optional`` or ``@fold``.
--  The ``depth`` parameter of the recursion must always have a value
-   greater than or equal to 1. Using ``depth = 1`` produces the current
+-  Cannot be used within a scope marked :code:`@optional` or :code:`@fold`.
+-  The :code:`depth` parameter of the recursion must always have a value
+   greater than or equal to 1. Using :code:`depth = 1` produces the current
    vertex and its neighboring vertices along the specified edge.
--  Type coercions and ``@filter`` directives within a scope marked
-   ``@recurse`` do not limit the recursion depth. Conceptually,
+-  Type coercions and :code:`@filter` directives within a scope marked
+   :code:`@recurse` do not limit the recursion depth. Conceptually,
    recursion to the specified depth happens first, and then type
-   coercions and ``@filter`` directives eliminate some of the locations
+   coercions and :code:`@filter` directives eliminate some of the locations
    reached by the recursion.
 -  As demonstrated by the examples above, the recursion always starts at
    depth 0, so the recursion scope always includes the vertex at the
-   scope that encloses the vertex field marked ``@recurse``.
+   scope that encloses the vertex field marked :code:`@recurse`.
 
 @output\_source
 ~~~~~~~~~~~~~~~
@@ -876,7 +876,7 @@ Constraints and Rules
 -  May exist at most once in any given GraphQL query.
 -  Can exist only on a vertex field, and only on the last vertex field
    used in the query.
--  Cannot be used within a scope marked ``@optional`` or ``@fold``.
+-  Cannot be used within a scope marked :code:`@optional` or :code:`@fold`.
 
 Supported filtering operations
 ------------------------------
@@ -884,14 +884,14 @@ Supported filtering operations
 Comparison operators
 ~~~~~~~~~~~~~~~~~~~~
 
-Supported comparison operators: - Equal to: ``=`` - Not equal to: ``!=``
-- Greater than: ``>`` - Less than: ``<`` - Greater than or equal to:
-``>=`` - Less than or equal to: ``<=``
+Supported comparison operators: - Equal to: :code:`=` - Not equal to: :code:`!=`
+- Greater than: :code:`>` - Less than: :code:`<` - Greater than or equal to:
+:code:`>=` - Less than or equal to: :code:`<=`
 
 Example Use
 ^^^^^^^^^^^
 
-Equal to (``=``):
+Equal to (:code:`=`):
 '''''''''''''''''
 
 .. code::
@@ -903,11 +903,11 @@ Equal to (``=``):
         }
     }
 
-This returns one row for every ``Species`` whose name is equal to the
-value of the ``$species_name`` parameter. Each row contains the ``uuid``
-of the ``Species`` in a column named ``species_uuid``.
+This returns one row for every :code:`Species` whose name is equal to the
+value of the :code:`$species_name` parameter. Each row contains the :code:`uuid`
+of the :code:`Species` in a column named :code:`species_uuid`.
 
-Greater than or equal to (``>=``):
+Greater than or equal to (:code:`>=`):
 ''''''''''''''''''''''''''''''''''
 
 ::
@@ -920,9 +920,9 @@ Greater than or equal to (``>=``):
         }
     }
 
-This returns one row for every ``Animal`` vertex that was born after or
-on a ``$point_in_time``. Each row contains the animal's name and
-birthday in columns named ``name`` and ``birthday``, respectively.
+This returns one row for every :code:`Animal` vertex that was born after or
+on a :code:`$point_in_time`. Each row contains the animal's name and
+birthday in columns named :code:`name` and :code:`birthday`, respectively.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
@@ -933,7 +933,7 @@ name\_or\_alias
 ~~~~~~~~~~~~~~~
 
 Allows you to filter on vertices which contain the exact string
-``$wanted_name_or_alias`` in their ``name`` or ``alias`` fields.
+:code:`$wanted_name_or_alias` in their :code:`name` or :code:`alias` fields.
 
 Example Use
 ^^^^^^^^^^^
@@ -946,17 +946,17 @@ Example Use
         }
     }
 
-This returns one row for every ``Animal`` vertex whose name and/or alias
-is equal to ``$wanted_name_or_alias``. Each row contains the animal's
-name in a column named ``name``.
+This returns one row for every :code:`Animal` vertex whose name and/or alias
+is equal to :code:`$wanted_name_or_alias`. Each row contains the animal's
+name in a column named :code:`name`.
 
-The value provided for ``$wanted_name_or_alias`` must be the full name
-and/or alias of the ``Animal``. Substrings will not be matched.
+The value provided for :code:`$wanted_name_or_alias` must be the full name
+and/or alias of the :code:`Animal`. Substrings will not be matched.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
--  Must be on a vertex field that has ``name`` and ``alias`` properties.
+-  Must be on a vertex field that has :code:`name` and :code:`alias` properties.
 
 between
 ~~~~~~~
@@ -974,9 +974,9 @@ Example Use
         }
     }
 
-This returns: - One row for every ``Animal`` vertex whose birthday is in
-between ``$lower`` and ``$upper`` dates (inclusive). Each row contains
-the animal's name in a column named ``name``.
+This returns: - One row for every :code:`Animal` vertex whose birthday is in
+between :code:`$lower` and :code:`$upper` dates (inclusive). Each row contains
+the animal's name in a column named :code:`name`.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
@@ -1001,9 +1001,9 @@ Example Use
         }
     }
 
-This returns one row for every ``Animal`` vertex which has a color
-contained in a list of colors. Each row contains the ``Animal``'s name
-and color in columns named ``animal_name`` and ``color``, respectively.
+This returns one row for every :code:`Animal` vertex which has a color
+contained in a list of colors. Each row contains the :code:`Animal`'s name
+and color in columns named :code:`animal_name` and :code:`color`, respectively.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
@@ -1026,9 +1026,9 @@ Example Use
         }
     }
 
-This returns one row for every ``Animal`` vertex which has a color not
-contained in a list of colors. Each row contains the ``Animal``'s name
-and color in columns named ``animal_name`` and ``color``, respectively.
+This returns one row for every :code:`Animal` vertex which has a color not
+contained in a list of colors. Each row contains the :code:`Animal`'s name
+and color in columns named :code:`animal_name` and :code:`color`, respectively.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
@@ -1050,9 +1050,9 @@ Example Use
         }
     }
 
-This returns one row for every ``Animal`` vertex whose name contains the
-value supplied for the ``$substring`` parameter. Each row contains the
-matching ``Animal``'s name in a column named ``animal_name``.
+This returns one row for every :code:`Animal` vertex whose name contains the
+value supplied for the :code:`$substring` parameter. Each row contains the
+matching :code:`Animal`'s name in a column named :code:`animal_name`.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
@@ -1074,10 +1074,10 @@ Example Use
         }
     }
 
-This returns one row for every ``Animal`` vertex whose list of aliases
-contains the value supplied for the ``$wanted`` parameter. Each row
-contains the matching ``Animal``'s name in a column named
-``animal_name``.
+This returns one row for every :code:`Animal` vertex whose list of aliases
+contains the value supplied for the :code:`$wanted` parameter. Each row
+contains the matching :code:`Animal`'s name in a column named
+:code:`animal_name`.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
@@ -1099,10 +1099,10 @@ Example Use
         }
     }
 
-This returns one row for every ``Animal`` vertex whose list of aliases
-does not contain the value supplied for the ``$wanted`` parameter. Each
-row contains the matching ``Animal``'s name in a column named
-``animal_name``.
+This returns one row for every :code:`Animal` vertex whose list of aliases
+does not contain the value supplied for the :code:`$wanted` parameter. Each
+row contains the matching :code:`Animal`'s name in a column named
+:code:`animal_name`.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
@@ -1124,10 +1124,10 @@ Example Use
         }
     }
 
-This returns one row for every ``Animal`` vertex whose list of aliases
+This returns one row for every :code:`Animal` vertex whose list of aliases
 has a non-empty intersection with the list of values supplied for the
-``$wanted`` parameter. Each row contains the matching ``Animal``'s name
-in a column named ``animal_name``.
+:code:`$wanted` parameter. Each row contains the matching :code:`Animal`'s name
+in a column named :code:`animal_name`.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
@@ -1152,23 +1152,23 @@ Example Use
         }
     }
 
-This returns one row for every ``Animal`` vertex that has exactly
-``$child_count`` children (i.e. where the ``out_Animal_ParentOf`` edge
-appears exactly ``$child_count`` times). Each row contains the matching
-``Animal``'s name, in a column named ``animal_name``.
+This returns one row for every :code:`Animal` vertex that has exactly
+:code:`$child_count` children (i.e. where the :code:`out_Animal_ParentOf` edge
+appears exactly :code:`$child_count` times). Each row contains the matching
+:code:`Animal`'s name, in a column named :code:`animal_name`.
 
-The ``uuid`` field within the ``out_Animal_ParentOf`` vertex field is
+The :code:`uuid` field within the :code:`out_Animal_ParentOf` vertex field is
 added simply to satisfy the GraphQL syntax rule that requires at least
-one field to exist within any ``{}``. Since this field is not marked
+one field to exist within any :code:`{}`. Since this field is not marked
 with any directive, it has no effect on the query.
 
-*N.B.:* Please note the ``@optional`` directive on the vertex field
+*N.B.:* Please note the :code:`@optional` directive on the vertex field
 being filtered above. If in your use case you expect to set
-``$child_count`` to 0, you must also mark that vertex field
-``@optional``. Recall that absence of ``@optional`` implies that at
-least one such edge must exist. If the ``has_edge_degree`` filter is
+:code:`$child_count` to 0, you must also mark that vertex field
+:code:`@optional`. Recall that absence of :code:`@optional` implies that at
+least one such edge must exist. If the :code:`has_edge_degree` filter is
 used with a parameter set to 0, that requires the edge to not exist.
-Therefore, if the ``@optional`` is not present in this situation, no
+Therefore, if the :code:`@optional` is not present in this situation, no
 valid result sets can be produced, and the resulting query will return
 no results.
 
@@ -1177,8 +1177,8 @@ Constraints and Rules
 
 -  Must be on a vertex field that is not the root vertex of the query.
 -  Tagged values are not supported as parameters for this filter.
--  If the runtime parameter for this operator can be ``0``, it is
-   *strongly recommended* to also apply ``@optional`` to the vertex
+-  If the runtime parameter for this operator can be :code:`0`, it is
+   *strongly recommended* to also apply :code:`@optional` to the vertex
    field being filtered (see N.B. above for details).
 
 is\_null
@@ -1196,14 +1196,14 @@ Example Use
         }
     }
 
-This returns one row for every ``Animal`` that does not have a color
+This returns one row for every :code:`Animal` that does not have a color
 defined.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be applied on a property field.
--  ``value`` must be empty.
+-  :code:`value` must be empty.
 
 is\_not\_null
 ~~~~~~~~~~~~~
@@ -1220,13 +1220,13 @@ Example Use
         }
     }
 
-This returns one row for every ``Animal`` that has a color defined.
+This returns one row for every :code:`Animal` that has a color defined.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be applied on a property field.
--  ``value`` must be empty.
+-  :code:`value` must be empty.
 
 Type coercions
 --------------
@@ -1252,12 +1252,12 @@ Example Use
         }
     }
 
-Here, the ``out_Species_Eats`` vertex field is of the
-``Union__Food__FoodOrSpecies__Species`` union type. To proceed with the
+Here, the :code:`out_Species_Eats` vertex field is of the
+:code:`Union__Food__FoodOrSpecies__Species` union type. To proceed with the
 query, the user must choose which of the types in the
-``Union__Food__FoodOrSpecies__Species`` union to use. In this example,
-``... on Food`` indicates that the ``Food`` type was chosen, and any
-vertices at that scope that are not of type ``Food`` are filtered out
+:code:`Union__Food__FoodOrSpecies__Species` union to use. In this example,
+:code:`... on Food` indicates that the :code:`Food` type was chosen, and any
+vertices at that scope that are not of type :code:`Food` are filtered out
 and discarded.
 
 .. code::
@@ -1273,9 +1273,9 @@ and discarded.
         }
     }
 
-In this query, the ``out_Entity_Related`` is of ``Entity`` type.
+In this query, the :code:`out_Entity_Related` is of :code:`Entity` type.
 However, the query only wants to return results where the related entity
-is a ``Species``, which ``... on Species`` ensures is the case.
+is a :code:`Species`, which :code:`... on Species` ensures is the case.
 
 Constraints and Rules
 ~~~~~~~~~~~~~~~~~~~~~
@@ -1290,7 +1290,7 @@ Meta fields
 \_\_typename
 ~~~~~~~~~~~~
 
-The compiler supports the standard GraphQL meta field ``__typename``,
+The compiler supports the standard GraphQL meta field :code:`__typename`,
 which returns the runtime type of the scope where the field is found.
 Assuming the GraphQL schema matches the database's schema, the runtime
 type will always be a subtype of (or exactly equal to) the static type
@@ -1298,8 +1298,8 @@ of the scope determined by the GraphQL type system. Below, we provide an
 example query in which the runtime type is a subtype of the static type,
 but is not equal to it.
 
-The ``__typename`` field is treated as a property field of type
-``String``, and supports all directives that can be applied to any other
+The :code:`__typename` field is treated as a property field of type
+:code:`String`, and supports all directives that can be applied to any other
 property field.
 
 Example Use
@@ -1314,42 +1314,42 @@ Example Use
         }
     }
 
-This query returns one row for each ``Entity`` vertex. The scope in
-which ``__typename`` appears is of static type ``Entity``. However,
-``Animal`` is a type of ``Entity``, as are ``Species``, ``Food``, and
-others. Vertices of all subtypes of ``Entity`` will therefore be
-returned, and the ``entity_type`` column that outputs the ``__typename``
-field will show their runtime type: ``Animal``, ``Species``, ``Food``,
+This query returns one row for each :code:`Entity` vertex. The scope in
+which :code:`__typename` appears is of static type :code:`Entity`. However,
+:code:`Animal` is a type of :code:`Entity`, as are :code:`Species`, :code:`Food`, and
+others. Vertices of all subtypes of :code:`Entity` will therefore be
+returned, and the :code:`entity_type` column that outputs the :code:`__typename`
+field will show their runtime type: :code:`Animal`, :code:`Species`, :code:`Food`,
 etc.
 
 \_x\_count
 ~~~~~~~~~~
 
-The ``_x_count`` meta field is a non-standard meta field defined by the
+The :code:`_x_count` meta field is a non-standard meta field defined by the
 GraphQL compiler that makes it possible to interact with the *number* of
-elements in a scope marked ``@fold``. By applying directives like
-``@output`` and ``@filter`` to this meta field, queries can output the
-number of elements captured in the ``@fold`` and filter down results to
+elements in a scope marked :code:`@fold`. By applying directives like
+:code:`@output` and :code:`@filter` to this meta field, queries can output the
+number of elements captured in the :code:`@fold` and filter down results to
 select only those with the desired fold sizes.
 
-We use the ``_x_`` prefix to signify that this is an extension meta
+We use the :code:`_x_` prefix to signify that this is an extension meta
 field introduced by the compiler, and not part of the canonical set of
 GraphQL meta fields defined by the GraphQL specification. We do not use
-the GraphQL standard double-underscore (``__``) prefix for meta fields,
+the GraphQL standard double-underscore (:code:`__`) prefix for meta fields,
 since all names with that prefix are `explicitly reserved and prohibited
 from being
 used <https://facebook.github.io/graphql/draft/#sec-Reserved-Names>`__
 in directives, fields, or any other artifacts.
 
-Adding the ``_x_count`` meta field to your schema
+Adding the :code:`_x_count` meta field to your schema
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Since the ``_x_count`` meta field is not currently part of the GraphQL
+Since the :code:`_x_count` meta field is not currently part of the GraphQL
 standard, it has to be explicitly added to all interfaces and types in
 your schema. There are two ways to do this.
 
 The preferred way to do this is to use the
-``EXTENDED_META_FIELD_DEFINITIONS`` constant as a starting point for
+:code:`EXTENDED_META_FIELD_DEFINITIONS` constant as a starting point for
 building your interfaces' and types' field descriptions:
 
 ::
@@ -1369,7 +1369,7 @@ building your interfaces' and types' field descriptions:
 If you are not able to programmatically define the schema, and instead
 simply have a pre-made GraphQL schema object that you are able to
 mutate, the alternative approach is via the
-``insert_meta_fields_into_existing_schema()`` helper function defined by
+:code:`insert_meta_fields_into_existing_schema()` helper function defined by
 the compiler:
 
 ::
@@ -1393,10 +1393,10 @@ Example Use
         }
     }
 
-This query returns one row for each ``Animal`` vertex. Each row contains
+This query returns one row for each :code:`Animal` vertex. Each row contains
 its name, and the number and names of its children. While the output
-type of the ``child_names`` selection is a list of strings, the output
-type of the ``number_of_children`` selection is an integer.
+type of the :code:`child_names` selection is a list of strings, the output
+type of the :code:`number_of_children` selection is an integer.
 
 .. code::
 
@@ -1413,37 +1413,37 @@ type of the ``number_of_children`` selection is an integer.
     }
 
 Here, we've modified the above query to add two more filtering
-constraints to the returned rows: - child ``Animal`` vertices must
-contain the value of ``$substr`` as a substring in their name, and -
-``Animal`` vertices must have at least ``$min_children`` children that
+constraints to the returned rows: - child :code:`Animal` vertices must
+contain the value of :code:`$substr` as a substring in their name, and -
+:code:`Animal` vertices must have at least :code:`$min_children` children that
 satisfy the above filter.
 
-Importantly, any filtering on ``_x_count`` is applied *after* any other
-filters and type coercions that are present in the ``@fold`` in
-question. This order of operations matters a lot: selecting ``Animal``
+Importantly, any filtering on :code:`_x_count` is applied *after* any other
+filters and type coercions that are present in the :code:`@fold` in
+question. This order of operations matters a lot: selecting :code:`Animal`
 vertices with 3+ children, then filtering the children based on their
 names is not the same as filtering the children first, and then
-selecting ``Animal`` vertices that have 3+ children that matched the
+selecting :code:`Animal` vertices that have 3+ children that matched the
 earlier filter.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
--  The ``_x_count`` field is only allowed to appear within a vertex
-   field marked ``@fold``.
--  Filtering on ``_x_count`` is always applied *after* any other filters
-   and type coercions present in that ``@fold``.
--  Filtering or outputting the value of the ``_x_count`` field must
-   always be done at the innermost scope of the ``@fold``. It is invalid
-   to expand vertex fields within a ``@fold`` after filtering or
-   outputting the value of the ``_x_count`` meta field.
+-  The :code:`_x_count` field is only allowed to appear within a vertex
+   field marked :code:`@fold`.
+-  Filtering on :code:`_x_count` is always applied *after* any other filters
+   and type coercions present in that :code:`@fold`.
+-  Filtering or outputting the value of the :code:`_x_count` field must
+   always be done at the innermost scope of the :code:`@fold`. It is invalid
+   to expand vertex fields within a :code:`@fold` after filtering or
+   outputting the value of the :code:`_x_count` meta field.
 
-How is filtering on ``_x_count`` different from ``@filter`` with ``has_edge_degree``?
+How is filtering on :code:`_x_count` different from :code:`@filter` with :code:`has_edge_degree`?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``has_edge_degree`` filter allows filtering based on the number of
+The :code:`has_edge_degree` filter allows filtering based on the number of
 edges of a particular type. There are situations in which filtering with
-``has_edge_degree`` and filtering using ``=`` on ``_x_count`` produce
+:code:`has_edge_degree` and filtering using :code:`=` on :code:`_x_count` produce
 equivalent queries. Here is one such pair of queries:
 
 .. code::
@@ -1470,16 +1470,16 @@ and
         }
     }
 
-In both of these queries, we ask for the names of the ``Species``
-vertices that have precisely ``$num_animals`` members. However, we have
+In both of these queries, we ask for the names of the :code:`Species`
+vertices that have precisely :code:`$num_animals` members. However, we have
 expressed this question in two different ways: once as a property of the
-``Species`` vertex ("the degree of the ``in_Animal_OfSpecies`` is
-``$num_animals``"), and once as a property of the list of ``Animal``
-vertices produced by the ``@fold`` ("the number of elements in the
-``@fold`` is ``$num_animals``").
+:code:`Species` vertex ("the degree of the :code:`in_Animal_OfSpecies` is
+:code:`$num_animals`"), and once as a property of the list of :code:`Animal`
+vertices produced by the :code:`@fold` ("the number of elements in the
+:code:`@fold` is :code:`$num_animals`").
 
-When we add additional filtering within the ``Animal`` vertices of the
-``in_Animal_OfSpecies`` vertex field, this distinction becomes very
+When we add additional filtering within the :code:`Animal` vertices of the
+:code:`in_Animal_OfSpecies` vertex field, this distinction becomes very
 important. Compare the following two queries:
 
 .. code::
@@ -1511,14 +1511,14 @@ versus
         }
     }
 
-In the first, for the purposes of the ``has_edge_degree`` filtering, the
-location where the animals live is irrelevant: the ``has_edge_degree``
-only makes sure that the ``Species`` vertex has the correct number of
-edges of type ``in_Animal_OfSpecies``, and that's it. In contrast, the
-second query ensures that only ``Species`` vertices that have
-``$num_animals`` animals that live in the selected location are returned
--- the location matters since the ``@filter`` on the ``_x_count`` field
-applies to the number of elements in the ``@fold`` scope.
+In the first, for the purposes of the :code:`has_edge_degree` filtering, the
+location where the animals live is irrelevant: the :code:`has_edge_degree`
+only makes sure that the :code:`Species` vertex has the correct number of
+edges of type :code:`in_Animal_OfSpecies`, and that's it. In contrast, the
+second query ensures that only :code:`Species` vertices that have
+:code:`$num_animals` animals that live in the selected location are returned
+-- the location matters since the :code:`@filter` on the :code:`_x_count` field
+applies to the number of elements in the :code:`@fold` scope.
 
 The GraphQL schema
 ------------------
@@ -1528,7 +1528,7 @@ work in the `reference implementation of
 GraphQL <http://graphql.org/learn/schema/>`__.
 
 The GraphQL schema used with the compiler must contain the custom
-directives and custom ``Date`` and ``DateTime`` scalar types defined by
+directives and custom :code:`Date` and :code:`DateTime` scalar types defined by
 the compiler:
 
 ::
@@ -1572,34 +1572,34 @@ inherit from other GraphQL types. - Inheritance relationships between
 two OrientDB non-abstract classes, or between two OrientDB abstract
 classes, introduce some difficulties in GraphQL. When modelling your
 data in OrientDB, it's best to avoid such inheritance if possible. - If
-it is impossible to avoid having two non-abstract OrientDB classes ``A``
-and ``B`` such that ``B`` inherits from ``A``, you have two options: -
-You may choose to represent the ``A`` OrientDB class as a GraphQL
-interface, which the GraphQL type corresponding to ``B`` can implement.
+it is impossible to avoid having two non-abstract OrientDB classes :code:`A`
+and :code:`B` such that :code:`B` inherits from :code:`A`, you have two options: -
+You may choose to represent the :code:`A` OrientDB class as a GraphQL
+interface, which the GraphQL type corresponding to :code:`B` can implement.
 In this case, the GraphQL schema preserves the inheritance relationship
-between ``A`` and ``B``, but sacrifices the representation of any
-inheritance relationships ``A`` may have with any OrientDB superclasses.
-- You may choose to represent both ``A`` and ``B`` as GraphQL types. The
+between :code:`A` and :code:`B`, but sacrifices the representation of any
+inheritance relationships :code:`A` may have with any OrientDB superclasses.
+- You may choose to represent both :code:`A` and :code:`B` as GraphQL types. The
 tradeoff in this case is exactly the opposite from the previous case:
-the GraphQL schema sacrifices the inheritance relationship between ``A``
-and ``B``, but preserves the inheritance relationships of ``A`` with its
+the GraphQL schema sacrifices the inheritance relationship between :code:`A`
+and :code:`B`, but preserves the inheritance relationships of :code:`A` with its
 superclasses. In this case, it is recommended to create a GraphQL union
-type ``A | B``, and to use that GraphQL union type for any vertex fields
-that in OrientDB would be of type ``A``. - If it is impossible to avoid
-having two abstract OrientDB classes ``A`` and ``B`` such that ``B``
-inherits from ``A``, you similarly have two options: - You may choose to
-represent ``B`` as a GraphQL type that can implement the GraphQL
-interface corresponding to ``A``. This makes the GraphQL schema preserve
-the inheritance relationship between ``A`` and ``B``, but sacrifices the
-ability for other GraphQL types to inherit from ``B``. - You may choose
-to represent both ``A`` and ``B`` as GraphQL interfaces, sacrificing the
-schema's representation of the inheritance between ``A`` and ``B``, but
-allowing GraphQL types to inherit from both ``A`` and ``B``. If
-necessary, you can then create a GraphQL union type ``A | B`` and use it
-for any vertex fields that in OrientDB would be of type ``A``. - It is
+type :code:`A | B`, and to use that GraphQL union type for any vertex fields
+that in OrientDB would be of type :code:`A`. - If it is impossible to avoid
+having two abstract OrientDB classes :code:`A` and :code:`B` such that :code:`B`
+inherits from :code:`A`, you similarly have two options: - You may choose to
+represent :code:`B` as a GraphQL type that can implement the GraphQL
+interface corresponding to :code:`A`. This makes the GraphQL schema preserve
+the inheritance relationship between :code:`A` and :code:`B`, but sacrifices the
+ability for other GraphQL types to inherit from :code:`B`. - You may choose
+to represent both :code:`A` and :code:`B` as GraphQL interfaces, sacrificing the
+schema's representation of the inheritance between :code:`A` and :code:`B`, but
+allowing GraphQL types to inherit from both :code:`A` and :code:`B`. If
+necessary, you can then create a GraphQL union type :code:`A | B` and use it
+for any vertex fields that in OrientDB would be of type :code:`A`. - It is
 legal to fully omit classes and fields that are not representable in
 GraphQL. The compiler currently does not support OrientDB's
-``EmbeddedMap`` type nor embedded non-primitive typed fields, so such
+:code:`EmbeddedMap` type nor embedded non-primitive typed fields, so such
 fields can simply be omitted in the GraphQL representation of their
 classes. Alternatively, the entire OrientDB class and all edges that may
 point to it may be omitted entirely from the GraphQL schema.
@@ -1616,8 +1616,8 @@ compilation targets, some differences are unavoidable.
 The compiler abides by the following principles: - When the database is
 queried with a compiled query string, its response must always be in the
 form of a list of results. - The precise format of each such result is
-defined by each compilation target separately. - ``gremlin``, ``MATCH``
-and ``SQL`` return data in a tabular format, where each result is a row
+defined by each compilation target separately. - :code:`gremlin`, :code:`MATCH`
+and :code:`SQL` return data in a tabular format, where each result is a row
 of the table, and fields marked for output are columns. - However,
 future compilation targets may have a different format. For example,
 each result may appear in the nested tree format used by the standard
@@ -1627,7 +1627,7 @@ results is **not** guaranteed to be complete! - In other words, there
 may have been additional result sets that satisfy all directives and
 types in the corresponding GraphQL query, but were not returned by the
 database. - However, compilation target implementations are encouraged
-to return complete results if at all practical. The ``MATCH``
+to return complete results if at all practical. The :code:`MATCH`
 compilation target is guaranteed to produce complete results.
 
 Completeness of returned results
@@ -1645,12 +1645,12 @@ the database contains the following example graph:
       /      \/
     b  ----> y
 
-Let ``a, b, x, y`` be the values of the ``name`` property field of four
-vertices. Let the vertices named ``a`` and ``b`` be of type ``S``, and
-let ``x`` and ``y`` be of type ``T``. Let vertex ``a`` be connected to
-both ``x`` and ``y`` via directed edges of type ``E``. Similarly, let
-vertex ``b`` also be connected to both ``x`` and ``y`` via directed
-edges of type ``E``.
+Let :code:`a, b, x, y` be the values of the :code:`name` property field of four
+vertices. Let the vertices named :code:`a` and :code:`b` be of type :code:`S`, and
+let :code:`x` and :code:`y` be of type :code:`T`. Let vertex :code:`a` be connected to
+both :code:`x` and :code:`y` via directed edges of type :code:`E`. Similarly, let
+vertex :code:`b` also be connected to both :code:`x` and :code:`y` via directed
+edges of type :code:`E`.
 
 Consider the GraphQL query:
 
@@ -1666,7 +1666,7 @@ Consider the GraphQL query:
     }
 
 Between the data in the database and the query's structure, it is clear
-that combining any of ``a`` or ``b`` with any of ``x`` or ``y`` would
+that combining any of :code:`a` or :code:`b` with any of :code:`x` or :code:`y` would
 produce a valid result. Therefore, the complete result list, shown here
 in JSON format, would be:
 
@@ -1679,15 +1679,15 @@ in JSON format, would be:
         {"s_name": "b", "t_name": "y"},
     ]
 
-This is precisely what the ``MATCH`` compilation target is guaranteed to
+This is precisely what the :code:`MATCH` compilation target is guaranteed to
 produce. The remainder of this section is only applicable to the
-``gremlin`` compilation target. If using ``MATCH``, all of the queries
+:code:`gremlin` compilation target. If using :code:`MATCH`, all of the queries
 listed in the remainder of this section will produce the same, complete
 result list.
 
-Since the ``gremlin`` compilation target does not guarantee a complete
+Since the :code:`gremlin` compilation target does not guarantee a complete
 result list, querying the database using a query string generated by the
-``gremlin`` compilation target will produce only a partial result list
+:code:`gremlin` compilation target will produce only a partial result list
 resembling the following:
 
 ::
@@ -1697,15 +1697,15 @@ resembling the following:
         {"s_name": "b", "t_name": "x"},
     ]
 
-Due to limitations in the underlying query language, ``gremlin`` will by
+Due to limitations in the underlying query language, :code:`gremlin` will by
 default produce at most one result for each of the starting locations in
-the query. The above GraphQL query started at the type ``S``, so each
-``s_name`` in the returned result list is therefore distinct.
+the query. The above GraphQL query started at the type :code:`S`, so each
+:code:`s_name` in the returned result list is therefore distinct.
 Furthermore, there is no guarantee (and no way to know ahead of time)
-whether ``x`` or ``y`` will be returned as the ``t_name`` value in each
+whether :code:`x` or :code:`y` will be returned as the :code:`t_name` value in each
 result, as they are both valid results.
 
-Users may apply the ``@output_source`` directive on the last scope of
+Users may apply the :code:`@output_source` directive on the last scope of
 the query to alter this behavior:
 
 .. code::
@@ -1719,9 +1719,9 @@ the query to alter this behavior:
         }
     }
 
-Rather than producing at most one result for each ``S``, the query will
+Rather than producing at most one result for each :code:`S`, the query will
 now produce at most one result for each distinct value that can be found
-at ``out_E``, where the directive is applied:
+at :code:`out_E`, where the directive is applied:
 
 .. code::
 
@@ -1730,7 +1730,7 @@ at ``out_E``, where the directive is applied:
         {"s_name": "a", "t_name": "y"},
     ]
 
-Conceptually, applying the ``@output_source`` directive makes it as if
+Conceptually, applying the :code:`@output_source` directive makes it as if
 the query were written in the opposite order:
 
 .. code::
@@ -1924,7 +1924,7 @@ aspect of the SQL backend more configurable. In the near-term, a
 possible way to address this is by using SQL views.
 
 For example, suppose there is a table in the database called
-``animal_table`` and it has a column called ``animal_name``. If the
+:code:`animal_table` and it has a column called :code:`animal_name`. If the
 desired schema has type
 
 ::
@@ -1942,7 +1942,7 @@ Then this could be exposed via a view like:
             animal_name AS name
         FROM animal_table
 
-At this point, the ``animal`` view can be used in the SQLAlchemy Table
+At this point, the :code:`animal` view can be used in the SQLAlchemy Table
 for the purposes of compiling.
 
 Miscellaneous
@@ -1957,20 +1957,20 @@ To pretty-print GraphQL queries, use the included pretty-printer:
 
     python -m graphql_compiler.tool <input_file.graphql >output_file.graphql
 
-It's modeled after Python's ``json.tool``, reading from stdin and
+It's modeled after Python's :code:`json.tool`, reading from stdin and
 writing to stdout.
 
-Expanding ```@optional`` <#optional>`__ vertex fields
+Expanding `:code:`@optional` <#optional>`__ vertex fields
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Including an optional statement in GraphQL has no performance issues on
 its own, but if you continue expanding vertex fields within an optional
 scope, there may be significant performance implications.
 
-Going forward, we will refer to two different kinds of ``@optional``
+Going forward, we will refer to two different kinds of :code:`@optional`
 directives.
 
--  A *"simple"* optional is a vertex with an ``@optional`` directive
+-  A *"simple"* optional is a vertex with an :code:`@optional` directive
    that does not expand any vertex fields within it. For example:
 
    .. code::
@@ -1984,9 +1984,9 @@ directives.
        }
        }
 
-   OrientDB ``MATCH`` currently allows the last step in any traversal to
-   be optional. Therefore, the equivalent ``MATCH`` traversal for the
-   above ``GraphQL`` is as follows:
+   OrientDB :code:`MATCH` currently allows the last step in any traversal to
+   be optional. Therefore, the equivalent :code:`MATCH` traversal for the
+   above :code:`GraphQL` is as follows:
 
    ::
 
@@ -2003,7 +2003,7 @@ directives.
        RETURN $matches
        )
 
--  A *"compound"* optional is a vertex with an ``@optional`` directive
+-  A *"compound"* optional is a vertex with an :code:`@optional` directive
    which does expand vertex fields within it. For example:
 
    .. code::
@@ -2020,8 +2020,8 @@ directives.
        }
        }
 
-   Currently, this cannot represented by a simple ``MATCH`` query.
-   Specifically, the following is *NOT* a valid ``MATCH`` statement,
+   Currently, this cannot represented by a simple :code:`MATCH` query.
+   Specifically, the following is *NOT* a valid :code:`MATCH` statement,
    because the optional traversal follows another edge:
 
    ::
@@ -2044,8 +2044,8 @@ directives.
        )
 
 Instead, we represent a *compound* optional by taking an union
-(``UNIONALL``) of two distinct ``MATCH`` queries. For instance, the
-``GraphQL`` query above can be represented as follows:
+(:code:`UNIONALL`) of two distinct :code:`MATCH` queries. For instance, the
+:code:`GraphQL` query above can be represented as follows:
 
 ::
 
@@ -2085,41 +2085,41 @@ Instead, we represent a *compound* optional by taking an union
 
 In the first case where the optional edge is not followed, we have to
 explicitly filter out all vertices where the edge *could have been
-followed*. This is to eliminate duplicates between the two ``MATCH``
+followed*. This is to eliminate duplicates between the two :code:`MATCH`
 selections.
 
 The previous example is not *exactly* how we implement *compound*
-optionals (we also have ``SELECT`` statements within ``$match1`` and
-``$match2``), but it illustrates the the general idea.
+optionals (we also have :code:`SELECT` statements within :code:`$match1` and
+:code:`$match2`), but it illustrates the the general idea.
 
 Performance Penalty
 ^^^^^^^^^^^^^^^^^^^
 
-If we have many *compound* optionals in the given ``GraphQL``, the above
-procedure results in the union of a large number of ``MATCH`` queries.
-Specifically, for ``n`` compound optionals, we generate 2n different
-``MATCH`` queries. For each of the 2n subsets ``S`` of the ``n``
-optional edges: - We remove the ``@optional`` restriction for each
-traversal in ``S``. - For each traverse ``t`` in the complement of
-``S``, we entirely discard ``t`` along with all the vertices and
+If we have many *compound* optionals in the given :code:`GraphQL`, the above
+procedure results in the union of a large number of :code:`MATCH` queries.
+Specifically, for :code:`n` compound optionals, we generate 2n different
+:code:`MATCH` queries. For each of the 2n subsets :code:`S` of the :code:`n`
+optional edges: - We remove the :code:`@optional` restriction for each
+traversal in :code:`S`. - For each traverse :code:`t` in the complement of
+:code:`S`, we entirely discard :code:`t` along with all the vertices and
 directives within it, and we add a filter on the previous traverse to
-ensure that the edge corresponding to ``t`` does not exist.
+ensure that the edge corresponding to :code:`t` does not exist.
 
 Therefore, we get a performance penalty that grows exponentially with
 the number of *compound* optional edges. This is important to keep in
 mind when writing queries with many optional directives.
 
-If some of those *compound* optionals contain ``@optional`` vertex
+If some of those *compound* optionals contain :code:`@optional` vertex
 fields of their own, the performance penalty grows since we have to
-account for all possible subsets of ``@optional`` statements that can be
+account for all possible subsets of :code:`@optional` statements that can be
 satisfied simultaneously.
 
-Optional ``type_equivalence_hints`` parameter
+Optional :code:`type_equivalence_hints` parameter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This compilation parameter is a workaround for the limitations of the
-GraphQL and Gremlin type systems: - GraphQL does not allow ``type`` to
-inherit from another ``type``, only to implement an ``interface``. -
+GraphQL and Gremlin type systems: - GraphQL does not allow :code:`type` to
+inherit from another :code:`type`, only to implement an :code:`interface`. -
 Gremlin does not have first-class support for inheritance at all.
 
 Assume the following GraphQL schema:
@@ -2144,18 +2144,18 @@ Assume the following GraphQL schema:
         adjacent_animal: AnimalCatDog
     }
 
-An appropriate ``type_equivalence_hints`` value here would be
-``{ Animal: AnimalCatDog }``. This lets the compiler know that the
-``AnimalCatDog`` union type is implicitly equivalent to the ``Animal``
-type, as there are no other types that inherit from ``Animal`` in the
+An appropriate :code:`type_equivalence_hints` value here would be
+:code:`{ Animal: AnimalCatDog }`. This lets the compiler know that the
+:code:`AnimalCatDog` union type is implicitly equivalent to the :code:`Animal`
+type, as there are no other types that inherit from :code:`Animal` in the
 database schema. This allows the compiler to perform accurate type
 coercions in Gremlin, as well as optimize away type coercions across
 edges of union type if the coercion is coercing to the union's
 equivalent type.
 
-Setting ``type_equivalence_hints = { Animal: AnimalCatDog }`` during
-compilation would enable the use of a ``@fold`` on the
-``adjacent_animal`` vertex field of ``Foo``:
+Setting :code:`type_equivalence_hints = { Animal: AnimalCatDog }` during
+compilation would enable the use of a :code:`@fold` on the
+:code:`adjacent_animal` vertex field of :code:`Foo`:
 
 .. code::
 
@@ -2173,18 +2173,18 @@ SchemaGraph
 ~~~~~~~~~~~
 
 When building a GraphQL schema from the database metadata, we first
-build a ``SchemaGraph`` from the metadata and then, from the
-``SchemaGraph``, build the GraphQL schema. The ``SchemaGraph`` is also a
+build a :code:`SchemaGraph` from the metadata and then, from the
+:code:`SchemaGraph`, build the GraphQL schema. The :code:`SchemaGraph` is also a
 representation of the underlying database schema, but it has three main
 advantages that make it a more powerful schema introspection tool: 1.
 It's able to store and expose a schema's index information. The
 interface for accessing index information is provisional though and
 might change in the near future. 2. Its classes are allowed to inherit
 from non-abstract classes. 3. It exposes many utility functions, such as
-``get_subclass_set``, that make it easier to explore the schema.
+:code:`get_subclass_set`, that make it easier to explore the schema.
 
 See below for a mock example of how to build and use the
-``SchemaGraph``:
+:code:`SchemaGraph`:
 
 .. code:: python
 
@@ -2227,9 +2227,9 @@ See below for a mock example of how to build and use the
     print(schema_graph.get_unique_indexes_for_class('Animal'))
     # [IndexDefinition(name='uuid', 'base_classname'='Animal', fields={'uuid'}, unique=True, ordered=False, ignore_nulls=False)]
 
-In the future, we plan to add ``SchemaGraph`` generation from SQLAlchemy
+In the future, we plan to add :code:`SchemaGraph` generation from SQLAlchemy
 metadata. We also plan to add a mechanism where one can query a
-``SchemaGraph`` using GraphQL queries.
+:code:`SchemaGraph` using GraphQL queries.
 
 Cypher query parameters
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -2237,17 +2237,17 @@ Cypher query parameters
 RedisGraph `doesn't support query
 parameters <https://github.com/RedisGraph/RedisGraph/issues/544#issuecomment-507963576>`__,
 so we perform manual parameter interpolation in the
-``graphql_to_redisgraph_cypher`` function. However, for Neo4j, we can
+:code:`graphql_to_redisgraph_cypher` function. However, for Neo4j, we can
 use Neo4j's client to do parameter interpolation on its own so that we
 don't reinvent the wheel.
 
-The function ``insert_arguments_into_query`` does so based on the query
+The function :code:`insert_arguments_into_query` does so based on the query
 language, which isn't fine-grained enough here-- for Cypher backends, we
 only want to insert parameters if the backend is RedisGraph, but not if
 it's Neo4j.
 
 Instead, the correct approach for Neo4j Cypher is as follows, given a
-Neo4j Python client called ``neo4j_client``:
+Neo4j Python client called :code:`neo4j_client`:
 
 .. code:: python
 
