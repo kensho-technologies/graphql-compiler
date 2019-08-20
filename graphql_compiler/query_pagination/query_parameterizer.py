@@ -4,8 +4,8 @@ from collections import namedtuple
 
 RESERVED_PARAMETER_PREFIX = '_paged_'
 
-ParameterizedPaginationQuery = namedtuple(
-    'ParameterizedPaginationQuery',
+ParameterizedPaginationQueries = namedtuple(
+    'ParameterizedPaginationQueries',
     (
         'next_page_query',          # Document, AST of query that will return the next page of
                                     # results when hydrated with pagination parameters.
@@ -21,12 +21,13 @@ PaginationFilter = namedtuple(
     (
         'vertex_field',                 # str, vertex class to which the property field belongs to.
         'property_field',               # str, name of the property field filtering is done over.
-        'next_page_query_filter',       # Directive, filter usable for pagination in the
-                                        # next page query.
-        'continuation_query_filter',    # Directive, filter usable for pagination in the
-                                        # continuation query.
-        'related_filters',              # List[Directive], filter directives that are on the same
-                                        # vertex and property field.
+        'next_page_query_filter',       # Directive, filter directive with '<' operator usable
+                                        # for pagination in the next page query.
+        'continuation_query_filter',    # Directive, filter directive with '>=' operator usable
+                                        # for pagination in the continuation query.
+        'related_filters',              # List[Directive], filter directives that share the same
+                                        # vertex and property field as the next_page_query_filter,
+                                        # and are used to generate more accurate pages.
     ),
 )
 
@@ -46,7 +47,7 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
         parameters: dict, list of parameters for the given query.
 
     Returns:
-        ParameterizedPaginationQuery namedtuple, describing two new query ASTs that have additional
+        ParameterizedPaginationQueries namedtuple, describing two new query ASTs that have additional
         filters stored as PaginationFilters with which the query result size can be controlled.
         Note that these filters are returned parameterized i.e. values for the filters' parameters
         have yet to be generated. Additionally, a dict containing user-defined parameters is stored.

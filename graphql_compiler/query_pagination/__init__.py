@@ -10,12 +10,21 @@ from graphql_compiler.query_pagination.parameter_generator import (
 from graphql_compiler.query_pagination.query_parameterizer import generate_parameterized_queries
 
 
-QueryAndParameters = namedtuple(
-    'QueryAndParameters',
+PaginationQueries = namedtuple(
+    'PaginationQueries',
     (
-        'query_ast',
-        'parameters',
-    ),
+        'next_page_query',          # Document, AST for the query that along with
+                                    # next_page_parameters is expected to return the next page of
+                                    # page of results of the original query.
+        'next_page_parameters',     # dict, parameters with which to execute the next page query.
+        'continuation_query',       # Document or None, AST for the query that along with
+                                    # continuation_parameters returns the rest of the results of the
+                                    # original query, or None if the original query was not split
+                                    # into two queries.
+        'continuation_parameters',  # dict or None, parameters with which to execute the
+                                    # continuation query, or None if the continuation query was not
+                                    # generated.
+    )
 )
 
 
@@ -38,12 +47,19 @@ def split_into_next_page_query_and_continuation_query(
         num_pages: int, number of pages to split the query into.
 
     Returns:
-        (QueryAndParameters, QueryAndParameters), describing two queries: one that when executed
-        will return roughly a page of results of the original query, and another that will return
-        the rest of the results of the original query. The union of the two queries' result data is
-        equivalent to the given query and parameter's result data. There are no guarantees on the
-        order of the result rows for the two generated queries.
+        PaginationQueries namedtuple, describing two queries: the first is described in
+        next_page_query and next_page_parameters, which when executed will return roughly a page of
+        results of the original query; while the second query is described in continuation_query and
+        continuation_parameters, which will return the rest of the results of the original query.
+        The union of the two queries' result data is equivalent to the given query and parameter's
+        result data. There are no guarantees on the order of the result rows for the two generated
+        queries.
     """
+    if num_pages <= 1:
+        raise AssertionError(u'Could not split query {} into pagination queries for the next page'
+                             u' of results, as the number of pages {} must be greater than 1: {}'
+                             .format(query_ast, num_pages, parameters))
+
     parameterized_queries = generate_parameterized_queries(
         schema_graph, statistics, query_ast, parameters
     )
@@ -52,17 +68,14 @@ def split_into_next_page_query_and_continuation_query(
         schema_graph, statistics, parameterized_queries, num_pages
     )
 
-    next_page_query_with_parameters = QueryAndParameters(
+    result_pagination = PaginationQueries(
         parameterized_queries.next_page_query,
         hydrated_parameters.next_page_parameters,
-    )
-
-    continuation_query_with_parameters = QueryAndParameters(
         parameterized_queries.continuation_query,
-        hydrated_parameters.continuation_parameters,
+        hydrated_parameters.continuation_parameterst,
     )
 
-    return (next_page_query_with_parameters, continuation_query_with_parameters)
+    return result_pagination
 
 
 def paginate_query(schema_graph, statistics, query_ast, parameters, page_size):
@@ -82,13 +95,14 @@ def paginate_query(schema_graph, statistics, query_ast, parameters, page_size):
         page_size: int, describes the desired number of result rows per page.
 
     Returns:
-        - tuple containing two elements:
-            - The first element is a QueryAndParameters namedtuple, describing a query expected to
-              return roughly a page of result data of the original query.
-            - The second element is either:
-                - QueryAndParameters namedtuple, describing a query that returns the rest of the
-                  result data of the original query.
-                - None if the original query is expected to return a page or less of result data.
+        PaginationQueries namedtuple, describing one or two queries that paginate over the original
+        query, containing:
+            - next_page_query and next_page_parameters describe a query that will return roughly a
+              page of results for the original query.
+            - continuation_query and continuation_parameters describe a query that will return the
+              rest of the results of the original query. If the original query is expected to return
+              only a page or less of results, then continuation_query and continuation_parameters
+              will have a value of None.
 
     Raises:
         ValueError if page_size is below 1.
@@ -99,10 +113,12 @@ def paginate_query(schema_graph, statistics, query_ast, parameters, page_size):
         )
 
     # Initially, assume the query does not need to be paged i.e. will return one page of results.
-    result_queries = tuple([
-        QueryAndParameters(query_ast, parameters),
-        None
-    ])
+    result_queries = PaginationQueries(
+        query_ast,
+        parameters,
+        None,
+        None,
+    )
 
     # HACK(vlad): Since the current cost estimator expects GraphQL queries given as a string, we
     #             print the given AST and provide that to the cost estimator.

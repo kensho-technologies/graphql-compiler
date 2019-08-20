@@ -14,12 +14,12 @@ from ..test_helpers import generate_schema_graph
 # pylint: disable=no-member
 @pytest.mark.slow
 class QueryPaginationTests(unittest.TestCase):
-    """Test the cost estimation module using standard input data when possible."""
+    """Test the query pagination module."""
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_basic_pagination(self):
-        """"Ensure we correctly estimate the cardinality of the query root."""
+        """"Ensure a basic pagination query is handled correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         test_data = '''{
             Animal {
@@ -36,7 +36,7 @@ class QueryPaginationTests(unittest.TestCase):
         statistics = LocalStatistics(count_data)
 
         # Since query pagination is still a skeleton, we expect a NotImplementedError for this test.
-        # Once query pagination is implemented, the result of this call should be equal to
+        # Once query pagination is fully implemented, the result of this call should be equal to
         # expected_query_list.
         # pylint: disable=unused-variable
         with self.assertRaises(NotImplementedError):
