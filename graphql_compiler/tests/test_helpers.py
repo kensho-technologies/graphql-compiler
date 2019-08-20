@@ -9,6 +9,7 @@ import six
 import sqlalchemy
 
 from .. import get_graphql_schema_from_orientdb_schema_data
+from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..schema import CUSTOM_SCALAR_TYPES
 from ..schema.sqlalchemy_schema import make_sqlalchemy_schema_info
@@ -412,30 +413,18 @@ def get_sqlalchemy_schema_info():
         ),
     }
 
-    # TODO(bojanserafimov): This information can be read from the schema instead of being hard-coded.
-    subclasses = {
-        'Entity': {
-            'Entity',
-            'Animal',
-            'Species',
-            'Event',
-            'Food',
-            'BirthEvent',
-            'FeedingEvent',
-            'Location',
-            'FoodOrSpecies',
-        },
-        'Union__BirthEvent__Event__FeedingEvent': {
-            'BirthEvent',
-            'Event',
-            'FeedingEvent',
-        },
-        'Union__Food__FoodOrSpecies__Species': {
-            'Food',
-            'FoodOrSpecies',
-            'Species',
-        },
-    }
+    # Compute the subclass sets, including union types
+    type_equivalence_hint_list = [
+        ('Event', 'Union__BirthEvent__Event__FeedingEvent'),
+        ('FoodOrSpecies', 'Union__Food__FoodOrSpecies__Species'),
+    ]
+    subclasses = compute_subclass_sets(schema, type_equivalence_hints={
+        schema.get_type(key): schema.get_type(value)
+        for key, value in type_equivalence_hint_list
+    })
+    for type_name, union_name in type_equivalence_hint_list:
+        subclasses[union_name] = subclasses[type_name]
+        subclasses[union_name].add(type_name)
 
     # HACK(bojanserafimov): Some of these edges are many-to-many, but I've represented them
     #                       as many-to-one edges. If I didn't, I'd have to implement many-to-many
@@ -516,7 +505,7 @@ def get_sqlalchemy_schema_info():
             'to_column_name': edge['from_column'],
         }
 
-    sets = {
+    set_valued_property_fields = {
         'Entity': {
             'alias': {
                 'junction': 'out_Entity_Alias',
@@ -526,15 +515,15 @@ def get_sqlalchemy_schema_info():
     }
 
     # Inherit junctions from superclasses
-    # TODO(bojanserafimov): Properties can be inherited too.
+    # TODO(bojanserafimov): Properties can be inferred too, instead of being explicitly inherited.
     for class_name, subclass_set in six.iteritems(subclasses):
         for subclass in subclass_set:
-            for edge_name, join_info in six.iteritems(junctions[class_name]):
+            for edge_name, join_info in six.iteritems(junctions.get(class_name, {})):
                 junctions.setdefault(subclass, {})[edge_name] = join_info
-            for set_name, set_info in six.iteritems(sets.get(class_name, {})):
-                sets.setdefault(subclass, {})[set_name] = set_info
+            for set_name, set_info in six.iteritems(set_valued_property_fields.get(class_name, {})):
+                set_valued_property_fields.setdefault(subclass, {})[set_name] = set_info
 
-    return make_sqlalchemy_schema_info(schema, tables, junctions, sets)
+    return make_sqlalchemy_schema_info(schema, tables, junctions, set_valued_property_fields)
 
 
 def generate_schema_graph(orientdb_client):

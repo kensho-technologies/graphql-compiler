@@ -1,12 +1,12 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-import sqlalchemy
-import six
-
-from . import is_vertex_field_name
 
 from graphql import GraphQLList
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
+import six
+import sqlalchemy
+
+from . import is_vertex_field_name
 
 
 # Complete schema information sufficient to compile GraphQL queries to SQLAlchemy
