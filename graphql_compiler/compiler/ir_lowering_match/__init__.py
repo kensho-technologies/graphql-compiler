@@ -14,10 +14,10 @@ from ..workarounds import (
 )
 from .between_lowering import lower_comparisons_to_between
 from .ir_lowering import (
-    lower_backtrack_blocks, lower_folded_coerce_types_into_filter_blocks,
-    lower_has_substring_binary_compositions, lower_starts_with_binary_compositions,
-    remove_backtrack_blocks_from_fold, rewrite_binary_composition_inside_ternary_conditional,
-    truncate_repeated_single_step_traversals,
+    lower_backtrack_blocks, lower_ends_with_binary_compositions,
+    lower_folded_coerce_types_into_filter_blocks, lower_has_substring_binary_compositions,
+    lower_starts_with_binary_compositions, remove_backtrack_blocks_from_fold,
+    rewrite_binary_composition_inside_ternary_conditional, truncate_repeated_single_step_traversals,
     truncate_repeated_single_step_traversals_in_sub_queries
 )
 from .optional_traversal import (
@@ -98,6 +98,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     ir_blocks = merge_consecutive_filter_clauses(ir_blocks)
     ir_blocks = lower_has_substring_binary_compositions(ir_blocks)
     ir_blocks = lower_starts_with_binary_compositions(ir_blocks)
+    ir_blocks = lower_ends_with_binary_compositions(ir_blocks)
     ir_blocks = orientdb_eval_scheduling.workaround_lowering_pass(ir_blocks, query_metadata_table)
 
     # Here, we lower from raw IR blocks into a MatchQuery object.

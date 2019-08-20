@@ -87,6 +87,50 @@ def lower_coerce_type_blocks(ir_blocks):
     return new_ir_blocks
 
 
+def lower_ends_with_binary_compositions(ir_blocks):
+    """Lower Filter blocks that use the "ends_with" operation into gremlin-representable form."""
+
+    def visitor_fn(expression):
+        """Rewrite BinaryComposition expressions with "starts_with" into representable form."""
+        # The implementation of "ends_with" must use the ==~, and must
+        # prepend /.* and append $/ to the prefix being matched.
+        # We transform any structures that resemble the following:
+        #    BinaryComposition(u'starts_with', X, Y)
+        # into the following:
+        #    BinaryComposition(
+        #             u'+',
+        #             Literal('/.*'),
+        #             BinaryComposition(
+        #                 u'+',
+        #                 expression.right,
+        #                 Literal('$/')
+        #             )
+        #         )
+        if not isinstance(expression, BinaryComposition) or expression.operator != u'ends_with':
+            return expression
+
+        return BinaryComposition(
+            u'ends_with',
+            expression.left,
+            BinaryComposition(
+                u'+',
+                Literal('/.*'),
+                BinaryComposition(
+                    u'+',
+                    expression.right,
+                    Literal('$/')
+                )
+            )
+        )
+
+    new_ir_blocks = [
+        block.visit_and_update_expressions(visitor_fn)
+        for block in ir_blocks
+    ]
+
+    return new_ir_blocks
+
+
 def lower_starts_with_binary_compositions(ir_blocks):
     """Lower Filter blocks that use the "starts_with" operation into MATCH-representable form."""
 

@@ -140,14 +140,53 @@ def lower_has_substring_binary_compositions(ir_blocks):
     return new_ir_blocks
 
 
+def lower_ends_with_binary_compositions(ir_blocks):
+    """Lower Filter blocks that use the "ends_with" operation into MATCH-representable form."""
+    def visitor_fn(expression):
+        """Rewrite BinaryComposition expressions with "ends_with" into representable form."""
+        # The implementation of "starts_with" must use the LIKE operator in MATCH, and must
+        # prepend "%" symbols to the substring being matched.
+        # We transform any structures that resemble the following:
+        #    BinaryComposition(u'ends_with', X, Y)
+        # into the following:
+        #    BinaryComposition(
+        #        u'LIKE',
+        #        X,
+        #        BinaryComposition(
+        #           u'+',
+        #           Literal("%"),
+        #           Y
+        #        )
+        #    )
+        if not isinstance(expression, BinaryComposition) or expression.operator != u'ends_with':
+            return expression
+
+        return BinaryComposition(
+            u'LIKE',
+            expression.left,
+            BinaryComposition(
+                u'+',
+                Literal('%'),
+                expression.right
+            )
+        )
+
+    new_ir_blocks = [
+        block.visit_and_update_expressions(visitor_fn)
+        for block in ir_blocks
+    ]
+
+    return new_ir_blocks
+
+
 def lower_starts_with_binary_compositions(ir_blocks):
     """Lower Filter blocks that use the "starts_with" operation into MATCH-representable form."""
     def visitor_fn(expression):
-        """Rewrite BinaryComposition expressions with "has_substring" into representable form."""
+        """Rewrite BinaryComposition expressions with "starts_wth" into representable form."""
         # The implementation of "starts_with" must use the LIKE operator in MATCH, and must
         # append "%" symbols to the substring being matched.
         # We transform any structures that resemble the following:
-        #    BinaryComposition(u'has_substring', X, Y)
+        #    BinaryComposition(u'starts_with', X, Y)
         # into the following:
         #    BinaryComposition(
         #        u'LIKE',
