@@ -14,9 +14,9 @@ ParameterizedPaginationQueries = namedtuple(
     'ParameterizedPaginationQueries',
     (
         'next_page_query',          # Document, AST of query that will return the next page of
-                                    # results when hydrated with pagination parameters.
+                                    # results when combined with pagination parameters.
         'remainder_query',          # Document, AST of query that will return the remainder of
-                                    # results when hydrated with pagination parameters.
+                                    # results when combined with pagination parameters.
         'pagination_filters',       # List[PaginationFilter], filters usable for pagination.
         'user_parameters',          # dict, parameters that the user has defined for other filters.
     ),
@@ -43,7 +43,7 @@ PaginationFilter = namedtuple(
 
 
 def generate_parameterized_queries(schema_graph, statistics, query_ast, parameters):
-    """Generate two parameterized queries that can be hydrated to paginate over the original query.
+    """Generate two parameterized queries that can be used to paginate over a given query.
 
     In order to paginate arbitrary GraphQL queries, additional filters may need to be added to be
     able to limit the number of results in the original query. This function creates two new queries
