@@ -7,6 +7,10 @@ from compiler.compiler_frontend import graphql_to_ir
 from schema import schema_info
 
 
+# A backend is a compilation target (a language we can compile to)
+#
+# This class defines all the necessary and sufficient functionality a backend should implement
+# in order to fit into our generic testing framework.
 Backend = namedtuple('Backend', (
     # String, the internal name of this language.
     'language',
