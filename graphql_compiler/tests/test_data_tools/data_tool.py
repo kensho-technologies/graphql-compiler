@@ -161,6 +161,7 @@ def generate_sql_integration_data(sql_test_backends):
     return metadata
 
 
+# TODO(bojanserafimov): Replace this with test_helpers.get_sqlalchemy_schema_info
 def get_animal_schema_sql_metadata():
     """Return Dict[str, Table] table lookup, and associated metadata, for the Animal test schema."""
     metadata = MetaData()
