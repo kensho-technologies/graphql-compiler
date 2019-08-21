@@ -1,6 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from graphql.error import GraphQLSyntaxError
-from graphql.language.ast import Document, InlineFragment, NonNullType, OperationDefinition
+from graphql.language.ast import (
+    Document, InlineFragment, ListType, NonNullType, OperationDefinition
+)
 from graphql.language.parser import parse
 
 from .exceptions import GraphQLParsingError
@@ -109,3 +111,10 @@ def get_ast_with_non_null_stripped(ast):
         return stripped_ast
     else:
         return ast
+
+
+def get_ast_with_non_null_and_list_stripped(ast):
+    """Strip any NonNullType or List layers around the AST, return the underlying AST."""
+    while isinstance(ast, (NonNullType, ListType)):
+        ast = ast.type
+    return ast

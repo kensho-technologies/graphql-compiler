@@ -42,6 +42,9 @@ PaginationFilter = namedtuple(
                                         # for pagination in the page query.
         'remainder_query_filter',       # Directive, filter directive with '>=' operator usable
                                         # for pagination in the remainder query.
+        'related_filters',              # List[Directive], filter directives that share the same
+                                        # vertex and property field as the next_page_query_filter,
+                                        # and are used to generate more accurate pages.
     ),
 )
 

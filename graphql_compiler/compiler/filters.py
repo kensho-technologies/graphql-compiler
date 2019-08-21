@@ -671,6 +671,66 @@ def _process_intersects_filter_directive(filter_operation_info, location, contex
     return blocks.Filter(filter_predicate)
 
 
+@takes_parameters(0)
+def _process_is_null_filter_directive(filter_operation_info, location, context, parameters):
+    """Return a Filter basic block that ensures the property field is Null
+
+    Args:
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
+        location: Location where this filter is used.
+        context: dict, various per-compilation data (e.g. declared tags, whether the current block
+                 is optional, etc.). May be mutated in-place in this function!
+        parameters: empty list
+
+    Returns:
+        a Filter basic block that performs the null check
+    """
+    filtered_field_type = filter_operation_info.field_type
+    filtered_field_name = filter_operation_info.field_name
+
+    if len(parameters) != 0:
+        raise GraphQLCompilationError(u'No parameters should be passed to "is_null" filter. '
+                                      u'Received parameter(s) {}'.format(parameters))
+
+    comparison_expression = expressions.BinaryComposition(
+        u'=',
+        expressions.LocalField(filtered_field_name, filtered_field_type),
+        expressions.NullLiteral)
+
+    return blocks.Filter(comparison_expression)
+
+
+@takes_parameters(0)
+def _process_is_not_null_filter_directive(filter_operation_info, location, context, parameters):
+    """Return a Filter basic block that ensures the property field is not Null
+
+    Args:
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
+        location: Location where this filter is used.
+        context: dict, various per-compilation data (e.g. declared tags, whether the current block
+                 is optional, etc.). May be mutated in-place in this function!
+        parameters: empty list
+
+    Returns:
+        a Filter basic block that performs the null check
+    """
+    filtered_field_type = filter_operation_info.field_type
+    filtered_field_name = filter_operation_info.field_name
+
+    if len(parameters) != 0:
+        raise GraphQLCompilationError(u'No parameters should be passed to "is_not_null" filter. '
+                                      u'Received parameter(s) {}'.format(parameters))
+
+    comparison_expression = expressions.BinaryComposition(
+        u'!=',
+        expressions.LocalField(filtered_field_name, filtered_field_type),
+        expressions.NullLiteral)
+
+    return blocks.Filter(comparison_expression)
+
+
 def _get_filter_op_name_and_values(directive):
     """Extract the (op_name, operator_params) tuple from a directive object."""
     args = get_uniquely_named_objects_by_name(directive.arguments)
@@ -703,6 +763,8 @@ PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset({
     u'intersects',
     u'has_substring',
     u'has_edge_degree',
+    u'is_null',
+    u'is_not_null',
 })
 
 # Vertex field filtering operators can apply to the inner scope or the outer scope.
@@ -759,6 +821,8 @@ def process_filter_directive(filter_operation_info, location, context):
         u'not_contains': _process_not_contains_filter_directive,
         u'intersects': _process_intersects_filter_directive,
         u'has_edge_degree': _process_has_edge_degree_filter_directive,
+        u'is_null': _process_is_null_filter_directive,
+        u'is_not_null': _process_is_not_null_filter_directive,
     }
     all_recognized_filters = frozenset(non_comparison_filters.keys()) | COMPARISON_OPERATORS
     if all_recognized_filters != ALL_OPERATORS:
