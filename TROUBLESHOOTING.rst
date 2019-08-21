@@ -64,8 +64,8 @@ The solution is to install OpenSSL on your system:
 
    brew install openssl
 
-Then, make sure that ``clang`` is able to find it by adding the
-following line to your ``.bashrc``.
+Then, make sure that :code:`clang` is able to find it by adding the
+following line to your :code:`.bashrc`.
 
 ::
 

@@ -3,12 +3,12 @@ Contributing
 
 Thank you for taking the time to contribute to this project!
 
-To get started, make sure that you have ``pipenv``, ``docker`` and
-``docker-compose`` installed on your computer. Additionally, since this
+To get started, make sure that you have :code:`pipenv`, :code:`docker` and
+:code:`docker-compose` installed on your computer. Additionally, since this
 is a package that supports both Python 2 and Python 3, please make sure
 you have Python 2.7.15+ and Python 3.6+ installed locally. This project
-assumes that they are available on the system as ``python2`` and
-``python3``, respectively. If you do not already have them installed,
+assumes that they are available on the system as :code:`python2` and
+:code:`python3`, respectively. If you do not already have them installed,
 consider doing so using `pyenv <https://github.com/pyenv/pyenv>`__.
 
 Integration tests are run against multiple SQL databases, some of which
@@ -42,7 +42,7 @@ run:
 
 Some snapshot and integration tests take longer to setup, run, and
 teardown. These can be optionally skipped during development by running
-the tests with the ``--skip-slow`` flag:
+the tests with the :code:`--skip-slow` flag:
 
 .. code:: bash
 
@@ -54,7 +54,7 @@ troubleshooting guide, we'd appreciate it if you open a pull request and
 update the guide to make future development easier.
 
 A test method or class can be marked as slow to be skipped in this
-fashion by decorating with the ``@pytest.mark.slow`` flag.
+fashion by decorating with the :code:`@pytest.mark.slow` flag.
 
 Code of Conduct
 ---------------
@@ -81,10 +81,10 @@ Style Guide
 This project follows the `Google Python style
 guide <https://google.github.io/styleguide/pyguide.html>`__.
 
-Additionally, any contributions must pass the linter ``scripts/lint.sh``
-when executed from a pipenv shell (i.e. after running ``pipenv shell``).
+Additionally, any contributions must pass the linter :code:`scripts/lint.sh`
+when executed from a pipenv shell (i.e. after running :code:`pipenv shell`).
 To run the linter on changed files only, commit your changes and run
-``scripts/lint.sh --diff``.
+:code:`scripts/lint.sh --diff`.
 
 Finally, all python files in the repository must display the copyright
 of the project, to protect the terms of the license. Please make sure
@@ -104,9 +104,9 @@ requirements for Python 2 and Python 3, we have to keep two pipenv
 lockfiles -- one per Python version.
 
 We have chosen to make the Python 3 lockfile the default (hence named
-``Pipfile.lock``), since Python 3 offers better performance and we like
+:code:`Pipfile.lock`), since Python 3 offers better performance and we like
 our tests and linters running quickly. The Python 2 lockfile is named
-``Pipfile.py2.lock``.
+:code:`Pipfile.py2.lock`.
 
 If you need to set up a Python 2 virtualenv locally, simply run the
 following script:
@@ -162,4 +162,4 @@ To build the website run:
    cd docs
    make html
 
-Then open ``docs/build/index.html`` with a web browser to view it.
+Then open :code:`docs/build/index.html` with a web browser to view it.

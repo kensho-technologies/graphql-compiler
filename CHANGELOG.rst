@@ -15,10 +15,10 @@ v1.11.0
 -  Release the SchemaGraph, a utility class designed for easy schema
    introspection.
    `#292 <https://github.com/kensho-technologies/graphql-compiler/pull/292>`__
--  Release ``not_contains`` and ``not_in_collection`` filter operations.
+-  Release :code:`not_contains` and :code:`not_in_collection` filter operations.
    `#349 <https://github.com/kensho-technologies/graphql-compiler/pull/349>`__
    `#350 <https://github.com/kensho-technologies/graphql-compiler/pull/350>`__
--  Allow out-of-order ``@tag`` and ``@filter`` when in the same scope.
+-  Allow out-of-order :code:`@tag` and :code:`@filter` when in the same scope.
    `#351 <https://github.com/kensho-technologies/graphql-compiler/pull/351>`__
 -  Fix a bug causing MATCH queries to have missing type coercions.
    `#332 <https://github.com/kensho-technologies/graphql-compiler/pull/332>`__
@@ -33,8 +33,8 @@ v1.11.0
 -  Clean up README.md and update troubleshooting documentation.
 -  Many maintainer quality-of-life improvements.
 
-Thanks to ``0xflotus``, ``bojanserafimov``, ``evantey``,
-``LWProgramming``, ``pmantica1``, ``qqi0O0``, and ``Vlad`` for their
+Thanks to :code:`0xflotus`, :code:`bojanserafimov`, :code:`evantey`,
+:code:`LWProgramming`, :code:`pmantica1`, :code:`qqi0O0`, and :code:`Vlad` for their
 contributions.
 
 .. _v1101:
@@ -42,23 +42,23 @@ contributions.
 v1.10.1
 -------
 
--  Fix ``_x_count`` and optional filter creating duplicate
+-  Fix :code:`_x_count` and optional filter creating duplicate
    GlobalOperationsStart IR blocks.
    `#253 <https://github.com/kensho-technologies/graphql-compiler/pull/253>`__.
--  Raise error for unused ``@tag`` directives
+-  Raise error for unused :code:`@tag` directives
    `#224 <https://github.com/kensho-technologies/graphql-compiler/pull/224>`__.
 -  Much documentation cleanup and many maintainer quality-of-life
    improvements.
 
-Thanks to ``bojanserafimov``, ``evantey14``, ``jeremy.meulemans``, and
-``pmantica1`` for their contributions.
+Thanks to :code:`bojanserafimov`, :code:`evantey14`, :code:`jeremy.meulemans`, and
+:code:`pmantica1` for their contributions.
 
 .. _v1100:
 
 v1.10.0
 -------
 
--  **BREAKING**: Rename the ``__count`` meta field to ``_x_count``, to
+-  **BREAKING**: Rename the :code:`__count` meta field to :code:`_x_count`, to
    avoid GraphQL schema parsing issues with other GraphQL libraries.
    `#176 <https://github.com/kensho-technologies/graphql-compiler/pull/176>`__
 
@@ -67,13 +67,13 @@ v1.10.0
 v1.9.0
 ------
 
--  Add a ``__count`` meta field that supports outputting and filtering
-   on the size of a ``@fold`` scope.
+-  Add a :code:`__count` meta field that supports outputting and filtering
+   on the size of a :code:`@fold` scope.
    `#158 <https://github.com/kensho-technologies/graphql-compiler/pull/158>`__
 -  Add scaffolding for development and testing of SQL compiler backend,
    and a variety of development quality-of-life improvements.
 
-Thanks to ``jmeulemans`` for his contributions.
+Thanks to :code:`jmeulemans` for his contributions.
 
 .. _v183:
 
@@ -83,25 +83,25 @@ v1.8.3
 -  Explicit support for Python 3.7. Earlier compiler versions also
    worked on 3.7, but now we also run tests in 3.7 to confirm.
    `#148 <https://github.com/kensho-technologies/graphql-compiler/pull/148>`__
--  Bug fix for compilation error when using ``has_edge_degree`` and
-   ``between`` filtering in the same scope.
+-  Bug fix for compilation error when using :code:`has_edge_degree` and
+   :code:`between` filtering in the same scope.
    `#146 <https://github.com/kensho-technologies/graphql-compiler/pull/146>`__
--  Exposed additional query metadata that describes ``@recurse`` and
-   ``@filter`` directives encountered in the query.
+-  Exposed additional query metadata that describes :code:`@recurse` and
+   :code:`@filter` directives encountered in the query.
    `#141 <https://github.com/kensho-technologies/graphql-compiler/pull/141/files>`__
 
-Thanks to ``gurer-kensho`` for the contribution.
+Thanks to :code:`gurer-kensho` for the contribution.
 
 .. _v182:
 
 v1.8.2
 ------
 
--  Fix overly strict type check on ``@recurse`` directives involving a
+-  Fix overly strict type check on :code:`@recurse` directives involving a
    union type.
    `#131 <https://github.com/kensho-technologies/graphql-compiler/pull/131>`__
 
-Thanks to ``cw6515`` for the fix!
+Thanks to :code:`cw6515` for the fix!
 
 .. _v181:
 
@@ -112,17 +112,17 @@ v1.8.1
    compiler optimizes away to a no-op.
    `#127 <https://github.com/kensho-technologies/graphql-compiler/pull/127>`__
 
-Thanks to ``bojanserafimov`` for the fix!
+Thanks to :code:`bojanserafimov` for the fix!
 
 .. _v180:
 
 v1.8.0
 ------
 
--  Allow ``@optional`` vertex fields nested inside other ``@optional``
+-  Allow :code:`@optional` vertex fields nested inside other :code:`@optional`
    vertex fields.
    `#120 <https://github.com/kensho-technologies/graphql-compiler/pull/120>`__
--  Fix a bug that accidentally disallowed having two ``@recurse``
+-  Fix a bug that accidentally disallowed having two :code:`@recurse`
    directives within the same vertex field.
    `#115 <https://github.com/kensho-technologies/graphql-compiler/pull/115>`__
 -  Enforce that all required directives are present in the schema.
@@ -130,7 +130,7 @@ v1.8.0
 -  Under the hood, made fairly major changes to how query metadata is
    tracked and processed.
 
-Thanks to ``amartyashankha``, ``cw6515``, and ``yangsong97`` for their
+Thanks to :code:`amartyashankha`, :code:`cw6515`, and :code:`yangsong97` for their
 contributions!
 
 .. _v172:
@@ -147,7 +147,7 @@ v1.7.2
 v1.7.0
 ------
 
--  Add a new ``@filter`` operator: ``intersects``.
+-  Add a new :code:`@filter` operator: :code:`intersects`.
    `#100 <https://github.com/kensho-technologies/graphql-compiler/pull/100>`__
 -  Add an optimization that helps OrientDB choose a good starting point
    for query evaluation.
@@ -160,36 +160,36 @@ the likelihood that OrientDB will start evaluating the query at the
 location of lowest cardinality. This produces a massive performance
 benefit -- up to 1000x on some queries!
 
-Thanks to ``yangsong97`` for making his first contribution with the
-``intersects`` operator!
+Thanks to :code:`yangsong97` for making his first contribution with the
+:code:`intersects` operator!
 
 .. _v162:
 
 v1.6.2
 ------
 
--  Fix incorrect filtering in ``@optional`` locations.
+-  Fix incorrect filtering in :code:`@optional` locations.
    `#95 <https://github.com/kensho-technologies/graphql-compiler/pull/95>`__
 
-Thanks to ``amartyashankha`` for the fix!
+Thanks to :code:`amartyashankha` for the fix!
 
 .. _v161:
 
 v1.6.1
 ------
 
--  Fix a bad compilation bug on ``@fold`` and ``@optional`` in the same
+-  Fix a bad compilation bug on :code:`@fold` and :code:`@optional` in the same
    scope.
    `#86 <https://github.com/kensho-technologies/graphql-compiler/pull/86>`__
 
-Thanks to ``amartyashankha`` for the fix!
+Thanks to :code:`amartyashankha` for the fix!
 
 .. _v160:
 
 v1.6.0
 ------
 
--  Add full support for ``Decimal`` data, including both filtering and
+-  Add full support for :code:`Decimal` data, including both filtering and
    output.
    `#91 <https://github.com/kensho-technologies/graphql-compiler/pull/91>`__
 
@@ -198,15 +198,15 @@ v1.6.0
 v1.5.0
 ------
 
--  Allow expanding vertex fields within ``@optional`` scopes.
+-  Allow expanding vertex fields within :code:`@optional` scopes.
    `#83 <https://github.com/kensho-technologies/graphql-compiler/pull/83>`__
 
 This is a massive feature, totaling over 4000 lines of changes and
 hundreds of hours of many engineers' time. Special thanks to
-``amartyashankha`` for taking point on the implementation!
+:code:`amartyashankha` for taking point on the implementation!
 
 This feature implements a workaround for a limitation of OrientDB, where
-``MATCH`` treats optional vertices as terminal and does not allow
+:code:`MATCH` treats optional vertices as terminal and does not allow
 subsequent traversals from them. To work around this issue, the compiler
 rewrites the query into several disjoint queries whose union produces
 the exact same results as a single query that allows optional
@@ -219,32 +219,32 @@ for more details.
 v1.4.1
 ------
 
--  Make MATCH use the ``BETWEEN`` operator when possible, to avoid `an
+-  Make MATCH use the :code:`BETWEEN` operator when possible, to avoid `an
    OrientDB performance
    issue <https://github.com/orientechnologies/orientdb/issues/8230>`__
    `#70 <https://github.com/kensho-technologies/graphql-compiler/pull/70>`__
 
-Thanks to ``amartyashankha`` for this contribution!
+Thanks to :code:`amartyashankha` for this contribution!
 
 .. _v140:
 
 v1.4.0
 ------
 
--  Enable expanding vertex fields inside ``@fold``
+-  Enable expanding vertex fields inside :code:`@fold`
    `#64 <https://github.com/kensho-technologies/graphql-compiler/pull/64>`__
 
-Thanks to ``amartyashankha`` for this contribution!
+Thanks to :code:`amartyashankha` for this contribution!
 
 .. _v131:
 
 v1.3.1
 ------
 
--  Add a workaround for a bug in OrientDB related to ``@recurse`` with
+-  Add a workaround for a bug in OrientDB related to :code:`@recurse` with
    type coercions
    `#55 <https://github.com/kensho-technologies/graphql-compiler/pull/55>`__
--  Exposed the package name and version in the root ``__init__.py`` file
+-  Exposed the package name and version in the root :code:`__init__.py` file
    `#57 <https://github.com/kensho-technologies/graphql-compiler/pull/57>`__
 
 .. _v130:
@@ -252,7 +252,7 @@ v1.3.1
 v1.3.0
 ------
 
--  Add a new ``@filter`` operator: ``has_edge_degree``.
+-  Add a new :code:`@filter` operator: :code:`has_edge_degree`.
    `#52 <https://github.com/kensho-technologies/graphql-compiler/pull/52>`__
 -  Lots of under-the-hood cleanup and improvements.
 
@@ -274,14 +274,14 @@ v1.2.0
    OrientDB bugs being fixed: `bug
    1 <https://github.com/orientechnologies/orientdb/issues/7225>`__ `bug
    2 <https://github.com/orientechnologies/orientdb/issues/7754>`__
--  Allow type coercions and filtering within ``@fold`` scopes.
--  Fix bug where ``@filter`` directives could end up ignored if more
+-  Allow type coercions and filtering within :code:`@fold` scopes.
+-  Fix bug where :code:`@filter` directives could end up ignored if more
    than two were in the same scope
--  Optimize type coercions in ``@optional`` and ``@recurse`` scopes.
--  Optimize multiple outputs from the same ``@fold`` scope.
--  Allow having multiple ``@filter`` directives on the same field
+-  Optimize type coercions in :code:`@optional` and :code:`@recurse` scopes.
+-  Optimize multiple outputs from the same :code:`@fold` scope.
+-  Allow having multiple :code:`@filter` directives on the same field
    `#33 <https://github.com/kensho-technologies/graphql-compiler/pull/33>`__
--  Allow using the ``name_or_alias`` filtering operation on interface
+-  Allow using the :code:`name_or_alias` filtering operation on interface
    types
    `#37 <https://github.com/kensho-technologies/graphql-compiler/pull/37>`__
 
@@ -292,11 +292,11 @@ v1.1.0
 
 -  Add support for Python 3
    `#31 <https://github.com/kensho-technologies/graphql-compiler/pull/31>`__
--  Make it possible to use ``@fold`` together with union-typed vertex
+-  Make it possible to use :code:`@fold` together with union-typed vertex
    fields
    `#32 <https://github.com/kensho-technologies/graphql-compiler/pull/32>`__
 
-Thanks to ``ColCarroll`` for making the compiler support Python 3!
+Thanks to :code:`ColCarroll` for making the compiler support Python 3!
 
 .. _v103:
 
@@ -311,27 +311,27 @@ v1.0.3
 v1.0.2
 ------
 
--  Make the ``graphql_to_ir()`` easier to use by making it automatically
+-  Make the :code:`graphql_to_ir()` easier to use by making it automatically
    add a new line to the end of the GraphQL query string. Works around
-   an issue in the ``graphql-core``\ dependency library:
+   an issue in the :code:`graphql-core`\ dependency library:
    `https://github.com/graphql-python/graphql-core/issues/98 <https://github.com/graphql-python/graphql-core/issues/98>`__
 -  Robustness improvements for the pretty-printer
    `#27 <https://github.com/kensho-technologies/graphql-compiler/pull/27>`__
 
-Thanks to ``benlongo`` for their contributions.
+Thanks to :code:`benlongo` for their contributions.
 
 .. _v101:
 
 v1.0.1
 ------
 
--  Add GraphQL pretty printer: ``python -m graphql_compiler.tool``
+-  Add GraphQL pretty printer: :code:`python -m graphql_compiler.tool`
    `#23 <https://github.com/kensho-technologies/graphql-compiler/pull/23>`__
--  Raise errors if there are no ``@output`` directives within a
-   ``@fold`` scope
+-  Raise errors if there are no :code:`@output` directives within a
+   :code:`@fold` scope
    `#18 <https://github.com/kensho-technologies/graphql-compiler/pull/18>`__
 
-Thanks to ``benlongo``, ``ColCarroll``, and ``cw6515`` for their
+Thanks to :code:`benlongo`, :code:`ColCarroll`, and :code:`cw6515` for their
 contributions.
 
 .. _v100:
@@ -341,5 +341,5 @@ v1.0.0
 
 Initial release.
 
-Thanks to ``MichaelaShtilmanMinkin`` for the help in putting the
+Thanks to :code:`MichaelaShtilmanMinkin` for the help in putting the
 documentation together.
