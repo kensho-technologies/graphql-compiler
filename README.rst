@@ -885,9 +885,14 @@ Supported filtering operations
 Comparison operators
 ~~~~~~~~~~~~~~~~~~~~
 
-Supported comparison operators: - Equal to: :code:`=` - Not equal to: :code:`!=`
-- Greater than: :code:`>` - Less than: :code:`<` - Greater than or equal to:
-:code:`>=` - Less than or equal to: :code:`<=`
+Supported comparison operators:
+
+- Equal to: :code:`=`
+- Not equal to: :code:`!=`
+- Greater than: :code:`>`
+- Less than: :code:`<`
+- Greater than or equal to: :code:`>=`
+- Less than or equal to: :code:`<=`
 
 Example Use
 ^^^^^^^^^^^
