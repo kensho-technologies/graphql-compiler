@@ -32,15 +32,6 @@ Backend = namedtuple('Backend', (
 
     # An instance of SchemaInfoClass whose schema is the test_schema.
     'test_schema_info',
-
-    # Given a SchemaInfo and a connection pool to a database, modify the database such
-    # that the schema_inspector will be able to reconstruct the same schema.
-    'setup_schema'
-
-    # Given a SchemaInfo, a dict representation of some data, and a connection pool to a
-    # database with the same schema, modify the database such that the data_inspector will
-    # reconstruct the same data.
-    'setup_data'
 ))
 
 
@@ -50,8 +41,6 @@ gremlin_backend = Backend(
     lower_func=ir_lowering_gremlin.lower_ir,
     emit_func=emit_gremlin.emit_code_from_ir,
     test_schema_info=NotImplementedError(),
-    setup_schema=NotImplementedError(),
-    setup_data=NotImplementedError(),
 )
 
 match_backend = Backend(
@@ -60,8 +49,6 @@ match_backend = Backend(
     lower_func=ir_lowering_match.lower_ir,
     emit_func=emit_match.emit_code_from_ir,
     test_schema_info=NotImplementedError(),
-    setup_schema=NotImplementedError(),
-    setup_data=NotImplementedError(),
 )
 
 cypher_backend = Backend(
@@ -70,8 +57,6 @@ cypher_backend = Backend(
     lower_func=ir_lowering_cypher.lower_ir,
     emit_func=emit_cypher.emit_code_from_ir,
     test_schema_info=NotImplementedError(),
-    setup_schema=NotImplementedError(),
-    setup_data=NotImplementedError(),
 )
 
 sql_backend = Backend(
@@ -80,6 +65,4 @@ sql_backend = Backend(
     lower_func=ir_lowering_sql.lower_ir,
     emit_func=emit_sql.emit_sql,
     test_schema_info=get_sqlalchemy_schema_info(),
-    setup_schema=NotImplementedError(),
-    setup_data=NotImplementedError(),
 )
