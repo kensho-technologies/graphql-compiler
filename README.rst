@@ -198,14 +198,14 @@ Definitions
    .. code::
 
        {
-       Animal {
-           name @output(out_name: "name")
-           out_Entity_Related {
-               ... on Species {
-                   description @output(out_name: "description")
+           Animal {
+               name @output(out_name: "name")
+               out_Entity_Related {
+                   ... on Species {
+                       description @output(out_name: "description")
+                   }
                }
            }
-       }
        }
 
 -  **Property field**: A field corresponding to a property of a vertex
@@ -275,7 +275,7 @@ Constraints and Rules
    vertex field.
 -  It is allowed to expand vertex fields within an :code:`@optional` scope.
    However, doing so is currently associated with a performance penalty
-   in :code:`MATCH`. For more detail, see: `Expanding :code:`@optional` vertex
+   in :code:`MATCH`. For more detail, see: `Expanding @optional vertex
    fields <#expanding-optional-vertex-fields>`__.
 -  :code:`@recurse`, :code:`@fold`, or :code:`@output_source` may not be used at the
    same vertex field as :code:`@optional`.
@@ -288,14 +288,15 @@ field return the :code:`null` value.
 
 When filtering (via :code:`@filter`) or type coercion (via e.g.
 :code:`... on Animal`) are applied at or within a vertex field marked
-:code:`@optional`, the :code:`@optional` is given precedence: - If a given
-result set cannot produce a value for the optional vertex field, it is
-preserved: the :code:`@optional` directive is applied first, and no
-filtering or type coercion can happen. - If a given result set is able
-to produce a value for the optional vertex field, the :code:`@optional` does
-not apply, and that value is then checked against the filtering or type
-coercion. These subsequent operations may then cause the result set to
-be discarded if it does not match.
+:code:`@optional`, the :code:`@optional` is given precedence:
+
+- If a given result set cannot produce a value for the optional vertex field, it is
+  preserved: the :code:`@optional` directive is applied first, and no filtering or type coercion
+  can happen.
+- If a given result set is able to produce a value for the optional vertex field, the
+  :code:`@optional` does not apply, and that value is then checked against the filtering or type
+  coercion. These subsequent operations may then cause the result set to be discarded if it does
+  not match.
 
 For example, suppose we have two :code:`Person` vertices with names
 :code:`Albert` and :code:`Betty` such that there is a :code:`Person_Knows` edge from
@@ -472,7 +473,7 @@ Constraints and Rules
    output.
 -  If the compiler is able to prove that a type coercion in the
    :code:`@fold` scope is actually a no-op, it may optimize it away. See the
-   `Optional :code:`type_equivalence_hints` compilation
+   `Optional type_equivalence_hints compilation
    parameter <#optional-type_equivalence_hints-parameter>`__ section for
    more details.
 
@@ -481,10 +482,11 @@ Example
 
 The following GraphQL is *not allowed* and will produce a
 :code:`GraphQLCompilationError`. This query is *invalid* for two separate
-reasons: - It expands vertex fields after an :code:`@output` directive
-(outputting :code:`animal_name`) - The :code:`in_Animal_ParentOf` scope, which
-is within a scope marked :code:`@fold`, expands two vertex fields instead of
-at most one.
+reasons:
+
+- It expands vertex fields after an :code:`@output` directive (outputting :code:`animal_name`)
+- The :code:`in_Animal_ParentOf` scope, which is within a scope marked :code:`@fold`, expands two
+  vertex fields instead of at most one.
 
 .. code::
 
@@ -1593,7 +1595,8 @@ to keep in mind:
     represent :code:`B` as a GraphQL type that can implement the GraphQL interface corresponding
     to :code:`A`. This makes the GraphQL schema preserve the inheritance relationship between
     :code:`A` and :code:`B`, but sacrifices the ability for other GraphQL types to inherit from
-    :code:`B`. - You may choose to represent both :code:`A` and :code:`B` as GraphQL interfaces,
+    :code:`B`.
+  - You may choose to represent both :code:`A` and :code:`B` as GraphQL interfaces,
     sacrificing the schema's representation of the inheritance between :code:`A` and :code:`B`, but
     allowing GraphQL types to inherit from both :code:`A` and :code:`B`. If necessary, you can
     then create a GraphQL union type :code:`A | B` and use it for any vertex fields that in
@@ -1617,9 +1620,10 @@ The compiler abides by the following principles:
 
 - When the database is queried with a compiled query string, its response must always be in the
   form of a list of results.
-- The precise format of each such result is defined by each compilation target separately. -
-  :code:`gremlin`, :code:`MATCH` and :code:`SQL` return data in a tabular format, where each
-  result is a row of the table, and fields marked for output are columns.
+- The precise format of each such result is defined by each compilation target separately.
+
+  - :code:`gremlin`, :code:`MATCH` and :code:`SQL` return data in a tabular format, where each
+    result is a row of the table, and fields marked for output are columns.
 - However,future compilation targets may have a different format. For example,
   each result may appear in the nested tree format used by the standard
   GraphQL specification.
@@ -1750,57 +1754,58 @@ SQL
 The following table outlines GraphQL compiler features, and their
 support (if any) by various relational database flavors:
 
-+-------+------+----------------------------------+------------------+----+----+-----+------+
-| Featu | Requ | @filter                          | @output          | @r | @f | @op | @out |
-| re/Di | ired |                                  |                  | ec | ol | tio | put\ |
-| alect | Edge |                                  |                  | ur | d  | nal | _sou |
-|       | s    |                                  |                  | se |    |     | rce  |
-+=======+======+==================================+==================+====+====+=====+======+
-| Postg | No   | Limited,                         | Limited,         | No | No | No  | No   |
-| reSQL |      | `intersects <#intersects>`__,    | `\_\_typename <# |    |    |     |      |
-|       |      | `has\_edge\_degree <#has_edge_de | __typename>`__   |    |    |     |      |
-|       |      | gree>`__,                        | output metafield |    |    |     |      |
-|       |      | and                              | unsupported      |    |    |     |      |
-|       |      | `name\_or\_alias <#name_or_alias |                  |    |    |     |      |
-|       |      | >`__                             |                  |    |    |     |      |
-|       |      | filter unsupported               |                  |    |    |     |      |
-+-------+------+----------------------------------+------------------+----+----+-----+------+
-| SQLit | No   | Limited,                         | Limited,         | No | No | No  | No   |
-| e     |      | `intersects <#intersects>`__,    | `\_\_typename <# |    |    |     |      |
-|       |      | `has\_edge\_degree <#has_edge_de | __typename>`__   |    |    |     |      |
-|       |      | gree>`__,                        | output metafield |    |    |     |      |
-|       |      | and                              | unsupported      |    |    |     |      |
-|       |      | `name\_or\_alias <#name_or_alias |                  |    |    |     |      |
-|       |      | >`__                             |                  |    |    |     |      |
-|       |      | filter unsupported               |                  |    |    |     |      |
-+-------+------+----------------------------------+------------------+----+----+-----+------+
-| Micro | No   | Limited,                         | Limited,         | No | No | No  | No   |
-| soft  |      | `intersects <#intersects>`__,    | `\_\_typename <# |    |    |     |      |
-| SQL   |      | `has\_edge\_degree <#has_edge_de | __typename>`__   |    |    |     |      |
-| Serve |      | gree>`__,                        | output metafield |    |    |     |      |
-| r     |      | and                              | unsupported      |    |    |     |      |
-|       |      | `name\_or\_alias <#name_or_alias |                  |    |    |     |      |
-|       |      | >`__                             |                  |    |    |     |      |
-|       |      | filter unsupported               |                  |    |    |     |      |
-+-------+------+----------------------------------+------------------+----+----+-----+------+
-| MySQL | No   | Limited,                         | Limited,         | No | No | No  | No   |
-|       |      | `intersects <#intersects>`__,    | `\_\_typename <# |    |    |     |      |
-|       |      | `has\_edge\_degree <#has_edge_de | __typename>`__   |    |    |     |      |
-|       |      | gree>`__,                        | output metafield |    |    |     |      |
-|       |      | and                              | unsupported      |    |    |     |      |
-|       |      | `name\_or\_alias <#name_or_alias |                  |    |    |     |      |
-|       |      | >`__                             |                  |    |    |     |      |
-|       |      | filter unsupported               |                  |    |    |     |      |
-+-------+------+----------------------------------+------------------+----+----+-----+------+
-| Maria | No   | Limited,                         | Limited,         | No | No | No  | No   |
-| DB    |      | `intersects <#intersects>`__,    | `\_\_typename <# |    |    |     |      |
-|       |      | `has\_edge\_degree <#has_edge_de | __typename>`__   |    |    |     |      |
-|       |      | gree>`__,                        | output metafield |    |    |     |      |
-|       |      | and                              | unsupported      |    |    |     |      |
-|       |      | `name\_or\_alias <#name_or_alias |                  |    |    |     |      |
-|       |      | >`__                             |                  |    |    |     |      |
-|       |      | filter unsupported               |                  |    |    |     |      |
-+-------+------+----------------------------------+------------------+----+----+-----+------+
+.. list-table::
+   :header-rows: 1
+
+   * - Feature/Dialect
+     - Required Edges
+     - @filter
+     - @output
+     - @recurse
+     - @fold
+     - @optional
+     - @output_source
+   * - PostgreSQL
+     - No
+     - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
+     - Limited, `__typename <#__typename>`_ output metafield unsupported
+     - No
+     - No
+     - No
+     - No
+   * - SQLite
+     - No
+     - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
+     - Limited, `__typename <#__typename>`_ output metafield unsupported
+     - No
+     - No
+     - No
+     - No
+   * - Microsoft SQL Server
+     - No
+     - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
+     - Limited, `__typename <#__typename>`_ output metafield unsupported
+     - No
+     - No
+     - No
+     - No
+   * - MySQL
+     - No
+     - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
+     - Limited, `__typename <#__typename>`_ output metafield unsupported
+     - No
+     - No
+     - No
+     - No
+   * - MariaDB
+     - No
+     - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
+     - Limited, `__typename <#__typename>`_ output metafield unsupported
+     - No
+     - No
+     - No
+     - No
+
 
 Configuring SQLAlchemy
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -2118,9 +2123,11 @@ Optional :code:`type_equivalence_hints` parameter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This compilation parameter is a workaround for the limitations of the
-GraphQL and Gremlin type systems: - GraphQL does not allow :code:`type` to
-inherit from another :code:`type`, only to implement an :code:`interface`. -
-Gremlin does not have first-class support for inheritance at all.
+GraphQL and Gremlin type systems:
+
+- GraphQL does not allow :code:`type` to inherit from another :code:`type`, only to implement an
+  :code:`interface`.
+- Gremlin does not have first-class support for inheritance at all.
 
 Assume the following GraphQL schema:
 
@@ -2176,12 +2183,13 @@ When building a GraphQL schema from the database metadata, we first
 build a :code:`SchemaGraph` from the metadata and then, from the
 :code:`SchemaGraph`, build the GraphQL schema. The :code:`SchemaGraph` is also a
 representation of the underlying database schema, but it has three main
-advantages that make it a more powerful schema introspection tool: 1.
-It's able to store and expose a schema's index information. The
-interface for accessing index information is provisional though and
-might change in the near future. 2. Its classes are allowed to inherit
-from non-abstract classes. 3. It exposes many utility functions, such as
-:code:`get_subclass_set`, that make it easier to explore the schema.
+advantages that make it a more powerful schema introspection tool:
+
+1. It's able to store and expose a schema's index information. The interface for accessing index
+   information is provisional though and might change in the near future.
+2. Its classes are  allowed to inherit from non-abstract classes.
+3. It exposes many utility functions, such as :code:`get_subclass_set`, that make it easier to
+   explore the schema.
 
 See below for a mock example of how to build and use the
 :code:`SchemaGraph`:
