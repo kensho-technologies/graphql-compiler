@@ -1775,7 +1775,7 @@ support (if any) by various relational database flavors:
      - @output_source
    * - PostgreSQL
      - No
-     - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
+     - Limited, `intersects <#intersects>`__ , `has_edge_degree <#has-edge-degree>`__ , and `name_or_alias <#name-or-alias>`_ filter unsupported
      - Limited, `__typename <#typename>`_ output metafield unsupported
      - No
      - No
@@ -1783,7 +1783,7 @@ support (if any) by various relational database flavors:
      - No
    * - SQLite
      - No
-     - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
+     - Limited, `intersects <#intersects>`__ , `has_edge_degree <#has-edge-degree>`__ , and `name_or_alias <#name-or-alias>`_ filter unsupported
      - Limited, `__typename <#typename>`_ output metafield unsupported
      - No
      - No
@@ -1791,7 +1791,7 @@ support (if any) by various relational database flavors:
      - No
    * - Microsoft SQL Server
      - No
-     - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
+     - Limited, `intersects <#intersects>`__ , `has_edge_degree <#has-edge-degree>`_ , and `name_or_alias <#name-or-alias>`_ filter unsupported
      - Limited, `__typename <#typename>`_ output metafield unsupported
      - No
      - No
@@ -1799,7 +1799,7 @@ support (if any) by various relational database flavors:
      - No
    * - MySQL
      - No
-     - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
+     - Limited, `intersects <#intersects>`__ , `has_edge_degree <#has-edge-degree>`__ , and `name_or_alias <#name-or-alias>`_ filter unsupported
      - Limited, `__typename <#typename>`_ output metafield unsupported
      - No
      - No
@@ -1807,7 +1807,7 @@ support (if any) by various relational database flavors:
      - No
    * - MariaDB
      - No
-     - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
+     - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has-edge-degree>`_\ , and `name_or_alias <#name-or-alias>`_ filter unsupported
      - Limited, `__typename <#typename>`_ output metafield unsupported
      - No
      - No
