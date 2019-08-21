@@ -2,7 +2,7 @@
 from collections import namedtuple
 from copy import deepcopy
 
-from graphql.language import ast as ast_types
+from graphql.language.ast import Argument, Directive, Field, Name, StringValue, ListValue
 
 from graphql_compiler.ast_manipulation import get_only_query_definition, get_only_selection_from_ast
 from graphql_compiler.exceptions import GraphQLCompilationError
@@ -71,8 +71,8 @@ def _search_for_field(pagination_ast, property_field):
 
 def _create_field(field_name):
     """Return a property field with the given name."""
-    property_field = ast_types.Field(
-        alias=None, name=ast_types.Name(value=field_name),
+    property_field = Field(
+        alias=None, name=Name(value=field_name),
         arguments=[], directives=[], selection_set=None,
     )
 
@@ -105,11 +105,25 @@ def _create_binary_filter_directive(filter_operation, filter_parameter):
                              u' Currently, only {} are supported.'
                              .format(filter_operation, binary_inequality_filters))
 
-    filter_directive = deepcopy(FilterDirective)
-    filter_directive.args.op_name = filter_operation
-    filter_directive.args.value = filter_parameter
+    filter_ast = Directive(
+        name=Name(value=FilterDirective.name),
+        arguments=[
+            Argument(
+                name=Name(value='op_name'),
+                value=StringValue(value=filter_operation),
+            ),
+            Argument(
+                name=Name(value='value'),
+                value=ListValue(
+                    values=[
+                        StringValue(value=u'$' + filter_parameter),
+                    ],
+                ),
+            ),
+        ],
+    )
 
-    return filter_directive
+    return filter_ast
 
 
 def _create_filter_for_next_page_query(vertex_name, property_field_name, parameters):
@@ -166,6 +180,10 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
 
     pagination_filters = []
     for vertex, field in zip(pagination_vertices, pagination_fields):
+        related_filters = [
+            deepcopy(directive)
+            for directive in field.directives
+        ]
         vertex_class = vertex.name.value
         property_field_name = field.name.value
         filter_for_next_page_query = _create_filter_for_next_page_query(
@@ -176,7 +194,8 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
         )
 
         pagination_filter = PaginationFilter(
-            vertex_class, field, filter_for_next_page_query, filter_for_remainder_query,
+            vertex_class, property_field_name, filter_for_next_page_query,
+            filter_for_remainder_query, related_filters
         )
         pagination_filters.append(pagination_filter)
 
@@ -189,15 +208,13 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
     ]
 
     for field, pagination_filter in zip(pagination_fields, pagination_filters):
-        field.directives = [
-            original_field_directives, pagination_filter.next_page_query_filter
-        ]
+        field.directives = original_field_directives + [pagination_filter.next_page_query_filter]
+
     parameterized_next_page_query_ast = deepcopy(query_ast)
 
     for field, pagination_filter in zip(pagination_fields, pagination_filters):
-        field.directives = [
-            original_field_directives, pagination_filter.next_page_query_filter
-        ]
+        field.directives = original_field_directives + [pagination_filter.remainder_query_filter]
+
     parameterized_remainder_query_ast = deepcopy(query_ast)
 
     parameterized_queries = ParameterizedPaginationQueries(
