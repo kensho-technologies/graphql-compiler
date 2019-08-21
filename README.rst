@@ -195,7 +195,7 @@ Definitions
    edge, whereas ones with the prefix :code:`in_` denote vertex fields
    connected by an inbound edge.
 
-   .. code:: graphql
+   .. code::
 
        {
            Animal {
