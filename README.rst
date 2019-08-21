@@ -45,28 +45,28 @@ Table of contents
    -  `@tag <#tag>`__
    -  `@filter <#filter>`__
    -  `@recurse <#recurse>`__
-   -  `@output\_source <#output_source>`__
+   -  `@output\_source <#output-source>`__
 
 -  `Supported filtering operations <#supported-filtering-operations>`__
 
    -  `Comparison operators <#comparison-operators>`__
-   -  `name\_or\_alias <#name_or_alias>`__
+   -  `name\_or\_alias <#name-or-alias>`__
    -  `between <#between>`__
-   -  `in\_collection <#in_collection>`__
-   -  `not\_in\_collection <#not_in_collection>`__
-   -  `has\_substring <#has_substring>`__
+   -  `in\_collection <#in-collection>`__
+   -  `not\_in\_collection <#not-in-collection>`__
+   -  `has\_substring <#has-substring>`__
    -  `contains <#contains>`__
-   -  `not\_contains <#not_contains>`__
+   -  `not\_contains <#not-contains>`__
    -  `intersects <#intersects>`__
-   -  `has\_edge\_degree <#has_edge_degree>`__
-   -  `is\_null <#is_null>`__
-   -  `is\_not\_null <#is_not_null>`__
+   -  `has\_edge\_degree <#has-edge-degree>`__
+   -  `is\_null <#is-null>`__
+   -  `is\_not\_null <#is-not-null>`__
 
 -  `Type coercions <#type-coercions>`__
 -  `Meta fields <#meta-fields>`__
 
-   -  `\_\_typename <#__typename>`__
-   -  `\_x\_count <#_x_count>`__
+   -  `\_\_typename <#typename>`__
+   -  `\_x\_count <#x-count>`__
 
 -  `The GraphQL schema <#the-graphql-schema>`__
 -  `Execution model <#execution-model>`__
@@ -391,7 +391,7 @@ captured in a :code:`@fold`. The :code:`_x_count` meta field that is available
 within :code:`@fold` scopes represents the number of elements in the fold,
 and may be filtered or output as usual. As :code:`_x_count` represents a
 count of elements, marking it :code:`@output` will produce an integer value.
-See the `\_x\_count <#_x_count>`__ section for more details.
+See the `\_x\_count <#x-count>`__ section for more details.
 
 Example Use
 ^^^^^^^^^^^
@@ -474,7 +474,7 @@ Constraints and Rules
 -  If the compiler is able to prove that a type coercion in the
    :code:`@fold` scope is actually a no-op, it may optimize it away. See the
    `Optional type_equivalence_hints compilation
-   parameter <#optional-type_equivalence_hints-parameter>`__ section for
+   parameter <#optional-type-equivalence-hints-parameter>`__ section for
    more details.
 
 Example
@@ -1768,7 +1768,7 @@ support (if any) by various relational database flavors:
    * - PostgreSQL
      - No
      - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
-     - Limited, `__typename <#__typename>`_ output metafield unsupported
+     - Limited, `__typename <#typename>`_ output metafield unsupported
      - No
      - No
      - No
@@ -1776,7 +1776,7 @@ support (if any) by various relational database flavors:
    * - SQLite
      - No
      - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
-     - Limited, `__typename <#__typename>`_ output metafield unsupported
+     - Limited, `__typename <#typename>`_ output metafield unsupported
      - No
      - No
      - No
@@ -1784,7 +1784,7 @@ support (if any) by various relational database flavors:
    * - Microsoft SQL Server
      - No
      - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
-     - Limited, `__typename <#__typename>`_ output metafield unsupported
+     - Limited, `__typename <#typename>`_ output metafield unsupported
      - No
      - No
      - No
@@ -1792,7 +1792,7 @@ support (if any) by various relational database flavors:
    * - MySQL
      - No
      - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
-     - Limited, `__typename <#__typename>`_ output metafield unsupported
+     - Limited, `__typename <#typename>`_ output metafield unsupported
      - No
      - No
      - No
@@ -1800,7 +1800,7 @@ support (if any) by various relational database flavors:
    * - MariaDB
      - No
      - Limited, `intersects <#intersects>`_\ , `has_edge_degree <#has_edge_degree>`_\ , and `name_or_alias <#name_or_alias>`_ filter unsupported
-     - Limited, `__typename <#__typename>`_ output metafield unsupported
+     - Limited, `__typename <#typename>`_ output metafield unsupported
      - No
      - No
      - No
