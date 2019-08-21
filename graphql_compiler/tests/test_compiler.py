@@ -111,9 +111,9 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -148,10 +148,10 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.birthday AS birthday,
-                animal_1.net_worth AS net_worth
+                [Animal_1].birthday AS birthday,
+                [Animal_1].net_worth AS net_worth
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
         '''
         expected_cypher = SKIP_TEST
 
@@ -183,11 +183,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.net_worth >= :min_worth
+                [Animal_1].net_worth >= :min_worth
         '''
         expected_cypher = SKIP_TEST
 
@@ -303,11 +303,11 @@ class CompilerTests(unittest.TestCase):
 
             expected_sql = '''
                 SELECT
-                    animal_1.name AS animal_name
+                    [Animal_1].name AS animal_name
                 FROM
-                    animal AS animal_1
+                    db_1.schema_1.[Animal] AS [Animal_1]
                 WHERE
-                    animal_1.name %(operator)s :wanted
+                    [Animal_1].name %(operator)s :wanted
             ''' % {'operator': operator}  # nosec, the operators are hardcoded above
 
             # In Cypher, inequality comparisons use "<>" instead of "!=".
@@ -359,12 +359,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name >= :lower_bound
-                AND animal_1.name < :upper_bound
+                [Animal_1].name >= :lower_bound
+                AND [Animal_1].name < :upper_bound
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -886,12 +886,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS name
+                [Animal_1].name AS name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name >= :lower
-                AND animal_1.name <= :upper
+                [Animal_1].name >= :lower
+                AND [Animal_1].name <= :upper
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -988,12 +988,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                event_1.event_date AS event_date
+                [Event_1].event_date AS event_date
             FROM
-                event AS event_1
+                db_2.schema_1.[Event] AS [Event_1]
             WHERE
-                event_1.event_date >= :lower
-                AND event_1.event_date <= :upper
+                [Event_1].event_date >= :lower
+                AND [Event_1].event_date <= :upper
         '''
         expected_cypher = '''
             MATCH (Event___1:Event)
@@ -1033,12 +1033,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS name
+                [Animal_1].name AS name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name <= :upper
-                AND animal_1.name >= :lower
+                [Animal_1].name <= :upper
+                AND [Animal_1].name >= :lower
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -1091,14 +1091,14 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS name
+                [Animal_1].name AS name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name <= :upper
-                AND (animal_1.name LIKE '%' || :substring || '%')
-                AND animal_1.name IN ([EXPANDING_fauna])
-                AND animal_1.name >= :lower
+                [Animal_1].name <= :upper
+                AND ([Animal_1].name LIKE '%' + :substring + '%')
+                AND [Animal_1].name IN ([EXPANDING_fauna])
+                AND [Animal_1].name >= :lower
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -1140,13 +1140,13 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS name
+                [Animal_1].name AS name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name <= :upper
-                AND animal_1.name >= :lower0
-                AND animal_1.name >= :lower1
+                [Animal_1].name <= :upper
+                AND [Animal_1].name >= :lower0
+                AND [Animal_1].name >= :lower1
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2141,11 +2141,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name IN ([EXPANDING_wanted])
+                [Animal_1].name IN ([EXPANDING_wanted])
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2290,11 +2290,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name NOT IN ([EXPANDING_wanted])
+                [Animal_1].name NOT IN ([EXPANDING_wanted])
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2856,11 +2856,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                (animal_1.name LIKE '%' || :wanted || '%')
+                ([Animal_1].name LIKE '%' || :wanted || '%')
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2902,11 +2902,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                (animal_1.name LIKE '%' || :wanted || '%')
+                ([Animal_1].name LIKE '%' || :wanted || '%')
         '''
         expected_cypher = SKIP_TEST
 
@@ -6831,13 +6831,13 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.uuid >= :uuid_lower
-                AND animal_1.uuid <= :uuid_upper
-                AND animal_1.birthday >= :earliest_modified_date
+                [Animal_1].uuid >= :uuid_lower
+                AND [Animal_1].uuid <= :uuid_upper
+                AND [Animal_1].birthday >= :earliest_modified_date
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
