@@ -55,7 +55,7 @@ def split_into_page_query_and_remainder_query(
     )
 
     next_page_ast_with_parameters = ASTWithParameters(
-        parameterized_queries.page_query,
+        parameterized_queries.next_page_query,
         next_page_parameters,
     )
     remainder_ast_with_parameters = ASTWithParameters(
