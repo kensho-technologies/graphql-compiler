@@ -11,11 +11,11 @@ import pytz
 from .. import graphql_to_gremlin, graphql_to_match
 from ..compiler import compile_graphql_to_gremlin, compile_graphql_to_match
 from ..exceptions import GraphQLInvalidArgumentError
+from ..query_comparison import compare_gremlin, compare_match
 from ..query_formatting import insert_arguments_into_query
 from ..query_formatting.common import validate_argument_type
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .test_helpers import get_schema
-from ..query_comparison import compare_gremlin, compare_match
 
 
 EXAMPLE_GRAPHQL_QUERY = '''{

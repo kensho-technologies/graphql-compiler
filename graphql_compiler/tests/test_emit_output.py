@@ -18,9 +18,9 @@ from ..compiler.ir_lowering_common.common import OutputContextVertex
 from ..compiler.ir_lowering_match.utils import CompoundMatchQuery
 from ..compiler.match_query import convert_to_match_query
 from ..compiler.metadata import LocationInfo, QueryMetadataTable
+from ..query_comparison import compare_cypher, compare_gremlin, compare_match
 from ..schema import GraphQLDateTime
 from .test_helpers import get_schema
-from ..query_comparison import compare_cypher, compare_gremlin, compare_match
 
 
 class EmitMatchTests(unittest.TestCase):

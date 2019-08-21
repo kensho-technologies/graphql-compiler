@@ -1,12 +1,12 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
+from . import query_comparison
 from .compiler import (
     emit_cypher, emit_gremlin, emit_match, ir_lowering_cypher, ir_lowering_gremlin,
     ir_lowering_match, ir_lowering_sql
 )
 from .schema import schema_info
-from . import query_comparison
 
 
 # A backend is a compilation target (a language we can compile to)

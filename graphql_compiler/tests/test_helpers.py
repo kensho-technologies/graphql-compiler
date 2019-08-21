@@ -9,8 +9,6 @@ from sqlalchemy.dialects import mssql
 
 from .. import get_graphql_schema_from_orientdb_schema_data
 from ..compiler.subclass import compute_subclass_sets
-from ..debugging_utils import pretty_print_gremlin, pretty_print_match
-from ..query_formatting.graphql_formatting import pretty_print_graphql
 from ..schema import CUSTOM_SCALAR_TYPES, is_vertex_field_name
 from ..schema.schema_info import DirectJoinDescriptor, make_sqlalchemy_schema_info
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
@@ -209,6 +207,7 @@ def compare_input_metadata(test_case, expected, received):
 
         test_case.assertTrue(expected_value.is_same_type(received_value),
                              msg=u'{} != {}'.format(str(expected_value), str(received_value)))
+
 
 def get_schema():
     """Get a schema object for testing."""

@@ -13,9 +13,9 @@ from ..compiler import (
     compile_graphql_to_sql
 )
 from ..compiler.ir_lowering_sql.metadata import SqlMetadata
-from .test_data_tools.data_tool import get_animal_schema_sql_metadata
-from .test_helpers import (SKIP_TEST,  compare_input_metadata, get_schema)
 from ..query_comparison import compare_cypher, compare_gremlin, compare_match, compare_sql
+from .test_data_tools.data_tool import get_animal_schema_sql_metadata
+from .test_helpers import SKIP_TEST, compare_input_metadata, get_schema
 
 
 def check_test_data(

@@ -1,5 +1,6 @@
 from pprint import pformat
 import re
+
 import six
 
 from .debugging_utils import pretty_print_gremlin, pretty_print_match
@@ -40,6 +41,7 @@ def compare_ir_blocks(test_case, expected_blocks, received_blocks):
         test_case.assertEqual(expected, received,
                               msg=u'Blocks at position {} were different: {} vs {}\n\n'
                                   u'{}'.format(i, expected, received, mismatch_message))
+
 
 def compare_graphql(test_case, expected, received):
     """Compare the expected and received GraphQL code, ignoring whitespace."""

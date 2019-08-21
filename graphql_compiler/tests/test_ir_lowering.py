@@ -20,9 +20,9 @@ from ..compiler.ir_lowering_common.common import (
 from ..compiler.ir_lowering_match.utils import BetweenClause, CompoundMatchQuery
 from ..compiler.match_query import MatchQuery, convert_to_match_query
 from ..compiler.metadata import LocationInfo, QueryMetadataTable
+from ..query_comparison import compare_ir_blocks
 from ..schema import GraphQLDate, GraphQLDateTime
 from .test_helpers import get_schema
-from ..query_comparison import compare_ir_blocks
 
 
 def check_test_data(test_case, expected_object, received_object):
