@@ -45,7 +45,7 @@ def validate_argument_type(expected_type, value, name=None):
         expected_type: GraphQLType we expect. All GraphQLNonNull type wrappers are stripped.
         value: object that can be interpreted as being of that type
         name: optional string. If it is a string, it is the name of the argument and will be used to
-              provide more descriptive error messages.
+              a more descriptive error message if an error is raised.
     """
     stripped_type = strip_non_null_from_type(expected_type)
     if GraphQLString.is_same_type(stripped_type):
