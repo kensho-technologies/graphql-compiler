@@ -1,5 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Common test data and helper functions."""
+from collections import namedtuple
 from pprint import pformat
 import re
 
@@ -202,6 +203,28 @@ SCHEMA_TEXT = '''
         uuid: ID
     }
 '''
+
+
+# A class holding all necessary backend-specific testing utilities.
+BackendTester = namedtuple('BackendTester', (
+    # Backend to be tested
+    'backend'
+
+    # Returns whether two emitted queries are the same, up to differences in syntax/whitespace
+    'compare_queries',
+
+    # An instance of backend.SchemaInfoClass consistend with the standard testing schema.
+    'schema_info',
+
+    # Given a SchemaInfo and a connection pool to a database, install the given schema into
+    # the database, erasing content if necessary.
+    'setup_schema'
+
+    # Given a SchemaInfo, a dict representation of data fitting the schema, and a connection pool
+    # to a database with the same schema, install the given data into the database, erasing any
+    # existing data.
+    'setup_data'
+))
 
 
 def transform(emitted_output):
