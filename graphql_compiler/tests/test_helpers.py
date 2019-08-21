@@ -13,6 +13,7 @@ from sqlalchemy.dialects import mssql
 from .. import get_graphql_schema_from_orientdb_schema_data
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
+from ..query_formatting.graphql_formatting import pretty_print_graphql
 from ..schema import CUSTOM_SCALAR_TYPES, is_vertex_field_name
 from ..schema.sqlalchemy_schema import DirectJoinDescriptor, make_sqlalchemy_schema_info
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
@@ -229,6 +230,14 @@ def compare_ir_blocks(test_case, expected_blocks, received_blocks):
         test_case.assertEqual(expected, received,
                               msg=u'Blocks at position {} were different: {} vs {}\n\n'
                                   u'{}'.format(i, expected, received, mismatch_message))
+
+
+def compare_graphql(test_case, expected, received):
+    """Compare the expected and received GraphQL code, ignoring whitespace."""
+    msg = '\n{}\n\n!=\n\n{}'.format(
+        pretty_print_graphql(expected),
+        pretty_print_graphql(received))
+    compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
 def compare_match(test_case, expected, received, parameterized=True):
