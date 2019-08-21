@@ -26,7 +26,7 @@ def _raise_invalid_type_error(expected_python_type_name, value, name):
     if name is not None:
         error_message_prefix = u'Invalid type for argument {}.'.format(name)
     else:
-        error_message_prefix = u'Found element with invalid type.'
+        error_message_prefix = u'Found argument with invalid type.'
     error_message_middle = ' Expected {}. '.format(expected_python_type_name)
     error_message_suffix = u'Got value {} of type {}.'.format(value, type(value).__name__)
     error_message = error_message_prefix + error_message_middle + error_message_suffix
