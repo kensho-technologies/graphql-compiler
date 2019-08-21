@@ -11,7 +11,8 @@ import pytest
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...tests import test_backend
 from ...tests.test_helpers import generate_schema, generate_schema_graph
-from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
+from ..test_helpers import SCHEMA_TEXT, get_schema
+from ...query_comparison import compare_ignoring_whitespace
 from .integration_backend_config import (
     MATCH_BACKENDS, NEO4J_BACKENDS, REDISGRAPH_BACKENDS, SQL_BACKENDS
 )

@@ -8,7 +8,8 @@ from . import test_input_data
 from ..compiler import blocks, expressions, helpers
 from ..compiler.compiler_frontend import OutputMetadata, graphql_to_ir
 from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime, GraphQLDecimal
-from .test_helpers import compare_input_metadata, compare_ir_blocks, get_schema
+from .test_helpers import compare_input_metadata, get_schema
+from ..query_comparison import compare_ir_blocks
 
 
 def check_test_data(test_case, test_data, expected_blocks, expected_location_types):

@@ -1,8 +1,5 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Common test data and helper functions."""
-from pprint import pformat
-import re
-
 from graphql import GraphQLList, parse
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
 from graphql.utils.build_ast_schema import build_ast_schema
@@ -22,10 +19,6 @@ from ..schema_generation.orientdb.utils import (
 )
 from ..schema_generation.utils import amend_custom_scalar_types
 
-
-# The strings which we will be comparing have newlines and spaces we'd like to get rid of,
-# so we can compare expected and produced emitted code irrespective of whitespace.
-WHITESPACE_PATTERN = re.compile(u'[\t\n ]*', flags=re.UNICODE)
 
 # flag to indicate a test component should be skipped
 SKIP_TEST = 'SKIP'
@@ -204,70 +197,6 @@ SCHEMA_TEXT = '''
 '''
 
 
-def transform(emitted_output):
-    """Transform emitted_output into a unique representation, regardless of lines / indentation."""
-    return WHITESPACE_PATTERN.sub(u'', emitted_output)
-
-
-def _get_mismatch_message(expected_blocks, received_blocks):
-    """Create a well-formated error message indicating that two lists of blocks are mismatched."""
-    pretty_expected = pformat(expected_blocks)
-    pretty_received = pformat(received_blocks)
-    return u'{}\n\n!=\n\n{}'.format(pretty_expected, pretty_received)
-
-
-def compare_ir_blocks(test_case, expected_blocks, received_blocks):
-    """Compare the expected and received IR blocks."""
-    mismatch_message = _get_mismatch_message(expected_blocks, received_blocks)
-
-    if len(expected_blocks) != len(received_blocks):
-        test_case.fail(u'Not the same number of blocks:\n\n'
-                       u'{}'.format(mismatch_message))
-
-    for i in six.moves.xrange(len(expected_blocks)):
-        expected = expected_blocks[i]
-        received = received_blocks[i]
-        test_case.assertEqual(expected, received,
-                              msg=u'Blocks at position {} were different: {} vs {}\n\n'
-                                  u'{}'.format(i, expected, received, mismatch_message))
-
-
-def compare_graphql(test_case, expected, received):
-    """Compare the expected and received GraphQL code, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(
-        pretty_print_graphql(expected),
-        pretty_print_graphql(received))
-    compare_ignoring_whitespace(test_case, expected, received, msg)
-
-
-def compare_match(test_case, expected, received, parameterized=True):
-    """Compare the expected and received MATCH code, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(
-        pretty_print_match(expected, parameterized=parameterized),
-        pretty_print_match(received, parameterized=parameterized))
-    compare_ignoring_whitespace(test_case, expected, received, msg)
-
-
-def compare_sql(test_case, expected, received):
-    """Compare the expected and received SQL query, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(expected, received)
-    compare_ignoring_whitespace(test_case, expected, received, msg)
-
-
-def compare_gremlin(test_case, expected, received):
-    """Compare the expected and received Gremlin code, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(
-        pretty_print_gremlin(expected),
-        pretty_print_gremlin(received))
-    compare_ignoring_whitespace(test_case, expected, received, msg)
-
-
-def compare_cypher(test_case, expected, received):
-    """Compare the expected and received Cypher query, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(expected, received)
-    compare_ignoring_whitespace(test_case, expected, received, msg)
-
-
 def compare_input_metadata(test_case, expected, received):
     """Compare two dicts of input metadata, using proper GraphQL type comparison operators."""
     # First, assert that the sets of keys in both dicts are equal.
@@ -280,12 +209,6 @@ def compare_input_metadata(test_case, expected, received):
 
         test_case.assertTrue(expected_value.is_same_type(received_value),
                              msg=u'{} != {}'.format(str(expected_value), str(received_value)))
-
-
-def compare_ignoring_whitespace(test_case, expected, received, msg):
-    """Compare expected and received code, ignoring whitespace, with the given failure message."""
-    test_case.assertEqual(transform(expected), transform(received), msg=msg)
-
 
 def get_schema():
     """Get a schema object for testing."""
