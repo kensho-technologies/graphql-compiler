@@ -14,7 +14,7 @@ from .. import get_graphql_schema_from_orientdb_schema_data
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..schema import CUSTOM_SCALAR_TYPES, is_vertex_field_name
-from ..schema.sqlalchemy_schema import DirectJoinDescriptor, make_sqlalchemy_schema_info
+from ..schema.schema_info import DirectJoinDescriptor, make_sqlalchemy_schema_info
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
 from ..schema_generation.orientdb.utils import (
     ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
