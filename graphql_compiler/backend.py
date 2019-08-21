@@ -3,9 +3,9 @@ from compiler import (
     ir_lowering_match, ir_lowering_sql
 )
 from compiler.compiler_frontend import graphql_to_ir
-from tests import test_helpers  # TODO(bojanserafimov): Move these helpers out of test helpers
 
 from schema import schema_info
+from tests import test_helpers  # TODO(bojanserafimov): Move these helpers out of test helpers
 
 
 # A backend is a compilation target (a language we can compile to)
