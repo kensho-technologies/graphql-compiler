@@ -37,8 +37,9 @@ Backend = namedtuple('Backend', (
     # that the schema_inspector will be able to reconstruct the same schema.
     'setup_schema'
 
-    # Given a SchemaInfo, a Data, and a connection pool to a database with the same schema,
-    # modify the database such that the data_inspector will reconstruct the same data.
+    # Given a SchemaInfo, a dict representation of some data, and a connection pool to a
+    # database with the same schema, modify the database such that the data_inspector will
+    # reconstruct the same data.
     'setup_data'
 ))
 
