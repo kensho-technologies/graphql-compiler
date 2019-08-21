@@ -15,9 +15,10 @@ from .sql_tree import SqlNode, SqlQueryTree
 ##############
 
 
-def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
+def lower_ir(schema_info, ir):
     """Lower the IR blocks into a form that can be represented by a SQL query.
 
+    # XXX
     Args:
         ir_blocks: list of IR blocks to lower into SQL-compatible form
         query_metadata_table: QueryMetadataTable object containing all metadata collected during
@@ -42,15 +43,15 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     Returns:
         tree representation of IR blocks for recursive traversal by SQL backend.
     """
-    _validate_all_blocks_supported(ir_blocks, query_metadata_table)
-    construct_result = _get_construct_result(ir_blocks)
-    query_path_to_location_info = _map_query_path_to_location_info(query_metadata_table)
+    _validate_all_blocks_supported(ir.ir_blocks, ir.query_metadata_table)
+    construct_result = _get_construct_result(ir.ir_blocks)
+    query_path_to_location_info = _map_query_path_to_location_info(ir.query_metadata_table)
     query_path_to_output_fields = _map_query_path_to_outputs(
         construct_result, query_path_to_location_info)
-    block_index_to_location = _map_block_index_to_location(ir_blocks)
+    block_index_to_location = _map_block_index_to_location(ir.ir_blocks)
 
     # perform lowering steps
-    ir_blocks = lower_unary_transformations(ir_blocks)
+    ir_blocks = lower_unary_transformations(ir.ir_blocks)
     ir_blocks = lower_unsupported_metafield_expressions(ir_blocks)
 
     # iteratively construct SqlTree
@@ -68,7 +69,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                     u'Encountered QueryRoot {} but tree root is already set to {} during '
                     u'construction of SQL query tree for IR blocks {} with query '
                     u'metadata table {}'.format(
-                        block, tree_root, ir_blocks, query_metadata_table))
+                        block, tree_root, ir_blocks, ir.query_metadata_table))
             tree_root = SqlNode(block=block, query_path=query_path)
             query_path_to_node[query_path] = tree_root
         elif isinstance(block, blocks.Filter):
@@ -76,7 +77,8 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
         else:
             raise AssertionError(
                 u'Unsupported block {} unexpectedly passed validation for IR blocks '
-                u'{} with query metadata table {} .'.format(block, ir_blocks, query_metadata_table))
+                u'{} with query metadata table {} .'
+                .format(block, ir_blocks, ir.query_metadata_table))
 
     return SqlQueryTree(tree_root, query_path_to_location_info, query_path_to_output_fields,
                         query_path_to_filters, query_path_to_node)

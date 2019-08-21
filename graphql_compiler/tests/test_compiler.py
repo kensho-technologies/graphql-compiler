@@ -5,7 +5,6 @@ import unittest
 
 from graphql import GraphQLID, GraphQLString
 import six
-from sqlalchemy.dialects import sqlite
 
 from . import test_input_data
 from ..compiler import (
@@ -13,10 +12,9 @@ from ..compiler import (
     compile_graphql_to_sql
 )
 from ..compiler.ir_lowering_sql.metadata import SqlMetadata
-from .test_data_tools.data_tool import get_animal_schema_sql_metadata
 from .test_helpers import (
     SKIP_TEST, compare_cypher, compare_gremlin, compare_input_metadata, compare_match, compare_sql,
-    get_schema
+    get_schema, get_sqlalchemy_schema_info
 )
 
 
@@ -58,19 +56,11 @@ def check_test_data(
         pass
     elif expected_sql == NotImplementedError:
         with test_case.assertRaises(NotImplementedError):
-            compile_graphql_to_sql(
-                test_case.schema,
-                test_data.graphql_input,
-                test_case.sql_metadata,
-                type_equivalence_hints=schema_based_type_equivalence_hints,
-            )
+            compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
     else:
-        result = compile_graphql_to_sql(
-            test_case.schema,
-            test_data.graphql_input,
-            test_case.sql_metadata,
-            type_equivalence_hints=schema_based_type_equivalence_hints)
-        compare_sql(test_case, expected_sql, str(result.query))
+        result = compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
+        string_result = str(result.query.compile(dialect=test_case.sql_schema_info.dialect))
+        compare_sql(test_case, expected_sql, string_result)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata,
                                result.input_metadata)
@@ -96,8 +86,7 @@ class CompilerTests(unittest.TestCase):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
         self.schema = get_schema()
-        _, sqlalchemy_metadata = get_animal_schema_sql_metadata()
-        self.sql_metadata = SqlMetadata(sqlite.dialect.name, sqlalchemy_metadata)
+        self.sql_schema_info = get_sqlalchemy_schema_info()
 
     def test_immediate_output(self):
         test_data = test_input_data.immediate_output()
@@ -947,12 +936,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.birthday AS birthday
+                [Animal_1].birthday AS birthday
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.birthday >= :lower
-                AND animal_1.birthday <= :upper
+                [Animal_1].birthday >= :lower
+                AND [Animal_1].birthday <= :upper
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)

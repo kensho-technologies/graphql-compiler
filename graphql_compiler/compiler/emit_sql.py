@@ -30,15 +30,17 @@ CompilationContext = namedtuple('CompilationContext', (
     # 'query_path_to_node': Dict[Tuple[str, ...], SqlNode], mapping from each
     # query_path to the SqlNode located at that query_path.
     'query_path_to_node',
+    # XXX:w
     # 'compiler_metadata': SqlMetadata, SQLAlchemy metadata about Table objects, and
     # further backend specific configuration.
-    'compiler_metadata',
+    'sql_schema_info',
 ))
 
 
-def emit_code_from_ir(sql_query_tree, compiler_metadata):
+def emit_code_from_ir(sql_schema_info, sql_query_tree):
     """Return a SQLAlchemy Query from a passed SqlQueryTree.
 
+    # XXX
     Args:
         sql_query_tree: SqlQueryTree, tree representation of the query to emit.
         compiler_metadata: SqlMetadata, SQLAlchemy specific metadata.
@@ -52,7 +54,7 @@ def emit_code_from_ir(sql_query_tree, compiler_metadata):
         query_path_to_output_fields=sql_query_tree.query_path_to_output_fields,
         query_path_to_filters=sql_query_tree.query_path_to_filters,
         query_path_to_node=sql_query_tree.query_path_to_node,
-        compiler_metadata=compiler_metadata,
+        sql_schema_info=sql_schema_info,
     )
 
     return _query_tree_to_query(sql_query_tree.root, context)
@@ -85,7 +87,7 @@ def _create_table_and_update_context(node, context):
         Table, the newly aliased SQLAlchemy table.
     """
     schema_type_name = sql_context_helpers.get_schema_type_name(node, context)
-    table = context.compiler_metadata.get_table(schema_type_name).alias()
+    table = context.sql_schema_info.tables[schema_type_name].alias()
     context.query_path_to_selectable[node.query_path] = table
     return table
 

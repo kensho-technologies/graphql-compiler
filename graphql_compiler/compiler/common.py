@@ -143,6 +143,6 @@ def _compile_graphql_generic(backend, schema_info, graphql_string):
     query = backend.emit_func(schema_info, lowered_ir_blocks)
     return CompilationResult(
         query=query,
-        language=language,
+        language=backend.language,
         output_metadata=ir_and_metadata.output_metadata,
         input_metadata=ir_and_metadata.input_metadata)

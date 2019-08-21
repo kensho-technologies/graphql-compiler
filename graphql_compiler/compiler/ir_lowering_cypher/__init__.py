@@ -16,9 +16,10 @@ from .ir_lowering import (
 # Public API #
 ##############
 
-def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
+def lower_ir(schema_info, ir):
     """Lower the IR into an IR form that can be represented in Cypher queries.
 
+    # XXX
     Args:
         ir_blocks: list of IR blocks to lower into Cypher-compatible form
         query_metadata_table: QueryMetadataTable object containing all metadata collected during
@@ -43,23 +44,24 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     Returns:
         CypherQuery object
     """
-    sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
+    sanity_check_ir_blocks_from_frontend(ir.ir_blocks, ir.query_metadata_table)
 
     ir_blocks = insert_explicit_type_bounds(
-        ir_blocks, query_metadata_table,
-        type_equivalence_hints=type_equivalence_hints)
+        ir.ir_blocks, ir.query_metadata_table,
+        type_equivalence_hints=schema_info.type_equivalence_hints)
 
-    ir_blocks = remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_table)
-    ir_blocks = lower_context_field_existence(ir_blocks, query_metadata_table)
+    ir_blocks = remove_mark_location_after_optional_backtrack(ir_blocks, ir.query_metadata_table)
+    ir_blocks = lower_context_field_existence(ir_blocks, ir.query_metadata_table)
     ir_blocks = replace_local_fields_with_context_fields(ir_blocks)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
     ir_blocks = merge_consecutive_filter_clauses(ir_blocks)
     ir_blocks = renumber_locations_to_one(ir_blocks)
 
     cypher_query = convert_to_cypher_query(
-        ir_blocks, query_metadata_table, type_equivalence_hints=type_equivalence_hints)
+        ir_blocks, ir.query_metadata_table,
+        type_equivalence_hints=schema_info.type_equivalence_hints)
 
     cypher_query = move_filters_in_optional_locations_to_global_operations(
-        cypher_query, query_metadata_table)
+        cypher_query, ir.query_metadata_table)
 
     return cypher_query
