@@ -8,7 +8,8 @@ import sqlalchemy
 from . import is_vertex_field_name
 
 
-# Describes the intent to join two tables on equality of a column of theirs.
+# Describes the intent to join two tables using the specified columns.
+#
 # The resulting join expression could be something like:
 # JOIN origin_table.from_column = destination_table.to_column
 #
@@ -93,7 +94,7 @@ def make_sqlalchemy_schema_info(schema, dialect, tables, join_descriptors, valid
                                              .format(type_name, type(table)))
 
                     # Check existence of all fields
-                    for field_name, field_type in six.iteritems(graphql_type.fields):
+                    for field_name in six.iterkeys(graphql_type.fields):
                         if is_vertex_field_name(field_name):
                             if field_name not in join_descriptors.get(type_name, {}):
                                 raise AssertionError(u'No join descriptor was specified for vertex '
