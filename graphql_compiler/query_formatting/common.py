@@ -21,7 +21,19 @@ from .sql_formatting import insert_arguments_into_sql_query
 # Public API
 ######
 
+def _raise_invalid_type_error(expected_python_type_name, value, name):
+    """Raise a GraphQLInvalidArgumentError that states that the argument type is invalid."""
+    if name is not None:
+        error_message_prefix = u'Invalid type for argument {}.'.format(name)
+    else:
+        error_message_prefix = u'Found element with invalid type.'
+    error_message_suffix = u'Got value {} of type {}.'.format(value, type(value).__name__)
+    error_message_middle = ' Expected {}. '.format(expected_python_type_name)
+    error_message = error_message_prefix + error_message_middle + error_message_suffix
+    raise GraphQLInvalidArgumentError(error_message)
 
+
+# TODO(pmantica1): Make name param required in validate_argument_type in major version bump.
 def validate_argument_type(expected_type, value, name=None):
     """Ensure the value has the expected type and is usable in any of our backends, or raise errors.
 
@@ -35,42 +47,31 @@ def validate_argument_type(expected_type, value, name=None):
         name: optional string. If it is a string, it is the name of the argument and will be used to
               provide more descriptive error messages.
     """
-    def _get_invalid_type_error_message(expected_python_type_name):
-        """Return a string stating that the argument type is invalid."""
-        # TODO(pmantica1): Make name param required in valida_argument_type in major version bump.
-        if name is not None:
-            error_message_prefix = u'Invalid type for argument {}.'.format(name)
-        else:
-            error_message_prefix = u'Found element with invalid type.'
-        error_message_suffix = u'Got value {} of type {}.'.format(value, type(value).__name__)
-        error_message_middle = ' Expected {}. '.format(expected_python_type_name)
-        return error_message_prefix + error_message_middle + error_message_suffix
-
     stripped_type = strip_non_null_from_type(expected_type)
     if GraphQLString.is_same_type(stripped_type):
         if not isinstance(value, six.string_types):
-            raise GraphQLInvalidArgumentError(_get_invalid_type_error_message('string'))
+            _raise_invalid_type_error('string', value, name)
     elif GraphQLID.is_same_type(stripped_type):
         # IDs can be strings or numbers, but the GraphQL library coerces them to strings.
         # We will follow suit and treat them as strings.
         if not isinstance(value, six.string_types):
-            raise GraphQLInvalidArgumentError(_get_invalid_type_error_message('string'))
+            _raise_invalid_type_error('string', value, name)
     elif GraphQLFloat.is_same_type(stripped_type):
         if not isinstance(value, float):
-            raise GraphQLInvalidArgumentError(_get_invalid_type_error_message('float'))
+            _raise_invalid_type_error('float', value, name)
     elif GraphQLInt.is_same_type(stripped_type):
         # Special case: in Python, isinstance(True, int) returns True.
         # Safeguard against this with an explicit check against bool type.
         if isinstance(value, bool) or not isinstance(value, six.integer_types):
-            raise GraphQLInvalidArgumentError(_get_invalid_type_error_message('int'))
+            _raise_invalid_type_error('int', value, name)
     elif GraphQLBoolean.is_same_type(stripped_type):
         if not isinstance(value, bool):
-            raise GraphQLInvalidArgumentError(_get_invalid_type_error_message('bool'))
+            _raise_invalid_type_error('bool', value, name)
     elif GraphQLDecimal.is_same_type(stripped_type):
         # Types we support are int, float, and Decimal, but not bool.
         # isinstance(True, int) returns True, so we explicitly forbid bool.
         if isinstance(value, bool):
-            raise GraphQLInvalidArgumentError(_get_invalid_type_error_message('decimal'))
+            _raise_invalid_type_error('decimal', value, name)
         if not isinstance(value, decimal.Decimal):
             try:
                 decimal.Decimal(value)
@@ -79,21 +80,21 @@ def validate_argument_type(expected_type, value, name=None):
     elif GraphQLDate.is_same_type(stripped_type):
         # Datetimes pass as instances of date. We want to explicitly only allow dates.
         if isinstance(value, datetime.datetime) or not isinstance(value, datetime.date):
-            raise GraphQLInvalidArgumentError(_get_invalid_type_error_message('date'))
+            _raise_invalid_type_error('date', value, name)
         try:
             stripped_type.serialize(value)
         except ValueError as e:
             raise GraphQLInvalidArgumentError(e)
     elif GraphQLDateTime.is_same_type(stripped_type):
         if not isinstance(value, (datetime.date, arrow.Arrow)):
-            raise GraphQLInvalidArgumentError(_get_invalid_type_error_message('datetime'))
+            _raise_invalid_type_error('datetime', value, name)
         try:
             stripped_type.serialize(value)
         except ValueError as e:
             raise GraphQLInvalidArgumentError(e)
     elif isinstance(stripped_type, GraphQLList):
         if not isinstance(value, list):
-            raise GraphQLInvalidArgumentError(_get_invalid_type_error_message('list'))
+            _raise_invalid_type_error('list', value, name)
         inner_type = strip_non_null_from_type(stripped_type.of_type)
         for element in value:
             validate_argument_type(inner_type, element, name=name)
