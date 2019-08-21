@@ -20,12 +20,9 @@ DirectJoinDescriptor = namedtuple('DirectJoinDescriptor', (
 ))
 
 
-# TODO(bojanserafimov): Define a JunctionJoinDescriptor
-
-
 # Complete schema information sufficient to compile GraphQL queries to SQLAlchemy
 #
-# It describes the tables that correspond to each type (object type, interface type or union type),
+# It describes the tables that correspond to each type (object type or interface type),
 # and gives instructions on how to perform joins for each vertex field. The property fields on each
 # type are implicitly mapped to columns with the same name on the corresponding table.
 #
@@ -37,8 +34,8 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
     # GraphQLSchema
     'schema',
 
-    # sqlalchemy.engine.interfaces.Dialect, specifying the flavor of database we wish
-    # to compile for (e.g. Postgres, MSSQL, etc.).
+    # sqlalchemy.engine.interfaces.Dialect, specifying the dialect we are compiling for
+    # (e.g. sqlalchemy.dialects.mssql.dialect()).
     'dialect',
 
     # dict mapping every graphql object type or interface type name in the schema to
