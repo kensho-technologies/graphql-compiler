@@ -42,7 +42,7 @@ def find_name():
 
 def find_long_description():
     """Return the content of the README.md file."""
-    return read_file('../README.md')
+    return read_file('../README.rst')
 
 
 setup(
@@ -50,7 +50,7 @@ setup(
     version=find_version(),
     description='Turn complex GraphQL queries into optimized database queries.',
     long_description=find_long_description(),
-    long_description_content_type='text/markdown',
+    long_description_content_type='text/x-rst',
     url='https://github.com/kensho-technologies/graphql-compiler',
     author='Kensho Technologies, LLC.',
     author_email='graphql-compiler-maintainer@kensho.com',
