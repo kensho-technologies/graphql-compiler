@@ -423,10 +423,11 @@ def get_sqlalchemy_schema_info():
         ('Event', 'Union__BirthEvent__Event__FeedingEvent'),
         ('FoodOrSpecies', 'Union__Food__FoodOrSpecies__Species'),
     ]
-    subclasses = compute_subclass_sets(schema, type_equivalence_hints={
+    type_equivalence_hints = {
         schema.get_type(key): schema.get_type(value)
         for key, value in type_equivalence_hint_list
-    })
+    }
+    subclasses = compute_subclass_sets(schema, type_equivalence_hints=type_equivalence_hints)
     for type_name, union_name in type_equivalence_hint_list:
         subclasses[union_name] = subclasses[type_name]
         subclasses[union_name].add(type_name)
@@ -514,7 +515,7 @@ def get_sqlalchemy_schema_info():
                 join_descriptors.setdefault(subclass, {})[edge_name] = join_info
 
     return make_sqlalchemy_schema_info(
-        schema, mssql.dialect(), tables, join_descriptors)
+        schema, type_equivalence_hints, mssql.dialect(), tables, join_descriptors)
 
 
 def generate_schema_graph(orientdb_client):
