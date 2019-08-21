@@ -287,6 +287,7 @@ def get_schema():
 
 
 def get_type_equivalence_hints():
+    """Get the default type_equivalence_hints used for testing."""
     schema = get_schema()
     return {
         schema.get_type(key): schema.get_type(value)
@@ -298,6 +299,7 @@ def get_type_equivalence_hints():
 
 
 def get_common_schema_info():
+    """Get the default CommonSchemaInfo used for testing."""
     return CommonSchemaInfo(get_schema(), get_type_equivalence_hints())
 
 
