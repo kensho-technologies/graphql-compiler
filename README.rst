@@ -195,7 +195,7 @@ Definitions
    edge, whereas ones with the prefix :code:`in_` denote vertex fields
    connected by an inbound edge.
 
-   .. code:: graphql
+   .. code::
 
        {
            Animal {
@@ -250,7 +250,7 @@ query.
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -304,7 +304,7 @@ For example, suppose we have two :code:`Person` vertices with names
 
 Then the following query:
 
-.. code:: graphql
+.. code::
 
     {
       Person {
@@ -350,7 +350,7 @@ which the output value should be returned.
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -396,7 +396,7 @@ See the `\_x\_count <#x-count>`__ section for more details.
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -488,7 +488,7 @@ reasons:
 - The :code:`in_Animal_ParentOf` scope, which is within a scope marked :code:`@fold`, expands two
   vertex fields instead of at most one.
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -512,7 +512,7 @@ The following GraphQL query is similarly *not allowed* and will produce
 a :code:`GraphQLCompilationError`, since the :code:`_x_count` field is not
 within the innermost scope in the :code:`@fold`.
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -530,7 +530,7 @@ within the innermost scope in the :code:`@fold`.
 Moving the :code:`_x_count` field to the innermost scope results in the
 following valid use of :code:`@fold`:
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -549,7 +549,7 @@ Here is an example of query whose :code:`@fold` does not output any data; it
 returns the names of all animals that have more than :code:`count` children
 whose names contain the substring :code:`substr`:
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -576,7 +576,7 @@ To supply a tagged value to a :code:`@filter` directive, place the tag name
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -641,7 +641,7 @@ into the final query before it can be executed against the database.
 
 Consider the following query:
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -665,7 +665,7 @@ directives.
 
 Consider the following query:
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -752,7 +752,7 @@ Say the user wants to fetch the names of the children and grandchildren
 of each :code:`Animal`. That could be accomplished by running the following
 two queries and concatenating their results:
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -763,7 +763,7 @@ two queries and concatenating their results:
         }
     }
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -782,7 +782,7 @@ Instead of concatenating the results of multiple queries, the user can
 simply use the :code:`@recurse` directive. The following query returns the
 child and grandchild descendants:
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -822,7 +822,7 @@ Now, let's see what happens when we eliminate the outer
 :code:`out_Animal_ParentOf` vertex field and simply have the :code:`@recurse`
 applied on the :code:`out_Animal_ParentOf` in the root vertex field scope:
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -901,7 +901,7 @@ Example Use
 Equal to (:code:`=`):
 '''''''''''''''''''''
 
-.. code:: graphql
+.. code::
 
     {
         Species {
@@ -945,7 +945,7 @@ Allows you to filter on vertices which contain the exact string
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal @filter(op_name: "name_or_alias", value: ["$wanted_name_or_alias"]) {
@@ -971,7 +971,7 @@ between
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -1025,7 +1025,7 @@ not\_in\_collection
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -1050,7 +1050,7 @@ has\_substring
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -1074,7 +1074,7 @@ contains
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -1099,7 +1099,7 @@ not\_contains
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -1124,7 +1124,7 @@ intersects
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -1149,7 +1149,7 @@ has\_edge\_degree
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -1196,7 +1196,7 @@ is\_null
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -1220,7 +1220,7 @@ is\_not\_null
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -1248,7 +1248,7 @@ represented with GraphQL inline fragments.
 Example Use
 ~~~~~~~~~~~
 
-.. code:: graphql
+.. code::
 
     {
         Species {
@@ -1269,7 +1269,7 @@ query, the user must choose which of the types in the
 vertices at that scope that are not of type :code:`Food` are filtered out
 and discarded.
 
-.. code:: graphql
+.. code::
 
     {
         Species {
@@ -1314,7 +1314,7 @@ property field.
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Entity {
@@ -1390,7 +1390,7 @@ the compiler:
 Example Use
 ^^^^^^^^^^^
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -1407,7 +1407,7 @@ its name, and the number and names of its children. While the output
 type of the :code:`child_names` selection is a list of strings, the output
 type of the :code:`number_of_children` selection is an integer.
 
-.. code:: graphql
+.. code::
 
     {
         Animal {
@@ -1455,7 +1455,7 @@ edges of a particular type. There are situations in which filtering with
 :code:`has_edge_degree` and filtering using :code:`=` on :code:`_x_count` produce
 equivalent queries. Here is one such pair of queries:
 
-.. code:: graphql
+.. code::
 
     {
         Species {
@@ -1468,7 +1468,7 @@ equivalent queries. Here is one such pair of queries:
 
 and
 
-.. code:: graphql
+.. code::
 
     {
         Species {
@@ -1491,7 +1491,7 @@ When we add additional filtering within the :code:`Animal` vertices of the
 :code:`in_Animal_OfSpecies` vertex field, this distinction becomes very
 important. Compare the following two queries:
 
-.. code:: graphql
+.. code::
 
     {
         Species {
@@ -1506,7 +1506,7 @@ important. Compare the following two queries:
 
 versus
 
-.. code:: graphql
+.. code::
 
     {
         Species {
@@ -1540,7 +1540,7 @@ The GraphQL schema used with the compiler must contain the custom
 directives and custom :code:`Date` and :code:`DateTime` scalar types defined by
 the compiler:
 
-.. code:: graphql
+.. code::
 
     directive @recurse(depth: Int!) on FIELD
 
@@ -1666,7 +1666,7 @@ edges of type :code:`E`.
 
 Consider the GraphQL query:
 
-.. code:: graphql
+.. code::
 
     {
         S {
@@ -1720,7 +1720,7 @@ result, as they are both valid results.
 Users may apply the :code:`@output_source` directive on the last scope of
 the query to alter this behavior:
 
-.. code:: graphql
+.. code::
 
     {
         S {
@@ -1745,7 +1745,7 @@ at :code:`out_E`, where the directive is applied:
 Conceptually, applying the :code:`@output_source` directive makes it as if
 the query were written in the opposite order:
 
-.. code:: graphql
+.. code::
 
     {
         T {
@@ -1940,7 +1940,7 @@ For example, suppose there is a table in the database called
 :code:`animal_table` and it has a column called :code:`animal_name`. If the
 desired schema has type
 
-.. code:: graphql
+.. code::
 
     type Animal {
         name: String
@@ -1986,7 +1986,7 @@ directives.
 -  A *"simple"* optional is a vertex with an :code:`@optional` directive
    that does not expand any vertex fields within it. For example:
 
-   .. code:: graphql
+   .. code::
 
        {
            Animal {
@@ -2140,7 +2140,7 @@ GraphQL and Gremlin type systems:
 
 Assume the following GraphQL schema:
 
-.. code:: graphql
+.. code::
 
     type Animal {
         name: String
@@ -2173,7 +2173,7 @@ Setting :code:`type_equivalence_hints = { Animal: AnimalCatDog }` during
 compilation would enable the use of a :code:`@fold` on the
 :code:`adjacent_animal` vertex field of :code:`Foo`:
 
-.. code:: graphql
+.. code::
 
     {
         Foo {
