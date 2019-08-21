@@ -461,21 +461,21 @@ Constraints and Rules
 -  Use of type coercions or :code:`@filter` at or within the vertex field
    marked :code:`@fold` is allowed. The order of operations is conceptually
    as follows:
--  First, type coercions and filters (except :code:`@filter` on the
-   :code:`_x_count` meta field) are applied, and any data that does not
-   satisfy such coercions and filters is discarded. At this point, the
-   size of the fold (i.e. its number of results) is fixed.
--  Then, any :code:`@filter` directives on the :code:`_x_count` meta field are
-   applied, allowing filtering of result sets based on the fold size.
-   Any result sets that do not match these filters are discarded.
--  Finally, if the result set was not discarded by the previous step,
-   :code:`@output` directives are processed, selecting folded data for
-   output.
+
+   -  First, type coercions and filters (except :code:`@filter` on the
+      :code:`_x_count` meta field) are applied, and any data that does not
+      satisfy such coercions and filters is discarded. At this point, the
+      size of the fold (i.e. its number of results) is fixed.
+   -  Then, any :code:`@filter` directives on the :code:`_x_count` meta field are
+      applied, allowing filtering of result sets based on the fold size.
+      Any result sets that do not match these filters are discarded.
+   -  Finally, if the result set was not discarded by the previous step,
+      :code:`@output` directives are processed, selecting folded data for
+      output.
 -  If the compiler is able to prove that a type coercion in the
    :code:`@fold` scope is actually a no-op, it may optimize it away. See the
-   `Optional type_equivalence_hints compilation
-   parameter <#optional-type-equivalence-hints-parameter>`__ section for
-   more details.
+   `Optional type_equivalence_hints compilation parameter
+   <#optional-type-equivalence-hints-parameter>`__ section for more details.
 
 Example
 ^^^^^^^
@@ -722,15 +722,15 @@ Constraints and Rules
    :code:`@filter` checks if the :code:`@optional` field was assigned a value.
    If no value was assigned to the :code:`@optional` field, comparisons
    against the tagged parameter from within that field return :code:`True`.
--  For example, assuming :code:`%from_optional` originates from an
-   :code:`@optional` scope, when no value is assigned to the :code:`@optional`
-   field:
 
-   -  using :code:`@filter(op_name: "=", value: ["%from_optional"])` is
-      equivalent to not having the filter at all;
-   -  using
-      :code:`@filter(op_name: "between", value: ["$lower", "%from_optional"])`
-      is equivalent to :code:`@filter(op_name: ">=", value: ["$lower"])`.
+   -  For example, assuming :code:`%from_optional` originates from an
+      :code:`@optional` scope, when no value is assigned to the :code:`@optional`
+      field:
+
+      -  using :code:`@filter(op_name: "=", value: ["%from_optional"])` is
+         equivalent to not having the filter at all;
+      -  using :code:`@filter(op_name: "between", value: ["$lower", "%from_optional"])`
+         is equivalent to :code:`@filter(op_name: ">=", value: ["$lower"])`.
 
 -  Using a :code:`@tag` and a :code:`@filter` that references the tag within the
    same vertex is allowed, so long as the two do not appear on the exact
@@ -845,10 +845,11 @@ Constraints and Rules
 -  "The types must work out" -- when applied within a scope of type
    :code:`A`, to a vertex field of type :code:`B`, at least one of the following
    must be true:
--  :code:`A` is a GraphQL union;
--  :code:`B` is a GraphQL interface, and :code:`A` is a type that implements
-   that interface;
--  :code:`A` and :code:`B` are the same type.
+
+   -  :code:`A` is a GraphQL union;
+   -  :code:`B` is a GraphQL interface, and :code:`A` is a type that implements
+      that interface;
+   -  :code:`A` and :code:`B` are the same type.
 -  :code:`@recurse` can only be applied to vertex fields other than the root
    vertex field of a query.
 -  Cannot be used within a scope marked :code:`@optional` or :code:`@fold`.
@@ -1595,9 +1596,10 @@ to keep in mind:
     relationships of :code:`A` with its superclasses. In this case, it is recommended to create a
     GraphQL union type :code:`A | B`, and to use that GraphQL union type for any vertex fields
     that in OrientDB would be of type :code:`A`.
-  - If it is impossible to avoid having two abstract OrientDB classes :code:`A` and :code:`B`
-    such that :code:`B` inherits from :code:`A`, you similarly have two options: - You may choose to
-    represent :code:`B` as a GraphQL type that can implement the GraphQL interface corresponding
+- If it is impossible to avoid having two abstract OrientDB classes :code:`A` and :code:`B`
+  such that :code:`B` inherits from :code:`A`, you similarly have two options:
+
+  - You may choose to represent :code:`B` as a GraphQL type that can implement the GraphQL interface corresponding
     to :code:`A`. This makes the GraphQL schema preserve the inheritance relationship between
     :code:`A` and :code:`B`, but sacrifices the ability for other GraphQL types to inherit from
     :code:`B`.
@@ -1629,15 +1631,16 @@ The compiler abides by the following principles:
 
   - :code:`gremlin`, :code:`MATCH` and :code:`SQL` return data in a tabular format, where each
     result is a row of the table, and fields marked for output are columns.
-- However,future compilation targets may have a different format. For example,
-  each result may appear in the nested tree format used by the standard
-  GraphQL specification.
+  - However, future compilation targets may have a different format. For example,
+    each result may appear in the nested tree format used by the standard
+    GraphQL specification.
 - Each such result must satisfy all directives and types in its corresponding GraphQL query.
 - The returned list of results is **not** guaranteed to be complete!
-- In other words, there may have been additional result sets that satisfy all directives and
-  types in the corresponding GraphQL query, but were not returned by the database.
-- However, compilation target implementations are encouraged to return complete results if at all
-  practical. The :code:`MATCH` compilation target is guaranteed to produce complete results.
+
+  - In other words, there may have been additional result sets that satisfy all directives and
+    types in the corresponding GraphQL query, but were not returned by the database.
+  - However, compilation target implementations are encouraged to return complete results if at all
+    practical. The :code:`MATCH` compilation target is guaranteed to produce complete results.
 
 Completeness of returned results
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1708,7 +1711,7 @@ resembling the following:
 
 Due to limitations in the underlying query language, :code:`gremlin` will by
 default produce at most one result for each of the starting locations in
-the query. The above GraphQL query started at the type :code:`S`, so each
+the query. The above Gr aphQL query started at the type :code:`S`, so each
 :code:`s_name` in the returned result list is therefore distinct.
 Furthermore, there is no guarantee (and no way to know ahead of time)
 whether :code:`x` or :code:`y` will be returned as the :code:`t_name` value in each
