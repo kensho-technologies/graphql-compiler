@@ -9,7 +9,8 @@ from ...compiler.metadata import FilterInfo
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.filter_selectivity_utils import (
     ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity, _combine_filter_selectivities,
-    _get_filter_selectivity
+    _create_integer_interval, _get_filter_selectivity, _get_intersection_of_intervals,
+    adjust_counts_for_filters
 )
 from ...cost_estimation.statistics import LocalStatistics
 from ..test_helpers import generate_schema_graph
@@ -132,6 +133,163 @@ class CostEstimationTests(unittest.TestCase):
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_traversal_provided_both_statistics(self):
+        """Test type coercion provided both class_counts and vertex_edge_vertex_counts."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_input = '''{
+            Animal {
+                out_Entity_Related {
+                    ... on Event {
+                        uuid @output(out_name: "event_id")
+                    }
+                }
+            }
+        }'''
+        params = {}
+
+        count_data = {
+            'Entity': 19,
+            'Animal': 3,
+            'Event': 7,
+            'Entity_Related': 11
+        }
+        vertex_edge_vertex_data = {
+            ('Animal', 'Entity_Related', 'Event'): 2
+        }
+        statistics = LocalStatistics(
+            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+        )
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, statistics, graphql_input, params
+        )
+
+        # For each Animal, vertex_edge_vertex counts tell us we should expect (2.0 / 3.0) Events
+        # when traversing using Entity_Related. This totals to 3.0 * (2.0 / 3.0) results.
+        expected_cardinality_estimate = 3.0 * (2.0 / 3.0)
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_traversal_with_no_results(self):
+        """Test type coercion where no results should be expected."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_input = '''{
+            Animal {
+                out_Entity_Related {
+                    ... on Event {
+                        uuid @output(out_name: "event_id")
+                    }
+                }
+            }
+        }'''
+        params = {}
+
+        count_data = {
+            'Entity': 19,
+            'Animal': 3,
+            'Event': 7,
+            'Entity_Related': 11
+        }
+        vertex_edge_vertex_data = {
+            ('Animal', 'Entity_Related', 'Event'): 0
+        }
+        statistics = LocalStatistics(
+            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+        )
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, statistics, graphql_input, params
+        )
+
+        # Vertex_edge_vertex_data tells us that no Entity_Related edges connect Animals and Events,
+        # so the result set is empty.
+        expected_cardinality_estimate = 0.0
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_traversal_in_inbound_direction_provided_both_statistics(self):
+        """Test traversal in inbound direction provided multiple statistics."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_input = '''{
+            Event {
+                in_Entity_Related {
+                    ... on Animal {
+                        uuid @output(out_name: "animal_id")
+                    }
+                }
+            }
+        }'''
+        params = {}
+
+        count_data = {
+            'Entity': 19,
+            'Animal': 3,
+            'Event': 7,
+            'Entity_Related': 11
+        }
+        vertex_edge_vertex_data = {
+            ('Animal', 'Entity_Related', 'Event'): 2
+        }
+        statistics = LocalStatistics(
+            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+        )
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, statistics, graphql_input, params
+        )
+
+        # For each Event, vertex_edge_vertex_count tells us we should expect (2.0 / 7.0) Animals
+        # when traversing using Entity_Related. This totals to 7.0 * (2.0 / 7.0) result sets.
+        expected_cardinality_estimate = 7.0 * (2.0 / 7.0)
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_traversals_with_different_statistics_combination(self):
+        """Test two traversals, where one has vertex_edge_vertex counts and the other doesn't."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_input = '''{
+            Animal {
+                out_Entity_Related {
+                    ... on Event {
+                        uuid @output(out_name: "event_id")
+                        out_Entity_Related {
+                            ... on Location {
+                                name @output(out_name: "location_name")
+                            }
+                        }
+                    }
+                }
+            }
+        }'''
+        params = {}
+
+        count_data = {
+            'Entity': 19,
+            'Animal': 3,
+            'Event': 7,
+            'Entity_Related': 11,
+            'Location': 13
+        }
+        vertex_edge_vertex_data = {
+            ('Animal', 'Entity_Related', 'Event'): 2
+        }
+        statistics = LocalStatistics(
+            count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
+        )
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, statistics, graphql_input, params
+        )
+
+        # For each Animal, we expect (2.0 / 3.0) Events when traversing using Entity_Related edge.
+        # For each further Event, we estimate there are (11.0 / 19.0) outgoing Entity_Related
+        # edges. Of those, a total of (11.0 / 19.0) * (13.0 / 19.0) edges go into a Location.
+        # So our total is 3.0 * (2.0 / 3.0) * (11.0 / 19.0) * (13.0 / 19.0)
+
+        expected_cardinality_estimate = 3.0 * (2.0 / 3.0) * (11.0 / 19.0) * (13.0 / 19.0)
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_optional(self):
         """Ensure we handle an optional edge correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)
@@ -241,6 +399,7 @@ class CostEstimationTests(unittest.TestCase):
             'Animal': 5,
             'Animal_BornAt': 7,
             'Animal_FedAt': 3,
+            'FeedingEvent': 11
         }
         statistics = LocalStatistics(count_data)
 
@@ -427,8 +586,12 @@ class CostEstimationTests(unittest.TestCase):
             'Event_RelatedEvent': 7,
             'Event': 17,
             'FeedingEvent': 11,
+            'BirthEvent': 13
         }
-        statistics = LocalStatistics(count_data)
+        vertex_edge_vertex_data = {
+            ('Animal', 'Animal_BornAt', 'BirthEvent'): 2
+        }
+        statistics = LocalStatistics(count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data)
 
         cardinality_estimate = estimate_query_result_cardinality(
             schema_graph, statistics, graphql_input, params
@@ -470,6 +633,35 @@ class CostEstimationTests(unittest.TestCase):
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_inequality_filters_on_uuid(self):
+        """Ensure we handle inequality filters on UUIDs correctly."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_input = '''{
+            Animal {
+                uuid @filter(op_name: "<", value:["$uuid"])
+                name @output(out_name: "name")
+            }
+        }'''
+        # There's nearly an equal number of UUIDs below and above the UUID given in the params.
+        params = {
+            'uuid': '80000000-0000-0000-0000-000000000000',
+        }
+
+        count_data = {
+            'Animal': 32,
+        }
+        statistics = LocalStatistics(count_data)
+
+        cardinality_estimate = estimate_query_result_cardinality(
+            schema_graph, statistics, graphql_input, params
+        )
+
+        # There are 32 Animals, and an estimated (1.0 / 2.0) of them have a UUID below the one given
+        # in the parameters dict, so we get a result size of 32.0 * (1.0 / 2.0) = 16.0 results.
+        expected_cardinality_estimate = 32.0 * (1.0 / 2.0)
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_optional_and_filter(self):
         """Test an optional and filter on the same Location."""
         schema_graph = generate_schema_graph(self.orientdb_client)
@@ -495,6 +687,7 @@ class CostEstimationTests(unittest.TestCase):
             'Event_RelatedEvent': 11,
             'Event': 7,
             'FeedingEvent': 6,
+            'BirthEvent': 13
         }
         statistics = LocalStatistics(count_data)
 
@@ -537,6 +730,7 @@ class CostEstimationTests(unittest.TestCase):
             'Event_RelatedEvent': 23,
             'Event': 7,
             'FeedingEvent': 6,
+            'BirthEvent': 13
         }
         statistics = LocalStatistics(count_data)
 
@@ -578,6 +772,7 @@ class CostEstimationTests(unittest.TestCase):
             'Event_RelatedEvent': 11,
             'Event': 7,
             'FeedingEvent': 6,
+            'BirthEvent': 13
         }
         statistics = LocalStatistics(count_data)
 
@@ -620,6 +815,7 @@ class CostEstimationTests(unittest.TestCase):
             'Event_RelatedEvent': 23,
             'Event': 7,
             'FeedingEvent': 6,
+            'BirthEvent': 11
         }
         statistics = LocalStatistics(count_data)
 
@@ -890,5 +1086,163 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
         self.assertEqual(expected_selectivity, selectivity)
 
+    def test_inequality_filters_on_uuid(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        classname = 'Animal'
+        between_filter = FilterInfo(fields=('uuid',), op_name='between',
+                                    args=('$uuid_lower', '$uuid_upper',))
+        filter_info_list = [between_filter]
+        # The number of UUIDs between the two parameter values is effectively a quarter of all valid
+        # UUIDs.
+        params = {
+            'uuid_lower': '40000000-0000-0000-0000-000000000000',
+            'uuid_upper': '7fffffff-ffff-ffff-ffff-ffffffffffff',
+        }
+        empty_statistics = LocalStatistics(dict())
+
+        result_counts = adjust_counts_for_filters(
+            schema_graph, empty_statistics, filter_info_list, params, classname, 32.0
+        )
+
+        # There are 32 Animals, and an estimated (1.0 / 4.0) of them have a UUID between the
+        # parameters given in the parameters dict, so we get a result size of 32.0 * (1.0 / 4.0) =
+        # 8.0 results.
+        expected_counts = 32.0 * (1.0 / 4.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # We query for the same UUID filtering range as the one above, but this time with '>=' and
+        # '<=' instead of 'between'. Even though the two filter intervals are equivalent, the cost
+        # estimator assumes the '>=' and '<=' filters are uncorrelated, and considers the product of
+        # each individual inequality filter's selectivity.
+        less_or_equal_to_filter = FilterInfo(fields=('uuid',), op_name='>=',
+                                             args=('$uuid_lower',))
+        greater_or_equal_to_filter = FilterInfo(fields=('uuid',), op_name='<=',
+                                                args=('$uuid_upper',))
+        filter_info_list = [less_or_equal_to_filter, greater_or_equal_to_filter]
+        # The number of UUIDs between the two parameter values is effectively a quarter of all valid
+        # UUIDs.
+        params = {
+            'uuid_lower': '40000000-0000-0000-0000-000000000000',
+            'uuid_upper': '7fffffff-ffff-ffff-ffff-ffffffffffff',
+        }
+
+        result_counts = adjust_counts_for_filters(
+            schema_graph, empty_statistics, filter_info_list, params, classname, 32.0
+        )
+
+        # There are 32 Animals, and an estimated (3.0 / 4.0) have a UUID greater or equal to
+        # uuid_lower, and an estimated (1.0 / 2.0) have a UUID less than or equal to uuid_upper. The
+        # cost estimator considers both of these filters independently, so the result size is 32 *
+        # (3.0 / 4.0) * (1.0 / 2.0) = 12.0 results.
+        expected_counts = 32.0 * (3.0 / 4.0) * (1.0 / 2.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        between_filter = FilterInfo(fields=('uuid',), op_name='between',
+                                    args=('$uuid_lower', '$uuid_upper',))
+        filter_info_list = [between_filter]
+        # Note that the the lower bound parameter is higher than the upper bound parameter, so the
+        # 'between' filter is impossible to satisfy.
+        params = {
+            'uuid_lower': 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+            'uuid_upper': '00000000-0000-0000-0000-000000000000',
+        }
+
+        result_counts = adjust_counts_for_filters(
+            schema_graph, empty_statistics, filter_info_list, params, classname, 32.0
+        )
+
+        # It's impossible for a UUID to simultaneously be below uuid_upper and above uuid_lower as
+        # uuid_upper is smaller than uuid_lower, so the result set is empty.
+        expected_counts = 0.0
+        self.assertAlmostEqual(expected_counts, result_counts)
+
 
 # pylint: enable=no-member
+
+class IntegerIntervalTests(unittest.TestCase):
+    """Test methods that create IntegerIntervals."""
+
+    def test_interval_creation(self):
+        """Test that intervals are created correctly, and that empty intervals are detected."""
+        interval = _create_integer_interval(5, 1000)
+        self.assertTrue(interval is not None)
+
+        interval = _create_integer_interval(5, 5)
+        self.assertTrue(interval is not None)
+
+        interval = _create_integer_interval(5, 1)
+        self.assertTrue(interval is None)
+
+    def test_intersection_when_overlapping(self):
+        """Test intersection computation for non-disjoint intervals."""
+        interval_a = _create_integer_interval(1, 3)
+        interval_b = _create_integer_interval(2, 4)
+
+        expected_intersection = _create_integer_interval(2, 3)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = _create_integer_interval(4, 6)
+        interval_b = _create_integer_interval(2, 4)
+
+        expected_intersection = _create_integer_interval(4, 4)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = _create_integer_interval(4, 6)
+        interval_b = _create_integer_interval(4, 6)
+
+        expected_intersection = _create_integer_interval(4, 6)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = _create_integer_interval(0, None)
+        interval_b = _create_integer_interval(4, 6)
+
+        expected_intersection = _create_integer_interval(4, 6)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = _create_integer_interval(0, None)
+        interval_b = _create_integer_interval(None, 6)
+
+        expected_intersection = _create_integer_interval(0, 6)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = _create_integer_interval(None, None)
+        interval_b = _create_integer_interval(None, 6)
+
+        expected_intersection = _create_integer_interval(None, 6)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = _create_integer_interval(None, None)
+        interval_b = _create_integer_interval(None, None)
+
+        expected_intersection = _create_integer_interval(None, None)
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+    def test_disjoint_intervals(self):
+        """Test intersection computation when disjoint intervals are given."""
+        interval_a = _create_integer_interval(1, 3)
+        interval_b = _create_integer_interval(5, 7)
+
+        expected_intersection = None
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = _create_integer_interval(8, 10)
+        interval_b = _create_integer_interval(5, 7)
+
+        expected_intersection = None
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
+
+        interval_a = _create_integer_interval(0, 0)
+        interval_b = _create_integer_interval(1, 1)
+
+        expected_intersection = None
+        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        self.assertEqual(expected_intersection, received_intersection)
