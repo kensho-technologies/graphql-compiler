@@ -261,11 +261,12 @@ Example Use
         }
     }
 
-For each :code:`Animal`: - if it is a parent of another animal, at least one
-row containing the parent and child animal's names, in the :code:`name` and
-:code:`child_name` columns respectively; - if it is not a parent of another
-animal, a row with its name in the :code:`name` column, and a :code:`null` value
-in the :code:`child_name` column.
+For each :code:`Animal`:
+
+- if it is a parent of another animal, at least one row containing the parent and child animal's
+  names, in the :code:`name` and :code:`child_name` columns respectively;
+- if it is not a parent of another animal, a row with its name in the :code:`name` column, and a
+  :code:`null` value in the :code:`child_name` column.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
@@ -680,25 +681,23 @@ animal's name as the :code:`parent_name` tag, and this value is then used as
 the :code:`%parent_name` tagged parameter in the child animal's :code:`@filter`.
 
 We considered and **rejected** the idea of allowing literal values (e.g.
-:code:`123`) as :code:`@filter` parameters, for several reasons: - The GraphQL
-type of the :code:`@filter` directive's :code:`value` field cannot reasonably
-encompass all the different types of arguments that people might supply.
-Even counting scalar types only, there's already
-:code:`ID, Int, Float, Boolean, String, Date, DateTime...` -- way too many
-to include. - Literal values would be used when the parameter's value is
-known to be fixed. We can just as easily accomplish the same thing by
-using a runtime parameter with a fixed value. That approach has the
-added benefit of potentially reducing the number of different queries
-that have to be compiled: two queries with different literal values
-would have to be compiled twice, whereas using two different sets of
-runtime arguments only requires the compilation of one query. - We were
-concerned about the potential for accidental misuse of literal values.
-SQL systems have supported stored procedures and parameterized queries
-for decades, and yet ad-hoc SQL query construction via simple string
-interpolation is still a serious problem and is the source of many SQL
-injection vulnerabilities. We felt that disallowing literal values in
-the query will drastically reduce both the use and the risks of unsafe
-string interpolation, at an acceptable cost.
+:code:`123`) as :code:`@filter` parameters, for several reasons:
+
+- The GraphQL type of the :code:`@filter` directive's :code:`value` field cannot reasonably
+  encompass all the different types of arguments that people might supply. Even counting scalar
+  types only, there's already :code:`ID, Int, Float, Boolean, String, Date, DateTime...` -- way
+  too many to include.
+- Literal values would be used when the parameter's value is known to be fixed. We can just as
+  easily accomplish the same thing by using a runtime parameter with a fixed value. That approach
+  has the added benefit of potentially reducing the number of different queries that have to be
+  compiled: two queries with different literal values would have to be compiled twice, whereas
+  using two different sets of runtime arguments only requires the compilation of one query.
+- We were concerned about the potential for accidental misuse of literal values. SQL systems have
+  supported stored procedures and parameterized queries for decades, and yet ad-hoc SQL query
+  construction via simple string interpolation is still a serious problem and is the source of
+  many SQL injection vulnerabilities. We felt that disallowing literal values in the query will
+  drastically reduce both the use and the risks of unsafe string interpolation, at an acceptable
+  cost.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
@@ -892,7 +891,7 @@ Example Use
 ^^^^^^^^^^^
 
 Equal to (:code:`=`):
-'''''''''''''''''
+'''''''''''''''''''''
 
 .. code::
 
@@ -908,7 +907,7 @@ value of the :code:`$species_name` parameter. Each row contains the :code:`uuid`
 of the :code:`Species` in a column named :code:`species_uuid`.
 
 Greater than or equal to (:code:`>=`):
-''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''
 
 ::
 
@@ -974,9 +973,11 @@ Example Use
         }
     }
 
-This returns: - One row for every :code:`Animal` vertex whose birthday is in
-between :code:`$lower` and :code:`$upper` dates (inclusive). Each row contains
-the animal's name in a column named :code:`name`.
+This returns:
+
+- One row for every :code:`Animal` vertex whose birthday is in between :code:`$lower` and
+  :code:`$upper` dates (inclusive). Each row contains the animal's name in a column named
+  :code:`name`.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
@@ -1342,7 +1343,7 @@ used <https://facebook.github.io/graphql/draft/#sec-Reserved-Names>`__
 in directives, fields, or any other artifacts.
 
 Adding the :code:`_x_count` meta field to your schema
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Since the :code:`_x_count` meta field is not currently part of the GraphQL
 standard, it has to be explicitly added to all interfaces and types in
@@ -1439,7 +1440,7 @@ Constraints and Rules
    outputting the value of the :code:`_x_count` meta field.
 
 How is filtering on :code:`_x_count` different from :code:`@filter` with :code:`has_edge_degree`?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The :code:`has_edge_degree` filter allows filtering based on the number of
 edges of a particular type. There are situations in which filtering with
@@ -1563,46 +1564,45 @@ custom types:
 Since the GraphQL and OrientDB type systems have different rules, there
 is no one-size-fits-all solution to writing the GraphQL schema for a
 given database schema. However, the following rules of thumb are useful
-to keep in mind: - Generally, represent OrientDB abstract classes as
-GraphQL interfaces. In GraphQL's type system, GraphQL interfaces cannot
-inherit from other GraphQL interfaces. - Generally, represent OrientDB
-non-abstract classes as GraphQL types, listing the GraphQL interfaces
-that they implement. In GraphQL's type system, GraphQL types cannot
-inherit from other GraphQL types. - Inheritance relationships between
-two OrientDB non-abstract classes, or between two OrientDB abstract
-classes, introduce some difficulties in GraphQL. When modelling your
-data in OrientDB, it's best to avoid such inheritance if possible. - If
-it is impossible to avoid having two non-abstract OrientDB classes :code:`A`
-and :code:`B` such that :code:`B` inherits from :code:`A`, you have two options: -
-You may choose to represent the :code:`A` OrientDB class as a GraphQL
-interface, which the GraphQL type corresponding to :code:`B` can implement.
-In this case, the GraphQL schema preserves the inheritance relationship
-between :code:`A` and :code:`B`, but sacrifices the representation of any
-inheritance relationships :code:`A` may have with any OrientDB superclasses.
-- You may choose to represent both :code:`A` and :code:`B` as GraphQL types. The
-tradeoff in this case is exactly the opposite from the previous case:
-the GraphQL schema sacrifices the inheritance relationship between :code:`A`
-and :code:`B`, but preserves the inheritance relationships of :code:`A` with its
-superclasses. In this case, it is recommended to create a GraphQL union
-type :code:`A | B`, and to use that GraphQL union type for any vertex fields
-that in OrientDB would be of type :code:`A`. - If it is impossible to avoid
-having two abstract OrientDB classes :code:`A` and :code:`B` such that :code:`B`
-inherits from :code:`A`, you similarly have two options: - You may choose to
-represent :code:`B` as a GraphQL type that can implement the GraphQL
-interface corresponding to :code:`A`. This makes the GraphQL schema preserve
-the inheritance relationship between :code:`A` and :code:`B`, but sacrifices the
-ability for other GraphQL types to inherit from :code:`B`. - You may choose
-to represent both :code:`A` and :code:`B` as GraphQL interfaces, sacrificing the
-schema's representation of the inheritance between :code:`A` and :code:`B`, but
-allowing GraphQL types to inherit from both :code:`A` and :code:`B`. If
-necessary, you can then create a GraphQL union type :code:`A | B` and use it
-for any vertex fields that in OrientDB would be of type :code:`A`. - It is
-legal to fully omit classes and fields that are not representable in
-GraphQL. The compiler currently does not support OrientDB's
-:code:`EmbeddedMap` type nor embedded non-primitive typed fields, so such
-fields can simply be omitted in the GraphQL representation of their
-classes. Alternatively, the entire OrientDB class and all edges that may
-point to it may be omitted entirely from the GraphQL schema.
+to keep in mind:
+
+- Generally, represent OrientDB abstract classes as GraphQL interfaces. In GraphQL's type system,
+  GraphQL interfaces cannot inherit from other GraphQL interfaces.
+- Generally, represent OrientDB non-abstract classes as GraphQL types, listing the GraphQL
+  interfaces that they implement. In GraphQL's type system, GraphQL types cannot inherit from
+  other GraphQL types.
+- Inheritance relationships between two OrientDB non-abstract classes, or between two OrientDB
+  abstract classes, introduce some difficulties in GraphQL. When modelling your data in OrientDB,
+  it's best to avoid such inheritance if possible.
+- If it is impossible to avoid having two non-abstract OrientDB classes :code:`A` and :code:`B`
+  such that :code:`B` inherits from :code:`A`, you have two options:
+
+  - You may choose to represent the :code:`A` OrientDB class as a GraphQL
+    interface, which the GraphQL type corresponding to :code:`B` can implement.
+    In this case, the GraphQL schema preserves the inheritance relationship between :code:`A` and
+    :code:`B`, but sacrifices the representation of any inheritance relationships :code:`A` may
+    have with any OrientDB superclasses.
+  - You may choose to represent both :code:`A` and :code:`B` as GraphQL types. The tradeoff in
+    this case is exactly the opposite from the previous case: the GraphQL schema sacrifices the
+    inheritance relationship between :code:`A` and :code:`B`, but preserves the inheritance
+    relationships of :code:`A` with its superclasses. In this case, it is recommended to create a
+    GraphQL union type :code:`A | B`, and to use that GraphQL union type for any vertex fields
+    that in OrientDB would be of type :code:`A`.
+  - If it is impossible to avoid having two abstract OrientDB classes :code:`A` and :code:`B`
+    such that :code:`B` inherits from :code:`A`, you similarly have two options: - You may choose to
+    represent :code:`B` as a GraphQL type that can implement the GraphQL interface corresponding
+    to :code:`A`. This makes the GraphQL schema preserve the inheritance relationship between
+    :code:`A` and :code:`B`, but sacrifices the ability for other GraphQL types to inherit from
+    :code:`B`. - You may choose to represent both :code:`A` and :code:`B` as GraphQL interfaces,
+    sacrificing the schema's representation of the inheritance between :code:`A` and :code:`B`, but
+    allowing GraphQL types to inherit from both :code:`A` and :code:`B`. If necessary, you can
+    then create a GraphQL union type :code:`A | B` and use it for any vertex fields that in
+    OrientDB would be of type :code:`A`.
+- It is legal to fully omit classes and fields that are not representable in
+  GraphQL. The compiler currently does not support OrientDB's :code:`EmbeddedMap` type nor
+  embedded non-primitive typed fields, so such fields can simply be omitted in the GraphQL
+  representation of their classes. Alternatively, the entire OrientDB class and all edges that may
+  point to it may be omitted entirely from the GraphQL schema.
 
 Execution model
 ---------------
@@ -1613,22 +1613,22 @@ model must also be defined as a function of the compilation target
 language. While we strive to minimize the differences between
 compilation targets, some differences are unavoidable.
 
-The compiler abides by the following principles: - When the database is
-queried with a compiled query string, its response must always be in the
-form of a list of results. - The precise format of each such result is
-defined by each compilation target separately. - :code:`gremlin`, :code:`MATCH`
-and :code:`SQL` return data in a tabular format, where each result is a row
-of the table, and fields marked for output are columns. - However,
-future compilation targets may have a different format. For example,
-each result may appear in the nested tree format used by the standard
-GraphQL specification. - Each such result must satisfy all directives
-and types in its corresponding GraphQL query. - The returned list of
-results is **not** guaranteed to be complete! - In other words, there
-may have been additional result sets that satisfy all directives and
-types in the corresponding GraphQL query, but were not returned by the
-database. - However, compilation target implementations are encouraged
-to return complete results if at all practical. The :code:`MATCH`
-compilation target is guaranteed to produce complete results.
+The compiler abides by the following principles:
+
+- When the database is queried with a compiled query string, its response must always be in the
+  form of a list of results.
+- The precise format of each such result is defined by each compilation target separately. -
+  :code:`gremlin`, :code:`MATCH` and :code:`SQL` return data in a tabular format, where each
+  result is a row of the table, and fields marked for output are columns.
+- However,future compilation targets may have a different format. For example,
+  each result may appear in the nested tree format used by the standard
+  GraphQL specification.
+- Each such result must satisfy all directives and types in its corresponding GraphQL query.
+- The returned list of results is **not** guaranteed to be complete!
+- In other words, there may have been additional result sets that satisfy all directives and
+  types in the corresponding GraphQL query, but were not returned by the database.
+- However, compilation target implementations are encouraged to return complete results if at all
+  practical. The :code:`MATCH` compilation target is guaranteed to produce complete results.
 
 Completeness of returned results
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1960,8 +1960,8 @@ To pretty-print GraphQL queries, use the included pretty-printer:
 It's modeled after Python's :code:`json.tool`, reading from stdin and
 writing to stdout.
 
-Expanding `:code:`@optional` <#optional>`__ vertex fields
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Expanding :code:`@optional` vertex fields
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Including an optional statement in GraphQL has no performance issues on
 its own, but if you continue expanding vertex fields within an optional
@@ -2115,7 +2115,7 @@ account for all possible subsets of :code:`@optional` statements that can be
 satisfied simultaneously.
 
 Optional :code:`type_equivalence_hints` parameter
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This compilation parameter is a workaround for the limitations of the
 GraphQL and Gremlin type systems: - GraphQL does not allow :code:`type` to
