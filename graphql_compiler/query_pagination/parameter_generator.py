@@ -77,12 +77,16 @@ def _generate_parameters_for_pagination_filters(
 
     proper_cut = lower_bound_int + (upper_bound_int - lower_bound_int) * fraction_covered
 
-    proper_cut_uuid = str(UUID(int=int(proper_cut)))
+    proper_cut_uuid_string = str(UUID(int=int(proper_cut)))
 
-    next_page_query_parameter_name = pagination_filter.next_page_query_filter.arguments[1].value.values[0].value
-    remainder_query_parameter_name = pagination_filter.remainder_query_filter.arguments[1].value.values[0].value
-    next_page_pagination_parameters[get_parameter_name(next_page_query_parameter_name)] = proper_cut_uuid
-    remainder_pagination_parameters[get_parameter_name(remainder_query_parameter_name)] = proper_cut_uuid
+    next_page_query_parameter_name = get_parameter_name(
+        pagination_filter.next_page_query_filter.arguments[1].value.values[0].value
+    )
+    remainder_query_parameter_name = get_parameter_name(
+        pagination_filter.remainder_query_filter.arguments[1].value.values[0].value
+    )
+    next_page_pagination_parameters[next_page_query_parameter_name] = proper_cut_uuid_string
+    remainder_pagination_parameters[remainder_query_parameter_name] = proper_cut_uuid_string
 
     return next_page_pagination_parameters, remainder_pagination_parameters
 
