@@ -62,9 +62,9 @@ of both the contributors and the project.
 
 ## Style Guide
 
-This project primarily follows the [PEP 8 style guide](https://www.python.org/dev/peps/pep-0008/).
-While PEP 8 conventions are preferred, in case of ambiguity, the [Google Python style
-guide](https://google.github.io/styleguide/pyguide.html) should be used.
+This project primarily follows the [PEP 8 style guide](https://www.python.org/dev/peps/pep-0008/), and 
+secondarily the [Google Python style guide](https://google.github.io/styleguide/pyguide.html). If the
+style guides differ on a convention, the PEP 8 style guide is preferred.
 
 Additionally, any contributions must pass the linter `scripts/lint.sh` when executed from a
 pipenv shell (i.e. after running `pipenv shell`). To run the linter on changed files only,
@@ -97,7 +97,7 @@ lockfiles for both Python versions. The easiest way to do so is with the followi
 ```
 ./scripts/make_pipenv_lockfiles.sh
 ```
-Then, re-run
+Then, re-run 
 ```
 pipenv sync --dev
 ```
@@ -106,17 +106,17 @@ to install the relevant dependencies.
 
 ## Read the Docs
 
-We are currently in the process of moving most of our documentation to Read the Docs, a web utility
-that makes it easy to view and present documentation. We first plan to get the Read the Docs
-documentation up to date with the markdown documentation present as of commit
+We are currently in the process of moving most of our documentation to Read the Docs, a web utility 
+that makes it easy to view and present documentation. We first plan to get the Read the Docs 
+documentation up to date with the markdown documentation present as of commit 
 16fd083e78551f866a0cf0c7397542aea1c214d9 and then working on adding the documentation added since
-that commit.
+that commit. 
 
 Since Read the Docs does not currently [support Pipfiles](https://github.com/readthedocs/readthedocs.org/issues/3181) the package requirements are in:
 ```
 docs/requirements.txt
-```
-The relevant source code lives in:
+``` 
+The relevant source code lives in: 
 ```
 docs/source
 ```
@@ -124,5 +124,5 @@ To build the website run:
 ```
 cd docs
 make html
-```
-Then open ```docs/build/index.html``` with a web browser to view it.
+``` 
+Then open ```docs/build/index.html``` with a web browser to view it. 
