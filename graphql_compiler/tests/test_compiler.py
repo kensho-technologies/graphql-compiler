@@ -6,6 +6,7 @@ import unittest
 from graphql import GraphQLID, GraphQLString
 import six
 
+from ..exceptions import GraphQLValidationError, GraphQLCompilationError
 from . import test_input_data
 from ..compiler import (
     OutputMetadata, compile_graphql_to_cypher, compile_graphql_to_gremlin, compile_graphql_to_match,
@@ -55,7 +56,8 @@ def check_test_data(
     if expected_sql == SKIP_TEST:
         pass
     elif expected_sql == NotImplementedError:
-        with test_case.assertRaises(NotImplementedError):
+        not_supported = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
+        with test_case.assertRaises(not_supported):
             compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
     else:
         result = compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
@@ -2860,7 +2862,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                ([Animal_1].name LIKE '%' || :wanted || '%')
+                ([Animal_1].name LIKE '%' + :wanted + '%')
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2906,7 +2908,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                ([Animal_1].name LIKE '%' || :wanted || '%')
+                ([Animal_1].name LIKE '%' + :wanted + '%')
         '''
         expected_cypher = SKIP_TEST
 
@@ -5075,7 +5077,6 @@ class CompilerTests(unittest.TestCase):
                 ($Animal___1___out_Animal_ParentOf.size() >= {min_children})
         '''
         expected_gremlin = NotImplementedError
-
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 

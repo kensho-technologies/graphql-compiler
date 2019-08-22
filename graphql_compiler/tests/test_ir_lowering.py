@@ -8,6 +8,7 @@ from ..compiler import ir_lowering_gremlin, ir_lowering_match, ir_sanity_checks
 from ..compiler.blocks import (
     Backtrack, CoerceType, ConstructResult, EndOptional, Filter, MarkLocation, QueryRoot, Traverse
 )
+from ..compiler.compiler_frontend import IrAndMetadata, OutputMetadata
 from ..compiler.expressions import (
     BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, Literal, LocalField,
     NullLiteral, OutputContextField, TernaryConditional, TrueLiteral, UnaryTransformation, Variable,
@@ -916,7 +917,13 @@ class MatchIrLoweringTests(unittest.TestCase):
             ]
         )
 
-        final_query = ir_lowering_match.lower_ir(ir_blocks, query_metadata_table)
+        schema_info = None  # TODO(bojanserafimov): Pass the default test CommonSchemaInfo
+        input_metadata = {}
+        output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False)
+        }
+        final_query = ir_lowering_match.lower_ir(
+            None, IrAndMetadata(ir_blocks, input_metadata, output_metadata, query_metadata_table))
 
         self.assertEqual(
             expected_compound_match_query, final_query,
@@ -976,6 +983,5 @@ class GremlinIrLoweringTests(unittest.TestCase):
             })
         )
 
-        final_blocks = ir_lowering_gremlin.lower_context_field_existence(
-            ir_blocks, query_metadata_table)
+        final_blocks = ir_lowering_gremlin.lower_context_field_existence(ir_blocks, query_metadata_table)
         check_test_data(self, expected_final_blocks, final_blocks)

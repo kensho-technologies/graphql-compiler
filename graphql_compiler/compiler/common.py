@@ -18,10 +18,10 @@ from .compiler_frontend import graphql_to_ir
 CompilationResult = namedtuple('CompilationResult',
                                ('query', 'language', 'output_metadata', 'input_metadata'))
 
-MATCH_LANGUAGE = backend.match_backend.language,
-GREMLIN_LANGUAGE = backend.gremlin_backend.language,
-SQL_LANGUAGE = backend.sql_backend.language,
-CYPHER_LANGUAGE = backend.cypher_backend.language,
+MATCH_LANGUAGE = backend.match_backend.language
+GREMLIN_LANGUAGE = backend.gremlin_backend.language
+SQL_LANGUAGE = backend.sql_backend.language
+CYPHER_LANGUAGE = backend.cypher_backend.language
 
 
 def compile_graphql_to_match(schema, graphql_string, type_equivalence_hints=None):
