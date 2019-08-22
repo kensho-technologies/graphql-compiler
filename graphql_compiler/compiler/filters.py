@@ -547,6 +547,7 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
 @takes_parameters(1)
 def _process_ends_with_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks if the directive arg is the string suffix of the field.
+
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
                                of the field where the filter is to be applied.
@@ -555,6 +556,7 @@ def _process_ends_with_filter_directive(filter_operation_info, location, context
                  is optional, etc.). May be mutated in-place in this function!
         parameters: list of 1 element, specifying the collection in which the value must exist;
                     if the collection is optional and missing, the check will return True.
+
     Returns:
         a Filter basic block that performs the substring check
     """
