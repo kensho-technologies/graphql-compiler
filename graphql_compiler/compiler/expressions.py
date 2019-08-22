@@ -11,6 +11,8 @@ from .helpers import (
     ensure_unicode_string, is_graphql_type, safe_or_special_quoted_string, strip_non_null_from_type,
     validate_safe_or_special_string, validate_safe_string
 )
+import operator
+from sqlalchemy import sql
 
 
 # Since MATCH uses $-prefixed keywords to indicate special values,
@@ -126,6 +128,9 @@ class Literal(Expression):
     to_gremlin = _to_output_code
     to_match = _to_output_code
     to_cypher = _to_output_code
+
+    def to_sql(self, aliases, current_alias):
+        return self.value
 
 
 NullLiteral = Literal(None)
@@ -243,6 +248,13 @@ class Variable(Expression):
         # [1] https://oss.redislabs.com/redisgraph/cypher_support/#types
         return u'{}'.format(self.variable_name)
 
+    def to_sql(self, aliases, current_alias):
+        self.validate()
+
+        from sqlalchemy import bindparam
+        expanding = isinstance(self.inferred_type, GraphQLList)
+        return bindparam(self.variable_name[1:], expanding=expanding)
+
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
         # Since this object has a GraphQL type as a variable, which doesn't implement
@@ -305,6 +317,17 @@ class LocalField(Expression):
         else:
             return u'{}.{}'.format(local_object_name, self.field_name)
 
+    def to_sql(self, aliases, current_alias):
+        self.validate()
+
+        if isinstance(self.field_type, GraphQLList):
+            raise NotImplementedError(u'We dont support lists yet')
+
+        if '@' in self.field_name:
+            raise NotImplementedError(u'We dont support __typename yet')
+
+        return current_alias.c[self.field_name]
+
     def to_cypher(self):
         """Not implemented, should not be used."""
         raise AssertionError(u'LocalField is not used as part of the query emission process in '
@@ -363,6 +386,9 @@ class GlobalContextField(Expression):
         raise AssertionError(u'GlobalContextField is not used as part of the query emission '
                              u'process in Cypher, so this is a bug. This function '
                              u'should not be called.')
+
+    def to_sql(self, aliases, current_alias):
+        raise NotIMplementedError()
 
 
 class ContextField(Expression):
@@ -444,6 +470,21 @@ class ContextField(Expression):
         validate_safe_string(mark_name)
 
         return template.format(mark_name=mark_name, field_name=field_name)
+
+    def to_sql(self, aliases, current_alias):
+        self.validate()
+
+        if isinstance(self.field_type, GraphQLList):
+            raise NotImplementedError(u'We dont support lists yet')
+
+        alias = aliases[self.location.at_vertex().query_path]
+
+        if self.location.field is not None:
+            if '@' in self.location.field:
+                raise NotImplementedError(u'We dont support __typename yet')
+            return alias.c.get(self.location.field)
+        else:
+            raise NotImplementedError()
 
 
 class OutputContextField(Expression):
@@ -544,6 +585,17 @@ class OutputContextField(Expression):
         template = u'{mark_name}.{field_name}'
 
         return template.format(mark_name=mark_name, field_name=field_name)
+
+    def to_sql(self, aliases, current_alias):
+        if isinstance(self.field_type, GraphQLList):
+            raise NotImplementedError(u'We dont support lists yet')
+
+        if '@' in self.location.field:
+            raise NotImplementedError(u'We dont support __typename yet')
+
+        alias = aliases[self.location.at_vertex().query_path]
+        # TODO don't return None if not exists
+        return alias.c.get(self.location.field)
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
@@ -657,6 +709,9 @@ class FoldedContextField(Expression):
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
+    def to_sql(self, aliases, current_alias):
+        raise NotImplementedError()
+
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
         # Since this object has a GraphQL type as a variable, which doesn't implement
@@ -720,6 +775,9 @@ class FoldCountContextField(Expression):
         """Not supported yet."""
         raise NotImplementedError()
 
+    def to_sql(self, aliases, current_alias):
+        raise NotImplementedError()
+
 
 class ContextFieldExistence(Expression):
     """An expression that evaluates to True if the given context field exists, and False otherwise.
@@ -763,6 +821,10 @@ class ContextFieldExistence(Expression):
     def to_cypher(self):
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
         raise AssertionError(u'ContextFieldExistence.to_cypher() was called: {}'.format(self))
+
+    def to_sql(self, aliases, current_alias):
+        """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
+        raise AssertionError(u'ContextFieldExistence.to_sql() was called: {}'.format(self))
 
 
 def _validate_operator_name(operator, supported_operators):
@@ -843,6 +905,9 @@ class UnaryTransformation(Expression):
 
     def to_cypher(self):
         """Not implemented yet."""
+        raise NotImplementedError()
+
+    def to_sql(self, aliases, current_alias):
         raise NotImplementedError()
 
 
@@ -1033,6 +1098,28 @@ class BinaryComposition(Expression):
                                   left=self.left.to_cypher(),
                                   right=self.right.to_cypher())
 
+    def to_sql(self, aliases, current_alias):
+        self.validate()
+
+        translation_table = {
+            u'=': operator.__eq__,
+            u'!=': operator.__ne__,
+            u'<': operator.__lt__,
+            u'>': operator.__gt__,
+            u'<=': operator.__le__,
+            u'>=': operator.__ge__,
+            u'&&': sql.expression.and_,
+            u'||': sql.expression.or_,
+            u'has_substring': sql.schema.Column.contains,
+            u'contains': lambda x, y: y.in_(x),
+            u'not_contains': lambda x, y: y.notin_(x),
+            u'intersects': lambda x, y: raise_(NotImplementedError()),
+        }
+        return translation_table[self.operator](
+            self.left.to_sql(aliases, current_alias),
+            self.right.to_sql(aliases, current_alias),
+        )
+
 
 class TernaryConditional(Expression):
     """A ternary conditional expression, returning one of two expressions depending on a third."""
@@ -1127,3 +1214,10 @@ class TernaryConditional(Expression):
             predicate=self.predicate.to_cypher(),
             if_true=self.if_true.to_cypher(),
             if_false=self.if_false.to_cypher())
+
+    def to_sql(self, aliases, current_alias):
+        self.validate()
+        return sql.expression.case(
+            [(self.predicate.to_sql(aliases, current_alias),
+              self.if_true.to_sql(aliases, current_alias))],
+            else_=self.if_false.to_sql(aliases, current_alias))
