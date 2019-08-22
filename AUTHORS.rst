@@ -6,3 +6,4 @@ Authors
 - Jeremy Meulemans (github: jmeulemans)
 - Pedro Mantica (github: pmantica1)
 - Bojan Serafimov (github: bojanserafimov)
+- Vladimir Maksimovski (github: realnerom)
