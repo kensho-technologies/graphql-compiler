@@ -41,7 +41,7 @@ def find_name():
 
 
 def find_long_description():
-    """Return the content of the README.md file."""
+    """Return the content of the README.rst file."""
     return read_file('../README.rst')
 
 
