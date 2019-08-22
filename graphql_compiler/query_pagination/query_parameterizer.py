@@ -146,6 +146,7 @@ def _create_filter_for_remainder_query(vertex_name, property_field_name, paramet
     paged_lower_param = RESERVED_PARAMETER_PREFIX + 'lower_param_on_{}_{}'.format(
         vertex_name, property_field_name
     )
+
     if paged_lower_param in parameters.keys():
         raise AssertionError(
             u'Parameter list {} already contains parameter {},'
@@ -207,13 +208,15 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
         for field in pagination_fields
     ]
 
-    for field, pagination_filter in zip(pagination_fields, pagination_filters):
-        field.directives = original_field_directives + [pagination_filter.next_page_query_filter]
+    for field, field_directives, pagination_filter in zip(pagination_fields, original_field_directives, pagination_filters):
+        field.directives = deepcopy(field_directives)
+        field.directives.append(pagination_filter.next_page_query_filter)
 
     parameterized_next_page_query_ast = deepcopy(query_ast)
 
-    for field, pagination_filter in zip(pagination_fields, pagination_filters):
-        field.directives = original_field_directives + [pagination_filter.remainder_query_filter]
+    for field, field_directives, pagination_filter in zip(pagination_fields, original_field_directives, pagination_filters):
+        field.directives = deepcopy(field_directives)
+        field.directives.append(pagination_filter.remainder_query_filter)
 
     parameterized_remainder_query_ast = deepcopy(query_ast)
 
