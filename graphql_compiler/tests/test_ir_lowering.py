@@ -22,7 +22,7 @@ from ..compiler.ir_lowering_match.utils import BetweenClause, CompoundMatchQuery
 from ..compiler.match_query import MatchQuery, convert_to_match_query
 from ..compiler.metadata import LocationInfo, QueryMetadataTable
 from ..schema import GraphQLDate, GraphQLDateTime
-from .test_helpers import compare_ir_blocks, get_schema
+from .test_helpers import compare_ir_blocks, get_schema, get_common_schema_info
 
 
 def check_test_data(test_case, expected_object, received_object):
@@ -917,7 +917,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             ]
         )
 
-        schema_info = None  # TODO(bojanserafimov): Pass the default test CommonSchemaInfo
+        schema_info = get_common_schema_info()
         input_metadata = {}
         output_metadata = {
             'name': OutputMetadata(type=GraphQLString, optional=False)

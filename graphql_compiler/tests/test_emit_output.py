@@ -19,13 +19,14 @@ from ..compiler.ir_lowering_match.utils import CompoundMatchQuery
 from ..compiler.match_query import convert_to_match_query
 from ..compiler.metadata import LocationInfo, QueryMetadataTable
 from ..schema import GraphQLDateTime
-from .test_helpers import compare_cypher, compare_gremlin, compare_match, get_schema
+from .test_helpers import compare_cypher, compare_gremlin, compare_match, get_schema, get_common_schema_info
 
 
 class EmitMatchTests(unittest.TestCase):
     def setUp(self):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
+        self.schema_info = get_common_schema_info()
 
     def test_simple_immediate_output(self):
         # corresponds to:
@@ -56,8 +57,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        # XXX
-        received_match = emit_match.emit_code_from_ir(None, compound_match_query)
+        received_match = emit_match.emit_code_from_ir(self.schema_info, compound_match_query)
         compare_match(self, expected_match, received_match)
 
     def test_simple_traverse_filter_output(self):
@@ -110,8 +110,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        # XXX
-        received_match = emit_match.emit_code_from_ir(None, compound_match_query)
+        received_match = emit_match.emit_code_from_ir(self.schema_info, compound_match_query)
         compare_match(self, expected_match, received_match)
 
     def test_datetime_variable_representation(self):
@@ -161,8 +160,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        # XXX
-        received_match = emit_match.emit_code_from_ir(None, compound_match_query)
+        received_match = emit_match.emit_code_from_ir(self.schema_info, compound_match_query)
         compare_match(self, expected_match, received_match)
 
     def test_datetime_output_representation(self):
@@ -196,8 +194,7 @@ class EmitMatchTests(unittest.TestCase):
             )
         '''
 
-        # XXX
-        received_match = emit_match.emit_code_from_ir(None, compound_match_query)
+        received_match = emit_match.emit_code_from_ir(self.schema_info, compound_match_query)
         compare_match(self, expected_match, received_match)
 
 
@@ -205,6 +202,7 @@ class EmitGremlinTests(unittest.TestCase):
     def setUp(self):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
+        self.schema_info = get_common_schema_info()
 
     def test_simple_immediate_output(self):
         # corresponds to:
@@ -233,8 +231,7 @@ class EmitGremlinTests(unittest.TestCase):
             ])}
         '''
 
-        # XXX
-        received_gremlin = emit_gremlin.emit_code_from_ir(None, ir_blocks)
+        received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
 
     def test_simple_traverse_filter_output(self):
@@ -280,8 +277,7 @@ class EmitGremlinTests(unittest.TestCase):
             ])}
         '''
 
-        # XXX
-        received_gremlin = emit_gremlin.emit_code_from_ir(None, ir_blocks)
+        received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
 
     def test_output_inside_optional_traversal(self):
@@ -333,8 +329,7 @@ class EmitGremlinTests(unittest.TestCase):
             ])}
         '''
 
-        # XXX
-        received_gremlin = emit_gremlin.emit_code_from_ir(None, ir_blocks)
+        received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
 
     def test_datetime_variable_representation(self):
@@ -378,8 +373,7 @@ class EmitGremlinTests(unittest.TestCase):
             ])}
         '''
 
-        # XXX
-        received_gremlin = emit_gremlin.emit_code_from_ir(None, ir_blocks)
+        received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
 
     def test_datetime_output_representation(self):
@@ -409,8 +403,7 @@ class EmitGremlinTests(unittest.TestCase):
             ])}
         '''
 
-        # XXX
-        received_gremlin = emit_gremlin.emit_code_from_ir(None, ir_blocks)
+        received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
 
 
@@ -426,6 +419,7 @@ class EmitCypherTests(unittest.TestCase):
     def setUp(self):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
+        self.schema_info = get_common_schema_info()
 
     def test_simple_immediate_output(self):
         # corresponds to:
@@ -457,8 +451,7 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         cypher_query = convert_to_cypher_query(ir_blocks, query_metadata_table)
-        # XXX
-        received_cypher = emit_cypher.emit_code_from_ir(None, cypher_query)
+        received_cypher = emit_cypher.emit_code_from_ir(self.schema_info, cypher_query)
 
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -529,8 +522,7 @@ class EmitCypherTests(unittest.TestCase):
         query_metadata_table.register_location(child_location, child_location_info)
 
         cypher_query = convert_to_cypher_query(ir_blocks, query_metadata_table)
-        # XXX
-        received_cypher = emit_cypher.emit_code_from_ir(None, cypher_query)
+        received_cypher = emit_cypher.emit_code_from_ir(self.schema_info, cypher_query)
 
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -608,8 +600,7 @@ class EmitCypherTests(unittest.TestCase):
         query_metadata_table.register_location(child_location, child_location_info)
 
         cypher_query = convert_to_cypher_query(ir_blocks, query_metadata_table)
-        # XXX
-        received_cypher = emit_cypher.emit_code_from_ir(None, cypher_query)
+        received_cypher = emit_cypher.emit_code_from_ir(self.schema_info, cypher_query)
 
         expected_cypher = '''
               MATCH (Animal___1:Animal)
@@ -653,8 +644,7 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         cypher_query = convert_to_cypher_query(ir_blocks, query_metadata_table)
-        # XXX
-        received_cypher = emit_cypher.emit_code_from_ir(None, cypher_query)
+        received_cypher = emit_cypher.emit_code_from_ir(self.schema_info, cypher_query)
 
         expected_cypher = '''
               MATCH (BirthEvent___1:BirthEvent)
