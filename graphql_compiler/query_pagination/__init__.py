@@ -50,10 +50,11 @@ def paginate_query_ast(schema_graph, statistics, query_ast, parameters, page_siz
         )
 
     # Initially, assume the query does not need to be paged i.e. will return one page of results.
-    result_queries = (
-        ASTWithParameters(query_ast, parameters),
-        None,
+    next_page_ast_with_parameters = ASTWithParameters(
+        query_ast,
+        parameters,
     )
+    remainder_ast_with_parameters = None
 
     # HACK(vlad): Since the current cost estimator expects GraphQL queries given as a string, we
     #             print the given AST and provide that to the cost estimator.
@@ -61,12 +62,15 @@ def paginate_query_ast(schema_graph, statistics, query_ast, parameters, page_siz
     num_pages = estimate_number_of_pages(
         schema_graph, statistics, graphql_query_string, parameters, page_size
     )
+
     if num_pages > 1:
-        result_queries = split_into_page_query_and_remainder_query(
-            schema_graph, statistics, query_ast, parameters, num_pages
+        next_page_ast_with_parameters, remainder_ast_with_parameters = (
+            split_into_page_query_and_remainder_query(
+                schema_graph, statistics, query_ast, parameters, num_pages
+            )
         )
 
-    return result_queries
+    return next_page_ast_with_parameters, remainder_ast_with_parameters
 
 
 def paginate_query(schema_graph, statistics, query_string, parameters, page_size):
@@ -98,13 +102,16 @@ def paginate_query(schema_graph, statistics, query_string, parameters, page_size
         schema_graph, statistics, query_ast, parameters, page_size
     )
 
-    page_query_with_parameters = QueryStringWithParameters(
+    next_page_query_with_parameters = QueryStringWithParameters(
         print_ast(next_page_ast_with_parameters.query_ast),
         next_page_ast_with_parameters.parameters,
     )
-    remainder_query_with_parameters = QueryStringWithParameters(
-        print_ast(remainder_ast_with_parameters.query_ast),
-        remainder_ast_with_parameters.parameters,
-    )
 
-    return page_query_with_parameters, remainder_query_with_parameters
+    remainder_query_with_parameters = None
+    if remainder_ast_with_parameters is not None:
+        remainder_query_with_parameters = QueryStringWithParameters(
+            print_ast(remainder_ast_with_parameters.query_ast),
+            remainder_ast_with_parameters.parameters,
+        )
+
+    return next_page_query_with_parameters, remainder_query_with_parameters
