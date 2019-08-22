@@ -1,5 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Common test data and helper functions."""
+from collections import namedtuple
 from pprint import pformat
 import re
 
@@ -13,8 +14,9 @@ from sqlalchemy.dialects import mssql
 from .. import get_graphql_schema_from_orientdb_schema_data
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
+from ..query_formatting.graphql_formatting import pretty_print_graphql
 from ..schema import CUSTOM_SCALAR_TYPES, is_vertex_field_name
-from ..schema.schema_info import DirectJoinDescriptor, make_sqlalchemy_schema_info
+from ..schema.schema_info import CommonSchemaInfo, DirectJoinDescriptor, make_sqlalchemy_schema_info
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
 from ..schema_generation.orientdb.utils import (
     ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
@@ -203,6 +205,28 @@ SCHEMA_TEXT = '''
 '''
 
 
+# A class holding all necessary backend-specific testing utilities.
+BackendTester = namedtuple('BackendTester', (
+    # Backend to be tested
+    'backend'
+
+    # Returns whether two emitted queries are the same, up to differences in syntax/whitespace
+    'compare_queries',
+
+    # An instance of backend.SchemaInfoClass consistend with the standard testing schema.
+    'schema_info',
+
+    # Given a SchemaInfo and a connection pool to a database, install the given schema into
+    # the database, erasing content if necessary.
+    'setup_schema'
+
+    # Given a SchemaInfo, a dict representation of data fitting the schema, and a connection pool
+    # to a database with the same schema, install the given data into the database, erasing any
+    # existing data.
+    'setup_data'
+))
+
+
 def transform(emitted_output):
     """Transform emitted_output into a unique representation, regardless of lines / indentation."""
     return WHITESPACE_PATTERN.sub(u'', emitted_output)
@@ -229,6 +253,14 @@ def compare_ir_blocks(test_case, expected_blocks, received_blocks):
         test_case.assertEqual(expected, received,
                               msg=u'Blocks at position {} were different: {} vs {}\n\n'
                                   u'{}'.format(i, expected, received, mismatch_message))
+
+
+def compare_graphql(test_case, expected, received):
+    """Compare the expected and received GraphQL code, ignoring whitespace."""
+    msg = '\n{}\n\n!=\n\n{}'.format(
+        pretty_print_graphql(expected),
+        pretty_print_graphql(received))
+    compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
 def compare_match(test_case, expected, received, parameterized=True):
@@ -286,6 +318,23 @@ def get_schema():
     return schema
 
 
+def get_type_equivalence_hints():
+    """Get the default type_equivalence_hints used for testing."""
+    schema = get_schema()
+    return {
+        schema.get_type(key): schema.get_type(value)
+        for key, value in [
+            ('Event', 'Union__BirthEvent__Event__FeedingEvent'),
+            ('FoodOrSpecies', 'Union__Food__FoodOrSpecies__Species'),
+        ]
+    }
+
+
+def get_common_schema_info():
+    """Get the default CommonSchemaInfo used for testing."""
+    return CommonSchemaInfo(get_schema(), get_type_equivalence_hints())
+
+
 def _get_schema_without_list_valued_property_fields():
     """Get the default testing schema, skipping any list-valued property fields it has."""
     schema = get_schema()
@@ -309,6 +358,7 @@ def get_sqlalchemy_schema_info():
     """Get a SQLAlchemySchemaInfo for testing."""
     # We don't support list-valued property fields in SQL for now.
     schema = _get_schema_without_list_valued_property_fields()
+    type_equivalence_hints = get_type_equivalence_hints()
 
     # Every SQLAlchemy Table needs to be attached to a MetaData object. We don't actually use it.
     # We use a mixture of two metadata objects to make sure our implementation does not rely
@@ -419,18 +469,10 @@ def get_sqlalchemy_schema_info():
     }
 
     # Compute the subclass sets, including union types
-    type_equivalence_hint_list = [
-        ('Event', 'Union__BirthEvent__Event__FeedingEvent'),
-        ('FoodOrSpecies', 'Union__Food__FoodOrSpecies__Species'),
-    ]
-    type_equivalence_hints = {
-        schema.get_type(key): schema.get_type(value)
-        for key, value in type_equivalence_hint_list
-    }
     subclasses = compute_subclass_sets(schema, type_equivalence_hints=type_equivalence_hints)
-    for type_name, union_name in type_equivalence_hint_list:
-        subclasses[union_name] = subclasses[type_name]
-        subclasses[union_name].add(type_name)
+    for object_type, equivalent_union_type in six.iteritems(type_equivalence_hints):
+        subclasses[equivalent_union_type.name] = subclasses[object_type.name]
+        subclasses[equivalent_union_type.name].add(object_type.name)
 
     # HACK(bojanserafimov): Some of these edges are many-to-many, but I've represented them
     #                       as many-to-one edges. If I didn't, I'd have to implement many-to-many
