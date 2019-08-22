@@ -6,7 +6,6 @@ from .compiler import (
     ir_lowering_match, ir_lowering_sql
 )
 from .schema import schema_info
-from .tests import test_helpers  # TODO(bojanserafimov): Move these helpers out of test helpers
 
 
 # A backend is a compilation target (a language we can compile to)
@@ -31,9 +30,6 @@ Backend = namedtuple('Backend', (
     # Given a connection pool and a query in this language, run the query with retries
     # and return the results.
     'run_func',
-
-    # Returns whether two emitted queries are the same, up to differences in syntax/whitespace
-    'compare_queries',
 ))
 
 
@@ -42,7 +38,6 @@ gremlin_backend = Backend(
     schemaInfoClass=schema_info.CommonSchemaInfo,
     lower_func=ir_lowering_gremlin.lower_ir,
     emit_func=emit_gremlin.emit_code_from_ir,
-    compare_queries=test_helpers.compare_gremlin,
 )
 
 match_backend = Backend(
@@ -50,7 +45,6 @@ match_backend = Backend(
     schemaInfoClass=schema_info.CommonSchemaInfo,
     lower_func=ir_lowering_match.lower_ir,
     emit_func=emit_match.emit_code_from_ir,
-    compare_queries=test_helpers.compare_match,
 )
 
 cypher_backend = Backend(
@@ -58,7 +52,6 @@ cypher_backend = Backend(
     schemaInfoClass=schema_info.CommonSchemaInfo,
     lower_func=ir_lowering_cypher.lower_ir,
     emit_func=emit_cypher.emit_code_from_ir,
-    compare_queries=test_helpers.compare_cypher,
 )
 
 sql_backend = Backend(
@@ -66,5 +59,4 @@ sql_backend = Backend(
     schemaInfoClass=schema_info.SQLAlchemySchemaInfo,
     lower_func=ir_lowering_sql.lower_ir,
     emit_func=NotImplementedError(),
-    compare_queries=test_helpers.compare_sql,
 )
