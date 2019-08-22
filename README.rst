@@ -55,6 +55,8 @@ Table of contents
    -  `in\_collection <#in-collection>`__
    -  `not\_in\_collection <#not-in-collection>`__
    -  `has\_substring <#has-substring>`__
+   -  `starts\_with <#starts-with>`__
+   -  `ends\_with <#ends-with>`__
    -  `contains <#contains>`__
    -  `not\_contains <#not-contains>`__
    -  `intersects <#intersects>`__
@@ -1058,6 +1060,54 @@ Example Use
 
 This returns one row for every :code:`Animal` vertex whose name contains the
 value supplied for the :code:`$substring` parameter. Each row contains the
+matching :code:`Animal`'s name in a column named :code:`animal_name`.
+
+Constraints and Rules
+^^^^^^^^^^^^^^^^^^^^^
+
+-  Must be on a property field of string type.
+
+starts\_with
+~~~~~~~~~~~~~~
+
+Example Use
+^^^^^^^^^^^
+
+.. code::
+
+    {
+        Animal {
+            name @filter(op_name: "starts_with", value: ["$prefix"])
+                 @output(out_name: "animal_name")
+        }
+    }
+
+This returns one row for every :code:`Animal` vertex whose name starts with the
+value supplied for the :code:`$prefix` parameter. Each row contains the
+matching :code:`Animal`'s name in a column named :code:`animal_name`.
+
+Constraints and Rules
+^^^^^^^^^^^^^^^^^^^^^
+
+-  Must be on a property field of string type.
+
+ends\_with
+~~~~~~~~~~~~~~
+
+Example Use
+^^^^^^^^^^^
+
+.. code::
+
+    {
+        Animal {
+            name @filter(op_name: "ends_with", value: ["$suffix"])
+                 @output(out_name: "animal_name")
+        }
+    }
+
+This returns one row for every :code:`Animal` vertex whose name ends with the
+value supplied for the :code:`$suffix` parameter. Each row contains the
 matching :code:`Animal`'s name in a column named :code:`animal_name`.
 
 Constraints and Rules
