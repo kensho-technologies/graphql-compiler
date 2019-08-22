@@ -140,23 +140,20 @@ def _validate_all_pagination_filters_have_parameters(
 ):
     """Validate that all PaginationFilters have assigned parameter values."""
     for pagination_filter in pagination_filters:
-        next_page_arguments = _get_binary_filter_parameter(pagination_filter.next_page_query_filter)
-        remainder_arguments = _get_binary_filter_parameter(pagination_filter.next_page_query_filter)
+        next_page_parameter = _get_binary_filter_parameter(pagination_filter.next_page_query_filter)
+        remainder_parameter = _get_binary_filter_parameter(pagination_filter.remainder_query_filter)
 
-        next_page_filter_parameter_name = get_parameter_name(next_page_parameters[0])
-        remainder_filter_parameter_name = get_parameter_name(remainder_parameters[0])
-
-        if next_page_filter_parameter_name not in next_page_pagination_parameters:
+        if next_page_parameter not in next_page_pagination_parameters:
             raise AssertionError(u'Could not find parameter value for'
                                  u'pagination parameter {} belonging to next page query: {} {} {}'
-                                 .format(next_page_filter_parameter_name, pagination_filters,
+                                 .format(next_page_parameter, pagination_filters,
                                          next_page_pagination_parameters,
                                          remainder_pagination_parameters))
 
-        if remainder_filter_parameter_name not in next_page_pagination_parameters:
+        if remainder_parameter not in remainder_pagination_parameters:
             raise AssertionError(u'Could not find parameter value for'
-                                 u'pagination parameter {} belonging to next page query: {} {} {}'
-                                 .format(remainder_filter_parameter_name, pagination_filters,
+                                 u'pagination parameter {} belonging to remainder query: {} {} {}'
+                                 .format(remainder_parameter, pagination_filters,
                                          next_page_pagination_parameters,
                                          remainder_pagination_parameters))
 
