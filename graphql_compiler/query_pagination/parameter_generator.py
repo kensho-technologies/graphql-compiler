@@ -80,27 +80,10 @@ def _get_domain_of_field(vertex_class, field_name):
     raise AssertionError(u'Unrecognized property field {}'.format(field_name))
 
 
-def _generate_parameters_for_pagination_filters(
+def _generate_parameter_for_integer_pagination_filter(
     schema_graph, statistics, pagination_filters, user_parameters, num_pages
 ):
-    """Stuff"""
-    next_page_pagination_parameters, remainder_pagination_parameters = dict(), dict()
-
-    if len(pagination_filters) != 1:
-        raise AssertionError(u'Expected pagination filters {} to have exactly'
-                             u' one element, found {} elements: {}'
-                             .format(pagination_filters, len(pagination_filters), user_parameters))
-    pagination_filter = pagination_filters[0]
-
-    if not _is_uuid_field(pagination_filter.vertex_class, pagination_filter.property_field):
-        raise AssertionError(u'Found pagination filter over vertex class {}'
-                             u' and property field {}. Currently, only filters'
-                             u' over uuid property fields are allowed for pagination: {}'
-                             .format(pagination_filter.vertex_class,
-                                     pagination_filter.property_field,
-                                     pagination_filters))
-
-
+    """"""
     domain_lower_bound, domain_upper_bound = _get_domain_of_field(
         pagination_filter.vertex_class, pagination_filter.property_field
     )
@@ -122,12 +105,32 @@ def _generate_parameters_for_pagination_filters(
     proper_cut = lower_bound_int + (upper_bound_int - lower_bound_int) * fraction_covered
     proper_cut_uuid_string = _encode_int_as_uuid(int(proper_cut))
 
-    next_page_query_parameter_name = _get_binary_filter_parameter(
-        pagination_filter.next_page_query_filter
-    )
-    remainder_query_parameter_name = _get_binary_filter_parameter(
-        pagination_filter.remainder_query_filter
-    )
+    return proper_cut_uuid_string
+
+
+def _generate_parameters_for_pagination_filters(
+    schema_graph, statistics, pagination_filters, user_parameters, num_pages
+):
+    """Stuff"""
+    next_page_pagination_parameters, remainder_pagination_parameters = dict(), dict()
+
+    if len(pagination_filters) != 1:
+        raise AssertionError(u'Expected pagination filters {} to have exactly'
+                             u' one element, found {} elements: {}'
+                             .format(pagination_filters, len(pagination_filters), user_parameters))
+    pagination_filter = pagination_filters[0]
+
+    if _is_uuid_field(pagination_filter.vertex_class, pagination_filter.property_field):
+
+    else:
+        raise AssertionError(u'Found pagination filter over vertex class {}'
+                     u' and property field {}. Currently, only filters'
+                     u' over uuid property fields are allowed for pagination: {}'
+                     .format(pagination_filter.vertex_class,
+                             pagination_filter.property_field,
+                             pagination_filters))
+
+
 
     next_page_pagination_parameters[next_page_query_parameter_name] = proper_cut_uuid_string
     remainder_pagination_parameters[remainder_query_parameter_name] = proper_cut_uuid_string
