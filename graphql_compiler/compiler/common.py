@@ -120,12 +120,12 @@ def compile_graphql_to_cypher(schema, graphql_string, type_equivalence_hints=Non
     return _compile_graphql_generic(backend.cypher_backend, schema_info, graphql_string)
 
 
-def _compile_graphql_generic(backend, schema_info, graphql_string):
+def _compile_graphql_generic(target_backend, schema_info, graphql_string):
     """Compile the GraphQL input, lowering and emitting the query using the given functions.
 
     Args:
-        backend: Backend used to compile the query
-        schema_info: backend.schemaInfoClass containing all necessary schema information.
+        target_backend: Backend used to compile the query
+        schema_info: target_backend.schemaInfoClass containing all necessary schema information.
         graphql_string: the GraphQL query to compile to the target language, as a string.
 
     Returns:
@@ -135,10 +135,10 @@ def _compile_graphql_generic(backend, schema_info, graphql_string):
         schema_info.schema, graphql_string,
         type_equivalence_hints=schema_info.type_equivalence_hints)
 
-    lowered_ir_blocks = backend.lower_func(schema_info, ir_and_metadata)
-    query = backend.emit_func(schema_info, lowered_ir_blocks)
+    lowered_ir_blocks = target_backend.lower_func(schema_info, ir_and_metadata)
+    query = target_backend.emit_func(schema_info, lowered_ir_blocks)
     return CompilationResult(
         query=query,
-        language=backend.language,
+        language=target_backend.language,
         output_metadata=ir_and_metadata.output_metadata,
         input_metadata=ir_and_metadata.input_metadata)

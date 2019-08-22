@@ -8,18 +8,18 @@ DEFAULT_ROOT_PASSWORD = u'root'  # nosec
 MSSQL_ROOT_PASSWORD = u'Root-secure1'  # mssql has stricter root password restrictions  # nosec
 
 SQL_BACKENDS = {
-    # test_backend.POSTGRES,
-    # test_backend.MYSQL,
-    # test_backend.MARIADB,
+    test_backend.POSTGRES,
+    test_backend.MYSQL,
+    test_backend.MARIADB,
     test_backend.MSSQL,
-    # test_backend.SQLITE,
+    test_backend.SQLITE,
 }
 
 # sqlite does not require that a DB be created/dropped for testing
 EXPLICIT_DB_BACKENDS = {
-    # test_backend.POSTGRES,
-    # test_backend.MYSQL,
-    # test_backend.MARIADB,
+    test_backend.POSTGRES,
+    test_backend.MYSQL,
+    test_backend.MARIADB,
     test_backend.MSSQL,
 }
 
@@ -37,6 +37,11 @@ REDISGRAPH_BACKENDS = {
 }
 
 SQL_BACKEND_TO_CONNECTION_STRING = {
+    # HACK(bojanserafimov): Entries are commented-out because MSSQL is the only one whose scheme
+    #                       initialization is properly configured, with a hierarchy of multiple
+    #                       databases and schemas. I'm keeping the code to remember the connection
+    #                       string formats.
+    #
     # test_backend.POSTGRES:
     #     u'postgresql://postgres:{password}@localhost:5432'.format(password=DEFAULT_ROOT_PASSWORD),
     # test_backend.MYSQL:

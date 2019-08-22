@@ -6,13 +6,13 @@ from os import path
 
 from funcy import retry
 import six
-from sqlalchemy import Column, Date, DateTime, MetaData, Numeric, String, Table, create_engine, text
+from sqlalchemy import create_engine, text
 from sqlalchemy.schema import CreateSchema
-from ..test_helpers import get_sqlalchemy_schema_info
 
 from ..integration_tests.integration_backend_config import (
     EXPLICIT_DB_BACKENDS, SQL_BACKEND_TO_CONNECTION_STRING, SqlTestBackend
 )
+from ..test_helpers import get_sqlalchemy_schema_info
 
 
 def generate_orient_snapshot_data(client):

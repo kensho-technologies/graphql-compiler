@@ -11,7 +11,7 @@ import pytest
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...tests import test_backend
 from ...tests.test_helpers import generate_schema, generate_schema_graph
-from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema, get_sqlalchemy_schema_info
+from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
 from .integration_backend_config import (
     MATCH_BACKENDS, NEO4J_BACKENDS, REDISGRAPH_BACKENDS, SQL_BACKENDS
 )
@@ -23,10 +23,6 @@ from .integration_test_helpers import (
 
 all_backends_list = [
     test_backend.ORIENTDB,
-    # test_backend.POSTGRES,
-    # test_backend.MARIADB,
-    # test_backend.MYSQL,
-    # test_backend.SQLITE,
     test_backend.MSSQL,
     test_backend.NEO4J,
     test_backend.REDISGRAPH,

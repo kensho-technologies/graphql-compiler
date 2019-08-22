@@ -922,8 +922,8 @@ class MatchIrLoweringTests(unittest.TestCase):
         output_metadata = {
             'name': OutputMetadata(type=GraphQLString, optional=False)
         }
-        final_query = ir_lowering_match.lower_ir(
-            None, IrAndMetadata(ir_blocks, input_metadata, output_metadata, query_metadata_table))
+        ir = IrAndMetadata(ir_blocks, input_metadata, output_metadata, query_metadata_table)
+        final_query = ir_lowering_match.lower_ir(schema_info, ir)
 
         self.assertEqual(
             expected_compound_match_query, final_query,
