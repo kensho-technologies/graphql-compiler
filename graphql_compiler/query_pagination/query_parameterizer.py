@@ -173,6 +173,7 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
     Returns:
         ParameterizedPaginationQueries namedtuple
     """
+
     pagination_vertices = _get_nodes_for_pagination(statistics, query_ast)
     pagination_fields = [
         _get_or_create_primary_key_field(schema_graph, vertex)
@@ -180,43 +181,67 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
     ]
 
     pagination_filters = []
+    filter_modifications = []
     for vertex, field in zip(pagination_vertices, pagination_fields):
-        related_filters = [
-            deepcopy(directive)
-            for directive in field.directives
-        ]
         vertex_class = vertex.name.value
         property_field_name = field.name.value
-        filter_for_next_page_query = _create_filter_for_next_page_query(
-            vertex_class, property_field_name, parameters
-        )
-        filter_for_remainder_query = _create_filter_for_remainder_query(
-            vertex_class, property_field_name, parameters
-        )
+        related_filters = []
 
-        pagination_filter = PaginationFilter(
-            vertex_class, property_field_name, filter_for_next_page_query,
-            filter_for_remainder_query, related_filters
-        )
-        pagination_filters.append(pagination_filter)
+        next_page_original_filter, next_page_created_filter = None, None
+        remainder_original_filter, remainder_created_filter = None, None
+        for directive in field.directives:
+            if _get_filter_operation(directive) == '<' and next_page_original_filter is None:
+                next_page_original_filter, next_page_created_filter = deepcopy(directive), _create_filter_for_next_page_query(
+                    vertex_class, property_field_name, parameters
+                )
+                related_filters.append(deepcopy(next_page_created_filter))
+            elif _get_filter_operation(directive) == '>=' and remainder_original_filter is None:
+                remainder_original_filter, remainder_created_filter = deepcopy(directive), _create_filter_for_remainder_query(
+                    vertex_class, property_field_name, parameters
+                )
+                related_filters.append(deepcopy(remainder_created_filter))
+            else:
+                related_filters.append(deepcopy(directive))
 
-    # We create a deep copy of the original query's directives at each field, so we can generate
-    # both the next page query and remainder query from the same AST without having each generated
-    # query's filters appear in the other.
-    original_field_directives = [
-        deepcopy(field.directives)
-        for field in pagination_fields
-    ]
 
-    for field, field_directives, pagination_filter in zip(pagination_fields, original_field_directives, pagination_filters):
-        field.directives = deepcopy(field_directives)
-        field.directives.append(pagination_filter.next_page_query_filter)
+        filter_modifications.append([
+            field,
+            (next_page_original_filter, next_page_created_filter),
+            (remainder_original_filter, remainder_created_filter),
+        ])
+        pagination_filters.append(PaginationFilter(
+            vertex_class, property_field_name, next_page_created_filter,
+            remainder_created_filter, related_filters
+        ))
+
+
+    for modification in filter_modifications:
+        if modification[1][0] is None:
+            modification[0].directives.append(modification[1][1])
+        else:
+            modification[0].directives[modification[0].directives.index(modification[1][0])] = modification[1][1]
 
     parameterized_next_page_query_ast = deepcopy(query_ast)
 
-    for field, field_directives, pagination_filter in zip(pagination_fields, original_field_directives, pagination_filters):
-        field.directives = deepcopy(field_directives)
-        field.directives.append(pagination_filter.remainder_query_filter)
+    for modification in filter_modifications:
+        if modification[1][0] is None:
+            del modification[0].directives[modification[0].directives.index(modification[1][1])]
+        else:
+            modification[0].directives[modification[0].directives.index(modification[1][1])] = modification[1][0]
+
+    for modification in filter_modifications:
+        if modification[2][0] is None:
+            modification[0].directives.append(modification[2][1])
+        else:
+            modification[0].directives[modification[0].directives.index(modification[2][0])] = modification[2][1]
+
+    parameterized_next_page_query_ast = deepcopy(query_ast)
+
+    for modification in filter_modifications:
+        if modification[2][0] is None:
+            del modification[0].directives[modification[0].directives.index(modification[2][1])]
+        else:
+            modification[0].directives[modification[0].directives.index(modification[2][1])] = modification[2][0]
 
     parameterized_remainder_query_ast = deepcopy(query_ast)
 
