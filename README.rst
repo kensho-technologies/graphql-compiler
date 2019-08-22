@@ -917,7 +917,7 @@ of the :code:`Species` in a column named :code:`species_uuid`.
 Greater than or equal to (:code:`>=`):
 ''''''''''''''''''''''''''''''''''''''
 
-.. code::  graphql
+.. code::
 
     {
         Animal {
@@ -1422,10 +1422,12 @@ type of the :code:`number_of_children` selection is an integer.
     }
 
 Here, we've modified the above query to add two more filtering
-constraints to the returned rows: - child :code:`Animal` vertices must
-contain the value of :code:`$substr` as a substring in their name, and -
-:code:`Animal` vertices must have at least :code:`$min_children` children that
-satisfy the above filter.
+constraints to the returned rows:
+
+- child :code:`Animal` vertices must contain the value of :code:`$substr` as a substring in their
+  name, and
+- :code:`Animal` vertices must have at least :code:`$min_children` children that
+  satisfy the above filter.
 
 Importantly, any filtering on :code:`_x_count` is applied *after* any other
 filters and type coercions that are present in the :code:`@fold` in
@@ -2114,10 +2116,10 @@ Specifically, for :code:`n` compound optionals, we generate 2n different
 :code:`MATCH` queries. For each of the 2n subsets :code:`S` of the :code:`n`
 optional edges:
 
-- We remove the :code:`@optional` restriction for each traversal in :code:`S`. - For each
-  traverse :code:`t` in the complement of :code:`S`, we entirely discard :code:`t` along with all
-  the vertices and directives within it, and we add a filter on the previous traverse to ensure
-  that the edge corresponding to :code:`t` does not exist.
+- We remove the :code:`@optional` restriction for each traversal in :code:`S`.
+- For each traverse :code:`t` in the complement of :code:`S`, we entirely discard :code:`t` along
+  with all the vertices and directives within it, and we add a filter on the previous traverse to
+  ensure that the edge corresponding to :code:`t` does not exist.
 
 Therefore, we get a performance penalty that grows exponentially with
 the number of *compound* optional edges. This is important to keep in
