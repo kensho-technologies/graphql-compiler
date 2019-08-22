@@ -14,10 +14,9 @@ from ..workarounds import (
 )
 from .between_lowering import lower_comparisons_to_between
 from .ir_lowering import (
-    lower_backtrack_blocks,
-    lower_folded_coerce_types_into_filter_blocks, lower_string_operators,
-    remove_backtrack_blocks_from_fold,
-    rewrite_binary_composition_inside_ternary_conditional, truncate_repeated_single_step_traversals,
+    lower_backtrack_blocks, lower_folded_coerce_types_into_filter_blocks, lower_string_operators,
+    remove_backtrack_blocks_from_fold, rewrite_binary_composition_inside_ternary_conditional,
+    truncate_repeated_single_step_traversals,
     truncate_repeated_single_step_traversals_in_sub_queries
 )
 from .optional_traversal import (

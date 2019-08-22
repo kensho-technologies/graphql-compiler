@@ -180,8 +180,9 @@ def _process_comparison_filter_directive(filter_operation_info, location,
         location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        parameters: list of 1 element, specifying the variable to which a matching value must be bound;
-                    if the variable is optional and missing, the check will return True.
+        parameters: list of 1 element, specifying the variable to which a
+                    matching value must be bound; if the variable is optional and missing,
+                    the check will return True.
         operator: unicode, a comparison operator, like '=', '!=', '>=' etc.
                   This is a kwarg only to preserve the same positional arguments in the
                   function signature, to ease validation.
@@ -317,8 +318,9 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
         location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        parameters: list of 1 element, specifying the variable to which a matching value must be bound;
-                    if the variable is optional and missing, the check will return True.
+        parameters: list of 1 element, specifying the variable to which a
+                    matching value must be bound; if the variable is optional and missing,
+                    the check will return True.
 
     Returns:
         a Filter basic block that performs the check against the name or alias
@@ -438,8 +440,9 @@ def _process_in_collection_filter_directive(filter_operation_info, location, con
         location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        parameters: list of 1 element, specifying the variable to which a matching value must be bound;
-                    if the variable is optional and missing, the check will return True.
+        parameters: list of 1 element, specifying the variable to which a
+                    matching value must be bound; if the variable is optional and missing,
+                    the check will return True.
 
     Returns:
         a Filter basic block that performs the collection existence check
@@ -476,8 +479,9 @@ def _process_not_in_collection_filter_directive(filter_operation_info, location,
         location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        parameters: list of 1 element, specifying the variable to which a matching value mustn't be bound;
-                    if the variable is optional and missing, the check will return True.
+        parameters: list of 1 element, specifying the variable to which a
+                    matching value must be bound; if the variable is optional and missing,
+                    the check will return True.
 
     Returns:
         a Filter basic block that performs the collection existence check
@@ -513,8 +517,9 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
         location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        parameters: list of 1 element, specifying the variable to which a matching value must be bound;
-                    if the variable is optional and missing, the check will return True.
+       parameters: list of 1 element, specifying the variable to which a
+                    matching value must be bound; if the variable is optional and missing,
+                    the check will return True.
 
     Returns:
         a Filter basic block that performs the substring check
@@ -554,8 +559,9 @@ def _process_ends_with_filter_directive(filter_operation_info, location, context
         location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        parameters: list of 1 element, specifying the variable to which a matching value must be bound;
-                    if the variable is optional and missing, the check will return True.
+        parameters: list of 1 element, specifying the variable to which a
+                    matching value must be bound; if the variable is optional and missing,
+                    the check will return True.
 
     Returns:
         a Filter basic block that performs the substring check
@@ -595,8 +601,9 @@ def _process_starts_with_filter_directive(filter_operation_info, location, conte
         location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        parameters: list of 1 element, specifying the variable to which a matching value must be bound;
-                    if the variable is optional and missing, the check will return True.
+        parameters: list of 1 element, specifying the variable to which a
+                    matching value must be bound; if the variable is optional and missing,
+                    the check will return True.
 
     Returns:
         a Filter basic block that performs the substring check
@@ -635,8 +642,9 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
         location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        parameters: list of 1 element, specifying the variable to which a matching value must be bound;
-                    if the variable is optional and missing, the check will return True.
+        parameters: list of 1 element, specifying the variable to which a
+                    matching value must be bound; if the variable is optional and missing,
+                    the check will return True.
 
     Returns:
         a Filter basic block that performs the contains check
@@ -682,8 +690,9 @@ def _process_not_contains_filter_directive(filter_operation_info, location, cont
         location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        parameters: list of 1 element, specifying the variable to which a matching value mustn't be bound;
-                    if the variable is optional and missing, the check will return True.
+        parameters: list of 1 element, specifying the variable to which a
+                    matching value must be bound; if the variable is optional and missing,
+                    the check will return True.
 
     Returns:
         a Filter basic block that performs the contains check
@@ -723,8 +732,9 @@ def _process_intersects_filter_directive(filter_operation_info, location, contex
         location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-        parameters: list of 1 element, specifying the variable to which a matching value must be bound;
-                    if the variable is optional and missing, the check will return True.
+        parameters: list of 1 element, specifying the variable to which a
+                    matching value must be bound; if the variable is optional and missing,
+                    the check will return True.
 
     Returns:
         a Filter basic block that performs the intersects check
