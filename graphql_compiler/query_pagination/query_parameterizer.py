@@ -48,6 +48,10 @@ PaginationFilter = namedtuple(
     ),
 )
 
+def _get_filter_operation(filter_directive):
+    """Return the @filter's op_name as a string."""
+    return filter_directive.arguments[0].value.value
+
 
 def _get_nodes_for_pagination(statistics, query_ast):
     """Return a list of nodes usable for pagination belonging to the given AST node."""
@@ -132,11 +136,6 @@ def _create_filter_for_next_page_query(vertex_name, property_field_name, paramet
         vertex_name, property_field_name
     )
 
-    if paged_upper_param in parameters.keys():
-        raise AssertionError(
-            u'Parameter list {} already contains parameter {},'
-            u' which is reserved for pagination.'.format(parameters, paged_upper_param))
-
     filter_directive = _create_binary_filter_directive('<', paged_upper_param)
     return filter_directive
 
@@ -146,11 +145,6 @@ def _create_filter_for_remainder_query(vertex_name, property_field_name, paramet
     paged_lower_param = RESERVED_PARAMETER_PREFIX + 'lower_param_on_{}_{}'.format(
         vertex_name, property_field_name
     )
-
-    if paged_lower_param in parameters.keys():
-        raise AssertionError(
-            u'Parameter list {} already contains parameter {},'
-            u' which is reserved for pagination.'.format(parameters, paged_lower_param))
 
     filter_directive = _create_binary_filter_directive('>=', paged_lower_param)
     return filter_directive
@@ -173,7 +167,6 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
     Returns:
         ParameterizedPaginationQueries namedtuple
     """
-
     pagination_vertices = _get_nodes_for_pagination(statistics, query_ast)
     pagination_fields = [
         _get_or_create_primary_key_field(schema_graph, vertex)
@@ -203,6 +196,14 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
             else:
                 related_filters.append(deepcopy(directive))
 
+        if next_page_created_filter is None:
+            next_page_created_filter = _create_filter_for_next_page_query(
+                vertex_class, property_field_name, parameters
+            )
+        if remainder_created_filter is None:
+            remainder_created_filter = _create_filter_for_remainder_query(
+                vertex_class, property_field_name, parameters
+            )
 
         filter_modifications.append([
             field,
@@ -235,15 +236,13 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
         else:
             modification[0].directives[modification[0].directives.index(modification[2][0])] = modification[2][1]
 
-    parameterized_next_page_query_ast = deepcopy(query_ast)
+    parameterized_remainder_query_ast = deepcopy(query_ast)
 
     for modification in filter_modifications:
         if modification[2][0] is None:
             del modification[0].directives[modification[0].directives.index(modification[2][1])]
         else:
             modification[0].directives[modification[0].directives.index(modification[2][1])] = modification[2][0]
-
-    parameterized_remainder_query_ast = deepcopy(query_ast)
 
     parameterized_queries = ParameterizedPaginationQueries(
         parameterized_next_page_query_ast, parameterized_remainder_query_ast, pagination_filters,
