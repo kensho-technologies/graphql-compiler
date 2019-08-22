@@ -15,42 +15,25 @@ from .sql_tree import SqlNode, SqlQueryTree
 ##############
 
 
-def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
+def lower_ir(schema_info, ir):
     """Lower the IR blocks into a form that can be represented by a SQL query.
 
     Args:
-        ir_blocks: list of IR blocks to lower into SQL-compatible form
-        query_metadata_table: QueryMetadataTable object containing all metadata collected during
-                              query processing, including location metadata (e.g. which locations
-                              are folded or optional).
-        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
-                                Used as a workaround for GraphQL's lack of support for
-                                inheritance across "types" (i.e. non-interfaces), as well as a
-                                workaround for Gremlin's total lack of inheritance-awareness.
-                                The key-value pairs in the dict specify that the "key" type
-                                is equivalent to the "value" type, i.e. that the GraphQL type or
-                                interface in the key is the most-derived common supertype
-                                of every GraphQL type in the "value" GraphQL union.
-                                Recursive expansion of type equivalence hints is not performed,
-                                and only type-level correctness of this argument is enforced.
-                                See README.md for more details on everything this parameter does.
-                                *****
-                                Be very careful with this option, as bad input here will
-                                lead to incorrect output queries being generated.
-                                *****
+        schema_info: SqlAlchemySchemaInfo containing all relevant schema information
+        ir: IrAndMetadata representing the query to lower into SQL-compatible form
 
     Returns:
         tree representation of IR blocks for recursive traversal by SQL backend.
     """
-    _validate_all_blocks_supported(ir_blocks, query_metadata_table)
-    construct_result = _get_construct_result(ir_blocks)
-    query_path_to_location_info = _map_query_path_to_location_info(query_metadata_table)
+    _validate_all_blocks_supported(ir.ir_blocks, ir.query_metadata_table)
+    construct_result = _get_construct_result(ir.ir_blocks)
+    query_path_to_location_info = _map_query_path_to_location_info(ir.query_metadata_table)
     query_path_to_output_fields = _map_query_path_to_outputs(
         construct_result, query_path_to_location_info)
-    block_index_to_location = _map_block_index_to_location(ir_blocks)
+    block_index_to_location = _map_block_index_to_location(ir.ir_blocks)
 
     # perform lowering steps
-    ir_blocks = lower_unary_transformations(ir_blocks)
+    ir_blocks = lower_unary_transformations(ir.ir_blocks)
     ir_blocks = lower_unsupported_metafield_expressions(ir_blocks)
 
     # iteratively construct SqlTree
@@ -68,7 +51,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
                     u'Encountered QueryRoot {} but tree root is already set to {} during '
                     u'construction of SQL query tree for IR blocks {} with query '
                     u'metadata table {}'.format(
-                        block, tree_root, ir_blocks, query_metadata_table))
+                        block, tree_root, ir_blocks, ir.query_metadata_table))
             tree_root = SqlNode(block=block, query_path=query_path)
             query_path_to_node[query_path] = tree_root
         elif isinstance(block, blocks.Filter):
@@ -76,7 +59,8 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
         else:
             raise AssertionError(
                 u'Unsupported block {} unexpectedly passed validation for IR blocks '
-                u'{} with query metadata table {} .'.format(block, ir_blocks, query_metadata_table))
+                u'{} with query metadata table {} .'
+                .format(block, ir_blocks, ir.query_metadata_table))
 
     return SqlQueryTree(tree_root, query_path_to_location_info, query_path_to_output_fields,
                         query_path_to_filters, query_path_to_node)
