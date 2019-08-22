@@ -105,8 +105,13 @@ def _generate_parameters_for_int_pagination_filter(
     proper_cut = lower_bound_int + (upper_bound_int - lower_bound_int) * fraction_covered
     proper_cut_uuid_string = _encode_int_as_uuid(int(proper_cut))
 
-    next_page_parameter_name = _get_binary_filter_parameter(pagination_filter.next_page_query_filter)
-    remainder_parameter_name = _get_binary_filter_parameter(pagination_filter.remainder_query_filter)
+    next_page_parameter_name = _get_binary_filter_parameter(
+        pagination_filter.next_page_query_filter
+    )
+    remainder_parameter_name = _get_binary_filter_parameter(
+        pagination_filter.remainder_query_filter
+    )
+
     return (
         (next_page_parameter_name, proper_cut_uuid_string),
         (remainder_parameter_name, proper_cut_uuid_string)
@@ -131,13 +136,11 @@ def _generate_parameters_for_pagination_filters(
         )
     else:
         raise AssertionError(u'Found pagination filter over vertex class {}'
-                     u' and property field {}. Currently, only filters'
-                     u' over uuid property fields are allowed for pagination: {}'
-                     .format(pagination_filter.vertex_class,
-                             pagination_filter.property_field,
-                             pagination_filters))
-
-
+                             u' and property field {}. Currently, only filters'
+                             u' over uuid property fields are allowed for pagination: {}'
+                             .format(pagination_filter.vertex_class,
+                                     pagination_filter.property_field,
+                                     pagination_filters))
 
     next_page_pagination_parameters[next_page_parameter[0]] = next_page_parameter[1]
     remainder_pagination_parameters[remainder_parameter[0]] = remainder_parameter[1]
