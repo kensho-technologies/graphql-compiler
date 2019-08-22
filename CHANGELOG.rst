@@ -4,8 +4,6 @@ Changelog
 Current development version
 ---------------------------
 
-.. _v1110:
-
 v1.11.0
 -------
 
@@ -37,8 +35,6 @@ Thanks to :code:`0xflotus`, :code:`bojanserafimov`, :code:`evantey`,
 :code:`LWProgramming`, :code:`pmantica1`, :code:`qqi0O0`, and :code:`Vlad` for their
 contributions.
 
-.. _v1101:
-
 v1.10.1
 -------
 
@@ -53,16 +49,12 @@ v1.10.1
 Thanks to :code:`bojanserafimov`, :code:`evantey14`, :code:`jeremy.meulemans`, and
 :code:`pmantica1` for their contributions.
 
-.. _v1100:
-
 v1.10.0
 -------
 
 -  **BREAKING**: Rename the :code:`__count` meta field to :code:`_x_count`, to
    avoid GraphQL schema parsing issues with other GraphQL libraries.
    `#176 <https://github.com/kensho-technologies/graphql-compiler/pull/176>`__
-
-.. _v190:
 
 v1.9.0
 ------
@@ -74,8 +66,6 @@ v1.9.0
    and a variety of development quality-of-life improvements.
 
 Thanks to :code:`jmeulemans` for his contributions.
-
-.. _v183:
 
 v1.8.3
 ------
@@ -92,8 +82,6 @@ v1.8.3
 
 Thanks to :code:`gurer-kensho` for the contribution.
 
-.. _v182:
-
 v1.8.2
 ------
 
@@ -103,8 +91,6 @@ v1.8.2
 
 Thanks to :code:`cw6515` for the fix!
 
-.. _v181:
-
 v1.8.1
 ------
 
@@ -113,8 +99,6 @@ v1.8.1
    `#127 <https://github.com/kensho-technologies/graphql-compiler/pull/127>`__
 
 Thanks to :code:`bojanserafimov` for the fix!
-
-.. _v180:
 
 v1.8.0
 ------
@@ -133,16 +117,12 @@ v1.8.0
 Thanks to :code:`amartyashankha`, :code:`cw6515`, and :code:`yangsong97` for their
 contributions!
 
-.. _v172:
-
 v1.7.2
 ------
 
 -  Fix possible incorrect query execution due to dropped type coercions.
    `#110 <https://github.com/kensho-technologies/graphql-compiler/pull/110>`__
    `#113 <https://github.com/kensho-technologies/graphql-compiler/pull/113>`__
-
-.. _v170:
 
 v1.7.0
 ------
@@ -163,8 +143,6 @@ benefit -- up to 1000x on some queries!
 Thanks to :code:`yangsong97` for making his first contribution with the
 :code:`intersects` operator!
 
-.. _v162:
-
 v1.6.2
 ------
 
@@ -172,8 +150,6 @@ v1.6.2
    `#95 <https://github.com/kensho-technologies/graphql-compiler/pull/95>`__
 
 Thanks to :code:`amartyashankha` for the fix!
-
-.. _v161:
 
 v1.6.1
 ------
@@ -184,16 +160,12 @@ v1.6.1
 
 Thanks to :code:`amartyashankha` for the fix!
 
-.. _v160:
-
 v1.6.0
 ------
 
 -  Add full support for :code:`Decimal` data, including both filtering and
    output.
    `#91 <https://github.com/kensho-technologies/graphql-compiler/pull/91>`__
-
-.. _v150:
 
 v1.5.0
 ------
@@ -214,8 +186,6 @@ traversals. See `the documentation in the
 README <https://github.com/kensho-technologies/graphql-compiler/blob/3c79cd97744b7f3f842c2d32ddc2a072c7fa7898/README.md#expanding-optional-vertex-fields>`__
 for more details.
 
-.. _v141:
-
 v1.4.1
 ------
 
@@ -226,8 +196,6 @@ v1.4.1
 
 Thanks to :code:`amartyashankha` for this contribution!
 
-.. _v140:
-
 v1.4.0
 ------
 
@@ -235,8 +203,6 @@ v1.4.0
    `#64 <https://github.com/kensho-technologies/graphql-compiler/pull/64>`__
 
 Thanks to :code:`amartyashankha` for this contribution!
-
-.. _v131:
 
 v1.3.1
 ------
@@ -247,8 +213,6 @@ v1.3.1
 -  Exposed the package name and version in the root :code:`__init__.py` file
    `#57 <https://github.com/kensho-technologies/graphql-compiler/pull/57>`__
 
-.. _v130:
-
 v1.3.0
 ------
 
@@ -256,16 +220,12 @@ v1.3.0
    `#52 <https://github.com/kensho-technologies/graphql-compiler/pull/52>`__
 -  Lots of under-the-hood cleanup and improvements.
 
-.. _v121:
-
 v1.2.1
 ------
 
 -  Add workaround for `OrientDB type inconsistency when filtering
    lists <https://github.com/orientechnologies/orientdb/issues/7811>`__
    `#42 <https://github.com/kensho-technologies/graphql-compiler/pull/42>`__
-
-.. _v120:
 
 v1.2.0
 ------
@@ -285,8 +245,6 @@ v1.2.0
    types
    `#37 <https://github.com/kensho-technologies/graphql-compiler/pull/37>`__
 
-.. _v110:
-
 v1.1.0
 ------
 
@@ -298,15 +256,11 @@ v1.1.0
 
 Thanks to :code:`ColCarroll` for making the compiler support Python 3!
 
-.. _v103:
-
 v1.0.3
 ------
 
 -  Fix a minor bug in the GraphQL pretty-printer
    `#30 <https://github.com/kensho-technologies/graphql-compiler/pull/30>`__
-
-.. _v102:
 
 v1.0.2
 ------
@@ -320,8 +274,6 @@ v1.0.2
 
 Thanks to :code:`benlongo` for their contributions.
 
-.. _v101:
-
 v1.0.1
 ------
 
@@ -333,8 +285,6 @@ v1.0.1
 
 Thanks to :code:`benlongo`, :code:`ColCarroll`, and :code:`cw6515` for their
 contributions.
-
-.. _v100:
 
 v1.0.0
 ------
