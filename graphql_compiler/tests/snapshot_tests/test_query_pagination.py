@@ -15,10 +15,15 @@ from ..test_helpers import compare_graphql, generate_schema_graph
 class QueryPaginationTests(unittest.TestCase):
     """Test the query pagination module."""
 
-    def _compare_query_with_parameters_namedtuple(expected, received):
+    def _compare_query_with_parameters_namedtuple(self, expected, received):
         """Compares two given QueryWithParameters namedtuple, raising error if not equal."""
+        if expected is None and received is None:
+            return True
+        elif expected is None != received is None:
+            return False
+
         compare_graphql(
-            expected.query_string, received.query_string
+            self, expected.query_string, received.query_string
         )
         self.assertEqual(expected.parameters, received.parameters)
 
@@ -91,16 +96,16 @@ class QueryPaginationTests(unittest.TestCase):
             )
         )
 
-        _compare_query_with_parameters_namedtuple(
+        self._compare_query_with_parameters_namedtuple(
             expected_first_next_page, received_first_next_page
         )
-        _compare_query_with_parameters_namedtuple(
+        self._compare_query_with_parameters_namedtuple(
             expected_first_remainder, received_first_remainder
         )
 
-        _compare_query_with_parameters_namedtuple(
+        self._compare_query_with_parameters_namedtuple(
             expected_second_next_page, received_second_next_page
         )
-        _compare_query_with_parameters_namedtuple(
-            expected_second_remainder, received_second_remainder
+        self._compare_query_with_parameters_namedtuple(
+            received_second_remainder, expected_second_remainder
         )
