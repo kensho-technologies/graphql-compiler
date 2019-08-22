@@ -2857,11 +2857,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                (animal_1.name LIKE :wanted || '%')
+                ([Animal_1].name LIKE :wanted + '%')
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2898,11 +2898,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                (animal_1.name LIKE '%' || :wanted)
+                ([Animal_1].name LIKE '%' + :wanted)
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
