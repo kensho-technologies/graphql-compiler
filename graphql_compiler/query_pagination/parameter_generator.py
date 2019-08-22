@@ -80,10 +80,10 @@ def _get_domain_of_field(vertex_class, field_name):
     raise AssertionError(u'Unrecognized property field {}'.format(field_name))
 
 
-def _generate_parameter_for_integer_pagination_filter(
-    schema_graph, statistics, pagination_filters, user_parameters, num_pages
+def _generate_parameters_for_int_pagination_filter(
+    schema_graph, statistics, pagination_filter, user_parameters, num_pages
 ):
-    """"""
+    """Stuff"""
     domain_lower_bound, domain_upper_bound = _get_domain_of_field(
         pagination_filter.vertex_class, pagination_filter.property_field
     )
@@ -105,7 +105,12 @@ def _generate_parameter_for_integer_pagination_filter(
     proper_cut = lower_bound_int + (upper_bound_int - lower_bound_int) * fraction_covered
     proper_cut_uuid_string = _encode_int_as_uuid(int(proper_cut))
 
-    return proper_cut_uuid_string
+    next_page_parameter_name = _get_binary_filter_parameter(pagination_filter.next_page_query_filter)
+    remainder_parameter_name = _get_binary_filter_parameter(pagination_filter.remainder_query_filter)
+    return (
+        (next_page_parameter_name, proper_cut_uuid_string),
+        (remainder_parameter_name, proper_cut_uuid_string)
+    )
 
 
 def _generate_parameters_for_pagination_filters(
@@ -121,7 +126,9 @@ def _generate_parameters_for_pagination_filters(
     pagination_filter = pagination_filters[0]
 
     if _is_uuid_field(pagination_filter.vertex_class, pagination_filter.property_field):
-
+        next_page_parameter, remainder_parameter = _generate_parameters_for_int_pagination_filter(
+            schema_graph, statistics, pagination_filter, user_parameters, num_pages
+        )
     else:
         raise AssertionError(u'Found pagination filter over vertex class {}'
                      u' and property field {}. Currently, only filters'
@@ -132,8 +139,8 @@ def _generate_parameters_for_pagination_filters(
 
 
 
-    next_page_pagination_parameters[next_page_query_parameter_name] = proper_cut_uuid_string
-    remainder_pagination_parameters[remainder_query_parameter_name] = proper_cut_uuid_string
+    next_page_pagination_parameters[next_page_parameter[0]] = next_page_parameter[1]
+    remainder_pagination_parameters[remainder_parameter[0]] = remainder_parameter[1]
 
     return next_page_pagination_parameters, remainder_pagination_parameters
 
@@ -143,20 +150,24 @@ def _validate_all_pagination_filters_have_parameters(
 ):
     """Validate that all PaginationFilters have assigned parameter values."""
     for pagination_filter in pagination_filters:
-        next_page_parameter = _get_binary_filter_parameter(pagination_filter.next_page_query_filter)
-        remainder_parameter = _get_binary_filter_parameter(pagination_filter.remainder_query_filter)
+        next_page_filter_parameter_name = _get_binary_filter_parameter(
+            pagination_filter.next_page_query_filter
+        )
+        remainder_filter_parameter_name = _get_binary_filter_parameter(
+            pagination_filter.remainder_query_filter
+        )
 
-        if next_page_parameter not in next_page_pagination_parameters:
+        if next_page_filter_parameter_name not in next_page_pagination_parameters:
             raise AssertionError(u'Could not find parameter value for'
                                  u'pagination parameter {} belonging to next page query: {} {} {}'
-                                 .format(next_page_parameter, pagination_filters,
+                                 .format(next_page_filter_parameter_name, pagination_filters,
                                          next_page_pagination_parameters,
                                          remainder_pagination_parameters))
 
-        if remainder_parameter not in remainder_pagination_parameters:
+        if remainder_filter_parameter_name not in remainder_pagination_parameters:
             raise AssertionError(u'Could not find parameter value for'
                                  u'pagination parameter {} belonging to remainder query: {} {} {}'
-                                 .format(remainder_parameter, pagination_filters,
+                                 .format(remainder_filter_parameter_name, pagination_filters,
                                          next_page_pagination_parameters,
                                          remainder_pagination_parameters))
 
@@ -165,7 +176,7 @@ def generate_parameters_for_parameterized_query(
     schema_graph, statistics, parameterized_pagination_queries, num_pages
 ):
     """Generate parameters for the given parameterized pagination queries.
-
+][
     Args:
         schema_graph: SchemaGraph instance.
         statistics: Statistics object.
