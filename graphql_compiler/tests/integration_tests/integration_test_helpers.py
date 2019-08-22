@@ -5,7 +5,7 @@ import six
 
 from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
 from ...compiler import compile_graphql_to_cypher
-from ...compiler.ir_lowering_sql.metadata import SqlMetadata
+from ..test_helpers import get_sqlalchemy_schema_info
 
 
 def sort_db_results(results):
@@ -51,18 +51,14 @@ def compile_and_run_match_query(schema, graphql_query, parameters, orientdb_clie
     return results
 
 
-def compile_and_run_sql_query(schema, graphql_query, parameters, engine, metadata):
+def compile_and_run_sql_query(sql_schema_info, graphql_query, parameters, engine):
     """Compile and run a SQL query against the supplied SQL backend."""
     dialect_name = engine.dialect.name
-    sql_metadata = SqlMetadata(dialect_name, metadata)
-    compilation_result = graphql_to_sql(schema, graphql_query, parameters, sql_metadata, None)
+    compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
     query = compilation_result.query
     results = []
-    connection = engine.connect()
-    with connection.begin() as trans:
-        for result in connection.execute(query):
-            results.append(dict(result))
-        trans.rollback()
+    for result in engine.execute(query):
+        results.append(dict(result))
     return results
 
 

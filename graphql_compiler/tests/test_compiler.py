@@ -6,13 +6,12 @@ import unittest
 from graphql import GraphQLID, GraphQLString
 import six
 
-from ..exceptions import GraphQLValidationError, GraphQLCompilationError
 from . import test_input_data
 from ..compiler import (
     OutputMetadata, compile_graphql_to_cypher, compile_graphql_to_gremlin, compile_graphql_to_match,
     compile_graphql_to_sql
 )
-from ..compiler.ir_lowering_sql.metadata import SqlMetadata
+from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from .test_helpers import (
     SKIP_TEST, compare_cypher, compare_gremlin, compare_input_metadata, compare_match, compare_sql,
     get_schema, get_sqlalchemy_schema_info

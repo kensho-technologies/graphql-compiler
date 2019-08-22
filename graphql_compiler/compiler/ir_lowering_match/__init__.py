@@ -79,7 +79,8 @@ def lower_ir(schema_info, ir):
     ir_blocks = rewrite_binary_composition_inside_ternary_conditional(ir_blocks)
     ir_blocks = merge_consecutive_filter_clauses(ir_blocks)
     ir_blocks = lower_has_substring_binary_compositions(ir_blocks)
-    ir_blocks = orientdb_eval_scheduling.workaround_lowering_pass(ir_blocks, ir.query_metadata_table)
+    ir_blocks = orientdb_eval_scheduling.workaround_lowering_pass(
+        ir_blocks, ir.query_metadata_table)
 
     # Here, we lower from raw IR blocks into a MatchQuery object.
     # From this point on, the lowering / optimization passes work on the MatchQuery representation.

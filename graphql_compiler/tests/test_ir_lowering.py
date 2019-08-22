@@ -22,7 +22,7 @@ from ..compiler.ir_lowering_match.utils import BetweenClause, CompoundMatchQuery
 from ..compiler.match_query import MatchQuery, convert_to_match_query
 from ..compiler.metadata import LocationInfo, QueryMetadataTable
 from ..schema import GraphQLDate, GraphQLDateTime
-from .test_helpers import compare_ir_blocks, get_schema, get_common_schema_info
+from .test_helpers import compare_ir_blocks, get_common_schema_info, get_schema
 
 
 def check_test_data(test_case, expected_object, received_object):
@@ -983,5 +983,6 @@ class GremlinIrLoweringTests(unittest.TestCase):
             })
         )
 
-        final_blocks = ir_lowering_gremlin.lower_context_field_existence(ir_blocks, query_metadata_table)
+        final_blocks = ir_lowering_gremlin.lower_context_field_existence(
+            ir_blocks, query_metadata_table)
         check_test_data(self, expected_final_blocks, final_blocks)
