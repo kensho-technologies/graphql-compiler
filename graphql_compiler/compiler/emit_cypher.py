@@ -242,7 +242,7 @@ def _emit_fold_scope(cypher_query):
 ##############
 
 
-def emit_code_from_ir(cypher_query, compiler_metadata):
+def emit_code_from_ir(schema_info, cypher_query):
     """Return a Cypher query string from a CypherQuery object."""
     # According to the Cypher Query Language Reference [0], the standard Cypher version is
     # Cypher 9 (page 196) and we should be able to specify the Cypher version in the query.

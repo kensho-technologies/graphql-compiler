@@ -32,71 +32,55 @@ from .utils import construct_where_filter_predicate
 ##############
 
 
-def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
+def lower_ir(schema_info, ir):
     """Lower the IR into an IR form that can be represented in MATCH queries.
 
     Args:
-        ir_blocks: list of IR blocks to lower into MATCH-compatible form
-        query_metadata_table: QueryMetadataTable object containing all metadata collected during
-                              query processing, including location metadata (e.g. which locations
-                              are folded or optional).
-        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
-                                Used as a workaround for GraphQL's lack of support for
-                                inheritance across "types" (i.e. non-interfaces), as well as a
-                                workaround for Gremlin's total lack of inheritance-awareness.
-                                The key-value pairs in the dict specify that the "key" type
-                                is equivalent to the "value" type, i.e. that the GraphQL type or
-                                interface in the key is the most-derived common supertype
-                                of every GraphQL type in the "value" GraphQL union.
-                                Recursive expansion of type equivalence hints is not performed,
-                                and only type-level correctness of this argument is enforced.
-                                See README.md for more details on everything this parameter does.
-                                *****
-                                Be very careful with this option, as bad input here will
-                                lead to incorrect output queries being generated.
-                                *****
+        schema_info: CommonSchemaInfo containing all relevant schema information
+        ir: IrAndMetadata representing the query to lower into MATCH-compatible form
 
     Returns:
         MatchQuery object containing the IR blocks organized in a MATCH-like structure
     """
-    sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
+    sanity_check_ir_blocks_from_frontend(ir.ir_blocks, ir.query_metadata_table)
 
     # Construct the mapping of each location to its corresponding GraphQL type.
     location_types = {
         location: location_info.type
-        for location, location_info in query_metadata_table.registered_locations
+        for location, location_info in ir.query_metadata_table.registered_locations
     }
 
     # Compute the set of all locations that have associated type coercions.
     coerced_locations = {
         location
-        for location, location_info in query_metadata_table.registered_locations
+        for location, location_info in ir.query_metadata_table.registered_locations
         if location_info.coerced_from_type is not None
     }
 
     # Extract information for both simple and complex @optional traverses
-    location_to_optional_results = extract_optional_location_root_info(ir_blocks)
+    location_to_optional_results = extract_optional_location_root_info(ir.ir_blocks)
     complex_optional_roots, location_to_optional_roots = location_to_optional_results
     simple_optional_root_info = extract_simple_optional_location_info(
-        ir_blocks, complex_optional_roots, location_to_optional_roots)
-    ir_blocks = remove_end_optionals(ir_blocks)
+        ir.ir_blocks, complex_optional_roots, location_to_optional_roots)
+    ir_blocks = remove_end_optionals(ir.ir_blocks)
 
     # Append global operation block(s) to filter out incorrect results
     # from simple optional match traverses (using a WHERE statement)
     if len(simple_optional_root_info) > 0:
         where_filter_predicate = construct_where_filter_predicate(
-            query_metadata_table, simple_optional_root_info)
+            ir.query_metadata_table, simple_optional_root_info)
         # The GlobalOperationsStart block should already exist at this point. It is inserted
         # in the compiler_frontend, and this function asserts that at the beginning.
         ir_blocks.insert(-1, Filter(where_filter_predicate))
 
     # These lowering / optimization passes work on IR blocks.
-    ir_blocks = lower_context_field_existence(ir_blocks, query_metadata_table)
+    ir_blocks = lower_context_field_existence(ir_blocks, ir.query_metadata_table)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
     ir_blocks = rewrite_binary_composition_inside_ternary_conditional(ir_blocks)
     ir_blocks = merge_consecutive_filter_clauses(ir_blocks)
     ir_blocks = lower_string_operators(ir_blocks)
-    ir_blocks = orientdb_eval_scheduling.workaround_lowering_pass(ir_blocks, query_metadata_table)
+    ir_blocks = orientdb_eval_scheduling.workaround_lowering_pass(
+        ir_blocks, ir.query_metadata_table)
 
     # Here, we lower from raw IR blocks into a MatchQuery object.
     # From this point on, the lowering / optimization passes work on the MatchQuery representation.
@@ -104,7 +88,7 @@ def lower_ir(ir_blocks, query_metadata_table, type_equivalence_hints=None):
 
     match_query = lower_comparisons_to_between(match_query)
 
-    match_query = lower_backtrack_blocks(match_query, query_metadata_table)
+    match_query = lower_backtrack_blocks(match_query, ir.query_metadata_table)
     match_query = truncate_repeated_single_step_traversals(match_query)
     match_query = orientdb_class_with_while.workaround_type_coercions_in_recursions(match_query)
 
