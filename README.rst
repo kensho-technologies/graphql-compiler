@@ -72,10 +72,7 @@ Table of contents
 -  `Execution model <#execution-model>`__
 -  `SQL <#sql>`__
 
-   -  `Configuring SQLAlchemy <#configuring-sqlalchemy>`__
    -  `End-To-End SQL Example <#end-to-end-sql-example>`__
-   -  `Configuring the SQL Database to Match the GraphQL
-      Schema <#configuring-the-sql-database-to-match-the-graphql-schema>`__
 
 -  `Miscellaneous <#miscellaneous>`__
 
@@ -1777,6 +1774,7 @@ backend of the GraphQL compiler. It does not represent best practices
 for configuring and running SQLAlchemy in a production system.
 
 .. code:: python
+
     from graphql import parse
     from graphql.utils.build_ast_schema import build_ast_schema
     from sqlalchemy import MetaData, Table, Column, String, create_engine
