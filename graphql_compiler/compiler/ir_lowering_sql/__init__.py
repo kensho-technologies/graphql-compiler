@@ -2,19 +2,8 @@
 
 import six
 
-from .. import blocks
-from ...compiler import expressions
 from ...compiler.compiler_frontend import IrAndMetadata
-from ..ir_lowering_common.common import (extract_optional_location_root_info,
-                                         extract_simple_optional_location_info,
-                                         lower_context_field_existence,
-                                         merge_consecutive_filter_clauses,
-                                         optimize_boolean_expression_comparisons,
-                                         remove_end_optionals)
-from ...compiler.helpers import Location
-from ..ir_lowering_sql import constants
-from ..metadata import LocationInfo
-from .sql_tree import SqlNode, SqlQueryTree
+from ..ir_lowering_common.common import lower_context_field_existence
 
 
 ##############

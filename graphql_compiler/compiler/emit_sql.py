@@ -1,19 +1,12 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
 from collections import namedtuple
-from datetime import date, datetime
-from decimal import Decimal
 import six
 
 import sqlalchemy
-from sqlalchemy import Column, bindparam, select
-from sqlalchemy.sql import expression as sql_expressions
-from sqlalchemy.sql.elements import BindParameter, and_
 
 from ..compiler import expressions
-from ..compiler.ir_lowering_sql import constants
-
-from . import compiler_frontend, blocks, helpers, expressions
+from . import blocks, expressions
 
 
 class CompilationState(object):
