@@ -62,11 +62,6 @@ class CompilationState(object):
     def mark_location(self):
         self._aliases[self._location.query_path] = self._alias
 
-    def begin_global_operations(self):
-        self._alias = None
-        self._location = None
-        self._classname = None
-
     def construct_result(self, output_name, field):
         self._outputs.append(field.to_sql(self._aliases, self._alias).label(output_name))
 
@@ -100,7 +95,7 @@ def emit_code_from_ir(sql_schema_info, ir):
         elif isinstance(block, blocks.Filter):
             state.filter(block.predicate)
         elif isinstance(block, blocks.GlobalOperationsStart):
-            state.begin_global_operations()
+            pass
         elif isinstance(block, blocks.ConstructResult):
             for output_name, field in six.iteritems(block.fields):
                 state.construct_result(output_name, field)
