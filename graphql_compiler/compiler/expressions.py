@@ -1,6 +1,9 @@
 # Copyright 2017-present Kensho Technologies, LLC.
+import operator
+
 from graphql import GraphQLInt, GraphQLList, GraphQLNonNull
 import six
+from sqlalchemy import sql
 
 from . import cypher_helpers
 from ..exceptions import GraphQLCompilationError
@@ -11,8 +14,6 @@ from .helpers import (
     ensure_unicode_string, is_graphql_type, safe_or_special_quoted_string, strip_non_null_from_type,
     validate_safe_or_special_string, validate_safe_string
 )
-import operator
-from sqlalchemy import sql
 
 
 # Since MATCH uses $-prefixed keywords to indicate special values,
@@ -388,7 +389,7 @@ class GlobalContextField(Expression):
                              u'should not be called.')
 
     def to_sql(self, aliases, current_alias):
-        raise NotIMplementedError()
+        raise NotImplementedError()
 
 
 class ContextField(Expression):

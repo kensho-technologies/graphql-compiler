@@ -5,8 +5,7 @@ import six
 
 import sqlalchemy
 
-from ..compiler import expressions
-from . import blocks, expressions
+from . import blocks
 
 
 class CompilationState(object):
