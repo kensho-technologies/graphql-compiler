@@ -8,6 +8,7 @@ from ..compiler import ir_lowering_gremlin, ir_lowering_match, ir_sanity_checks
 from ..compiler.blocks import (
     Backtrack, CoerceType, ConstructResult, EndOptional, Filter, MarkLocation, QueryRoot, Traverse
 )
+from ..compiler.compiler_frontend import IrAndMetadata, OutputMetadata
 from ..compiler.expressions import (
     BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, Literal, LocalField,
     NullLiteral, OutputContextField, TernaryConditional, TrueLiteral, UnaryTransformation, Variable,
@@ -21,7 +22,7 @@ from ..compiler.ir_lowering_match.utils import BetweenClause, CompoundMatchQuery
 from ..compiler.match_query import MatchQuery, convert_to_match_query
 from ..compiler.metadata import LocationInfo, QueryMetadataTable
 from ..schema import GraphQLDate, GraphQLDateTime
-from .test_helpers import compare_ir_blocks, get_schema
+from .test_helpers import compare_ir_blocks, get_common_schema_info, get_schema
 
 
 def check_test_data(test_case, expected_object, received_object):
@@ -916,7 +917,13 @@ class MatchIrLoweringTests(unittest.TestCase):
             ]
         )
 
-        final_query = ir_lowering_match.lower_ir(ir_blocks, query_metadata_table)
+        schema_info = get_common_schema_info()
+        input_metadata = {}
+        output_metadata = {
+            'name': OutputMetadata(type=GraphQLString, optional=False)
+        }
+        ir = IrAndMetadata(ir_blocks, input_metadata, output_metadata, query_metadata_table)
+        final_query = ir_lowering_match.lower_ir(schema_info, ir)
 
         self.assertEqual(
             expected_compound_match_query, final_query,

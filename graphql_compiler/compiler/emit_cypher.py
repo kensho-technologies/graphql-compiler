@@ -21,7 +21,8 @@ def _emit_code_from_cypher_step(cypher_step):
     has_where_block = cypher_step.where_block is not None
     is_optional_step = (
         isinstance(cypher_step.step_block, Traverse) and
-        cypher_step.step_block.optional
+        (cypher_step.step_block.optional or
+         cypher_step.step_block.within_optional_scope)
     )
     if has_where_block and is_optional_step:
         raise AssertionError(u'Received an illegal CypherStep containing an optional step together '
@@ -241,7 +242,7 @@ def _emit_fold_scope(cypher_query):
 ##############
 
 
-def emit_code_from_ir(cypher_query, compiler_metadata):
+def emit_code_from_ir(schema_info, cypher_query):
     """Return a Cypher query string from a CypherQuery object."""
     # According to the Cypher Query Language Reference [0], the standard Cypher version is
     # Cypher 9 (page 196) and we should be able to specify the Cypher version in the query.

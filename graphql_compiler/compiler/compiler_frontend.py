@@ -318,8 +318,7 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
         # Schema validation has ensured that the fields below exist.
         output_name = output_directive.arguments[0].value.value
         if context['metadata'].get_output_info(output_name):
-            raise GraphQLCompilationError(u'Cannot reuse output name: '
-                                          u'{}, {}'.format(output_name, context))
+            raise GraphQLCompilationError(u'Cannot reuse output name: {}'.format(output_name))
         validate_output_name(output_name)
 
         graphql_type = strip_non_null_from_type(current_schema_type)
@@ -944,7 +943,7 @@ def _compile_output_step(query_metadata_table):
     return blocks.ConstructResult(output_fields)
 
 
-def validate_schema_and_ast(schema, ast):
+def _validate_schema_and_ast(schema, ast):
     """Validate the supplied graphql schema and ast.
 
     This method wraps around graphql-core's validation to enforce a stricter requirement of the
@@ -1065,7 +1064,7 @@ def ast_to_ir(schema, ast, type_equivalence_hints=None):
 
     In the case of implementation bugs, could also raise ValueError, TypeError, or AssertionError.
     """
-    validation_errors = validate_schema_and_ast(schema, ast)
+    validation_errors = _validate_schema_and_ast(schema, ast)
     if validation_errors:
         raise GraphQLValidationError(u'String does not validate: {}'.format(validation_errors))
 
