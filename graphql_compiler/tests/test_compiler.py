@@ -406,7 +406,7 @@ class CompilerTests(unittest.TestCase):
                 parent_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = SKIP_TEST  # TODO(bojanserafimov): Add test
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -2973,7 +2973,7 @@ class CompilerTests(unittest.TestCase):
             expected_input_metadata=expected_input_metadata,
             type_equivalence_hints=None)
 
-        expected_sql = NotImplementedError
+        expected_sql = SKIP_TEST  # TODO(bojanserafimov): Add test
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -4604,7 +4604,7 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal__out_Animal_ParentOf__out_Animal_ParentOf___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = SKIP_TEST  # TODO(bojanserafimov): Add test
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
