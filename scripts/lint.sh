@@ -29,14 +29,14 @@ done
 cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
 # Get all python files or directories that need to be linted.
-lintable_locations="graphql_compiler/"
+lintable_locations="graphql_compiler/ docs/"
 # pylint doesn't support linting directories that aren't packages:
 # https://github.com/PyCQA/pylint/issues/352
 # Use **/*.py to supply all python files for individual linting.
-pylint_lintable_locations="graphql_compiler/**/*.py"
+pylint_lintable_locations="graphql_compiler/**/*.py docs/**/*.py"
 if [ "$diff_only" -eq 1 ] ; then
     # Quotes don't need to be escaped because they nest with $( ).
-    lintable_locations="$(git diff --name-only master... | grep "\.*\.py$")"
+    lintable_locations="$(git diff --name-only master... | grep ".*\.py$")"
     pylint_lintable_locations="$lintable_locations"
 fi
 
