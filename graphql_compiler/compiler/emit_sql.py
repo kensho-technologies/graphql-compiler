@@ -1,8 +1,6 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
-from collections import namedtuple
 import six
-
 import sqlalchemy
 
 from . import blocks

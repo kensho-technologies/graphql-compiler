@@ -1,5 +1,5 @@
 # Copyright 2017-present Kensho Technologies, LLC.
-import operator
+import operator as python_operator
 
 from graphql import GraphQLInt, GraphQLList, GraphQLNonNull
 import six
@@ -1103,18 +1103,17 @@ class BinaryComposition(Expression):
         self.validate()
 
         translation_table = {
-            u'=': operator.__eq__,
-            u'!=': operator.__ne__,
-            u'<': operator.__lt__,
-            u'>': operator.__gt__,
-            u'<=': operator.__le__,
-            u'>=': operator.__ge__,
+            u'=': python_operator.__eq__,
+            u'!=': python_operator.__ne__,
+            u'<': python_operator.__lt__,
+            u'>': python_operator.__gt__,
+            u'<=': python_operator.__le__,
+            u'>=': python_operator.__ge__,
             u'&&': sql.expression.and_,
             u'||': sql.expression.or_,
-            u'has_substring': sql.schema.Column.contains,
-            u'contains': lambda x, y: y.in_(x),
-            u'not_contains': lambda x, y: y.notin_(x),
-            u'intersects': lambda x, y: raise_(NotImplementedError()),
+            u'has_substring': sql.operators.ColumnOperators.contains,
+            u'in_collection': sql.operators.ColumnOperators.in_,
+            u'not_in_collection': sql.operators.ColumnOperators.notin_,
         }
         return translation_table[self.operator](
             self.left.to_sql(aliases, current_alias),

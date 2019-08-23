@@ -1,7 +1,4 @@
 # Copyright 2018-present Kensho Technologies, LLC.
-
-import six
-
 from ...compiler.compiler_frontend import IrAndMetadata
 from ..ir_lowering_common.common import lower_context_field_existence
 
