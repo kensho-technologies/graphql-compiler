@@ -1758,15 +1758,16 @@ the query were written in the opposite order:
 SQL
 ---
 
-Currently we only support filtering and outputting properties of a single vertex/table. Support
-for edge traversals and most directives is in development.
+Relational databases are supported by compiling to SQLAlchemy core as an intermediate
+language, and then relying on SQLAlchemy's compilation of the dialect specific SQL string to query
+the target database.
+
+Support for `@optional`, `@fold`, `@recurse`, and list types is in development.
 
 End-To-End SQL Example
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Relational databases are supported by compiling to SQLAlchemy core as an intermediate
-language, and then relying on SQLAlchemy's compilation of the dialect specific SQL string to query
-the target database. This section provides an end-to-end example including relevant GraphQL schema
+This section provides an end-to-end example including relevant GraphQL schema
 and SQLAlchemy engine preparation follows.
 
 This is intended as a basic example of the setup steps for the SQL
