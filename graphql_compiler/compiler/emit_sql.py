@@ -1,6 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
-from graphql.type.definition import GraphQLUnionType
 import six
 import sqlalchemy
 
