@@ -93,7 +93,8 @@ def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
     return new_ir_blocks
 
 
-def prepend_wildcard(expression):
+def _prepend_wildcard(expression):
+    """Prepend an SQL-MATCH wildcard to an expression"""
     return BinaryComposition(
         u'+',
         Literal('%'),
@@ -101,7 +102,8 @@ def prepend_wildcard(expression):
     )
 
 
-def append_wildcard(expression):
+def _append_wildcard(expression):
+    """Append an SQL-MATCH wildcard to an expression"""
     return BinaryComposition(
         u'+',
         expression,
@@ -115,25 +117,42 @@ def lower_string_operators(ir_blocks):
         if not isinstance(expression, BinaryComposition):
             return expression
         elif expression.operator == u'has_substring':
-            # Prepend and append a wildcard to both sides of the argument string
+            # The implementation of "has_substring" must use the LIKE operator in MATCH, and must
+            # prepend and append "%" (wildcard) symbols to the substring being matched.
+            # We transform any structures that resemble the following:
+            #    BinaryComposition(u'has_substring', X, Y)
+            # into the following:
+            #    BinaryComposition(
+            #        u'LIKE',
+            #        X,
+            #        BinaryComposition(
+            #            u'+',
+            #            Literal("%"),
+            #            BinaryComposition(
+            #                 u'+',
+            #                 Y,
+            #                 Literal("%")
+            #            )
+            #        )
+            #    )
             return BinaryComposition(
                 u'LIKE',
                 expression.left,
-                prepend_wildcard(append_wildcard(expression.right))
+                _prepend_wildcard(_append_wildcard(expression.right))
             )
         elif expression.operator == u'starts_with':
             # Append a wildcard to the right of the argument string
             return BinaryComposition(
                 u'LIKE',
                 expression.left,
-                append_wildcard(expression.right)
+                _append_wildcard(expression.right)
             )
         elif expression.operator == u'ends_with':
             # Prepend a wildcard to the left of the argument string
             return BinaryComposition(
                 u'LIKE',
                 expression.left,
-                prepend_wildcard(expression.right)
+                _prepend_wildcard(expression.right)
             )
         else:
             return expression
