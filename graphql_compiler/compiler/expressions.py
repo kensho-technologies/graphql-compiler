@@ -489,7 +489,8 @@ class ContextField(Expression):
                 raise NotImplementedError(u'The SQL backend does not support __typename.')
             return aliases[self.location.at_vertex().query_path].c[self.location.field]
         else:
-            raise NotImplementedError()  # XXX What does it even mean when the field is None?
+            raise AssertionError(u'This is a bug. The SQL backend does not use '
+                                 u'context fields to point to vertices.')
 
 
 class OutputContextField(Expression):
