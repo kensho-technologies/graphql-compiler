@@ -1762,7 +1762,13 @@ Relational databases are supported by compiling to SQLAlchemy core as an interme
 language, and then relying on SQLAlchemy's compilation of the dialect specific SQL string to query
 the target database.
 
-Support for `@optional`, `@fold`, `@recurse`, and list types is in development.
+Our SQL backend supports basic traversals, filters, tags and outputs, but there's still some pieces
+in development:
+- Directives: `@optional`, `@fold`, `@recurse`
+- Filter operators: `has_edge_degree`, `is_null`, `is_not_null`
+- Dialect-specific features, like Postgres array types, and use of filter operators
+  specific to them: `contains`, `intersects`, `name_or_alias`
+- Meta fields: `__typename`, `_x_count`
 
 End-To-End SQL Example
 ~~~~~~~~~~~~~~~~~~~~~~
