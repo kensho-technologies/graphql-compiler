@@ -122,14 +122,14 @@ def lower_string_operators(ir_blocks):
                 prepend_wildcard(append_wildcard(expression.right))
             )
         elif expression.operator == u'starts_with':
-            # Append a wildcard to both sides of the argument string
+            # Append a wildcard to the right of the argument string
             return BinaryComposition(
                 u'LIKE',
                 expression.left,
                 append_wildcard(expression.right)
             )
         elif expression.operator == u'ends_with':
-            # Prepend a wildcard to both sides of the argument string
+            # Prepend a wildcard to the left of the argument string
             return BinaryComposition(
                 u'LIKE',
                 expression.left,
