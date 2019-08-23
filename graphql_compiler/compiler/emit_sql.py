@@ -1,5 +1,6 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
+from graphql.type.definition import GraphQLUnionType
 import six
 import sqlalchemy
 
@@ -7,44 +8,47 @@ from . import blocks
 
 
 class CompilationState(object):
+    """Mutable class used to keep track of state while emitting a sql query."""
+
     def __init__(self, sql_schema_info, ir):
+        """Initialize a CompilationState, setting the current location at the root of the query."""
         # Metadata
         self._sql_schema_info = sql_schema_info
         self._ir = ir
 
-        # Current state
-        self._aliases = {}
-        self._alias = None
-        self._location = None
-        self._classname = None  # Invariant: classname is the classname at the current location
+        # Current query location state. Only mutable by calling _relocate.
+        self._location = None  # the current location in the query
+        self._classname = None  # the classname at the current location
+        self._alias = None  # a sqlalchemy table Alias at the current location
+        self._aliases = {}  # mapping marked query paths to table Aliases representing them
         self._relocate(ir.query_metadata_table.root_location)
 
-        # Result
-        self._from_clause = self._alias
-        self._outputs = []
-        self._filters = []
+        # The query being constructed as the IR is processed
+        self._from_clause = self._alias  # the main sqlalchemy Selectable
+        self._outputs = []  # sqlalchemy Columns labelled correctly for output
+        self._filters = []  # sqlalchemy Expressions to be used in the where clause
 
     def _relocate(self, new_location):
+        """Move to a different location in the query, updating the _classname and _alias."""
         self._location = new_location
-        self._classname = self._ir.query_metadata_table.get_location_info(new_location).type.name
+        new_location_type = self._ir.query_metadata_table.get_location_info(new_location).type
+        self._classname = new_location_type.name
         if self._location.query_path in self._aliases:
             self._alias = self._aliases[self._location.query_path]
         else:
+            if isinstance(new_location_type, GraphQLUnionType):
+                raise NotImplementedError(u'Traversing to union types is not implemented.')
             self._alias = self._sql_schema_info.tables[self._classname].alias()
 
     def backtrack(self, previous_location):
+        """Execute a Backtrack Block"""
         self._relocate(previous_location)
 
     def traverse(self, vertex_field):
-        # See where we're going
-        edge = self._sql_schema_info.join_descriptors[self._classname][vertex_field]
-        to_vertex = self._sql_schema_info.schema.get_type(
-            self._classname).fields[vertex_field].type.of_type.name
-        if to_vertex not in self._sql_schema_info.tables:
-            raise NotImplementedError()  # It's a union
-
-        # Go there
+        """Execute a Traverse Block"""
+        # Follow the edge
         previous_alias = self._alias
+        edge = self._sql_schema_info.join_descriptors[self._classname][vertex_field]
         self._relocate(self._location.navigate_to_subpath(vertex_field))
 
         # Join to where we came from
@@ -54,15 +58,19 @@ class CompilationState(object):
             isouter=False)
 
     def filter(self, predicate):
+        """Execute a Filter Block"""
         self._filters.append(predicate.to_sql(self._aliases, self._alias))
 
     def mark_location(self):
+        """Execute a MarkLocation Block"""
         self._aliases[self._location.query_path] = self._alias
 
     def construct_result(self, output_name, field):
+        """Execute a ConstructResult Block"""
         self._outputs.append(field.to_sql(self._aliases, self._alias).label(output_name))
 
     def get_query(self):
+        """After all IR Blocks are processed, return the resulting sqlalchemy query."""
         return sqlalchemy.select(self._outputs).select_from(
             self._from_clause).where(sqlalchemy.and_(*self._filters))
 
@@ -87,7 +95,7 @@ def emit_code_from_ir(sql_schema_info, ir):
             state.backtrack(block.location)
         elif isinstance(block, blocks.Traverse):
             if block.optional:
-                raise NotImplementedError()
+                raise NotImplementedError(u'The SQL backend does not support @optional.')
             state.traverse(u'{}_{}'.format(block.direction, block.edge_name))
         elif isinstance(block, blocks.Filter):
             state.filter(block.predicate)
@@ -97,6 +105,6 @@ def emit_code_from_ir(sql_schema_info, ir):
             for output_name, field in six.iteritems(block.fields):
                 state.construct_result(output_name, field)
         else:
-            raise NotImplementedError(u'{}'.format(block))
+            raise NotImplementedError(u'Unsupported block {}.'.format(block))
 
     return state.get_query()
