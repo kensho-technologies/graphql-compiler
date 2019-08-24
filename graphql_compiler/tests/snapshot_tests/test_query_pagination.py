@@ -49,34 +49,34 @@ class QueryPaginationTests(unittest.TestCase):
         expected_first_next_page = QueryStringWithParameters(
             '''{
                 Animal {
-                    uuid @filter(op_name: "<", value: ["$_paged_upper_param_on_Animal_uuid"])
+                    uuid @filter(op_name: "<", value: ["$_paged_upper_param_0"])
                     name @output(out_name: "animal")
                 }
             }''',
             {
-                '_paged_upper_param_on_Animal_uuid': '80000000-0000-0000-0000-000000000000',
+                '_paged_upper_param_0': '80000000-0000-0000-0000-000000000000',
             },
         )
         expected_second_next_page = QueryStringWithParameters(
             '''{
                 Animal {
-                    uuid @filter(op_name: ">=", value: ["$_paged_lower_param_on_Animal_uuid"])
+                    uuid @filter(op_name: ">=", value: ["$_paged_lower_param_0"])
                     name @output(out_name: "animal")
                 }
             }''',
             {
-                '_paged_lower_param_on_Animal_uuid': '80000000-0000-0000-0000-000000000000',
+                '_paged_lower_param_0': '80000000-0000-0000-0000-000000000000',
             },
         )
         expected_first_remainder = QueryStringWithParameters(
             '''{
                 Animal {
-                    uuid @filter(op_name: ">=", value: ["$_paged_lower_param_on_Animal_uuid"])
+                    uuid @filter(op_name: ">=", value: ["$_paged_lower_param_0"])
                     name @output(out_name: "animal")
                 }
             }''',
             {
-                '_paged_lower_param_on_Animal_uuid': '80000000-0000-0000-0000-000000000000',
+                '_paged_lower_param_0': '80000000-0000-0000-0000-000000000000',
             },
         )
         expected_second_remainder = None        # This query generates 2 pages, so the
