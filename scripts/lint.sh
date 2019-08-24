@@ -28,6 +28,10 @@ done
 # Make sure the current working directory for this script is the root directory.
 cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
+# Get into the graphql-compiler virtualenv. "pipenv shell" returns exit code 1 if already there,
+# which doesn't matter to us so we avoid crashing the script by adding "|| true".
+pipenv shell || true
+
 # Get all python files or directories that need to be linted.
 lintable_locations="graphql_compiler/ docs/"
 # pylint doesn't support linting directories that aren't packages:
