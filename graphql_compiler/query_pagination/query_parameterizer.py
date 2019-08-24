@@ -1,15 +1,15 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from copy import deepcopy
+from copy import copy
 
-from graphql.language.ast import Argument, Directive, Field, Name, StringValue, ListValue
+from graphql.language.ast import Argument, Directive, Field, InlineFragment, Name, OperationDefinition, StringValue, ListValue, SelectionSet
 
 from graphql_compiler.ast_manipulation import get_only_query_definition, get_only_selection_from_ast
-from graphql_compiler.exceptions import GraphQLCompilationError
+from graphql_compiler.exceptions import GraphQLCompilationError, GraphQLValidationError
 from graphql_compiler.schema import FilterDirective
 
 
-RESERVED_PARAMETER_PREFIX = '_paged_'
+RESERVED_PARAMETER_PREFIX = '__paged_'
 
 # ParameterizedPaginationQueries namedtuple, describing two query ASTs that have PaginationFilters
 # describing filters with which the query result size can be controlled. Note that these filters are
@@ -96,9 +96,12 @@ def _create_field(field_name):
     return property_field
 
 
-def _get_field_with_name(schema_graph, pagination_ast, primary_key_field_name):
+def _get_field_with_name(ast, primary_key_field_name):
     """Return the primary key field for a given AST node, creating the property field if needed."""
-    selections_list = pagination_ast.selection_set.selections
+    if ast.selection_set is None:
+        return None
+
+    selections_list = ast.selection_set.selections
     for selection in selections_list:
         if selection.name.value == primary_key_field_name:
             return selection
@@ -143,11 +146,11 @@ def _create_binary_filter_directive(filter_operation, filter_parameter):
 
 
 def _create_filter_for_next_page_query(
-    vertex_name, property_field_name, parameter_index, parameters
+    parameter_index, parameters
 ):
     """TODO Adds filters for pagination to the given vertex."""
-    paged_upper_param = RESERVED_PARAMETER_PREFIX + 'upper_bound_on_{}_{}_{}'.format(
-        parameter_index, vertex_name, property_field_name
+    paged_upper_param = RESERVED_PARAMETER_PREFIX + 'upper_bound_{}'.format(
+        parameter_index
     )
 
     if paged_upper_param in parameters.keys():
@@ -162,11 +165,11 @@ def _create_filter_for_next_page_query(
 
 
 def _create_filter_for_remainder_query(
-    vertex_name, property_field_name, parameter_index, parameters
+    parameter_index, parameters
 ):
     """TODO"""
-    paged_lower_param = RESERVED_PARAMETER_PREFIX + 'lower_bound_{}_{}_{}'.format(
-        parameter_index, vertex_name, property_field_name
+    paged_lower_param = RESERVED_PARAMETER_PREFIX + 'lower_bound_{}'.format(
+        parameter_index
     )
 
     if paged_lower_param in parameters.keys():
@@ -204,8 +207,10 @@ def _add_remainder_filters_to_directives(directives_list, filter_modification):
     return created_directives_list
 
 
-def _add_pagination_filters_to_ast(ast, parent_ast, filter_modifications, filter_adder_func):
-    """Return an AST with @filter added at the field with the specified @output, if found."""
+def _add_pagination_filters_to_ast(
+    ast, parent_ast, filter_modifications, _add_filter_to_directives_func
+):
+    """Return an AST with @filter added at the field, if found."""
     if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
         raise AssertionError(
             u'Input AST is of type "{}", which should not be a selection.'
@@ -214,42 +219,51 @@ def _add_pagination_filters_to_ast(ast, parent_ast, filter_modifications, filter
 
     if isinstance(ast, Field):
         # Check whether this field has the expected directive, if so, modify and return
-        current_filter_modifications = [
-            filter_modification
-            for filter_modification in filter_modifications
-            if filter_modification.vertex is parent_ast and ast.name.value == filter_modification.property_field_name
+
+        current_field_modifications = [
+            modification
+            for modification in filter_modifications
+            if modification.vertex is parent_ast and modification.property_field == ast.name.value
         ]
 
-        if current_filter_modifications != []:
+        if current_field_modifications != []:
             new_ast = copy(ast)
 
-            for filter_modification in current_filter_modifications:
-                new_directives = filter_adder_func(ast.directives)
+            for modification in current_field_modifications:
+                new_directives = _add_filter_to_directives_func(ast.directives, modification)
                 new_ast.directives = new_directives
-                return new_ast
 
-    if ast.selection_set is None:  # Nothing to recurse on
-        return ast
+            return new_ast
+
+    current_vertex_modifications = [
+        filter_modification
+        for filter_modification in filter_modifications
+        if filter_modification.vertex is ast
+    ]
 
     # Otherwise, recurse and look for field with desired out_name
     made_changes = False
     new_selections = []
-    for selection in ast.selection_set.selections:
-        new_selection = _add_pagination_filters_to_ast(
-            selection, ast, filter_modifications, filter_adder_func
-        )
-        if new_selection is not selection:  # Changes made somewhere down the line
-            if not made_changes:
+    for modification in current_vertex_modifications:
+        if not _get_field_with_name(ast, modification.property_field):
+            new_selection = _create_field(current_vertex_modifications[0].property_field)
+            new_selection = _add_pagination_filters_to_ast(
+                new_selection, ast, filter_modifications, _add_filter_to_directives_func
+            )
+
+            made_changes = True
+            new_selections.append(new_selection)
+
+    if ast.selection_set is not None:
+        for selection in ast.selection_set.selections:
+            new_selection = _add_pagination_filters_to_ast(
+                selection, ast, filter_modifications, _add_filter_to_directives_func
+            )
+
+            if new_selection is not selection:  # Changes made somewhere down the line
                 made_changes = True
-            else:
-                # Change has already been made, but there is a new change. Implies that multiple
-                # fields have the @output directive with the desired name
-                raise GraphQLValidationError(
-                    u'There are multiple @output directives with the out_name "{}"'.format(
-                        field_out_name
-                    )
-                )
-        new_selections.append(new_selection)
+
+            new_selections.append(new_selection)
 
     if made_changes:
         new_ast = copy(ast)
@@ -280,7 +294,7 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
 
     pagination_filters = []
     filter_modifications = []
-    for vertex in pagination_vertices:
+    for index, vertex in enumerate(pagination_vertices):
         vertex_class = vertex.name.value
         property_field_name = _get_primary_key_name(schema_graph, vertex_class)
 
@@ -288,11 +302,11 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
         next_page_original_filter = None
         remainder_original_filter = None
 
-        next_page_added_filter = _create_filter_for_next_page_query(
-            pagination_parameter_index, vertex_class, property_field_name, parameters
+        next_page_created_filter = _create_filter_for_next_page_query(
+            index, parameters
         )
-        remainder_added_filter = _create_filter_for_remainder_query(
-            pagination_parameter_index, vertex_class, property_field_name, parameters
+        remainder_created_filter = _create_filter_for_remainder_query(
+            index, parameters
         )
 
         related_filters = []
@@ -320,12 +334,14 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
             related_filters
         ))
 
+    query_selection = get_only_query_definition(query_ast, GraphQLValidationError)
+
     parameterized_next_page_query_ast = _add_pagination_filters_to_ast(
-        query_ast, None, filter_modifications, _add_next_page_filters_to_directives
+        query_selection, None, filter_modifications, _add_next_page_filters_to_directives
     )
 
     parameterized_remainder_query_ast = _add_pagination_filters_to_ast(
-        query_ast, None, filter_modifications, _add_remainder_filters_to_directives
+        query_selection, None, filter_modifications, _add_remainder_filters_to_directives
     )
 
     parameterized_queries = ParameterizedPaginationQueries(
