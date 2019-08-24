@@ -37,7 +37,7 @@ lintable_locations="graphql_compiler/ docs/"
 # pylint doesn't support linting directories that aren't packages:
 # https://github.com/PyCQA/pylint/issues/352
 # Use **/*.py to supply all python files for individual linting.
-pylint_lintable_locations="graphql_compiler/**/*.py docs/**/*.py"
+pylint_lintable_locations="*/**/*.py"
 if [ "$diff_only" -eq 1 ] ; then
     # Quotes don't need to be escaped because they nest with $( ).
     lintable_locations="$(git diff --name-only master... | grep ".*\.py$")"
