@@ -16,6 +16,12 @@ from .schema import (  # noqa
 )
 from .schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from .schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
+from .schema_generation.sqlalchemy.sqlalchemy_schema_builder import (
+    get_sqlalchemy_schema_graph, get_restructured_edge_descriptors
+)
+from .schema.schema_info import make_sqlalchemy_schema_info
+
+
 
 
 __package_name__ = 'graphql-compiler'
@@ -218,3 +224,43 @@ def graphql_to_redisgraph_cypher(schema, graphql_query, parameters, type_equival
         schema, graphql_query, type_equivalence_hints=type_equivalence_hints)
     return compilation_result._replace(
         query=insert_arguments_into_query(compilation_result, parameters))
+
+
+def get_sqlalchemy_schema_info(tables, sql_edge_descriptors, dialect,
+                               class_to_field_type_overrides=None,
+                               hidden_classes=None):
+    """Return a SQLAlchemyInfo from the metadata.
+
+    Args:
+        tables: dict mapping every GraphQL object name in the SchemaGraph to the SQLAlchemy Table
+                from which it will be generated from. Columns that cannot be represented in the
+                the GraphQL schema will be ignored.
+        sql_edge_descriptors: dict, str-> SQLEdgeDescriptor, mapping the name of edges in the
+                              schema to complete specifications of these edges.
+        dialect: sqlalchemy.engine.interfaces.Dialect, specifying the dialect we are compiling for
+                 (e.g. sqlalchemy.dialects.mssql.dialect()).
+        class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
+                                       (string -> {string -> GraphQLType}). Used to override the
+                                       type of a field in the class where it's first defined and all
+                                       the class's subclasses.
+        hidden_classes: optional set of strings, classes to not include in the GraphQL schema.
+
+    Return:
+        SQLAlchemySchemaInfo containing the full information needed to compile SQL queries.
+    """
+    if class_to_field_type_overrides is None:
+        class_to_field_type_overrides = dict()
+    if hidden_classes is None:
+        hidden_classes = set()
+
+    schema_graph = get_sqlalchemy_schema_graph(tables, sql_edge_descriptors)
+    graphql_schema = get_graphql_schema_from_schema_graph(schema_graph,
+                                                          class_to_field_type_overrides,
+                                                          hidden_classes)
+    join_descriptors = get_restructured_edge_descriptors(sql_edge_descriptors)
+    # Note: We do not have inheritance in SQL so we should have type_equivalence_hints.
+    #       I think it's ok to have type_equivalence_hints to make the tests easier but let's not
+    #       expose those here.
+    type_equivalence_hints = {}
+    return make_sqlalchemy_schema_info(graphql_schema, tables, join_descriptors,
+                                       type_equivalence_hints, dialect)
