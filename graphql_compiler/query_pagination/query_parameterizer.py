@@ -37,15 +37,38 @@ PaginationFilter = namedtuple(
     'PaginationFilter',
     (
         'vertex_class',                 # str, vertex class to which the property field belongs to.
-        'property_field',               # str, name of the property field filtering is done over.
+                                        # The given AST instance must be a vertex instance inside
+                                        # the original query being paginated, as this field is
+                                        # compared using referential equality.
+
+        'property_field',               # str, name of the property field being filtered.
+
         'next_page_query_filter',       # Directive, filter directive with '<' operator usable
                                         # for pagination in the page query.
+
         'remainder_query_filter',       # Directive, filter directive with '>=' operator usable
                                         # for pagination in the remainder query.
+
         'related_filters',              # List[Directive], filter directives that share the same
                                         # vertex and property field as the next_page_query_filter,
                                         # and are used to generate more accurate pages.
     ),
+)
+
+FilterModification = namedtuple(
+    'FilterModification',
+    (
+        'vertex',                       # Document, AST of the vertex chosen
+        'property_field',               # str, name of the property field being filtered.
+        'next_page_query_filter_old',       # Directive, filter directive with '<' operator usable
+                                        # for pagination in the page query.
+        'next_page_query_filter_new',       # Directive, filter directive with '<' operator usable
+                                        # for pagination in the page query.
+        'remainder_query_filter_old',       # Directive, filter directive with '>=' operator usable
+                                        # for pagination in the remainder query.
+        'remainder_query_filter_new',       # Directive, filter directive with '>=' operator usable
+                                        # for pagination in the remainder query.
+    )
 )
 
 def _get_filter_operation(filter_directive):
@@ -63,16 +86,6 @@ def _get_nodes_for_pagination(statistics, query_ast):
     return [root_node]
 
 
-def _search_for_field(pagination_ast, property_field):
-    """Return the property field with the given name if it exists, and None otherwise."""
-    selections_list = pagination_ast.selection_set.selections
-    for selection in selections_list:
-        if selection.name.value == property_field:
-            return selection
-
-    return None
-
-
 def _create_field(field_name):
     """Return a property field with the given name."""
     property_field = Field(
@@ -83,22 +96,21 @@ def _create_field(field_name):
     return property_field
 
 
-def _get_or_create_primary_key_field(schema_graph, pagination_ast):
+def _get_field_with_name(schema_graph, pagination_ast, primary_key_field_name):
     """Return the primary key field for a given AST node, creating the property field if needed."""
+    selections_list = pagination_ast.selection_set.selections
+    for selection in selections_list:
+        if selection.name.value == primary_key_field_name:
+            return selection
+
+    return None
+
+
+def _get_primary_key_name(schema_graph, vertex_class):
+    """Stuff!"""
     # HACK(vlad): Currently, information about the primary key is not stored in the Schema Graph, so
     #             the primary key is assumed to be 'uuid'.
-    primary_key_field_name = 'uuid'
-
-    primary_key_field = _search_for_field(pagination_ast, primary_key_field_name)
-    if primary_key_field is None:
-        primary_key_field = _create_field(primary_key_field_name)
-
-        # We make sure to prepend the primary key field,
-        # to avoid inserting a property field after a vertex field.
-        selections_list = pagination_ast.selection_set.selections
-        selections_list.insert(0, primary_key_field)
-
-    return primary_key_field
+    return 'uuid'
 
 
 def _create_binary_filter_directive(filter_operation, filter_parameter):
@@ -130,24 +142,121 @@ def _create_binary_filter_directive(filter_operation, filter_parameter):
     return filter_ast
 
 
-def _create_filter_for_next_page_query(vertex_name, property_field_name, parameters):
+def _create_filter_for_next_page_query(
+    vertex_name, property_field_name, parameter_index, parameters
+):
     """TODO Adds filters for pagination to the given vertex."""
-    paged_upper_param = RESERVED_PARAMETER_PREFIX + 'upper_param_on_{}_{}'.format(
-        vertex_name, property_field_name
+    paged_upper_param = RESERVED_PARAMETER_PREFIX + 'upper_bound_on_{}_{}_{}'.format(
+        parameter_index, vertex_name, property_field_name
     )
+
+    if paged_upper_param in parameters.keys():
+        raise AssertionError(
+            u'Parameter list {} already contains parameter {},'
+            u' which is reserved for pagination. This might also'
+            u' occur if names for pagination parameters are'
+            u' incorrectly numbered'.format(parameters, paged_upper_param))
 
     filter_directive = _create_binary_filter_directive('<', paged_upper_param)
     return filter_directive
 
 
-def _create_filter_for_remainder_query(vertex_name, property_field_name, parameters):
+def _create_filter_for_remainder_query(
+    vertex_name, property_field_name, parameter_index, parameters
+):
     """TODO"""
-    paged_lower_param = RESERVED_PARAMETER_PREFIX + 'lower_param_on_{}_{}'.format(
-        vertex_name, property_field_name
+    paged_lower_param = RESERVED_PARAMETER_PREFIX + 'lower_bound_{}_{}_{}'.format(
+        parameter_index, vertex_name, property_field_name
     )
+
+    if paged_lower_param in parameters.keys():
+        raise AssertionError(
+            u'Parameter list {} already contains parameter {},'
+            u' which is reserved for pagination. This might also'
+            u' occur if names for pagination parameters are'
+            u' incorrectly numbered'.format(parameters, paged_lower_param))
 
     filter_directive = _create_binary_filter_directive('>=', paged_lower_param)
     return filter_directive
+
+
+def _add_next_page_filters_to_directives(directives_list, filter_modification):
+    """Stuff"""
+    created_directives_list = copy(directives_list)
+
+    if filter_modification.next_page_query_filter_old is None:
+        created_directives_list.append(filter_modification.next_page_query_filter_new)
+    else:
+        raise NotImplementedError()
+
+    return created_directives_list
+
+
+def _add_remainder_filters_to_directives(directives_list, filter_modification):
+    """Stuff"""
+    created_directives_list = copy(directives_list)
+
+    if filter_modification.remainder_query_filter_old is None:
+        created_directives_list.append(filter_modification.remainder_query_filter_new)
+    else:
+        raise NotImplementedError()
+
+    return created_directives_list
+
+
+def _add_pagination_filters_to_ast(ast, parent_ast, filter_modifications, filter_adder_func):
+    """Return an AST with @filter added at the field with the specified @output, if found."""
+    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+        raise AssertionError(
+            u'Input AST is of type "{}", which should not be a selection.'
+            u''.format(type(ast).__name__)
+        )
+
+    if isinstance(ast, Field):
+        # Check whether this field has the expected directive, if so, modify and return
+        current_filter_modifications = [
+            filter_modification
+            for filter_modification in filter_modifications
+            if filter_modification.vertex is parent_ast and ast.name.value == filter_modification.property_field_name
+        ]
+
+        if current_filter_modifications != []:
+            new_ast = copy(ast)
+
+            for filter_modification in current_filter_modifications:
+                new_directives = filter_adder_func(ast.directives)
+                new_ast.directives = new_directives
+                return new_ast
+
+    if ast.selection_set is None:  # Nothing to recurse on
+        return ast
+
+    # Otherwise, recurse and look for field with desired out_name
+    made_changes = False
+    new_selections = []
+    for selection in ast.selection_set.selections:
+        new_selection = _add_pagination_filters_to_ast(
+            selection, ast, filter_modifications, filter_adder_func
+        )
+        if new_selection is not selection:  # Changes made somewhere down the line
+            if not made_changes:
+                made_changes = True
+            else:
+                # Change has already been made, but there is a new change. Implies that multiple
+                # fields have the @output directive with the desired name
+                raise GraphQLValidationError(
+                    u'There are multiple @output directives with the out_name "{}"'.format(
+                        field_out_name
+                    )
+                )
+        new_selections.append(new_selection)
+
+    if made_changes:
+        new_ast = copy(ast)
+        new_ast.selection_set = SelectionSet(selections=new_selections)
+        return new_ast
+    else:
+        return ast
 
 
 def generate_parameterized_queries(schema_graph, statistics, query_ast, parameters):
@@ -168,84 +277,61 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
         ParameterizedPaginationQueries namedtuple
     """
     pagination_vertices = _get_nodes_for_pagination(statistics, query_ast)
-    pagination_fields = [
-        _get_or_create_primary_key_field(schema_graph, vertex)
-        for vertex in pagination_vertices
-    ]
 
     pagination_filters = []
     filter_modifications = []
-    for vertex, field in zip(pagination_vertices, pagination_fields):
+    for vertex in pagination_vertices:
         vertex_class = vertex.name.value
-        property_field_name = field.name.value
+        property_field_name = _get_primary_key_name(schema_graph, vertex_class)
+
+        # By default, choose to add a new filter.
+        next_page_original_filter = None
+        remainder_original_filter = None
+
+        next_page_added_filter = _create_filter_for_next_page_query(
+            pagination_parameter_index, vertex_class, property_field_name, parameters
+        )
+        remainder_added_filter = _create_filter_for_remainder_query(
+            pagination_parameter_index, vertex_class, property_field_name, parameters
+        )
+
         related_filters = []
+        field = _get_field_with_name(vertex, property_field_name)
+        if field is not None:
+            if field.directives is not None:
+                related_filters = [
+                    directive
+                    for directive in field.directives
+                    if directive.name.value == 'filter'
+                ]
 
-        next_page_original_filter, next_page_created_filter = None, None
-        remainder_original_filter, remainder_created_filter = None, None
-        for directive in field.directives:
-            if _get_filter_operation(directive) == '<' and next_page_original_filter is None:
-                next_page_original_filter, next_page_created_filter = deepcopy(directive), _create_filter_for_next_page_query(
-                    vertex_class, property_field_name, parameters
-                )
-                related_filters.append(deepcopy(next_page_created_filter))
-            elif _get_filter_operation(directive) == '>=' and remainder_original_filter is None:
-                remainder_original_filter, remainder_created_filter = deepcopy(directive), _create_filter_for_remainder_query(
-                    vertex_class, property_field_name, parameters
-                )
-                related_filters.append(deepcopy(remainder_created_filter))
-            else:
-                related_filters.append(deepcopy(directive))
+            # for filter_directive in related_filters:
+            #     if _get_filter_operation(directive) == '<':
+            #         next_page_original_filter = directive
+            #     elif _get_filter_operation(directive) == '>=':
+            #         remainder_original_filter = directive
 
-        if next_page_created_filter is None:
-            next_page_created_filter = _create_filter_for_next_page_query(
-                vertex_class, property_field_name, parameters
-            )
-        if remainder_created_filter is None:
-            remainder_created_filter = _create_filter_for_remainder_query(
-                vertex_class, property_field_name, parameters
-            )
-
-        filter_modifications.append([
-            field,
-            (next_page_original_filter, next_page_created_filter),
-            (remainder_original_filter, remainder_created_filter),
-        ])
+        filter_modifications.append(FilterModification(
+            vertex, property_field_name, next_page_original_filter, next_page_created_filter,
+            remainder_original_filter, remainder_created_filter,
+        ))
         pagination_filters.append(PaginationFilter(
-            vertex_class, property_field_name, next_page_created_filter,
-            remainder_created_filter, related_filters
+            vertex_class, property_field_name, next_page_created_filter, remainder_created_filter,
+            related_filters
         ))
 
+    parameterized_next_page_query_ast = _add_pagination_filters_to_ast(
+        query_ast, None, filter_modifications, _add_next_page_filters_to_directives
+    )
 
-    for modification in filter_modifications:
-        if modification[1][0] is None:
-            modification[0].directives.append(modification[1][1])
-        else:
-            modification[0].directives[modification[0].directives.index(modification[1][0])] = modification[1][1]
-
-    parameterized_next_page_query_ast = deepcopy(query_ast)
-
-    for modification in filter_modifications:
-        if modification[1][0] is None:
-            del modification[0].directives[modification[0].directives.index(modification[1][1])]
-        else:
-            modification[0].directives[modification[0].directives.index(modification[1][1])] = modification[1][0]
-
-    for modification in filter_modifications:
-        if modification[2][0] is None:
-            modification[0].directives.append(modification[2][1])
-        else:
-            modification[0].directives[modification[0].directives.index(modification[2][0])] = modification[2][1]
-
-    parameterized_remainder_query_ast = deepcopy(query_ast)
-
-    for modification in filter_modifications:
-        if modification[2][0] is None:
-            del modification[0].directives[modification[0].directives.index(modification[2][1])]
-        else:
-            modification[0].directives[modification[0].directives.index(modification[2][1])] = modification[2][0]
+    parameterized_remainder_query_ast = _add_pagination_filters_to_ast(
+        query_ast, None, filter_modifications, _add_remainder_filters_to_directives
+    )
 
     parameterized_queries = ParameterizedPaginationQueries(
-        parameterized_next_page_query_ast, parameterized_remainder_query_ast, pagination_filters,
+        parameterized_next_page_query_ast,
+        parameterized_remainder_query_ast,
+        pagination_filters,
         parameters
     )
     return parameterized_queries
