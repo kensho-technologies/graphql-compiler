@@ -15,8 +15,8 @@ SQLEdgeDescriptor= namedtuple(
 # TODO(pmantica1): Add functionality to map tables to edges.
 # Note: The index information can be inferred from the SQLAlchemy Table objects. Views do not have
 #       index information. However, often views are essentially the same "virtual table" as the
-#       underlying so it is often infer the "pseudo-indexes" for views. To pass in this information
-#       we could just modify the underlying SQLALchemy Table objects.
+#       underlying so it is often possible to infer the "pseudo-indexes" for views. To pass in this
+#       information we could just modify the underlying SQLALchemy Table objects.
 def get_sqlalchemy_schema_graph(tables, sql_edge_descriptors):
     """Return a SchemaGraph from metadata describing a SQL schema.
 
