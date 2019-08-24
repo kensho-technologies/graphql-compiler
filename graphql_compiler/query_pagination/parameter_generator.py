@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from copy import deepcopy
+from copy import copy
 from uuid import UUID
 
 from graphql_compiler.compiler.helpers import get_parameter_name
@@ -212,9 +212,9 @@ def generate_parameters_for_parameterized_query(
     # Since the query parameterizer may have chosen some of the user's filters for pagination, it's
     # possible that both a user parameter and a pagination parameter exist with the same parameter
     # name. If such a conflict occurs, the pagination parameter is chosen as the parameter's value.
-    next_page_parameters = deepcopy(user_parameters)
+    next_page_parameters = copy(user_parameters)
     next_page_parameters.update(next_page_pagination_parameters)
-    remainder_parameters = deepcopy(user_parameters)
+    remainder_parameters = copy(user_parameters)
     remainder_parameters.update(remainder_pagination_parameters)
 
     return next_page_parameters, remainder_parameters
