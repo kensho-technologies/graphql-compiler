@@ -2,7 +2,10 @@
 from collections import namedtuple
 from copy import copy
 
-from graphql.language.ast import Argument, Directive, Field, InlineFragment, Name, OperationDefinition, StringValue, ListValue, SelectionSet
+from graphql.language.ast import (
+    Argument, Directive, Field, InlineFragment, ListValue, Name, OperationDefinition, SelectionSet,
+    StringValue
+)
 
 from graphql_compiler.ast_manipulation import get_only_query_definition, get_only_selection_from_ast
 from graphql_compiler.exceptions import GraphQLError
@@ -63,26 +66,26 @@ FilterModification = namedtuple(
     'FilterModification',
     (
         'vertex',                       # Document, AST of the vertex instance in the query having
-        								# its filters modified.
+                                        # its filters modified.
         'property_field',               # str, name of the property field being filtered.
 
         'next_page_query_filter_old',   # Directive or None, '<' filter directive already present in
-        								# the given query that will be replaced with the new
-        								# next page query filter.
+                                        # the given query that will be replaced with the new
+                                        # next page query filter.
 
         'next_page_query_filter_new',   # Directive, '<' filter directive that will either replace
-        								# the old next page query filter. If the old next page query
-        								# filter has value None, then this filter will instead be
-        								# added to the filter directives list.
+                                        # the old next page query filter. If the old next page query
+                                        # filter has value None, then this filter will instead be
+                                        # added to the filter directives list.
 
         'remainder_query_filter_old',   # Directive or None, '<' filter directive already present in
-        								# the given query that will be replaced with the new
-        								# remainder query filter.
+                                        # the given query that will be replaced with the new
+                                        # remainder query filter.
 
         'remainder_query_filter_new',   # Directive, '<' filter directive that will either replace
-        								# the old remainder query filter. If the old remainder query
-        								# filter has value None, then this filter will instead be
-        								# added to the filter directives list.
+                                        # the old remainder query filter. If the old remainder query
+                                        # filter has value None, then this filter will instead be
+                                        # added to the filter directives list.
     )
 )
 
@@ -198,22 +201,20 @@ def _add_next_page_filters_to_directives(directives_list, filter_modification):
     made_changes = False
     new_directives_list = []
     for directive in directives_list:
-    	if directive is filter_modification.next_page_query_filter_old:
-    		new_directives_list.append(filter_modification.next_page_query_filter_new)
-    		made_changes = True
-    	else:
-    		new_directives_list.append(directive)
+        if directive is filter_modification.next_page_query_filter_old:
+            new_directives_list.append(filter_modification.next_page_query_filter_new)
+            made_changes = True
+        else:
+            new_directives_list.append(directive)
 
     if filter_modification.next_page_query_filter_old is None:
-		new_directives_list.append(filter_modification.next_page_query_filter_new)
-		made_changes = True
+        new_directives_list.append(filter_modification.next_page_query_filter_new)
+        made_changes = True
 
-    return created_directives_list
-
-	if made_changes:
-		return new_directives_list
-	else:
-		return directives_list
+    if made_changes:
+        return new_directives_list
+    else:
+        return directives_list
 
 
 def _add_remainder_filters_to_directives(directives_list, filter_modification):
@@ -221,20 +222,20 @@ def _add_remainder_filters_to_directives(directives_list, filter_modification):
     made_changes = False
     new_directives_list = []
     for directive in directives_list:
-    	if directive is filter_modification.remainder_query_filter_old:
-    		new_directives_list.append(filter_modification.remainder_query_filter_new)
-    		made_changes = True
-    	else:
-    		new_directives_list.append(directive)
+        if directive is filter_modification.remainder_query_filter_old:
+            new_directives_list.append(filter_modification.remainder_query_filter_new)
+            made_changes = True
+        else:
+            new_directives_list.append(directive)
 
     if filter_modification.remainder_query_filter_old is None:
-		new_directives_list.append(filter_modification.remainder_query_filter_new)
-		made_changes = True
+        new_directives_list.append(filter_modification.remainder_query_filter_new)
+        made_changes = True
 
-	if made_changes:
-		return new_directives_list
-	else:
-		return directives_list
+    if made_changes:
+        return new_directives_list
+    else:
+        return directives_list
 
 
 def _add_pagination_filters_to_ast(
@@ -349,11 +350,11 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
                     if directive.name.value == 'filter'
                 ]
 
-            for filter_directive in related_filters:
+            for directive in related_filters:
                 if _get_filter_operation(directive) == '<':
                     next_page_original_filter = directive
 
-            for filter_directive in related_filters:
+            for directive in related_filters:
                 if _get_filter_operation(directive) == '>=':
                     remainder_original_filter = directive
 
