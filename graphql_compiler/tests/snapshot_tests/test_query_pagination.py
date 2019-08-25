@@ -19,14 +19,13 @@ class QueryPaginationTests(unittest.TestCase):
         """Compares two given QueryWithParameters namedtuple, raising error if not equal."""
         if expected is None and received is None:
             return True
-        elif expected is None != received is None:
+        elif (expected is None) != (received is None):
             return False
 
         compare_graphql(
             self, expected.query_string, received.query_string
         )
         self.assertEqual(expected.parameters, received.parameters)
-
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures('snapshot_orientdb_client')
@@ -57,17 +56,6 @@ class QueryPaginationTests(unittest.TestCase):
                 '__paged_upper_bound_0': '80000000-0000-0000-0000-000000000000',
             },
         )
-        expected_second_next_page = QueryStringWithParameters(
-            '''{
-                Animal {
-                    uuid @filter(op_name: ">=", value: ["$__paged_lower_bound_0"])
-                    name @output(out_name: "animal")
-                }
-            }''',
-            {
-                '__paged_lower_bound_0': '80000000-0000-0000-0000-000000000000',
-            },
-        )
         expected_first_remainder = QueryStringWithParameters(
             '''{
                 Animal {
@@ -79,14 +67,25 @@ class QueryPaginationTests(unittest.TestCase):
                 '__paged_lower_bound_0': '80000000-0000-0000-0000-000000000000',
             },
         )
-        expected_second_remainder = None        # This query generates 2 pages, so the
-                                                # remainder after 2 pages is None.
+        expected_second_next_page = QueryStringWithParameters(
+            '''{
+                Animal {
+                    uuid @filter(op_name: ">=", value: ["$__paged_lower_bound_0"])
+                    name @output(out_name: "animal")
+                }
+            }''',
+            {
+                '__paged_lower_bound_0': '80000000-0000-0000-0000-000000000000',
+            },
+        )
+        # This query generates 2 pages, so the remainder after 2 pages is None.
+        expected_second_remainder = None
 
         received_first_next_page, received_first_remainder = (
             paginate_query(schema_graph, statistics, test_data, parameters, 1)
         )
 
-        # Then we page the remainder we've received, to ensure paginating twice is handled
+        # Then we page the remainder we've received, to ensure paginating more than once is handled
         # correctly.
         received_second_next_page, received_second_remainder = (
             paginate_query(
@@ -102,7 +101,6 @@ class QueryPaginationTests(unittest.TestCase):
         self._compare_query_with_parameters_namedtuple(
             expected_first_remainder, received_first_remainder
         )
-
         self._compare_query_with_parameters_namedtuple(
             expected_second_next_page, received_second_next_page
         )
