@@ -35,35 +35,60 @@ def _get_filter_operation(filter_directive):
     return filter_directive.arguments[0].value.value
 
 
-def _is_uuid_field(vertex_class, property_field):
+def _is_uuid_field(schema_graph, vertex_class, property_field):
     """Return True if the given vertex's property field is a UUID."""
     return property_field == 'uuid'
 
 
-def _decode_uuid_to_int(uuid_string):
+def _convert_field_value_to_int(schema_graph, vertex_class, property_field, value):
     """Return the integer representation of a UUID string."""
-    return UUID(uuid_string).int
+    if _is_uuid_field(schema_graph, vertex_class, property_field):
+	    return UUID(value).int
+	else:
+		raise AssertionError(u'Could not represent {} {} value {} as int. Currently,'
+							 u' only uuid fields are supported.'
+							 .format(int_value, property_field, vertex_class))
 
 
-def _encode_int_as_uuid(uuid_int):
+def _convert_int_to_field_value(schema_graph, vertex_class, property_field, int_value):
     """Return the n-th lexicographical UUID, where n is the int argument."""
-    return str(UUID(int=int(uuid_int)))
+    if _is_uuid_field(schema_graph, vertex_class, property_field):
+	    return str(UUID(int=int(int_value)))
+	else:
+		raise AssertionError(u'Could not represent int {} as property {} of {}. Currently,'
+							 u' only uuid fields are supported'
+							 .format(int_value, property_field, vertex_class))
 
 
-def _get_lower_and_upper_bound_of_related_filters(pagination_filter, user_parameters):
+def _get_domain_of_field(schema_graph, statistics, vertex_class, property_field):
+    """Stuff"""
+    if property_field == 'uuid':
+        return '00000000-0000-0000-0000-000000000000', 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+    else:
+	    raise AssertionError(u'Unrecognized property field {}'.format(field_name))
+
+
+
+def _get_lower_and_upper_bound_of_int_filters(pagination_filter, user_parameters):
     """Stuff"""
     lower_bound, upper_bound = None, None
     for related_filter in pagination_filter.related_filters:
         filter_operation = _get_filter_operation(related_filter)
 
+        parameter_value = user_parameters[_get_binary_filter_parameter(related_filter)]
+        value_as_int = _convert_field_value_to_int(
+            schema_graph, pagination_filter.vertex_class, pagination_filter.property_field,
+            parameter_value
+        )
+
         if filter_operation == '<':
-            upper_bound = user_parameters[_get_binary_filter_parameter(related_filter)]
+        	upper_bound = value_as_int
         elif filter_operation == '<=':
-            upper_bound = user_parameters[_get_binary_filter_parameter(related_filter)]
+            upper_bound = value_as_int
         elif filter_operation == '>':
-            lower_bound = user_parameters[_get_binary_filter_parameter(related_filter)]
+            lower_bound = value_as_int
         elif filter_operation == '>=':
-            lower_bound = user_parameters[_get_binary_filter_parameter(related_filter)]
+            lower_bound = value_as_int
         elif filter_operation == 'between':
             parameter_names = _get_ternary_filter_parameters(related_filter)
             lower_bound = user_parameters[parameter_names[0]]
@@ -72,38 +97,45 @@ def _get_lower_and_upper_bound_of_related_filters(pagination_filter, user_parame
     return lower_bound, upper_bound
 
 
-def _get_domain_of_field(vertex_class, field_name):
-    """Stuff"""
-    if field_name == 'uuid':
-        return '00000000-0000-0000-0000-000000000000', 'ffffffff-ffff-ffff-ffff-ffffffffffff'
-
-    raise AssertionError(u'Unrecognized property field {}'.format(field_name))
-
-
 def _generate_parameters_for_int_pagination_filter(
     schema_graph, statistics, pagination_filter, user_parameters, num_pages
 ):
     """Stuff"""
     domain_lower_bound, domain_upper_bound = _get_domain_of_field(
-        pagination_filter.vertex_class, pagination_filter.property_field
+        schema_graph, statistics, pagination_filter.vertex_class, pagination_filter.property_field
     )
-    lower_bound, upper_bound = _get_lower_and_upper_bound_of_related_filters(
+    filter_lower_bound, filter_upper_bound = _get_lower_and_upper_bound_of_related_filters(
         pagination_filter, user_parameters
     )
-    if lower_bound is not None:
-        domain_lower_bound = max(domain_lower_bound, lower_bound)
-    if upper_bound is not None:
-        domain_upper_bound = max(domain_upper_bound, upper_bound)
 
-    if domain_lower_bound > domain_upper_bound:
+    vertex_class = pagination_filter.vertex_class
+    property_field = pagination_filter.property_field
+    domain_lower_bound_int = _convert_field_value_to_int(
+    	schema_graph, vertex_class, property_field, domain_lower_bound
+    )
+    domain_upper_bound_int = _convert_field_value_to_int(
+    	schema_graph, vertex_class, property_field, domain_upper_bound
+    )
+    filter_lower_bound_int = _convert_field_value_to_int(
+    	schema_graph, vertex_class, property_field, filter_lower_bound
+    )
+    filter_upper_bound_int = _convert_field_value_to_int(
+    	schema_graph, vertex_class, property_field, filter_upper_bound
+    )
+
+    lower_bound_int = domain_lower_bound_int
+    upper_bound_int = domain_upper_bound_int
+    if filter_lower_bound is not None:
+        lower_bound_int = max(domain_lower_bound_int, filter_lower_bound_int)
+    if filter_upper_bound is not None:
+        upper_bound_int = min(domain_upper_bound_int, filter_upper_bound_int)
+
+    if lower_bound_int > upper_bound_int:
         raise AssertionError(u'Invalid domain.')
 
-    lower_bound_int = _decode_uuid_to_int(domain_lower_bound)
-    upper_bound_int = _decode_uuid_to_int(domain_upper_bound)
-
     fraction_covered = float(1.0 / num_pages)
-    proper_cut = lower_bound_int + (upper_bound_int - lower_bound_int) * fraction_covered
-    proper_cut_uuid_string = _encode_int_as_uuid(int(proper_cut))
+    cut_position = lower_bound_int + (upper_bound_int - lower_bound_int) * fraction_covered
+    cut_position_as_field_value = _convert_int_to_field_value(int(cut_position))
 
     next_page_parameter_name = _get_binary_filter_parameter(
         pagination_filter.next_page_query_filter
@@ -113,8 +145,8 @@ def _generate_parameters_for_int_pagination_filter(
     )
 
     return (
-        (next_page_parameter_name, proper_cut_uuid_string),
-        (remainder_parameter_name, proper_cut_uuid_string)
+        (next_page_parameter_name, cut_position_as_field_value),
+        (remainder_parameter_name, cut_position_as_field_value)
     )
 
 
@@ -130,7 +162,10 @@ def _generate_parameters_for_pagination_filters(
                              .format(pagination_filters, len(pagination_filters), user_parameters))
     pagination_filter = pagination_filters[0]
 
-    if _is_uuid_field(pagination_filter.vertex_class, pagination_filter.property_field):
+    if _is_uuid_field(
+    	schema_graph, pagination_filter.vertex_class, pagination_filter.property_field
+    ):
+    	# Since all UUIDs have a corresponding integer value,
         next_page_parameter, remainder_parameter = _generate_parameters_for_int_pagination_filter(
             schema_graph, statistics, pagination_filter, user_parameters, num_pages
         )
