@@ -47,7 +47,7 @@ def _convert_field_value_to_int(schema_graph, vertex_class, property_field, valu
     else:
         raise AssertionError(u'Could not represent {} {} value {} as int. Currently,'
                              u' only uuid fields are supported.'
-                             .format(int_value, property_field, vertex_class))
+                             .format(value, property_field, vertex_class))
 
 
 def _convert_int_to_field_value(schema_graph, vertex_class, property_field, int_value):
@@ -106,7 +106,7 @@ def _generate_parameters_for_int_pagination_filter(
     domain_lower_bound, domain_upper_bound = _get_domain_of_field(
         schema_graph, statistics, pagination_filter.vertex_class, pagination_filter.property_field
     )
-    filter_lower_bound, filter_upper_bound = _get_lower_and_upper_bound_of_related_filters(
+    filter_lower_bound, filter_upper_bound = _get_lower_and_upper_bound_of_int_filters(
         pagination_filter, user_parameters
     )
 
@@ -118,18 +118,18 @@ def _generate_parameters_for_int_pagination_filter(
     domain_upper_bound_int = _convert_field_value_to_int(
         schema_graph, vertex_class, property_field, domain_upper_bound
     )
-    filter_lower_bound_int = _convert_field_value_to_int(
-        schema_graph, vertex_class, property_field, filter_lower_bound
-    )
-    filter_upper_bound_int = _convert_field_value_to_int(
-        schema_graph, vertex_class, property_field, filter_upper_bound
-    )
 
     lower_bound_int = domain_lower_bound_int
     upper_bound_int = domain_upper_bound_int
     if filter_lower_bound is not None:
+        filter_lower_bound_int = _convert_field_value_to_int(
+            schema_graph, vertex_class, property_field, filter_lower_bound
+        )
         lower_bound_int = max(domain_lower_bound_int, filter_lower_bound_int)
     if filter_upper_bound is not None:
+        filter_upper_bound_int = _convert_field_value_to_int(
+            schema_graph, vertex_class, property_field, filter_upper_bound
+        )
         upper_bound_int = min(domain_upper_bound_int, filter_upper_bound_int)
 
     if lower_bound_int > upper_bound_int:
@@ -137,7 +137,10 @@ def _generate_parameters_for_int_pagination_filter(
 
     fraction_covered = float(1.0 / num_pages)
     cut_position = lower_bound_int + (upper_bound_int - lower_bound_int) * fraction_covered
-    cut_position_as_field_value = _convert_int_to_field_value(int(cut_position))
+    cut_position_as_field_value = _convert_int_to_field_value(
+        schema_graph, pagination_filter.vertex_class, pagination_filter.property_field,
+        int(cut_position)
+    )
 
     next_page_parameter_name = _get_binary_filter_parameter(
         pagination_filter.next_page_query_filter
