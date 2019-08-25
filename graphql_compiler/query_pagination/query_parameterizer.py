@@ -5,7 +5,7 @@ from copy import copy
 from graphql.language.ast import Argument, Directive, Field, InlineFragment, Name, OperationDefinition, StringValue, ListValue, SelectionSet
 
 from graphql_compiler.ast_manipulation import get_only_query_definition, get_only_selection_from_ast
-from graphql_compiler.exceptions import GraphQLCompilationError, GraphQLValidationError
+from graphql_compiler.exceptions import GraphQLError
 from graphql_compiler.schema import FilterDirective
 
 
@@ -55,45 +55,41 @@ PaginationFilter = namedtuple(
     ),
 )
 
+# FilterModification namedtuples document pagination filters that will be added or modified in the
+# given query. They contain all the information of a PaginationFilter, but are designed for storing
+# the information of what needs to be modified in a given query to obtain the next page query and
+# the remainder query.
 FilterModification = namedtuple(
     'FilterModification',
     (
-        'vertex',                       # Document, AST of the vertex chosen
+        'vertex',                       # Document, AST of the vertex instance in the query having
+        								# its filters modified.
         'property_field',               # str, name of the property field being filtered.
-        'next_page_query_filter_old',       # Directive, filter directive with '<' operator usable
-                                        # for pagination in the page query.
-        'next_page_query_filter_new',       # Directive, filter directive with '<' operator usable
-                                        # for pagination in the page query.
-        'remainder_query_filter_old',       # Directive, filter directive with '>=' operator usable
-                                        # for pagination in the remainder query.
-        'remainder_query_filter_new',       # Directive, filter directive with '>=' operator usable
-                                        # for pagination in the remainder query.
+
+        'next_page_query_filter_old',   # Directive or None, '<' filter directive already present in
+        								# the given query that will be replaced with the new
+        								# next page query filter.
+
+        'next_page_query_filter_new',   # Directive, '<' filter directive that will either replace
+        								# the old next page query filter. If the old next page query
+        								# filter has value None, then this filter will instead be
+        								# added to the filter directives list.
+
+        'remainder_query_filter_old',   # Directive or None, '<' filter directive already present in
+        								# the given query that will be replaced with the new
+        								# remainder query filter.
+
+        'remainder_query_filter_new',   # Directive, '<' filter directive that will either replace
+        								# the old remainder query filter. If the old remainder query
+        								# filter has value None, then this filter will instead be
+        								# added to the filter directives list.
     )
 )
+
 
 def _get_filter_operation(filter_directive):
     """Return the @filter's op_name as a string."""
     return filter_directive.arguments[0].value.value
-
-
-def _get_nodes_for_pagination(statistics, query_ast):
-    """Return a list of nodes usable for pagination belonging to the given AST node."""
-    definition_ast = get_only_query_definition(query_ast, GraphQLCompilationError)
-    root_node = get_only_selection_from_ast(definition_ast, GraphQLCompilationError)
-
-    # TODO(vlad): Return a better selection of nodes for pagination, as paginating over the root
-    #             node doesn't create good pages in practice.
-    return [root_node]
-
-
-def _create_field(field_name):
-    """Return a property field with the given name."""
-    property_field = Field(
-        alias=None, name=Name(value=field_name),
-        arguments=[], directives=[], selection_set=None,
-    )
-
-    return property_field
 
 
 def _get_field_with_name(ast, primary_key_field_name):
@@ -109,11 +105,14 @@ def _get_field_with_name(ast, primary_key_field_name):
     return None
 
 
-def _get_primary_key_name(schema_graph, vertex_class):
-    """Stuff!"""
-    # HACK(vlad): Currently, information about the primary key is not stored in the Schema Graph, so
-    #             the primary key is assumed to be 'uuid'.
-    return 'uuid'
+def _create_field(field_name):
+    """Return a property field with the given name."""
+    property_field = Field(
+        alias=None, name=Name(value=field_name),
+        arguments=[], directives=[], selection_set=None,
+    )
+
+    return property_field
 
 
 def _create_binary_filter_directive(filter_operation, filter_parameter):
@@ -145,46 +144,57 @@ def _create_binary_filter_directive(filter_operation, filter_parameter):
     return filter_ast
 
 
-def _create_filter_for_next_page_query(
-    parameter_index, parameters
-):
-    """TODO Adds filters for pagination to the given vertex."""
+def _get_primary_key_name(schema_graph, vertex_class):
+    """Stuff!"""
+    # HACK(vlad): Currently, information about the primary key is not stored in the Schema Graph, so
+    #             the primary key is assumed to be 'uuid'.
+    return 'uuid'
+
+
+def _get_nodes_for_pagination(statistics, query_ast):
+    """Return a list of nodes usable for pagination belonging to the given AST node."""
+    definition_ast = get_only_query_definition(query_ast, GraphQLError)
+    root_node = get_only_selection_from_ast(definition_ast, GraphQLError)
+
+    # TODO(vlad): Return a better selection of nodes for pagination, as paginating over the root
+    #             node doesn't create good pages in practice.
+    return [root_node]
+
+
+def _create_filter_for_next_page_query(parameter_index, parameters):
+    """Create a '<' filter used for pagination."""
     paged_upper_param = RESERVED_PARAMETER_PREFIX + 'upper_bound_{}'.format(
         parameter_index
     )
-
     if paged_upper_param in parameters.keys():
         raise AssertionError(
             u'Parameter list {} already contains parameter {},'
             u' which is reserved for pagination. This might also'
             u' occur if names for pagination parameters are'
-            u' incorrectly numbered'.format(parameters, paged_upper_param))
+            u' incorrectly generated'.format(parameters, paged_upper_param))
 
     filter_directive = _create_binary_filter_directive('<', paged_upper_param)
     return filter_directive
 
 
-def _create_filter_for_remainder_query(
-    parameter_index, parameters
-):
-    """TODO"""
+def _create_filter_for_remainder_query(parameter_index, parameters):
+    """Create a '>=' filter used for pagination."""
     paged_lower_param = RESERVED_PARAMETER_PREFIX + 'lower_bound_{}'.format(
         parameter_index
     )
-
     if paged_lower_param in parameters.keys():
         raise AssertionError(
             u'Parameter list {} already contains parameter {},'
             u' which is reserved for pagination. This might also'
             u' occur if names for pagination parameters are'
-            u' incorrectly numbered'.format(parameters, paged_lower_param))
+            u' incorrectly generated'.format(parameters, paged_lower_param))
 
     filter_directive = _create_binary_filter_directive('>=', paged_lower_param)
     return filter_directive
 
 
 def _add_next_page_filters_to_directives(directives_list, filter_modification):
-    """Stuff"""
+    """Return a directives list with the next page filter added."""
     created_directives_list = copy(directives_list)
 
     if filter_modification.next_page_query_filter_old is None:
@@ -196,7 +206,7 @@ def _add_next_page_filters_to_directives(directives_list, filter_modification):
 
 
 def _add_remainder_filters_to_directives(directives_list, filter_modification):
-    """Stuff"""
+    """Return a directives list with the remainder filter added."""
     created_directives_list = copy(directives_list)
 
     if filter_modification.remainder_query_filter_old is None:
@@ -334,7 +344,7 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
             related_filters
         ))
 
-    query_selection = get_only_query_definition(query_ast, GraphQLValidationError)
+    query_selection = get_only_query_definition(query_ast, GraphQLError)
 
     parameterized_next_page_query_ast = _add_pagination_filters_to_ast(
         query_selection, None, filter_modifications, _add_next_page_filters_to_directives
