@@ -195,26 +195,46 @@ def _create_filter_for_remainder_query(parameter_index, parameters):
 
 def _add_next_page_filters_to_directives(directives_list, filter_modification):
     """Return a directives list with the next page filter added."""
-    created_directives_list = copy(directives_list)
+    made_changes = False
+    new_directives_list = []
+    for directive in directives_list:
+    	if directive is filter_modification.next_page_query_filter_old:
+    		new_directives_list.append(filter_modification.next_page_query_filter_new)
+    		made_changes = True
+    	else:
+    		new_directives_list.append(directive)
 
     if filter_modification.next_page_query_filter_old is None:
-        created_directives_list.append(filter_modification.next_page_query_filter_new)
-    else:
-        raise NotImplementedError()
+		new_directives_list.append(filter_modification.next_page_query_filter_new)
+		made_changes = True
 
     return created_directives_list
+
+	if made_changes:
+		return new_directives_list
+	else:
+		return directives_list
 
 
 def _add_remainder_filters_to_directives(directives_list, filter_modification):
     """Return a directives list with the remainder filter added."""
-    created_directives_list = copy(directives_list)
+    made_changes = False
+    new_directives_list = []
+    for directive in directives_list:
+    	if directive is filter_modification.remainder_query_filter_old:
+    		new_directives_list.append(filter_modification.remainder_query_filter_new)
+    		made_changes = True
+    	else:
+    		new_directives_list.append(directive)
 
     if filter_modification.remainder_query_filter_old is None:
-        created_directives_list.append(filter_modification.remainder_query_filter_new)
-    else:
-        raise NotImplementedError()
+		new_directives_list.append(filter_modification.remainder_query_filter_new)
+		made_changes = True
 
-    return created_directives_list
+	if made_changes:
+		return new_directives_list
+	else:
+		return directives_list
 
 
 def _add_pagination_filters_to_ast(
@@ -329,11 +349,13 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
                     if directive.name.value == 'filter'
                 ]
 
-            # for filter_directive in related_filters:
-            #     if _get_filter_operation(directive) == '<':
-            #         next_page_original_filter = directive
-            #     elif _get_filter_operation(directive) == '>=':
-            #         remainder_original_filter = directive
+            for filter_directive in related_filters:
+                if _get_filter_operation(directive) == '<':
+                    next_page_original_filter = directive
+
+            for filter_directive in related_filters:
+                if _get_filter_operation(directive) == '>=':
+                    remainder_original_filter = directive
 
         filter_modifications.append(FilterModification(
             vertex, property_field_name, next_page_original_filter, next_page_created_filter,
