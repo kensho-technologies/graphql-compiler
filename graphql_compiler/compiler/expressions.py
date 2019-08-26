@@ -132,6 +132,7 @@ class Literal(Expression):
 
     def to_sql(self, aliases, current_alias):
         """Return the value."""
+        self.validate()
         return self.value
 
 
@@ -324,10 +325,11 @@ class LocalField(Expression):
         self.validate()
 
         if isinstance(self.field_type, GraphQLList):
-            raise NotImplementedError(u'We dont support lists yet')
+            raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
+                                      u'process field {}.'.format(self.field_name))
 
         if '@' in self.field_name:
-            raise NotImplementedError(u'We dont support __typename yet')
+            raise NotImplementedError(u'The SQL backend does not support __typename.')
 
         return current_alias.c[self.field_name]
 
@@ -482,7 +484,8 @@ class ContextField(Expression):
         self.validate()
 
         if isinstance(self.field_type, GraphQLList):
-            raise NotImplementedError(u'The SQL backend does not support lists.')
+            raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
+                                      u'process field {}.'.format(self.location.field))
 
         if self.location.field is not None:
             if '@' in self.location.field:
@@ -595,7 +598,8 @@ class OutputContextField(Expression):
     def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
         if isinstance(self.field_type, GraphQLList):
-            raise NotImplementedError(u'The SQL backend does not support lists.')
+            raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
+                                      u'output field {}.'.format(self.location.field))
 
         if '@' in self.location.field:
             raise NotImplementedError(u'The sql backend does not support typename.')
@@ -1118,7 +1122,9 @@ class BinaryComposition(Expression):
             u'&&': sql.expression.and_,
             u'||': sql.expression.or_,
             u'has_substring': sql.operators.ColumnOperators.contains,
-            # in_collection and not_in_collection are implemented using contains and not_contains
+            # IR generation converts an in_collection filter in the query to a contains filter
+            # in the IR. Because of this an implementation for in_collection and not_in_collection
+            # is not needed.
             u'contains': sqlalchemy_extensions.contains_operator,
             u'not_contains': sqlalchemy_extensions.not_contains_operator,
         }
@@ -1228,7 +1234,7 @@ class TernaryConditional(Expression):
     def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Case representing this TernaryConditional."""
         self.validate()
-        return sql.expression.case(
-            [(self.predicate.to_sql(aliases, current_alias),
-              self.if_true.to_sql(aliases, current_alias))],
-            else_=self.if_false.to_sql(aliases, current_alias))
+        sql_predicate = self.predicate.to_sql(aliases, current_alias)
+        sql_if_true = self.if_true.to_sql(aliases, current_alias)
+        sql_else = self.if_false.to_sql(aliases, current_alias)
+        return sql.expression.case([(sql_predicate, sql_if_true)], else_=sql_else)

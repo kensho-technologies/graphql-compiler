@@ -6,8 +6,8 @@ def contains_operator(collection, element):
     """Return a sqlalchemy BinaryExpression representing this operator.
 
     Args:
-        - collection: sqlalchemy BindParameter, a collection runtime parameter
-        - element: sqlalchemy Column that needs to be in the specified collection
+        collection: sqlalchemy BindParameter, a collection runtime parameter
+        element: sqlalchemy Column that needs to be in the specified collection
 
     Returns:
         sqlalchemy BinaryExpression
@@ -26,8 +26,8 @@ def not_contains_operator(collection, element):
     """Return a sqlalchemy BinaryExpression representing this operator.
 
     Args:
-        - collection: sqlalchemy BindParameter, a collection runtime parameter
-        - element: sqlalchemy Column that needs to be in the specified collection
+        collection: sqlalchemy BindParameter, a collection runtime parameter
+        element: sqlalchemy Column that needs to be in the specified collection
 
     Returns:
         sqlalchemy BinaryExpression
