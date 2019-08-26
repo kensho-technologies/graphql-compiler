@@ -6,7 +6,7 @@
 # Public API #
 ##############
 
-def emit_code_from_ir(ir_blocks, compiler_metadata):
+def emit_code_from_ir(schema_info, ir_blocks):
     """Return a MATCH query string from a list of IR blocks."""
     gremlin_steps = (
         block.to_gremlin()

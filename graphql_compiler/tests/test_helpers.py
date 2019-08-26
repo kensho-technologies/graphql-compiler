@@ -1,18 +1,23 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Common test data and helper functions."""
+from collections import namedtuple
 from pprint import pformat
 import re
 
-from graphql import parse
+from graphql import GraphQLList, parse
+from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
+import sqlalchemy
+from sqlalchemy.dialects import mssql
 
 from .. import get_graphql_schema_from_orientdb_schema_data
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
-from ..schema import CUSTOM_SCALAR_TYPES
+from ..schema import CUSTOM_SCALAR_TYPES, is_vertex_field_name
+from ..schema.schema_info import CommonSchemaInfo, DirectJoinDescriptor, make_sqlalchemy_schema_info
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
 from ..schema_generation.orientdb.utils import (
     ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
@@ -307,6 +312,28 @@ VALID_MACROS_TEXT = [
 ]
 
 
+# A class holding all necessary backend-specific testing utilities.
+BackendTester = namedtuple('BackendTester', (
+    # Backend to be tested
+    'backend'
+
+    # Returns whether two emitted queries are the same, up to differences in syntax/whitespace
+    'compare_queries',
+
+    # An instance of backend.SchemaInfoClass consistend with the standard testing schema.
+    'schema_info',
+
+    # Given a SchemaInfo and a connection pool to a database, install the given schema into
+    # the database, erasing content if necessary.
+    'setup_schema'
+
+    # Given a SchemaInfo, a dict representation of data fitting the schema, and a connection pool
+    # to a database with the same schema, install the given data into the database, erasing any
+    # existing data.
+    'setup_data'
+))
+
+
 def transform(emitted_output):
     """Transform emitted_output into a unique representation, regardless of lines / indentation."""
     return WHITESPACE_PATTERN.sub(u'', emitted_output)
@@ -396,6 +423,248 @@ def get_schema():
     schema = build_ast_schema(ast)
     amend_custom_scalar_types(schema, CUSTOM_SCALAR_TYPES)  # Mutates the schema.
     return schema
+
+
+def get_type_equivalence_hints():
+    """Get the default type_equivalence_hints used for testing."""
+    schema = get_schema()
+    return {
+        schema.get_type(key): schema.get_type(value)
+        for key, value in [
+            ('Event', 'Union__BirthEvent__Event__FeedingEvent'),
+            ('FoodOrSpecies', 'Union__Food__FoodOrSpecies__Species'),
+        ]
+    }
+
+
+def get_common_schema_info():
+    """Get the default CommonSchemaInfo used for testing."""
+    return CommonSchemaInfo(get_schema(), get_type_equivalence_hints())
+
+
+def _get_schema_without_list_valued_property_fields():
+    """Get the default testing schema, skipping any list-valued property fields it has."""
+    schema = get_schema()
+
+    types_with_fields = (GraphQLInterfaceType, GraphQLObjectType)
+    for type_name, graphql_type in six.iteritems(schema.get_type_map()):
+        if isinstance(graphql_type, types_with_fields):
+            if type_name != 'RootSchemaQuery' and not type_name.startswith('__'):
+                fields_to_pop = []
+                for field_name, field_type in six.iteritems(graphql_type.fields):
+                    if not is_vertex_field_name(field_name):
+                        if isinstance(field_type.type, GraphQLList):
+                            fields_to_pop.append(field_name)
+                for field_to_pop in fields_to_pop:
+                    graphql_type.fields.pop(field_to_pop)
+
+    return schema
+
+
+def get_sqlalchemy_schema_info():
+    """Get a SQLAlchemySchemaInfo for testing."""
+    # We don't support list-valued property fields in SQL for now.
+    schema = _get_schema_without_list_valued_property_fields()
+    type_equivalence_hints = get_type_equivalence_hints()
+
+    # Every SQLAlchemy Table needs to be attached to a MetaData object. We don't actually use it.
+    # We use a mixture of two metadata objects to make sure our implementation does not rely
+    # on all the tables sharing a metadata object.
+    sqlalchemy_metadata_1 = sqlalchemy.MetaData()
+    sqlalchemy_metadata_2 = sqlalchemy.MetaData()
+
+    uuid_type = sqlalchemy.String(36)
+
+    tables = {
+        'Animal': sqlalchemy.Table(
+            'Animal',
+            sqlalchemy_metadata_1,
+            sqlalchemy.Column('birthday', sqlalchemy.DateTime, nullable=False),
+            sqlalchemy.Column('color', sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column('parent', sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column('related_entity', sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('net_worth', sqlalchemy.Integer, nullable=True),
+            sqlalchemy.Column('fed_at', uuid_type, nullable=True),
+            sqlalchemy.Column('born_at', uuid_type, nullable=True),
+            sqlalchemy.Column('lives_in', uuid_type, nullable=True),
+            sqlalchemy.Column('important_event', sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column('species', sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
+            schema='db_1.schema_1'
+        ),
+        'BirthEvent': sqlalchemy.Table(
+            'BirthEvent',
+            sqlalchemy_metadata_2,
+            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
+            sqlalchemy.Column('related_event', uuid_type, primary_key=False),
+            schema='db_1.schema_1'
+        ),
+        'Entity': sqlalchemy.Table(
+            'Entity',
+            sqlalchemy_metadata_2,
+            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('related_entity', uuid_type, nullable=True),
+            schema='db_1.schema_1'
+        ),
+        'Event': sqlalchemy.Table(
+            'Event',
+            sqlalchemy_metadata_2,
+            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
+            sqlalchemy.Column('related_event', uuid_type, primary_key=False),
+            schema='db_2.schema_1'
+        ),
+        'FeedingEvent': sqlalchemy.Table(
+            'FeedingEvent',
+            sqlalchemy_metadata_1,
+            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
+            sqlalchemy.Column('related_event', uuid_type, primary_key=False),
+            schema='db_2.schema_1'
+        ),
+        'Food': sqlalchemy.Table(
+            'Food',
+            sqlalchemy_metadata_1,
+            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            schema='db_2.schema_2'
+        ),
+        'FoodOrSpecies': sqlalchemy.Table(
+            'FoodOrSpecies',
+            sqlalchemy_metadata_1,
+            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            schema='db_2.schema_2'
+        ),
+        'Location': sqlalchemy.Table(
+            'Location',
+            sqlalchemy_metadata_1,
+            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            schema='db_1.schema_1'
+        ),
+        'Species': sqlalchemy.Table(
+            'Species',
+            sqlalchemy_metadata_2,
+            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
+            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('eats', uuid_type, nullable=True),
+            sqlalchemy.Column('limbs', sqlalchemy.Integer, nullable=False),
+            schema='db_1.schema_1'
+        ),
+        'UniquelyIdentifiable': sqlalchemy.Table(
+            'UniquelyIdentifiable',
+            sqlalchemy_metadata_1,
+            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
+            schema='db_1.schema_1'
+        ),
+    }
+
+    # Compute the subclass sets, including union types
+    subclasses = compute_subclass_sets(schema, type_equivalence_hints=type_equivalence_hints)
+    for object_type, equivalent_union_type in six.iteritems(type_equivalence_hints):
+        subclasses[equivalent_union_type.name] = subclasses[object_type.name]
+        subclasses[equivalent_union_type.name].add(object_type.name)
+
+    # HACK(bojanserafimov): Some of these edges are many-to-many, but I've represented them
+    #                       as many-to-one edges. If I didn't, I'd have to implement many-to-many
+    #                       edges before I can get any tests to run, because most tests use
+    #                       these edges.
+    edges = [
+        {
+            'name': 'Animal_ParentOf',
+            'from_table': 'Animal',
+            'to_table': 'Animal',
+            'from_column': 'parent',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Animal_OfSpecies',
+            'from_table': 'Animal',
+            'to_table': 'Species',
+            'from_column': 'species',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Animal_FedAt',
+            'from_table': 'Animal',
+            'to_table': 'FeedingEvent',
+            'from_column': 'fed_at',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Animal_BornAt',
+            'from_table': 'Animal',
+            'to_table': 'BirthEvent',
+            'from_column': 'born_at',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Animal_LivesIn',
+            'from_table': 'Animal',
+            'to_table': 'Location',
+            'from_column': 'lives_in',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Animal_ImportantEvent',
+            'from_table': 'Animal',
+            'to_table': 'Union__BirthEvent__Event__FeedingEvent',
+            'from_column': 'important_event',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Species_Eats',
+            'from_table': 'Species',
+            'to_table': 'Union__Food__FoodOrSpecies__Species',
+            'from_column': 'eats',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Entity_Related',
+            'from_table': 'Entity',
+            'to_table': 'Entity',
+            'from_column': 'related_entity',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Event_RelatedEvent',
+            'from_table': 'Union__BirthEvent__Event__FeedingEvent',
+            'to_table': 'Union__BirthEvent__Event__FeedingEvent',
+            'from_column': 'related_event',
+            'to_column': 'uuid',
+        }, {
+            'name': 'Entity_Alias',
+            'from_table': 'Entity',
+            'to_table': 'Alias',
+            'from_column': 'uuid',
+            'to_column': 'alias_for',
+        }
+    ]
+
+    join_descriptors = {}
+    for edge in edges:
+        join_descriptors.setdefault(edge['from_table'], {})['out_{}'.format(edge['name'])] = (
+            DirectJoinDescriptor(edge['from_column'], edge['to_column']))
+        join_descriptors.setdefault(edge['to_table'], {})['in_{}'.format(edge['name'])] = (
+            DirectJoinDescriptor(edge['to_column'], edge['from_column']))
+
+    # Inherit join_descriptors from superclasses
+    # TODO(bojanserafimov): Properties can be inferred too, instead of being explicitly inherited.
+    for class_name, subclass_set in six.iteritems(subclasses):
+        for subclass in subclass_set:
+            for edge_name, join_info in six.iteritems(join_descriptors.get(class_name, {})):
+                join_descriptors.setdefault(subclass, {})[edge_name] = join_info
+
+    return make_sqlalchemy_schema_info(
+        schema, type_equivalence_hints, mssql.dialect(), tables, join_descriptors)
 
 
 def generate_schema_graph(orientdb_client):

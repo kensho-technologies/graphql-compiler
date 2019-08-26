@@ -37,16 +37,21 @@ REDISGRAPH_BACKENDS = {
 }
 
 SQL_BACKEND_TO_CONNECTION_STRING = {
-    test_backend.POSTGRES:
-        u'postgresql://postgres:{password}@localhost:5432'.format(password=DEFAULT_ROOT_PASSWORD),
-    test_backend.MYSQL:
-        u'mysql://root:{password}@127.0.0.1:3306'.format(password=DEFAULT_ROOT_PASSWORD),
-    test_backend.MARIADB:
-        u'mysql://root:{password}@127.0.0.1:3307'.format(password=DEFAULT_ROOT_PASSWORD),
+    # HACK(bojanserafimov): Entries are commented-out because MSSQL is the only one whose scheme
+    #                       initialization is properly configured, with a hierarchy of multiple
+    #                       databases and schemas. I'm keeping the code to remember the connection
+    #                       string formats.
+    #
+    # test_backend.POSTGRES:
+    #     u'postgresql://postgres:{password}@localhost:5432'.format(password=DEFAULT_ROOT_PASSWORD),
+    # test_backend.MYSQL:
+    #     u'mysql://root:{password}@127.0.0.1:3306'.format(password=DEFAULT_ROOT_PASSWORD),
+    # test_backend.MARIADB:
+    #     u'mysql://root:{password}@127.0.0.1:3307'.format(password=DEFAULT_ROOT_PASSWORD),
     test_backend.MSSQL:
         u'mssql+pymssql://SA:{password}@localhost:1433'.format(password=MSSQL_ROOT_PASSWORD),
-    test_backend.SQLITE:
-        u'sqlite:///:memory:',
+    # test_backend.SQLITE:
+    #     u'sqlite:///:memory:',
 }
 
 SqlTestBackend = namedtuple('SqlTestBackend', (

@@ -5,18 +5,16 @@ import unittest
 
 from graphql import GraphQLID, GraphQLString
 import six
-from sqlalchemy.dialects import sqlite
 
 from . import test_input_data
 from ..compiler import (
     OutputMetadata, compile_graphql_to_cypher, compile_graphql_to_gremlin, compile_graphql_to_match,
     compile_graphql_to_sql
 )
-from ..compiler.ir_lowering_sql.metadata import SqlMetadata
-from .test_data_tools.data_tool import get_animal_schema_sql_metadata
+from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from .test_helpers import (
     SKIP_TEST, compare_cypher, compare_gremlin, compare_input_metadata, compare_match, compare_sql,
-    get_schema
+    get_schema, get_sqlalchemy_schema_info
 )
 
 
@@ -57,20 +55,13 @@ def check_test_data(
     if expected_sql == SKIP_TEST:
         pass
     elif expected_sql == NotImplementedError:
-        with test_case.assertRaises(NotImplementedError):
-            compile_graphql_to_sql(
-                test_case.schema,
-                test_data.graphql_input,
-                test_case.sql_metadata,
-                type_equivalence_hints=schema_based_type_equivalence_hints,
-            )
+        not_supported = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
+        with test_case.assertRaises(not_supported):
+            compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
     else:
-        result = compile_graphql_to_sql(
-            test_case.schema,
-            test_data.graphql_input,
-            test_case.sql_metadata,
-            type_equivalence_hints=schema_based_type_equivalence_hints)
-        compare_sql(test_case, expected_sql, str(result.query))
+        result = compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
+        string_result = str(result.query.compile(dialect=test_case.sql_schema_info.dialect))
+        compare_sql(test_case, expected_sql, string_result)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata,
                                result.input_metadata)
@@ -96,8 +87,7 @@ class CompilerTests(unittest.TestCase):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
         self.schema = get_schema()
-        _, sqlalchemy_metadata = get_animal_schema_sql_metadata()
-        self.sql_metadata = SqlMetadata(sqlite.dialect.name, sqlalchemy_metadata)
+        self.sql_schema_info = get_sqlalchemy_schema_info()
 
     def test_immediate_output(self):
         test_data = test_input_data.immediate_output()
@@ -122,9 +112,9 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -159,10 +149,10 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.birthday AS birthday,
-                animal_1.net_worth AS net_worth
+                [Animal_1].birthday AS birthday,
+                [Animal_1].net_worth AS net_worth
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
         '''
         expected_cypher = SKIP_TEST
 
@@ -194,11 +184,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.net_worth >= :min_worth
+                [Animal_1].net_worth >= :min_worth
         '''
         expected_cypher = SKIP_TEST
 
@@ -314,11 +304,11 @@ class CompilerTests(unittest.TestCase):
 
             expected_sql = '''
                 SELECT
-                    animal_1.name AS animal_name
+                    [Animal_1].name AS animal_name
                 FROM
-                    animal AS animal_1
+                    db_1.schema_1.[Animal] AS [Animal_1]
                 WHERE
-                    animal_1.name %(operator)s :wanted
+                    [Animal_1].name %(operator)s :wanted
             ''' % {'operator': operator}  # nosec, the operators are hardcoded above
 
             # In Cypher, inequality comparisons use "<>" instead of "!=".
@@ -370,12 +360,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name >= :lower_bound
-                AND animal_1.name < :upper_bound
+                [Animal_1].name >= :lower_bound
+                AND [Animal_1].name < :upper_bound
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -897,12 +887,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS name
+                [Animal_1].name AS name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name >= :lower
-                AND animal_1.name <= :upper
+                [Animal_1].name >= :lower
+                AND [Animal_1].name <= :upper
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -947,12 +937,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.birthday AS birthday
+                [Animal_1].birthday AS birthday
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.birthday >= :lower
-                AND animal_1.birthday <= :upper
+                [Animal_1].birthday >= :lower
+                AND [Animal_1].birthday <= :upper
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -999,12 +989,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                event_1.event_date AS event_date
+                [Event_1].event_date AS event_date
             FROM
-                event AS event_1
+                db_2.schema_1.[Event] AS [Event_1]
             WHERE
-                event_1.event_date >= :lower
-                AND event_1.event_date <= :upper
+                [Event_1].event_date >= :lower
+                AND [Event_1].event_date <= :upper
         '''
         expected_cypher = '''
             MATCH (Event___1:Event)
@@ -1044,12 +1034,12 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS name
+                [Animal_1].name AS name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name <= :upper
-                AND animal_1.name >= :lower
+                [Animal_1].name <= :upper
+                AND [Animal_1].name >= :lower
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -1102,14 +1092,14 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS name
+                [Animal_1].name AS name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name <= :upper
-                AND (animal_1.name LIKE '%' || :substring || '%')
-                AND animal_1.name IN ([EXPANDING_fauna])
-                AND animal_1.name >= :lower
+                [Animal_1].name <= :upper
+                AND ([Animal_1].name LIKE '%' + :substring + '%')
+                AND [Animal_1].name IN ([EXPANDING_fauna])
+                AND [Animal_1].name >= :lower
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -1151,13 +1141,13 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS name
+                [Animal_1].name AS name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name <= :upper
-                AND animal_1.name >= :lower0
-                AND animal_1.name >= :lower1
+                [Animal_1].name <= :upper
+                AND [Animal_1].name >= :lower0
+                AND [Animal_1].name >= :lower1
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2152,11 +2142,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name IN ([EXPANDING_wanted])
+                [Animal_1].name IN ([EXPANDING_wanted])
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2301,11 +2291,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.name NOT IN ([EXPANDING_wanted])
+                [Animal_1].name NOT IN ([EXPANDING_wanted])
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2842,6 +2832,88 @@ class CompilerTests(unittest.TestCase):
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
 
+    def test_starts_with_op_filter(self):
+        test_data = test_input_data.starts_with_op_filter()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((name LIKE ({wanted} + '%'))),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> it.name.startsWith($wanted)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE
+                ([Animal_1].name LIKE :wanted + '%')
+        '''
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+                WHERE (Animal___1.name STARTS WITH $wanted)
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
+                        expected_cypher)
+
+    def test_ends_with_op_filter(self):
+        test_data = test_input_data.ends_with_op_filter()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((name LIKE ('%' + {wanted}))),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> it.name.endsWith($wanted)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE
+                ([Animal_1].name LIKE '%' + :wanted)
+        '''
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+                WHERE (Animal___1.name ENDS WITH $wanted)
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
+                        expected_cypher)
+
     def test_has_substring_op_filter(self):
         test_data = test_input_data.has_substring_op_filter()
 
@@ -2867,11 +2939,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                (animal_1.name LIKE '%' || :wanted || '%')
+                ([Animal_1].name LIKE '%' + :wanted + '%')
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2913,11 +2985,11 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                (animal_1.name LIKE '%' || :wanted || '%')
+                ([Animal_1].name LIKE '%' + :wanted + '%')
         '''
         expected_cypher = SKIP_TEST
 
@@ -5086,7 +5158,6 @@ class CompilerTests(unittest.TestCase):
                 ($Animal___1___out_Animal_ParentOf.size() >= {min_children})
         '''
         expected_gremlin = NotImplementedError
-
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
@@ -6842,13 +6913,13 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                animal_1.name AS animal_name
+                [Animal_1].name AS animal_name
             FROM
-                animal AS animal_1
+                db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                animal_1.uuid >= :uuid_lower
-                AND animal_1.uuid <= :uuid_upper
-                AND animal_1.birthday >= :earliest_modified_date
+                [Animal_1].uuid >= :uuid_lower
+                AND [Animal_1].uuid <= :uuid_upper
+                AND [Animal_1].birthday >= :earliest_modified_date
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
