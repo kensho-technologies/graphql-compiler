@@ -3,13 +3,15 @@ class SchemaError(Exception):
     """Base class for all errors related to the schema."""
 
 
-class InvalidClassError(SchemaError):  # noqa: D400
-    """Raised for two reasons, disambiguated by their message:
+class InvalidClassError(SchemaError):
+    """Raised when requested class did not exist or fulfill required properties.
 
+    Possible reasons include:
         - Class A was expected to be a subclass of class B, but that was found to not be the case.
+        - The requested class was expected to be abstract, but it was not.
         - The requested class did not exist.
 
-    In either case, the conclusion is the same -- this is a programming error,
+    In each of the cases, the conclusion is the same -- this is a programming error,
     and there is nothing the code can do to recover.
     """
 
