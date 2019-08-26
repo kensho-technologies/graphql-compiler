@@ -63,7 +63,7 @@ def graphql_to_sql(sql_schema_info, graphql_query, parameters):
 
     Args:
         sql_schema_info: SQLAlchemySchemaInfo used to compile the query.
-        graphql_string: the GraphQL query to compile to SQL, as a string
+        graphql_query: the GraphQL query to compile to SQL, as a string
         parameters: dict, mapping argument name to its value, for every parameter the query expects.
 
     Returns:

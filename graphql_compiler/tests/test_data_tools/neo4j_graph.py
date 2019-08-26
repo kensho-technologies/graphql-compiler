@@ -11,6 +11,7 @@ NEO4J_PASSWORD = 'root'  # nosec
 
 class Neo4jClient(object):
     def __init__(self, graph_name):
+        """Set up Neo4JClient using the default test credentials."""
         url = get_neo4j_url(graph_name)
         self.driver = GraphDatabase.driver(url, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
