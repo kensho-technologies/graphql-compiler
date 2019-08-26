@@ -15,6 +15,7 @@ class Statistics(object):
     All statistics except get_class_count() are optional, so if the statistic doesn't exist, a
     value of None should be returned.
     """
+
     def __str__(self):
         """Return a human-readable unicode representation of the Statistics object."""
         raise NotImplementedError()
@@ -84,6 +85,7 @@ class Statistics(object):
 
 class LocalStatistics(Statistics):
     """Statistics class that receives all statistics at initialization, storing them in-memory."""
+
     def __init__(
         self, class_counts, vertex_edge_vertex_counts=None,
         distinct_field_values_counts=None

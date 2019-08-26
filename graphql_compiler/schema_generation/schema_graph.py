@@ -412,6 +412,7 @@ class EdgeType(SchemaElement):
 
 class NonGraphElement(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields):
+        """See base class __init__ method."""
         super(NonGraphElement, self).__init__(class_name, abstract, properties, class_fields)
 
 

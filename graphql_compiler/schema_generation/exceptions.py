@@ -3,7 +3,7 @@ class SchemaError(Exception):
     """Base class for all errors related to the schema."""
 
 
-class InvalidClassError(SchemaError):
+class InvalidClassError(SchemaError):  # noqa: D400
     """Raised for two reasons, disambiguated by their message:
 
         - Class A was expected to be a subclass of class B, but that was found to not be the case.

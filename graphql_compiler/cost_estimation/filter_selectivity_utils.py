@@ -33,17 +33,17 @@ MAX_UUID_INT = 2**128 - 1
 
 
 def _is_absolute(selectivity):
-    """Returns True if selectivity has kind absolute."""
+    """Return True if selectivity has kind absolute."""
     return selectivity.kind == ABSOLUTE_SELECTIVITY
 
 
 def _is_fractional(selectivity):
-    """Returns True if selectivity has kind fractional."""
+    """Return True if selectivity has kind fractional."""
     return selectivity.kind == FRACTIONAL_SELECTIVITY
 
 
 def _has_any_absolute(selectivities):
-    """Returns True if at least one selectivity has kind absolute."""
+    """Return True if at least one selectivity has kind absolute."""
     for selectivity in selectivities:
         if _is_absolute(selectivity):
             return True
@@ -51,7 +51,7 @@ def _has_any_absolute(selectivities):
 
 
 def _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
-    """Returns True if the field(s) being filtered are uniquely indexed."""
+    """Return True if the field(s) being filtered are uniquely indexed."""
     # Filter fields are tuples, so cast as a frozenset for direct comparison with index fields.
     filter_fields_frozenset = frozenset(filter_fields)
     for unique_index in unique_indexes:
@@ -128,7 +128,6 @@ def _get_stronger_upper_bound(upper_bound_a, upper_bound_b):
           value.
         - None if both upper bounds have a value of None.
     """
-
     stronger_upper_bound = None
     if upper_bound_a is not None and upper_bound_b is not None:
         stronger_upper_bound = min(upper_bound_a, upper_bound_b)
@@ -175,7 +174,6 @@ def _get_query_interval_of_binary_integer_inequality_filter(
     Raises:
         ValueError if the number of parameter values is not exactly one.
     """
-
     if len(parameter_values) != 1:
         raise ValueError(u'Binary inequality filter should have '
                          u'exactly one parameter value: {} {}'
@@ -217,7 +215,6 @@ def _get_query_interval_of_ternary_integer_inequality_filter(
     Raises:
         ValueError if the number of parameter values is not exactly two.
     """
-
     if len(parameter_values) != 2:
         raise ValueError(u'Ternary inequality filter should have '
                          u'exactly two parameter values: {} {}'
