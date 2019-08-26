@@ -40,7 +40,6 @@ def _traverse_and_validate_blocks(ir):
         yield block
 
 
-
 class CompilationState(object):
     """Mutable class used to keep track of state while emitting a sql query."""
 
