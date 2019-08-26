@@ -4,7 +4,41 @@ import six
 import sqlalchemy
 
 from . import blocks
-from .compiler_frontend import traverse_blocks
+
+
+def _traverse_and_validate_blocks(ir):
+    """Yield all blocks, while validating consistency."""
+    found_query_root = False
+    found_global_operations_block = False
+
+    global_only_blocks = (blocks.ConstructResult,)
+    globally_allowed_blocks = (blocks.ConstructResult, blocks.Filter)
+
+    for block in ir.ir_blocks:
+        if isinstance(block, blocks.QueryRoot):
+            found_query_root = True
+        else:
+            if not found_query_root:
+                raise AssertionError(u'Found block {} before QueryRoot: {}'
+                                     .format(block, ir.ir_blocks))
+
+        if isinstance(block, blocks.GlobalOperationsStart):
+            if found_global_operations_block:
+                raise AssertionError(u'Found duplicate GlobalOperationsStart: {}'
+                                     .format(ir.ir_blocks))
+            found_global_operations_block = True
+        else:
+            if found_global_operations_block:
+                if not isinstance(block, globally_allowed_blocks):
+                    raise AssertionError(u'Only {} are allowed after GlobalOperationsBlock. '
+                                         u'Found {} in {}.'
+                                         .format(globally_allowed_blocks, block, ir.ir_blocks))
+            else:
+                if isinstance(block, global_only_blocks):
+                    raise AssertionError(u'Block {} is only allowed after GlobalOperationsBlock: {}'
+                                         .format(block, ir.ir_blocks))
+        yield block
+
 
 
 class CompilationState(object):
@@ -84,7 +118,7 @@ def emit_code_from_ir(sql_schema_info, ir):
         SQLAlchemy Query
     """
     state = CompilationState(sql_schema_info, ir)
-    for block in traverse_blocks(ir.ir_blocks):
+    for block in _traverse_and_validate_blocks(ir):
         if isinstance(block, blocks.QueryRoot):
             pass
         elif isinstance(block, blocks.MarkLocation):

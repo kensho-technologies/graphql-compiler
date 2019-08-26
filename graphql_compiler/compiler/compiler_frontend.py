@@ -141,43 +141,6 @@ IrAndMetadata = namedtuple(
 )
 
 
-def traverse_blocks(ir_blocks, validate_ir=True):
-    """Yield all blocks, while validating consistency."""
-    if not validate_ir:
-        for block in ir_blocks:
-            yield block
-
-    found_query_root = False
-    found_global_operations_block = False
-
-    global_only_blocks = (blocks.ConstructResult,)
-    globally_allowed_blocks = (blocks.ConstructResult, blocks.Filter)
-
-    for block in ir_blocks:
-        if isinstance(block, blocks.QueryRoot):
-            found_query_root = True
-        else:
-            if not found_query_root:
-                raise AssertionError(u'Found block {} before QueryRoot: {}'
-                                     .format(block, ir_blocks))
-
-        if isinstance(block, blocks.GlobalOperationsStart):
-            if found_global_operations_block:
-                raise AssertionError(u'Found duplicate GlobalOperationsStart: {}'.format(ir_blocks))
-            found_global_operations_block = True
-        else:
-            if found_global_operations_block:
-                if not isinstance(block, globally_allowed_blocks):
-                    raise AssertionError(u'Only {} are allowed after GlobalOperationsBlock. '
-                                         u'Found {} in {}.'
-                                         .format(globally_allowed_blocks, block, ir_blocks))
-            else:
-                if isinstance(block, global_only_blocks):
-                    raise AssertionError(u'Block {} is only allowed after GlobalOperationsBlock: {}'
-                                         .format(block, ir_blocks))
-        yield block
-
-
 def _get_fields(ast):
     """Return a list of vertex fields, and a list of property fields, for the given AST node.
 
