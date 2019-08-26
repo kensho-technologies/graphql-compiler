@@ -122,7 +122,7 @@ class QueryPaginationTests(unittest.TestCase):
         parameters = {
         	'uuid_filter': '80000000-0000-0000-0000-000000000000',
         }
-        page_size = 4
+        page_size = 2
 
         count_data = {
             'Animal': 8,
