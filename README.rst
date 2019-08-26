@@ -1808,15 +1808,23 @@ the query were written in the opposite order:
 SQL
 ---
 
-Currently we only support filtering and outputting properties of a single vertex/table. Support
-for edge traversals and most directives is in development.
+Relational databases are supported by compiling to SQLAlchemy core as an intermediate
+language, and then relying on SQLAlchemy's compilation of the dialect-specific SQL string to query
+the target database.
+
+Our SQL backend supports basic traversals, filters, tags and outputs, but there are still some
+pieces in development:
+
+- Directives: :code:`@optional`, :code:`@fold`, :code:`@recurse`
+- Filter operators: :code:`is_null`, :code:`is_not_null`, :code:`has_edge_degree`
+- Dialect-specific features, like Postgres array types, and use of filter operators
+  specific to them: :code:`contains`, :code:`intersects`, :code:`name_or_alias`
+- Meta fields: :code:`__typename`, :code:`_x_count`
 
 End-To-End SQL Example
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Relational databases are supported by compiling to SQLAlchemy core as an intermediate
-language, and then relying on SQLAlchemy's compilation of the dialect specific SQL string to query
-the target database. This section provides an end-to-end example including relevant GraphQL schema
+This section provides an end-to-end example including relevant GraphQL schema
 and SQLAlchemy engine preparation follows.
 
 This is intended as a basic example of the setup steps for the SQL
