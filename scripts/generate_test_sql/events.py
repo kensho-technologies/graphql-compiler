@@ -3,10 +3,10 @@ from .utils import create_vertex_statement, get_random_date, get_uuid
 
 
 FEEDING_EVENT_NAMES_LIST = (
-    "Breakfast",
-    "Brunch",
-    "Lunch",
-    "Dinner",
+    'Breakfast',
+    'Brunch',
+    'Lunch',
+    'Dinner',
 )
 
 
