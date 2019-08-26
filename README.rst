@@ -55,6 +55,8 @@ Table of contents
    -  `in\_collection <#in-collection>`__
    -  `not\_in\_collection <#not-in-collection>`__
    -  `has\_substring <#has-substring>`__
+   -  `starts\_with <#starts-with>`__
+   -  `ends\_with <#ends-with>`__
    -  `contains <#contains>`__
    -  `not\_contains <#not-contains>`__
    -  `intersects <#intersects>`__
@@ -1065,6 +1067,54 @@ Constraints and Rules
 
 -  Must be on a property field of string type.
 
+starts\_with
+~~~~~~~~~~~~~~
+
+Example Use
+^^^^^^^^^^^
+
+.. code::
+
+    {
+        Animal {
+            name @filter(op_name: "starts_with", value: ["$prefix"])
+                 @output(out_name: "animal_name")
+        }
+    }
+
+This returns one row for every :code:`Animal` vertex whose name starts with the
+value supplied for the :code:`$prefix` parameter. Each row contains the
+matching :code:`Animal`'s name in a column named :code:`animal_name`.
+
+Constraints and Rules
+^^^^^^^^^^^^^^^^^^^^^
+
+-  Must be on a property field of string type.
+
+ends\_with
+~~~~~~~~~~~~~~
+
+Example Use
+^^^^^^^^^^^
+
+.. code::
+
+    {
+        Animal {
+            name @filter(op_name: "ends_with", value: ["$suffix"])
+                 @output(out_name: "animal_name")
+        }
+    }
+
+This returns one row for every :code:`Animal` vertex whose name ends with the
+value supplied for the :code:`$suffix` parameter. Each row contains the
+matching :code:`Animal`'s name in a column named :code:`animal_name`.
+
+Constraints and Rules
+^^^^^^^^^^^^^^^^^^^^^
+
+-  Must be on a property field of string type.
+
 contains
 ~~~~~~~~
 
@@ -1758,15 +1808,23 @@ the query were written in the opposite order:
 SQL
 ---
 
-Currently we only support filtering and outputting properties of a single vertex/table. Support
-for edge traversals and most directives is in development.
+Relational databases are supported by compiling to SQLAlchemy core as an intermediate
+language, and then relying on SQLAlchemy's compilation of the dialect-specific SQL string to query
+the target database.
+
+Our SQL backend supports basic traversals, filters, tags and outputs, but there are still some
+pieces in development:
+
+- Directives: :code:`@optional`, :code:`@fold`, :code:`@recurse`
+- Filter operators: :code:`is_null`, :code:`is_not_null`, :code:`has_edge_degree`
+- Dialect-specific features, like Postgres array types, and use of filter operators
+  specific to them: :code:`contains`, :code:`intersects`, :code:`name_or_alias`
+- Meta fields: :code:`__typename`, :code:`_x_count`
 
 End-To-End SQL Example
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Relational databases are supported by compiling to SQLAlchemy core as an intermediate
-language, and then relying on SQLAlchemy's compilation of the dialect specific SQL string to query
-the target database. This section provides an end-to-end example including relevant GraphQL schema
+This section provides an end-to-end example including relevant GraphQL schema
 and SQLAlchemy engine preparation follows.
 
 This is intended as a basic example of the setup steps for the SQL
