@@ -13,9 +13,10 @@ from graphql.utils.schema_printer import print_schema
 import six
 
 from ..ast_manipulation import safe_parse_graphql
+from ..compiler.subclass import compute_subclass_sets
 from ..compiler.validation import validate_schema_and_query_ast
 from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
-from ..schema import _check_for_nondefault_directive_names
+from ..schema import check_for_nondefault_directive_names
 from .macro_edge import make_macro_edge_descriptor
 from .macro_edge.ast_traversal import get_type_at_macro_edge_target
 from .macro_edge.directives import (
@@ -47,14 +48,19 @@ MacroRegistry = namedtuple(
         # *****
         'type_equivalence_hints',
 
-        # Optional dict mapping class names to the set of its subclass names.
+        # Dict[str, Set[str]] mapping class names to the set of its subclass names.
         # A class in this context means the name of a GraphQLObjectType,
         # GraphQLUnionType or GraphQLInterface.
         'subclass_sets',
 
+        # List[MacroEdgeDescriptor] containing all defined macro edges
+        'macro_edges',
+
         # Dict[str, Dict[str, MacroEdgeDescriptor]] mapping:
         # class name -> (macro edge name -> MacroEdgeDescriptor)
-        'macro_edges',
+        # If a given macro edge is defined on a class X which has subclasses A and B,
+        # then this dict will contain entries for that macro edge for all of [X, A, B].
+        'macro_edges_at_class',
 
         # Any other macro types we may add in the future go here.
     )
@@ -63,11 +69,72 @@ MacroRegistry = namedtuple(
 
 def create_macro_registry(schema, type_equivalence_hints=None, subclass_sets=None):
     """Create and return a new empty macro registry."""
+    if subclass_sets is None:
+        subclass_sets = compute_subclass_sets(schema, type_equivalence_hints=type_equivalence_hints)
+
     return MacroRegistry(
         schema_without_macros=schema,
         type_equivalence_hints=type_equivalence_hints,
         subclass_sets=subclass_sets,
-        macro_edges=dict())
+        macro_edges=list(),
+        macro_edges_at_class=dict())
+
+
+def _check_macro_edge_for_definition_conflicts(macro_registry, base_class_name, macro_edge_name):
+    """Ensure that the macro edge on the specified class does not cause any definition conflicts."""
+    # There are two kinds of conflicts that we check for:
+    # - defining this macro edge would not conflict with any macro edges that already exist
+    #   at the same type or at a superclass of the base class of the macro; and
+    # - defining this macro edge would not cause any subclass of the base class of the macro
+    #   to have a conflicting definition for any of its fields originating from prior
+    #   macro edge definitions.
+    # We check for both of them simultaneously, by ensuring that none of the subclasses of the
+    # base class name have a macro edge by the specified name.
+    subclasses = macro_registry.subclass_sets[base_class_name]
+    if base_class_name not in subclasses:
+        raise AssertionError(u'Found a class that is not a subclass of itself, this means that the '
+                             u'subclass_sets value is incorrectly constructed: {} {} {}'
+                             .format(base_class_name, subclasses, macro_registry.subclass_sets))
+
+    for subclass_name in subclasses:
+        existing_descriptor = macro_registry.macro_edges_at_class.get(
+            subclass_name, dict()).get(macro_edge_name, None)
+        if existing_descriptor is not None:
+            extra_error_text = u''
+            conflict_on_class_name = existing_descriptor.base_class_name
+            if conflict_on_class_name != base_class_name:
+                # The existing descriptor is defined elsewhere. Let's figure out if it's a subclass
+                # or a superclass conflict.
+                if base_class_name in macro_registry.subclass_sets[conflict_on_class_name]:
+                    relationship = 'supertype'
+                elif conflict_on_class_name in macro_registry.subclass_sets[base_class_name]:
+                    relationship = 'subtype'
+                else:
+                    raise AssertionError(u'Conflict between two macro edges defined on types that '
+                                         u'are not each other\'s supertype: {} {} {}'
+                                         .format(base_class_name, macro_edge_name, macro_registry))
+
+                extra_error_text = (
+                    u' (a {relationship} of {current_type})'
+                ).format(
+                    relationship=relationship,
+                    current_type=base_class_name,
+                )
+
+            raise GraphQLInvalidMacroError(
+                u'A macro edge with name {edge_name} cannot be defined on type {current_type} due '
+                u'to a conflict with another macro edge with the same name defined '
+                u'on type {original_type}{extra_error_text}.'
+                u'Cannot define this conflicting macro, please verify '
+                u'if the existing macro edge does what you want, or rename your macro '
+                u'edge to avoid the conflict. Existing macro definition and args: '
+                u'{macro_graphql} {macro_args}'
+                .format(edge_name=macro_edge_name,
+                        current_type=base_class_name,
+                        original_type=conflict_on_class_name,
+                        extra_error_text=extra_error_text,
+                        macro_graphql=print_ast(existing_descriptor.expansion_ast),
+                        macro_args=existing_descriptor.macro_args))
 
 
 def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
@@ -80,42 +147,23 @@ def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
         macro_edge_args: dict mapping strings to any type, containing any arguments the macro edge
                          requires in order to function.
     """
-    new_macro_edge_class_name, macro_edge_name, macro_descriptor = make_macro_edge_descriptor(
-        macro_registry.schema_without_macros, macro_edge_graphql, macro_edge_args,
+    # The below function will validate that the macro edge in question is valid in isolation,
+    # when considered only against the macro-less schema. After geting this result,
+    # we simply need to check the macro edge descriptor against other artifacts in the macro system
+    # that might also cause conflicts.
+    macro_descriptor = make_macro_edge_descriptor(
+        macro_registry.schema_without_macros, macro_registry.subclass_sets,
+        macro_edge_graphql, macro_edge_args,
         type_equivalence_hints=macro_registry.type_equivalence_hints)
 
-    # Ensure this new macro edge does not conflict with any previous descriptor.
-    macro_edges_for_class = macro_registry.macro_edges.get(new_macro_edge_class_name, dict())
-    existing_descriptor = macro_edges_for_class.get(macro_edge_name, None)
-
-    if existing_descriptor is not None:
-        raise AssertionError(
-            u'Attempting to redefine an already registered macro edge: '
-            u'class {}, macro edge {}, new GraphQL descriptor {}, new args {}.'
-            .format(new_macro_edge_class_name, macro_edge_name,
-                    macro_edge_graphql, macro_edge_args))
-
     # Ensure there's no conflict with macro edges defined on subclasses and superclasses.
-    class_sets_to_check = (
-        ('subclass', macro_registry.subclass_sets[new_macro_edge_class_name]),
-        ('superclass', {
-            class_name
-            for class_name, class_subclasses in six.iteritems(macro_registry.subclass_sets)
-            if new_macro_edge_class_name in class_subclasses
-        }),
-    )
-    for relationship, class_names in class_sets_to_check:
-        for class_name in class_names:
-            macros_on_class = macro_registry.macro_edges.get(class_name, dict())
-            if macro_edge_name in macros_on_class:
-                raise GraphQLInvalidMacroError(
-                    u'A macro edge with name {} already exists on {}, which is'
-                    u'a {} of {}. new GraphQL descriptor {}, new args {}'
-                    .format(macro_edge_name, class_name, relationship,
-                            new_macro_edge_class_name, macro_edge_graphql, macro_edge_args))
+    _check_macro_edge_for_definition_conflicts(
+        macro_registry, macro_descriptor.base_class_name, macro_descriptor.macro_edge_name)
 
-    macro_registry.macro_edges.setdefault(
-        new_macro_edge_class_name, dict())[macro_edge_name] = macro_descriptor
+    for subclass_name in macro_registry.subclass_sets[macro_descriptor.base_class_name]:
+        macro_registry.macro_edges_at_class.setdefault(
+            subclass_name, dict())[macro_descriptor.macro_edge_name] = macro_descriptor
+    macro_registry.macro_edges.append(macro_descriptor)
 
 
 def get_schema_with_macros(macro_registry):
@@ -154,17 +202,16 @@ def get_schema_with_macros(macro_registry):
         if isinstance(definition, (ObjectTypeDefinition, InterfaceTypeDefinition)):
             definitions_by_name[definition.name.value] = definition
 
-    for macro_base_class_name, macros_for_base_class in six.iteritems(macro_registry.macro_edges):
-        for macro_edge_name, macro_edge_descriptor in six.iteritems(macros_for_base_class):
+    for class_name, macros_for_class in six.iteritems(macro_registry.macro_edges_at_class):
+        for macro_edge_name, macro_edge_descriptor in six.iteritems(macros_for_class):
             type_at_target = get_type_at_macro_edge_target(
                 macro_registry.schema_without_macros,
                 macro_edge_descriptor.expansion_ast)
             list_type_at_target = ListType(NamedType(Name(type_at_target.name)))
             arguments = []
             directives = [Directive(Name(MacroEdgeDirective.name))]
-            for subclass in macro_registry.subclass_sets[macro_base_class_name]:
-                definitions_by_name[subclass].fields.append(FieldDefinition(
-                    Name(macro_edge_name), arguments, list_type_at_target, directives=directives))
+            definitions_by_name[class_name].fields.append(FieldDefinition(
+                Name(macro_edge_name), arguments, list_type_at_target, directives=directives))
 
     return build_ast_schema(schema_ast)
 
@@ -191,7 +238,7 @@ def get_schema_for_macro_definition(schema):
     """
     macro_definition_schema = copy(schema)
     macro_definition_schema_directives = schema.get_directives()
-    _check_for_nondefault_directive_names(macro_definition_schema_directives)
+    check_for_nondefault_directive_names(macro_definition_schema_directives)
     macro_definition_schema_directives += DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
     # Remove disallowed directives from directives list
     macro_definition_schema_directives = list(set(macro_definition_schema_directives) &

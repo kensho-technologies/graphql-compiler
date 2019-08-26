@@ -2,14 +2,15 @@
 from copy import copy
 from itertools import chain
 
-from graphql import GraphQLList
 from graphql.language.ast import InlineFragment, SelectionSet
 import six
 
 from ..ast_manipulation import (
     get_ast_field_name, get_only_query_definition, get_only_selection_from_ast
 )
-from ..compiler.helpers import get_uniquely_named_objects_by_name, get_vertex_field_type
+from ..compiler.helpers import (
+    get_uniquely_named_objects_by_name, get_vertex_field_type, strip_non_null_and_list_from_type
+)
 from ..exceptions import GraphQLCompilationError, GraphQLInvalidMacroError
 from ..schema import FilterDirective, FoldDirective, OutputSourceDirective, is_vertex_field_name
 from .macro_edge.ast_rewriting import find_target_and_copy_path_to_it, replace_tag_names
@@ -263,8 +264,7 @@ def _check_that_expansion_directives_are_supported(macro_edge_field):
                         directives_supported_at_macro_expansion))
 
 
-def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
-                                current_schema_type, ast, query_args, tag_names):
+def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_args, tag_names):
     """Return (new_ast, new_query_args) containing the AST after macro expansion.
 
     Args:
@@ -284,12 +284,13 @@ def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
     """
     schema = macro_registry.schema_without_macros
     subclass_sets = macro_registry.subclass_sets
+    macro_edges_at_this_class = macro_registry.macro_edges_at_class
 
     if ast.selection_set is None:
         # No macro expansion happens at this level if there are no selections.
         return ast, query_args
 
-    macro_edges_at_this_type = inherited_macro_edges.get(current_schema_type.name, dict())
+    macro_edges_at_this_type = macro_edges_at_this_class.get(current_schema_type.name, dict())
 
     made_changes = False
     new_selection_set = None
@@ -303,7 +304,7 @@ def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
         if isinstance(selection_ast, InlineFragment):
             vertex_field_type = schema.get_type(selection_ast.type_condition.name.value)
             new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
-                macro_registry, inherited_macro_edges, vertex_field_type,
+                macro_registry, vertex_field_type,
                 selection_ast, new_query_args, tag_names)
         else:
             field_name = get_ast_field_name(selection_ast)
@@ -335,7 +336,7 @@ def _expand_macros_in_inner_ast(macro_registry, inherited_macro_edges,
                 #                instead of reaching into the compiler.helpers module.
                 vertex_field_type = get_vertex_field_type(current_schema_type, field_name)
                 new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
-                    macro_registry, inherited_macro_edges, vertex_field_type,
+                    macro_registry, vertex_field_type,
                     new_selection_ast, new_query_args, tag_names)
 
         if new_selection_ast is selection_ast and (selections_before or selections_after):
@@ -386,20 +387,10 @@ def expand_macros_in_query_ast(macro_registry, query_ast, query_args):
     tag_names = get_all_tag_names(base_ast)
 
     # Allow list types at the query root in the schema.
-    if isinstance(base_start_type, GraphQLList):
-        base_start_type = base_start_type.of_type
-
-    # Dict[str, Dict[str, MacroEdgeDescriptor]] mapping:
-    # class name -> (macro edge name -> MacroEdgeDescriptor)
-    inherited_macro_edges = {}
-    for superclass, subclass_set in six.iteritems(macro_registry.subclass_sets):
-        for subclass in subclass_set:
-            if superclass in macro_registry.macro_edges:
-                inherited_macro_edges.setdefault(subclass, dict()).update(
-                    macro_registry.macro_edges[superclass])
+    base_start_type = strip_non_null_and_list_from_type(base_start_type)
 
     new_base_ast, new_query_args = _expand_macros_in_inner_ast(
-        macro_registry, inherited_macro_edges, base_start_type, base_ast, query_args, tag_names)
+        macro_registry, base_start_type, base_ast, query_args, tag_names)
 
     if new_base_ast is base_ast:
         # No macro expansion happened.
