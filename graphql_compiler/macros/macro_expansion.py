@@ -251,11 +251,13 @@ def _check_that_expansion_directives_are_supported(macro_edge_field):
     macro_name = get_ast_field_name(macro_edge_field)
     directives_supported_at_macro_expansion = frozenset({
         FilterDirective.name,
-        OutputSourceDirective.name,
     })
     for directive in macro_edge_field.directives:
         directive_name = directive.name.value
         if directive_name not in directives_supported_at_macro_expansion:
+            # TODO(predrag): Maybe not a good error message. The point is that the field in question
+            #                is a macro edge, and macro edges only allow a subset of directives
+            #                to be used on them.
             raise GraphQLCompilationError(
                 u'Macro expansion for {} contains a {} directive, which is '
                 u'not supported by the macro system. supported_directives: {}'
