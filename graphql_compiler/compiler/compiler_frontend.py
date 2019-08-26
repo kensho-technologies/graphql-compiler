@@ -141,10 +141,11 @@ IrAndMetadata = namedtuple(
 )
 
 
-def traverse_blocks(ir_blocks, validate=True):
+def traverse_blocks(ir_blocks, validate_ir=True):
     """Yield all blocks, while validating consistency."""
-    if not validate:
-        return (block for block in ir_blocks)
+    if not validate_ir:
+        for block in ir_blocks:
+            yield block
 
     found_query_root = False
     found_global_operations_block = False
