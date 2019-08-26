@@ -252,7 +252,6 @@ def _check_that_expansion_directives_are_supported(macro_edge_field):
     directives_supported_at_macro_expansion = frozenset({
         FilterDirective.name,
         OutputSourceDirective.name,
-        FoldDirective.name,
     })
     for directive in macro_edge_field.directives:
         directive_name = directive.name.value
