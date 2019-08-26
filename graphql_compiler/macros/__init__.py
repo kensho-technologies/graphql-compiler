@@ -13,7 +13,7 @@ from graphql.utils.schema_printer import print_schema
 import six
 
 from ..ast_manipulation import safe_parse_graphql
-from ..compiler.compiler_frontend import validate_schema_and_ast
+from ..compiler.validation import validate_schema_and_query_ast
 from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
 from ..schema import _check_for_nondefault_directive_names
 from .macro_edge import make_macro_edge_descriptor
@@ -218,7 +218,7 @@ def perform_macro_expansion(macro_registry, graphql_with_macro, graphql_args):
     """
     query_ast = safe_parse_graphql(graphql_with_macro)
     schema_with_macros = get_schema_with_macros(macro_registry)
-    validation_errors = validate_schema_and_ast(schema_with_macros, query_ast)
+    validation_errors = validate_schema_and_query_ast(schema_with_macros, query_ast)
     if validation_errors:
         raise GraphQLValidationError(u'The provided GraphQL input does not validate: {} {}'
                                      .format(graphql_with_macro, validation_errors))
