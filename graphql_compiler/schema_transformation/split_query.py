@@ -34,7 +34,7 @@ QueryConnection = namedtuple(
 
 class SubQueryNode(object):
     def __init__(self, query_ast):
-        """Class represents one piece of a larger query, targeting one schema.
+        """A SubQueryNode object represents one piece of a larger query, targeting one schema.
 
         Args:
             query_ast: Document, representing one piece of a query
