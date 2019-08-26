@@ -4,6 +4,7 @@ import six
 import sqlalchemy
 
 from . import blocks
+from .compiler_frontend import traverse_blocks
 
 
 class CompilationState(object):
@@ -83,7 +84,7 @@ def emit_code_from_ir(sql_schema_info, ir):
         SQLAlchemy Query
     """
     state = CompilationState(sql_schema_info, ir)
-    for block in ir.ir_blocks:
+    for block in traverse_blocks(ir.ir_blocks):
         if isinstance(block, blocks.QueryRoot):
             pass
         elif isinstance(block, blocks.MarkLocation):
