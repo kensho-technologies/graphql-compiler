@@ -4,7 +4,7 @@ class SchemaError(Exception):
 
 
 class InvalidClassError(SchemaError):
-    """Raised when requested class did not exist or fulfill certain requirements.
+    """Raised when the requested class did not exist or fulfill certain requirements.
 
     Possible reasons include:
         - Class A was expected to be a subclass of class B, but that was found to not be the case.
