@@ -1,12 +1,12 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 from copy import copy
-import six
 
 from graphql.language.ast import (
     Argument, Directive, Field, InlineFragment, ListValue, Name, OperationDefinition, SelectionSet,
     StringValue
 )
+import six
 
 from graphql_compiler.ast_manipulation import get_only_query_definition, get_only_selection_from_ast
 from graphql_compiler.compiler.helpers import get_parameter_name
@@ -310,7 +310,7 @@ def _rename_parameters(parameters, renamed_parameters):
 
     new_parameters = copy(parameters)
     for old_name, new_name in six.iteritems(renamed_parameters):
-        new_parameters[new_name] = parameter[old_name]
+        new_parameters[new_name] = parameters[old_name]
         del new_parameters[old_name]
 
     return new_parameters
@@ -346,7 +346,7 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
         next_page_original_filter = None
         remainder_original_filter = None
         next_page_created_filter, remainder_created_filter = _create_filters_for_pagination(
-        	index, parameters
+            index, parameters
         )
 
         related_filters = []
@@ -389,7 +389,6 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
             old_parameter_name = _get_binary_filter_parameter(next_page_original_filter)
             new_parameter_name = _get_binary_filter_parameter(next_page_created_filter)
             renamed_parameters[old_parameter_name] = new_parameter_name
-
 
     query_selection = get_only_selection_from_ast(
         get_only_query_definition(query_ast, GraphQLError), GraphQLError
