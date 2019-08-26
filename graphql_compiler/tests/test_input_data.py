@@ -1357,7 +1357,7 @@ def not_contains_op_filter_with_optional_tag():  # noqa: D103
         type_equivalence_hints=None)
 
 
-def ends_with_op_filter():
+def ends_with_op_filter():  # noqa: D103
     graphql_input = '''{
         Animal {
             name @filter(op_name: "ends_with", value: ["$wanted"])
@@ -1378,7 +1378,7 @@ def ends_with_op_filter():
         type_equivalence_hints=None)
 
 
-def starts_with_op_filter():
+def starts_with_op_filter():  # noqa: D103
     graphql_input = '''{
         Animal {
             name @filter(op_name: "starts_with", value: ["$wanted"])
@@ -1399,7 +1399,7 @@ def starts_with_op_filter():
         type_equivalence_hints=None)
 
 
-def has_substring_op_filter():
+def has_substring_op_filter():  # noqa: D103
     graphql_input = '''{
         Animal {
             name @filter(op_name: "has_substring", value: ["$wanted"])
