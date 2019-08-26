@@ -51,7 +51,7 @@ def _convert_field_value_to_int(schema_graph, vertex_class, property_field, valu
 
 
 def _convert_int_to_field_value(schema_graph, vertex_class, property_field, int_value):
-    """Return the corresponding property field value of an integer."""
+    """Return the given integer's corresponding property field value."""
     if _is_uuid_field(schema_graph, vertex_class, property_field):
         return str(UUID(int=int(int_value)))
     else:
@@ -61,7 +61,7 @@ def _convert_int_to_field_value(schema_graph, vertex_class, property_field, int_
 
 
 def _get_domain_of_field(schema_graph, statistics, vertex_class, property_field):
-    """Stuff"""
+    """Return the domain of values for a property field."""
     if property_field == 'uuid':
         return '00000000-0000-0000-0000-000000000000', 'ffffffff-ffff-ffff-ffff-ffffffffffff'
     else:
@@ -71,7 +71,7 @@ def _get_domain_of_field(schema_graph, statistics, vertex_class, property_field)
 def _get_lower_and_upper_bound_of_ternary_int_filter(
     schema_graph, filter_directive, user_parameters
 ):
-    """"""
+    """Return the lower and upper bound of values passing through a ternary integer filter."""
     parameter_names = _get_ternary_filter_parameters(filter_directive)
     lower_bound = _convert_field_value_to_int(
         schema_graph, pagination_filter.vertex_class, pagination_filter.property_field,
@@ -86,7 +86,7 @@ def _get_lower_and_upper_bound_of_ternary_int_filter(
 def _get_lower_and_upper_bound_of_binary_int_filter(
     schema_graph, filter_directive, user_parameters
 ):
-    """Stuff"""
+    """Return the lower and upper bound of values passing through a binary integer filter."""
     parameter_names = _get_binary_filter_parameters(filter_directive)
     value_as_int = _convert_field_value_to_int(
         schema_graph, pagination_filter.vertex_class, pagination_filter.property_field,
@@ -109,7 +109,7 @@ def _get_lower_and_upper_bound_of_binary_int_filter(
 
 
 def _get_lower_and_upper_bound_of_int_filters(schema_graph, filter_list, user_parameters):
-    """Stuff"""
+    """Return the lower and upper bound of values passing through a list of integer filters."""
     binary_inequality_filters = ['<', '<=', '>=', '>=']
 
     lower_bound, upper_bound = None, None
@@ -125,7 +125,8 @@ def _get_lower_and_upper_bound_of_int_filters(schema_graph, filter_list, user_pa
                 schema_graph, filter_directive, user_parameters
             )
         else:
-            raise AssertionError(u'Stuff')
+            raise AssertionError(u'Found unsupported inequality filter operation {}.'
+                                 .format(filter_operation))
 
     return lower_bound, upper_bound
 
@@ -133,7 +134,7 @@ def _get_lower_and_upper_bound_of_int_filters(schema_graph, filter_list, user_pa
 def _generate_parameters_for_int_pagination_filter(
     schema_graph, statistics, pagination_filter, user_parameters, num_pages
 ):
-    """Stuff"""
+    """Create parameter values for a pagination filter over an integer field."""
     domain_lower_bound, domain_upper_bound = _get_domain_of_field(
         schema_graph, statistics, pagination_filter.vertex_class, pagination_filter.property_field
     )
@@ -183,11 +184,11 @@ def _generate_parameters_for_int_pagination_filter(
 def _generate_parameters_for_pagination_filters(
     schema_graph, statistics, pagination_filters, user_parameters, num_pages
 ):
-    """Stuff"""
+    """Create parameter values for the given pagination filters."""
     next_page_pagination_parameters, remainder_pagination_parameters = dict(), dict()
 
     if len(pagination_filters) != 1:
-        raise AssertionError(u'Expected pagination filters {} to have exactly'
+        raise AssertionError(u'Expected the pagination filters list {} to have exactly'
                              u' one element, found {} elements: {}'
                              .format(pagination_filters, len(pagination_filters), user_parameters))
     pagination_filter = pagination_filters[0]
