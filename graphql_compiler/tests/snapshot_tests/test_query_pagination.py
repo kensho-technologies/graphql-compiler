@@ -115,12 +115,12 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         test_data = '''{
             Animal {
-            	uuid @filter(op_name: ">=", value: ["$uuid_filter"])
+                uuid @filter(op_name: ">=", value: ["$uuid_filter"])
                 name @output(out_name: "animal")
             }
         }'''
         parameters = {
-        	'uuid_filter': '80000000-0000-0000-0000-000000000000',
+            'uuid_filter': '80000000-0000-0000-0000-000000000000',
         }
         page_size = 2
 
@@ -134,7 +134,7 @@ class QueryPaginationTests(unittest.TestCase):
             '''{
                 Animal {
                     uuid @filter(op_name: ">=", value: ["$__paged_lower_bound_0"])
-                    	 @filter(op_name: "<", value: ["$__paged_upper_bound_0"])
+                         @filter(op_name: "<", value: ["$__paged_upper_bound_0"])
                     name @output(out_name: "animal")
                 }
             }''',
