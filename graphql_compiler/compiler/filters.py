@@ -673,7 +673,7 @@ def _process_intersects_filter_directive(filter_operation_info, location, contex
 
 @takes_parameters(0)
 def _process_is_null_filter_directive(filter_operation_info, location, context, parameters):
-    """Return a Filter basic block that ensures the property field is Null
+    """Return a Filter basic block that ensures the property field is Null.
 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info
@@ -703,7 +703,7 @@ def _process_is_null_filter_directive(filter_operation_info, location, context, 
 
 @takes_parameters(0)
 def _process_is_not_null_filter_directive(filter_operation_info, location, context, parameters):
-    """Return a Filter basic block that ensures the property field is not Null
+    """Return a Filter basic block that ensures the property field is not Null.
 
     Args:
         filter_operation_info: FilterOperationInfo object, containing the directive and field info

@@ -267,7 +267,7 @@ def print_query_plan(query_plan_descriptor, indentation_depth=4):
 
 
 def _get_plan_and_depth_in_dfs_order(query_plan):
-    """Helper for print_query_plan and other functions needing dfs order traversal."""
+    """Return a list of topologically sorted (query plan, depth) tuples."""
     def _get_plan_and_depth_in_dfs_order_helper(query_plan, depth):
         plan_and_depth_in_dfs_order = [(query_plan, depth)]
         for child_query_plan in query_plan.child_query_plans:

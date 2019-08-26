@@ -109,6 +109,7 @@ def _generate_cypher_step_list_from_ir_blocks(fold_scope_location, ir_blocks, qu
     Args:
         fold_scope_location: FoldScopeLocation object
         ir_blocks: list of IR blocks corresponding to that fold scope.
+        query_metadata_table: QueryMetadataTable object that captures information about the query
 
     Returns:
         list of CypherStep objects corresponding to those IR blocks.
