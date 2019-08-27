@@ -263,9 +263,10 @@ def get_sqlalchemy_schema_info(
     schema_graph = get_sqlalchemy_schema_graph(
         tables, sql_edge_descriptors, junction_tables)
 
-    # I don't see a reason why someone would want to use this parameter to hide a class using this
-    # parameter instead of not mentioning the class in the first place. This parameter is used to
-    # mostly deal with the complexities of omitting a class when classes inherit from it.
+    # I don't see a reason why someone would to hide a class using this parameter instead of not
+    # mentioning the class in the first place. This parameter is used to mostly deal with the
+    # complexities of omitting a class when classes inherit from it. Therefore, I do not expose
+    # it in the API.
     hidden_classes = set()
     graphql_schema = get_graphql_schema_from_schema_graph(
         schema_graph, class_to_field_type_overrides, hidden_classes)
