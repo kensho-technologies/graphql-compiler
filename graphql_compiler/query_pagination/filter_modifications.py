@@ -1,17 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from copy import copy
-
-from graphql.language.ast import (
-    Argument, Directive, Field, InlineFragment, ListValue, Name, OperationDefinition, SelectionSet,
-    StringValue
-)
-import six
-
-from graphql_compiler.ast_manipulation import get_only_query_definition, get_only_selection_from_ast
-from graphql_compiler.compiler.helpers import get_parameter_name
-from graphql_compiler.exceptions import GraphQLError
-from graphql_compiler.schema import FilterDirective
 
 from graphql.language.ast import Argument, Directive, ListValue, Name, StringValue
 
