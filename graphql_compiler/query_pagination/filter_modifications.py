@@ -193,7 +193,12 @@ def get_vertices_for_pagination(statistics, query_ast):
         List[Field], field instances of vertices belonging to the given query documenting where to
         add pagination filters.
     """
-    raise NotImplementedError()
+    definition_ast = get_only_query_definition(query_ast, GraphQLError)
+    root_node = get_only_selection_from_ast(definition_ast, GraphQLError)
+
+    # TODO(vlad): Return a better selection of nodes for pagination using statistics, as paginating
+    #             over the root node doesn't create good pages in practice.
+    return [root_node]
 
 
 def get_modifications_needed_to_vertices_for_paging(
