@@ -28,7 +28,7 @@ def _get_ternary_filter_parameters(filter_directive):
         get_parameter_name(argument)
         for argument in argument_names
     ]
-    return parameter_names
+    return parameter_names[0], parameter_names[1]
 
 
 def _get_filter_operation(filter_directive):
@@ -67,10 +67,14 @@ def _get_domain_of_field(schema_graph, statistics, vertex_class, property_field)
     """Return the domain of values for a property field.
 
     Args:
-        Stuff
+        schema_graph: SchemaGraph instance.
+        statistics: Statistics object.
+        vertex_class: str, name of vertex class to which the property field belongs.
+        property_field: str, name of property field for which the domain of values is computed.
 
     Returns:
-        Stuff
+        Tuple(Any, Any), describing the inclusive lower and upper bound of the domain of values for
+        the given property field.
     """
     # TODO(vlad): Once histogram statistics are implemented, the domain of values for fields without
     #             predefined lower and upper bounds (e.g. 'name') can be found.
@@ -85,40 +89,58 @@ def _get_domain_of_field(schema_graph, statistics, vertex_class, property_field)
 def _get_lower_and_upper_bound_of_ternary_int_filter(
     schema_graph, vertex_class, property_field, filter_directive, user_parameters
 ):
-    """Return the lower and upper bound of integers passing through a ternary integer filter.
+    """Return the interval of values passing through a ternary filter over an integer property.
 
     Args:
-        Stuff
+        schema_graph: SchemaGraph instance.
+        vertex_class: str, name of vertex class to which the property field belongs.
+        property_field: str, name of integer property field to which the Filter Directives belong.
+        filter_directive: Directives, ternary filter directive for which the lower and upper bound
+                          of passing values is computed.
+        user_parameters: dict, parameters defined by the user for the query being paginated.
 
     Returns:
-        Stuff
+        Tuple(int or None, int or None), describing the inclusive lower and upper bound of values
+        passing through the given filter. If the given filter does not restrict the lower bound,
+        a value of None is returned for the lower bound, and respectively for the upper bound.
     """
-    parameter_names = _get_ternary_filter_parameters(filter_directive)
-    lower_bound_parameter, upper_bound_parameter = parameter_names[0], parameter_names[1]
+    lower_bound_parameter_name, upper_bound_parameter_name = _get_ternary_filter_parameters(
+        filter_directive
+    )
+    lower_bound_parameter_value = user_parameters[lower_bound_parameter]
+    upper_bound_parameter_value = user_parameters[upper_bound_parameter]
+
     lower_bound_int = _convert_field_value_to_int(
         schema_graph, pagination_filter.vertex_class, pagination_filter.property_field,
-        user_parameters[lower_bound_parameter]
+        lower_bound_parameter_value
     )
     upper_bound_int = _convert_field_value_to_int(
         schema_graph, pagination_filter.vertex_class, pagination_filter.property_field,
-        user_parameters[upper_bound_parameter]
+        upper_bound_parameter_value
     )
-
     return lower_bound_int, upper_bound_int
 
 
 def _get_lower_and_upper_bound_of_binary_int_filter(
     schema_graph, vertex_class, property_field, filter_directive, user_parameters
 ):
-    """Return the lower and upper bound of integer passing through a binary integer filter.
+    """Return the interval of values passing through a binary filter over an integer property.
 
     Args:
-        Stuff
+        schema_graph: SchemaGraph instance.
+        vertex_class: str, name of vertex class to which the property field belongs.
+        property_field: str, name of integer property field to which the Filter Directives belong.
+        filter_directive: Directives, binary filter directive for which the lower and upper bound of
+                          passing values is computed.
+        user_parameters: dict, parameters defined by the user for the query being paginated.
 
     Returns:
-        Stuff
+        Tuple(int or None, int or None), describing the inclusive lower and upper bound of values
+        passing through the given filter. If the given filter does not restrict the lower bound,
+        a value of None is returned for the lower bound, and respectively for the upper bound.
     """
-    parameter_names = _get_binary_filter_parameters(filter_directive)
+    parameter_name = _get_binary_filter_parameters(filter_directive)
+    parameter_value = user_parameters[parameter_name]
     value_as_int = _convert_field_value_to_int(
         schema_graph, pagination_filter.vertex_class, pagination_filter.property_field,
         parameter_value
@@ -136,7 +158,7 @@ def _get_lower_and_upper_bound_of_binary_int_filter(
     elif filter_operation == '>=':
         lower_bound = value_as_int
     else:
-        raise AssertionError(u'Filter operation {} not supported.')
+        raise AssertionError(u'Filter operation {} not a supported binary inequality operator.')
 
     return lower_bound, upper_bound
 
@@ -144,18 +166,23 @@ def _get_lower_and_upper_bound_of_binary_int_filter(
 def _get_lower_and_upper_bound_of_int_filters(
     schema_graph, vertex_class, property_field, filter_list, user_parameters
 ):
-    """Return the lower and upper bound of values passing through a list of integer filters.
+    """Return the interval of values passing through a list of filters over an integer property.
 
     Args:
-        Stuff
+        schema_graph: SchemaGraph instance.
+        vertex_class: str, name of vertex class to which the property field belongs.
+        property_field: str, name of integer property field to which the Filter Directives belong.
+        filter_list: List[Directives], list of filter directives.
+        user_parameters: dict, parameters defined by the user for the query being paginated.
 
     Returns:
-        Stuff
+        Tuple(int or None, int or None), describing the inclusive lower and upper bound of values
+        passing through all filters. If the given filters do not restrict the lower bound,
+        a value of None is returned for the lower bound, and respectively for the upper bound.
     """
     binary_inequality_filters = ['<', '<=', '>=', '>=']
     ternary_inequality_filters = ['between']
 
-    # We indicate no lower and upper bounds by setting the values to None.
     lower_bound, upper_bound = None, None
     for filter_directive in filter_list:
         filter_operation = _get_filter_operation(filter_directive)
@@ -180,23 +207,32 @@ def _get_lower_and_upper_bound_of_int_filters(
 def _generate_parameters_for_int_pagination_filter(
     schema_graph, statistics, pagination_filter, user_parameters, num_pages
 ):
-    """Create parameter values for a pagination filter over an integer field.
+    """Create parameter values for a pagination filter over an integer property.
 
     Args:
-        Stuff
+        schema_graph: SchemaGraph instance.
+        statistics: Statistics object.
+        pagination_filter: PaginationFilter namedtuple.
+        user_parameters: dict, parameters defined by the user for the query being paginated.
+        num_pages: int, number of pages to split the query into.
 
     Returns:
-        Stuff
+        two dicts:
+            - dict, containing parameters for the PaginationFilter's next page query filter.
+            - dict, containing parameters for the PaginationFilter's remainder query filter.
     """
     vertex_class = pagination_filter.vertex_class
     property_field = pagination_filter.property_field
 
+    # TODO(vlad): Once histograms are implemented, the filter parameters generation can be improved,
+    #             since we can avoid assuming that property field values are distributed evenly
+    #             among the domain of possible values.
     domain_lower_bound, domain_upper_bound = _get_domain_of_field(
         schema_graph, statistics, vertex_class, property_field
     )
     if domain_lower_bound is None or domain_upper_bound is None:
         raise AssertionError(u'Received domain with no lower or upper bound {} {}.'
-                             u' Parameters for pagination filters with such domains'
+                             u' Generating parameters for filters with such domains'
                              u' is unsupported.'.format(domain_lower_bound, domain_upper_bound))
 
     filter_lower_bound, filter_upper_bound = _get_lower_and_upper_bound_of_int_filters(
@@ -204,23 +240,31 @@ def _generate_parameters_for_int_pagination_filter(
         user_parameters
     )
 
-    lower_bound = domain_lower_bound
-    upper_bound = domain_upper_bound
+    # We find the interval of values that pass all filters of the given query.
     if filter_lower_bound is not None:
-        lower_bound = max(domain_lower_bound, filter_lower_bound)
+        intersection_lower_bound = max(domain_lower_bound, filter_lower_bound)
+    else:
+        intersection_lower_bound = domain_lower_bound
+
     if filter_upper_bound is not None:
-        upper_bound = min(domain_upper_bound, filter_upper_bound)
+        intersection_upper_bound = min(domain_upper_bound, filter_upper_bound)
+    else:
+        intersection_upper_bound = domain_upper_bound
 
-    if lower_bound > upper_bound:
+    if intersection_lower_bound > intersection_upper_bound:
         raise AssertionError(u'Could not page over empty interval {} {}: {} {}.'
-                             .format(lower_bound, upper_bound, pagination_filter, user_parameters))
+                             .format(intersection_lower_bound, intersection_upper_bound,
+                                     pagination_filter, user_parameters))
 
+    interval_size = intersection_upper_bound - intersection_lower_bound + 1
+
+    # Assumption: vertex_class vertices are distributed evenly among the property field's domain.
+    # E.g. To split the query into 5 pages, the current filter's parameter should be 1/5 of the
+    # original query's integer interval.
     fraction_to_query = float(1.0 / num_pages)
-
-    interval_size = upper_bound - lower_bound + 1
-    filter_value_int = lower_bound + interval_size * fraction_to_query
-    filter_value_as_field_value = _convert_int_to_field_value(
-        schema_graph, vertex_class, property_field, int(filter_value)
+    filter_parameter_int = intersection_lower_bound + int(interval_size * fraction_to_query)
+    filter_parameter_as_field_value = _convert_int_to_field_value(
+        schema_graph, vertex_class, property_field, filter_parameter_int
     )
 
     next_page_parameter_name = _get_binary_filter_parameter(
@@ -229,10 +273,10 @@ def _generate_parameters_for_int_pagination_filter(
     remainder_parameter_name = _get_binary_filter_parameter(
         pagination_filter.remainder_query_filter
     )
-    return (
-        (next_page_parameter_name, filter_value_as_field_value),
-        (remainder_parameter_name, filter_value_as_field_value)
-    )
+
+    next_page_filter_parameters = {next_page_parameter_name: filter_parameter_as_field_value}
+    remainder_filter_parameters = {next_page_parameter_name: filter_parameter_as_field_value}
+    return next_page_filter_parameters, remainder_filter_parameters
 
 
 def _generate_parameters_for_pagination_filters(
@@ -247,12 +291,17 @@ def _generate_parameters_for_pagination_filters(
                              .format(pagination_filters, len(pagination_filters), user_parameters))
     pagination_filter = pagination_filters[0]
 
+    # TODO(vlad): Support paginating over multiple PaginationFilters for better pages. For example,
+    #             in queries with cartesian product-esque result data, paginating with a single
+    #             Filter does not perform well in practice.
     if _is_uuid_field(
         schema_graph, pagination_filter.vertex_class, pagination_filter.property_field
     ):
         # Since all UUIDs correspond to integers, we can paginate over them as integer filters.
-        next_page_parameter, remainder_parameter = _generate_parameters_for_int_pagination_filter(
-            schema_graph, statistics, pagination_filter, user_parameters, num_pages
+        next_page_filter_parameters, remainder_filter_parameters = (
+            _generate_parameters_for_int_pagination_filter(
+                schema_graph, statistics, pagination_filter, user_parameters, num_pages
+            )
         )
     else:
         raise AssertionError(u'Found pagination filter over vertex class {}'
@@ -262,10 +311,8 @@ def _generate_parameters_for_pagination_filters(
                                      pagination_filter.property_field,
                                      pagination_filters))
 
-    # Indices are not desirable here
-    next_page_pagination_parameters[next_page_parameter[0]] = next_page_parameter[1]
-    remainder_pagination_parameters[remainder_parameter[0]] = remainder_parameter[1]
-
+    next_page_pagination_parameters.update(next_page_filter_parameters)
+    remainder_pagination_parameters.update(remainder_filter_parameters)
     return next_page_pagination_parameters, remainder_pagination_parameters
 
 
@@ -310,7 +357,7 @@ def generate_parameters_for_parameterized_query(
 
     Returns:
         two dicts:
-            - dict, parameters with which to execute the page query. The next page query's
+            - dict, parameters with which to execute the next page query. The next page query's
               parameters are generated such that only a page of the original query's result data is
               produced when the next page query is executed.
             - dict, parameters with which to execute the remainder query. The remainder query's
@@ -331,8 +378,8 @@ def generate_parameters_for_parameterized_query(
     )
 
     # Since the query parameterizer may have chosen some of the user's filters for pagination, it's
-    # possible that both a user parameter and a pagination parameter exist with the same parameter
-    # name. If such a conflict occurs, the pagination parameter is chosen as the parameter's value.
+    # possible that both a user parameter and a pagination parameter have the same parameter name.
+    # If such a conflict occurs, the pagination parameter is chosen as the parameter's value.
     next_page_parameters = copy(user_parameters)
     next_page_parameters.update(next_page_pagination_parameters)
     remainder_parameters = copy(user_parameters)
