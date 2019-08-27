@@ -95,8 +95,9 @@ class CompilationState(object):
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
         if self._is_in_optional_scope() and not optional:
-            raise NotImplementedError(u'The SQL backend does not implement mandatory '
-                                      u'traversals inside an @optional scope.')
+            self._filters.append(sqlalchemy.or_(
+                self._current_alias.c['uuid'].isnot(None),
+                previous_alias.c['uuid'].is_(None)))
 
         # Join to where we came from
         self._from_clause = self._from_clause.join(
@@ -112,9 +113,10 @@ class CompilationState(object):
 
     def filter(self, predicate):
         """Execute a Filter Block."""
+        sql_expression = predicate.to_sql(self._aliases, self._current_alias)
         if self._is_in_optional_scope():
-            raise NotImplementedError(u'Filters in @optional are not implemented in SQL')
-        self._filters.append(predicate.to_sql(self._aliases, self._current_alias))
+            sql_expression = sqlalchemy.or_(sql_expression, self._current_alias.c['uuid'].is_(None))
+        self._filters.append(sql_expression)
 
     def mark_location(self):
         """Execute a MarkLocation Block."""
