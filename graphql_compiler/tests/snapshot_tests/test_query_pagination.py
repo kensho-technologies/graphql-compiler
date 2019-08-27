@@ -16,7 +16,7 @@ class QueryPaginationTests(unittest.TestCase):
     """Test the query pagination module."""
 
     def _compare_query_with_parameters_namedtuple(self, expected, received):
-        """Compares two given QueryWithParameters namedtuple, raising error if not equal."""
+        """Compare two given QueryWithParameters namedtuple, raising error if not equal."""
         if expected is None and received is None:
             return True
         elif (expected is None) != (received is None):
@@ -111,7 +111,7 @@ class QueryPaginationTests(unittest.TestCase):
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_pagination_with_filters_on_uuid(self):
-        """"Ensure pagination handles already-existing filters over uuid correctly."""
+        """Ensure pagination handles already-existing filters over uuid correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         test_data = '''{
             Animal {
