@@ -96,33 +96,16 @@ def lower_context_field_existence(ir_blocks, query_metadata_table):
     return new_ir_blocks
 
 
-def remove_output_context_field_existence(ir_blocks, query_metadata_table):
-    """Convert ContextFieldExistence in ConstructResult blocks to TrueLiteral."""
-    def visitor_fn(expression):
-        """Convert ContextFieldExistence expressions to TrueLiteral."""
-        if isinstance(expression, ContextFieldExistence):
-            return TrueLiteral
-        return expression
-
-    new_ir_blocks = []
-    for block in ir_blocks:
-        new_block = block
-        if isinstance(block, ConstructResult):
-            new_block = block.visit_and_update_expressions(visitor_fn)
-        new_ir_blocks.append(new_block)
-
-    return new_ir_blocks
-
-
 def short_circuit_ternary_conditionals(ir_blocks, query_metadata_table):
     """If the predicate outcome in a TernaryConditional is a Literal, evaluate and simplify it."""
     def visitor_fn(expression):
         """Simplify TernaryConditionals."""
         if isinstance(expression, TernaryConditional) and isinstance(expression.predicate, Literal):
-            if expression.predicate.value:
-                return expression.if_true
-            else:
-                return expression.if_false
+            if isinstance(expression.predicate.value, bool):
+                if expression.predicate.value:
+                    return expression.if_true
+                else:
+                    return expression.if_false
         return expression
 
     return [block.visit_and_update_expressions(visitor_fn) for block in ir_blocks]
