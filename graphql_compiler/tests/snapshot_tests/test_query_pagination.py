@@ -4,8 +4,8 @@ import unittest
 import pytest
 
 from ...cost_estimation.statistics import LocalStatistics
-from ...query_pagination import QueryStringWithParameters, paginate_query
-from ..test_helpers import compare_graphql, generate_schema_graph
+from ...query_pagination import paginate_query
+from ..test_helpers import generate_schema_graph
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
