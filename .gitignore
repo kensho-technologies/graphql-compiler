@@ -19,7 +19,7 @@ nosetests.xml
 
 # temporary files
 *.orig
-*~  # nosec
+*~
 .*~
 *.swo
 *.swp
