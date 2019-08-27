@@ -3,7 +3,7 @@ from copy import copy
 from uuid import UUID
 
 from graphql_compiler.compiler.helpers import get_parameter_name
-from graphql_compiler.cost_estimation.filter_selectivity_utils import MIN_UUID_INT, MAX_UUID_INT
+from graphql_compiler.cost_estimation.filter_selectivity_utils import MAX_UUID_INT, MIN_UUID_INT
 
 
 def _get_binary_filter_parameter(filter_directive):
@@ -83,7 +83,7 @@ def _get_domain_of_field(schema_graph, statistics, vertex_class, property_field)
     else:
         raise AssertionError(u'Could not find domain for {} {}. Currently,'
                              u' only uuid fields are supported.'
-                             format(vertex_class, field_name))
+                             .format(vertex_class, property_field))
 
 
 def _get_lower_and_upper_bound_of_ternary_int_filter(
@@ -107,16 +107,14 @@ def _get_lower_and_upper_bound_of_ternary_int_filter(
     lower_bound_parameter_name, upper_bound_parameter_name = _get_ternary_filter_parameters(
         filter_directive
     )
-    lower_bound_parameter_value = user_parameters[lower_bound_parameter]
-    upper_bound_parameter_value = user_parameters[upper_bound_parameter]
+    lower_bound_parameter_value = user_parameters[lower_bound_parameter_name]
+    upper_bound_parameter_value = user_parameters[upper_bound_parameter_name]
 
     lower_bound_int = _convert_field_value_to_int(
-        schema_graph, pagination_filter.vertex_class, pagination_filter.property_field,
-        lower_bound_parameter_value
+        schema_graph, vertex_class, property_field, lower_bound_parameter_value
     )
     upper_bound_int = _convert_field_value_to_int(
-        schema_graph, pagination_filter.vertex_class, pagination_filter.property_field,
-        upper_bound_parameter_value
+        schema_graph, vertex_class, property_field, upper_bound_parameter_value
     )
     return lower_bound_int, upper_bound_int
 
@@ -139,11 +137,10 @@ def _get_lower_and_upper_bound_of_binary_int_filter(
         passing through the given filter. If the given filter does not restrict the lower bound,
         a value of None is returned for the lower bound, and respectively for the upper bound.
     """
-    parameter_name = _get_binary_filter_parameters(filter_directive)
+    parameter_name = _get_binary_filter_parameter(filter_directive)
     parameter_value = user_parameters[parameter_name]
     value_as_int = _convert_field_value_to_int(
-        schema_graph, pagination_filter.vertex_class, pagination_filter.property_field,
-        parameter_value
+        schema_graph, vertex_class, property_field, parameter_value
     )
 
     # We indicate no lower and upper bounds by setting the values to None.
@@ -236,7 +233,7 @@ def _generate_parameters_for_int_pagination_filter(
                              u' is unsupported.'.format(domain_lower_bound, domain_upper_bound))
 
     filter_lower_bound, filter_upper_bound = _get_lower_and_upper_bound_of_int_filters(
-        schema_graph, vertex_class, property_field, pagination_filter.related_filters,
+        schema_graph, vertex_class, property_field, pagination_filter.already_existing_filters,
         user_parameters
     )
 
@@ -275,7 +272,7 @@ def _generate_parameters_for_int_pagination_filter(
     )
 
     next_page_filter_parameters = {next_page_parameter_name: filter_parameter_as_field_value}
-    remainder_filter_parameters = {next_page_parameter_name: filter_parameter_as_field_value}
+    remainder_filter_parameters = {remainder_parameter_name: filter_parameter_as_field_value}
     return next_page_filter_parameters, remainder_filter_parameters
 
 
@@ -330,14 +327,14 @@ def _validate_all_pagination_filters_have_parameters(
 
         if next_page_filter_parameter_name not in next_page_pagination_parameters:
             raise AssertionError(u'Could not find parameter value for'
-                                 u'pagination parameter {} belonging to next page query: {} {} {}'
+                                 u' pagination parameter {} belonging to next page query: {} {} {}'
                                  .format(next_page_filter_parameter_name, pagination_filters,
                                          next_page_pagination_parameters,
                                          remainder_pagination_parameters))
 
         if remainder_filter_parameter_name not in remainder_pagination_parameters:
             raise AssertionError(u'Could not find parameter value for'
-                                 u'pagination parameter {} belonging to remainder query: {} {} {}'
+                                 u' pagination parameter {} belonging to remainder query: {} {} {}'
                                  .format(remainder_filter_parameter_name, pagination_filters,
                                          next_page_pagination_parameters,
                                          remainder_pagination_parameters))
