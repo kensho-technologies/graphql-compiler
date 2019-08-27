@@ -6,7 +6,8 @@ from ..blocks import (
     ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse, Unfold
 )
 from ..expressions import (
-    BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, NullLiteral, TrueLiteral
+    BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, Literal, NullLiteral,
+    TernaryConditional, TrueLiteral
 )
 from ..helpers import validate_safe_string
 
@@ -93,6 +94,21 @@ def lower_context_field_existence(ir_blocks, query_metadata_table):
         new_ir_blocks.append(new_block)
 
     return new_ir_blocks
+
+
+def short_circuit_ternary_conditionals(ir_blocks, query_metadata_table):
+    """If the predicate outcome in a TernaryConditional is a Literal, evaluate and simplify it."""
+    def visitor_fn(expression):
+        """Simplify TernaryConditionals."""
+        if isinstance(expression, TernaryConditional) and isinstance(expression.predicate, Literal):
+            if isinstance(expression.predicate.value, bool):
+                if expression.predicate.value:
+                    return expression.if_true
+                else:
+                    return expression.if_false
+        return expression
+
+    return [block.visit_and_update_expressions(visitor_fn) for block in ir_blocks]
 
 
 def optimize_boolean_expression_comparisons(ir_blocks):

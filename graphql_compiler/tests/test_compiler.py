@@ -473,7 +473,17 @@ class CompilerTests(unittest.TestCase):
                 species_name: m.Animal__out_Animal_OfSpecies___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS child_name,
+                [Species_1].name AS species_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_2]
+                JOIN db_1.schema_1.[Species] AS [Species_1]
+                    ON [Animal_2].species = [Species_1].uuid
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_2].parent = [Animal_1].uuid
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_OfSpecies]->(Animal__out_Animal_OfSpecies___1:Species)
@@ -3905,7 +3915,22 @@ class CompilerTests(unittest.TestCase):
             expected_input_metadata=expected_input_metadata,
             type_equivalence_hints=None)
 
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].uuid AS child_uuid,
+                [FeedingEvent_1].uuid AS event_uuid,
+                [Species_1].uuid AS species_uuid
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_2]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_2].parent = [Animal_1].uuid
+                LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
+                    ON [Animal_2].species = [Species_1].uuid
+                LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
+                    ON [Animal_2].fed_at = [FeedingEvent_1].uuid
+            WHERE
+                [Animal_2].uuid = :uuid
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,

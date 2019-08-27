@@ -50,7 +50,7 @@ class CompilationState(object):
         self._ir = ir
 
         # Current query location state. Only mutable by calling _relocate.
-        self._current_location = None  # the current location in the query
+        self._current_location = None  # the current location in the query. None means global.
         self._current_alias = None  # a sqlalchemy table Alias at the current location
         self._aliases = {}  # mapping marked query paths to table _Aliases representing them
         self._relocate(ir.query_metadata_table.root_location)
@@ -78,6 +78,11 @@ class CompilationState(object):
         """Get the string class name of the current location in the query."""
         return self._current_location_info.type.name
 
+    def _is_in_optional_scope(self):
+        if self._current_location is None:
+            return False
+        return self._current_location_info.optional_scopes_depth > 0
+
     def backtrack(self, previous_location):
         """Execute a Backtrack Block."""
         self._relocate(previous_location)
@@ -89,17 +94,26 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
-        if optional:
-            raise NotImplementedError(u'The SQL backend does not implement @optional.')
+        if self._is_in_optional_scope() and not optional:
+            raise NotImplementedError(u'The SQL backend does not implement mandatory '
+                                      u'traversals inside an @optional scope.')
 
         # Join to where we came from
         self._from_clause = self._from_clause.join(
             self._current_alias,
             onclause=(previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column]),
-            isouter=False)
+            isouter=optional)
+
+    def start_global_operations(self):
+        """Execute a GlobalOperationsStart block."""
+        if self._current_location is None:
+            raise AssertionError(u'CompilationState is already in global scope.')
+        self._current_location = None
 
     def filter(self, predicate):
         """Execute a Filter Block."""
+        if self._is_in_optional_scope():
+            raise NotImplementedError(u'Filters in @optional are not implemented in SQL')
         self._filters.append(predicate.to_sql(self._aliases, self._current_alias))
 
     def mark_location(self):
@@ -141,9 +155,9 @@ def emit_code_from_ir(sql_schema_info, ir):
         elif isinstance(block, blocks.Filter):
             state.filter(block.predicate)
         elif isinstance(block, blocks.GlobalOperationsStart):
-            pass
+            state.start_global_operations()
         elif isinstance(block, blocks.ConstructResult):
-            for output_name, field in six.iteritems(block.fields):
+            for output_name, field in sorted(six.iteritems(block.fields)):
                 state.construct_result(output_name, field)
         else:
             raise NotImplementedError(u'Unsupported block {}.'.format(block))
