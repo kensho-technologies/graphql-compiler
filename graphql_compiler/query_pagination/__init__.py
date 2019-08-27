@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-"""Query Pagination
+"""Query Pagination.
 
 Purpose
 =======
