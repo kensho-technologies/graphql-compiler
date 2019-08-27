@@ -1,9 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
+from .. import blocks, expressions
 from ...compiler.compiler_frontend import IrAndMetadata
 from ..ir_lowering_common import common
-from .. import expressions
-from .. import blocks
-
 
 
 def _remove_output_context_field_existence(ir_blocks, query_metadata_table):
