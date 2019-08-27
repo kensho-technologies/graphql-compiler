@@ -80,7 +80,7 @@ class QueryPaginationTests(unittest.TestCase):
             )
 
     def test_parameter_generation(self):
-        """"""
+        """Test that pagination parameters are generated correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         parameterized_queries = ParameterizedPaginationQueries(
             safe_parse_graphql('''{
@@ -136,22 +136,17 @@ class QueryPaginationTests(unittest.TestCase):
                         ),
                     ],
                 ),
-                []      # already_existing_filters is empty, as there are no filters there.
+                []
             )],
-            dict()      # the user parameters dict is empty, as no parameters were provided.
+            dict()
         )
-
-        parameters = {}
-        page_size = 2
 
         count_data = {
             'Animal': 8,
         }
-        # Since there are 8 Animals, and we want a page size of 2, the query is going to be split
-        # into quarters of equal size.
-        num_pages = 4
-
         statistics = LocalStatistics(count_data)
+
+        num_pages = 4
 
         expected_next_page_parameters = {
             '__paged_upper_bound_0': '40000000-0000-0000-0000-000000000000',
