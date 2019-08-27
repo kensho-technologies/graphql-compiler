@@ -94,7 +94,7 @@ def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
 
 
 def _prepend_wildcard(expression):
-    """Prepend an SQL-MATCH wildcard to an expression"""
+    """Prepend an SQL-MATCH wildcard to an expression."""
     return BinaryComposition(
         u'+',
         Literal('%'),
@@ -103,7 +103,7 @@ def _prepend_wildcard(expression):
 
 
 def _append_wildcard(expression):
-    """Append an SQL-MATCH wildcard to an expression"""
+    """Append an SQL-MATCH wildcard to an expression."""
     return BinaryComposition(
         u'+',
         expression,
@@ -112,7 +112,7 @@ def _append_wildcard(expression):
 
 
 def lower_string_operators(ir_blocks):
-    """Lower Filters with "has_substring", "starts_with", or "ends_with" operation into MATCH"""
+    """Lower Filters with "has_substring", "starts_with", or "ends_with" operation into MATCH."""
     def visitor_fn(expression):
         if not isinstance(expression, BinaryComposition):
             return expression

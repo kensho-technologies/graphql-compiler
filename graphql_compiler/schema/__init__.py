@@ -360,7 +360,7 @@ def insert_meta_fields_into_existing_schema(graphql_schema):
 
 
 def _check_for_nondefault_directive_names(directives):
-    """Check if any user-created directives are present"""
+    """Check if any user-created directives are present."""
     # Include compiler-supported directives, and the default directives GraphQL defines.
     expected_directive_names = {
         directive.name

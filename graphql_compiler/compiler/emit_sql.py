@@ -72,11 +72,11 @@ class CompilationState(object):
             self._current_alias = self._sql_schema_info.tables[self._current_classname].alias()
 
     def backtrack(self, previous_location):
-        """Execute a Backtrack Block"""
+        """Execute a Backtrack Block."""
         self._relocate(previous_location)
 
     def traverse(self, vertex_field):
-        """Execute a Traverse Block"""
+        """Execute a Traverse Block."""
         # Follow the edge
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
@@ -89,15 +89,15 @@ class CompilationState(object):
             isouter=False)
 
     def filter(self, predicate):
-        """Execute a Filter Block"""
+        """Execute a Filter Block."""
         self._filters.append(predicate.to_sql(self._aliases, self._current_alias))
 
     def mark_location(self):
-        """Execute a MarkLocation Block"""
+        """Execute a MarkLocation Block."""
         self._aliases[self.current_location.query_path] = self._current_alias
 
     def construct_result(self, output_name, field):
-        """Execute a ConstructResult Block"""
+        """Execute a ConstructResult Block."""
         self._outputs.append(field.to_sql(self._aliases, self._current_alias).label(output_name))
 
     def get_query(self):
