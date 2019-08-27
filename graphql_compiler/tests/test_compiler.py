@@ -473,7 +473,17 @@ class CompilerTests(unittest.TestCase):
                 species_name: m.Animal__out_Animal_OfSpecies___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Species_1].name AS species_name,
+                [Animal_1].name AS child_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_2]
+                JOIN db_1.schema_1.[Species] AS [Species_1]
+                    ON [Animal_2].species = [Species_1].uuid
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_2].parent = [Animal_1].uuid
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_OfSpecies]->(Animal__out_Animal_OfSpecies___1:Species)

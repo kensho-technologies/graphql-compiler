@@ -89,14 +89,16 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
-        if optional:
-            raise NotImplementedError(u'The SQL backend does not implement @optional.')
+        if self._current_location_info.optional_scopes_depth > 0 and not optional:
+            raise NotImplementedError(u'The SQL backend does not implement mandatory '
+                                      u'traversals inside an @optional scope.')
+
 
         # Join to where we came from
         self._from_clause = self._from_clause.join(
             self._current_alias,
             onclause=(previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column]),
-            isouter=False)
+            isouter=optional)
 
     def filter(self, predicate):
         """Execute a Filter Block."""
