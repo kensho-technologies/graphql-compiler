@@ -15,7 +15,7 @@ def generate_parameters_for_parameterized_query(
 
     Returns:
         two dicts:
-            - dict, parameters with which to execute the page query. The next page query's
+            - dict, parameters with which to execute the next page query. The next page query's
               parameters are generated such that only a page of the original query's result data is
               produced when the next page query is executed.
             - dict, parameters with which to execute the remainder query. The remainder query's

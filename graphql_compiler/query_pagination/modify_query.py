@@ -38,7 +38,7 @@ PaginationFilter = namedtuple(
                                         # for pagination in the next page query.
         'remainder_query_filter',       # Directive, filter directive with '>=' operator usable
                                         # for pagination in the remainder query.
-        'related_filters',              # List[Directive], filter directives that are on the same
+        'already_existing_filters',     # List[Directive], filter directives that are on the same
                                         # vertex and property field as the next page and remainder
                                         # queries' filters.
     ),
