@@ -719,6 +719,7 @@ class FoldedContextField(Expression):
         return template.format(mark_name=mark_name, field_name=field_name)
 
     def to_sql(self, aliases, current_alias):
+        """Not supported yet."""
         raise NotImplementedError(u'The SQL backend does not support @fold.')
 
     def __eq__(self, other):
@@ -785,6 +786,7 @@ class FoldCountContextField(Expression):
         raise NotImplementedError()
 
     def to_sql(self, aliases, current_alias):
+        """Not supported yet."""
         raise NotImplementedError(u'The SQL backend does not support @fold.')
 
 

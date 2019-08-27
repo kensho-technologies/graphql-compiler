@@ -40,7 +40,7 @@ integration_fixtures = pytest.mark.usefixtures(
 
 
 def use_all_backends(except_backends=()):
-    """Decorator for test functions to use specific backends.
+    """Decorate test functions to make them use specific backends.
 
     By default, tests decorated with this function use all backends. However, some backends don't
     support certain features, so it's useful to exclude certain backends for individual tests.

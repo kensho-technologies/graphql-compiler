@@ -591,7 +591,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
 
 def _are_locations_in_same_fold(first_location, second_location):
-    """Returns True if locations are contained in the same fold scope."""
+    """Return True if locations are contained in the same fold scope."""
     return (
         isinstance(first_location, FoldScopeLocation) and
         isinstance(second_location, FoldScopeLocation) and

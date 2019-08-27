@@ -65,7 +65,7 @@ class SchemaGraph(object):
         self._non_graph_class_names = _get_element_names_of_class(elements, NonGraphElement)
 
     def get_element_by_class_name(self, class_name):
-        """Return the SchemaElement for the specified class name"""
+        """Return the SchemaElement for the specified class name."""
         return self._elements[class_name]
 
     def get_superclass_set(self, cls):
@@ -203,7 +203,7 @@ class SchemaGraph(object):
 
     @property
     def class_names(self):
-        """Return the set of all class names"""
+        """Return the set of all class names."""
         return set(six.iterkeys(self._elements))
 
     @property
@@ -366,6 +366,7 @@ class SchemaElement(object):
 
 class VertexType(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields):
+        """See base class __init__ method."""
         super(VertexType, self).__init__(class_name, abstract, properties, class_fields)
 
 
@@ -411,6 +412,7 @@ class EdgeType(SchemaElement):
 
 class NonGraphElement(SchemaElement):
     def __init__(self, class_name, abstract, properties, class_fields):
+        """See base class __init__ method."""
         super(NonGraphElement, self).__init__(class_name, abstract, properties, class_fields)
 
 
