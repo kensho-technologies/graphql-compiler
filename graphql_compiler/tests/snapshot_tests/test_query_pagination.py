@@ -8,7 +8,7 @@ from graphql_compiler.schema import FilterDirective
 
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
-from ...query_pagination import QueryStringWithParameters, paginate_query
+from ...query_pagination import paginate_query
 from ...query_pagination.filter_modifications import (
     FilterModification, get_modifications_needed_to_vertices_for_paging,
     get_vertices_for_pagination
@@ -16,7 +16,7 @@ from ...query_pagination.filter_modifications import (
 from ...query_pagination.modify_query import (
     PaginationFilter, ParameterizedPaginationQueries, generate_parameterized_queries
 )
-from ..test_helpers import compare_graphql, generate_schema_graph
+from ..test_helpers import generate_schema_graph
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
