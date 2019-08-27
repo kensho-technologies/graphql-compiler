@@ -475,8 +475,8 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             SELECT
-                [Species_1].name AS species_name,
-                [Animal_1].name AS child_name
+                [Animal_1].name AS child_name,
+                [Species_1].name AS species_name
             FROM
                 db_1.schema_1.[Animal] AS [Animal_2]
                 JOIN db_1.schema_1.[Species] AS [Species_1]
@@ -3918,8 +3918,8 @@ class CompilerTests(unittest.TestCase):
         expected_sql = '''
             SELECT
                 [Animal_1].uuid AS child_uuid,
-                [Species_1].uuid AS species_uuid,
-                [FeedingEvent_1].uuid AS event_uuid
+                [FeedingEvent_1].uuid AS event_uuid,
+                [Species_1].uuid AS species_uuid
             FROM
                 db_1.schema_1.[Animal] AS [Animal_2]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]

@@ -155,7 +155,7 @@ def emit_code_from_ir(sql_schema_info, ir):
         elif isinstance(block, blocks.GlobalOperationsStart):
             state.start_global_operations()
         elif isinstance(block, blocks.ConstructResult):
-            for output_name, field in six.iteritems(block.fields):
+            for output_name, field in sorted(six.iteritems(block.fields)):
                 state.construct_result(output_name, field)
         else:
             raise NotImplementedError(u'Unsupported block {}.'.format(block))
