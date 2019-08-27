@@ -56,6 +56,7 @@ def make_query_plan(root_sub_query_node, intermediate_output_names):
     Args:
         root_sub_query_node: SubQueryNode, representing the base of a query split into pieces
                              that we want to turn into a query plan
+        intermediate_output_names: frozenset[str], names of outputs to be removed at the end
 
     Returns:
         QueryPlanDescriptor namedtuple, containing a tree of SubQueryPlans that wrap
@@ -93,6 +94,9 @@ def _make_query_plan_recursive(sub_query_node, sub_query_plan, output_join_descr
                         It is not modified by this function
         sub_query_plan: SubQueryPlan, whose list of child query plans and query AST are
                         modified
+        output_join_descriptors: List[OutputJoinDescriptor], describing which outputs should be
+                                 joined and how
+
     """
     # Iterate through child connections of query node
     for child_query_connection in sub_query_node.child_query_connections:
@@ -263,7 +267,7 @@ def print_query_plan(query_plan_descriptor, indentation_depth=4):
 
 
 def _get_plan_and_depth_in_dfs_order(query_plan):
-    """Helper for print_query_plan and other functions needing dfs order traversal."""
+    """Return a list of topologically sorted (query plan, depth) tuples."""
     def _get_plan_and_depth_in_dfs_order_helper(query_plan, depth):
         plan_and_depth_in_dfs_order = [(query_plan, depth)]
         for child_query_plan in query_plan.child_query_plans:

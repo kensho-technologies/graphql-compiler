@@ -130,6 +130,7 @@ def _rename_query_type_fields(ast, renamings, query_type):
 
 class RenameSchemaTypesVisitor(Visitor):
     """Traverse a Document AST, editing the names of nodes."""
+
     noop_types = frozenset({
         'Argument',
         'BooleanValue',

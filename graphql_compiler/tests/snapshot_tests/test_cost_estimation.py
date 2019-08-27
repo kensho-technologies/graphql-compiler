@@ -26,7 +26,7 @@ class CostEstimationTests(unittest.TestCase):
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_root_count(self):
-        """"Ensure we correctly estimate the cardinality of the query root."""
+        """Ensure we correctly estimate the cardinality of the query root."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         test_data = test_input_data.immediate_output()
 

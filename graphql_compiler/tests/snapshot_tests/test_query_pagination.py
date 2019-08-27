@@ -16,7 +16,7 @@ class QueryPaginationTests(unittest.TestCase):
     """Test the query pagination module."""
 
     def _compare_query_with_parameters_namedtuple(self, expected, received):
-        """Compares two given QueryWithParameters namedtuple, raising error if not equal."""
+        """Compare two given QueryWithParameters namedtuple, raising error if not equal."""
         if expected is None and received is None:
             return True
         elif (expected is None) != (received is None):
@@ -30,7 +30,7 @@ class QueryPaginationTests(unittest.TestCase):
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_basic_pagination(self):
-        """"Ensure a basic pagination query is handled correctly."""
+        """Ensure a basic pagination query is handled correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         test_data = '''{
             Animal {
@@ -111,7 +111,7 @@ class QueryPaginationTests(unittest.TestCase):
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_pagination_with_filters_on_uuid(self):
-        """"Ensure pagination handles already-existing filters over uuid correctly."""
+        """Ensure pagination handles already-existing filters over uuid correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         test_data = '''{
             Animal {
@@ -133,36 +133,36 @@ class QueryPaginationTests(unittest.TestCase):
         expected_first_next_page = QueryStringWithParameters(
             '''{
                 Animal {
-                    uuid @filter(op_name: ">=", value: ["$__paged_lower_bound_0"])
+                    uuid @filter(op_name: ">=", value: ["$uuid_filter"])
                          @filter(op_name: "<", value: ["$__paged_upper_bound_0"])
                     name @output(out_name: "animal")
                 }
             }''',
             {
-                '__paged_lower_bound_0': '80000000-0000-0000-0000-000000000000',
+                'uuid_filter': '80000000-0000-0000-0000-000000000000',
                 '__paged_upper_bound_0': 'c0000000-0000-0000-0000-000000000000',
             },
         )
         expected_first_remainder = QueryStringWithParameters(
             '''{
                 Animal {
-                    uuid @filter(op_name: ">=", value: ["$__paged_lower_bound_0"])
+                    uuid @filter(op_name: ">=", value: ["$uuid_filter"])
                     name @output(out_name: "animal")
                 }
             }''',
             {
-                '__paged_lower_bound_0': 'c0000000-0000-0000-0000-000000000000',
+                'uuid_filter': 'c0000000-0000-0000-0000-000000000000',
             },
         )
         expected_second_next_page = QueryStringWithParameters(
             '''{
                 Animal {
-                    uuid @filter(op_name: ">=", value: ["$__paged_lower_bound_0"])
+                    uuid @filter(op_name: ">=", value: ["$uuid_filter"])
                     name @output(out_name: "animal")
                 }
             }''',
             {
-                '__paged_lower_bound_0': 'c0000000-0000-0000-0000-000000000000',
+                'uuid_filter': 'c0000000-0000-0000-0000-000000000000',
             },
         )
         # This query generates 2 pages, so the remainder after 2 pages is None.
