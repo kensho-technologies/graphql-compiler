@@ -16,7 +16,7 @@ ParameterizedPaginationQueries = namedtuple(
         'pagination_filters',       # List[PaginationFilter], filters usable for pagination. Note
                                     # that depending on if the filters chosen for pagination are
                                     # user-created or added by pagination, they might not have
-                                    # parameter values. These can be generated using the
+                                    # parameter values. The parameters can be generated using the
                                     # parameter_generator module.
 
         'user_parameters',          # dict, parameters that the user has defined for query filters.
@@ -33,14 +33,21 @@ PaginationFilter = namedtuple(
     'PaginationFilter',
     (
         'vertex_class',                 # str, vertex class to which the property field belongs to.
+
         'property_field',               # str, name of the property field being filtered.
+
         'next_page_query_filter',       # Directive, filter directive with '<' operator usable
                                         # for pagination in the next page query.
+
         'remainder_query_filter',       # Directive, filter directive with '>=' operator usable
                                         # for pagination in the remainder query.
-        'already_existing_filters',     # List[Directive], filter directives that are on the same
-                                        # vertex and property field as the next page and remainder
-                                        # queries' filters.
+
+        'already_existing_filters',     # List[Directive], filter directives defined by the user
+                                        # that are on the same vertex and property field as the next
+                                        # page and remainder queries' filters. If the paginator
+                                        # has chosen to use a user-defined filter for pagination,
+                                        # this list may contain next_page_query_filter and/or
+                                        # remainder_query_filter.
     ),
 )
 

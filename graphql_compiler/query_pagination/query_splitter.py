@@ -1,7 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
-from graphql_compiler.query_pagination.filter_modifications import get_modifications_for_pagination
+from graphql_compiler.query_pagination.filter_modifications import (
+    get_modifications_needed_to_vertices_for_paging, get_vertices_for_pagination
+)
 from graphql_compiler.query_pagination.modify_query import generate_parameterized_queries
 from graphql_compiler.query_pagination.parameter_generator import (
     generate_parameters_for_parameterized_query
@@ -47,9 +49,11 @@ def split_into_page_query_and_remainder_query(
                              u' of results, as the number of pages {} must be greater than 1: {}'
                              .format(query_ast, num_pages, parameters))
 
-    filter_modifications = get_modifications_for_pagination(
-        schema_graph, statistics, query_ast, parameters
+    pagination_vertices = get_vertices_for_pagination(statistics, query_ast)
+    filter_modifications = get_modifications_needed_to_vertices_for_paging(
+        schema_graph, statistics, query_ast, parameters, pagination_vertices
     )
+
     parameterized_queries = generate_parameterized_queries(
         schema_graph, statistics, query_ast, parameters, filter_modifications
     )
