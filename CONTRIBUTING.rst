@@ -78,8 +78,10 @@ contributors and the project.
 Style Guide
 -----------
 
-This project follows the `Google Python style
-guide <https://google.github.io/styleguide/pyguide.html>`__.
+This project primarily follows the `PEP 8 style guide
+<https://www.python.org/dev/peps/pep-0008/>`__, and secondarily the
+`Google Python style guide <https://google.github.io/styleguide/pyguide.html>`__.
+If the style guides differ on a convention, the PEP 8 style guide is preferred.
 
 Additionally, any contributions must pass the linter :code:`scripts/lint.sh`
 when executed from a pipenv shell (i.e. after running :code:`pipenv shell`).

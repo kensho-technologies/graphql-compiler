@@ -189,7 +189,7 @@ def validate_runtime_argument_name(name):
 
 
 def validate_tagged_argument_name(name):
-    """Ensure that provided string is valid for use as a tagged argument name"""
+    """Ensure that provided string is valid for use as a tagged argument name."""
     validate_safe_string(name, value_description='tagged argument name')
 
 

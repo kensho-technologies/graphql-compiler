@@ -749,7 +749,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             )
         ]
 
-        final_block = ir_lowering_match.lower_has_substring_binary_compositions(special_ir_block)
+        final_block = ir_lowering_match.lower_string_operators(special_ir_block)
         check_test_data(self, expected_final_blocks, final_block)
 
     def test_between_lowering_inverted_inequalities(self):

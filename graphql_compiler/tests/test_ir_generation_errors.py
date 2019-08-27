@@ -661,7 +661,7 @@ class IrGenerationErrorTests(unittest.TestCase):
 
     def test_filter_directive_bad_arg_counts(self):
         def generate_args_string(num_args):
-            """Generates a GraphQL array with the given args, as a string."""
+            """Generate a GraphQL array with the given args, as a string."""
             if num_args == 0:
                 return u'[]'
 

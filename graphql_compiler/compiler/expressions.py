@@ -1,8 +1,11 @@
 # Copyright 2017-present Kensho Technologies, LLC.
+import operator as python_operator
+
 from graphql import GraphQLInt, GraphQLList, GraphQLNonNull
 import six
+from sqlalchemy import bindparam, sql
 
-from . import cypher_helpers
+from . import cypher_helpers, sqlalchemy_extensions
 from ..exceptions import GraphQLCompilationError
 from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime
 from .compiler_entities import Expression
@@ -127,6 +130,11 @@ class Literal(Expression):
     to_match = _to_output_code
     to_cypher = _to_output_code
 
+    def to_sql(self, aliases, current_alias):
+        """Return the value."""
+        self.validate()
+        return self.value
+
 
 NullLiteral = Literal(None)
 TrueLiteral = Literal(True)
@@ -243,6 +251,13 @@ class Variable(Expression):
         # [1] https://oss.redislabs.com/redisgraph/cypher_support/#types
         return u'{}'.format(self.variable_name)
 
+    def to_sql(self, aliases, current_alias):
+        """Return a sqlalchemy BindParameter."""
+        self.validate()
+
+        is_list = isinstance(self.inferred_type, GraphQLList)
+        return bindparam(self.variable_name[1:], expanding=is_list)
+
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
         # Since this object has a GraphQL type as a variable, which doesn't implement
@@ -305,6 +320,19 @@ class LocalField(Expression):
         else:
             return u'{}.{}'.format(local_object_name, self.field_name)
 
+    def to_sql(self, aliases, current_alias):
+        """Return a sqlalchemy Column picked from the current_alias."""
+        self.validate()
+
+        if isinstance(self.field_type, GraphQLList):
+            raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
+                                      u'process field {}.'.format(self.field_name))
+
+        if '@' in self.field_name:
+            raise NotImplementedError(u'The SQL backend does not support __typename.')
+
+        return current_alias.c[self.field_name]
+
     def to_cypher(self):
         """Not implemented, should not be used."""
         raise AssertionError(u'LocalField is not used as part of the query emission process in '
@@ -362,6 +390,12 @@ class GlobalContextField(Expression):
         """Not implemented, should not be used."""
         raise AssertionError(u'GlobalContextField is not used as part of the query emission '
                              u'process in Cypher, so this is a bug. This function '
+                             u'should not be called.')
+
+    def to_sql(self, aliases, current_alias):
+        """Not implemented, should not be used."""
+        raise AssertionError(u'GlobalContextField is not used as part of the query emission '
+                             u'process in SQL, so this is a bug. This function '
                              u'should not be called.')
 
 
@@ -444,6 +478,22 @@ class ContextField(Expression):
         validate_safe_string(mark_name)
 
         return template.format(mark_name=mark_name, field_name=field_name)
+
+    def to_sql(self, aliases, current_alias):
+        """Return a sqlalchemy Column picked from the appropriate alias."""
+        self.validate()
+
+        if isinstance(self.field_type, GraphQLList):
+            raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
+                                      u'process field {}.'.format(self.location.field))
+
+        if self.location.field is not None:
+            if '@' in self.location.field:
+                raise NotImplementedError(u'The SQL backend does not support __typename.')
+            return aliases[self.location.at_vertex().query_path].c[self.location.field]
+        else:
+            raise AssertionError(u'This is a bug. The SQL backend does not use '
+                                 u'context fields to point to vertices.')
 
 
 class OutputContextField(Expression):
@@ -544,6 +594,17 @@ class OutputContextField(Expression):
         template = u'{mark_name}.{field_name}'
 
         return template.format(mark_name=mark_name, field_name=field_name)
+
+    def to_sql(self, aliases, current_alias):
+        """Return a sqlalchemy Column picked from the appropriate alias."""
+        if isinstance(self.field_type, GraphQLList):
+            raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
+                                      u'output field {}.'.format(self.location.field))
+
+        if '@' in self.location.field:
+            raise NotImplementedError(u'The sql backend does not support typename.')
+
+        return aliases[self.location.at_vertex().query_path].c[self.location.field]
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
@@ -657,6 +718,10 @@ class FoldedContextField(Expression):
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
+    def to_sql(self, aliases, current_alias):
+        """Not supported yet."""
+        raise NotImplementedError(u'The SQL backend does not support @fold.')
+
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
         # Since this object has a GraphQL type as a variable, which doesn't implement
@@ -720,6 +785,10 @@ class FoldCountContextField(Expression):
         """Not supported yet."""
         raise NotImplementedError()
 
+    def to_sql(self, aliases, current_alias):
+        """Not supported yet."""
+        raise NotImplementedError(u'The SQL backend does not support @fold.')
+
 
 class ContextFieldExistence(Expression):
     """An expression that evaluates to True if the given context field exists, and False otherwise.
@@ -763,6 +832,10 @@ class ContextFieldExistence(Expression):
     def to_cypher(self):
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
         raise AssertionError(u'ContextFieldExistence.to_cypher() was called: {}'.format(self))
+
+    def to_sql(self, aliases, current_alias):
+        """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
+        raise NotImplementedError(u'Filters in @optional are not implemented in SQL')
 
 
 def _validate_operator_name(operator, supported_operators):
@@ -845,13 +918,18 @@ class UnaryTransformation(Expression):
         """Not implemented yet."""
         raise NotImplementedError()
 
+    def to_sql(self, aliases, current_alias):
+        """Not implemented yet."""
+        raise NotImplementedError(u'Unary operators are not implemented in the SQL backend.')
+
 
 class BinaryComposition(Expression):
     """An expression created by composing two expressions together."""
 
     SUPPORTED_OPERATORS = frozenset({
         u'=', u'!=', u'>=', u'<=', u'>', u'<', u'+', u'||', u'&&',
-        u'contains', u'not_contains', u'intersects', u'has_substring', u'LIKE', u'INSTANCEOF',
+        u'contains', u'not_contains', u'intersects', u'has_substring', u'starts_with',
+        u'ends_with', u'LIKE', u'INSTANCEOF',
     })
 
     __slots__ = ('operator', 'left', 'right')
@@ -933,7 +1011,8 @@ class BinaryComposition(Expression):
                 u'not_contains': (u'CONTAINS', negated_regular_operator_format),
                 u'intersects': (u'intersect', intersects_operator_format),
                 u'has_substring': (None, None),  # must be lowered into compatible form using LIKE
-
+                u'starts_with': (None, None),  # must be lowered into compatible form using LIKE
+                u'ends_with': (None, None),  # must be lowered into compatibe form using LIKE
                 # MATCH-specific operators
                 u'LIKE': (u'LIKE', regular_operator_format),
                 u'INSTANCEOF': (u'INSTANCEOF', regular_operator_format),
@@ -976,6 +1055,8 @@ class BinaryComposition(Expression):
             u'not_contains': (u'contains', negated_dotted_operator_format),
             u'intersects': (u'intersect', intersects_operator_format),
             u'has_substring': (u'contains', dotted_operator_format),
+            u'starts_with': (u'startsWith', dotted_operator_format),
+            u'ends_with': (u'endsWith', dotted_operator_format),
         }
 
         gremlin_operator, format_spec = translation_table.get(self.operator, (None, None))
@@ -1022,6 +1103,8 @@ class BinaryComposition(Expression):
                 u'not_contains': (u'IN', negated_inverted_operator_format),
                 u'intersects': (u'IN', intersects_operator_format),
                 u'has_substring': (u'CONTAINS', regular_operator_format),
+                u'starts_with': (u'STARTS WITH', regular_operator_format),
+                u'ends_with': (u'ENDS WITH', regular_operator_format),
             }
 
         cypher_operator, format_spec = translation_table.get(self.operator, (None, None))
@@ -1032,6 +1115,36 @@ class BinaryComposition(Expression):
         return format_spec.format(operator=cypher_operator,
                                   left=self.left.to_cypher(),
                                   right=self.right.to_cypher())
+
+    def to_sql(self, aliases, current_alias):
+        """Return a sqlalchemy BinaryExpression representing this BinaryComposition."""
+        self.validate()
+
+        translation_table = {
+            u'=': python_operator.__eq__,
+            u'!=': python_operator.__ne__,
+            u'<': python_operator.__lt__,
+            u'>': python_operator.__gt__,
+            u'<=': python_operator.__le__,
+            u'>=': python_operator.__ge__,
+            u'&&': sql.expression.and_,
+            u'||': sql.expression.or_,
+            u'has_substring': sql.operators.ColumnOperators.contains,
+            u'starts_with': sql.operators.ColumnOperators.startswith,
+            u'ends_with': sql.operators.ColumnOperators.endswith,
+            # IR generation converts an in_collection filter in the query to a contains filter
+            # in the IR. Because of this an implementation for in_collection and not_in_collection
+            # is not needed.
+            u'contains': sqlalchemy_extensions.contains_operator,
+            u'not_contains': sqlalchemy_extensions.not_contains_operator,
+        }
+        if self.operator not in translation_table:
+            raise NotImplementedError(u'The SQL backend does not support operator {}.'
+                                      .format(self.operator))
+        return translation_table[self.operator](
+            self.left.to_sql(aliases, current_alias),
+            self.right.to_sql(aliases, current_alias),
+        )
 
 
 class TernaryConditional(Expression):
@@ -1127,3 +1240,11 @@ class TernaryConditional(Expression):
             predicate=self.predicate.to_cypher(),
             if_true=self.if_true.to_cypher(),
             if_false=self.if_false.to_cypher())
+
+    def to_sql(self, aliases, current_alias):
+        """Return a sqlalchemy Case representing this TernaryConditional."""
+        self.validate()
+        sql_predicate = self.predicate.to_sql(aliases, current_alias)
+        sql_if_true = self.if_true.to_sql(aliases, current_alias)
+        sql_else = self.if_false.to_sql(aliases, current_alias)
+        return sql.expression.case([(sql_predicate, sql_if_true)], else_=sql_else)
