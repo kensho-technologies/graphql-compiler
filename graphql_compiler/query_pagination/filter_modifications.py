@@ -11,7 +11,7 @@ RESERVED_PARAMETER_PREFIX = '__paged_'
 FilterModification = namedtuple(
     'FilterModification',
     (
-        'vertex',                   # Document, AST of the vertex instance in the query having its
+        'vertex',                   # Field, AST of the vertex instance in the query having its
                                     # filters modified.
         'property_field',           # str, name of the property field being filtered.
         'next_page_query_filter',   # Directive, '<' filter directive that will be used to generate
@@ -22,7 +22,23 @@ FilterModification = namedtuple(
 )
 
 
-def get_modifications_for_pagination(schema_graph, statistics, query_ast, parameters):
+def get_vertices_for_pagination(statistics, query_ast):
+    """Return a list of nodes usable for pagination belonging to the given AST node.
+
+    Args:
+        statistics: Statistics object.
+        query_ast: Document, AST of the GraphQL query that is being paginated.
+
+    Returns:
+        List[Field], field instances of vertices belonging to the given query documenting where to
+        add pagination filters.
+    """
+    raise NotImplementedError()
+
+
+def get_modifications_needed_to_vertices_for_paging(
+    schema_graph, statistics, query_ast, parameters, pagination_vertices
+):
     """Return FilterModification namedtuples for parameterizing and paging the given query.
 
     Args:
@@ -30,9 +46,11 @@ def get_modifications_for_pagination(schema_graph, statistics, query_ast, parame
         statistics: Statistics object.
         query_ast: Document, AST of the GraphQL query that will be split.
         parameters: dict, parameters with which query will be estimated.
+        pagination_vertices: List[Field], field instances of vertices belonging to the given query
+        documenting where to add pagination filters.
 
     Returns:
         List[FilterModification], changes to be done to the query to allow pagination over the given
-        query.
+        vertices.
     """
     raise NotImplementedError()
