@@ -26,18 +26,6 @@ from ..test_helpers import compare_graphql, generate_schema_graph
 class QueryPaginationTests(unittest.TestCase):
     """Test the query pagination module."""
 
-    def _compare_query_with_parameters_namedtuple(self, expected, received):
-        """Compare two given QueryWithParameters namedtuple, raising error if not equal."""
-        if expected is None and received is None:
-            return True
-        elif (expected is None) != (received is None):
-            return False
-
-        compare_graphql(
-            self, expected.query_string, received.query_string
-        )
-        self.assertEqual(expected.parameters, received.parameters)
-
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_basic_pagination(self):
@@ -57,68 +45,14 @@ class QueryPaginationTests(unittest.TestCase):
 
         statistics = LocalStatistics(count_data)
 
-        expected_first_next_page = QueryStringWithParameters(
-            '''{
-                Animal {
-                    uuid @filter(op_name: "<", value: ["$__paged_upper_bound_0"])
-                    name @output(out_name: "animal")
-                }
-            }''',
-            {
-                '__paged_upper_bound_0': '80000000-0000-0000-0000-000000000000',
-            },
-        )
-        expected_first_remainder = QueryStringWithParameters(
-            '''{
-                Animal {
-                    uuid @filter(op_name: ">=", value: ["$__paged_lower_bound_0"])
-                    name @output(out_name: "animal")
-                }
-            }''',
-            {
-                '__paged_lower_bound_0': '80000000-0000-0000-0000-000000000000',
-            },
-        )
-        expected_second_next_page = QueryStringWithParameters(
-            '''{
-                Animal {
-                    uuid @filter(op_name: ">=", value: ["$__paged_lower_bound_0"])
-                    name @output(out_name: "animal")
-                }
-            }''',
-            {
-                '__paged_lower_bound_0': '80000000-0000-0000-0000-000000000000',
-            },
-        )
-        # This query generates 2 pages, so the remainder after 2 pages is None.
-        expected_second_remainder = None
-
-        received_first_next_page, received_first_remainder = (
-            paginate_query(schema_graph, statistics, test_data, parameters, page_size)
-        )
-
-        # Then we page the remainder we've received, to ensure paginating more than once is handled
-        # correctly.
-        received_second_next_page, received_second_remainder = (
-            paginate_query(
-                schema_graph, statistics,
-                received_first_remainder.query_string,
-                received_first_remainder.parameters, page_size
+        # Since query pagination is still a skeleton, we expect a NotImplementedError for this test.
+        # Once query pagination is fully implemented, the result of this call should be equal to
+        # expected_query_list.
+        # pylint: disable=unused-variable
+        with self.assertRaises(NotImplementedError):
+            paginated_queries = paginate_query(                     # noqa: unused-variable
+                schema_graph, statistics, test_data, parameters, page_size
             )
-        )
-
-        self._compare_query_with_parameters_namedtuple(
-            expected_first_next_page, received_first_next_page
-        )
-        self._compare_query_with_parameters_namedtuple(
-            expected_first_remainder, received_first_remainder
-        )
-        self._compare_query_with_parameters_namedtuple(
-            expected_second_next_page, received_second_next_page
-        )
-        self._compare_query_with_parameters_namedtuple(
-            received_second_remainder, expected_second_remainder
-        )
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_pagination_with_filters_on_uuid(self):
@@ -141,73 +75,14 @@ class QueryPaginationTests(unittest.TestCase):
 
         statistics = LocalStatistics(count_data)
 
-        expected_first_next_page = QueryStringWithParameters(
-            '''{
-                Animal {
-                    uuid @filter(op_name: ">=", value: ["$uuid_filter"])
-                         @filter(op_name: "<", value: ["$__paged_upper_bound_0"])
-                    name @output(out_name: "animal")
-                }
-            }''',
-            {
-                'uuid_filter': '80000000-0000-0000-0000-000000000000',
-                '__paged_upper_bound_0': 'c0000000-0000-0000-0000-000000000000',
-            },
-        )
-        expected_first_remainder = QueryStringWithParameters(
-            '''{
-                Animal {
-                    uuid @filter(op_name: ">=", value: ["$uuid_filter"])
-                    name @output(out_name: "animal")
-                }
-            }''',
-            {
-                'uuid_filter': 'c0000000-0000-0000-0000-000000000000',
-            },
-        )
-        expected_second_next_page = QueryStringWithParameters(
-            '''{
-                Animal {
-                    uuid @filter(op_name: ">=", value: ["$uuid_filter"])
-                    name @output(out_name: "animal")
-                }
-            }''',
-            {
-                'uuid_filter': 'c0000000-0000-0000-0000-000000000000',
-            },
-        )
-        # This query generates 2 pages, so the remainder after 2 pages is None.
-        expected_second_remainder = None
-
-        # Since the user has added '>=' filters on uuid, the paginator can just use it instead,
-        # making sure that the parameter name is changed to reflect that the filter is used for
-        # pagination.
-        received_first_next_page, received_first_remainder = (
-            paginate_query(schema_graph, statistics, test_data, parameters, page_size)
-        )
-
-        # Then we page the remainder we've received, to ensure paginating more than once is handled
-        # correctly.
-        received_second_next_page, received_second_remainder = (
-            paginate_query(
-                schema_graph, statistics,
-                received_first_remainder.query_string,
-                received_first_remainder.parameters, page_size
+        # Since query pagination is still a skeleton, we expect a NotImplementedError for this test.
+        # Once query pagination is fully implemented, the result of this call should be equal to
+        # expected_query_list.
+        # pylint: disable=unused-variable
+        with self.assertRaises(NotImplementedError):
+            paginated_queries = paginate_query(                     # noqa: unused-variable
+                schema_graph, statistics, test_data, parameters, page_size
             )
-        )
-
-        self._compare_query_with_parameters_namedtuple(
-            expected_first_next_page, received_first_next_page
-        )
-        self._compare_query_with_parameters_namedtuple(
-            expected_first_remainder, received_first_remainder
-        )
-        self._compare_query_with_parameters_namedtuple(
-            expected_second_next_page, received_second_next_page
-        )
-        self._compare_query_with_parameters_namedtuple(
-            received_second_remainder, expected_second_remainder
-        )
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_modification_generation(self):
