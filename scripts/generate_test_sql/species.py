@@ -11,9 +11,9 @@ SPECIES_LIST = (
     'Hippogriff',
 )
 FOOD_LIST = (
-    "Bacon",
-    "Lembas",
-    "Blood pie",
+    'Bacon',
+    'Lembas',
+    'Blood pie',
 )
 NUM_FOODS = 2
 
