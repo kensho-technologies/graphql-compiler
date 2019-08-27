@@ -1,20 +1,21 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import unittest
 
+from graphql.language.ast import Argument, Directive, ListValue, Name, StringValue
 import pytest
 
-from graphql.language.ast import Argument, Directive, ListValue, Name, StringValue
 from graphql_compiler.schema import FilterDirective
 
+from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
 from ...query_pagination import QueryStringWithParameters, paginate_query
+from ...query_pagination.filter_modifications import (
+    FilterModification, get_modifications_needed_to_vertices_for_paging,
+    get_vertices_for_pagination
+)
 from ...query_pagination.modify_query import (
     PaginationFilter, ParameterizedPaginationQueries, generate_parameterized_queries
 )
-from ...query_pagination.filter_modifications import (
-    FilterModification, get_modifications_needed_to_vertices_for_paging, get_vertices_for_pagination
-)
-from ...ast_manipulation import safe_parse_graphql
 from ..test_helpers import compare_graphql, generate_schema_graph
 
 
