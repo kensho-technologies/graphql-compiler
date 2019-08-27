@@ -50,8 +50,7 @@ class CompilationState(object):
         self._ir = ir
 
         # Current query location state. Only mutable by calling _relocate.
-        self.current_location = None  # the current location in the query
-        self._current_classname = None  # the classname at the current location
+        self._current_location = None  # the current location in the query
         self._current_alias = None  # a sqlalchemy table Alias at the current location
         self._aliases = {}  # mapping marked query paths to table _Aliases representing them
         self._relocate(ir.query_metadata_table.root_location)
@@ -62,25 +61,36 @@ class CompilationState(object):
         self._filters = []  # sqlalchemy Expressions to be used in the where clause
 
     def _relocate(self, new_location):
-        """Move to a different location in the query, updating the _classname and _alias."""
-        self.current_location = new_location
-        new_location_type = self._ir.query_metadata_table.get_location_info(new_location).type
-        self._current_classname = new_location_type.name
-        if self.current_location.query_path in self._aliases:
-            self._current_alias = self._aliases[self.current_location.query_path]
+        """Move to a different location in the query, updating the _alias."""
+        self._current_location = new_location
+        if self._current_location.query_path in self._aliases:
+            self._current_alias = self._aliases[self._current_location.query_path]
         else:
             self._current_alias = self._sql_schema_info.tables[self._current_classname].alias()
+
+    @property
+    def _current_location_info(self):
+        """Get the LocationInfo of the current location in the query."""
+        return self._ir.query_metadata_table.get_location_info(self._current_location)
+
+    @property
+    def _current_classname(self):
+        """Get the string class name of the current location in the query."""
+        return self._current_location_info.type.name
 
     def backtrack(self, previous_location):
         """Execute a Backtrack Block"""
         self._relocate(previous_location)
 
-    def traverse(self, vertex_field):
+    def traverse(self, vertex_field, optional):
         """Execute a Traverse Block"""
         # Follow the edge
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
-        self._relocate(self.current_location.navigate_to_subpath(vertex_field))
+        self._relocate(self._current_location.navigate_to_subpath(vertex_field))
+
+        if optional:
+            raise NotImplementedError(u'The SQL backend does not implement @optional.')
 
         # Join to where we came from
         self._from_clause = self._from_clause.join(
@@ -94,7 +104,7 @@ class CompilationState(object):
 
     def mark_location(self):
         """Execute a MarkLocation Block"""
-        self._aliases[self.current_location.query_path] = self._current_alias
+        self._aliases[self._current_location.query_path] = self._current_alias
 
     def construct_result(self, output_name, field):
         """Execute a ConstructResult Block"""
@@ -125,9 +135,9 @@ def emit_code_from_ir(sql_schema_info, ir):
         elif isinstance(block, blocks.Backtrack):
             state.backtrack(block.location)
         elif isinstance(block, blocks.Traverse):
-            if block.optional:
-                raise NotImplementedError(u'The SQL backend does not support @optional.')
-            state.traverse(u'{}_{}'.format(block.direction, block.edge_name))
+            state.traverse(u'{}_{}'.format(block.direction, block.edge_name), block.optional)
+        elif isinstance(block, blocks.EndOptional):
+            pass
         elif isinstance(block, blocks.Filter):
             state.filter(block.predicate)
         elif isinstance(block, blocks.GlobalOperationsStart):
