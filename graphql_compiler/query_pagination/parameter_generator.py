@@ -54,8 +54,34 @@ def _convert_field_value_to_int(schema_graph, vertex_class, property_field, valu
 
 
 def _convert_int_to_field_value(schema_graph, vertex_class, property_field, int_value):
-    """Return the given integer's corresponding property field value."""
+    """Return the given integer's corresponding property field value.
+
+    Note that the property field values need not be integers. For example, all UUID values can be
+    converted to integers and vice versa, but they are provided in a string format (e.g.
+    00000000-0000-0000-0000-000000000000).
+    Example: If int_value is 9, and the property field is a uuid, then the resulting field
+    value will be 00000000-0000-0000-0000-000000000009.
+
+    Args:
+        schema_graph: SchemaGraph instance.
+        vertex_class: str, name of vertex class to which the property field belongs.
+        property_field: str, name of property field for which the domain of values is computed.
+        int_value: int, integer value which will be represented as a property field value.
+
+    Returns:
+        Any, the given integer's corresponding property field value.
+
+    Raises:
+        ValueError, if the given int_value is outside the range of valid values for the given
+        property field.
+    """
     if _is_uuid_field(schema_graph, vertex_class, property_field):
+        if not MIN_UUID_INT <= int_value <= MAX_UUID_INT:
+            raise AssertionError(u'Integer value {} could not be converted to UUID, as it'
+                                 u' is not in the range of valid UUIDs {} - {}: {} {}'
+                                 .format(int_value, MIN_UUID_INT, MAX_UUID_INT, vertex_class,
+                                         property_field))
+
         return str(UUID(int=int(int_value)))
     else:
         raise AssertionError(u'Could not represent int {} as {} {}. Currently,'

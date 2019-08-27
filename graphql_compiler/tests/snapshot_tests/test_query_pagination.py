@@ -1,10 +1,16 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import unittest
 
+from graphql.language.ast import Argument, Directive, ListValue, Name, StringValue
 import pytest
 
+from graphql_compiler.schema import FilterDirective
+
+from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
 from ...query_pagination import QueryStringWithParameters, paginate_query
+from ...query_pagination.modify_query import PaginationFilter, ParameterizedPaginationQueries
+from ...query_pagination.parameter_generator import generate_parameters_for_parameterized_query
 from ..test_helpers import compare_graphql, generate_schema_graph
 
 
@@ -197,3 +203,95 @@ class QueryPaginationTests(unittest.TestCase):
         self._compare_query_with_parameters_namedtuple(
             received_second_remainder, expected_second_remainder
         )
+
+    def test_parameter_generation(self):
+        """"""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        parameterized_queries = ParameterizedPaginationQueries(
+            safe_parse_graphql('''{
+                Animal {
+                    uuid @filter(op_name: "<", value: ["$__paged_upper_bound_0"])
+                    out_Animal_BornAt {
+                        name @output(out_name: "birth_event")
+                    }
+                }
+            }'''),
+            safe_parse_graphql('''{
+                Animal {
+                    uuid @filter(op_name: ">=", value: ["$__paged_lower_bound_0"])
+                    out_Animal_BornAt {
+                        name @output(out_name: "birth_event")
+                    }
+                }
+            }'''),
+            [PaginationFilter(
+                'Animal',
+                'uuid',
+                Directive(
+                    name=Name(value=FilterDirective.name),
+                    arguments=[
+                        Argument(
+                            name=Name(value='op_name'),
+                            value=StringValue(value='<'),
+                        ),
+                        Argument(
+                            name=Name(value='value'),
+                            value=ListValue(
+                                values=[
+                                    StringValue(value=u'$__paged_upper_bound_0'),
+                                ],
+                            ),
+                        ),
+                    ],
+                ),
+                Directive(
+                    name=Name(value=FilterDirective.name),
+                    arguments=[
+                        Argument(
+                            name=Name(value='op_name'),
+                            value=StringValue(value='>='),
+                        ),
+                        Argument(
+                            name=Name(value='value'),
+                            value=ListValue(
+                                values=[
+                                    StringValue(value=u'$__paged_lower_bound_0'),
+                                ],
+                            ),
+                        ),
+                    ],
+                ),
+                []      # already_existing_filters is empty, as there are no filters there.
+            )],
+            dict()      # the user parameters dict is empty, as no parameters were provided.
+        )
+
+        parameters = {}
+        page_size = 2
+
+        count_data = {
+            'Animal': 8,
+        }
+        # Since there are 8 Animals, and we want a page size of 2, the query is going to be split
+        # into quarters of equal size.
+        num_pages = 4
+
+        statistics = LocalStatistics(count_data)
+
+        expected_next_page_parameters = {
+            '__paged_upper_bound_0': '40000000-0000-0000-0000-000000000000',
+        }
+        expected_remainder_parameters = {
+            '__paged_lower_bound_0': '40000000-0000-0000-0000-000000000000',
+        }
+
+        # Since the query is supposed to be split into four smaller queries, the parameter generator
+        # sets a filter that only allows a quarter of all UUIDs to pass through it.
+        received_next_page_parameters, received_remainder_parameters = (
+            generate_parameters_for_parameterized_query(
+                schema_graph, statistics, parameterized_queries, num_pages
+            )
+        )
+
+        self.assertEqual(expected_next_page_parameters, received_next_page_parameters)
+        self.assertEqual(expected_remainder_parameters, received_remainder_parameters)
