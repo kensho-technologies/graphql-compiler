@@ -43,8 +43,8 @@ exclude_patterns = []
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-# This theme is the most popular one and the one used by the 
-# Read the Docs website https://docs.readthedocs.io/en/stable/index.html 
+# This theme is the most popular one and the one used by the
+# Read the Docs website https://docs.readthedocs.io/en/stable/index.html
 html_theme = 'sphinx_rtd_theme'
 
 # Add any paths that contain custom static files (such as style sheets) here,
