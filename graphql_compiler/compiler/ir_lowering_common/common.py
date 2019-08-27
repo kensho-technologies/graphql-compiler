@@ -6,7 +6,8 @@ from ..blocks import (
     ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse, Unfold
 )
 from ..expressions import (
-    BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, NullLiteral, TrueLiteral, TernaryConditional, Literal
+    BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, Literal, NullLiteral,
+    TernaryConditional, TrueLiteral
 )
 from ..helpers import validate_safe_string
 
@@ -123,7 +124,6 @@ def short_circuit_ternary_conditionals(ir_blocks, query_metadata_table):
         return expression
 
     return [block.visit_and_update_expressions(visitor_fn) for block in ir_blocks]
-
 
 
 def optimize_boolean_expression_comparisons(ir_blocks):

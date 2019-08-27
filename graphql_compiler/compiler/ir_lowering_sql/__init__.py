@@ -1,6 +1,6 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from ...compiler.compiler_frontend import IrAndMetadata
-from ..ir_lowering_common.common import remove_output_context_field_existence, short_circuit_ternary_conditionals
+from ..ir_lowering_common import common
 
 
 ##############
@@ -19,6 +19,6 @@ def lower_ir(schema_info, ir):
         ir IrAndMetadata containing lowered blocks, ready to emit
     """
     ir_blocks = ir.ir_blocks
-    ir_blocks = remove_output_context_field_existence(ir_blocks, ir.query_metadata_table)
-    ir_blocks = short_circuit_ternary_conditionals(ir_blocks, ir.query_metadata_table)
+    ir_blocks = common.remove_output_context_field_existence(ir_blocks, ir.query_metadata_table)
+    ir_blocks = common.short_circuit_ternary_conditionals(ir_blocks, ir.query_metadata_table)
     return IrAndMetadata(ir_blocks, ir.input_metadata, ir.output_metadata, ir.query_metadata_table)
