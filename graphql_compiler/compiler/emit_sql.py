@@ -106,6 +106,8 @@ class CompilationState(object):
 
     def start_global_operations(self):
         """Execute a GlobalOperationsStart block."""
+        if self._current_location is None:
+            raise AssertionError(u'CompilationState is already in global scope.')
         self._current_location = None
 
     def filter(self, predicate):
