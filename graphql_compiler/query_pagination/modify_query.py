@@ -233,12 +233,6 @@ def generate_parameterized_queries(
         query_type, None, filter_modifications, _add_remainder_query_filter_to_directives
     )
 
-    if next_page_type is query_type or remainder_type is query_type:
-        raise AssertionError(u'Expected next page query {} and remainder query {} to be different'
-                             u' from the original given query {}. This means filter modifications'
-                             u' were not applied: {}'
-                             .format(next_page_type, remainder_type, query_type,
-                                     filter_modifications))
     next_page_ast = Document(
         definitions=[next_page_type]
     )
