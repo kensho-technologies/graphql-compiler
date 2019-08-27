@@ -3,8 +3,11 @@ from collections import namedtuple
 from copy import copy
 
 from graphql.language.ast import (
-    Argument, Directive, Field, InlineFragment, Name, OperationDefinition, SelectionSet
+    Document, Field, InlineFragment, Name, OperationDefinition, SelectionSet
 )
+
+from graphql_compiler.ast_manipulation import get_only_query_definition
+from graphql_compiler.exceptions import GraphQLError
 
 
 # ParameterizedPaginationQueries namedtuple describes two query ASTs that have filters for
@@ -43,7 +46,7 @@ PaginationFilter = namedtuple(
                                         # for pagination in the next page query.
         'remainder_query_filter',       # Directive, filter directive with '>=' operator usable
                                         # for pagination in the remainder query.
-        'related_filters',              # List[Directive], filter directives that are on the same
+        'already_existing_filters',     # List[Directive], filter directives that are on the same
                                         # vertex and property field as the next page and remainder
                                         # queries' filters.
     ),
@@ -63,21 +66,31 @@ def _get_field_with_name(ast, field_name):
     return None
 
 
-def _add_next_page_filter_to_directives(directives_list, filter_modification):
+def _create_field(field_name):
+    """Return a property field with the given name."""
+    property_field = Field(
+        alias=None, name=Name(value=field_name),
+        arguments=[], directives=[], selection_set=None,
+    )
+
+    return property_field
+
+
+def _add_next_page_query_filter_to_directives(directives_list, filter_modification):
     """Return a directives list with the next page filter added. If already present, do nothing."""
-    if filter_modification.next_page_filter not in directives_list:
+    if filter_modification.next_page_query_filter not in directives_list:
         new_directives = copy(directives_list)
-        new_directives.append(filter_modification.next_page_filter)
+        new_directives.append(filter_modification.next_page_query_filter)
         return new_directives
 
     return directives_list
 
 
-def _add_remainder_filter_to_directives(directives_list, filter_modification):
+def _add_remainder_query_filter_to_directives(directives_list, filter_modification):
     """Return a directives list with the remainder filter added."""
-    if filter_modification.remainder_filter not in directives_list:
+    if filter_modification.remainder_query_filter not in directives_list:
         new_directives = copy(directives_list)
-        new_directives.append(filter_modification.remainder_filter)
+        new_directives.append(filter_modification.remainder_query_filter)
         return new_directives
 
     return directives_list
@@ -163,25 +176,23 @@ def _add_pagination_filters_recursively(ast, parent_ast, filter_modifications, a
 def _generate_pagination_filter(filter_modification):
     """Create PaginationFilter namedtuple documenting filters usable for pagination."""
     vertex_class = filter_modification.vertex.name.value
-    property_field = filter_modification.property_field
+    property_field_name = filter_modification.property_field
+    field = _get_field_with_name(filter_modification.vertex, property_field_name)
+
     next_page_query_filter = filter_modification.next_page_query_filter
     remainder_query_filter = filter_modification.remainder_query_filter
     if field is None or field.directives is None:
-        related_filters = []
+        already_existing_filters = []
     else:
-        related_filters = [
+        already_existing_filters = [
             directive
             for directive in field.directives
-            if (
-                directive.name.value == 'filter' and
-                directive is not next_page_query_filter and
-                directive is not remainder_query_filter
-            )
+            if directive.name.value == 'filter'
         ]
 
     pagination_filter = PaginationFilter(
-        vertex_class, property_field, next_page_query_filter, remainder_query_filter,
-        related_filters
+        vertex_class, property_field_name, next_page_query_filter, remainder_query_filter,
+        already_existing_filters
     )
     return pagination_filter
 
@@ -207,17 +218,26 @@ def generate_parameterized_queries(
     Returns:
         ParameterizedPaginationQueries namedtuple.
     """
-    next_page_ast = _add_pagination_filters_recursively(
-        ast, None, filter_modifications, _add_next_page_filter_to_directives
+    query_type = get_only_query_definition(query_ast, GraphQLError)
+    next_page_type = _add_pagination_filters_recursively(
+        query_type, None, filter_modifications, _add_next_page_query_filter_to_directives
     )
-    remainder_ast = _add_pagination_filters_recursively(
-        ast, None, filter_modifications, _add_remainder_filter_to_directives
+    remainder_type = _add_pagination_filters_recursively(
+        query_type, None, filter_modifications, _add_remainder_query_filter_to_directives
     )
-    if next_page_ast is query_ast or remainder_ast is query_ast:
+
+    if next_page_type is query_type or remainder_type is query_type:
         raise AssertionError(u'Expected next page query {} and remainder query {} to be different'
                              u' from the original given query {}. This means filter modifications'
                              u' were not applied: {}'
-                             .format(next_page_ast, remainder_ast, query_ast, filter_modifications))
+                             .format(next_page_type, remainder_type, query_type,
+                                     filter_modifications))
+    next_page_ast = Document(
+        definitions=[next_page_type]
+    )
+    remainder_ast = Document(
+        definitions=[remainder_type]
+    )
 
     pagination_filters = [
         _generate_pagination_filter(modification)

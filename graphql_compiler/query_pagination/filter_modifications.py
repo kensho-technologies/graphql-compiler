@@ -13,6 +13,13 @@ from graphql_compiler.compiler.helpers import get_parameter_name
 from graphql_compiler.exceptions import GraphQLError
 from graphql_compiler.schema import FilterDirective
 
+from graphql.language.ast import Argument, Directive, ListValue, Name, StringValue
+
+from graphql_compiler.ast_manipulation import get_only_query_definition, get_only_selection_from_ast
+from graphql_compiler.compiler.helpers import get_parameter_name
+from graphql_compiler.exceptions import GraphQLError
+from graphql_compiler.schema import FilterDirective
+
 
 RESERVED_PARAMETER_PREFIX = '__paged_'
 
@@ -48,16 +55,6 @@ def _get_binary_filter_parameter(filter_directive):
 def _get_filter_operation(filter_directive):
     """Return the @filter's op_name as a string."""
     return filter_directive.arguments[0].value.value
-
-
-def _create_field(field_name):
-    """Return a property field with the given name."""
-    property_field = Field(
-        alias=None, name=Name(value=field_name),
-        arguments=[], directives=[], selection_set=None,
-    )
-
-    return property_field
 
 
 def _create_binary_filter_directive(filter_operation, filter_parameter):
@@ -96,13 +93,29 @@ def _get_primary_key_name(schema_graph, vertex_class):
     return 'uuid'
 
 
+def _get_field_with_name(ast, field_name):
+    """Search the AST selection set for a field with the given name, returning None if not found."""
+    if ast.selection_set is None:
+        return None
+
+    selections_list = ast.selection_set.selections
+    for selection in selections_list:
+        if selection.name.value == field_name:
+            return selection
+
+    return None
+
+
 def _find_filter_containing_op_name(field, filter_operation):
     """Return FilterDirective containing the given operation as its op_name argument."""
     if field is None or field.directives is None:
         return None
 
     for directive in field.directives:
-        if directive.name.value == 'filter' and _get_filter_operation(directive) == '<':
+        if (
+                directive.name.value == 'filter' and
+                _get_filter_operation(directive) == filter_operation
+        ):
             return directive
 
     return None
@@ -163,6 +176,7 @@ def _get_modifications_needed_to_vertex_for_paging(schema_graph, vertex, paramet
     """
     vertex_class = vertex.name.value
     property_field_name = _get_primary_key_name(schema_graph, vertex_class)
+    field = _get_field_with_name(vertex, property_field_name)
 
     existing_filter_usable_for_next_page_query = _find_filter_containing_op_name(field, '<')
     existing_filter_usable_for_remainder_query = _find_filter_containing_op_name(field, '>=')
