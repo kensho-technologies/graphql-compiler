@@ -255,14 +255,12 @@ def _check_that_expansion_directives_are_supported(macro_edge_field):
     for directive in macro_edge_field.directives:
         directive_name = directive.name.value
         if directive_name not in directives_supported_at_macro_expansion:
-            # TODO(predrag): Maybe not a good error message. The point is that the field in question
-            #                is a macro edge, and macro edges only allow a subset of directives
-            #                to be used on them.
             raise GraphQLCompilationError(
-                u'Macro expansion for {} contains a {} directive, which is '
-                u'not supported by the macro system. supported_directives: {}'
-                .format(macro_name, directive_name,
-                        directives_supported_at_macro_expansion))
+                u'Encountered a {} directive applied to the {} macro edge, which is '
+                u'not currently supported by the macro system. Please alter your query to not use '
+                u'unsupported directives on macro edges. Supported directives are: {}'
+                .format(directive_name, macro_name,
+                        set(directives_supported_at_macro_expansion)))
 
 
 def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_args, tag_names):
