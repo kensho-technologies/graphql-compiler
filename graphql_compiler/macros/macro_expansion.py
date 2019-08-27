@@ -12,7 +12,7 @@ from ..compiler.helpers import (
     get_uniquely_named_objects_by_name, get_vertex_field_type, strip_non_null_and_list_from_type
 )
 from ..exceptions import GraphQLCompilationError, GraphQLInvalidMacroError
-from ..schema import FilterDirective, FoldDirective, OutputSourceDirective, is_vertex_field_name
+from ..schema import FilterDirective, is_vertex_field_name
 from .macro_edge.ast_rewriting import find_target_and_copy_path_to_it, replace_tag_names
 from .macro_edge.ast_traversal import get_all_tag_names, get_type_at_macro_edge_target
 from .macro_edge.directives import MacroEdgeTargetDirective

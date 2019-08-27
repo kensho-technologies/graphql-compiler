@@ -126,3 +126,31 @@ class MacroExpansionTests(unittest.TestCase):
 
         with self.assertRaises(GraphQLCompilationError):
             perform_macro_expansion(self.macro_registry, query, args)
+
+    def test_fold_at_expansion_is_not_supported(self):
+        query = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_GrandparentOf @fold {
+                    name @output(out_name: "grandkid")
+                }
+            }
+        }'''
+        args = {}
+
+        with self.assertRaises(GraphQLCompilationError):
+            perform_macro_expansion(self.macro_registry, query, args)
+
+    def test_output_source_at_expansion_is_not_supported(self):
+        query = '''{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_GrandparentOf @output_source {
+                    name @output(out_name: "grandkid")
+                }
+            }
+        }'''
+        args = {}
+
+        with self.assertRaises(GraphQLCompilationError):
+            perform_macro_expansion(self.macro_registry, query, args)
