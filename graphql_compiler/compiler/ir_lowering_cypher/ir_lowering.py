@@ -145,11 +145,11 @@ class FoldedContextFieldBeforeFolding(Expression):
             raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
 
     def to_gremlin(self):
-        """Should never be called, since this is Cypher-specific."""
+        """Raise an error since this function shouldn't be called because it's Cypher-specific."""
         raise NotImplementedError()
 
     def to_match(self):
-        """Should never be called, since this is Cypher-specific."""
+        """Raise an error since this function shouldn't be called because it's Cypher-specific."""
         raise NotImplementedError()
 
     def to_cypher(self):

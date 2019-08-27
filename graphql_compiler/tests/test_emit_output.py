@@ -418,6 +418,7 @@ class EmitCypherTests(unittest.TestCase):
     like `GraphQLObjectType(name='Foo', fields={'name': GraphQLString}` instead. This is useful if
     we need to compare two LocationInfo objects because equality comparison compares references.
     """
+
     def setUp(self):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
