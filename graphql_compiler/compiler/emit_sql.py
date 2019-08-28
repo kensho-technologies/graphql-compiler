@@ -100,8 +100,20 @@ class CompilationState(object):
         #                       field, which is abuse of a python "feature".
         self._current_alias.came_from = self._current_alias.c[edge.to_column]
         if self._is_in_optional_scope() and not optional:
-            # For mandatory edges in optional scope, we emit LEFT OUTER JOIN and enforce them
-            # being mandatory with additional filters in the WHERE clause.
+            # For mandatory edges in optional scope, we emit LEFT OUTER JOIN and enforce the
+            # edge being mandatory with additional filters in the WHERE clause.
+            #
+            # This is some tricky logic. To prevent regression, here's some caution against
+            # solutions that might seem simpler, but are not correct:
+            # 1. You might think it's simpler to just use an INNER JOIN for mandatory edges in
+            #    optional scope. However, if there is a LEFT JOIN miss, the NULL value resulting
+            #    from it will not match anything in this INNER JOIN, and the row will be removed.
+            #    As a result, @optional semantics will not be preserved.
+            # 2. You might think that a cleaner solution is performing all the mandatory traversals
+            #    first in subqueries, and joining those subqueries with LEFT OUTER JOIN. This
+            #    approach is incorrect because a mandatory edge traversal miss inside an optional
+            #    scope is supposed to invalidate the whole result. However, with this solution the
+            #    result will still appear.
             self._filters.append(sqlalchemy.or_(
                 self._current_alias.came_from.isnot(None),
                 previous_alias.came_from.is_(None)))
