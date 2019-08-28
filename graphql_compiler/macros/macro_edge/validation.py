@@ -138,7 +138,7 @@ def _validate_that_macro_edge_definition_is_only_top_level_field_directive(ast, 
                                    get_human_friendly_ast_field_name(macro_defn_ast)))
 
 
-def _validate_macro_edge_name_for_class_name(schema, class_name, macro_edge_name):
+def _validate_macro_edge_name_for_class_name(schema, subclass_sets, class_name, macro_edge_name):
     """Ensure that the provided macro edge name is valid for the given class name."""
     # The macro edge must be a valid edge name.
     if not is_vertex_field_name(macro_edge_name):
@@ -147,13 +147,30 @@ def _validate_macro_edge_name_for_class_name(schema, class_name, macro_edge_name
             u'the expected prefixes for vertex fields: {}'
             .format(macro_edge_name, list(VERTEX_FIELD_PREFIXES)))
 
-    # The macro edge must not have the same name as an existing edge on the class where it exists.
-    class_object = schema.get_type(class_name)
-    if macro_edge_name in class_object.fields:
-        raise GraphQLInvalidMacroError(
-            u'The provided macro edge name "{}" has the same name as an existing field on the '
-            u'"{}" GraphQL type or interface. This is not allowed, please choose a different name.'
-            .format(macro_edge_name, class_name))
+    # The macro edge must not have the same name as an existing edge on the class where it exists,
+    # or any of its subclasses.
+    subclasses = subclass_sets[class_name]
+    if class_name not in subclasses:
+        raise AssertionError(u'Found a class that is not a subclass of itself, this means that the '
+                             u'subclass_sets value is incorrectly constructed: {} {} {}'
+                             .format(class_name, subclasses, subclass_sets))
+
+    for subclass_name in subclasses:
+        class_object = schema.get_type(class_name)
+        if macro_edge_name in class_object.fields:
+            extra_error_text = u''
+            if subclass_name != class_name:
+                extra_error_text = (
+                    u'{} is a subclass of {}, which is where you attempted to define a macro edge'
+                    .format(subclass_name, class_name)
+                )
+            raise GraphQLInvalidMacroError(
+                u'The provided macro edge name "{edge_name}" has the same name as '
+                u'an existing field on the "{subclass_name}" GraphQL type or interface. '
+                u'{extra_error_text}'
+                u'This is not allowed, please choose a different name.'
+                .format(edge_name=macro_edge_name, subclass_name=subclass_name,
+                        extra_error_text=extra_error_text))
 
 
 def _get_minimal_query_ast_from_macro_ast(macro_ast):
@@ -197,12 +214,15 @@ def _get_minimal_query_ast_from_macro_ast(macro_ast):
 # Public API #
 # ############
 
-def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
+def get_and_validate_macro_edge_info(schema, subclass_sets, ast, macro_edge_args,
                                      type_equivalence_hints=None):
-    """Return a tuple with the three parts of information that uniquely describe a macro edge.
+    """Return a MacroEdgeDescriptor for the specified macro edge, after ensuring its validity.
 
     Args:
         schema: GraphQL schema object, created using the GraphQL library
+        subclass_sets: Dict[str, Set[str]] mapping class names to the set of its subclass names.
+                       A class in this context means the name of a GraphQLObjectType,
+                       GraphQLUnionType or GraphQLInterface.
         ast: GraphQL library AST OperationDefinition object, describing the GraphQL that is defining
              the macro edge.
         macro_edge_args: dict mapping strings to any type, containing any arguments the macro edge
@@ -224,8 +244,8 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
                                 *****
 
     Returns:
-        tuple (class name for macro, name of macro edge, MacroEdgeDescriptor),
-        where the first two values are strings and the last one is a MacroEdgeDescriptor object
+        MacroEdgeDescriptor containing the base type name where the macro edge is defined, the name
+        of the macro edge, and the macro AST and arguments.
     """
     macro_directives = get_directives_for_ast(ast)
 
@@ -249,8 +269,9 @@ def get_and_validate_macro_edge_info(schema, ast, macro_edge_args,
     class_name = get_ast_field_name(macro_defn_ast)
     macro_edge_name = get_only_element_from_collection(macro_defn_directive.arguments).value.value
 
-    _validate_macro_edge_name_for_class_name(schema, class_name, macro_edge_name)
+    _validate_macro_edge_name_for_class_name(schema, subclass_sets, class_name, macro_edge_name)
 
-    descriptor = create_descriptor_from_ast_and_args(macro_defn_ast, macro_edge_args)
+    descriptor = create_descriptor_from_ast_and_args(
+        class_name, macro_edge_name, macro_defn_ast, macro_edge_args)
 
-    return class_name, macro_edge_name, descriptor
+    return descriptor
