@@ -1715,7 +1715,52 @@ class CompilerTests(unittest.TestCase):
                 relation_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            WITH anon_1(birthday, color, description, parent, related_entity, name, net_worth,
+                        fed_at, born_at, lives_in, important_event, species, uuid) AS (
+                SELECT
+                    [Animal_2].birthday AS birthday,
+                    [Animal_2].color AS color,
+                    [Animal_2].description AS description,
+                    [Animal_2].parent AS parent,
+                    [Animal_2].related_entity AS related_entity,
+                    [Animal_2].name AS name,
+                    [Animal_2].net_worth AS net_worth,
+                    [Animal_2].fed_at AS fed_at,
+                    [Animal_2].born_at AS born_at,
+                    [Animal_2].lives_in AS lives_in,
+                    [Animal_2].important_event AS important_event,
+                    [Animal_2].species AS species,
+                    [Animal_2].uuid AS uuid
+               FROM
+                    db_1.schema_1.[Animal] AS [Animal_2]
+               UNION ALL
+                    SELECT
+                        [Animal_2].birthday AS birthday,
+                        [Animal_2].color AS color,
+                        [Animal_2].description AS description,
+                        [Animal_2].parent AS parent,
+                        [Animal_2].related_entity AS related_entity,
+                        [Animal_2].name AS name,
+                        [Animal_2].net_worth AS net_worth,
+                        [Animal_2].fed_at AS fed_at,
+                        [Animal_2].born_at AS born_at,
+                        [Animal_2].lives_in AS lives_in,
+                        [Animal_2].important_event AS important_event,
+                        [Animal_2].species AS species,
+                        [Animal_2].uuid AS uuid
+                   FROM
+                        db_1.schema_1.[Animal] AS [Animal_1]
+                        JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                            ON [Animal_1].parent = [Animal_2].uuid
+            )
+            SELECT
+                anon_1.name AS relation_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                JOIN anon_1
+                    ON [Animal_1].parent = [Animal_2].uuid
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf*0..1]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -2042,7 +2087,53 @@ class CompilerTests(unittest.TestCase):
                 relation_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+           WITH anon_1(birthday, color, description, parent, related_entity, name, net_worth,
+                       fed_at, born_at, lives_in, important_event, species, uuid) AS (
+               SELECT
+                   [Animal_2].birthday AS birthday,
+                   [Animal_2].color AS color,
+                   [Animal_2].description AS description,
+                   [Animal_2].parent AS parent,
+                   [Animal_2].related_entity AS related_entity,
+                   [Animal_2].name AS name,
+                   [Animal_2].net_worth AS net_worth,
+                   [Animal_2].fed_at AS fed_at,
+                   [Animal_2].born_at AS born_at,
+                   [Animal_2].lives_in AS lives_in,
+                   [Animal_2].important_event AS important_event,
+                   [Animal_2].species AS species, [Animal_2].uuid AS uuid
+              FROM
+                  db_1.schema_1.[Animal] AS [Animal_2]
+              UNION ALL
+                  SELECT
+                      [Animal_2].birthday AS birthday,
+                      [Animal_2].color AS color,
+                      [Animal_2].description AS description,
+                      [Animal_2].parent AS parent,
+                      [Animal_2].related_entity AS related_entity,
+                      [Animal_2].name AS name,
+                      [Animal_2].net_worth AS net_worth,
+                      [Animal_2].fed_at AS fed_at,
+                      [Animal_2].born_at AS born_at,
+                      [Animal_2].lives_in AS lives_in,
+                      [Animal_2].important_event AS important_event,
+                      [Animal_2].species AS species,
+                      [Animal_2].uuid AS uuid
+                  FROM
+                      db_1.schema_1.[Animal] AS [Animal_1]
+                      JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                          ON [Animal_1].parent = [Animal_2].uuid
+          )
+          SELECT
+              anon_1.name AS relation_name
+          FROM
+              db_1.schema_1.[Animal] AS [Animal_1]
+              JOIN anon_1
+                  ON [Animal_1].parent = [Animal_2].uuid
+          WHERE
+              anon_1.color = :wanted
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -6475,7 +6566,56 @@ class CompilerTests(unittest.TestCase):
                     )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            WITH anon_1(birthday, color, description, parent, related_entity, name, net_worth,
+                        fed_at, born_at, lives_in, important_event, species, uuid) AS (
+                SELECT
+                     [Animal_3].birthday AS birthday,
+                     [Animal_3].color AS color,
+                     [Animal_3].description AS description,
+                     [Animal_3].parent AS parent,
+                     [Animal_3].related_entity AS related_entity,
+                     [Animal_3].name AS name,
+                     [Animal_3].net_worth AS net_worth,
+                     [Animal_3].fed_at AS fed_at,
+                     [Animal_3].born_at AS born_at,
+                     [Animal_3].lives_in AS lives_in,
+                     [Animal_3].important_event AS important_event,
+                     [Animal_3].species AS species,
+                     [Animal_3].uuid AS uuid
+                 FROM
+                     db_1.schema_1.[Animal] AS [Animal_3]
+                 UNION ALL
+                     SELECT
+                         [Animal_3].birthday AS birthday,
+                         [Animal_3].color AS color,
+                         [Animal_3].description AS description,
+                         [Animal_3].parent AS parent,
+                         [Animal_3].related_entity AS related_entity,
+                         [Animal_3].name AS name,
+                         [Animal_3].net_worth AS net_worth,
+                         [Animal_3].fed_at AS fed_at,
+                         [Animal_3].born_at AS born_at,
+                         [Animal_3].lives_in AS lives_in,
+                         [Animal_3].important_event AS important_event,
+                         [Animal_3].species AS species,
+                         [Animal_3].uuid AS uuid
+                     FROM
+                          db_1.schema_1.[Animal] AS [Animal_1]
+                          JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                              ON [Animal_1].parent = [Animal_3].uuid
+             )
+             SELECT
+                 [Animal_1].name AS child_name,
+                 [Animal_2].name AS name,
+                 anon_1.name AS self_and_ancestor_name
+             FROM
+                 db_1.schema_1.[Animal] AS [Animal_2]
+                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                     ON [Animal_2].uuid = [Animal_1].parent
+                 JOIN anon_1
+                     ON [Animal_1].parent = [Animal_3].uuid
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,

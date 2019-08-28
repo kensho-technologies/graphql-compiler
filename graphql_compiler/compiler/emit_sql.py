@@ -104,6 +104,23 @@ class CompilationState(object):
             onclause=(previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column]),
             isouter=optional)
 
+    def recurse(self, vertex_field):
+        previous_alias = self._current_alias
+        edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
+        self._relocate(self._current_location.navigate_to_subpath(vertex_field))
+
+        # TODO(bojanserafimov): double-check interactions with filters
+        # TODO(bojanserafimov): take depth into account
+
+        on_clause = previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column]
+        all_columns = self._current_alias.c
+        self._current_alias = sqlalchemy.select(all_columns).cte(recursive=True).union_all(
+            sqlalchemy.select(all_columns).select_from(
+                previous_alias.join(self._current_alias, onclause=on_clause)))
+
+        # Join to where we came from
+        self._from_clause = self._from_clause.join(self._current_alias, onclause=on_clause)
+
     def start_global_operations(self):
         """Execute a GlobalOperationsStart block."""
         if self._current_location is None:
@@ -150,6 +167,8 @@ def emit_code_from_ir(sql_schema_info, ir):
             state.backtrack(block.location)
         elif isinstance(block, blocks.Traverse):
             state.traverse(u'{}_{}'.format(block.direction, block.edge_name), block.optional)
+        elif isinstance(block, blocks.Recurse):
+            state.recurse(u'{}_{}'.format(block.direction, block.edge_name))
         elif isinstance(block, blocks.EndOptional):
             pass
         elif isinstance(block, blocks.Filter):
