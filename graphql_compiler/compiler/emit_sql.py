@@ -113,7 +113,7 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
-        # Construct literal columns to be used in the query
+        # Sanitize literal columns to be used in the query
         depth_string = str(depth)
         if not depth_string.isnumeric():
             raise AssertionError(u'Depth must be a number. Received {}'.format(depth_string))
@@ -121,26 +121,25 @@ class CompilationState(object):
         literal_0 = sqlalchemy.literal_column('0')
         literal_1 = sqlalchemy.literal_column('1')
 
-        # TODO(bojanserafimov): double-check interactions with filters
-        # TODO(bojanserafimov): take optional scope into account
-
-        on_clause = previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column]
-        all_columns = self._current_alias.c
-
         recursive_query = sqlalchemy.select(
-            all_columns + [literal_0.label(CTE_DEPTH_NAME)]
+            self._current_alias.c + [literal_0.label(CTE_DEPTH_NAME)]
         ).cte(recursive=True)
 
         self._current_alias = recursive_query.union_all(sqlalchemy.select(
-            all_columns + [(recursive_query.c[CTE_DEPTH_NAME] + literal_1).label(CTE_DEPTH_NAME)]
+            [col for col in recursive_query.c if col.name != CTE_DEPTH_NAME]
+            + [(recursive_query.c[CTE_DEPTH_NAME] + literal_1).label(CTE_DEPTH_NAME)]
         ).select_from(
-            previous_alias.join(self._current_alias, onclause=on_clause)
+            previous_alias.alias().join(
+                self._current_alias,
+                onclause=previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column])
         ).where(
             recursive_query.c[CTE_DEPTH_NAME] < literal_depth)
         )
 
         # Join to where we came from
-        self._from_clause = self._from_clause.join(self._current_alias, onclause=on_clause)
+        self._from_clause = self._from_clause.join(
+            self._current_alias,
+            onclause=previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column])
 
     def start_global_operations(self):
         """Execute a GlobalOperationsStart block."""
