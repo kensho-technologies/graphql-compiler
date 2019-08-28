@@ -104,13 +104,15 @@ class CompilationState(object):
             onclause=(previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column]),
             isouter=optional)
 
-    def recurse(self, vertex_field):
+    def recurse(self, vertex_field, depth):
+        """Execute a Recurse Block."""
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
         # TODO(bojanserafimov): double-check interactions with filters
         # TODO(bojanserafimov): take depth into account
+        # TODO(bojanserafimov): take optional scope into account
 
         on_clause = previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column]
         all_columns = self._current_alias.c
@@ -168,7 +170,7 @@ def emit_code_from_ir(sql_schema_info, ir):
         elif isinstance(block, blocks.Traverse):
             state.traverse(u'{}_{}'.format(block.direction, block.edge_name), block.optional)
         elif isinstance(block, blocks.Recurse):
-            state.recurse(u'{}_{}'.format(block.direction, block.edge_name))
+            state.recurse(u'{}_{}'.format(block.direction, block.edge_name), block.depth)
         elif isinstance(block, blocks.EndOptional):
             pass
         elif isinstance(block, blocks.Filter):
