@@ -114,7 +114,7 @@ equal-size chunks: [2^127, 2^127+2^126) and [2^127+2^126, 2^128-1].
 We can create a pair of query and parameters for the first chunk by using the next page query and
 setting the '__paged_lower_bound_0' parameter to 2^127+2^126.
 
-The second chunk can be created using the remainder query and restricting the 'uuid_filter'
+The second chunk can be created using the remainder query and restricting the 'uuid_lower_bound'
 parameter to 2^127+2^126.
 
 So the resulting pair of query and parameters for the next page query is:
@@ -126,7 +126,7 @@ So the resulting pair of query and parameters for the next page query is:
     }
 }
 with parameters:
-    uuid_filter with value '80000000-0000-0000-0000-000000000000'
+    uuid_lower_bound with value '80000000-0000-0000-0000-000000000000'
         (corresponding to integer 2^127),
     and
     __paged_lower_bound_0 with value 'c0000000-0000-0000-0000-000000000000'
@@ -139,7 +139,7 @@ Meanwhile the resulting pair of query and parameters for the remainder query is:
         name @output(out_name: "animal_name")
     }
 }
-with uuid_filter set to 'c0000000-0000-0000-0000-000000000000'
+with uuid_lower_bound set to 'c0000000-0000-0000-0000-000000000000'
     (corresponding to integer 2^127+2^126).
 
 TODOs
