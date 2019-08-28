@@ -5436,7 +5436,7 @@ class CompilerTests(unittest.TestCase):
                 db_1.schema_1.[Animal] AS [Animal_3]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
                     ON [Animal_3].uuid = [Animal_1].parent
-                JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
                     ON [Animal_1].uuid = [Animal_2].parent
             WHERE
                 [Animal_2].uuid IS NOT NULL OR [Animal_1].uuid IS NULL
@@ -5525,7 +5525,7 @@ class CompilerTests(unittest.TestCase):
                 db_1.schema_1.[Animal] AS [Animal_3]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
                     ON [Animal_3].uuid = [Animal_1].parent
-                JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
                     ON [Animal_1].uuid = [Animal_2].parent
             WHERE (
                 [Animal_3].name LIKE '%' + :wanted + '%'
@@ -5632,9 +5632,9 @@ class CompilerTests(unittest.TestCase):
                 db_1.schema_1.[Animal] AS [Animal_1]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
                     ON [Animal_1].uuid = [Animal_2].parent
-                JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
                     ON [Animal_2].parent = [Animal_3].uuid
-                JOIN db_1.schema_1.[Species] AS [Species_1]
+                LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
                     ON [Animal_3].species = [Species_1].uuid
             WHERE (
                 [Animal_3].uuid IS NOT NULL OR
@@ -5746,7 +5746,7 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_1].uuid = [Animal_2].parent
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
                     ON [Animal_2].parent = [Animal_3].uuid
-                JOIN db_1.schema_1.[Species] AS [Species_1]
+                LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
                     ON [Animal_3].species = [Species_1].uuid
             WHERE
                 [Species_1].uuid IS NOT NULL OR [Animal_3].uuid IS NULL
@@ -5929,11 +5929,11 @@ class CompilerTests(unittest.TestCase):
                 db_1.schema_1.[Animal] AS [Animal_1]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
                     ON [Animal_1].uuid = [Animal_2].parent
-                JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_4]
                     ON [Animal_2].parent = [Animal_4].uuid
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
                     ON [Animal_1].parent = [Animal_3].uuid
-                JOIN db_1.schema_1.[Species] AS [Species_1]
+                LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
                     ON [Animal_3].species = [Species_1].uuid
             WHERE (
                 [Animal_1].name LIKE '%' + :wanted + '%'
@@ -6079,7 +6079,7 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_1].uuid = [Animal_2].parent
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
                     ON [Animal_1].parent = [Animal_3].uuid
-                JOIN db_1.schema_1.[Species] AS [Species_1]
+                LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
                     ON [Animal_3].species = [Species_1].uuid
             WHERE (
                 [Animal_1].name LIKE '%' + :wanted + '%'
@@ -6604,7 +6604,7 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_2].fed_at = [FeedingEvent_3].uuid
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
                     ON [Animal_2].uuid = [Animal_3].parent
-                JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_2]
+                LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_2]
                     ON [Animal_3].fed_at = [FeedingEvent_2].uuid
                 JOIN db_1.schema_1.[Animal] AS [Animal_4]
                     ON [Animal_1].uuid = [Animal_4].parent
@@ -6803,9 +6803,9 @@ class CompilerTests(unittest.TestCase):
                 db_1.schema_1.[Animal] AS [Animal_3]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
                     ON [Animal_3].uuid = [Animal_1].parent
-                JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
                     ON [Animal_1].uuid = [Animal_2].parent
-                JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
+                LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
                     ON [Animal_1].fed_at = [FeedingEvent_1].uuid
             WHERE (
                 [Animal_2].uuid IS NOT NULL OR
@@ -7397,7 +7397,7 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_1].uuid = [Animal_2].parent
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
                     ON [Animal_2].parent = [Animal_3].uuid
-                JOIN db_1.schema_1.[Species] AS [Species_1]
+                LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
                     ON [Animal_3].species = [Species_1].uuid
             WHERE [Species_1].uuid IS NOT NULL OR [Animal_3].uuid IS NULL
         '''

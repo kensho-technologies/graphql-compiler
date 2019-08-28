@@ -103,7 +103,7 @@ class CompilationState(object):
         self._from_clause = self._from_clause.join(
             self._current_alias,
             onclause=(previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column]),
-            isouter=optional)
+            isouter=self._is_in_optional_scope())
 
     def start_global_operations(self):
         """Execute a GlobalOperationsStart block."""
