@@ -839,7 +839,7 @@ class ContextFieldExistence(Expression):
             raise AssertionError(u'ContextFieldExistence.to_sql() was called with a field: {}'
                                  .format(self))
         else:
-            return aliases[self.location.at_vertex().query_path].c['uuid'].isnot(None)
+            return aliases[self.location.at_vertex().query_path].came_from.isnot(None)
 
 
 def _validate_operator_name(operator, supported_operators):

@@ -94,10 +94,11 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
+        self._current_alias.came_from = self._current_alias.c[edge.to_column]
         if self._is_in_optional_scope() and not optional:
             self._filters.append(sqlalchemy.or_(
-                self._current_alias.c['uuid'].isnot(None),
-                previous_alias.c['uuid'].is_(None)))
+                self._current_alias.came_from.isnot(None),
+                previous_alias.came_from.is_(None)))
 
         # Join to where we came from
         self._from_clause = self._from_clause.join(
@@ -115,7 +116,7 @@ class CompilationState(object):
         """Execute a Filter Block."""
         sql_expression = predicate.to_sql(self._aliases, self._current_alias)
         if self._is_in_optional_scope():
-            sql_expression = sqlalchemy.or_(sql_expression, self._current_alias.c['uuid'].is_(None))
+            sql_expression = sqlalchemy.or_(sql_expression, self._current_alias.came_from.is_(None))
         self._filters.append(sql_expression)
 
     def mark_location(self):

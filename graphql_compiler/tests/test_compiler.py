@@ -219,7 +219,7 @@ class CompilerTests(unittest.TestCase):
                 related_name: m.Animal__out_Entity_Related___1.name
             ])}
         '''
-        expected_sql = SKIP_TEST  # Not implemented
+        expected_sql = NotImplementedError
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
@@ -254,7 +254,7 @@ class CompilerTests(unittest.TestCase):
                 related_name: m.Animal__out_Entity_Related___1.name
             ])}
         '''
-        expected_sql = SKIP_TEST  # Not implemented
+        expected_sql = NotImplementedError
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
@@ -1386,7 +1386,6 @@ class CompilerTests(unittest.TestCase):
                 [FeedingEvent_2].event_date <= [FeedingEvent_1].event_date
             )
         '''
-        # XXX () = 0 is stupid
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -2651,7 +2650,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         # the alias list valued column is not yet supported by the SQL backend
-        expected_sql = SKIP_TEST
+        expected_sql = NotImplementedError
         expected_cypher = '''
             MATCH (Animal___1:Animal)
                 WHERE ($wanted IN Animal___1.alias)
@@ -2797,7 +2796,7 @@ class CompilerTests(unittest.TestCase):
         '''
 
         # the alias list valued column is not yet supported by the SQL backend
-        expected_sql = SKIP_TEST
+        expected_sql = NotImplementedError
 
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -3242,7 +3241,7 @@ class CompilerTests(unittest.TestCase):
                 JOIN db_1.schema_1.[Animal] AS [Animal_3]
                     ON [Animal_1].parent = [Animal_3].uuid
             WHERE (
-                [Animal_2].uuid IS NOT NULL) = 0 OR
+                [Animal_2].parent IS NOT NULL) = 0 OR
                 ([Animal_3].name LIKE '%' + [Animal_2].name + '%'
             )
         '''
@@ -3544,7 +3543,11 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
 
-        expected_sql = SKIP_TEST
+        expected_sql = '''
+            SELECT [Animal_1].name AS name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE [Animal_1].net_worth IS NULL
+        '''
 
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -3580,7 +3583,11 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
 
-        expected_sql = SKIP_TEST
+        expected_sql = '''
+            SELECT [Animal_1].name AS name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE [Animal_1].net_worth IS NOT NULL
+        '''
 
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -5439,7 +5446,7 @@ class CompilerTests(unittest.TestCase):
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
                     ON [Animal_1].uuid = [Animal_2].parent
             WHERE
-                [Animal_2].uuid IS NOT NULL OR [Animal_1].uuid IS NULL
+                [Animal_2].parent IS NOT NULL OR [Animal_1].parent IS NULL
         '''
         expected_cypher = SKIP_TEST
 
@@ -5530,8 +5537,8 @@ class CompilerTests(unittest.TestCase):
             WHERE (
                 [Animal_3].name LIKE '%' + :wanted + '%'
             ) AND (
-                [Animal_2].uuid IS NOT NULL OR
-                [Animal_1].uuid IS NULL
+                [Animal_2].parent IS NOT NULL OR
+                [Animal_1].parent IS NULL
             )
         '''
         expected_cypher = SKIP_TEST
@@ -5638,7 +5645,7 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_3].species = [Species_1].uuid
             WHERE (
                 [Animal_3].uuid IS NOT NULL OR
-                [Animal_2].uuid IS NULL
+                [Animal_2].parent IS NULL
             ) AND (
                 [Species_1].uuid IS NOT NULL OR
                 [Animal_3].uuid IS NULL
@@ -5939,7 +5946,7 @@ class CompilerTests(unittest.TestCase):
                 [Animal_1].name LIKE '%' + :wanted + '%'
             ) AND (
                 [Animal_4].uuid IS NOT NULL OR
-                [Animal_2].uuid IS NULL
+                [Animal_2].parent IS NULL
             ) AND (
                 [Species_1].uuid IS NOT NULL OR
                 [Animal_3].uuid IS NULL
@@ -6613,7 +6620,7 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 [Animal_1].name = :animal_name AND (
                      [FeedingEvent_2].uuid IS NOT NULL OR
-                     [Animal_3].uuid IS NULL
+                     [Animal_3].parent IS NULL
                 ) AND (
                      ([FeedingEvent_3].uuid IS NOT NULL) = 0 OR
                      [FeedingEvent_1].name = [FeedingEvent_3].name
@@ -6808,11 +6815,11 @@ class CompilerTests(unittest.TestCase):
                 LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
                     ON [Animal_1].fed_at = [FeedingEvent_1].uuid
             WHERE (
-                [Animal_2].uuid IS NOT NULL OR
-                [Animal_1].uuid IS NULL
+                [Animal_2].parent IS NOT NULL OR
+                [Animal_1].parent IS NULL
             ) AND (
                 [FeedingEvent_1].uuid IS NOT NULL OR
-                [Animal_1].uuid IS NULL
+                [Animal_1].parent IS NULL
             )
         '''
         expected_cypher = SKIP_TEST
