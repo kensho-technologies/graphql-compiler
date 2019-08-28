@@ -41,7 +41,7 @@ Example:
         }
     }
     Assume this query returns 1000 results.
-    Assuming UUIDs are evenly distributed, the following query will return half of the result set
+    Since UUIDs are evenly distributed, the following query will return half of the result set
     of the previous query:
     {
         Animal {
@@ -55,8 +55,8 @@ Example:
     for the second query, the range is half that: [0, 2^127].
 
 This can further be generalized: By controlling what we set the UUID filter's value, we can
-arbitrarily restrict the size of the range of UUIDs passing through the filter, reducing the
-results generated.
+arbitrarily restrict the size of the range of UUIDs passing through the filter, thereby reducing
+the number of results generated.
 
 Note that even though this example uses UUID, this can be generalized to any uniformly distributed
 vertex property.
@@ -93,6 +93,7 @@ resulting next page query will be:
     Animal {
         uuid @filter(op_name: ">=", value: ["$uuid_lower_bound"])
              @filter(op_name: "<", value: ["$__paged_lower_bound_0"])
+        name @output(out_name: "animal_name")
     }
 }
 
@@ -101,19 +102,19 @@ Similarly, the remainder query will be created by adding a '>=' filter over Anim
 parameter value of uuid_lower_bound.
 
 Now that the next page query and remainder query have been generated, parameters for the '>=' and
-'<' filters need to be generated such that the next page query returns only a page of results, while
-the remainder query returns everything else. Note that even though uuid_lower_bound has a defined
-value, we can edit the user's parameters as long as the two generated queries' union is equivalent
-to the original query.
+'<' filters in the next page query and remainder query respectively need to be generated such that
+the next page query returns only a page of results, while the remainder query returns everything
+else. Note that even though uuid_lower_bound has a defined value, we can edit the user's parameters
+as long as the two generated queries' union is equivalent to the original query.
 
 In the original query, the range of Animal UUIDs passing through the filter was [2^127, 2^128-1].
 Since this query was estimated to return two pages of results, we need to divide this range into two
 equal-size chunks: [2^127, 2^127+2^126) and [2^127+2^126, 2^128-1].
 
-We can create a pair of query and parameters for the first chunk by using the next page query, and
+We can create a pair of query and parameters for the first chunk by using the next page query and
 setting the '__paged_lower_bound_0' parameter to 2^127+2^126.
 
-The second chunk can be created using the remainder query, by restricting the 'uuid_filter'
+The second chunk can be created using the remainder query and restricting the 'uuid_filter'
 parameter to 2^127+2^126.
 
 So the resulting pair of query and parameters for the next page query is:
@@ -121,6 +122,7 @@ So the resulting pair of query and parameters for the next page query is:
     Animal {
         uuid @filter(op_name: ">=", value: ["$uuid_lower_bound"])
              @filter(op_name: "<", value: ["$__paged_lower_bound_0"])
+        name @output(out_name: "animal_name")
     }
 }
 with parameters:
@@ -134,9 +136,10 @@ Meanwhile the resulting pair of query and parameters for the remainder query is:
 {
     Animal {
         uuid @filter(op_name: ">=", value: ["$uuid_lower_bound"])
+        name @output(out_name: "animal_name")
     }
 }
-with uuid_filter set to '80000000-0000-0000-0000-000000000000'
+with uuid_filter set to 'c0000000-0000-0000-0000-000000000000'
     (corresponding to integer 2^127+2^126).
 
 TODOs
