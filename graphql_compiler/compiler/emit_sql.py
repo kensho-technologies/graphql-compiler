@@ -94,8 +94,14 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
+        # HACK(bojanserafimov): For every alias, I need to remember where it came from, that is
+        #                       which one of its columns joins it to the root of the query.
+        #                       I'm currently just augmenting the Alias object with a came_from
+        #                       field, which is abuse of a python "feature".
         self._current_alias.came_from = self._current_alias.c[edge.to_column]
         if self._is_in_optional_scope() and not optional:
+            # For mandatory edges in optional scope, we emit LEFT OUTER JOIN and enforce them
+            # being mandatory with additional filters in the WHERE clause.
             self._filters.append(sqlalchemy.or_(
                 self._current_alias.came_from.isnot(None),
                 previous_alias.came_from.is_(None)))
