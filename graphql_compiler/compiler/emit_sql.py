@@ -6,6 +6,9 @@ import sqlalchemy
 from . import blocks
 
 
+CTE_DEPTH_NAME = '__cte_depth'
+
+
 def _traverse_and_validate_blocks(ir):
     """Yield all blocks, while validating consistency."""
     found_query_root = False
@@ -110,15 +113,31 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
+        # Construct literal columns to be used in the query
+        depth_string = str(depth)
+        if not depth_string.isnumeric():
+            raise AssertionError(u'Depth must be a number. Received {}'.format(depth_string))
+        literal_depth = sqlalchemy.literal_column(depth_string)
+        literal_0 = sqlalchemy.literal_column('0')
+        literal_1 = sqlalchemy.literal_column('1')
+
         # TODO(bojanserafimov): double-check interactions with filters
-        # TODO(bojanserafimov): take depth into account
         # TODO(bojanserafimov): take optional scope into account
 
         on_clause = previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column]
         all_columns = self._current_alias.c
-        self._current_alias = sqlalchemy.select(all_columns).cte(recursive=True).union_all(
-            sqlalchemy.select(all_columns).select_from(
-                previous_alias.join(self._current_alias, onclause=on_clause)))
+
+        recursive_query = sqlalchemy.select(
+            all_columns + [literal_0.label(CTE_DEPTH_NAME)]
+        ).cte(recursive=True)
+
+        self._current_alias = recursive_query.union_all(sqlalchemy.select(
+            all_columns + [(recursive_query.c[CTE_DEPTH_NAME] + literal_1).label(CTE_DEPTH_NAME)]
+        ).select_from(
+            previous_alias.join(self._current_alias, onclause=on_clause)
+        ).where(
+            recursive_query.c[CTE_DEPTH_NAME] < literal_depth)
+        )
 
         # Join to where we came from
         self._from_clause = self._from_clause.join(self._current_alias, onclause=on_clause)

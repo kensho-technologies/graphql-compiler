@@ -1717,7 +1717,7 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             WITH anon_1(birthday, color, description, parent, related_entity, name, net_worth,
-                        fed_at, born_at, lives_in, important_event, species, uuid) AS (
+                        fed_at, born_at, lives_in, important_event, species, uuid, __cte_depth) AS (
                 SELECT
                     [Animal_2].birthday AS birthday,
                     [Animal_2].color AS color,
@@ -1731,7 +1731,8 @@ class CompilerTests(unittest.TestCase):
                     [Animal_2].lives_in AS lives_in,
                     [Animal_2].important_event AS important_event,
                     [Animal_2].species AS species,
-                    [Animal_2].uuid AS uuid
+                    [Animal_2].uuid AS uuid,
+                    0 AS __cte_depth
                FROM
                     db_1.schema_1.[Animal] AS [Animal_2]
                UNION ALL
@@ -1748,11 +1749,15 @@ class CompilerTests(unittest.TestCase):
                         [Animal_2].lives_in AS lives_in,
                         [Animal_2].important_event AS important_event,
                         [Animal_2].species AS species,
-                        [Animal_2].uuid AS uuid
+                        [Animal_2].uuid AS uuid,
+                        anon_1.__cte_depth + 1 AS __cte_depth
                    FROM
+                        anon_1,
                         db_1.schema_1.[Animal] AS [Animal_1]
                         JOIN db_1.schema_1.[Animal] AS [Animal_2]
                             ON [Animal_1].parent = [Animal_2].uuid
+                   WHERE
+                        anon_1.__cte_depth < 1
             )
             SELECT
                 anon_1.name AS relation_name
@@ -2089,7 +2094,7 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
            WITH anon_1(birthday, color, description, parent, related_entity, name, net_worth,
-                       fed_at, born_at, lives_in, important_event, species, uuid) AS (
+                       fed_at, born_at, lives_in, important_event, species, uuid, __cte_depth) AS (
                SELECT
                    [Animal_2].birthday AS birthday,
                    [Animal_2].color AS color,
@@ -2102,7 +2107,8 @@ class CompilerTests(unittest.TestCase):
                    [Animal_2].born_at AS born_at,
                    [Animal_2].lives_in AS lives_in,
                    [Animal_2].important_event AS important_event,
-                   [Animal_2].species AS species, [Animal_2].uuid AS uuid
+                   [Animal_2].species AS species, [Animal_2].uuid AS uuid,
+                   0 AS __cte_depth
               FROM
                   db_1.schema_1.[Animal] AS [Animal_2]
               UNION ALL
@@ -2119,11 +2125,15 @@ class CompilerTests(unittest.TestCase):
                       [Animal_2].lives_in AS lives_in,
                       [Animal_2].important_event AS important_event,
                       [Animal_2].species AS species,
-                      [Animal_2].uuid AS uuid
+                      [Animal_2].uuid AS uuid,
+                      anon_1.__cte_depth + 1 AS __cte_depth
                   FROM
+                      anon_1,
                       db_1.schema_1.[Animal] AS [Animal_1]
                       JOIN db_1.schema_1.[Animal] AS [Animal_2]
                           ON [Animal_1].parent = [Animal_2].uuid
+                  WHERE
+                       anon_1.__cte_depth < 3
           )
           SELECT
               anon_1.name AS relation_name
@@ -6568,7 +6578,7 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             WITH anon_1(birthday, color, description, parent, related_entity, name, net_worth,
-                        fed_at, born_at, lives_in, important_event, species, uuid) AS (
+                        fed_at, born_at, lives_in, important_event, species, uuid, __cte_depth) AS (
                 SELECT
                      [Animal_3].birthday AS birthday,
                      [Animal_3].color AS color,
@@ -6582,7 +6592,8 @@ class CompilerTests(unittest.TestCase):
                      [Animal_3].lives_in AS lives_in,
                      [Animal_3].important_event AS important_event,
                      [Animal_3].species AS species,
-                     [Animal_3].uuid AS uuid
+                     [Animal_3].uuid AS uuid,
+                     0 AS __cte_depth
                  FROM
                      db_1.schema_1.[Animal] AS [Animal_3]
                  UNION ALL
@@ -6599,11 +6610,15 @@ class CompilerTests(unittest.TestCase):
                          [Animal_3].lives_in AS lives_in,
                          [Animal_3].important_event AS important_event,
                          [Animal_3].species AS species,
-                         [Animal_3].uuid AS uuid
+                         [Animal_3].uuid AS uuid,
+                         anon_1.__cte_depth + 1 AS __cte_depth
                      FROM
+                          anon_1,
                           db_1.schema_1.[Animal] AS [Animal_1]
                           JOIN db_1.schema_1.[Animal] AS [Animal_3]
                               ON [Animal_1].parent = [Animal_3].uuid
+                     WHERE
+                          anon_1.__cte_depth < 3
              )
              SELECT
                  [Animal_1].name AS child_name,
