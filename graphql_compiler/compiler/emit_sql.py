@@ -115,25 +115,26 @@ class CompilationState(object):
 
         # Sanitize literal columns to be used in the query
         depth_string = str(depth)
-        if not depth_string.isnumeric():
+        if any(not char.isdigit() for char in depth_string):
             raise AssertionError(u'Depth must be a number. Received {}'.format(depth_string))
         literal_depth = sqlalchemy.literal_column(depth_string)
         literal_0 = sqlalchemy.literal_column('0')
         literal_1 = sqlalchemy.literal_column('1')
 
-        recursive_query = sqlalchemy.select(
+        base = sqlalchemy.select(
             self._current_alias.c + [literal_0.label(CTE_DEPTH_NAME)]
         ).cte(recursive=True)
 
-        self._current_alias = recursive_query.union_all(sqlalchemy.select(
-            [col for col in recursive_query.c if col.name != CTE_DEPTH_NAME]
-            + [(recursive_query.c[CTE_DEPTH_NAME] + literal_1).label(CTE_DEPTH_NAME)]
+        step = self._current_alias.alias()
+
+        self._current_alias = base.union_all(sqlalchemy.select(
+            step.c + [(base.c[CTE_DEPTH_NAME] + literal_1).label(CTE_DEPTH_NAME)]
         ).select_from(
-            previous_alias.alias().join(
-                self._current_alias,
-                onclause=previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column])
+            base.join(
+                step,
+                onclause=base.c[edge.from_column] == step.c[edge.to_column])
         ).where(
-            recursive_query.c[CTE_DEPTH_NAME] < literal_depth)
+            base.c[CTE_DEPTH_NAME] < literal_depth)
         )
 
         # Join to where we came from

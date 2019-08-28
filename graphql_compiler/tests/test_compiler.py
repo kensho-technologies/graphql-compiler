@@ -1731,38 +1731,38 @@ class CompilerTests(unittest.TestCase):
                     [Animal_2].lives_in AS lives_in,
                     [Animal_2].important_event AS important_event,
                     [Animal_2].species AS species,
-                    [Animal_2].uuid AS uuid, 0 AS __cte_depth
+                    [Animal_2].uuid AS uuid,
+                    0 AS __cte_depth
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_2]
                 UNION ALL
                     SELECT
-                        anon_1.birthday AS birthday,
-                        anon_1.color AS color,
-                        anon_1.description AS description,
-                        anon_1.parent AS parent,
-                        anon_1.related_entity AS related_entity,
-                        anon_1.name AS name,
-                        anon_1.net_worth AS net_worth,
-                        anon_1.fed_at AS fed_at,
-                        anon_1.born_at AS born_at,
-                        anon_1.lives_in AS lives_in,
-                        anon_1.important_event AS important_event,
-                        anon_1.species AS species,
-                        anon_1.uuid AS uuid,
+                        [Animal_3].birthday AS birthday,
+                        [Animal_3].color AS color,
+                        [Animal_3].description AS description,
+                        [Animal_3].parent AS parent,
+                        [Animal_3].related_entity AS related_entity,
+                        [Animal_3].name AS name,
+                        [Animal_3].net_worth AS net_worth,
+                        [Animal_3].fed_at AS fed_at,
+                        [Animal_3].born_at AS born_at,
+                        [Animal_3].lives_in AS lives_in,
+                        [Animal_3].important_event AS important_event,
+                        [Animal_3].species AS species,
+                        [Animal_3].uuid AS uuid,
                         anon_1.__cte_depth + 1 AS __cte_depth
                     FROM
-                       anon_1,
-                       db_1.schema_1.[Animal] AS [Animal_3]
-                       JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                           ON [Animal_1].parent = [Animal_2].uuid
+                        anon_1
+                        JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                            ON anon_1.parent = [Animal_3].uuid
                     WHERE anon_1.__cte_depth < 1
-        )
-        SELECT
-            anon_1.name AS relation_name
-        FROM
-            db_1.schema_1.[Animal] AS [Animal_1]
-            JOIN anon_1
-                ON [Animal_1].parent = anon_1.uuid
+            )
+            SELECT
+                anon_1.name AS relation_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                JOIN anon_1
+                    ON [Animal_1].parent = anon_1.uuid
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2092,46 +2092,45 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_sql = '''
             WITH anon_1(birthday, color, description, parent, related_entity, name, net_worth,
-                        fed_at, born_at, lives_in, important_event, species, uuid, __cte_depth) AS (
-                SELECT
-                    [Animal_2].birthday AS birthday,
-                    [Animal_2].color AS color,
-                    [Animal_2].description AS description,
-                    [Animal_2].parent AS parent,
-                    [Animal_2].related_entity AS related_entity,
-                    [Animal_2].name AS name, [Animal_2].net_worth AS net_worth,
-                    [Animal_2].fed_at AS fed_at,
-                    [Animal_2].born_at AS born_at,
-                    [Animal_2].lives_in AS lives_in,
-                    [Animal_2].important_event AS important_event,
-                    [Animal_2].species AS species,
-                    [Animal_2].uuid AS uuid,
-                    0 AS __cte_depth
-                FROM
-                    db_1.schema_1.[Animal] AS [Animal_2]
-                UNION ALL
-                    SELECT
-                        anon_1.birthday AS birthday,
-                        anon_1.color AS color,
-                        anon_1.description AS description,
-                        anon_1.parent AS parent,
-                        anon_1.related_entity AS related_entity,
-                        anon_1.name AS name,
-                        anon_1.net_worth AS net_worth,
-                        anon_1.fed_at AS fed_at,
-                        anon_1.born_at AS born_at,
-                        anon_1.lives_in AS lives_in,
-                        anon_1.important_event AS important_event,
-                        anon_1.species AS species,
-                        anon_1.uuid AS uuid,
-                        anon_1.__cte_depth + 1 AS __cte_depth
-                    FROM
-                        anon_1,
-                        db_1.schema_1.[Animal] AS [Animal_3]
-                        JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                            ON [Animal_1].parent = [Animal_2].uuid
-                    WHERE
-                        anon_1.__cte_depth < 3
+                       fed_at, born_at, lives_in, important_event, species, uuid, __cte_depth) AS (
+               SELECT
+                   [Animal_2].birthday AS birthday,
+                   [Animal_2].color AS color,
+                   [Animal_2].description AS description,
+                   [Animal_2].parent AS parent,
+                   [Animal_2].related_entity AS related_entity,
+                   [Animal_2].name AS name,
+                   [Animal_2].net_worth AS net_worth,
+                   [Animal_2].fed_at AS fed_at,
+                   [Animal_2].born_at AS born_at,
+                   [Animal_2].lives_in AS lives_in,
+                   [Animal_2].important_event AS important_event,
+                   [Animal_2].species AS species,
+                   [Animal_2].uuid AS uuid,
+                   0 AS __cte_depth
+               FROM
+                   db_1.schema_1.[Animal] AS [Animal_2]
+               UNION ALL
+                   SELECT
+                       [Animal_3].birthday AS birthday,
+                       [Animal_3].color AS color,
+                       [Animal_3].description AS description,
+                       [Animal_3].parent AS parent,
+                       [Animal_3].related_entity AS related_entity,
+                       [Animal_3].name AS name,
+                       [Animal_3].net_worth AS net_worth,
+                       [Animal_3].fed_at AS fed_at,
+                       [Animal_3].born_at AS born_at,
+                       [Animal_3].lives_in AS lives_in,
+                       [Animal_3].important_event AS important_event,
+                       [Animal_3].species AS species,
+                       [Animal_3].uuid AS uuid,
+                       anon_1.__cte_depth + 1 AS __cte_depth
+                   FROM
+                       anon_1
+                       JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                           ON anon_1.parent = [Animal_3].uuid
+                   WHERE anon_1.__cte_depth < 3
             )
             SELECT
                 anon_1.name AS relation_name
@@ -6590,43 +6589,42 @@ class CompilerTests(unittest.TestCase):
                     [Animal_3].lives_in AS lives_in,
                     [Animal_3].important_event AS important_event,
                     [Animal_3].species AS species,
-                    [Animal_3].uuid AS uuid, 0 AS __cte_depth
+                    [Animal_3].uuid AS uuid,
+                    0 AS __cte_depth
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_3]
                 UNION ALL
                     SELECT
-                        anon_1.birthday AS birthday,
-                        anon_1.color AS color,
-                        anon_1.description AS description,
-                        anon_1.parent AS parent,
-                        anon_1.related_entity AS related_entity,
-                        anon_1.name AS name,
-                        anon_1.net_worth AS net_worth,
-                        anon_1.fed_at AS fed_at,
-                        anon_1.born_at AS born_at,
-                        anon_1.lives_in AS lives_in,
-                        anon_1.important_event AS important_event,
-                        anon_1.species AS species,
-                        anon_1.uuid AS uuid,
+                        [Animal_4].birthday AS birthday,
+                        [Animal_4].color AS color,
+                        [Animal_4].description AS description,
+                        [Animal_4].parent AS parent,
+                        [Animal_4].related_entity AS related_entity,
+                        [Animal_4].name AS name,
+                        [Animal_4].net_worth AS net_worth,
+                        [Animal_4].fed_at AS fed_at,
+                        [Animal_4].born_at AS born_at,
+                        [Animal_4].lives_in AS lives_in,
+                        [Animal_4].important_event AS important_event,
+                        [Animal_4].species AS species,
+                        [Animal_4].uuid AS uuid,
                         anon_1.__cte_depth + 1 AS __cte_depth
                     FROM
-                        anon_1,
-                        db_1.schema_1.[Animal] AS [Animal_4]
-                        JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                            ON [Animal_1].parent = [Animal_3].uuid
-                    WHERE
-                        anon_1.__cte_depth < 3
-        )
-        SELECT
-            [Animal_1].name AS child_name,
-            [Animal_2].name AS name,
-            anon_1.name AS self_and_ancestor_name
-        FROM
-            db_1.schema_1.[Animal] AS [Animal_2]
-            LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
-                ON [Animal_2].uuid = [Animal_1].parent
-            JOIN anon_1
-                ON [Animal_1].parent = anon_1.uuid
+                        anon_1
+                        JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                            ON anon_1.parent = [Animal_4].uuid
+                        WHERE anon_1.__cte_depth < 3
+            )
+            SELECT
+                [Animal_1].name AS child_name,
+                [Animal_2].name AS name,
+                anon_1.name AS self_and_ancestor_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_2]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_2].uuid = [Animal_1].parent
+                JOIN anon_1
+                    ON [Animal_1].parent = anon_1.uuid
         '''
         expected_cypher = SKIP_TEST
 
