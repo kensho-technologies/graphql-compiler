@@ -15,6 +15,7 @@ def sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table):
 
     Args:
         ir_blocks: list of BasicBlocks representing the IR to sanity-check
+        query_metadata_table: QueryMetadataTable object that captures information about the query
 
     Raises:
         AssertionError, if the IR has unexpected structure. If the IR produced by the front-end

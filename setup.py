@@ -11,7 +11,7 @@ from setuptools import find_packages, setup
 
 
 def read_file(filename):
-    """Read package file as text to get name and version"""
+    """Read package file as text to get name and version."""
     # intentionally *not* adding an encoding option to open
     # see here:
     # https://github.com/pypa/virtualenv/issues/201#issuecomment-3145690
@@ -21,7 +21,7 @@ def read_file(filename):
 
 
 def find_version():
-    """Only define version in one place"""
+    """Only define version in one place."""
     version_file = read_file('__init__.py')
     version_match = re.search(r'^__version__ = ["\']([^"\']*)["\']',
                               version_file, re.M)
@@ -31,7 +31,7 @@ def find_version():
 
 
 def find_name():
-    """Only define name in one place"""
+    """Only define name in one place."""
     name_file = read_file('__init__.py')
     name_match = re.search(r'^__package_name__ = ["\']([^"\']*)["\']',
                            name_file, re.M)

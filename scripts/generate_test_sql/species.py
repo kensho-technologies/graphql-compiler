@@ -51,7 +51,7 @@ def get_species_generation_commands():
         command_list.append(_create_species_statement(species_name))
 
     for species_name in SPECIES_LIST:
-        for food_or_species_name in random.sample(SPECIES_LIST + FOOD_LIST, NUM_FOODS):
+        for food_or_species_name in random.sample(SPECIES_LIST + FOOD_LIST, NUM_FOODS):  # nosec
             command_list.append(_create_species_eats_statement(species_name, food_or_species_name))
 
     return command_list

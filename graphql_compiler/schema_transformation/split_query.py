@@ -34,7 +34,7 @@ QueryConnection = namedtuple(
 
 class SubQueryNode(object):
     def __init__(self, query_ast):
-        """Represents one piece of a larger query, targeting one schema.
+        """Build a SubQueryNode object representing a piece of a larger query, targeting one schema.
 
         Args:
             query_ast: Document, representing one piece of a query
@@ -516,6 +516,7 @@ def _get_child_query_node_and_out_name(ast, child_type_name, child_field_name, n
     Args:
         ast: Field or InlineFragment, representing the AST that we're using to build a child
              node. It is not modified by this function
+        child_type_name: str, name of the type that this cross schema field leads to
         child_field_name: str. If no field of this name currently exists as a part of the root
                           selections of the input AST, a new field will be created in the AST
                           contained in the output child query node
@@ -743,7 +744,7 @@ class SchemaIdSetterVisitor(Visitor):
         self.type_name_to_schema_id = type_name_to_schema_id
 
     def enter_Field(self, *args):
-        """Check the schema of the type that the field leads to"""
+        """Check the schema of the type that the field leads to."""
         child_type_name = strip_non_null_and_list_from_type(self.type_info.get_type()).name
         self._check_or_set_schema_id(child_type_name)
 
