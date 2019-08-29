@@ -192,6 +192,13 @@ class CompilationState(object):
             base.c[CTE_DEPTH_NAME] < literal_depth)
         )
 
+        # TODO(bojanserafimov): Postgres implements CTEs by executing them ahead of everything
+        #                       else. The onclause into the CTE is not going to filter the
+        #                       recursive base case to a small set of rows, but instead the CTE
+        #                       will be created for all hypothetical starting points.
+        #                       To optimize for Postgres performance, we should instead wrap the
+        #                       part of the query preceding this @recurse into a CTE, and use
+        #                       it as the base case.
         # Join the whole CTE to the rest of the query
         self._from_clause = self._from_clause.join(
             self._current_alias,
