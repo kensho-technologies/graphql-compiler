@@ -154,6 +154,10 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
+        if self._is_in_optional_scope():
+            raise NotImplementedError(u'The SQL backend does not implement mandatory '
+                                      u'traversals inside an @optional scope.')
+
         # Sanitize literal columns to be used in the query
         depth_string = str(depth)
         if any(not char.isdigit() for char in depth_string):
