@@ -4,8 +4,7 @@ import six
 import sqlalchemy
 
 from . import blocks
-from .helpers import FoldScopeLocation
-from .helpers import get_edge_direction_and_name
+from .helpers import FoldScopeLocation, get_edge_direction_and_name
 
 
 CTE_DEPTH_NAME = '__cte_depth'
