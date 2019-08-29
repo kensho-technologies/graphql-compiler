@@ -84,6 +84,11 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
     # a sqlalchemy table. Column types that do not exist for this dialect are not allowed.
     'tables',
 
+    # dict mapping every graphql object type or interface type name in the schema to
+    # a string name of its primary key column. The column cannot contain nulls and must
+    # be unique.
+    'primary_keys',
+
     # dict mapping every graphql object type or interface type name in the schema to:
     #    dict mapping every vertex field name at that type to a DirectJoinDescriptor. The
     #    tables the join is to be performed on are not specified. They are inferred from
@@ -92,7 +97,7 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
 ))
 
 
-def make_sqlalchemy_schema_info(schema, type_equivalence_hints, dialect, tables,
+def make_sqlalchemy_schema_info(schema, type_equivalence_hints, dialect, tables, primary_keys,
                                 join_descriptors, validate=True):
     """Make a SQLAlchemySchemaInfo if the input provided is valid.
 
@@ -118,6 +123,9 @@ def make_sqlalchemy_schema_info(schema, type_equivalence_hints, dialect, tables,
         dialect: sqlalchemy.engine.interfaces.Dialect
         tables: dict mapping every graphql object type or interface type name in the schema to
                 a sqlalchemy table
+        primary_keys: dict mapping every graphql object type or interface type name in the schema
+                      to a string name of its primary key column. The column cannot contain nulls
+                      and must be unique.
         join_descriptors: dict mapping graphql object and interface type names in the schema to:
                              dict mapping every vertex field name at that type to a
                              DirectJoinDescriptor. The tables the join is to be performed on are not
@@ -163,4 +171,5 @@ def make_sqlalchemy_schema_info(schema, type_equivalence_hints, dialect, tables,
                                                      u'for property field {}'
                                                      .format(type_name, field_name))
 
-    return SQLAlchemySchemaInfo(schema, type_equivalence_hints, dialect, tables, join_descriptors)
+    return SQLAlchemySchemaInfo(schema, type_equivalence_hints, dialect, tables,
+                                primary_keys, join_descriptors)

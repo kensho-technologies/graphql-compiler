@@ -8,6 +8,7 @@ from .helpers import FoldScopeLocation, get_edge_direction_and_name
 
 
 CTE_DEPTH_NAME = '__cte_depth'
+CTE_KEY_NAME = '__cte_key'
 
 
 def _traverse_and_validate_blocks(ir):
@@ -152,6 +153,7 @@ class CompilationState(object):
         """Execute a Recurse Block."""
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
+        primary_key = self._sql_schema_info.primary_keys[self._current_classname]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
         if self._is_in_optional_scope():
@@ -170,16 +172,20 @@ class CompilationState(object):
         used_columns = sorted(self._used_columns[self._current_location.query_path])
 
         # The base of the recursive CTE selects all needed columns and sets the depth to 0
-        initial_depth = literal_0.label(CTE_DEPTH_NAME)
         base = sqlalchemy.select(
-            [self._current_alias.c[col] for col in used_columns] + [initial_depth]
+            [self._current_alias.c[col] for col in used_columns] + [
+                self._current_alias.c[primary_key].label(CTE_KEY_NAME),
+                literal_0.label(CTE_DEPTH_NAME),
+            ]
         ).cte(recursive=True)
 
         # The recursive step selects all needed columns, increments the depth, and joins to the base
         step = self._current_alias.alias()
-        step_depth = (base.c[CTE_DEPTH_NAME] + literal_1).label(CTE_DEPTH_NAME)
         self._current_alias = base.union_all(sqlalchemy.select(
-            [step.c[col] for col in used_columns] + [step_depth]
+            [step.c[col] for col in used_columns] + [
+                base.c[CTE_KEY_NAME].label(CTE_KEY_NAME),
+                (base.c[CTE_DEPTH_NAME] + literal_1).label(CTE_DEPTH_NAME),
+            ]
         ).select_from(
             base.join(step, onclause=base.c[edge.from_column] == step.c[edge.to_column])
         ).where(
@@ -189,7 +195,7 @@ class CompilationState(object):
         # Join the whole CTE to the rest of the query
         self._from_clause = self._from_clause.join(
             self._current_alias,
-            onclause=previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column])
+            onclause=previous_alias.c[primary_key] == self._current_alias.c[CTE_KEY_NAME])
 
     def start_global_operations(self):
         """Execute a GlobalOperationsStart block."""

@@ -468,6 +468,8 @@ def get_sqlalchemy_schema_info():
         ),
     }
 
+    primary_keys = {key: 'uuid' for key in six.iterkeys(tables)}
+
     # Compute the subclass sets, including union types
     subclasses = compute_subclass_sets(schema, type_equivalence_hints=type_equivalence_hints)
     for object_type, equivalent_union_type in six.iteritems(type_equivalence_hints):
@@ -557,7 +559,7 @@ def get_sqlalchemy_schema_info():
                 join_descriptors.setdefault(subclass, {})[edge_name] = join_info
 
     return make_sqlalchemy_schema_info(
-        schema, type_equivalence_hints, mssql.dialect(), tables, join_descriptors)
+        schema, type_equivalence_hints, mssql.dialect(), tables, primary_keys, join_descriptors)
 
 
 def generate_schema_graph(orientdb_client):

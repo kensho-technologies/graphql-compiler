@@ -1716,11 +1716,12 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = '''
-            WITH anon_1(name, parent, uuid, __cte_depth) AS (
+            WITH anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
                     [Animal_2].name AS name,
                     [Animal_2].parent AS parent,
                     [Animal_2].uuid AS uuid,
+                    [Animal_2].uuid AS __cte_key,
                     0 AS __cte_depth
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_2]
@@ -1729,6 +1730,7 @@ class CompilerTests(unittest.TestCase):
                         [Animal_3].name AS name,
                         [Animal_3].parent AS parent,
                         [Animal_3].uuid AS uuid,
+                        anon_1.__cte_key AS __cte_key,
                         anon_1.__cte_depth + 1 AS __cte_depth
                     FROM
                         anon_1
@@ -1741,7 +1743,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
                 JOIN anon_1
-                    ON [Animal_1].parent = anon_1.uuid
+                    ON [Animal_1].uuid = anon_1.__cte_key
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2070,12 +2072,13 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = '''
-            WITH anon_1(color, name, parent, uuid, __cte_depth) AS (
+            WITH anon_1(color, name, parent, uuid, __cte_key, __cte_depth) AS (
                SELECT
                    [Animal_2].color AS color,
                    [Animal_2].name AS name,
                    [Animal_2].parent AS parent,
                    [Animal_2].uuid AS uuid,
+                   [Animal_2].uuid AS __cte_key,
                    0 AS __cte_depth
                FROM
                    db_1.schema_1.[Animal] AS [Animal_2]
@@ -2085,6 +2088,7 @@ class CompilerTests(unittest.TestCase):
                        [Animal_3].name AS name,
                        [Animal_3].parent AS parent,
                        [Animal_3].uuid AS uuid,
+                       anon_1.__cte_key AS __cte_key,
                        anon_1.__cte_depth + 1 AS __cte_depth
                    FROM
                        anon_1
@@ -2097,7 +2101,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
                 JOIN anon_1
-                    ON [Animal_1].parent = anon_1.uuid
+                    ON [Animal_1].uuid = anon_1.__cte_key
             WHERE
                 anon_1.color = :wanted
         '''
