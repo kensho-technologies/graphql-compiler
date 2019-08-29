@@ -1716,39 +1716,18 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = '''
-            WITH anon_1(birthday, color, description, parent, related_entity, name, net_worth,
-                        fed_at, born_at, lives_in, important_event, species, uuid, __cte_depth) AS (
+            WITH anon_1(name, parent, uuid, __cte_depth) AS (
                 SELECT
-                    [Animal_2].birthday AS birthday,
-                    [Animal_2].color AS color,
-                    [Animal_2].description AS description,
-                    [Animal_2].parent AS parent,
-                    [Animal_2].related_entity AS related_entity,
                     [Animal_2].name AS name,
-                    [Animal_2].net_worth AS net_worth,
-                    [Animal_2].fed_at AS fed_at,
-                    [Animal_2].born_at AS born_at,
-                    [Animal_2].lives_in AS lives_in,
-                    [Animal_2].important_event AS important_event,
-                    [Animal_2].species AS species,
+                    [Animal_2].parent AS parent,
                     [Animal_2].uuid AS uuid,
                     0 AS __cte_depth
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_2]
                 UNION ALL
                     SELECT
-                        [Animal_3].birthday AS birthday,
-                        [Animal_3].color AS color,
-                        [Animal_3].description AS description,
-                        [Animal_3].parent AS parent,
-                        [Animal_3].related_entity AS related_entity,
                         [Animal_3].name AS name,
-                        [Animal_3].net_worth AS net_worth,
-                        [Animal_3].fed_at AS fed_at,
-                        [Animal_3].born_at AS born_at,
-                        [Animal_3].lives_in AS lives_in,
-                        [Animal_3].important_event AS important_event,
-                        [Animal_3].species AS species,
+                        [Animal_3].parent AS parent,
                         [Animal_3].uuid AS uuid,
                         anon_1.__cte_depth + 1 AS __cte_depth
                     FROM
@@ -2091,39 +2070,20 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = '''
-            WITH anon_1(birthday, color, description, parent, related_entity, name, net_worth,
-                       fed_at, born_at, lives_in, important_event, species, uuid, __cte_depth) AS (
+            WITH anon_1(color, name, parent, uuid, __cte_depth) AS (
                SELECT
-                   [Animal_2].birthday AS birthday,
                    [Animal_2].color AS color,
-                   [Animal_2].description AS description,
-                   [Animal_2].parent AS parent,
-                   [Animal_2].related_entity AS related_entity,
                    [Animal_2].name AS name,
-                   [Animal_2].net_worth AS net_worth,
-                   [Animal_2].fed_at AS fed_at,
-                   [Animal_2].born_at AS born_at,
-                   [Animal_2].lives_in AS lives_in,
-                   [Animal_2].important_event AS important_event,
-                   [Animal_2].species AS species,
+                   [Animal_2].parent AS parent,
                    [Animal_2].uuid AS uuid,
                    0 AS __cte_depth
                FROM
                    db_1.schema_1.[Animal] AS [Animal_2]
                UNION ALL
                    SELECT
-                       [Animal_3].birthday AS birthday,
                        [Animal_3].color AS color,
-                       [Animal_3].description AS description,
-                       [Animal_3].parent AS parent,
-                       [Animal_3].related_entity AS related_entity,
                        [Animal_3].name AS name,
-                       [Animal_3].net_worth AS net_worth,
-                       [Animal_3].fed_at AS fed_at,
-                       [Animal_3].born_at AS born_at,
-                       [Animal_3].lives_in AS lives_in,
-                       [Animal_3].important_event AS important_event,
-                       [Animal_3].species AS species,
+                       [Animal_3].parent AS parent,
                        [Animal_3].uuid AS uuid,
                        anon_1.__cte_depth + 1 AS __cte_depth
                    FROM
@@ -6574,39 +6534,18 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = '''
-            WITH anon_1(birthday, color, description, parent, related_entity, name, net_worth,
-                        fed_at, born_at, lives_in, important_event, species, uuid, __cte_depth) AS (
+            WITH anon_1(name, parent, uuid, __cte_depth) AS (
                 SELECT
-                    [Animal_3].birthday AS birthday,
-                    [Animal_3].color AS color,
-                    [Animal_3].description AS description,
-                    [Animal_3].parent AS parent,
-                    [Animal_3].related_entity AS related_entity,
                     [Animal_3].name AS name,
-                    [Animal_3].net_worth AS net_worth,
-                    [Animal_3].fed_at AS fed_at,
-                    [Animal_3].born_at AS born_at,
-                    [Animal_3].lives_in AS lives_in,
-                    [Animal_3].important_event AS important_event,
-                    [Animal_3].species AS species,
+                    [Animal_3].parent AS parent,
                     [Animal_3].uuid AS uuid,
                     0 AS __cte_depth
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_3]
                 UNION ALL
                     SELECT
-                        [Animal_4].birthday AS birthday,
-                        [Animal_4].color AS color,
-                        [Animal_4].description AS description,
-                        [Animal_4].parent AS parent,
-                        [Animal_4].related_entity AS related_entity,
                         [Animal_4].name AS name,
-                        [Animal_4].net_worth AS net_worth,
-                        [Animal_4].fed_at AS fed_at,
-                        [Animal_4].born_at AS born_at,
-                        [Animal_4].lives_in AS lives_in,
-                        [Animal_4].important_event AS important_event,
-                        [Animal_4].species AS species,
+                        [Animal_4].parent AS parent,
                         [Animal_4].uuid AS uuid,
                         anon_1.__cte_depth + 1 AS __cte_depth
                     FROM

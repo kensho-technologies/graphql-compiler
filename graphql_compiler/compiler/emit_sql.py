@@ -4,6 +4,8 @@ import six
 import sqlalchemy
 
 from . import blocks
+from .helpers import FoldScopeLocation
+from .helpers import get_edge_direction_and_name
 
 
 CTE_DEPTH_NAME = '__cte_depth'
@@ -43,6 +45,45 @@ def _traverse_and_validate_blocks(ir):
         yield block
 
 
+def _find_columns_used(sql_schema_info, ir):
+    """For each query path, find which columns are used in any way."""
+    used_columns = {}
+
+    # Find filters used
+    for location, location_info in ir.query_metadata_table.registered_locations:
+        if isinstance(location, FoldScopeLocation):
+            raise NotImplementedError(u'The SQL backend does not support @fold.')
+        for filter_info in ir.query_metadata_table.get_filter_infos(location):
+            for field in filter_info.fields:
+                used_columns.setdefault(location.query_path, set()).add(field)
+
+    # Find foreign keys used
+    for location, location_info in ir.query_metadata_table.registered_locations:
+        for child_location in ir.query_metadata_table.get_child_locations(location):
+            edge_direction, edge_name = get_edge_direction_and_name(child_location.query_path[-1])
+            vertex_field_name = '{}_{}'.format(edge_direction, edge_name)
+            edge = sql_schema_info.join_descriptors[location_info.type.name][vertex_field_name]
+            used_columns.setdefault(location.query_path, set()).add(edge.from_column)
+            used_columns.setdefault(child_location.query_path, set()).add(edge.to_column)
+
+            # A recurse implies an outgoing foreign key usage
+            child_location_info = ir.query_metadata_table.get_location_info(child_location)
+            if child_location_info.recursive_scopes_depth > location_info.recursive_scopes_depth:
+                used_columns.setdefault(child_location.query_path, set()).add(edge.from_column)
+
+    # Find outputs used
+    for _, output_info in ir.query_metadata_table.outputs:
+        query_path = output_info.location.query_path
+        used_columns.setdefault(query_path, set()).add(output_info.location.field)
+
+    # Find tags used
+    for _, output_info in ir.query_metadata_table.tags:
+        query_path = output_info.location.query_path
+        used_columns.setdefault(query_path, set()).add(output_info.location.field)
+
+    return used_columns
+
+
 class CompilationState(object):
     """Mutable class used to keep track of state while emitting a sql query."""
 
@@ -51,6 +92,7 @@ class CompilationState(object):
         # Metadata
         self._sql_schema_info = sql_schema_info
         self._ir = ir
+        self._used_columns = _find_columns_used(sql_schema_info, ir)
 
         # Current query location state. Only mutable by calling _relocate.
         self._current_location = None  # the current location in the query. None means global.
@@ -121,23 +163,27 @@ class CompilationState(object):
         literal_0 = sqlalchemy.literal_column('0')
         literal_1 = sqlalchemy.literal_column('1')
 
+        # Find which columns should be selected
+        used_columns = sorted(self._used_columns[self._current_location.query_path])
+
+        # The base of the recursive CTE selects all needed columns and sets the depth to 0
+        initial_depth = literal_0.label(CTE_DEPTH_NAME)
         base = sqlalchemy.select(
-            self._current_alias.c + [literal_0.label(CTE_DEPTH_NAME)]
+            [self._current_alias.c[col] for col in used_columns] + [initial_depth]
         ).cte(recursive=True)
 
+        # The recursive step selects all needed columns, increments the depth, and joins to the base
         step = self._current_alias.alias()
-
+        step_depth = (base.c[CTE_DEPTH_NAME] + literal_1).label(CTE_DEPTH_NAME)
         self._current_alias = base.union_all(sqlalchemy.select(
-            step.c + [(base.c[CTE_DEPTH_NAME] + literal_1).label(CTE_DEPTH_NAME)]
+            [step.c[col] for col in used_columns] + [step_depth]
         ).select_from(
-            base.join(
-                step,
-                onclause=base.c[edge.from_column] == step.c[edge.to_column])
+            base.join(step, onclause=base.c[edge.from_column] == step.c[edge.to_column])
         ).where(
             base.c[CTE_DEPTH_NAME] < literal_depth)
         )
 
-        # Join to where we came from
+        # Join the whole CTE to the rest of the query
         self._from_clause = self._from_clause.join(
             self._current_alias,
             onclause=previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column])
