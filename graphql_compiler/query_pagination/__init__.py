@@ -1,4 +1,161 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+"""Query Pagination.
+
+Purpose
+=======
+
+Compiled GraphQL queries are sometimes too expensive to execute, in two ways:
+- They return too many results: high *cardinality*.
+- They require too many operations: high *execution cost*.
+
+If these impractically-expensive queries are executed, they can overload our systems and cause the
+querying system along with all dependent systems to crash.
+
+A possible solution to this is modifying the query so that smaller, easier-to-compute chunks (i.e.
+page) of results are generated, where the user defines what an acceptable page size is. For example,
+with a page size of 1000 results, a query that would return 5000 results is said to return 5 pages
+of results.
+
+For better ease-of-use, the query pagination does this query modification automatically for the
+user. It receives a query, and depending on how many pages of results it will generate, it may
+return the query as-is or split the given query into two smaller queries. If the query was split,
+two queries are generated: the next page query and the remainder query. The former returns
+approximately a page of results of the original query, while the latter contains the rest of the
+result data of the original query.
+
+If the remainder query that the paginator has generated is too large as well, the user can continue
+paginating their query by providing the remainder query to the paginator, and so on.
+
+Limiting Query Result Size
+==========================
+
+Using uniformly distributed property fields, we can arbitrarily restrict the result size of a given
+query. An example of such a property field for many databases is UUID, which is a property uniformly
+sampled from the range of integers between 0 and 2^128-1 (inclusively).
+
+Example:
+    Consider the query:
+    {
+        Animal {
+            name @output(out_name: "animal_name")
+        }
+    }
+    Assume this query returns 1000 results.
+    Since UUIDs are evenly distributed, the following query will return half of the result set
+    of the previous query:
+    {
+        Animal {
+            uuid @filter(op_name: "<", value: ["$median_uuid"])
+            name @output(out_name: "animal_name")
+        }
+    }
+    with parameter median_uuid set to '80000000-0000-0000-0000-000000000000', which is a median
+    UUID value i.e. there's approximately an equal number of UUIDs below and above it.
+    This is since in the old query, the range of Animal UUIDs for the query is [0, 2^128-1], while
+    for the second query, the range is half that: [0, 2^127].
+
+This can further be generalized: By controlling what we set the UUID filter's value, we can
+arbitrarily restrict the size of the range of UUIDs passing through the filter, thereby reducing
+the number of results generated.
+
+Note that even though this example uses UUID, this can be generalized to any uniformly distributed
+vertex property.
+
+Approach Details
+================
+
+Using the cost estimator, we can generate a rough estimate of how many result pages this query will
+generate. Based on this, the paginator adds filters and generates parameters for these filters so
+that the next page query and remainder query can be generated. If the query is estimated to return
+more than a page of results, the paginator modifies the query and parameters so that the next page
+query and remainder query can be generated.
+
+The current approach to splitting a given query into two pairs of query and parameters will be
+documented, which may be subject to change.
+
+Consider paging the query:
+{
+    Animal {
+        uuid @filter(op_name: ">=", value: ["$uuid_lower_bound"])
+        name @output(out_name: "animal_name")
+    }
+}
+with parameter uuid_lower_bound set to '80000000-0000-0000-0000-000000000000' (this corresponds to
+the integer 2^127).
+Assume the cost estimator has predicted this query will return 2 pages of results.
+
+To limit the result size of this query, we'll need to create the next page query and remainder query
+by adding filters over uniformly distributed property fields.
+
+In this case, we'll create the next page query by adding a '<' filter over Animal uuid. So the
+resulting next page query will be:
+{
+    Animal {
+        uuid @filter(op_name: ">=", value: ["$uuid_lower_bound"])
+             @filter(op_name: "<", value: ["$__paged_lower_bound_0"])
+        name @output(out_name: "animal_name")
+    }
+}
+
+Similarly, the remainder query will be created by adding a '>=' filter over Animal uuid. But since a
+'>=' filter exists, we don't have to modify the user's query; we can paginate by just modifying the
+parameter value of uuid_lower_bound.
+
+Now that the next page query and remainder query have been generated, parameters for the '>=' and
+'<' filters in the next page query and remainder query respectively need to be generated such that
+the next page query returns only a page of results, while the remainder query returns everything
+else. Note that even though uuid_lower_bound has a defined value, we can edit the user's parameters
+as long as the two generated queries' union is equivalent to the original query.
+
+In the original query, the range of Animal UUIDs passing through the filter was [2^127, 2^128-1].
+Since this query was estimated to return two pages of results, we need to divide this range into two
+equal-size chunks: [2^127, 2^127+2^126) and [2^127+2^126, 2^128-1].
+
+We can create a pair of query and parameters for the first chunk by using the next page query and
+setting the '__paged_lower_bound_0' parameter to 2^127+2^126.
+
+The second chunk can be created using the remainder query and restricting the 'uuid_lower_bound'
+parameter to 2^127+2^126.
+
+So the resulting pair of query and parameters for the next page query is:
+{
+    Animal {
+        uuid @filter(op_name: ">=", value: ["$uuid_lower_bound"])
+             @filter(op_name: "<", value: ["$__paged_lower_bound_0"])
+        name @output(out_name: "animal_name")
+    }
+}
+with parameters:
+    uuid_lower_bound with value '80000000-0000-0000-0000-000000000000'
+        (corresponding to integer 2^127),
+    and
+    __paged_lower_bound_0 with value 'c0000000-0000-0000-0000-000000000000'
+        (corresponding to integer 2^127+2^126)
+
+Meanwhile the resulting pair of query and parameters for the remainder query is:
+{
+    Animal {
+        uuid @filter(op_name: ">=", value: ["$uuid_lower_bound"])
+        name @output(out_name: "animal_name")
+    }
+}
+with uuid_lower_bound set to 'c0000000-0000-0000-0000-000000000000'
+    (corresponding to integer 2^127+2^126).
+
+TODOs
+=====
+    - Support for more than one pagination filter over a given query.
+        - The more pagination filters available for pagination, the more accurate the page splits.
+          Specifically, queries whose result set is a cartesian product of two independent sets
+          (e.g. queries that return all pairs of Animals and Events) would benefit much from
+          paginating over multiple filters simultaneously.
+    - Support for parameter generation of non-uuid filters.
+    - Better error handling.
+    - Using histograms, pagination can be improved e.g. finding vertices for pagination, parameter
+      generation.
+    - Combine filter_selectivity_utils handling of uuid filters and parameter_generation uuid
+      handling, to avoid having two chunks of code doing the exact same thing.
+"""
 from collections import namedtuple
 
 from graphql.language.printer import print_ast
