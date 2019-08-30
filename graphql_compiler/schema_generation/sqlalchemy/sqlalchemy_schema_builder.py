@@ -11,10 +11,10 @@ SQLEdgeDescriptor = namedtuple(
     )
 )
 
-JunctionTableEdgeEndDescriptor = namedtuple(
+JunctionTableEnd = namedtuple(
     'JunctionTableEdgeEndDescriptor',
     (
-        'local_column',  # Name of the column to join on.
+        'local_column',  # Name of the junction table column to join on.
         'foreign_table',  # Identifier of the table to join with.
         'foreign_column',  # Name of the foreign column to join.
     )
@@ -24,10 +24,10 @@ JunctionTableEdgeDescriptor = namedtuple(
     'JunctionTableEdgeDescriptor',
     (
         'junction_table',  # Identifier of the table to be used as a junction table.
-        'inbound_edge_end_descriptor',
-        # JunctionTableEdgeEndDescriptor specifying how to execute joins with the source table.
-        'outbound_edge_end_descriptor',
-        # JunctionTableEdgeEndDescriptor specifying how to execute joins with the destination table.
+        'inbound_edge_end',
+        # JunctionTableEnd specifying how to execute joins with the source table.
+        'outbound_edge_end',
+        # JunctionTableEnd specifying how to execute joins with the destination table.
     )
 )
 
