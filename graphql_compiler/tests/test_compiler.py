@@ -1376,13 +1376,13 @@ class CompilerTests(unittest.TestCase):
                 JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_2]
                     ON [Animal_4].fed_at = [FeedingEvent_2].uuid
             WHERE (
-                ([FeedingEvent_1].uuid IS NOT NULL) = 0 OR
+                [FeedingEvent_1].uuid IS NULL OR
                 [FeedingEvent_2].name = [FeedingEvent_1].name
             ) AND (
-                ([FeedingEvent_3].uuid IS NOT NULL) = 0 OR
+                [FeedingEvent_3].uuid IS NULL OR
                 [FeedingEvent_2].event_date >= [FeedingEvent_3].event_date
             ) AND (
-                ([FeedingEvent_1].uuid IS NOT NULL) = 0 OR
+                [FeedingEvent_1].uuid IS NULL OR
                 [FeedingEvent_2].event_date <= [FeedingEvent_1].event_date
             )
         '''
@@ -1630,13 +1630,13 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_4].fed_at = [FeedingEvent_2].uuid
             WHERE
                 [Animal_1].name = :animal_name AND (
-                    ([FeedingEvent_1].uuid IS NOT NULL) = 0 OR
+                    [FeedingEvent_1].uuid IS NULL OR
                     [FeedingEvent_2].name = [FeedingEvent_1].name
                 ) AND (
-                    ([FeedingEvent_3].uuid IS NOT NULL) = 0 OR
+                    [FeedingEvent_3].uuid IS NULL OR
                     [FeedingEvent_2].event_date >= [FeedingEvent_3].event_date
                 ) AND (
-                    ([FeedingEvent_1].uuid IS NOT NULL) = 0 OR
+                    [FeedingEvent_1].uuid IS NULL OR
                     [FeedingEvent_2].event_date <= [FeedingEvent_1].event_date
                 )
         '''
@@ -3240,10 +3240,9 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_1].uuid = [Animal_2].parent
                 JOIN db_1.schema_1.[Animal] AS [Animal_3]
                     ON [Animal_1].parent = [Animal_3].uuid
-            WHERE (
-                [Animal_2].parent IS NOT NULL) = 0 OR
-                ([Animal_3].name LIKE '%' + [Animal_2].name + '%'
-            )
+            WHERE
+                [Animal_2].parent IS NULL OR
+                ([Animal_3].name LIKE '%' + [Animal_2].name + '%')
         '''
         expected_cypher = SKIP_TEST
 
@@ -6622,13 +6621,13 @@ class CompilerTests(unittest.TestCase):
                      [FeedingEvent_2].uuid IS NOT NULL OR
                      [Animal_3].parent IS NULL
                 ) AND (
-                     ([FeedingEvent_3].uuid IS NOT NULL) = 0 OR
+                     [FeedingEvent_3].uuid IS NULL OR
                      [FeedingEvent_1].name = [FeedingEvent_3].name
                 ) AND (
-                     ([FeedingEvent_2].uuid IS NOT NULL) = 0 OR
+                     [FeedingEvent_2].uuid IS NULL OR
                      [FeedingEvent_1].event_date >= [FeedingEvent_2].event_date
                 ) AND (
-                     ([FeedingEvent_3].uuid IS NOT NULL) = 0 OR
+                     [FeedingEvent_3].uuid IS NULL OR
                      [FeedingEvent_1].event_date <= [FeedingEvent_3].event_date
                 )
         '''

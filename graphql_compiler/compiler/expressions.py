@@ -834,12 +834,8 @@ class ContextFieldExistence(Expression):
         raise AssertionError(u'ContextFieldExistence.to_cypher() was called: {}'.format(self))
 
     def to_sql(self, aliases, current_alias):
-        """Return a sqlalchemy BinaryExpression representing this ContextFieldExistence."""
-        if self.location.field is not None:
-            raise AssertionError(u'ContextFieldExistence.to_sql() was called with a field: {}'
-                                 .format(self))
-        else:
-            return aliases[self.location.at_vertex().query_path].came_from.isnot(None)
+        """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
+        raise AssertionError(u'ContextFieldExistence.to_sql() was called: {}'.format(self))
 
 
 def _validate_operator_name(operator, supported_operators):
