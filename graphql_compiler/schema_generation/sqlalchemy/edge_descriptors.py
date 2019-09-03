@@ -15,7 +15,7 @@ SQLEdgeDescriptor = namedtuple(
 JunctionTableEnd = namedtuple(
     'JunctionTableEdgeEndDescriptor',
     (
-        'local_column',  # Name of the junction table column to use for SQL join.
+        'junction_table_column',  # Name of the junction table column to use for SQL join.
         'foreign_vertex',  # Name of the foreign vertex.
         'foreign_column',  # Name of the column in the underlying foreign table to use for SQL join.
     )
