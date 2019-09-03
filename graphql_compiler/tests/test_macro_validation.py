@@ -398,7 +398,7 @@ class MacroValidationTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, query, args)
 
-    @pytest.mark.skip(reason='not implemented')
+    @pytest.mark.xfail(strict=True, reason='not implemented')
     def test_macro_edge_duplicating_real_edge_name_at_target(self):
         query = '''{
             Species @macro_edge_definition(name: "out_Animal_BornAt") {
@@ -417,7 +417,7 @@ class MacroValidationTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, query, args)
 
-    @pytest.mark.skip(reason='not implemented')
+    @pytest.mark.xfail(strict=True, reason='not implemented')
     def test_macro_edge_duplicate_macro_definition_on_target(self):
         # Future-proofing, so that we can reverse macro edges
         query = '''{
@@ -449,10 +449,10 @@ class MacroValidationTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             register_macro_edge(macro_registry, duplicate_query, args)
 
-    @pytest.mark.skip(reason='not implemented')
+    @pytest.mark.xfail(strict=True, reason='not implemented')
     def test_macro_edge_duplicate_definition_on_target_subclass(self):
         query = '''{
-            Entity @macro_edge_definition(name: "out_RelatedOfRelated") {
+            Animal @macro_edge_definition(name: "out_RelatedOfRelated") {
                 out_Entity_Related {
                     out_Entity_Related @macro_edge_target {
                         uuid
@@ -461,7 +461,7 @@ class MacroValidationTests(unittest.TestCase):
             }
         }'''
         query_on_subclass = '''{
-            Entity @macro_edge_definition(name: "out_RelatedOfRelated") {
+            Species @macro_edge_definition(name: "out_RelatedOfRelated") {
                 out_Entity_Related {
                     out_Entity_Related {
                         ... on Event @macro_edge_target {
