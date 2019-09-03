@@ -8,12 +8,12 @@ def get_sqlalchemy_schema_graph(tables, sql_edge_descriptors, junction_tables):
                 SQLAlchemy Table. The columns of each table, (with a supported type), will me mapped
                 to a property with the same name as the column in the corresponding VertexType.
         sql_edge_descriptors: dict, str-> SQLEdgeDescriptor, mapping the names of EdgeType objects
-                              in the SchemaGraph to namedtuple objects specifying the source and
-                              destination VertexType objects and which columns of the underlying
-                              tables to use when traversing the edges.
+                              in the SchemaGraph to namedtuple objects that specify the source and
+                              destination VertexType objects.
         junction_tables: dict, str -> JunctionTableEdgeDescriptor, mapping the names of junction
                          table edges to namedtuple objects specifying the source and destination
-                         GraphQL objects and how to use the junction tables as many-to-many edges.
+                         VertexType objects and how to use the junction tables as many-to-many
+                         edges.
 
     Returns:
         SchemaGraph reflecting the inputted metadata.
