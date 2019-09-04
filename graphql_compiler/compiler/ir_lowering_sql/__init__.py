@@ -49,6 +49,7 @@ class ContextColumn(expressions.Expression):
 
     def __init__(self, vertex_query_path, column_name):
         """Construct a new ContextColumn."""
+        super(ContextColumn, self).__init__()
         self._vertex_query_path = vertex_query_path
         self._column_name = column_name
 
