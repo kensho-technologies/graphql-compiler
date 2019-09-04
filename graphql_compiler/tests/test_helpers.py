@@ -468,8 +468,6 @@ def get_sqlalchemy_schema_info():
         ),
     }
 
-    primary_keys = {key: 'uuid' for key in six.iterkeys(tables)}
-
     # Compute the subclass sets, including union types
     subclasses = compute_subclass_sets(schema, type_equivalence_hints=type_equivalence_hints)
     for object_type, equivalent_union_type in six.iteritems(type_equivalence_hints):
