@@ -1,8 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
-SQLEdgeDescriptor = namedtuple(
-    'SQLEdgeDescriptor',
+DirectEdgeDescriptor = namedtuple(
+    'DirectEdgeDescriptor',
     (
         'from_vertex',  # Name of the source vertex.
         'from_column',  # Name of the column of the underlying source table to use for SQL join.
@@ -31,3 +31,8 @@ JunctionTableEdgeDescriptor = namedtuple(
         # JunctionTableEnd specifying how to execute joins with the destination table.
     )
 )
+
+
+def get_restructured_edge_descriptors(direct_edges, junction_table_edges):
+    """Return the SQL edges in a format more suited to resolving vertex fields."""
+    pass

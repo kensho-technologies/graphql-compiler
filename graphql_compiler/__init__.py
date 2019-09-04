@@ -17,7 +17,10 @@ from .schema import (  # noqa
 from .schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from .schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
 from .schema_generation.sqlalchemy.schema_graph_builder import (
-    get_sqlalchemy_schema_graph, get_restructured_edge_descriptors
+    get_sqlalchemy_schema_graph
+)
+from .schema_generation.sqlalchemy.edge_descriptors import (
+    get_restructured_edge_descriptors
 )
 from .schema.schema_info import make_sqlalchemy_schema_info
 
@@ -101,7 +104,7 @@ def graphql_to_gremlin(schema, graphql_query, parameters, type_equivalence_hints
                                 of every GraphQL type in the "value" GraphQL union.
                                 Recursive expansion of type equivalence hints is not performed,
                                 and only type-level correctness of this argument is enforced.
-                                See README.md for more details on everything this parameter does.
+                                See README.md for more details GraphQL objecton everything this parameter does.
                                 *****
                                 Be very careful with this option, as bad input here will
                                 lead to incorrect output queries being generated.
@@ -222,27 +225,40 @@ def graphql_to_redisgraph_cypher(schema, graphql_query, parameters, type_equival
 
 
 def get_sqlalchemy_schema_info(
-    tables, sql_edge_descriptors, junction_tables, dialect, class_to_field_type_overrides=None
-):
+    tables, direct_edges, junction_table_edges, dialect, class_to_field_type_overrides=None):
     """Return a SQLAlchemyInfo from the metadata.
 
     Args:
-        tables: dict, str -> SQLAlchemy Table, mapping every GraphQL object in the schema to a
-                SQLAlchemy Table. The columns of each table, (with a supported type), will me mapped
-                to a GraphQL field with the same name as the column in the corresponding GraphQL
-                object.
-        sql_edge_descriptors: dict, str-> SQLEdgeDescriptor, mapping the names of edges in
-                              the schema to namedtuple objects specifying the source and destination
-                              graphql objects and which columns of the underlying tables to use
-                              when traversing the edges. These  edges will be rendered as vertex
-                              fields named out_ <edgeName> and in_<edgeName> in the source and
-                              destination graphql objects respectively. The edge names must not
-                              conflict with the GraphQL object names.
-        junction_tables: dict, str -> JunctionTableEdgeDescriptor, mapping the names of junction
-                         table edges to namedtuple objects specifying the source and destination
-                         GraphQL objects and how to use the junction tables as many-to-many edges.
-                         Junction table edges names must not conflict with other edge names or
-                         the names of GraphQL objects.
+        tables: dict, str -> SQLAlchemy Table. This dictionary is used to generate the GraphQL
+                objects in the schema in the SQLAlchemySchemaInfo. Each SQLAlchemyTable will be
+                represented as a GraphQL object. The GraphQL object names are the dictionary keys.
+                The fields of the GraphQL objects will be inferred from the columns of the
+                underlying tables. The fields will have the same name as the underlying columns
+                and columns with unsupported types, (SQL types with no matching GraphQL type),
+                will be ignored.
+        direct_edges: dict, str-> DirectEdgeDescriptor. Direct edges are edges that do not
+                      use a junction table, (see junction_table_edges). The traversal of a direct
+                      edge gets compiled to a SQL join in graphql_to_sql(). Therefore, each
+                      DirectEdgeDescriptor not only specifies the source and destination GraphQL
+                      objects, but also which columns to use to use when generating a SQL join
+                      between the underlying source and destination tables. The names of the edges
+                      are the keys in the dictionary and the edges will be rendered as vertex fields
+                      named out_<edgeName> and in_<edgeName> in the source and destination GraphQL
+                      objects respectively. The direct edge names must not conflict with the GraphQL
+                      object names.
+        junction_table_edges: dict, str -> JunctionTableEdgeDescriptor. Junction table edges are
+                              edges that use a junction table to function as many-to-many edges.
+                              The traversal of a junction table edges gets compiled to two SQL joins
+                              in graphql_to_sql(): one from the source table to the junction table
+                              and another from the junction table to the destination table.
+                              Therefore, each JunctionTableEdgeDescriptor specifies the source and
+                              destination GraphQL objects and how to generate SQL joins between the
+                              junction table and the underlying source and destination tables. The
+                              names of the edges are the corresponding keys in the dictionary and
+                              the edges will be rendered as vertex fields named out_<edgeName> and
+                              in_<edgeName> the source and destination GraphQL objects. The junction
+                              table edge names must not conflict with either the GraphQL object
+                              names or direct edge names.
         dialect: sqlalchemy.engine.interfaces.Dialect, specifying the dialect we are compiling to
                  (e.g. sqlalchemy.dialects.mssql.dialect()).
         class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
@@ -252,14 +268,15 @@ def get_sqlalchemy_schema_info(
     Return:
         SQLAlchemySchemaInfo containing the full information needed to compile SQL queries.
     """
-    schema_graph = get_sqlalchemy_schema_graph(tables, sql_edge_descriptors, junction_tables)
+    schema_graph = get_sqlalchemy_schema_graph(
+        tables, direct_edges, junction_table_edges)
 
     # Since there will be no inheritance in the GraphQL schema, it is simpler to omit the class.
     hidden_classes = set()
     graphql_schema = get_graphql_schema_from_schema_graph(
         schema_graph, class_to_field_type_overrides, hidden_classes)
 
-    join_descriptors = get_restructured_edge_descriptors(sql_edge_descriptors)
+    join_descriptors = get_restructured_edge_descriptors(direct_edges, junction_table_edges)
 
     # type_equivalence_hints exists as field in SQLAlchemySchemaInfo to make testing easier for
     # the SQL backend. However, there is no inheritance in SQLAlchemy and there will be no GraphQL
@@ -267,4 +284,4 @@ def get_sqlalchemy_schema_info(
     type_equivalence_hints = {}
 
     return make_sqlalchemy_schema_info(
-        graphql_schema, tables, join_descriptors, type_equivalence_hints, dialect)
+        graphql_schema, type_equivalence_hints, dialect, tables, join_descriptors)
