@@ -14,10 +14,7 @@ from ...compiler.compiler_frontend import ast_to_ir
 from ...compiler.helpers import get_only_element_from_collection
 from ...exceptions import GraphQLInvalidMacroError
 from ...query_formatting.common import ensure_arguments_are_provided
-from ...schema import (
-    INBOUND_EDGE_FIELD_PREFIX, OUTBOUND_EDGE_FIELD_PREFIX, VERTEX_FIELD_PREFIXES, FoldDirective,
-    is_vertex_field_name
-)
+from ...schema import VERTEX_FIELD_PREFIXES, FoldDirective, is_vertex_field_name
 from .ast_rewriting import remove_directives_from_ast
 from .ast_traversal import get_directives_for_ast, get_type_at_macro_edge_target
 from .descriptor import create_descriptor_from_ast_and_args

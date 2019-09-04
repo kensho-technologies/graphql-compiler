@@ -248,10 +248,6 @@ def _check_macro_edge_for_reversal_definition_conflicts(macro_registry, macro_de
         # There is already a reverse macro edge of the same name that starts at the same type.
         # Let's make sure its endpoint types are an exact match compared to the endpoint types
         # of the macro edge being defined.
-        print('\n\nat subclass branch')
-        print(reverse_macro_edge_name, reverse_base_class_name, reverse_target_class_name)
-        print(existing_descriptor.macro_edge_name, existing_descriptor.base_class_name, existing_descriptor.target_class_name)
-
         if reverse_base_class_name != existing_descriptor.base_class_name:
             raise GraphQLInvalidMacroError()
 
@@ -264,10 +260,6 @@ def _check_macro_edge_for_reversal_definition_conflicts(macro_registry, macro_de
         # There is already a macro edge of the same name that points to the same type.
         # Let's make sure its endpoint types are an exact match compared to the endpoint types
         # of the macro edge being defined.
-        print('\n\nto subclass branch')
-        print(reverse_macro_edge_name, reverse_base_class_name, reverse_target_class_name)
-        print(existing_descriptor.macro_edge_name, existing_descriptor.base_class_name, existing_descriptor.target_class_name)
-
         if reverse_target_class_name != existing_descriptor.target_class_name:
             raise GraphQLInvalidMacroError()
 

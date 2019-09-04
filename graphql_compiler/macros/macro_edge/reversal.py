@@ -1,3 +1,4 @@
+# Copyright 2019-present Kensho Technologies, LLC.
 from ...schema import INBOUND_EDGE_FIELD_PREFIX, OUTBOUND_EDGE_FIELD_PREFIX
 
 

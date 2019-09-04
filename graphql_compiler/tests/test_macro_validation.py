@@ -1,8 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import unittest
 
-import pytest
-
 from ..exceptions import GraphQLInvalidArgumentError, GraphQLInvalidMacroError
 from ..macros import register_macro_edge
 from .test_helpers import get_empty_test_macro_registry
