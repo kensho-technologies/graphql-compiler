@@ -1,4 +1,6 @@
 # Copyright 2018-present Kensho Technologies, LLC.
+import six
+
 from .. import blocks, expressions
 from ...compiler.compiler_frontend import IrAndMetadata
 from ..helpers import FoldScopeLocation, get_edge_direction_and_name
@@ -45,17 +47,30 @@ def _find_non_null_columns(schema_info, query_metadata_table):
 
 
 class ContextColumn(expressions.Expression):
-    """A column drawn from the global context."""
+    """A column drawn from the global context.
+
+    It is different than an expressions.ContextField because it does not reference a property
+    type in the GraphQL schema, but a column name in the actual SQL table. Some columns are
+    not even represented in the GraphQL schema as properties. An example is Animals.parent
+    in the test schema.
+    """
 
     def __init__(self, vertex_query_path, column_name):
         """Construct a new ContextColumn."""
-        super(ContextColumn, self).__init__()
+        super(ContextColumn, self).__init__(vertex_query_path, column_name)
         self._vertex_query_path = vertex_query_path
         self._column_name = column_name
+        self.validate()
 
     def validate(self):
         """Validate that the ContextColumn is correctly representable."""
-        pass
+        if not isinstance(self._vertex_query_path, tuple):
+            raise AssertionError(u'vertex_query_path was expected to be a tuple, but was {}: {}'
+                                 .format(type(self._vertex_query_path), self._vertex_query_path))
+
+        if not isinstance(self._column_name, six.string_types):
+            raise AssertionError(u'column_name was expected to be a string, but was {}: {}'
+                                 .format(type(self._column_name), self._column_name))
 
     def to_match(self):
         """Not implemented, should not be used."""
@@ -74,6 +89,7 @@ class ContextColumn(expressions.Expression):
 
     def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
+        self.validate()
         return aliases[self._vertex_query_path].c[self._column_name]
 
 
@@ -83,13 +99,14 @@ def _lower_sql_context_field_existence(schema_info, ir_blocks, query_metadata_ta
 
     def visitor_fn(expression):
         """Convert ContextFieldExistence expressions to TrueLiteral."""
-        if isinstance(expression, expressions.ContextFieldExistence):
-            query_path = expression.location.query_path
-            return expressions.BinaryComposition(
-                u'!=',
-                ContextColumn(query_path, non_null_columns[query_path]),
-                expressions.NullLiteral)
-        return expression
+        if not isinstance(expression, expressions.ContextFieldExistence):
+            return expression
+
+        query_path = expression.location.query_path
+        return expressions.BinaryComposition(
+            u'!=',
+            ContextColumn(query_path, non_null_columns[query_path]),
+            expressions.NullLiteral)
 
     return [block.visit_and_update_expressions(visitor_fn) for block in ir_blocks]
 

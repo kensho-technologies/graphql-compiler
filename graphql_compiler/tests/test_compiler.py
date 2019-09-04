@@ -5756,7 +5756,6 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_3].species = [Species_1].uuid
             WHERE
                 [Species_1].uuid IS NOT NULL OR [Animal_3].uuid IS NULL
-
         '''
         expected_cypher = SKIP_TEST
 
