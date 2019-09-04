@@ -31,15 +31,15 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges, junction_tab
     elements = {}
     # TODO(pmantica1): Use merge_non_overlapping_dicts when macro_system is merged into master.
     elements.update({
-        _get_vertex_type_from_sqlalchemy_table(vertex_name, table)
+        vertex_name: _get_vertex_type_from_sqlalchemy_table(vertex_name, table)
         for vertex_name, table in vertex_name_to_table.items()
     })
     elements.update({
-        _get_edge_type_from_direct_edge(edge_name, direct_edge_descriptor)
+        edge_name: _get_edge_type_from_direct_edge(edge_name, direct_edge_descriptor)
         for edge_name, direct_edge_descriptor in direct_edges.items()
     })
     direct_superclass_sets = {element_name: set() for element_name in elements}
-    SchemaGraph(elements, InheritanceStructure(direct_superclass_sets), set())
+    return SchemaGraph(elements, InheritanceStructure(direct_superclass_sets), set())
 
 
 def _get_vertex_type_from_sqlalchemy_table(vertex_name, table):

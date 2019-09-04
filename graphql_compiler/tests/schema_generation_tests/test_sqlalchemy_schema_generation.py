@@ -30,7 +30,7 @@ def _get_sql_metadata():
 class SQLALchemyGraphqlSchemaGenerationTests(unittest.TestCase):
     def setUp(self):
         metadata = _get_sql_metadata()
-        self.schema_graph = get_sqlalchemy_schema_graph(metadata)
+        self.schema_graph = get_sqlalchemy_schema_graph(metadata.tables, {}, {})
 
     def test_table_vertex_representation(self):
         self.assertEqual(type(self.schema_graph.get_element_by_class_name('A')), VertexType)
