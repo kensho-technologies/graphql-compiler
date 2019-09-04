@@ -835,7 +835,7 @@ class ContextFieldExistence(Expression):
 
     def to_sql(self, aliases, current_alias):
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
-        raise NotImplementedError(u'Filters in @optional are not implemented in SQL')
+        raise AssertionError(u'ContextFieldExistence.to_sql() was called: {}'.format(self))
 
 
 def _validate_operator_name(operator, supported_operators):
