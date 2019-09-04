@@ -559,7 +559,7 @@ def get_sqlalchemy_schema_info():
                 join_descriptors.setdefault(subclass, {})[edge_name] = join_info
 
     return make_sqlalchemy_schema_info(
-        schema, type_equivalence_hints, mssql.dialect(), tables, primary_keys, join_descriptors)
+        schema, type_equivalence_hints, mssql.dialect(), tables, join_descriptors)
 
 
 def generate_schema_graph(orientdb_client):

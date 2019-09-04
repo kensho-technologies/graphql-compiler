@@ -114,6 +114,35 @@ class CompilationState(object):
         else:
             self._current_alias = self._sql_schema_info.tables[self._current_classname].alias()
 
+    def _join_to_parent_location(self, parent_alias, from_column, to_column, optional):
+        """Join the current location to the parent location using the column names specified."""
+        self._came_from[self._current_alias] = self._current_alias.c[to_column]
+
+        if self._is_in_optional_scope() and not optional:
+            # For mandatory edges in optional scope, we emit LEFT OUTER JOIN and enforce the
+            # edge being mandatory with additional filters in the WHERE clause.
+            #
+            # This is some tricky logic. To prevent regression, here's some caution against
+            # solutions that might seem simpler, but are not correct:
+            # 1. You might think it's simpler to just use an INNER JOIN for mandatory edges in
+            #    optional scope. However, if there is a LEFT JOIN miss, the NULL value resulting
+            #    from it will not match anything in this INNER JOIN, and the row will be removed.
+            #    As a result, @optional semantics will not be preserved.
+            # 2. You might think that a cleaner solution is performing all the mandatory traversals
+            #    first in subqueries, and joining those subqueries with LEFT OUTER JOIN. This
+            #    approach is incorrect because a mandatory edge traversal miss inside an optional
+            #    scope is supposed to invalidate the whole result. However, with this solution the
+            #    result will still appear.
+            self._filters.append(sqlalchemy.or_(
+                self._came_from[self._current_alias].isnot(None),
+                self._came_from[parent_alias].is_(None)))
+
+        # Join to where we came from
+        self._from_clause = self._from_clause.join(
+            self._current_alias,
+            onclause=(parent_alias.c[from_column] == self._current_alias.c[to_column]),
+            isouter=self._is_in_optional_scope())
+
     @property
     def _current_location_info(self):
         """Get the LocationInfo of the current location in the query."""
@@ -139,49 +168,29 @@ class CompilationState(object):
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
-
-        self._came_from[self._current_alias] = self._current_alias.c[edge.to_column]
-        if self._is_in_optional_scope() and not optional:
-            # For mandatory edges in optional scope, we emit LEFT OUTER JOIN and enforce the
-            # edge being mandatory with additional filters in the WHERE clause.
-            #
-            # This is some tricky logic. To prevent regression, here's some caution against
-            # solutions that might seem simpler, but are not correct:
-            # 1. You might think it's simpler to just use an INNER JOIN for mandatory edges in
-            #    optional scope. However, if there is a LEFT JOIN miss, the NULL value resulting
-            #    from it will not match anything in this INNER JOIN, and the row will be removed.
-            #    As a result, @optional semantics will not be preserved.
-            # 2. You might think that a cleaner solution is performing all the mandatory traversals
-            #    first in subqueries, and joining those subqueries with LEFT OUTER JOIN. This
-            #    approach is incorrect because a mandatory edge traversal miss inside an optional
-            #    scope is supposed to invalidate the whole result. However, with this solution the
-            #    result will still appear.
-            self._filters.append(sqlalchemy.or_(
-                self._came_from[self._current_alias].isnot(None),
-                self._came_from[previous_alias].is_(None)))
-
-        # Join to where we came from
-        self._from_clause = self._from_clause.join(
-            self._current_alias,
-            onclause=(previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column]),
-            isouter=self._is_in_optional_scope())
+        self._join_to_parent_location(previous_alias, edge.from_column, edge.to_column, optional)
 
     def recurse(self, vertex_field, depth):
         """Execute a Recurse Block."""
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
-        primary_key = self._sql_schema_info.primary_keys[self._current_classname]
+        if not self._current_alias.primary_key:
+            raise AssertionError(u'The table for vertex {} has no primary key specified. This '
+                                 u'information is required to emit a @recurse directive.'
+                                 .format(self._current_classname))
+        if len(self._current_alias.primary_key) > 1:
+            raise AssertionError(u'The table for vertex {} has a composite primary key {}. '
+                                 u'The SQL backend does not support @recurse on tables with '
+                                 u'composite primary keys.'
+                                 .format(self._current_classname, self._current_alias.primary_key))
+        primary_key = self._current_alias.primary_key[0].name
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
-        if self._is_in_optional_scope():
-            raise NotImplementedError(u'The SQL backend does not implement mandatory '
-                                      u'traversals inside an @optional scope.')
-
         # Sanitize literal columns to be used in the query
-        depth_string = str(depth)
-        if any(not char.isdigit() for char in depth_string):
-            raise AssertionError(u'Depth must be a number. Received {}'.format(depth_string))
-        literal_depth = sqlalchemy.literal_column(depth_string)
+        if not isinstance(depth, int):
+            raise AssertionError(u'Depth must be a number. Received {} {}'
+                                 .format(type(depth), depth))
+        literal_depth = sqlalchemy.literal_column(str(depth))
         literal_0 = sqlalchemy.literal_column('0')
         literal_1 = sqlalchemy.literal_column('1')
 
@@ -216,10 +225,7 @@ class CompilationState(object):
         #                       To optimize for Postgres performance, we should instead wrap the
         #                       part of the query preceding this @recurse into a CTE, and use
         #                       it as the base case.
-        # Join the whole CTE to the rest of the query
-        self._from_clause = self._from_clause.join(
-            self._current_alias,
-            onclause=previous_alias.c[primary_key] == self._current_alias.c[CTE_KEY_NAME])
+        self._join_to_parent_location(previous_alias, primary_key, CTE_KEY_NAME, False)
 
     def start_global_operations(self):
         """Execute a GlobalOperationsStart block."""

@@ -5818,6 +5818,7 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_3].species = [Species_1].uuid
             WHERE
                 [Species_1].uuid IS NOT NULL OR [Animal_3].uuid IS NULL
+
         '''
         expected_cypher = SKIP_TEST
 
@@ -6773,7 +6774,41 @@ class CompilerTests(unittest.TestCase):
                     )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            WITH anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
+                SELECT
+                    [Animal_3].name AS name,
+                    [Animal_3].parent AS parent,
+                    [Animal_3].uuid AS uuid,
+                    [Animal_3].uuid AS __cte_key,
+                    0 AS __cte_depth
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_3]
+                UNION ALL
+                    SELECT
+                        [Animal_4].name AS name,
+                        [Animal_4].parent AS parent,
+                        [Animal_4].uuid AS uuid,
+                        anon_1.__cte_key AS __cte_key,
+                        anon_1.__cte_depth + 1 AS __cte_depth
+                    FROM
+                        anon_1
+                        JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                            ON anon_1.parent = [Animal_4].uuid
+                    WHERE anon_1.__cte_depth < 3
+            )
+            SELECT
+                [Animal_1].name AS child_name,
+                [Animal_2].name AS name,
+                anon_1.name AS self_and_ancestor_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_2]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_2].uuid = [Animal_1].parent
+                LEFT OUTER JOIN anon_1 ON [Animal_1].uuid = anon_1.__cte_key
+            WHERE
+                anon_1.__cte_key IS NOT NULL OR [Animal_1].parent IS NULL
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
