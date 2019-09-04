@@ -225,17 +225,20 @@ def graphql_to_redisgraph_cypher(schema, graphql_query, parameters, type_equival
 
 
 def get_sqlalchemy_schema_info(
-    tables, direct_edges, junction_table_edges, dialect, class_to_field_type_overrides=None):
+    vertex_name_to_table, direct_edges, junction_table_edges, dialect,
+    class_to_field_type_overrides=None
+):
     """Return a SQLAlchemyInfo from the metadata.
 
     Args:
-        tables: dict, str -> SQLAlchemy Table. This dictionary is used to generate the GraphQL
-                objects in the schema in the SQLAlchemySchemaInfo. Each SQLAlchemyTable will be
-                represented as a GraphQL object. The GraphQL object names are the dictionary keys.
-                The fields of the GraphQL objects will be inferred from the columns of the
-                underlying tables. The fields will have the same name as the underlying columns
-                and columns with unsupported types, (SQL types with no matching GraphQL type),
-                will be ignored.
+        vertex_name_to_table: dict, str -> SQLAlchemy Table. This dictionary is used to generate the
+                              GraphQL objects in the schema in the SQLAlchemySchemaInfo. Each
+                              SQLAlchemyTable will be represented as a GraphQL object. The GraphQL
+                              object names are the dictionary keys. The fields of the GraphQL
+                              objects will be inferred from the columns of the underlying tables.
+                              The fields will have the same name as the underlying columns and
+                              columns with unsupported types, (SQL types with no matching GraphQL
+                              type), will be ignored.
         direct_edges: dict, str-> DirectEdgeDescriptor. Direct edges are edges that do not
                       use a junction table, (see junction_table_edges). The traversal of a direct
                       edge gets compiled to a SQL join in graphql_to_sql(). Therefore, each
@@ -269,7 +272,7 @@ def get_sqlalchemy_schema_info(
         SQLAlchemySchemaInfo containing the full information needed to compile SQL queries.
     """
     schema_graph = get_sqlalchemy_schema_graph(
-        tables, direct_edges, junction_table_edges)
+        vertex_name_to_table, direct_edges, junction_table_edges)
 
     # Since there will be no inheritance in the GraphQL schema, it is simpler to omit the class.
     hidden_classes = set()
@@ -284,4 +287,4 @@ def get_sqlalchemy_schema_info(
     type_equivalence_hints = {}
 
     return make_sqlalchemy_schema_info(
-        graphql_schema, type_equivalence_hints, dialect, tables, join_descriptors)
+        graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors)
