@@ -1,4 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from ..schema_graph import VertexType, PropertyDescriptor
 
 
 def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges, junction_table_edges):
@@ -25,3 +26,15 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges, junction_tab
         SchemaGraph reflecting the inputted metadata.
     """
     pass
+
+
+def _get_vertex_type_from_sqlalchemy_table(table):
+    """Return the VertexType corresponding to the SQLALchemyTable object."""
+    properties = dict()
+    for column in table.get_children():
+        name = column.key
+        maybe_property_type = try_get_graphql_scalar_type(name, column.type)
+        if maybe_property_type is not None:
+            default = None
+            properties[name] = PropertyDescriptor(maybe_property_type, default)
+    return VertexType(table.name, False, properties, {})
