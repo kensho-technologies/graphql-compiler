@@ -14,7 +14,7 @@ class MacroValidationTests(unittest.TestCase):
         self.maxDiff = None
 
     def test_bad_operation_type(self):
-        query = '''mutation {
+        macro_edge_definition = '''mutation {
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf @macro_edge_target {
@@ -27,10 +27,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_with_output_directive(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf @macro_edge_target {
@@ -43,10 +43,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_with_output_source_directive(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
                 out_Animal_ParentOf @output_source {
                     out_Animal_ParentOf @macro_edge_target {
@@ -59,10 +59,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_with_target_inside_fold(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
                 out_Animal_ParentOf @fold {
                     out_Animal_ParentOf @macro_edge_target {
@@ -75,10 +75,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_with_target_outside_fold(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf @macro_edge_target {
@@ -96,10 +96,10 @@ class MacroValidationTests(unittest.TestCase):
 
         # It should compile successfully
         macro_registry = get_empty_test_macro_registry()
-        register_macro_edge(macro_registry, query, args)
+        register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_missing_target(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf {
@@ -112,10 +112,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_multiple_targets(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
                 out_Animal_ParentOf @macro_edge_target {
                     out_Animal_ParentOf @macro_edge_target {
@@ -128,10 +128,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_multiple_targets_2(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf @macro_edge_target @macro_edge_target {
@@ -144,10 +144,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_missing_definition(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf @macro_edge_target {
@@ -160,10 +160,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_invalid_definition(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf @macro_edge_target {
@@ -176,10 +176,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_target_directive_starting_with_coercion_disallowed(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_AvailableFood_Invalid") {
                 out_Animal_LivesIn {
                     in_Entity_Related @macro_edge_target {
@@ -194,10 +194,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_invalid_no_op_1(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_Self") @macro_edge_target {
                 uuid
             }
@@ -206,10 +206,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_invalid_no_op_2(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_Filter") @macro_edge_target {
                 net_worth @filter(op_name: "=", value: ["$net_worth"])
                 color @filter(op_name: "=", value: ["$color"])
@@ -222,10 +222,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_missing_args(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
                 net_worth @filter(op_name: "=", value: ["$net_worth"])
                 color @filter(op_name: "=", value: ["$color"])
@@ -242,10 +242,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidArgumentError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_extra_args(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
                 net_worth @filter(op_name: "=", value: ["$net_worth"])
                 color @filter(op_name: "=", value: ["$color"])
@@ -264,10 +264,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidArgumentError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_incorrect_arg_types(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
                 net_worth @filter(op_name: "=", value: ["$net_worth"])
                 color @filter(op_name: "=", value: ["$color"])
@@ -287,10 +287,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidArgumentError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_multiple_definitions(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf @macro_edge_target {
@@ -310,10 +310,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_duplicate_definition(self):
-        query = '''{
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf @macro_edge_target {
@@ -325,12 +325,12 @@ class MacroValidationTests(unittest.TestCase):
         args = {}
 
         macro_registry = get_empty_test_macro_registry()
-        register_macro_edge(macro_registry, query, args)
+        register_macro_edge(macro_registry, macro_edge_definition, args)
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_duplicating_real_edge_name(self):
-        query = '''{
+        macro_edge_definition = '''{
             Species @macro_edge_definition(name: "out_Species_Eats") {
                 out_Entity_Related {
                     out_Entity_Related {
@@ -345,10 +345,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_with_bad_name(self):
-        query = '''{
+        macro_edge_definition = '''{
             Species @macro_edge_definition(name: "not_edge_like_name") {
                 out_Entity_Related {
                     out_Entity_Related {
@@ -363,10 +363,10 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_edge_duplicate_definition_on_subclass(self):
-        query = '''{
+        macro_edge_definition = '''{
             Entity @macro_edge_definition(name: "out_RelatedOfRelated") {
                 out_Entity_Related {
                     out_Entity_Related @macro_edge_target {
@@ -375,7 +375,7 @@ class MacroValidationTests(unittest.TestCase):
                 }
             }
         }'''
-        query_on_subclass = '''{
+        macro_edge_definition_on_subclass = '''{
             Event @macro_edge_definition(name: "out_RelatedOfRelated") {
                 out_Entity_Related {
                     out_Entity_Related @macro_edge_target {
@@ -388,20 +388,20 @@ class MacroValidationTests(unittest.TestCase):
 
         # Try registering on the superclass first
         macro_registry = get_empty_test_macro_registry()
-        register_macro_edge(macro_registry, query, args)
+        register_macro_edge(macro_registry, macro_edge_definition, args)
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query_on_subclass, args)
+            register_macro_edge(macro_registry, macro_edge_definition_on_subclass, args)
 
         # Try registering on the subclass first
         macro_registry = get_empty_test_macro_registry()
-        register_macro_edge(macro_registry, query_on_subclass, args)
+        register_macro_edge(macro_registry, macro_edge_definition_on_subclass, args)
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
-    @pytest.mark.xfail(strict=True, reason='not implemented')
     def test_macro_edge_duplicating_real_edge_name_at_target(self):
-        query = '''{
-            Species @macro_edge_definition(name: "out_Animal_BornAt") {
+        """Macro edges, when reversed, cannot duplicate existing edges at that type."""
+        macro_edge_definition = '''{
+            Species @macro_edge_definition(name: "in_Animal_BornAt") {
                 out_Entity_Related {
                     out_Entity_Related {
                         ... on Animal @macro_edge_target {
@@ -415,43 +415,14 @@ class MacroValidationTests(unittest.TestCase):
 
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, query, args)
-
-    @pytest.mark.xfail(strict=True, reason='not implemented')
-    def test_macro_edge_duplicate_macro_definition_on_target(self):
-        # Future-proofing, so that we can reverse macro edges
-        query = '''{
-            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
-                out_Animal_ParentOf {
-                    out_Animal_ParentOf @macro_edge_target {
-                        uuid
-                    }
-                }
-            }
-        }'''
-
-        # Meaningless query that has the same target and name
-        duplicate_query = '''{
-            Species @macro_edge_definition(name: "out_Animal_GrandparentOf") {
-                out_Entity_Related {
-                    out_Entity_Related {
-                        ... on Animal @macro_edge_target {
-                            uuid
-                        }
-                    }
-                }
-            }
-        }'''
-        args = {}
-
-        macro_registry = get_empty_test_macro_registry()
-        register_macro_edge(macro_registry, query, args)
-        with self.assertRaises(AssertionError):
-            register_macro_edge(macro_registry, duplicate_query, args)
+            register_macro_edge(macro_registry, macro_edge_definition, args)
 
     @pytest.mark.xfail(strict=True, reason='not implemented')
     def test_macro_edge_duplicate_definition_on_target_subclass(self):
-        query = '''{
+        # No matter in what order these macros are defined, their corresponding reversed macro edges
+        # always conflict since they are named the same thing and start on a pair of types in a
+        # subclass-superclass relationship with each other.
+        macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_RelatedOfRelated") {
                 out_Entity_Related {
                     out_Entity_Related @macro_edge_target {
@@ -460,7 +431,7 @@ class MacroValidationTests(unittest.TestCase):
                 }
             }
         }'''
-        query_on_subclass = '''{
+        macro_edge_definition_on_subclass = '''{
             Species @macro_edge_definition(name: "out_RelatedOfRelated") {
                 out_Entity_Related {
                     out_Entity_Related {
@@ -475,12 +446,173 @@ class MacroValidationTests(unittest.TestCase):
 
         # Try registering on the superclass first
         macro_registry = get_empty_test_macro_registry()
-        register_macro_edge(macro_registry, query, args)
-        with self.assertRaises(AssertionError):
-            register_macro_edge(macro_registry, query_on_subclass, args)
+        register_macro_edge(macro_registry, macro_edge_definition, args)
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, macro_edge_definition_on_subclass, args)
 
         # Try registering on the subclass first
         macro_registry = get_empty_test_macro_registry()
-        register_macro_edge(macro_registry, query_on_subclass, args)
-        with self.assertRaises(AssertionError):
-            register_macro_edge(macro_registry, query, args)
+        register_macro_edge(macro_registry, macro_edge_definition_on_subclass, args)
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, macro_edge_definition, args)
+
+    def test_macro_edge_reversal_validation_rules_valid(self):
+        """Test that valid reverse macro edges can be defined manually."""
+        macro_edge_definition = '''{
+            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+                out_Animal_ParentOf @macro_edge_target {
+                    uuid
+                }
+            }
+        }'''
+
+        # This edge is named the same as the reversal of "out_Animal_GrandparentOf" above, and is
+        # allowed since it points from Animal to Animal and therefore matches the types of the
+        # original edge -- even though it does something completely different.
+        allowed_macro_edge_definition = '''{
+            Animal @macro_edge_definition(name: "in_Animal_GrandparentOf") {
+                out_Entity_Related {
+                    ... on Animal @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }'''
+
+        args = {}
+
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, macro_edge_definition, args)
+
+        # This call must succeed and not raise errors.
+        register_macro_edge(macro_registry, allowed_macro_edge_definition, args)
+
+    @pytest.mark.xfail(strict=True, reason='not implemented')
+    def test_macro_edge_reversal_validation_rules_origin_incompatible_conflict(self):
+        # Reversing a macro edge must not conflict with an existing macro edge
+        # defined between different types. The first one produces a macro edge from Animal to Animal
+        # whereas the reversal of the second one produces a macro edge with the same name
+        # from Animal to Species.
+        macro_edge_definition = '''{
+            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+                out_Animal_ParentOf @macro_edge_target {
+                    uuid
+                }
+            }
+        }'''
+
+        # Meaningless macro edge that (when reversed) has the same origin type (Animal) and name,
+        # but a different target type (Species) and is therefore invalid.
+        duplicate_macro_edge_definition = '''{
+            Species @macro_edge_definition(name: "in_Animal_GrandparentOf") {
+                out_Entity_Related {
+                    ... on Animal @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }'''
+
+        args = {}
+
+        # The two macros above are mutually incompatible, regardless of registration order.
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, macro_edge_definition, args)
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, duplicate_macro_edge_definition, args)
+
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, duplicate_macro_edge_definition, args)
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, macro_edge_definition, args)
+
+    @pytest.mark.xfail(strict=True, reason='not implemented')
+    def test_macro_edge_reversal_validation_rules_origin_subclass_conflict(self):
+        # Reversing a macro edge must not conflict with an existing macro edge
+        # defined between different types. The first one produces a macro edge from Animal to Animal
+        # whereas the reversal of the second one produces a macro edge with the same name
+        # from Animal to Entity. Entity is a superclass of Animal, but it still is disallowed.
+        macro_edge_definition = '''{
+            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+                out_Animal_ParentOf @macro_edge_target {
+                    uuid
+                }
+            }
+        }'''
+
+        # Meaningless macro edge that (when reversed) has the same origin type (Animal) and name,
+        # but a different target type (Entity) and is therefore invalid.
+        duplicate_macro_edge_definition = '''{
+            Entity @macro_edge_definition(name: "in_Animal_GrandparentOf") {
+                out_Entity_Related {
+                    ... on Animal @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }'''
+
+        args = {}
+
+        # The two macros above are mutually incompatible, regardless of registration order.
+        # The first order tests "origin superclass" conflicts, where the conflict is caused due to
+        # the fact that the origin type of the reversed edge is a superclass of the original.
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, macro_edge_definition, args)
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, duplicate_macro_edge_definition, args)
+
+        # The second order tests "target subclass" conflicts, where the conflict is caused due to
+        # the fact that the target type of the reversed edge is a subclass of the original.
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, duplicate_macro_edge_definition, args)
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, macro_edge_definition, args)
+
+    @pytest.mark.xfail(strict=True, reason='not implemented')
+    def test_macro_edge_reversal_validation_rules_origin_superclass_conflict(self):
+        # Reversing a macro edge must not conflict with an existing macro edge
+        # defined between different types. The first one produces a macro edge from Entity to Entity
+        # whereas the reversal of the second one produces a macro edge with the same name
+        # from Animal to Entity. Entity is a superclass of Animal, but it still is disallowed.
+        macro_edge_definition = '''{
+            Entity @macro_edge_definition(name: "out_DistantRelatedEntity") {
+                out_Entity_Related {
+                    out_Entity_Related @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }'''
+
+        # Meaningless macro edge that (when reversed) has the same origin type (Animal) and name,
+        # but a different target type (Entity) and is therefore invalid.
+        duplicate_macro_edge_definition = '''{
+            Entity @macro_edge_definition(name: "in_DistantRelatedEntity") {
+                in_Entity_Related {
+                    in_Entity_Related {
+                        ... on Animal @macro_edge_target {
+                            uuid
+                        }
+                    }
+                }
+            }
+        }'''
+
+        args = {}
+
+        # The two macros above are mutually incompatible, regardless of registration order.
+        # The first order tests "origin subclass" conflicts, where the conflict is caused due to
+        # the fact that the origin type of the reversed edge is a subclass of the original.
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, macro_edge_definition, args)
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, duplicate_macro_edge_definition, args)
+
+        # The second order tests "target superclass" conflicts, where the conflict is caused due to
+        # the fact that the target type of the reversed edge is a superclass of the original.
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, duplicate_macro_edge_definition, args)
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, macro_edge_definition, args)
+

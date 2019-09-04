@@ -14,9 +14,12 @@ from ...compiler.compiler_frontend import ast_to_ir
 from ...compiler.helpers import get_only_element_from_collection
 from ...exceptions import GraphQLInvalidMacroError
 from ...query_formatting.common import ensure_arguments_are_provided
-from ...schema import VERTEX_FIELD_PREFIXES, FoldDirective, is_vertex_field_name
+from ...schema import (
+    INBOUND_EDGE_FIELD_PREFIX, OUTBOUND_EDGE_FIELD_PREFIX, VERTEX_FIELD_PREFIXES, FoldDirective,
+    is_vertex_field_name
+)
 from .ast_rewriting import remove_directives_from_ast
-from .ast_traversal import get_directives_for_ast
+from .ast_traversal import get_directives_for_ast, get_type_at_macro_edge_target
 from .descriptor import create_descriptor_from_ast_and_args
 from .directives import (
     DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
@@ -138,6 +141,24 @@ def _validate_that_macro_edge_definition_is_only_top_level_field_directive(ast, 
                                    get_human_friendly_ast_field_name(macro_defn_ast)))
 
 
+def _find_subclass_with_field_name(schema, subclass_sets, parent_class_name, field_name):
+    """Find a subclass that has a field with a given name, or return None if none exists."""
+    subclasses = subclass_sets[parent_class_name]
+    if parent_class_name not in subclasses:
+        raise AssertionError(u'Found a class that is not a subclass of itself, this means that the '
+                             u'subclass_sets value is incorrectly constructed: {} {} {}'
+                             .format(parent_class_name, subclasses, subclass_sets))
+
+    for subclass_name in subclasses:
+        class_object = schema.get_type(subclass_name)
+        if field_name in class_object.fields:
+            # Found a match!
+            return subclass_name
+
+    # No match.
+    return None
+
+
 def _validate_macro_edge_name_for_class_name(schema, subclass_sets, class_name, macro_edge_name):
     """Ensure that the provided macro edge name is valid for the given class name."""
     # The macro edge must be a valid edge name.
@@ -149,28 +170,44 @@ def _validate_macro_edge_name_for_class_name(schema, subclass_sets, class_name, 
 
     # The macro edge must not have the same name as an existing edge on the class where it exists,
     # or any of its subclasses.
-    subclasses = subclass_sets[class_name]
-    if class_name not in subclasses:
-        raise AssertionError(u'Found a class that is not a subclass of itself, this means that the '
-                             u'subclass_sets value is incorrectly constructed: {} {} {}'
-                             .format(class_name, subclasses, subclass_sets))
+    conflicting_subclass_name = _find_subclass_with_field_name(
+        schema, subclass_sets, class_name, macro_edge_name)
+    if conflicting_subclass_name is not None:
+        extra_error_text = u''
+        if conflicting_subclass_name != class_name:
+            extra_error_text = (
+                u'{} is a subclass of {}, which is where you attempted to define a macro edge'
+                .format(conflicting_subclass_name, class_name)
+            )
+        raise GraphQLInvalidMacroError(
+            u'The provided macro edge name "{edge_name}" has the same name as '
+            u'an existing field on the "{subclass_name}" GraphQL type or interface. '
+            u'{extra_error_text}'
+            u'This is not allowed, please choose a different name.'
+            .format(edge_name=macro_edge_name, subclass_name=conflicting_subclass_name,
+                    extra_error_text=extra_error_text))
 
-    for subclass_name in subclasses:
-        class_object = schema.get_type(class_name)
-        if macro_edge_name in class_object.fields:
-            extra_error_text = u''
-            if subclass_name != class_name:
-                extra_error_text = (
-                    u'{} is a subclass of {}, which is where you attempted to define a macro edge'
-                    .format(subclass_name, class_name)
-                )
-            raise GraphQLInvalidMacroError(
-                u'The provided macro edge name "{edge_name}" has the same name as '
-                u'an existing field on the "{subclass_name}" GraphQL type or interface. '
-                u'{extra_error_text}'
-                u'This is not allowed, please choose a different name.'
-                .format(edge_name=macro_edge_name, subclass_name=subclass_name,
-                        extra_error_text=extra_error_text))
+
+def _validate_reversed_macro_edge(schema, subclass_sets, reverse_start_class_name, macro_edge_name):
+    """Ensure that the provided macro does not conflict when its direction is reversed."""
+    if macro_edge_name.startswith(INBOUND_EDGE_FIELD_PREFIX):
+        raw_edge_name = macro_edge_name[len(INBOUND_EDGE_FIELD_PREFIX):]
+        prefix = OUTBOUND_EDGE_FIELD_PREFIX
+    elif macro_edge_name.startswith(OUTBOUND_EDGE_FIELD_PREFIX):
+        raw_edge_name = macro_edge_name[len(OUTBOUND_EDGE_FIELD_PREFIX):]
+        prefix = INBOUND_EDGE_FIELD_PREFIX
+    else:
+        raise AssertionError(u'Unreachable condition reached: {}'.format(macro_edge_name))
+
+    reversed_macro_edge_name = prefix + raw_edge_name
+
+    # The reversed macro edge must not have the same name as an existing edge on the target class
+    # it points to, or any of its subclasses. If such an edge exists, then the macro edge is not
+    # reversible since the reversed macro edge would conflict with the existing edge on that class.
+    conflicting_subclass_name = _find_subclass_with_field_name(
+        schema, subclass_sets, reverse_start_class_name, reversed_macro_edge_name)
+    if conflicting_subclass_name is not None:
+        raise GraphQLInvalidMacroError()  # TODO(predrag): Error message
 
 
 def _get_minimal_query_ast_from_macro_ast(macro_ast):
@@ -270,6 +307,9 @@ def get_and_validate_macro_edge_info(schema, subclass_sets, ast, macro_edge_args
     macro_edge_name = get_only_element_from_collection(macro_defn_directive.arguments).value.value
 
     _validate_macro_edge_name_for_class_name(schema, subclass_sets, class_name, macro_edge_name)
+
+    reverse_start_class_name = get_type_at_macro_edge_target(schema, macro_defn_ast).name
+    _validate_reversed_macro_edge(schema, subclass_sets, reverse_start_class_name, macro_edge_name)
 
     descriptor = create_descriptor_from_ast_and_args(
         class_name, macro_edge_name, macro_defn_ast, macro_edge_args)
