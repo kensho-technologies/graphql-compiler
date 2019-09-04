@@ -99,6 +99,7 @@ class CompilationState(object):
         self._current_alias = None  # a sqlalchemy table Alias at the current location
         self._aliases = {}  # mapping marked query paths to table _Aliases representing them
         self._relocate(ir.query_metadata_table.root_location)
+        self._came_from = {}  # mapping aliases to the column used to join into them.
 
         # The query being constructed as the IR is processed
         self._from_clause = self._current_alias  # the main sqlalchemy Selectable
@@ -139,15 +140,31 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
+        self._came_from[self._current_alias] = self._current_alias.c[edge.to_column]
         if self._is_in_optional_scope() and not optional:
-            raise NotImplementedError(u'The SQL backend does not implement mandatory '
-                                      u'traversals inside an @optional scope.')
+            # For mandatory edges in optional scope, we emit LEFT OUTER JOIN and enforce the
+            # edge being mandatory with additional filters in the WHERE clause.
+            #
+            # This is some tricky logic. To prevent regression, here's some caution against
+            # solutions that might seem simpler, but are not correct:
+            # 1. You might think it's simpler to just use an INNER JOIN for mandatory edges in
+            #    optional scope. However, if there is a LEFT JOIN miss, the NULL value resulting
+            #    from it will not match anything in this INNER JOIN, and the row will be removed.
+            #    As a result, @optional semantics will not be preserved.
+            # 2. You might think that a cleaner solution is performing all the mandatory traversals
+            #    first in subqueries, and joining those subqueries with LEFT OUTER JOIN. This
+            #    approach is incorrect because a mandatory edge traversal miss inside an optional
+            #    scope is supposed to invalidate the whole result. However, with this solution the
+            #    result will still appear.
+            self._filters.append(sqlalchemy.or_(
+                self._came_from[self._current_alias].isnot(None),
+                self._came_from[previous_alias].is_(None)))
 
         # Join to where we came from
         self._from_clause = self._from_clause.join(
             self._current_alias,
             onclause=(previous_alias.c[edge.from_column] == self._current_alias.c[edge.to_column]),
-            isouter=optional)
+            isouter=self._is_in_optional_scope())
 
     def recurse(self, vertex_field, depth):
         """Execute a Recurse Block."""
@@ -212,9 +229,11 @@ class CompilationState(object):
 
     def filter(self, predicate):
         """Execute a Filter Block."""
+        sql_expression = predicate.to_sql(self._aliases, self._current_alias)
         if self._is_in_optional_scope():
-            raise NotImplementedError(u'Filters in @optional are not implemented in SQL')
-        self._filters.append(predicate.to_sql(self._aliases, self._current_alias))
+            sql_expression = sqlalchemy.or_(sql_expression,
+                                            self._came_from[self._current_alias].is_(None))
+        self._filters.append(sql_expression)
 
     def mark_location(self):
         """Execute a MarkLocation Block."""
