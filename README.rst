@@ -551,7 +551,7 @@ whose names contain the substring :code:`substr`:
 .. code::
 
     {
-        Animal {
+        Animal @fold {
             name @output(out_name: "animal_name")
             out_Animal_ParentOf {
                 _x_count @filter(op_name: ">=", value: ["$count"])
