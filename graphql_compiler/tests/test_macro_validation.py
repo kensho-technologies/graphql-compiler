@@ -526,7 +526,6 @@ class MacroValidationTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, macro_edge_definition, args)
 
-    @pytest.mark.xfail(strict=True, reason='not implemented')
     def test_macro_edge_reversal_validation_rules_origin_subclass_conflict(self):
         # Reversing a macro edge must not conflict with an existing macro edge
         # defined between different types. The first one produces a macro edge from Animal to Animal
@@ -569,7 +568,6 @@ class MacroValidationTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, macro_edge_definition, args)
 
-    @pytest.mark.xfail(strict=True, reason='not implemented')
     def test_macro_edge_reversal_validation_rules_origin_superclass_conflict(self):
         # Reversing a macro edge must not conflict with an existing macro edge
         # defined between different types. The first one produces a macro edge from Entity to Entity

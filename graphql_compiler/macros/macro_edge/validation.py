@@ -25,6 +25,7 @@ from .directives import (
     DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
     MacroEdgeDefinitionDirective, MacroEdgeTargetDirective, get_schema_for_macro_edge_definitions
 )
+from .reversal import make_reverse_macro_edge_name
 
 
 def _validate_query_definition(ast):
@@ -190,16 +191,7 @@ def _validate_macro_edge_name_for_class_name(schema, subclass_sets, class_name, 
 
 def _validate_reversed_macro_edge(schema, subclass_sets, reverse_start_class_name, macro_edge_name):
     """Ensure that the provided macro does not conflict when its direction is reversed."""
-    if macro_edge_name.startswith(INBOUND_EDGE_FIELD_PREFIX):
-        raw_edge_name = macro_edge_name[len(INBOUND_EDGE_FIELD_PREFIX):]
-        prefix = OUTBOUND_EDGE_FIELD_PREFIX
-    elif macro_edge_name.startswith(OUTBOUND_EDGE_FIELD_PREFIX):
-        raw_edge_name = macro_edge_name[len(OUTBOUND_EDGE_FIELD_PREFIX):]
-        prefix = INBOUND_EDGE_FIELD_PREFIX
-    else:
-        raise AssertionError(u'Unreachable condition reached: {}'.format(macro_edge_name))
-
-    reversed_macro_edge_name = prefix + raw_edge_name
+    reversed_macro_edge_name = make_reverse_macro_edge_name(macro_edge_name)
 
     # The reversed macro edge must not have the same name as an existing edge on the target class
     # it points to, or any of its subclasses. If such an edge exists, then the macro edge is not
@@ -207,6 +199,7 @@ def _validate_reversed_macro_edge(schema, subclass_sets, reverse_start_class_nam
     conflicting_subclass_name = _find_subclass_with_field_name(
         schema, subclass_sets, reverse_start_class_name, reversed_macro_edge_name)
     if conflicting_subclass_name is not None:
+        extra_error_text = u''
         if conflicting_subclass_name != reverse_start_class_name:
             extra_error_text = (
                 u'{} is a subclass of {}, which is where your macro edge definition points to. '
