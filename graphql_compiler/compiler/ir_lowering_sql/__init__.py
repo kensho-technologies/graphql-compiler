@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from .. import blocks, expressions
-from ..helpers import FoldScopeLocation, get_edge_direction_and_name
 from ...compiler.compiler_frontend import IrAndMetadata
+from ..helpers import FoldScopeLocation, get_edge_direction_and_name
 from ..ir_lowering_common import common
 
 
@@ -84,7 +84,7 @@ def _lower_sql_context_field_existence(schema_info, ir_blocks, query_metadata_ta
         if isinstance(expression, expressions.ContextFieldExistence):
             query_path = expression.location.query_path
             return expressions.BinaryComposition(
-                '!=',
+                u'!=',
                 ContextColumn(query_path, non_null_columns[query_path]),
                 expressions.NullLiteral)
         return expression
