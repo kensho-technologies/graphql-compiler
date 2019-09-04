@@ -5,7 +5,7 @@ from graphql.type import GraphQLInt, GraphQLString
 import pytest
 from sqlalchemy import Column, MetaData, Table
 from sqlalchemy.dialects.mssql.base import TINYINT
-from sqlalchemy.types import Binary, Integer, String
+from sqlalchemy.types import Binary, String
 
 from ...schema_generation.schema_graph import VertexType
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
