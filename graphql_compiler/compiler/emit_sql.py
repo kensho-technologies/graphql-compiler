@@ -54,6 +54,7 @@ class CompilationState(object):
         self._current_alias = None  # a sqlalchemy table Alias at the current location
         self._aliases = {}  # mapping marked query paths to table _Aliases representing them
         self._relocate(ir.query_metadata_table.root_location)
+        self._came_from = {}  # mapping aliases to the column used to join into them.
 
         # The query being constructed as the IR is processed
         self._from_clause = self._current_alias  # the main sqlalchemy Selectable
@@ -94,11 +95,7 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
-        # HACK(bojanserafimov): For every alias, I need to remember where it came from, that is
-        #                       which one of its columns joins it to the root of the query.
-        #                       I'm currently just augmenting the Alias object with a came_from
-        #                       field, which is abuse of a python "feature".
-        self._current_alias.came_from = self._current_alias.c[edge.to_column]
+        self._came_from[self._current_alias] = self._current_alias.c[edge.to_column]
         if self._is_in_optional_scope() and not optional:
             # For mandatory edges in optional scope, we emit LEFT OUTER JOIN and enforce the
             # edge being mandatory with additional filters in the WHERE clause.
@@ -115,8 +112,8 @@ class CompilationState(object):
             #    scope is supposed to invalidate the whole result. However, with this solution the
             #    result will still appear.
             self._filters.append(sqlalchemy.or_(
-                self._current_alias.came_from.isnot(None),
-                previous_alias.came_from.is_(None)))
+                self._came_from[self._current_alias].isnot(None),
+                self._came_from[previous_alias].is_(None)))
 
         # Join to where we came from
         self._from_clause = self._from_clause.join(
@@ -134,7 +131,8 @@ class CompilationState(object):
         """Execute a Filter Block."""
         sql_expression = predicate.to_sql(self._aliases, self._current_alias)
         if self._is_in_optional_scope():
-            sql_expression = sqlalchemy.or_(sql_expression, self._current_alias.came_from.is_(None))
+            sql_expression = sqlalchemy.or_(sql_expression,
+                                            self._came_from[self._current_alias].is_(None))
         self._filters.append(sql_expression)
 
     def mark_location(self):
