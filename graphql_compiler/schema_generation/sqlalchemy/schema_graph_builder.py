@@ -29,6 +29,7 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges, junction_tab
         SchemaGraph reflecting the inputted metadata.
     """
     elements = {}
+    # TODO(pmantica1): Use merge_non_overlapping_dicts when macro_system is merged into master.
     elements.update({
         _get_vertex_type_from_sqlalchemy_table(vertex_name, table)
         for vertex_name, table in vertex_name_to_table.items()
