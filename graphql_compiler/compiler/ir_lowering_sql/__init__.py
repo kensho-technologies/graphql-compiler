@@ -46,6 +46,7 @@ def _find_non_null_columns(schema_info, query_metadata_table):
 
 class ContextColumn(expressions.Expression):
     """A column drawn from the global context."""
+
     def __init__(self, vertex_query_path, column_name):
         """Construct a new ContextColumn."""
         self._vertex_query_path = vertex_query_path
