@@ -312,10 +312,10 @@ def get_and_validate_macro_edge_info(schema, subclass_sets, ast, macro_edge_args
 
     _validate_macro_edge_name_for_class_name(schema, subclass_sets, class_name, macro_edge_name)
 
-    reverse_start_class_name = get_type_at_macro_edge_target(schema, macro_defn_ast).name
-    _validate_reversed_macro_edge(schema, subclass_sets, reverse_start_class_name, macro_edge_name)
+    target_class_name = get_type_at_macro_edge_target(schema, macro_defn_ast).name
+    _validate_reversed_macro_edge(schema, subclass_sets, target_class_name, macro_edge_name)
 
     descriptor = create_descriptor_from_ast_and_args(
-        class_name, macro_edge_name, macro_defn_ast, macro_edge_args)
+        class_name, target_class_name, macro_edge_name, macro_defn_ast, macro_edge_args)
 
     return descriptor

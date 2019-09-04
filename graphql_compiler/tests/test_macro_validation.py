@@ -422,7 +422,7 @@ class MacroValidationTests(unittest.TestCase):
         # No matter in what order these macros are defined, their corresponding reversed macro edges
         # always conflict since they are named the same thing and start on a pair of types in a
         # subclass-superclass relationship with each other.
-        macro_edge_definition = '''{
+        macro_edge_definition_on_superclass = '''{
             Animal @macro_edge_definition(name: "out_RelatedOfRelated") {
                 out_Entity_Related {
                     out_Entity_Related @macro_edge_target {
@@ -444,19 +444,19 @@ class MacroValidationTests(unittest.TestCase):
         }'''
         args = {}
 
-        # Try registering on the superclass first
+        # Try registering on the superclass target first
         macro_registry = get_empty_test_macro_registry()
-        register_macro_edge(macro_registry, macro_edge_definition, args)
+        register_macro_edge(macro_registry, macro_edge_definition_on_superclass, args)
         with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, macro_edge_definition_on_subclass, args)
 
-        # Try registering on the subclass first
+        # Try registering on the subclass target first
         macro_registry = get_empty_test_macro_registry()
         register_macro_edge(macro_registry, macro_edge_definition_on_subclass, args)
         with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, macro_edge_definition, args)
+            register_macro_edge(macro_registry, macro_edge_definition_on_superclass, args)
 
-    def test_macro_edge_reversal_validation_rules_valid(self):
+    def test_macro_edge_reversal_validation_rules_valid_case(self):
         """Test that valid reverse macro edges can be defined manually."""
         macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
@@ -487,7 +487,6 @@ class MacroValidationTests(unittest.TestCase):
         # This call must succeed and not raise errors.
         register_macro_edge(macro_registry, allowed_macro_edge_definition, args)
 
-    @pytest.mark.xfail(strict=True, reason='not implemented')
     def test_macro_edge_reversal_validation_rules_origin_incompatible_conflict(self):
         # Reversing a macro edge must not conflict with an existing macro edge
         # defined between different types. The first one produces a macro edge from Animal to Animal

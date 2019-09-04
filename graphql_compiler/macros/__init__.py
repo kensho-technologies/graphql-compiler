@@ -18,7 +18,6 @@ from ..compiler.validation import validate_schema_and_query_ast
 from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
 from ..schema import check_for_nondefault_directive_names
 from .macro_edge import make_macro_edge_descriptor
-from .macro_edge.ast_traversal import get_type_at_macro_edge_target
 from .macro_edge.directives import (
     DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
     MacroEdgeDirective
@@ -54,6 +53,9 @@ MacroRegistry = namedtuple(
         # GraphQLUnionType or GraphQLInterface.
         'subclass_sets',
 
+        # #################
+        # Macro edge info #
+        # #################
         # List[MacroEdgeDescriptor] containing all defined macro edges
         'macro_edges',
 
@@ -63,7 +65,15 @@ MacroRegistry = namedtuple(
         # then this dict will contain entries for that macro edge for all of [X, A, B].
         'macro_edges_at_class',
 
-        # Any other macro types we may add in the future go here.
+        # Dict[str, Dict[str, MacroEdgeDescriptor]] mapping:
+        # class name -> (macro edge name -> MacroEdgeDescriptor)
+        # If a given macro edge has class X as a target, which has subclasses A and B,
+        # then this dict will contain entries for that macro edge for all of [X, A, B].
+        'macro_edges_to_class',
+
+        # ############################################################
+        # Any other macro types we may add in the future under this. #
+        # ############################################################
     )
 )
 
@@ -78,7 +88,8 @@ def create_macro_registry(schema, type_equivalence_hints=None, subclass_sets=Non
         type_equivalence_hints=type_equivalence_hints,
         subclass_sets=subclass_sets,
         macro_edges=list(),
-        macro_edges_at_class=dict())
+        macro_edges_at_class=dict(),
+        macro_edges_to_class=dict())
 
 
 def _find_macro_edge_name_at_subclass(macro_registry, class_name, macro_edge_name):
@@ -91,6 +102,24 @@ def _find_macro_edge_name_at_subclass(macro_registry, class_name, macro_edge_nam
 
     for subclass_name in subclasses:
         existing_descriptor = macro_registry.macro_edges_at_class.get(
+            subclass_name, dict()).get(macro_edge_name, None)
+
+        if existing_descriptor is not None:
+            return existing_descriptor
+
+    return None
+
+
+def _find_macro_edge_name_to_subclass(macro_registry, class_name, macro_edge_name):
+    """Return the descriptor for a given macro edge that points to a subclass, if it exists."""
+    subclasses = macro_registry.subclass_sets[class_name]
+    if class_name not in subclasses:
+        raise AssertionError(u'Found a class that is not a subclass of itself, this means that the '
+                             u'subclass_sets value is incorrectly constructed: {} {} {}'
+                             .format(class_name, subclasses, macro_registry.subclass_sets))
+
+    for subclass_name in subclasses:
+        existing_descriptor = macro_registry.macro_edges_to_class.get(
             subclass_name, dict()).get(macro_edge_name, None)
 
         if existing_descriptor is not None:
@@ -170,24 +199,32 @@ def _check_macro_edge_for_reversal_definition_conflicts(macro_registry, macro_de
         macro_descriptor: MacroEdgeDescriptor describing the macro edge being added
     """
     reverse_macro_edge_name = make_reverse_macro_edge_name(macro_descriptor.macro_edge_name)
-
-    reverse_base_class_name = get_type_at_macro_edge_target(
-        macro_registry.schema_without_macros, macro_descriptor.expansion_ast).name
-
+    reverse_base_class_name = macro_descriptor.target_class_name
     reverse_target_class_name = macro_descriptor.base_class_name
 
     existing_descriptor = _find_macro_edge_name_at_subclass(
         macro_registry, reverse_base_class_name, reverse_macro_edge_name)
 
     if existing_descriptor is not None:
-        # There is already a reverse macro edge. Let's make sure its endpoint types are an exact
-        # match compared to the endpoint types of the macro edge being defined.
+        # There is already a reverse macro edge of the same name that starts at the same type.
+        # Let's make sure its endpoint types are an exact match compared to the endpoint types
+        # of the macro edge being defined.
         if reverse_base_class_name != existing_descriptor.base_class_name:
             raise GraphQLInvalidMacroError()
 
-        existing_target_class_name = get_type_at_macro_edge_target(
-            macro_registry.schema_without_macros, existing_descriptor.expansion_ast).name
-        if reverse_target_class_name != existing_target_class_name:
+        if reverse_target_class_name != existing_descriptor.target_class_name:
+            raise GraphQLInvalidMacroError()
+
+    existing_descriptor = _find_macro_edge_name_to_subclass(
+        macro_registry, reverse_target_class_name, reverse_macro_edge_name)
+    if existing_descriptor is not None:
+        # There is already a macro edge of the same name that points to the same type.
+        # Let's make sure its endpoint types are an exact match compared to the endpoint types
+        # of the macro edge being defined.
+        if reverse_base_class_name != existing_descriptor.base_class_name:
+            raise GraphQLInvalidMacroError()
+
+        if reverse_target_class_name != existing_descriptor.target_class_name:
             raise GraphQLInvalidMacroError()
 
 
@@ -220,6 +257,11 @@ def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
     for subclass_name in macro_registry.subclass_sets[macro_descriptor.base_class_name]:
         macro_registry.macro_edges_at_class.setdefault(
             subclass_name, dict())[macro_descriptor.macro_edge_name] = macro_descriptor
+
+    for subclass_name in macro_registry.subclass_sets[macro_descriptor.target_class_name]:
+        macro_registry.macro_edges_to_class.setdefault(
+            subclass_name, dict())[macro_descriptor.macro_edge_name] = macro_descriptor
+
     macro_registry.macro_edges.append(macro_descriptor)
 
 
@@ -261,10 +303,7 @@ def get_schema_with_macros(macro_registry):
 
     for class_name, macros_for_class in six.iteritems(macro_registry.macro_edges_at_class):
         for macro_edge_name, macro_edge_descriptor in six.iteritems(macros_for_class):
-            type_at_target = get_type_at_macro_edge_target(
-                macro_registry.schema_without_macros,
-                macro_edge_descriptor.expansion_ast)
-            list_type_at_target = ListType(NamedType(Name(type_at_target.name)))
+            list_type_at_target = ListType(NamedType(Name(macro_edge_descriptor.target_class_name)))
             arguments = []
             directives = [Directive(Name(MacroEdgeDirective.name))]
             definitions_by_name[class_name].fields.append(FieldDefinition(

@@ -6,7 +6,7 @@ from ...ast_manipulation import get_ast_field_name
 from ...exceptions import GraphQLCompilationError
 from ...schema import FilterDirective, is_vertex_field_name
 from .ast_rewriting import find_target_and_copy_path_to_it, merge_selection_sets, replace_tag_names
-from .ast_traversal import get_all_tag_names, get_type_at_macro_edge_target
+from .ast_traversal import get_all_tag_names
 from .directives import MacroEdgeTargetDirective
 from .name_generation import generate_disambiguations
 
@@ -28,7 +28,7 @@ def _ensure_directives_on_macro_edge_are_supported(macro_edge_field):
                         set(directives_supported_at_macro_expansion)))
 
 
-def _merge_selection_into_target(subclass_sets, target_ast, type_at_target, selection_ast):
+def _merge_selection_into_target(subclass_sets, target_ast, target_class_name, selection_ast):
     """Add the selections, directives, and coercions from the selection_ast to the target_ast.
 
     Mutate the target_ast, merging into it everything from the selection_ast. If the target
@@ -41,7 +41,7 @@ def _merge_selection_into_target(subclass_sets, target_ast, type_at_target, sele
     Args:
         subclass_sets: dict mapping class names to the set of names of their subclasses
         target_ast: AST at the @macro_edge_target directive
-        type_at_target: GraphQL type at the @macro_edge_target
+        target_class_name: str, the name of the GraphQL type to which the macro edge points
         selection_ast: AST to merge inside the target. Required to have a nonempty selection set.
     """
     if selection_ast.selection_set is None or not selection_ast.selection_set.selections:
@@ -83,13 +83,13 @@ def _merge_selection_into_target(subclass_sets, target_ast, type_at_target, sele
         # to work around the limitations of the GraphQL type system. If the user's coercion
         # is to a subtype of the macro edge target's type, then this is a narrowing conversion and
         # we simply add the user's coercion, or replace any existing coercion if one is present.
-        if coercion_class != type_at_target.name:
-            if coercion_class not in subclass_sets.get(type_at_target.name, set()):
+        if coercion_class != target_class_name:
+            if coercion_class not in subclass_sets.get(target_class_name, set()):
                 raise GraphQLCompilationError(
                     u'Attempting to use a type coercion to coerce a value of type {field_type} '
                     u'(from field named {field_name}) to incompatible type {coercion_type}, which '
                     u'is not a subtype of {field_type}. Only coercions to a subtype are allowed.'
-                    .format(field_type=type_at_target.name,
+                    .format(field_type=target_class_name,
                             coercion_type=coercion_class,
                             field_name=get_ast_field_name(selection_ast)))
 
@@ -111,12 +111,12 @@ def _merge_selection_into_target(subclass_sets, target_ast, type_at_target, sele
         target_ast.selection_set, continuation_ast.selection_set)
 
 
-def _expand_specific_macro_edge(schema, subclass_sets, macro_ast, selection_ast):
+def _expand_specific_macro_edge(subclass_sets, target_class_name, macro_ast, selection_ast):
     """Produce a tuple containing the new replacement selection AST, and a list of extra selections.
 
     Args:
-        schema: GraphQL schema object, created using the GraphQL library
         subclass_sets: dict mapping class names to the set of names of its subclasses
+        target_class_name: str, the name of the GraphQL type to which the macro edge points
         macro_ast: AST GraphQL object defining the macro edge. Originates from
                    the "expansion_ast" key from a MacroEdgeDescriptor, though potentially sanitized.
         selection_ast: GraphQL AST object containing the selection that is relying on a macro edge.
@@ -151,8 +151,8 @@ def _expand_specific_macro_edge(schema, subclass_sets, macro_ast, selection_ast)
                                      u'as it should have been caught during validation. Macro AST: '
                                      u'{}'.format(macro_ast))
             replacement_selection_ast = new_ast
-            type_at_target = get_type_at_macro_edge_target(schema, macro_ast)
-            _merge_selection_into_target(subclass_sets, target_ast, type_at_target, selection_ast)
+            _merge_selection_into_target(
+                subclass_sets, target_ast, target_class_name, selection_ast)
 
     if replacement_selection_ast is None:
         raise AssertionError(u'Found no @macro_edge_target directives in macro selection set. {}'
@@ -230,9 +230,10 @@ def expand_potential_macro_edge(macro_registry, current_schema_type, ast, query_
     tag_names.update(name_change_map.values())
 
     new_ast, prefix_selections, suffix_selections = _expand_specific_macro_edge(
-        macro_registry.schema_without_macros, macro_registry.subclass_sets,
+        macro_registry.subclass_sets, macro_edge_descriptor.target_class_name,
         sanitized_macro_ast, ast)
-    # TODO(predrag): Write a test that makes sure we've chosen unique names for filter arguments.
+    # TODO(predrag): Write a test that makes sure we've chosen names for filter arguments that
+    #                do not overlap with user's filter arguments.
     new_query_args = _merge_non_overlapping_dicts(query_args, macro_edge_descriptor.macro_args)
 
     return (new_ast, new_query_args, prefix_selections, suffix_selections)
