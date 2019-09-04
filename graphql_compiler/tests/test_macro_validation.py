@@ -417,7 +417,6 @@ class MacroValidationTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, macro_edge_definition, args)
 
-    @pytest.mark.xfail(strict=True, reason='not implemented')
     def test_macro_edge_duplicate_definition_on_target_subclass(self):
         # No matter in what order these macros are defined, their corresponding reversed macro edges
         # always conflict since they are named the same thing and start on a pair of types in a
@@ -507,6 +506,51 @@ class MacroValidationTests(unittest.TestCase):
                 out_Entity_Related {
                     ... on Animal @macro_edge_target {
                         uuid
+                    }
+                }
+            }
+        }'''
+
+        args = {}
+
+        # The two macros above are mutually incompatible, regardless of registration order.
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, macro_edge_definition, args)
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, duplicate_macro_edge_definition, args)
+
+        macro_registry = get_empty_test_macro_registry()
+        register_macro_edge(macro_registry, duplicate_macro_edge_definition, args)
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, macro_edge_definition, args)
+
+    def test_macro_edge_reversal_validation_rules_target_incompatible_conflict(self):
+        # Reversing a macro edge must not conflict with an existing macro edge defined
+        # between different types. The first one produces a macro edge from Species to Animal
+        # whereas the reversal of the second one produces a macro edge with the same name
+        # from Animal to Entity.
+        macro_edge_definition = '''{
+            Species @macro_edge_definition(name: "out_DistantRelatedAnimal") {
+                out_Entity_Related {
+                    out_Entity_Related {
+                        ... on Animal @macro_edge_target {
+                            uuid
+                        }
+                    }
+                }
+            }
+        }'''
+
+        # Meaningless macro edge that when reversed has the same name and points to Entity
+        # (a superclass of Species, causing the conflict), but has a different target type (Animal)
+        # and is therefore invalid.
+        duplicate_macro_edge_definition = '''{
+            Entity @macro_edge_definition(name: "in_DistantRelatedAnimal") {
+                out_Entity_Related {
+                    out_Entity_Related {
+                        ... on Animal @macro_edge_target {
+                            uuid
+                        }
                     }
                 }
             }
