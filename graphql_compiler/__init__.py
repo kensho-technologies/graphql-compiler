@@ -104,7 +104,7 @@ def graphql_to_gremlin(schema, graphql_query, parameters, type_equivalence_hints
                                 of every GraphQL type in the "value" GraphQL union.
                                 Recursive expansion of type equivalence hints is not performed,
                                 and only type-level correctness of this argument is enforced.
-                                See README.md for more details GraphQL objecton everything this parameter does.
+                                See README.md for more details on everything this parameter does.
                                 *****
                                 Be very careful with this option, as bad input here will
                                 lead to incorrect output queries being generated.
