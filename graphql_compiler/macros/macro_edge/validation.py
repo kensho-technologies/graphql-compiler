@@ -207,7 +207,18 @@ def _validate_reversed_macro_edge(schema, subclass_sets, reverse_start_class_nam
     conflicting_subclass_name = _find_subclass_with_field_name(
         schema, subclass_sets, reverse_start_class_name, reversed_macro_edge_name)
     if conflicting_subclass_name is not None:
-        raise GraphQLInvalidMacroError()  # TODO(predrag): Error message
+        if conflicting_subclass_name != reverse_start_class_name:
+            extra_error_text = (
+                u'{} is a subclass of {}, which is where your macro edge definition points to. '
+                .format(conflicting_subclass_name, reverse_start_class_name)
+            )
+        raise GraphQLInvalidMacroError(
+            u'The provided macro edge name "{edge_name}" is invalid: if the edge direction were '
+            u'reversed, it would conflict with an existing field on the "{subclass_name}" GraphQL '
+            u'type or interface. {extra_error_text}'
+            u'This is not allowed, please choose a different name.'
+            .format(edge_name=macro_edge_name, subclass_name=conflicting_subclass_name,
+                    extra_error_text=extra_error_text))
 
 
 def _get_minimal_query_ast_from_macro_ast(macro_ast):
