@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from ..schema_graph import (
-    VertexType, PropertyDescriptor, EdgeType, SchemaGraph, InheritanceStructure
+    VertexType, PropertyDescriptor, EdgeType, SchemaGraph, InheritanceStructure,
+    link_schema_elements
 )
 from .scalar_type_mapper import try_get_graphql_scalar_type
 
@@ -39,7 +40,9 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges, junction_tab
         for edge_name, direct_edge_descriptor in direct_edges.items()
     })
     direct_superclass_sets = {element_name: set() for element_name in elements}
-    return SchemaGraph(elements, InheritanceStructure(direct_superclass_sets), set())
+    inheritance_structure = InheritanceStructure(direct_superclass_sets)
+    link_schema_elements(elements, inheritance_structure)
+    return SchemaGraph(elements, inheritance_structure, set())
 
 
 def _get_vertex_type_from_sqlalchemy_table(vertex_name, table):
