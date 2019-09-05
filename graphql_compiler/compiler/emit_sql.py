@@ -113,7 +113,9 @@ class CompilationState(object):
         if self._current_location.query_path in self._aliases:
             self._current_alias = self._aliases[self._current_location.query_path]
         else:
-            self._current_alias = self._sql_schema_info.tables[self._current_classname].alias()
+            self._current_alias = (
+                self._sql_schema_info.vertex_name_to_table[self._current_classname].alias()
+            )
 
     def _join_to_parent_location(self, parent_alias, from_column, to_column, optional):
         """Join the current location to the parent location using the column names specified."""
