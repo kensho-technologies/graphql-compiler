@@ -460,12 +460,6 @@ def get_sqlalchemy_schema_info():
             sqlalchemy.Column('limbs', sqlalchemy.Integer, nullable=False),
             schema='db_1.schema_1'
         ),
-        'UniquelyIdentifiable': sqlalchemy.Table(
-            'UniquelyIdentifiable',
-            sqlalchemy_metadata_1,
-            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            schema='db_1.schema_1'
-        ),
     }
 
     # Compute the subclass sets, including union types
@@ -557,7 +551,7 @@ def get_sqlalchemy_schema_info():
                 join_descriptors.setdefault(subclass, {})[edge_name] = join_info
 
     return make_sqlalchemy_schema_info(
-        schema, type_equivalence_hints, mssql.dialect(), tables, join_descriptors)
+        schema, type_equivalence_hints, mssql.dialect(), tables, join_descriptors, validate=False)
 
 
 def generate_schema_graph(orientdb_client):
