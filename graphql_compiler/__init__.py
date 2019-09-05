@@ -167,14 +167,10 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
         tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
         The tuple is of type (GraphQLSchema, {GraphQLObjectType -> GraphQLUnionType}).
     """
-    if class_to_field_type_overrides is None:
-        class_to_field_type_overrides = dict()
-    if hidden_classes is None:
-        hidden_classes = set()
-
     schema_graph = get_orientdb_schema_graph(schema_data, [])
-    return get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
-                                                hidden_classes)
+    return get_graphql_schema_from_schema_graph(
+        schema_graph, class_to_field_type_overrides=class_to_field_type_overrides,
+        hidden_classes=hidden_classes)
 
 
 def graphql_to_redisgraph_cypher(schema, graphql_query, parameters, type_equivalence_hints=None):
