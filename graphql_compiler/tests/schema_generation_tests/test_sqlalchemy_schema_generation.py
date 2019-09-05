@@ -7,7 +7,7 @@ from sqlalchemy import Column, MetaData, Table
 from sqlalchemy.dialects.mssql import TINYINT, dialect
 from sqlalchemy.types import Binary, Integer, String
 
-from ... import get_sqlalchemy_schema_info
+from ... import get_sqlalchemy_schema_info_from_specified_metadata
 from ...schema_generation.sqlalchemy.edge_descriptors import (
     DirectEdgeDescriptor, DirectJoinDescriptor
 )
@@ -53,7 +53,7 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
     def setUp(self):
         vertex_name_to_table = _get_test_vertex_name_to_table()
         direct_edges = _get_test_direct_edges()
-        self.schema_info = get_sqlalchemy_schema_info(
+        self.schema_info = get_sqlalchemy_schema_info_from_specified_metadata(
             vertex_name_to_table, direct_edges, {}, dialect())
 
     def test_table_vertex_representation(self):
