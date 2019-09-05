@@ -1,7 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from ...schema import OUTBOUND_EDGE_FIELD_PREFIX, INBOUND_EDGE_FIELD_PREFIX
+
+from ...schema import INBOUND_EDGE_FIELD_PREFIX, OUTBOUND_EDGE_FIELD_PREFIX
 from ...schema.schema_info import DirectJoinDescriptor
+
 
 DirectEdgeDescriptor = namedtuple(
     'DirectEdgeDescriptor',

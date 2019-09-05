@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from ..schema_graph import (
-    VertexType, PropertyDescriptor, EdgeType, SchemaGraph, InheritanceStructure,
+    EdgeType, InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType,
     link_schema_elements
 )
 from .scalar_type_mapper import try_get_graphql_scalar_type

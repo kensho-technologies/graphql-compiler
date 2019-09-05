@@ -1,11 +1,11 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import unittest
 
+from graphql.type import GraphQLInt, GraphQLObjectType, GraphQLString
 import pytest
-from graphql.type import GraphQLInt, GraphQLString, GraphQLObjectType
 from sqlalchemy import Column, MetaData, Table
-from sqlalchemy.dialects.mssql import dialect, TINYINT
-from sqlalchemy.types import Binary, String, Integer
+from sqlalchemy.dialects.mssql import TINYINT, dialect
+from sqlalchemy.types import Binary, Integer, String
 
 from ... import get_sqlalchemy_schema_info
 from ...schema_generation.sqlalchemy.edge_descriptors import (
@@ -32,7 +32,6 @@ def _get_test_vertex_name_to_table():
         'Table2',
         metadata2,
         Column('destination_column', Integer()),
-        Column('invalid_destination_column_with_different_type', String()),
     )
 
     return {'Table1': table1, 'ArbitraryObjectName': table2}

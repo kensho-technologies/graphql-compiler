@@ -14,17 +14,11 @@ from .schema import (  # noqa
     DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal,
     insert_meta_fields_into_existing_schema, is_meta_field
 )
+from .schema.schema_info import make_sqlalchemy_schema_info
 from .schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from .schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
-from .schema_generation.sqlalchemy.schema_graph_builder import (
-    get_sqlalchemy_schema_graph
-)
-from .schema_generation.sqlalchemy.edge_descriptors import (
-    get_join_descriptors
-)
-from .schema.schema_info import make_sqlalchemy_schema_info
-
-
+from .schema_generation.sqlalchemy.edge_descriptors import get_join_descriptors
+from .schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_schema_graph
 
 
 __package_name__ = 'graphql-compiler'
