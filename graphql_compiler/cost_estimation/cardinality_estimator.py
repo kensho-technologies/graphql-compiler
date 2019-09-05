@@ -345,7 +345,8 @@ def estimate_query_result_cardinality(
         hidden_classes = set()
 
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(
-        schema_graph, class_to_field_type_overrides, hidden_classes
+        schema_graph, class_to_field_type_overrides=class_to_field_type_overrides,
+        hidden_classes=hidden_classes
     )
     query_metadata = graphql_to_ir(
         graphql_schema, graphql_query, type_equivalence_hints=type_equivalence_hints
