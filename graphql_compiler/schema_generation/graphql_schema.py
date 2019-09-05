@@ -220,8 +220,8 @@ def _create_union_types_specification(schema_graph, graphql_types, hidden_classe
     return types_spec
 
 
-def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
-                                         hidden_classes):
+def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides=None,
+                                         hidden_classes=None):
     """Return a GraphQL schema object corresponding to the schema of the given schema graph.
 
     Args:

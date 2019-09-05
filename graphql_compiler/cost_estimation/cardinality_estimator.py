@@ -339,15 +339,7 @@ def estimate_query_result_cardinality(
         float, expected query result cardinality. Equal to the number of root vertices multiplied by
         the expected number of result sets per full expansion of a root vertex.
     """
-    if class_to_field_type_overrides is None:
-        class_to_field_type_overrides = dict()
-    if hidden_classes is None:
-        hidden_classes = set()
-
-    graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(
-        schema_graph, class_to_field_type_overrides=class_to_field_type_overrides,
-        hidden_classes=hidden_classes
-    )
+    graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
     query_metadata = graphql_to_ir(
         graphql_schema, graphql_query, type_equivalence_hints=type_equivalence_hints
     ).query_metadata_table
