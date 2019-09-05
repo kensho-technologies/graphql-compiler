@@ -1815,8 +1815,8 @@ the target database.
 Our SQL backend supports basic traversals, filters, tags and outputs, but there are still some
 pieces in development:
 
-- Directives: :code:`@optional`, :code:`@fold`, :code:`@recurse`
-- Filter operators: :code:`is_null`, :code:`is_not_null`, :code:`has_edge_degree`
+- Directives: :code:`@fold`
+- Filter operators: :code:`has_edge_degree`
 - Dialect-specific features, like Postgres array types, and use of filter operators
   specific to them: :code:`contains`, :code:`intersects`, :code:`name_or_alias`
 - Meta fields: :code:`__typename`, :code:`_x_count`

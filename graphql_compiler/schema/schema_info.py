@@ -82,6 +82,7 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
 
     # dict mapping every graphql object type or interface type name in the schema to
     # a sqlalchemy table. Column types that do not exist for this dialect are not allowed.
+    # All tables are expected to have primary keys.
     'tables',
 
     # dict mapping every graphql object type or interface type name in the schema to:
