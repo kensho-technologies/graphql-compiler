@@ -16,28 +16,7 @@ DirectEdgeDescriptor = namedtuple(
 )
 
 
-JunctionTableEnd = namedtuple(
-    'JunctionTableEnd',
-    (
-        'junction_table_column',  # Name of the junction table column to use for SQL join.
-        'foreign_vertex',  # Name of the foreign vertex.
-        'foreign_column',  # Name of the column in the underlying foreign table to use for SQL join.
-    )
-)
-
-JunctionTableEdgeDescriptor = namedtuple(
-    'JunctionTableEdgeDescriptor',
-    (
-        'junction_table',  # SQLAlchemy Table.
-        'inbound_edge_end',
-        # JunctionTableEnd specifying how to execute joins with the source table.
-        'outbound_edge_end',
-        # JunctionTableEnd specifying how to execute joins with the destination table.
-    )
-)
-
-
-def get_join_descriptors(direct_edges, junction_table_edges):
+def get_join_descriptors(direct_edges):
     """Return the SQL edges in a format more suited to resolving vertex fields."""
     join_descriptors = {}
     for edge_name, direct_edge_descriptor in direct_edges.items():

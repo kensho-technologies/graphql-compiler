@@ -6,7 +6,7 @@ from ..schema_graph import (
 from .scalar_type_mapper import try_get_graphql_scalar_type
 
 
-def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges, junction_table_edges):
+def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
     """Return a SchemaGraph from the metadata.
 
     Args:
@@ -21,10 +21,6 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges, junction_tab
         direct_edges: dict, str -> DirectEdgeDescriptor. This dictionary will be used to generate
                       EdgeType objects. The name of the EdgeType objects will be dictionary keys and
                       the connections will be deduced from the DirectEdgeDescriptor objects.
-        junction_table_edges: dict, str -> JunctionTableEdgeDescriptor. This dictionary will be
-                              used to generate EdgeType objects. The name of the EdgeType objects
-                              will be dictionary keys and the connections will be deduced from the
-                              JunctionTableEdgeDescriptor objects.
 
     Returns:
         SchemaGraph reflecting the inputted metadata.
