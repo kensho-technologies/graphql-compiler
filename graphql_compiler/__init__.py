@@ -14,14 +14,8 @@ from .schema import (  # noqa
     DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal,
     insert_meta_fields_into_existing_schema, is_meta_field
 )
-from .schema.schema_info import SQLAlchemySchemaInfo
-from .schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-from .schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
-from .schema_generation.sqlalchemy.edge_descriptors import (
-    get_join_descriptors_from_edge_descriptors
-)
-from .schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_schema_graph
-
+from .schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data  # noqa
+from .schema_generation.sqlalchemy import get_sqlalchemy_schema_info_from_specified_metadata # noqa
 
 __package_name__ = 'graphql-compiler'
 __version__ = '1.11.0'
@@ -119,64 +113,6 @@ def graphql_to_gremlin(schema, graphql_query, parameters, type_equivalence_hints
         query=insert_arguments_into_query(compilation_result, parameters))
 
 
-def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_type_overrides=None,
-                                                 hidden_classes=None):
-    """Construct a GraphQL schema from an OrientDB schema.
-
-    Args:
-        schema_data: list of dicts describing the classes in the OrientDB schema. The following
-                     format is the way the data is structured in OrientDB 2. See
-                     the README.md file for an example of how to query this data.
-                     Each dict has the following string fields:
-                        - name: string, the name of the class.
-                        - superClasses (optional): list of strings, the name of the class's
-                                                   superclasses.
-                        - superClass (optional): string, the name of the class's superclass. May be
-                                                 used instead of superClasses if there is only one
-                                                 superClass. Used for backwards compatibility with
-                                                 OrientDB.
-                        - customFields (optional): dict, string -> string, data defined on the class
-                                                   instead of instances of the class.
-                        - abstract: bool, true if the class is abstract.
-                        - properties: list of dicts, describing the class's properties.
-                                      Each property dictionary has the following string fields:
-                                         - name: string, the name of the property.
-                                         - type: int, builtin OrientDB type ID of the property.
-                                                 See schema_properties.py for the mapping.
-                                         - linkedType (optional): int, if the property is a
-                                                                  collection of builtin OrientDB
-                                                                  objects, then it indicates their
-                                                                  type ID.
-                                         - linkedClass (optional): string, if the property is a
-                                                                   collection of class instances,
-                                                                   then it indicates the name of
-                                                                   the class. If class is an edge
-                                                                   class, and the field name is
-                                                                   either 'in' or 'out', then it
-                                                                   describes the name of an
-                                                                   endpoint of the edge.
-                                         - defaultValue: string, the textual representation of the
-                                                         default value for the property, as
-                                                         returned by OrientDB's schema
-                                                         introspection code, e.g., '{}' for
-                                                         the embedded set type. Note that if the
-                                                         property is a collection type, it must
-                                                         have a default value.
-        class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
-                                       (string -> {string -> GraphQLType}). Used to override the
-                                       type of a field in the class where it's first defined and all
-                                       the class's subclasses.
-        hidden_classes: optional set of strings, classes to not include in the GraphQL schema.
-
-    Returns:
-        tuple of (GraphQL schema object, GraphQL type equivalence hints dict).
-        The tuple is of type (GraphQLSchema, {GraphQLObjectType -> GraphQLUnionType}).
-    """
-    schema_graph = get_orientdb_schema_graph(schema_data, [])
-    return get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides,
-                                                hidden_classes)
-
-
 def graphql_to_redisgraph_cypher(schema, graphql_query, parameters, type_equivalence_hints=None):
     """Compile the GraphQL input into a RedisGraph Cypher query and associated metadata.
 
@@ -218,54 +154,3 @@ def graphql_to_redisgraph_cypher(schema, graphql_query, parameters, type_equival
         schema, graphql_query, type_equivalence_hints=type_equivalence_hints)
     return compilation_result._replace(
         query=insert_arguments_into_query(compilation_result, parameters))
-
-
-def get_sqlalchemy_schema_info_from_specified_metadata(
-    vertex_name_to_table, direct_edges, dialect, class_to_field_type_overrides=None
-):
-    """Return a SQLAlchemyInfo from the metadata.
-
-    Args:
-        vertex_name_to_table: dict, str -> SQLAlchemy Table. This dictionary is used to generate the
-                              GraphQL objects in the schema in the SQLAlchemySchemaInfo. Each
-                              SQLAlchemyTable will be represented as a GraphQL object. The GraphQL
-                              object names are the dictionary keys. The fields of the GraphQL
-                              objects will be inferred from the columns of the underlying tables.
-                              The fields will have the same name as the underlying columns and
-                              columns with unsupported types, (SQL types with no matching GraphQL
-                              type), will be ignored.
-        direct_edges: dict, str-> DirectEdgeDescriptor. Direct edges are edges that do not
-                      use a junction table, (see junction_table_edges). The traversal of a direct
-                      edge gets compiled to a SQL join in graphql_to_sql(). Therefore, each
-                      DirectEdgeDescriptor not only specifies the source and destination GraphQL
-                      objects, but also which columns to use to use when generating a SQL join
-                      between the underlying source and destination tables. The names of the edges
-                      are the keys in the dictionary and the edges will be rendered as vertex fields
-                      named out_<edgeName> and in_<edgeName> in the source and destination GraphQL
-                      objects respectively. The direct edge names must not conflict with the GraphQL
-                      object names.
-        dialect: sqlalchemy.engine.interfaces.Dialect, specifying the dialect we are compiling to
-                 (e.g. sqlalchemy.dialects.mssql.dialect()).
-        class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
-                                       (string -> {string -> GraphQLType}). Used to override the
-                                       type of a field in the class where it's first defined and all
-                                       the class's subclasses.
-    Return:
-        SQLAlchemySchemaInfo containing the full information needed to compile SQL queries.
-    """
-    schema_graph = get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges)
-
-    # Since there will be no inheritance in the GraphQL schema, it is simpler to omit the class.
-    hidden_classes = set()
-    graphql_schema, _ = get_graphql_schema_from_schema_graph(
-        schema_graph, class_to_field_type_overrides, hidden_classes)
-
-    join_descriptors = get_join_descriptors_from_edge_descriptors(direct_edges)
-
-    # type_equivalence_hints exists as field in SQLAlchemySchemaInfo to make testing easier for
-    # the SQL backend. However, there is no inheritance in SQLAlchemy and there will be no GraphQL
-    # union types in the schema, so we set the type_equivalence_hints to be an empty dict.
-    type_equivalence_hints = {}
-
-    return SQLAlchemySchemaInfo(
-        graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors)

@@ -170,7 +170,7 @@ def generate_sql_integration_data(sql_test_backends):
         },
     )
     table_values = [
-        (sql_schema_info.tables['Animal'], animal_rows),
+        (sql_schema_info.vertex_name_to_table['Animal'], animal_rows),
     ]
     for sql_test_backend in six.itervalues(sql_test_backends):
         for table, insert_values in table_values:

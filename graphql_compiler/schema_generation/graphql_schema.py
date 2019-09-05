@@ -240,6 +240,7 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
         class_to_field_type_overrides = dict()
     if hidden_classes is None:
         hidden_classes = set()
+
     _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_type_overrides,
                                                                schema_graph)
 
