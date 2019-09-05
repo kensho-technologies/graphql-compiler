@@ -93,44 +93,69 @@ def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
     return new_ir_blocks
 
 
-def lower_has_substring_binary_compositions(ir_blocks):
-    """Lower Filter blocks that use the "has_substring" operation into MATCH-representable form."""
-    def visitor_fn(expression):
-        """Rewrite BinaryComposition expressions with "has_substring" into representable form."""
-        # The implementation of "has_substring" must use the LIKE operator in MATCH, and must
-        # prepend and append "%" symbols to the substring being matched.
-        # We transform any structures that resemble the following:
-        #    BinaryComposition(u'has_substring', X, Y)
-        # into the following:
-        #    BinaryComposition(
-        #        u'LIKE',
-        #        X,
-        #        BinaryComposition(
-        #            u'+',
-        #            Literal("%"),
-        #            BinaryComposition(
-        #                 u'+',
-        #                 Y,
-        #                 Literal("%")
-        #            )
-        #        )
-        #    )
-        if not isinstance(expression, BinaryComposition) or expression.operator != u'has_substring':
-            return expression
+def _prepend_wildcard(expression):
+    """Prepend an SQL-MATCH wildcard to an expression."""
+    return BinaryComposition(
+        u'+',
+        Literal('%'),
+        expression
+    )
 
-        return BinaryComposition(
-            u'LIKE',
-            expression.left,
-            BinaryComposition(
-                u'+',
-                Literal('%'),
-                BinaryComposition(
-                    u'+',
-                    expression.right,
-                    Literal('%')
-                )
+
+def _append_wildcard(expression):
+    """Append an SQL-MATCH wildcard to an expression."""
+    return BinaryComposition(
+        u'+',
+        expression,
+        Literal('%')
+    )
+
+
+def lower_string_operators(ir_blocks):
+    """Lower Filters with "has_substring", "starts_with", or "ends_with" operation into MATCH."""
+    def visitor_fn(expression):
+        if not isinstance(expression, BinaryComposition):
+            return expression
+        elif expression.operator == u'has_substring':
+            # The implementation of "has_substring" must use the LIKE operator in MATCH, and must
+            # prepend and append "%" (wildcard) symbols to the substring being matched.
+            # We transform any structures that resemble the following:
+            #    BinaryComposition(u'has_substring', X, Y)
+            # into the following:
+            #    BinaryComposition(
+            #        u'LIKE',
+            #        X,
+            #        BinaryComposition(
+            #            u'+',
+            #            Literal("%"),
+            #            BinaryComposition(
+            #                 u'+',
+            #                 Y,
+            #                 Literal("%")
+            #            )
+            #        )
+            #    )
+            return BinaryComposition(
+                u'LIKE',
+                expression.left,
+                _prepend_wildcard(_append_wildcard(expression.right))
             )
-        )
+        elif expression.operator == u'starts_with':
+            # Append a wildcard to the right of the argument string
+            return BinaryComposition(
+                u'LIKE',
+                expression.left,
+                _append_wildcard(expression.right)
+            )
+        elif expression.operator == u'ends_with':
+            # Prepend a wildcard to the left of the argument string
+            return BinaryComposition(
+                u'LIKE',
+                expression.left,
+                _prepend_wildcard(expression.right)
+            )
+        else:
+            return expression
 
     new_ir_blocks = [
         block.visit_and_update_expressions(visitor_fn)

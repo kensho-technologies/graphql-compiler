@@ -65,15 +65,13 @@ from graphql import (
     GraphQLInt, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLUnionType
 )
 from graphql.language.ast import Field, InlineFragment
-from graphql.validation import validate
-import six
 
 from . import blocks, expressions
 from ..ast_manipulation import (
     get_ast_field_name, get_only_query_definition, get_only_selection_from_ast, safe_parse_graphql
 )
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
-from ..schema import COUNT_META_FIELD_NAME, DIRECTIVES, is_vertex_field_name
+from ..schema import COUNT_META_FIELD_NAME, is_vertex_field_name
 from .context_helpers import (
     get_context_fold_info, get_optional_scope_or_none, has_encountered_output_source,
     has_fold_count_filter, is_in_fold_innermost_scope, is_in_fold_scope, is_in_optional_scope,
@@ -93,6 +91,7 @@ from .helpers import (
     is_tagged_parameter, strip_non_null_from_type, validate_output_name, validate_safe_string
 )
 from .metadata import LocationInfo, OutputInfo, QueryMetadataTable, RecurseInfo, TagInfo
+from .validation import validate_schema_and_query_ast
 
 
 # LocationStackEntry contains the following:
@@ -591,7 +590,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 
 
 def _are_locations_in_same_fold(first_location, second_location):
-    """Returns True if locations are contained in the same fold scope."""
+    """Return True if locations are contained in the same fold scope."""
     return (
         isinstance(first_location, FoldScopeLocation) and
         isinstance(second_location, FoldScopeLocation) and
@@ -943,82 +942,6 @@ def _compile_output_step(query_metadata_table):
     return blocks.ConstructResult(output_fields)
 
 
-def _validate_schema_and_ast(schema, ast):
-    """Validate the supplied graphql schema and ast.
-
-    This method wraps around graphql-core's validation to enforce a stricter requirement of the
-    schema -- all directives supported by the compiler must be declared by the schema, regardless of
-    whether each directive is used in the query or not.
-
-    Args:
-        schema: GraphQL schema object, created using the GraphQL library
-        ast: abstract syntax tree representation of a graphql query
-
-    Returns:
-        list containing schema and/or query validation errors
-    """
-    core_graphql_errors = validate(schema, ast)
-
-    # The following directives appear in the core-graphql library, but are not supported by the
-    # graphql compiler.
-    unsupported_default_directives = frozenset([
-        frozenset([
-            'include',
-            frozenset(['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']),
-            frozenset(['if'])
-        ]),
-        frozenset([
-            'skip',
-            frozenset(['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']),
-            frozenset(['if'])
-        ]),
-        frozenset([
-            'deprecated',
-            frozenset(['ENUM_VALUE', 'FIELD_DEFINITION']),
-            frozenset(['reason'])
-        ])
-    ])
-
-    # Directives expected by the graphql compiler.
-    expected_directives = {
-        frozenset([
-            directive.name,
-            frozenset(directive.locations),
-            frozenset(six.viewkeys(directive.args))
-        ])
-        for directive in DIRECTIVES
-    }
-
-    # Directives provided in the parsed graphql schema.
-    actual_directives = {
-        frozenset([
-            directive.name,
-            frozenset(directive.locations),
-            frozenset(six.viewkeys(directive.args))
-        ])
-        for directive in schema.get_directives()
-    }
-
-    # Directives missing from the actual directives provided.
-    missing_directives = expected_directives - actual_directives
-    if missing_directives:
-        missing_message = (u'The following directives were missing from the '
-                           u'provided schema: {}'.format(missing_directives))
-        core_graphql_errors.append(missing_message)
-
-    # Directives that are not specified by the core graphql library. Note that Graphql-core
-    # automatically injects default directives into the schema, regardless of whether
-    # the schema supports said directives. Hence, while the directives contained in
-    # unsupported_default_directives are incompatible with the graphql-compiler, we allow them to
-    # be present in the parsed schema string.
-    extra_directives = actual_directives - expected_directives - unsupported_default_directives
-    if extra_directives:
-        extra_message = (u'The following directives were supplied in the given schema, but are not '
-                         u'not supported by the GraphQL compiler: {}'.format(extra_directives))
-        core_graphql_errors.append(extra_message)
-
-    return core_graphql_errors
-
 ##############
 # Public API #
 ##############
@@ -1064,7 +987,7 @@ def ast_to_ir(schema, ast, type_equivalence_hints=None):
 
     In the case of implementation bugs, could also raise ValueError, TypeError, or AssertionError.
     """
-    validation_errors = _validate_schema_and_ast(schema, ast)
+    validation_errors = validate_schema_and_query_ast(schema, ast)
     if validation_errors:
         raise GraphQLValidationError(u'String does not validate: {}'.format(validation_errors))
 

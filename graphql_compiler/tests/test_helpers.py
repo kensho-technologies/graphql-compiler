@@ -561,7 +561,7 @@ def get_sqlalchemy_schema_info():
 
 
 def generate_schema_graph(orientdb_client):
-    """Generate SchemaGraph from a pyorient client"""
+    """Generate SchemaGraph from a pyorient client."""
     schema_records = orientdb_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
     index_records = orientdb_client.command(ORIENTDB_INDEX_RECORDS_QUERY)
@@ -570,7 +570,7 @@ def generate_schema_graph(orientdb_client):
 
 
 def generate_schema(orientdb_client, class_to_field_type_overrides=None, hidden_classes=None):
-    """Generate schema and type equivalence dict from a pyorient client"""
+    """Generate schema and type equivalence dict from a pyorient client."""
     schema_records = orientdb_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
     return get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_type_overrides,

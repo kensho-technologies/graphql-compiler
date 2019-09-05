@@ -14,9 +14,9 @@ from ..workarounds import (
 )
 from .between_lowering import lower_comparisons_to_between
 from .ir_lowering import (
-    lower_backtrack_blocks, lower_folded_coerce_types_into_filter_blocks,
-    lower_has_substring_binary_compositions, remove_backtrack_blocks_from_fold,
-    rewrite_binary_composition_inside_ternary_conditional, truncate_repeated_single_step_traversals,
+    lower_backtrack_blocks, lower_folded_coerce_types_into_filter_blocks, lower_string_operators,
+    remove_backtrack_blocks_from_fold, rewrite_binary_composition_inside_ternary_conditional,
+    truncate_repeated_single_step_traversals,
     truncate_repeated_single_step_traversals_in_sub_queries
 )
 from .optional_traversal import (
@@ -78,7 +78,7 @@ def lower_ir(schema_info, ir):
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
     ir_blocks = rewrite_binary_composition_inside_ternary_conditional(ir_blocks)
     ir_blocks = merge_consecutive_filter_clauses(ir_blocks)
-    ir_blocks = lower_has_substring_binary_compositions(ir_blocks)
+    ir_blocks = lower_string_operators(ir_blocks)
     ir_blocks = orientdb_eval_scheduling.workaround_lowering_pass(
         ir_blocks, ir.query_metadata_table)
 

@@ -219,7 +219,7 @@ class CompilerTests(unittest.TestCase):
                 related_name: m.Animal__out_Entity_Related___1.name
             ])}
         '''
-        expected_sql = SKIP_TEST  # Not implemented
+        expected_sql = NotImplementedError
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
@@ -254,7 +254,7 @@ class CompilerTests(unittest.TestCase):
                 related_name: m.Animal__out_Entity_Related___1.name
             ])}
         '''
-        expected_sql = SKIP_TEST  # Not implemented
+        expected_sql = NotImplementedError
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
@@ -406,7 +406,14 @@ class CompilerTests(unittest.TestCase):
                 parent_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS parent_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_2]
+                JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_2].parent = [Animal_1].uuid
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -466,7 +473,17 @@ class CompilerTests(unittest.TestCase):
                 species_name: m.Animal__out_Animal_OfSpecies___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS child_name,
+                [Species_1].name AS species_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_2]
+                JOIN db_1.schema_1.[Species] AS [Species_1]
+                    ON [Animal_2].species = [Species_1].uuid
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_2].parent = [Animal_1].uuid
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_OfSpecies]->(Animal__out_Animal_OfSpecies___1:Species)
@@ -789,7 +806,18 @@ class CompilerTests(unittest.TestCase):
                           m.Animal__out_Animal_ParentOf___1.uuid : null)
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name,
+                [Animal_2].name AS parent_name,
+                [Animal_2].uuid AS uuid
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].parent = [Animal_2].uuid
+            WHERE
+                [Animal_2].name = :name OR [Animal_2].uuid IS NULL
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -1328,7 +1356,36 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [FeedingEvent_1].event_date AS child_fed_at,
+                [FeedingEvent_2].event_date AS grandparent_fed_at,
+                [FeedingEvent_3].event_date AS other_parent_fed_at
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].parent = [Animal_2].uuid
+                LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
+                    ON [Animal_2].fed_at = [FeedingEvent_1].uuid
+                JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                    ON [Animal_2].uuid = [Animal_3].parent
+                LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_3]
+                    ON [Animal_3].fed_at = [FeedingEvent_3].uuid
+                JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                    ON [Animal_1].uuid = [Animal_4].parent
+                JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_2]
+                    ON [Animal_4].fed_at = [FeedingEvent_2].uuid
+            WHERE (
+                [FeedingEvent_1].uuid IS NULL OR
+                [FeedingEvent_2].name = [FeedingEvent_1].name
+            ) AND (
+                [FeedingEvent_3].uuid IS NULL OR
+                [FeedingEvent_2].event_date >= [FeedingEvent_3].event_date
+            ) AND (
+                [FeedingEvent_1].uuid IS NULL OR
+                [FeedingEvent_2].event_date <= [FeedingEvent_1].event_date
+            )
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -1552,7 +1609,37 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [FeedingEvent_1].event_date AS child_fed_at,
+                [FeedingEvent_2].event_date AS grandparent_fed_at,
+                [FeedingEvent_3].event_date AS other_parent_fed_at
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].parent = [Animal_2].uuid
+                LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
+                    ON [Animal_2].fed_at = [FeedingEvent_1].uuid
+                JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                    ON [Animal_2].uuid = [Animal_3].parent
+                LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_3]
+                    ON [Animal_3].fed_at = [FeedingEvent_3].uuid
+                JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                    ON [Animal_1].uuid = [Animal_4].parent
+                JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_2]
+                    ON [Animal_4].fed_at = [FeedingEvent_2].uuid
+            WHERE
+                [Animal_1].name = :animal_name AND (
+                    [FeedingEvent_1].uuid IS NULL OR
+                    [FeedingEvent_2].name = [FeedingEvent_1].name
+                ) AND (
+                    [FeedingEvent_3].uuid IS NULL OR
+                    [FeedingEvent_2].event_date >= [FeedingEvent_3].event_date
+                ) AND (
+                    [FeedingEvent_1].uuid IS NULL OR
+                    [FeedingEvent_2].event_date <= [FeedingEvent_1].event_date
+                )
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -1698,7 +1785,36 @@ class CompilerTests(unittest.TestCase):
                 relation_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            WITH anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
+                SELECT
+                    [Animal_2].name AS name,
+                    [Animal_2].parent AS parent,
+                    [Animal_2].uuid AS uuid,
+                    [Animal_2].uuid AS __cte_key,
+                    0 AS __cte_depth
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_2]
+                UNION ALL
+                    SELECT
+                        [Animal_3].name AS name,
+                        [Animal_3].parent AS parent,
+                        [Animal_3].uuid AS uuid,
+                        anon_1.__cte_key AS __cte_key,
+                        anon_1.__cte_depth + 1 AS __cte_depth
+                    FROM
+                        anon_1
+                        JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                            ON anon_1.parent = [Animal_3].uuid
+                    WHERE anon_1.__cte_depth < 1
+            )
+            SELECT
+                anon_1.name AS relation_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                JOIN anon_1
+                    ON [Animal_1].uuid = anon_1.__cte_key
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf*0..1]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -2025,7 +2141,40 @@ class CompilerTests(unittest.TestCase):
                 relation_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            WITH anon_1(color, name, parent, uuid, __cte_key, __cte_depth) AS (
+               SELECT
+                   [Animal_2].color AS color,
+                   [Animal_2].name AS name,
+                   [Animal_2].parent AS parent,
+                   [Animal_2].uuid AS uuid,
+                   [Animal_2].uuid AS __cte_key,
+                   0 AS __cte_depth
+               FROM
+                   db_1.schema_1.[Animal] AS [Animal_2]
+               UNION ALL
+                   SELECT
+                       [Animal_3].color AS color,
+                       [Animal_3].name AS name,
+                       [Animal_3].parent AS parent,
+                       [Animal_3].uuid AS uuid,
+                       anon_1.__cte_key AS __cte_key,
+                       anon_1.__cte_depth + 1 AS __cte_depth
+                   FROM
+                       anon_1
+                       JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                           ON anon_1.parent = [Animal_3].uuid
+                   WHERE anon_1.__cte_depth < 3
+            )
+            SELECT
+                anon_1.name AS relation_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                JOIN anon_1
+                    ON [Animal_1].uuid = anon_1.__cte_key
+            WHERE
+                anon_1.color = :wanted
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -2563,7 +2712,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         # the alias list valued column is not yet supported by the SQL backend
-        expected_sql = SKIP_TEST
+        expected_sql = NotImplementedError
         expected_cypher = '''
             MATCH (Animal___1:Animal)
                 WHERE ($wanted IN Animal___1.alias)
@@ -2709,7 +2858,7 @@ class CompilerTests(unittest.TestCase):
         '''
 
         # the alias list valued column is not yet supported by the SQL backend
-        expected_sql = SKIP_TEST
+        expected_sql = NotImplementedError
 
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2831,6 +2980,88 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+
+    def test_starts_with_op_filter(self):
+        test_data = test_input_data.starts_with_op_filter()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((name LIKE ({wanted} + '%'))),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> it.name.startsWith($wanted)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE
+                ([Animal_1].name LIKE :wanted + '%')
+        '''
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+                WHERE (Animal___1.name STARTS WITH $wanted)
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
+                        expected_cypher)
+
+    def test_ends_with_op_filter(self):
+        test_data = test_input_data.ends_with_op_filter()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `animal_name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((name LIKE ('%' + {wanted}))),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> it.name.endsWith($wanted)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name
+            ])}
+        '''
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE
+                ([Animal_1].name LIKE '%' + :wanted)
+        '''
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+                WHERE (Animal___1.name ENDS WITH $wanted)
+            RETURN
+                Animal___1.name AS `animal_name`
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
+                        expected_cypher)
 
     def test_has_substring_op_filter(self):
         test_data = test_input_data.has_substring_op_filter()
@@ -2973,7 +3204,16 @@ class CompilerTests(unittest.TestCase):
             expected_input_metadata=expected_input_metadata,
             type_equivalence_hints=None)
 
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].parent = [Animal_2].uuid
+            WHERE
+                ([Animal_2].name LIKE '%' + [Animal_1].name + '%')
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -3053,7 +3293,19 @@ class CompilerTests(unittest.TestCase):
             expected_input_metadata=expected_input_metadata,
             type_equivalence_hints=None)
 
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].uuid = [Animal_2].parent
+                JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                    ON [Animal_1].parent = [Animal_3].uuid
+            WHERE
+                [Animal_2].parent IS NULL OR
+                ([Animal_3].name LIKE '%' + [Animal_2].name + '%')
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -3352,7 +3604,11 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
 
-        expected_sql = SKIP_TEST
+        expected_sql = '''
+            SELECT [Animal_1].name AS name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE [Animal_1].net_worth IS NULL
+        '''
 
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -3388,7 +3644,11 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
 
-        expected_sql = SKIP_TEST
+        expected_sql = '''
+            SELECT [Animal_1].name AS name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE [Animal_1].net_worth IS NOT NULL
+        '''
 
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -3807,7 +4067,22 @@ class CompilerTests(unittest.TestCase):
             expected_input_metadata=expected_input_metadata,
             type_equivalence_hints=None)
 
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].uuid AS child_uuid,
+                [FeedingEvent_1].uuid AS event_uuid,
+                [Species_1].uuid AS species_uuid
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_2]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_2].parent = [Animal_1].uuid
+                LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
+                    ON [Animal_2].species = [Species_1].uuid
+                LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
+                    ON [Animal_2].fed_at = [FeedingEvent_1].uuid
+            WHERE
+                [Animal_2].uuid = :uuid
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -4604,7 +4879,20 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal__out_Animal_ParentOf__out_Animal_ParentOf___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_2]
+                JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                    ON [Animal_2].parent = [Animal_3].uuid
+                JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_3].parent = [Animal_1].uuid
+                JOIN db_1.schema_1.[Entity] AS [Entity_1]
+                    ON [Animal_3].related_entity = [Entity_1].uuid
+            WHERE
+                [Entity_1].name IN ([EXPANDING_entity_names])
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -5207,7 +5495,20 @@ class CompilerTests(unittest.TestCase):
                 name: m.Animal___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS child_name,
+                [Animal_2].name AS grandchild_name,
+                [Animal_3].name AS name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_3]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_3].uuid = [Animal_1].parent
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].uuid = [Animal_2].parent
+            WHERE
+                [Animal_2].parent IS NOT NULL OR [Animal_1].parent IS NULL
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -5283,7 +5584,24 @@ class CompilerTests(unittest.TestCase):
                 name: m.Animal___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS child_name,
+                [Animal_2].name AS grandchild_name,
+                [Animal_3].name AS name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_3]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_3].uuid = [Animal_1].parent
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].uuid = [Animal_2].parent
+            WHERE (
+                [Animal_3].name LIKE '%' + :wanted + '%'
+            ) AND (
+                [Animal_2].parent IS NOT NULL OR
+                [Animal_1].parent IS NULL
+            )
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -5372,7 +5690,28 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name,
+                [Animal_2].name AS child_name,
+                [Animal_3].name AS spouse_and_self_name,
+                [Species_1].name AS spouse_species
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].uuid = [Animal_2].parent
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                    ON [Animal_2].parent = [Animal_3].uuid
+                LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
+                    ON [Animal_3].species = [Species_1].uuid
+            WHERE (
+                [Animal_3].uuid IS NOT NULL OR
+                [Animal_2].parent IS NULL
+            ) AND (
+                [Species_1].uuid IS NOT NULL OR
+                [Animal_3].uuid IS NULL
+            )
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -5463,7 +5802,24 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name,
+                [Animal_2].name AS child_name,
+                [Animal_3].name AS spouse_and_self_name,
+                [Species_1].name AS spouse_and_self_species
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].uuid = [Animal_2].parent
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                    ON [Animal_2].parent = [Animal_3].uuid
+                LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
+                    ON [Animal_3].species = [Species_1].uuid
+            WHERE
+                [Species_1].uuid IS NOT NULL OR [Animal_3].uuid IS NULL
+
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -5630,7 +5986,33 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name,
+                [Animal_2].name AS child_name,
+                [Animal_3].name AS parent_name,
+                [Species_1].name AS parent_species,
+                [Animal_4].name AS spouse_and_self_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].uuid = [Animal_2].parent
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                    ON [Animal_2].parent = [Animal_4].uuid
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                    ON [Animal_1].parent = [Animal_3].uuid
+                LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
+                    ON [Animal_3].species = [Species_1].uuid
+            WHERE (
+                [Animal_1].name LIKE '%' + :wanted + '%'
+            ) AND (
+                [Animal_4].uuid IS NOT NULL OR
+                [Animal_2].parent IS NULL
+            ) AND (
+                [Species_1].uuid IS NOT NULL OR
+                [Animal_3].uuid IS NULL
+            )
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -5753,7 +6135,27 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name,
+                [Animal_2].name AS child_name,
+                [Animal_3].name AS parent_name,
+                [Species_1].name AS parent_species
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].uuid = [Animal_2].parent
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                    ON [Animal_1].parent = [Animal_3].uuid
+                LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
+                    ON [Animal_3].species = [Species_1].uuid
+            WHERE (
+                [Animal_1].name LIKE '%' + :wanted + '%'
+            ) AND (
+                [Species_1].uuid IS NOT NULL OR
+                [Animal_3].uuid IS NULL
+            )
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -6257,7 +6659,40 @@ class CompilerTests(unittest.TestCase):
                ])
            }
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [FeedingEvent_1].event_date AS grandchild_fed_at,
+                [FeedingEvent_2].event_date AS other_child_fed_at,
+                [FeedingEvent_3].event_date AS parent_fed_at
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].parent = [Animal_2].uuid
+                LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_3]
+                    ON [Animal_2].fed_at = [FeedingEvent_3].uuid
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                    ON [Animal_2].uuid = [Animal_3].parent
+                LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_2]
+                    ON [Animal_3].fed_at = [FeedingEvent_2].uuid
+                JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                    ON [Animal_1].uuid = [Animal_4].parent
+                JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
+                    ON [Animal_4].fed_at = [FeedingEvent_1].uuid
+            WHERE
+                [Animal_1].name = :animal_name AND (
+                     [FeedingEvent_2].uuid IS NOT NULL OR
+                     [Animal_3].parent IS NULL
+                ) AND (
+                     [FeedingEvent_3].uuid IS NULL OR
+                     [FeedingEvent_1].name = [FeedingEvent_3].name
+                ) AND (
+                     [FeedingEvent_2].uuid IS NULL OR
+                     [FeedingEvent_1].event_date >= [FeedingEvent_2].event_date
+                ) AND (
+                     [FeedingEvent_3].uuid IS NULL OR
+                     [FeedingEvent_1].event_date <= [FeedingEvent_3].event_date
+                )
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -6339,7 +6774,41 @@ class CompilerTests(unittest.TestCase):
                     )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            WITH anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
+                SELECT
+                    [Animal_3].name AS name,
+                    [Animal_3].parent AS parent,
+                    [Animal_3].uuid AS uuid,
+                    [Animal_3].uuid AS __cte_key,
+                    0 AS __cte_depth
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_3]
+                UNION ALL
+                    SELECT
+                        [Animal_4].name AS name,
+                        [Animal_4].parent AS parent,
+                        [Animal_4].uuid AS uuid,
+                        anon_1.__cte_key AS __cte_key,
+                        anon_1.__cte_depth + 1 AS __cte_depth
+                    FROM
+                        anon_1
+                        JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                            ON anon_1.parent = [Animal_4].uuid
+                    WHERE anon_1.__cte_depth < 3
+            )
+            SELECT
+                [Animal_1].name AS child_name,
+                [Animal_2].name AS name,
+                anon_1.name AS self_and_ancestor_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_2]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_2].uuid = [Animal_1].parent
+                LEFT OUTER JOIN anon_1 ON [Animal_1].uuid = anon_1.__cte_key
+            WHERE
+                anon_1.__cte_key IS NOT NULL OR [Animal_1].parent IS NULL
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -6426,7 +6895,28 @@ class CompilerTests(unittest.TestCase):
                 name: m.Animal___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [FeedingEvent_1].name AS child_feeding_time,
+                [Animal_1].name AS child_name,
+                [Animal_2].name AS grandchild_name,
+                [Animal_3].name AS name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_3]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                    ON [Animal_3].uuid = [Animal_1].parent
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].uuid = [Animal_2].parent
+                LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
+                    ON [Animal_1].fed_at = [FeedingEvent_1].uuid
+            WHERE (
+                [Animal_2].parent IS NOT NULL OR
+                [Animal_1].parent IS NULL
+            ) AND (
+                [FeedingEvent_1].uuid IS NOT NULL OR
+                [Animal_1].parent IS NULL
+            )
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -6997,7 +7487,22 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name,
+                [Animal_2].name AS child_name,
+                [Animal_3].name AS spouse_and_self_name,
+                [Species_1].name AS spouse_species
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON [Animal_1].uuid = [Animal_2].parent
+                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                    ON [Animal_2].parent = [Animal_3].uuid
+                LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
+                    ON [Animal_3].species = [Species_1].uuid
+            WHERE [Species_1].uuid IS NOT NULL OR [Animal_3].uuid IS NULL
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,

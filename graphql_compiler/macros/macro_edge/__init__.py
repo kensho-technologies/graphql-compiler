@@ -4,12 +4,15 @@ from ...exceptions import GraphQLInvalidMacroError
 from .validation import get_and_validate_macro_edge_info
 
 
-def make_macro_edge_descriptor(schema, macro_edge_graphql, macro_edge_args,
+def make_macro_edge_descriptor(schema, subclass_sets, macro_edge_graphql, macro_edge_args,
                                type_equivalence_hints=None):
-    """Validate the GraphQL macro edge definition, and return it in a form suitable for storage.
+    """Validate the GraphQL macro edge definition, and return a MacroEdgeDescriptor describing it.
 
     Args:
         schema: GraphQL schema object, created using the GraphQL library
+        subclass_sets: Dict[str, Set[str]] mapping class names to the set of its subclass names.
+                       A class in this context means the name of a GraphQLObjectType,
+                       GraphQLUnionType or GraphQLInterface.
         macro_edge_graphql: string, GraphQL defining how the new macro edge should be expanded
         macro_edge_args: dict mapping strings to any type, containing any arguments the macro edge
                          requires in order to function.
@@ -30,15 +33,14 @@ def make_macro_edge_descriptor(schema, macro_edge_graphql, macro_edge_args,
                                 *****
 
     Returns:
-        tuple (class name, macro edge name, MacroEdgeDescriptor) suitable for inclusion into the
-        GraphQL macro registry
+        MacroEdgeDescriptor suitable for inclusion into the GraphQL macro registry
     """
     root_ast = safe_parse_graphql(macro_edge_graphql)
 
     definition_ast = get_only_query_definition(root_ast, GraphQLInvalidMacroError)
 
-    class_name, macro_edge_name, macro_edge_descriptor = get_and_validate_macro_edge_info(
-        schema, definition_ast, macro_edge_args,
+    macro_edge_descriptor = get_and_validate_macro_edge_info(
+        schema, subclass_sets, definition_ast, macro_edge_args,
         type_equivalence_hints=type_equivalence_hints)
 
-    return class_name, macro_edge_name, macro_edge_descriptor
+    return macro_edge_descriptor

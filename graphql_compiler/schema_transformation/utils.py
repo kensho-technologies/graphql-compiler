@@ -230,6 +230,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
     If AST contains invalid types, raise SchemaStructureError; if AST contains types with
     invalid names, raise InvalidTypeNameError.
     """
+
     disallowed_types = frozenset({  # types not supported in renaming or merging
         'InputObjectTypeDefinition',
         'TypeExtensionDefinition',
@@ -280,6 +281,7 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
 
     If not, raise SchemaStructureError.
     """
+
     def __init__(self, query_type):
         """Create a visitor for checking query type field names.
 
@@ -386,6 +388,7 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
     before vertex fields in every scope, and that any scope containing a InlineFragment has
     nothing else in scope.
     """
+
     # This is very restrictive for now. Other cases (e.g. tags not crossing boundaries) are
     # also ok, but temporarily not allowed
     supported_directives = frozenset((
