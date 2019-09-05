@@ -1839,51 +1839,51 @@ for configuring and running SQLAlchemy in a production system.
     from graphql_compiler.compiler.ir_lowering_sql.metadata import SqlMetadata
     from graphql_compiler.schema.schema_info import make_sqlalchemy_schema_info
     from graphql_compiler import graphql_to_sql
-    
+
     # =================================================================================================
     # Step 1: Provide schema information. Note that we are working on making this step automatic.
     # =================================================================================================
-    
+
     schema_text = '''
     schema {
         query: RootSchemaQuery
     }
     # IMPORTANT NOTE: all compiler directives are expected here, but not shown to keep the example brief
-    
+
     directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
-    
+
     # < more directives here, see the GraphQL schema section of this README for more details. >
-    
+
     directive @output(out_name: String!) on FIELD
-    
+
     type Animal {
         name: String
     }
     '''
     schema = build_ast_schema(parse(schema_text))
-    
+
     # Map all GraphQL types to sqlalchemy tables.
     # See https://docs.sqlalchemy.org/en/latest/core/metadata.html for more details on this step.
-    tables = {
+    vertex_name_to_table = {
         'Animal': Table(
             'Animal',
             MetaData(),
             Column('name', String(length=12)),  # The name is the same as the one in the GraphQL schema
         ),
     }
-    
+
     # Prepare a SQLAlchemy engine to query the target relational database.
     # See https://docs.sqlalchemy.org/en/latest/core/engines.html for more detail on this step.
     engine = create_engine('<connection string>')
-    
+
     # Wrap the schema information into a SQLAlchemySchemaInfo object
-    sql_schema_info = make_sqlalchemy_schema_info(schema, {}, engine.dialect, tables, {})
-    
-    
+    sql_schema_info = make_sqlalchemy_schema_info(schema, {}, engine.dialect, vertex_name_to_table, {})
+
+
     # =================================================================================================
     # Step 2: Compile and execute a GraphQL query against the schema
     # =================================================================================================
-    
+
     graphql_query = '''
     {
         Animal {
@@ -1895,7 +1895,7 @@ for configuring and running SQLAlchemy in a production system.
     parameters = {
         'names': ['animal name 1', 'animal name 2'],
     }
-    
+
     compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
     query_results = [dict(result_proxy) for result_proxy in engine.execute(compilation_result.query)]
 
