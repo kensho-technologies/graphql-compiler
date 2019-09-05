@@ -280,7 +280,5 @@ def get_sqlalchemy_schema_info(
     # union types in the schema, so we set the type_equivalence_hints to be an empty dict.
     type_equivalence_hints = {}
 
-    # TODO(pmantica1): Validate that the column types are a subset of the columns allowed in the
-    #                  specified dialect.
     return make_sqlalchemy_schema_info(
         graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors)
