@@ -1877,8 +1877,7 @@ for configuring and running SQLAlchemy in a production system.
     engine = create_engine('<connection string>')
 
     # Wrap the schema information into a SQLAlchemySchemaInfo object
-    sql_schema_info = make_sqlalchemy_schema_info(schema, {}, engine.dialect, vertex_name_to_table,
-     {})
+    sql_schema_info = make_sqlalchemy_schema_info(schema, {}, engine.dialect, vertex_name_to_table, {})
 
 
     # =================================================================================================
