@@ -553,7 +553,7 @@ whose names contain the substring :code:`substr`:
     {
         Animal {
             name @output(out_name: "animal_name")
-            out_Animal_ParentOf {
+            out_Animal_ParentOf @fold {
                 _x_count @filter(op_name: ">=", value: ["$count"])
                 name @filter(op_name: "has_substring", value: ["$substr"])
             }
