@@ -22,7 +22,6 @@ def get_join_descriptors(direct_edges):
     for edge_name, direct_edge_descriptor in direct_edges.items():
         from_column = direct_edge_descriptor.from_column
         to_column = direct_edge_descriptor.to_column
-        join_descriptors.setdefault(direct_edge_descriptor.from_vertex, {})
         join_descriptors.setdefault(direct_edge_descriptor.to_vertex, {})
         out_edge_name = OUTBOUND_EDGE_FIELD_PREFIX + edge_name
         in_edge_name = INBOUND_EDGE_FIELD_PREFIX + edge_name
