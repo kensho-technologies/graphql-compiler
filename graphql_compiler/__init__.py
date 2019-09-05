@@ -17,7 +17,9 @@ from .schema import (  # noqa
 from .schema.schema_info import SQLAlchemySchemaInfo
 from .schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from .schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
-from .schema_generation.sqlalchemy.edge_descriptors import get_join_descriptors
+from .schema_generation.sqlalchemy.edge_descriptors import (
+    get_join_descriptors_from_edge_descriptors
+)
 from .schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_schema_graph
 
 
@@ -258,7 +260,7 @@ def get_sqlalchemy_schema_info_from_specified_metadata(
     graphql_schema, _ = get_graphql_schema_from_schema_graph(
         schema_graph, class_to_field_type_overrides, hidden_classes)
 
-    join_descriptors = get_join_descriptors(direct_edges)
+    join_descriptors = get_join_descriptors_from_edge_descriptors(direct_edges)
 
     # type_equivalence_hints exists as field in SQLAlchemySchemaInfo to make testing easier for
     # the SQL backend. However, there is no inheritance in SQLAlchemy and there will be no GraphQL

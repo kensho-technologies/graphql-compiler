@@ -16,7 +16,7 @@ DirectEdgeDescriptor = namedtuple(
 )
 
 
-def get_join_descriptors(direct_edges):
+def get_join_descriptors_from_edge_descriptors(direct_edges):
     """Return the SQL edges in a format more suited to resolving vertex fields."""
     join_descriptors = {}
     for edge_name, direct_edge_descriptor in direct_edges.items():
