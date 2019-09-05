@@ -14,7 +14,7 @@ from .schema import (  # noqa
     DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal,
     insert_meta_fields_into_existing_schema, is_meta_field
 )
-from .schema.schema_info import SQLAlchemySchemaInfo
+from .schema.schema_info import make_sqlalchemy_schema_info
 from .schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from .schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
 from .schema_generation.sqlalchemy.edge_descriptors import get_join_descriptors
@@ -265,5 +265,5 @@ def get_sqlalchemy_schema_info(
     # union types in the schema, so we set the type_equivalence_hints to be an empty dict.
     type_equivalence_hints = {}
 
-    return SQLAlchemySchemaInfo(
+    return make_sqlalchemy_schema_info(
         graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors)
