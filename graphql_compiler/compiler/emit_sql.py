@@ -180,10 +180,11 @@ class CompilationState(object):
                                  u'information is required to emit a @recurse directive.'
                                  .format(self._current_classname))
         if len(self._current_alias.primary_key) > 1:
-            raise AssertionError(u'The table for vertex {} has a composite primary key {}. '
-                                 u'The SQL backend does not support @recurse on tables with '
-                                 u'composite primary keys.'
-                                 .format(self._current_classname, self._current_alias.primary_key))
+            raise NotImplementedError(u'The table for vertex {} has a composite primary key {}. '
+                                      u'The SQL backend does not support @recurse on tables with '
+                                      u'composite primary keys.'
+                                      .format(self._current_classname,
+                                              self._current_alias.primary_key))
         primary_key = self._current_alias.primary_key[0].name
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
