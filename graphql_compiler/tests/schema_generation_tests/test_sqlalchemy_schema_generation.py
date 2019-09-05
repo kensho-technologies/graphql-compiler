@@ -90,13 +90,12 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
             arbitrarily_named_graphql_object.fields['in_test_edge'].type.of_type.name, 'Table1')
 
     def test_get_join_descriptors(self):
-        direct_join_descriptor = DirectJoinDescriptor('source_column', 'destination_column')
         expected_join_descriptors = {
             'Table1': {
-                'out_test_edge': direct_join_descriptor
+                'out_test_edge': DirectJoinDescriptor('source_column', 'destination_column')
             },
             'ArbitraryObjectName': {
-                'in_test_edge': direct_join_descriptor
+                'in_test_edge': DirectJoinDescriptor('destination_column', 'source_column')
             }
         }
         self.assertEqual(expected_join_descriptors, self.schema_info.join_descriptors)
