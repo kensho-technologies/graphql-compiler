@@ -6,7 +6,8 @@ from graphql.type import GraphQLInterfaceType, GraphQLList, GraphQLObjectType, G
 import pytest
 import six
 
-from .. import get_graphql_schema_from_orientdb_schema_data
+from graphql_compiler.schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data
+
 from ..schema_generation.graphql_schema import _get_union_type_name
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
 from ..schema_generation.orientdb.schema_properties import (
