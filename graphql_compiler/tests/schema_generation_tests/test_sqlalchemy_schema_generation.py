@@ -11,6 +11,7 @@ from ... import get_sqlalchemy_schema_info_from_specified_metadata
 from ...schema_generation.sqlalchemy.edge_descriptors import (
     DirectEdgeDescriptor, DirectJoinDescriptor
 )
+from ...schema_generation.sqlalchemy.exceptions import InvalidSQLEdgeReferenceError
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
 
 
@@ -54,7 +55,7 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
         vertex_name_to_table = _get_test_vertex_name_to_table()
         direct_edges = _get_test_direct_edges()
         self.schema_info = get_sqlalchemy_schema_info_from_specified_metadata(
-            vertex_name_to_table, direct_edges, {}, dialect())
+            vertex_name_to_table, direct_edges, dialect())
 
     def test_table_vertex_representation(self):
         self.assertIsInstance(self.schema_info.schema.get_type('Table1'), GraphQLObjectType)
@@ -99,3 +100,60 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
             }
         }
         self.assertEqual(expected_join_descriptors, self.schema_info.join_descriptors)
+
+
+class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
+    def setUp(self):
+        self.vertex_name_to_table = _get_test_vertex_name_to_table()
+
+    def test_reference_to_non_existent_source_vertex(self):
+        direct_edges = {
+            'invalid_source_vertex': DirectEdgeDescriptor(
+                'InvalidVertexName',
+                'source_column',
+                'ArbitraryObjectName',
+                'destination_column'
+            )
+        }
+        with self.assertRaises(InvalidSQLEdgeReferenceError):
+            get_sqlalchemy_schema_info_from_specified_metadata(
+                self.vertex_name_to_table, direct_edges, dialect())
+
+    def test_reference_to_non_existent_destination_vertex(self):
+        direct_edges = {
+            'invalid_source_vertex': DirectEdgeDescriptor(
+                'Table1',
+                'source_column',
+                'InvalidVertexName',
+                'destination_column'
+            )
+        }
+        with self.assertRaises(InvalidSQLEdgeReferenceError):
+            get_sqlalchemy_schema_info_from_specified_metadata(
+                self.vertex_name_to_table, direct_edges, dialect())
+
+    def test_reference_to_non_existent_source_column(self):
+        direct_edges = {
+            'invalid_source_vertex': DirectEdgeDescriptor(
+                'Table1',
+                'invalid_column_name',
+                'ArbitraryObjectName',
+                'destination_column'
+            )
+        }
+        with self.assertRaises(InvalidSQLEdgeReferenceError):
+            get_sqlalchemy_schema_info_from_specified_metadata(
+                self.vertex_name_to_table, direct_edges, dialect())
+
+    def test_reference_to_non_existent_destination_column(self):
+        direct_edges = {
+            'invalid_destination_column': DirectEdgeDescriptor(
+                'Table1',
+                'source_column',
+                'ArbitraryObjectName',
+                'invalid_column_name'
+            )
+        }
+        with self.assertRaises(InvalidSQLEdgeReferenceError):
+            get_sqlalchemy_schema_info_from_specified_metadata(
+                self.vertex_name_to_table, direct_edges, dialect())

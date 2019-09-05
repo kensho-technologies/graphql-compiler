@@ -23,8 +23,9 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
                       the connections will be deduced from the DirectEdgeDescriptor objects.
 
     Returns:
-        SchemaGraph reflecting the inputted metadata.
+        SchemaGraph reflecting the specified metadata.
     """
+    # TODO(pmantica1): Use merge_non_overlapping_dicts when macro_system is merged into master.
     vertex_types = {
         vertex_name: _get_vertex_type_from_sqlalchemy_table(vertex_name, table)
         for vertex_name, table in vertex_name_to_table.items()
