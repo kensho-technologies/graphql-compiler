@@ -19,8 +19,7 @@ def get_sqlalchemy_schema_info_from_specified_metadata(
                               The fields will have the same name as the underlying columns and
                               columns with unsupported types, (SQL types with no matching GraphQL
                               type), will be ignored.
-        direct_edges: dict, str-> DirectEdgeDescriptor. Direct edges are edges that do not
-                      use a junction table, (see junction_table_edges). The traversal of a direct
+        direct_edges: dict, str-> DirectEdgeDescriptor. The traversal of a direct
                       edge gets compiled to a SQL join in graphql_to_sql(). Therefore, each
                       DirectEdgeDescriptor not only specifies the source and destination GraphQL
                       objects, but also which columns to use to use when generating a SQL join
