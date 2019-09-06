@@ -8,6 +8,7 @@ from graphql.utils.schema_printer import print_schema
 from parameterized import parameterized
 import pytest
 
+from ...cost_estimation import statistics_collection
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...tests import test_backend
 from ...tests.test_helpers import generate_schema, generate_schema_graph
@@ -294,4 +295,10 @@ class IntegrationTests(TestCase):
             'human_name_out': 'Child'
         }
         self.assertEqual(expected_custom_class_fields, parent_of_edge.class_fields)
+
+    @integration_fixtures
+    def test_statistics_collection(self):
+        engine = self.sql_backend_name_to_engine['mssql']
+        stats = statistics_collection.collect_statistics_from_mssql(self.sql_schema_info, engine)
+        print(stats)
 # pylint: enable=no-member
