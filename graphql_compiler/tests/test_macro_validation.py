@@ -654,4 +654,3 @@ class MacroValidationTests(unittest.TestCase):
         register_macro_edge(macro_registry, duplicate_macro_edge_definition, args)
         with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, macro_edge_definition, args)
-

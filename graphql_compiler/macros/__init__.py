@@ -15,15 +15,17 @@ import six
 from ..ast_manipulation import safe_parse_graphql
 from ..compiler.subclass import compute_subclass_sets
 from ..compiler.validation import validate_schema_and_query_ast
-from ..exceptions import GraphQLInvalidMacroError, GraphQLValidationError
+from ..exceptions import GraphQLValidationError
 from ..schema import check_for_nondefault_directive_names
 from .macro_edge import make_macro_edge_descriptor
 from .macro_edge.directives import (
     DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
     MacroEdgeDirective
 )
-from .macro_edge.reversal import make_reverse_macro_edge_name
 from .macro_expansion import expand_macros_in_query_ast
+from .validation import (
+    check_macro_edge_for_definition_conflicts, check_macro_edge_for_reversal_definition_conflicts
+)
 
 
 MacroRegistry = namedtuple(
@@ -92,181 +94,6 @@ def create_macro_registry(schema, type_equivalence_hints=None, subclass_sets=Non
         macro_edges_to_class=dict())
 
 
-def _find_macro_edge_name_at_subclass(macro_registry, class_name, macro_edge_name):
-    """Return the descriptor for a given macro edge defined on a subclass, if it exists."""
-    subclasses = macro_registry.subclass_sets[class_name]
-    if class_name not in subclasses:
-        raise AssertionError(u'Found a class that is not a subclass of itself, this means that the '
-                             u'subclass_sets value is incorrectly constructed: {} {} {}'
-                             .format(class_name, subclasses, macro_registry.subclass_sets))
-
-    for subclass_name in subclasses:
-        existing_descriptor = macro_registry.macro_edges_at_class.get(
-            subclass_name, dict()).get(macro_edge_name, None)
-
-        if existing_descriptor is not None:
-            return existing_descriptor
-
-    return None
-
-
-def _find_macro_edge_name_to_subclass(macro_registry, class_name, macro_edge_name):
-    """Return the descriptor for a given macro edge that points to a subclass, if it exists."""
-    subclasses = macro_registry.subclass_sets[class_name]
-    if class_name not in subclasses:
-        raise AssertionError(u'Found a class that is not a subclass of itself, this means that the '
-                             u'subclass_sets value is incorrectly constructed: {} {} {}'
-                             .format(class_name, subclasses, macro_registry.subclass_sets))
-
-    for subclass_name in subclasses:
-        existing_descriptor = macro_registry.macro_edges_to_class.get(
-            subclass_name, dict()).get(macro_edge_name, None)
-
-        if existing_descriptor is not None:
-            return existing_descriptor
-
-    return None
-
-
-def _check_macro_edge_for_definition_conflicts(macro_registry, macro_edge_descriptor):
-    """Ensure that the macro edge on the specified class does not cause any definition conflicts."""
-    # There are two kinds of conflicts that we check for:
-    # - defining this macro edge would not conflict with any macro edges that already exist
-    #   at the same type or at a superclass of the base class of the macro; and
-    # - defining this macro edge would not cause any subclass of the base class of the macro
-    #   to have a conflicting definition for any of its fields originating from prior
-    #   macro edge definitions.
-    # We check for both of them simultaneously, by ensuring that none of the subclasses of the
-    # base class name have a macro edge by the specified name.
-    macro_edge_name = macro_edge_descriptor.macro_edge_name
-    base_class_name = macro_edge_descriptor.base_class_name
-    target_class_name = macro_edge_descriptor.target_class_name
-
-    existing_descriptor = _find_macro_edge_name_at_subclass(
-        macro_registry, base_class_name, macro_edge_name)
-    if existing_descriptor is not None:
-        extra_error_text = u''
-        conflict_on_class_name = existing_descriptor.base_class_name
-        if conflict_on_class_name != base_class_name:
-            # The existing descriptor is defined elsewhere. Let's figure out if it's a subclass
-            # or a superclass conflict.
-            if base_class_name in macro_registry.subclass_sets[conflict_on_class_name]:
-                relationship = 'supertype'
-            elif conflict_on_class_name in macro_registry.subclass_sets[base_class_name]:
-                relationship = 'subtype'
-            else:
-                raise AssertionError(u'Conflict between two macro edges defined on types that '
-                                     u'are not each other\'s supertype: {} {} {}'
-                                     .format(base_class_name, macro_edge_name, macro_registry))
-
-            extra_error_text = (
-                u' (a {relationship} of {current_type})'
-            ).format(
-                relationship=relationship,
-                current_type=base_class_name,
-            )
-
-        raise GraphQLInvalidMacroError(
-            u'A macro edge with name {edge_name} cannot be defined on type {current_type} due '
-            u'to a conflict with another macro edge with the same name defined '
-            u'on type {original_type}{extra_error_text}.'
-            u'Cannot define this conflicting macro, please verify '
-            u'if the existing macro edge does what you want, or rename your macro '
-            u'edge to avoid the conflict. Existing macro definition and args: '
-            u'{macro_graphql} {macro_args}'
-            .format(edge_name=macro_edge_name,
-                    current_type=base_class_name,
-                    original_type=conflict_on_class_name,
-                    extra_error_text=extra_error_text,
-                    macro_graphql=print_ast(existing_descriptor.expansion_ast),
-                    macro_args=existing_descriptor.macro_args))
-
-    existing_descriptor = _find_macro_edge_name_to_subclass(
-        macro_registry, target_class_name, macro_edge_name)
-    if existing_descriptor is not None:
-        extra_error_text = u''
-        conflict_on_class_name = existing_descriptor.target_class_name
-        if conflict_on_class_name != target_class_name:
-            # The existing descriptor is defined elsewhere. Let's figure out if it's a subclass
-            # or a superclass conflict.
-            if target_class_name in macro_registry.subclass_sets[conflict_on_class_name]:
-                relationship = 'supertype'
-            elif conflict_on_class_name in macro_registry.subclass_sets[target_class_name]:
-                relationship = 'subtype'
-            else:
-                raise AssertionError(u'Conflict between two macro edges defined on types that '
-                                     u'are not each other\'s supertype: {} {} {}'
-                                     .format(target_class_name, macro_edge_name, macro_registry))
-
-            extra_error_text = (
-                u' (a {relationship} of {target_type})'
-            ).format(
-                relationship=relationship,
-                target_type=target_class_name,
-            )
-
-        raise GraphQLInvalidMacroError(
-            u'A macro edge with name {edge_name} cannot be defined to point to {target_type} due '
-            u'to a conflict with another macro edge with the same name that points to '
-            u'type {original_type}{extra_error_text}.'
-            u'Cannot define this conflicting macro, please verify '
-            u'if the existing macro edge does what you want, or rename your macro '
-            u'edge to avoid the conflict. Existing macro definition and args: '
-            u'{macro_graphql} {macro_args}'
-            .format(edge_name=macro_edge_name,
-                    target_type=target_class_name,
-                    original_type=conflict_on_class_name,
-                    extra_error_text=extra_error_text,
-                    macro_graphql=print_ast(existing_descriptor.expansion_ast),
-                    macro_args=existing_descriptor.macro_args))
-
-
-def _check_macro_edge_for_reversal_definition_conflicts(macro_registry, macro_descriptor):
-    """Ensure that the macro edge, when reversed, does not conflict with any existing macro edges.
-
-    This function ensures that for any macro edge being defined, if a corresponding macro edge were
-    to be later defined in the opposite direction (whether manually or automatically), this new
-    reversed macro edge would not conflict with any existing macro edges. To check this, we generate
-    the name of the reversed macro edge, and then check the types the macro edge connects. If a
-    macro edge by the same name exists on either of those types, or any of their subtypes, then
-    the reversed macro edge is deemed in conflict, and the original macro edge definition is
-    considered invalid.
-
-    Args:
-        macro_registry: MacroRegistry object containing macro descriptors, where the new
-                        macro edge descriptor would be added.
-        macro_descriptor: MacroEdgeDescriptor describing the macro edge being added
-    """
-    reverse_macro_edge_name = make_reverse_macro_edge_name(macro_descriptor.macro_edge_name)
-    reverse_base_class_name = macro_descriptor.target_class_name
-    reverse_target_class_name = macro_descriptor.base_class_name
-
-    existing_descriptor = _find_macro_edge_name_at_subclass(
-        macro_registry, reverse_base_class_name, reverse_macro_edge_name)
-
-    if existing_descriptor is not None:
-        # There is already a reverse macro edge of the same name that starts at the same type.
-        # Let's make sure its endpoint types are an exact match compared to the endpoint types
-        # of the macro edge being defined.
-        if reverse_base_class_name != existing_descriptor.base_class_name:
-            raise GraphQLInvalidMacroError()
-
-        if reverse_target_class_name != existing_descriptor.target_class_name:
-            raise GraphQLInvalidMacroError()
-
-    existing_descriptor = _find_macro_edge_name_to_subclass(
-        macro_registry, reverse_target_class_name, reverse_macro_edge_name)
-    if existing_descriptor is not None:
-        # There is already a macro edge of the same name that points to the same type.
-        # Let's make sure its endpoint types are an exact match compared to the endpoint types
-        # of the macro edge being defined.
-        if reverse_target_class_name != existing_descriptor.target_class_name:
-            raise GraphQLInvalidMacroError()
-
-        if reverse_base_class_name != existing_descriptor.base_class_name:
-            raise GraphQLInvalidMacroError()
-
-
 def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
     """Add the new macro edge descriptor to the provided MacroRegistry object, mutating it.
 
@@ -287,11 +114,11 @@ def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
         type_equivalence_hints=macro_registry.type_equivalence_hints)
 
     # Ensure there's no conflict with macro edges defined on subclasses and superclasses.
-    _check_macro_edge_for_definition_conflicts(macro_registry, macro_descriptor)
+    check_macro_edge_for_definition_conflicts(macro_registry, macro_descriptor)
 
     # Ensure there's no conflict between existing macro edges and the (hypothetical) reversed
     # macro edge of the one being defined.
-    _check_macro_edge_for_reversal_definition_conflicts(macro_registry, macro_descriptor)
+    check_macro_edge_for_reversal_definition_conflicts(macro_registry, macro_descriptor)
 
     for subclass_name in macro_registry.subclass_sets[macro_descriptor.base_class_name]:
         macro_registry.macro_edges_at_class.setdefault(
