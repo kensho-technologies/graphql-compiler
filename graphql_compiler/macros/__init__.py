@@ -97,6 +97,20 @@ def create_macro_registry(schema, type_equivalence_hints=None, subclass_sets=Non
 def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
     """Add the new macro edge descriptor to the provided MacroRegistry object, mutating it.
 
+    In order to register a new macro edge, the following properties must be true:
+    - The macro edge, with the addition of any output value, must become a valid query. This ensures
+      that it is compliant with the schema, supplies values for all runtime and tagged parameters,
+      and obeys all other rules imposed by the compiler.
+    - The macro edge must not contain any directives that are prohibited in macro edge definitions.
+    - The macro edge will become a new vertex field on its base type, and therefore must be named
+      a vertex field name (prefixed with "out_" or "in_").
+    - Any class together with its subclasses may have defined at most one macro edge with that name.
+    - Any class together with its subclasses must be the target of at most one macro edge with
+      that name.
+    - For any macro edge named out_X (similarly, in_Y) defined at type A and with target type B,
+      the reversed macro edge in_X (similarly, out_Y) defined at type B and with target type A
+      either already exists, or could be defined without violating any of the above rules.
+
     Args:
         macro_registry: MacroRegistry object containing macro descriptors, where the new
                         macro edge descriptor should be added.
