@@ -19,7 +19,6 @@ def _stream_distinct_field_values_counts(sql_schema_info, engine):
 ##############
 
 
-# TODO not schema graph?
 def create_local_statistics_from_mssql(sql_schema_info, engine):
     """Make a Statistics object about the data under the specified schema.
 
