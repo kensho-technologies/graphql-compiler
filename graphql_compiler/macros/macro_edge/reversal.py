@@ -7,6 +7,7 @@ from ...schema import INBOUND_EDGE_FIELD_PREFIX, OUTBOUND_EDGE_FIELD_PREFIX
 # ############
 
 def make_reverse_macro_edge_name(macro_edge_name):
+    """Autogenerate a reverse macro edge name for the given macro edge name."""
     if macro_edge_name.startswith(INBOUND_EDGE_FIELD_PREFIX):
         raw_edge_name = macro_edge_name[len(INBOUND_EDGE_FIELD_PREFIX):]
         prefix = OUTBOUND_EDGE_FIELD_PREFIX

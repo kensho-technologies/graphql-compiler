@@ -179,10 +179,10 @@ def get_schema_with_macros(macro_registry):
 
 
 def get_schema_for_macro_definition(schema):
-    """Returns a schema with macro directives.
+    """Return a schema with macro definition directives added in.
 
     Preconditions:
-    1. All compiler-supported and graphql-default directives have their default behavior.
+    1. All compiler-supported and GraphQL-default directives have their default behavior.
 
     This returned schema can be used to validate macro definitions, and support GraphQL
     macro editors, enabling them to autocomplete on the @macro_edge_definition and
