@@ -40,6 +40,9 @@ def get_join_descriptors_from_edge_descriptors(direct_edges):
 
 def validate_edge_descriptors(vertex_name_to_table, direct_edges):
     """Validate that the edge descriptors do not reference non-existent vertices or columns."""
+    # TODO(pmantica1): Validate that columns in a direct SQL edge have comparable types.
+    # TODO(pmantica1): Validate that columns don't have types that probably shouldn't be used for
+    #                  joins, (e.g. array types).
     for edge_name, direct_edge_descriptor in six.iteritems(direct_edges):
         for vertex_name, column_name in (
             (direct_edge_descriptor.from_vertex, direct_edge_descriptor.from_column),
