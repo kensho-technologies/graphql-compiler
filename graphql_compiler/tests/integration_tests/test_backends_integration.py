@@ -299,6 +299,6 @@ class IntegrationTests(TestCase):
     @integration_fixtures
     def test_statistics_collection(self):
         engine = self.sql_backend_name_to_engine['mssql']
-        stats = statistics_collection.collect_statistics_from_mssql(self.sql_schema_info, engine)
+        stats = statistics_collection.create_local_statistics_from_mssql(self.sql_schema_info, engine)
         print(stats)
 # pylint: enable=no-member
