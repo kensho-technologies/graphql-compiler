@@ -11,7 +11,7 @@ from ... import get_sqlalchemy_schema_info_from_specified_metadata
 from ...schema_generation.sqlalchemy.edge_descriptors import (
     DirectEdgeDescriptor, DirectJoinDescriptor
 )
-from ...schema_generation.sqlalchemy.exceptions import InvalidSQLEdgeReferenceError
+from ...schema_generation.exceptions import InvalidSQLEdgeError
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
 
 
@@ -115,7 +115,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
                 'destination_column'
             )
         }
-        with self.assertRaises(InvalidSQLEdgeReferenceError):
+        with self.assertRaises(InvalidSQLEdgeError):
             get_sqlalchemy_schema_info_from_specified_metadata(
                 self.vertex_name_to_table, direct_edges, dialect())
 
@@ -128,7 +128,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
                 'destination_column'
             )
         }
-        with self.assertRaises(InvalidSQLEdgeReferenceError):
+        with self.assertRaises(InvalidSQLEdgeError):
             get_sqlalchemy_schema_info_from_specified_metadata(
                 self.vertex_name_to_table, direct_edges, dialect())
 
@@ -141,7 +141,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
                 'destination_column'
             )
         }
-        with self.assertRaises(InvalidSQLEdgeReferenceError):
+        with self.assertRaises(InvalidSQLEdgeError):
             get_sqlalchemy_schema_info_from_specified_metadata(
                 self.vertex_name_to_table, direct_edges, dialect())
 
@@ -154,6 +154,6 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
                 'invalid_column_name'
             )
         }
-        with self.assertRaises(InvalidSQLEdgeReferenceError):
+        with self.assertRaises(InvalidSQLEdgeError):
             get_sqlalchemy_schema_info_from_specified_metadata(
                 self.vertex_name_to_table, direct_edges, dialect())

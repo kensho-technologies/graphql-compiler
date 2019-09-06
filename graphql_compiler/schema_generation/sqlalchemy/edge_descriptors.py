@@ -5,7 +5,7 @@ import six
 
 from ...schema import INBOUND_EDGE_FIELD_PREFIX, OUTBOUND_EDGE_FIELD_PREFIX
 from ...schema.schema_info import DirectJoinDescriptor
-from .exceptions import InvalidSQLEdgeReferenceError
+from ..exceptions import InvalidSQLEdgeError
 
 
 DirectEdgeDescriptor = namedtuple(
@@ -49,12 +49,10 @@ def validate_edge_descriptors(vertex_name_to_table, direct_edges):
             (direct_edge_descriptor.to_vertex, direct_edge_descriptor.to_column)
         ):
             if vertex_name not in vertex_name_to_table:
-                raise InvalidSQLEdgeReferenceError('SQL edge {} with edge descriptor {} '
-                                                   'references a non-existent vertex {}'
-                                                   .format(edge_name, direct_edge_descriptor,
-                                                           vertex_name))
+                raise InvalidSQLEdgeError('SQL edge {} with edge descriptor {} references a '
+                                          'non-existent vertex {}'
+                                          .format(edge_name, direct_edge_descriptor, vertex_name))
             if column_name not in vertex_name_to_table[vertex_name].columns:
-                raise InvalidSQLEdgeReferenceError('SQL edge {} with edge descriptor {} '
-                                                   'references a non-existent column {}'
-                                                   .format(edge_name, direct_edge_descriptor,
-                                                           column_name))
+                raise InvalidSQLEdgeError('SQL edge {} with edge descriptor {} references a '
+                                          'non-existent column {}'
+                                          .format(edge_name, direct_edge_descriptor, column_name))
