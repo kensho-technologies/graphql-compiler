@@ -207,76 +207,84 @@ SCHEMA_TEXT = '''
 '''
 
 VALID_MACROS_TEXT = [
-    ('''{
-            Entity @macro_edge_definition(name: "out_Entity_AlmostRelated") {
-                out_Entity_Related {
-                    out_Entity_Related @macro_edge_target{
-                        uuid
-                    }
+    ('''\
+    {
+        Entity @macro_edge_definition(name: "out_Entity_AlmostRelated") {
+            out_Entity_Related {
+                out_Entity_Related @macro_edge_target{
+                    uuid
                 }
             }
-        }''', {}),
-    ('''{
-            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
-                out_Animal_ParentOf {
-                    out_Animal_ParentOf @macro_edge_target {
-                        uuid
-                    }
+        }
+    }
+    ''', {}),
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+            out_Animal_ParentOf {
+                out_Animal_ParentOf @macro_edge_target {
+                    uuid
                 }
             }
-        }''', {}),
-    ('''{
-            Animal @macro_edge_definition(name: "out_Animal_GrandchildrenCalledNate") {
-                out_Animal_ParentOf {
-                    out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"])
-                                        @macro_edge_target {
-                        uuid
-                    }
+        }
+    }''', {}),
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_GrandchildrenCalledNate") {
+            out_Animal_ParentOf {
+                out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"])
+                                    @macro_edge_target {
+                    uuid
                 }
             }
-        }''', {
+        }
+    }''', {
         'wanted': 'Nate',
     }),
-    ('''{
-            Animal @macro_edge_definition(name: "out_Animal_RichSiblings") {
-                in_Animal_ParentOf {
-                    net_worth @tag(tag_name: "parent_net_worth")
-                    out_Animal_ParentOf @macro_edge_target {
-                        net_worth @filter(op_name: ">", value: ["%parent_net_worth"])
-                    }
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_RichSiblings") {
+            in_Animal_ParentOf {
+                net_worth @tag(tag_name: "parent_net_worth")
+                out_Animal_ParentOf @macro_edge_target {
+                    net_worth @filter(op_name: ">", value: ["%parent_net_worth"])
                 }
             }
-        }''', {}),
-    ('''{
-            Location @macro_edge_definition(name: "out_Location_Orphans") {
-                in_Animal_LivesIn @macro_edge_target {
-                    in_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$num_parents"])
-                                       @optional {
-                        uuid
-                    }
+        }
+    }''', {}),
+    ('''\
+    {
+        Location @macro_edge_definition(name: "out_Location_Orphans") {
+            in_Animal_LivesIn @macro_edge_target {
+                in_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$num_parents"])
+                                   @optional {
+                    uuid
                 }
             }
-        }''', {
+        }
+    }''', {
         'num_parents': 0,
     }),
-    ('''{
-            Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings") {
-                net_worth @tag(tag_name: "net_worth")
-                out_Animal_BornAt {
-                    event_date @tag(tag_name: "birthday")
-                }
-                in_Animal_ParentOf {
-                    out_Animal_ParentOf @macro_edge_target {
-                        net_worth @filter(op_name: ">", value: ["%net_worth"])
-                        out_Animal_BornAt {
-                            event_date @filter(op_name: "<", value: ["%birthday"])
-                        }
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings") {
+            net_worth @tag(tag_name: "net_worth")
+            out_Animal_BornAt {
+                event_date @tag(tag_name: "birthday")
+            }
+            in_Animal_ParentOf {
+                out_Animal_ParentOf @macro_edge_target {
+                    net_worth @filter(op_name: ">", value: ["%net_worth"])
+                    out_Animal_BornAt {
+                        event_date @filter(op_name: "<", value: ["%birthday"])
                     }
                 }
             }
-        }''', {}),
+        }
+    }''', {}),
     # The same as out_AnimalRichYoungerSiblings, but with a filter after the target.
-    ('''{
+    ('''\
+    {
         Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings_2") {
             net_worth @tag(tag_name: "net_worth")
             in_Animal_ParentOf {
@@ -292,24 +300,26 @@ VALID_MACROS_TEXT = [
             }
         }
     }''', {}),
-    ('''{
-            Animal @macro_edge_definition(name: "out_Animal_RelatedFood") {
-                in_Entity_Related {
-                    ... on Food @macro_edge_target {
-                        uuid
-                    }
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_RelatedFood") {
+            in_Entity_Related {
+                ... on Food @macro_edge_target {
+                    uuid
                 }
             }
-        }''', {}),
-    ('''{
-            Animal @macro_edge_definition(name: "out_Animal_RelatedEntity") {
-                in_Entity_Related {
-                    ... on Entity @macro_edge_target {
-                        uuid
-                    }
+        }
+    }''', {}),
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_RelatedEntity") {
+            in_Entity_Related {
+                ... on Entity @macro_edge_target {
+                    uuid
                 }
             }
-        }''', {}),
+        }
+    }''', {}),
 ]
 
 

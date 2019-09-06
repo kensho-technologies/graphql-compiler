@@ -329,6 +329,20 @@ def merge_selection_sets(selection_set_a, selection_set_b):
                                           u'same edge {} twice, which is disallowed.'
                                           .format(field_name))
 
+        # TODO(predrag): Find a way to avoid this situation by making the rewriting smarter.
+        field_a_has_tag_directive = any((
+            directive.name.value == TagDirective.name
+            for directive in field_a.directives
+        ))
+        field_b_has_tag_directive = any((
+            directive.name.value == TagDirective.name
+            for directive in field_b.directives
+        ))
+        if field_a_has_tag_directive and field_b_has_tag_directive:
+            raise GraphQLCompilationError(u'Macro edge expansion results in field {} having two '
+                                          u'@tag directives, which is disallowed.'
+                                          .format(field_name))
+
         merged_field = copy(field_a)
         merged_field.directives = list(chain(field_a.directives, field_b.directives))
         common_selection_dict[field_name] = merged_field

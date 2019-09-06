@@ -3,6 +3,7 @@ import unittest
 
 import pytest
 
+from ..exceptions import GraphQLCompilationError
 from ..macros import perform_macro_expansion
 from .test_helpers import compare_graphql, get_test_macro_registry
 
@@ -537,7 +538,8 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.xfail(strict=True, reason='not implemented')
+    @pytest.mark.xfail(strict=True, reason='tag deduplication not implemented yet',
+                       raises=GraphQLCompilationError)
     def test_macro_edge_colocated_tags(self):
         query = '''{
             Animal {
@@ -575,7 +577,8 @@ class MacroExpansionTests(unittest.TestCase):
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.xfail(strict=True, reason='not implemented')
+    @pytest.mark.xfail(strict=True, reason='tag deduplication not implemented yet',
+                       raises=GraphQLCompilationError)
     def test_macro_edge_colocated_tags_with_same_name(self):
         query = '''{
             Animal {
