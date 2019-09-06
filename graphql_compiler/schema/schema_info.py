@@ -82,7 +82,8 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
 
     # dict mapping every graphql object type or interface type name in the schema to
     # a sqlalchemy table. Column types that do not exist for this dialect are not allowed.
-    'tables',
+    # All tables are expected to have primary keys.
+    'vertex_name_to_table',
 
     # dict mapping every graphql object type or interface type name in the schema to:
     #    dict mapping every vertex field name at that type to a DirectJoinDescriptor. The
@@ -92,7 +93,7 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
 ))
 
 
-def make_sqlalchemy_schema_info(schema, type_equivalence_hints, dialect, tables,
+def make_sqlalchemy_schema_info(schema, type_equivalence_hints, dialect, vertex_name_to_table,
                                 join_descriptors, validate=True):
     """Make a SQLAlchemySchemaInfo if the input provided is valid.
 
@@ -116,8 +117,8 @@ def make_sqlalchemy_schema_info(schema, type_equivalence_hints, dialect, tables,
                                 lead to incorrect output queries being generated.
                                 *****
         dialect: sqlalchemy.engine.interfaces.Dialect
-        tables: dict mapping every graphql object type or interface type name in the schema to
-                a sqlalchemy table
+        vertex_name_to_table: dict mapping every graphql object type or interface type name in the
+                              schema to a sqlalchemy table
         join_descriptors: dict mapping graphql object and interface type names in the schema to:
                              dict mapping every vertex field name at that type to a
                              DirectJoinDescriptor. The tables the join is to be performed on are not
@@ -143,9 +144,10 @@ def make_sqlalchemy_schema_info(schema, type_equivalence_hints, dialect, tables,
             if isinstance(graphql_type, types_to_map):
                 if type_name != 'RootSchemaQuery' and not type_name.startswith('__'):
                     # Check existence of sqlalchemy table for this type
-                    if type_name not in tables:
-                        raise AssertionError(u'Table for type {} not found'.format(type_name))
-                    table = tables[type_name]
+                    if type_name not in vertex_name_to_table:
+                        raise AssertionError(u'Table for type {} not found'.format
+                                             (type_name))
+                    table = vertex_name_to_table[type_name]
                     if not isinstance(table, sqlalchemy.Table):
                         raise AssertionError(u'Table for type {} has wrong type {}'
                                              .format(type_name, type(table)))
@@ -163,4 +165,5 @@ def make_sqlalchemy_schema_info(schema, type_equivalence_hints, dialect, tables,
                                                      u'for property field {}'
                                                      .format(type_name, field_name))
 
-    return SQLAlchemySchemaInfo(schema, type_equivalence_hints, dialect, tables, join_descriptors)
+    return SQLAlchemySchemaInfo(
+        schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors)

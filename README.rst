@@ -553,7 +553,7 @@ whose names contain the substring :code:`substr`:
     {
         Animal {
             name @output(out_name: "animal_name")
-            out_Animal_ParentOf {
+            out_Animal_ParentOf @fold {
                 _x_count @filter(op_name: ">=", value: ["$count"])
                 name @filter(op_name: "has_substring", value: ["$substr"])
             }
@@ -1815,8 +1815,8 @@ the target database.
 Our SQL backend supports basic traversals, filters, tags and outputs, but there are still some
 pieces in development:
 
-- Directives: :code:`@optional`, :code:`@fold`, :code:`@recurse`
-- Filter operators: :code:`is_null`, :code:`is_not_null`, :code:`has_edge_degree`
+- Directives: :code:`@fold`
+- Filter operators: :code:`has_edge_degree`
 - Dialect-specific features, like Postgres array types, and use of filter operators
   specific to them: :code:`contains`, :code:`intersects`, :code:`name_or_alias`
 - Meta fields: :code:`__typename`, :code:`_x_count`
@@ -1839,51 +1839,51 @@ for configuring and running SQLAlchemy in a production system.
     from graphql_compiler.compiler.ir_lowering_sql.metadata import SqlMetadata
     from graphql_compiler.schema.schema_info import make_sqlalchemy_schema_info
     from graphql_compiler import graphql_to_sql
-    
+
     # =================================================================================================
     # Step 1: Provide schema information. Note that we are working on making this step automatic.
     # =================================================================================================
-    
+
     schema_text = '''
     schema {
         query: RootSchemaQuery
     }
     # IMPORTANT NOTE: all compiler directives are expected here, but not shown to keep the example brief
-    
+
     directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
-    
+
     # < more directives here, see the GraphQL schema section of this README for more details. >
-    
+
     directive @output(out_name: String!) on FIELD
-    
+
     type Animal {
         name: String
     }
     '''
     schema = build_ast_schema(parse(schema_text))
-    
+
     # Map all GraphQL types to sqlalchemy tables.
     # See https://docs.sqlalchemy.org/en/latest/core/metadata.html for more details on this step.
-    tables = {
+    vertex_name_to_table = {
         'Animal': Table(
             'Animal',
             MetaData(),
             Column('name', String(length=12)),  # The name is the same as the one in the GraphQL schema
         ),
     }
-    
+
     # Prepare a SQLAlchemy engine to query the target relational database.
     # See https://docs.sqlalchemy.org/en/latest/core/engines.html for more detail on this step.
     engine = create_engine('<connection string>')
-    
+
     # Wrap the schema information into a SQLAlchemySchemaInfo object
-    sql_schema_info = make_sqlalchemy_schema_info(schema, {}, engine.dialect, tables, {})
-    
-    
+    sql_schema_info = make_sqlalchemy_schema_info(schema, {}, engine.dialect, vertex_name_to_table, {})
+
+
     # =================================================================================================
     # Step 2: Compile and execute a GraphQL query against the schema
     # =================================================================================================
-    
+
     graphql_query = '''
     {
         Animal {
@@ -1895,7 +1895,7 @@ for configuring and running SQLAlchemy in a production system.
     parameters = {
         'names': ['animal name 1', 'animal name 2'],
     }
-    
+
     compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
     query_results = [dict(result_proxy) for result_proxy in engine.execute(compilation_result.query)]
 

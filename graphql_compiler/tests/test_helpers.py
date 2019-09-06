@@ -11,7 +11,8 @@ import six
 import sqlalchemy
 from sqlalchemy.dialects import mssql
 
-from .. import get_graphql_schema_from_orientdb_schema_data
+from graphql_compiler.schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data
+
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import create_macro_registry, register_macro_edge
