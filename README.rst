@@ -20,12 +20,10 @@ read-only queries written in GraphQL syntax to different query
 languages.
 
 Furthermore, the GraphQL compiler validates queries through the use of a
-GraphQL schema that specifies the underlying schema of the database. We
-can currently autogenerate a GraphQL schema by introspecting an OrientDB
-database, (see `End to End Example <#end-to-end-example>`__).
-
-In the near future, we plan to add schema autogeneration from SQLAlchemy
-metadata as well.
+GraphQL schema that specifies the underlying schema of the database, which
+we can fully autogenerate from OrientDB databases,
+(see `End to End Example <#end-to-end-example>`__) and semi-autogenerate
+from SQL databases, (see `SQL <#sql>`__).
 
 For a more detailed overview and getting started guide, please see `our
 blog
@@ -1898,6 +1896,14 @@ for configuring and running SQLAlchemy in a production system.
 
     compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
     query_results = [dict(result_proxy) for result_proxy in engine.execute(compilation_result.query)]
+
+
+Querying Accross SQL Databases
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For certain SQL database management systems, (namely Microsoft Sequel Server), it is possible to
+query data across multiple databases in a server. By mapping tables acrr
+
 
 
 Miscellaneous
