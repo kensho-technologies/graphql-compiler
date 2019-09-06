@@ -92,6 +92,21 @@ def _raise_macro_reversal_conflict_error(new_macro_descriptor, existing_descript
                 macro_args=existing_descriptor.macro_args))
 
 
+def _get_macro_edge_reversal_conflicts_with_existing_descriptor(
+        reverse_base_class_name, reverse_target_class_name, existing_descriptor):
+    """Return a (possibly empty) list of reversal conflicts relative to an existing macro edge."""
+    errors = []
+    if reverse_base_class_name != existing_descriptor.base_class_name:
+        errors.append(u'change your macro edge\'s target class to {}'
+                      .format(existing_descriptor.base_class_name))
+
+    if reverse_target_class_name != existing_descriptor.target_class_name:
+        errors.append(u'define your macro edge on class {} instead'
+                      .format(existing_descriptor.target_class_name))
+
+    return errors
+
+
 # ############
 # Public API #
 # ############
@@ -179,15 +194,8 @@ def check_macro_edge_for_reversal_definition_conflicts(macro_registry, macro_des
         # There is already a reverse macro edge of the same name that starts at the same type.
         # Let's make sure its endpoint types are an exact match compared to the endpoint types
         # of the macro edge being defined.
-        errors = []
-        if reverse_base_class_name != existing_descriptor.base_class_name:
-            errors.append(u'change your macro edge\'s target class to {}'
-                          .format(existing_descriptor.base_class_name))
-
-        if reverse_target_class_name != existing_descriptor.target_class_name:
-            errors.append(u'define your macro edge on class {} instead'
-                          .format(existing_descriptor.target_class_name))
-
+        errors = _get_macro_edge_reversal_conflicts_with_existing_descriptor(
+            reverse_base_class_name, reverse_target_class_name, existing_descriptor)
         if errors:
             _raise_macro_reversal_conflict_error(
                 macro_descriptor, existing_descriptor, ' and '.join(errors))
@@ -198,23 +206,8 @@ def check_macro_edge_for_reversal_definition_conflicts(macro_registry, macro_des
         # There is already a macro edge of the same name that points to the same type.
         # Let's make sure its endpoint types are an exact match compared to the endpoint types
         # of the macro edge being defined.
-        #
-        # *** Important note ***
-        # The order of checks here is inverted relative to the upper block -- here, first we check
-        # target classes, then base classes. This is to preserve symmetry between the two blocks:
-        # the top block looks for base class conflicts and checks the base class first, whereas this
-        # one looks for target class conflicts and checks the target class first. Preserving this
-        # symmetry makes it easier to generate test cases that trigger all of these error conditions
-        # and ensure their correct implementation.
-        errors = []
-        if reverse_target_class_name != existing_descriptor.target_class_name:
-            errors.append(u'define your macro edge on class {} instead'
-                          .format(existing_descriptor.target_class_name))
-
-        if reverse_base_class_name != existing_descriptor.base_class_name:
-            errors.append(u'change your macro edge\'s target class to {}'
-                          .format(existing_descriptor.base_class_name))
-
+        errors = _get_macro_edge_reversal_conflicts_with_existing_descriptor(
+            reverse_base_class_name, reverse_target_class_name, existing_descriptor)
         if errors:
             _raise_macro_reversal_conflict_error(
                 macro_descriptor, existing_descriptor, ' and '.join(errors))
