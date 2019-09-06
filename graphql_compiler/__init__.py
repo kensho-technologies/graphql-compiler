@@ -15,6 +15,7 @@ from .schema import (  # noqa
     insert_meta_fields_into_existing_schema, is_meta_field
 )
 from .schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data  # noqa
+from .schema_generation.sqlalchemy import get_sqlalchemy_schema_info_from_specified_metadata  # noqa
 
 
 __package_name__ = 'graphql-compiler'

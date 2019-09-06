@@ -1,9 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from graphql.language.ast import Field, InlineFragment, SelectionSet
-import six
 
 from ...ast_manipulation import get_ast_field_name
 from ...exceptions import GraphQLCompilationError
+from ...global_utils import merge_non_overlapping_dicts
 from ...schema import FilterDirective, is_vertex_field_name
 from .ast_rewriting import find_target_and_copy_path_to_it, merge_selection_sets, replace_tag_names
 from .ast_traversal import get_all_tag_names
@@ -159,21 +159,6 @@ def _expand_specific_macro_edge(subclass_sets, target_class_name, macro_ast, sel
     return replacement_selection_ast, sibling_prefix_selections, sibling_suffix_selections
 
 
-def _merge_non_overlapping_dicts(merge_target, new_data):
-    """Produce the merged result of two dicts that are supposed to not overlap."""
-    result = dict(merge_target)
-
-    for key, value in six.iteritems(new_data):
-        if key in merge_target:
-            raise AssertionError(u'Overlapping key "{}" found in dicts that are supposed '
-                                 u'to not overlap. Values: {} {}'
-                                 .format(key, merge_target[key], value))
-
-        result[key] = value
-
-    return result
-
-
 # ############
 # Public API #
 # ############
@@ -232,6 +217,6 @@ def expand_potential_macro_edge(macro_registry, current_schema_type, ast, query_
         sanitized_macro_ast, ast)
     # TODO(predrag): Write a test that makes sure we've chosen names for filter arguments that
     #                do not overlap with user's filter arguments.
-    new_query_args = _merge_non_overlapping_dicts(query_args, macro_edge_descriptor.macro_args)
+    new_query_args = merge_non_overlapping_dicts(query_args, macro_edge_descriptor.macro_args)
 
     return (new_ast, new_query_args, prefix_selections, suffix_selections)
