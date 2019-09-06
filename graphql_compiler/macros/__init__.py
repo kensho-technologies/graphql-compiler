@@ -73,9 +73,9 @@ MacroRegistry = namedtuple(
         # then this dict will contain entries for that macro edge for all of [X, A, B].
         'macro_edges_to_class',
 
-        # ############################################################
-        # Any other macro types we may add in the future under this. #
-        # ############################################################
+        # ########################################################################
+        # Any other macro types we may add in the future belong under this line. #
+        # ########################################################################
     )
 )
 
