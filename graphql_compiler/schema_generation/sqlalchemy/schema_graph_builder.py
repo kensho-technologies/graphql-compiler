@@ -4,7 +4,7 @@ from ..schema_graph import (
     link_schema_elements
 )
 from .scalar_type_mapper import try_get_graphql_scalar_type
-
+from ...global_utils import merge_non_overlapping_dicts
 
 def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
     """Return a SchemaGraph from the metadata.
@@ -25,7 +25,6 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
     Returns:
         SchemaGraph reflecting the specified metadata.
     """
-    # TODO(pmantica1): Use merge_non_overlapping_dicts when macro_system is merged into master.
     vertex_types = {
         vertex_name: _get_vertex_type_from_sqlalchemy_table(vertex_name, table)
         for vertex_name, table in vertex_name_to_table.items()
@@ -34,11 +33,7 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
         edge_name: _get_edge_type_from_direct_edge(edge_name, direct_edge_descriptor)
         for edge_name, direct_edge_descriptor in direct_edges.items()
     }
-    name_conflicts = set(vertex_types.keys()).intersection(edge_types.keys())
-    if name_conflicts:
-        raise AssertionError('The names {} refer to both edges and vertices in the schema. Edge '
-                             'names must not conflict with vertex names.'.format(name_conflicts))
-    elements = {}
+    elements = merge_non_overlapping_dicts(vertex_types, edge_types)
     elements.update(vertex_types)
     elements.update(edge_types)
     direct_superclass_sets = {element_name: set() for element_name in elements}

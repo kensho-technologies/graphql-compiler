@@ -1,6 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import six
 
+
 def merge_non_overlapping_dicts(merge_target, new_data):
     """Produce the merged result of two dicts that are supposed to not overlap."""
     result = dict(merge_target)

@@ -6,7 +6,7 @@ import sqlalchemy.dialects.mssql.base as mssqltypes
 import sqlalchemy.sql.sqltypes as sqltypes
 
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
-
+from ...global_utils import merge_non_overlapping_dicts
 
 # The following quote from https://docs.sqlalchemy.org/en/13/core/type_basics.html
 # explains what makes all-caps classes particular:
@@ -91,10 +91,8 @@ UNSUPPORTED_MSSQL_TYPES = frozenset({
     mssqltypes.XML,
 })
 
-# TODO(pmantica1): Use merge_non_overlapping_dicts when macro_system is merged into master.
-SQL_CLASS_TO_GRAPHQL_TYPE = {}
-SQL_CLASS_TO_GRAPHQL_TYPE.update(GENERIC_SQL_CLASS_TO_GRAPHQL_TYPE)
-SQL_CLASS_TO_GRAPHQL_TYPE.update(MSSQL_CLASS_TO_GRAPHQL_TYPE)
+SQL_CLASS_TO_GRAPHQL_TYPE = merge_non_overlapping_dicts(
+    GENERIC_SQL_CLASS_TO_GRAPHQL_TYPE, MSSQL_CLASS_TO_GRAPHQL_TYPE)
 
 
 def try_get_graphql_scalar_type(column_name, column_type):
