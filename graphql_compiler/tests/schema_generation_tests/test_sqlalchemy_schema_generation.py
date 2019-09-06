@@ -8,10 +8,10 @@ from sqlalchemy.dialects.mssql import TINYINT, dialect
 from sqlalchemy.types import Binary, Integer, String
 
 from ... import get_sqlalchemy_schema_info_from_specified_metadata
+from ...schema_generation.exceptions import InvalidSQLEdgeError
 from ...schema_generation.sqlalchemy.edge_descriptors import (
     DirectEdgeDescriptor, DirectJoinDescriptor
 )
-from ...schema_generation.exceptions import InvalidSQLEdgeError
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
 
 

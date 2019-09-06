@@ -3,12 +3,12 @@ from graphql.language.ast import Field, InlineFragment, SelectionSet
 
 from ...ast_manipulation import get_ast_field_name
 from ...exceptions import GraphQLCompilationError
+from ...global_utils import merge_non_overlapping_dicts
 from ...schema import FilterDirective, is_vertex_field_name
 from .ast_rewriting import find_target_and_copy_path_to_it, merge_selection_sets, replace_tag_names
 from .ast_traversal import get_all_tag_names
 from .directives import MacroEdgeTargetDirective
 from .name_generation import generate_disambiguations
-from ...global_utils import merge_non_overlapping_dicts
 
 
 def _ensure_directives_on_macro_edge_are_supported(macro_edge_field):

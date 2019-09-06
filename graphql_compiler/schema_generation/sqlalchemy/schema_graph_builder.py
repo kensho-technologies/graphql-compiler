@@ -1,10 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from ...global_utils import merge_non_overlapping_dicts
 from ..schema_graph import (
     EdgeType, InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType,
     link_schema_elements
 )
 from .scalar_type_mapper import try_get_graphql_scalar_type
-from ...global_utils import merge_non_overlapping_dicts
 
 
 def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):

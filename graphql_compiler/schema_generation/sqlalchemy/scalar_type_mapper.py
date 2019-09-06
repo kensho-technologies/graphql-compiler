@@ -5,8 +5,9 @@ from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLString
 import sqlalchemy.dialects.mssql.base as mssqltypes
 import sqlalchemy.sql.sqltypes as sqltypes
 
-from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
 from ...global_utils import merge_non_overlapping_dicts
+from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
+
 
 # The following quote from https://docs.sqlalchemy.org/en/13/core/type_basics.html
 # explains what makes all-caps classes particular:
