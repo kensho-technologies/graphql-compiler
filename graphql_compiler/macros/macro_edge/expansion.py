@@ -135,8 +135,6 @@ def _expand_specific_macro_edge(subclass_sets, target_class_name, macro_ast, sel
     sibling_prefix_selections = []
     sibling_suffix_selections = []
 
-    # TODO(bojanserafimov): Remove macro tags if the user has tagged the same field.
-
     for macro_selection in macro_ast.selection_set.selections:
         new_ast, target_ast = find_target_and_copy_path_to_it(macro_selection)
         if target_ast is None:
