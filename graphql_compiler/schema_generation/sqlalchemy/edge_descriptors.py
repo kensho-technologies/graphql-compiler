@@ -5,7 +5,7 @@ import six
 
 from ...schema import INBOUND_EDGE_FIELD_PREFIX, OUTBOUND_EDGE_FIELD_PREFIX
 from ...schema.schema_info import DirectJoinDescriptor
-from .exceptions import InvalidSQLEdgeReferenceError
+from ..exceptions import InvalidSQLEdgeError
 
 
 DirectEdgeDescriptor = namedtuple(
@@ -40,18 +40,19 @@ def get_join_descriptors_from_edge_descriptors(direct_edges):
 
 def validate_edge_descriptors(vertex_name_to_table, direct_edges):
     """Validate that the edge descriptors do not reference non-existent vertices or columns."""
+    # TODO(pmantica1): Validate that columns in a direct SQL edge have comparable types.
+    # TODO(pmantica1): Validate that columns don't have types that probably shouldn't be used for
+    #                  joins, (e.g. array types).
     for edge_name, direct_edge_descriptor in six.iteritems(direct_edges):
         for vertex_name, column_name in (
             (direct_edge_descriptor.from_vertex, direct_edge_descriptor.from_column),
             (direct_edge_descriptor.to_vertex, direct_edge_descriptor.to_column)
         ):
             if vertex_name not in vertex_name_to_table:
-                raise InvalidSQLEdgeReferenceError('SQL edge {} with edge descriptor {} '
-                                                   'references a non-existent vertex {}'
-                                                   .format(edge_name, direct_edge_descriptor,
-                                                           vertex_name))
+                raise InvalidSQLEdgeError('SQL edge {} with edge descriptor {} references a '
+                                          'non-existent vertex {}'
+                                          .format(edge_name, direct_edge_descriptor, vertex_name))
             if column_name not in vertex_name_to_table[vertex_name].columns:
-                raise InvalidSQLEdgeReferenceError('SQL edge {} with edge descriptor {} '
-                                                   'references a non-existent column {}'
-                                                   .format(edge_name, direct_edge_descriptor,
-                                                           column_name))
+                raise InvalidSQLEdgeError('SQL edge {} with edge descriptor {} references a '
+                                          'non-existent column {}'
+                                          .format(edge_name, direct_edge_descriptor, column_name))

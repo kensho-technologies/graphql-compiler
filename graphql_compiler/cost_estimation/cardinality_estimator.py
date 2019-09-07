@@ -318,10 +318,7 @@ def _estimate_expansion_cardinality(
     return expansion_cardinality
 
 
-def estimate_query_result_cardinality(
-    schema_graph, statistics, graphql_query, parameters,
-    class_to_field_type_overrides=None, hidden_classes=None
-):
+def estimate_query_result_cardinality(schema_graph, statistics, graphql_query, parameters):
     """Estimate the cardinality of a GraphQL query's result using database statistics.
 
     Args:
@@ -329,11 +326,6 @@ def estimate_query_result_cardinality(
         statistics: Statistics object
         graphql_query: string, a valid GraphQL query
         parameters: dict, parameters with which query will be executed.
-        class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
-                                       (string -> {string -> GraphQLType}). Used to override the
-                                       type of a field in the class where it's first defined and all
-                                       the class's subclasses.
-        hidden_classes: optional set of strings, classes to not include in the GraphQL schema.
 
     Returns:
         float, expected query result cardinality. Equal to the number of root vertices multiplied by
