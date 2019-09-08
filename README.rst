@@ -1855,9 +1855,9 @@ for configuring and running SQLAlchemy in a production system.
     # Specify SQL edges.
     direct_edges = {
         'Animal_LivesIn': DirectEdgeDescriptor(
-            from_vertex='Animal',  # Name of the source vertex.
+            from_vertex='Animal',  # Name of the source GraphQL object
             from_column='location',  # Name of the column of the underlying source table to join on.
-            to_vertex='Location',  # Name of the destination vertex.
+            to_vertex='Location',  # Name of the destination GraphQL object.
             to_column='uuid',   # Name of the column of the underlying destination table to join on.
         )
     }
