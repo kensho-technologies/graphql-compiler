@@ -1848,7 +1848,8 @@ for configuring and running SQLAlchemy in a production system.
     hypothetical_animal_db_metadata = MetaData(bind=engine)
     hypothetical_animal_db_metadata.reflect()
 
-    # Use table names as GraphQL object names
+    # Use table names as GraphQL object names. If including tables from multiple databases, make
+    # sure GraphQL object names do not conflict. For more info see Querying Across SQL Databases.
     vertex_name_to_table = hypothetical_animal_db_metadata.tables
 
     # Specify SQL edges.
