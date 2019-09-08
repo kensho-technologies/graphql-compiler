@@ -1844,7 +1844,7 @@ for configuring and running SQLAlchemy in a production system.
     # See https://docs.sqlalchemy.org/en/latest/core/engines.html for more detail on this step.
     engine = create_engine('<connection string>')
 
-    # Reflect the database schema in a SQLAlchemyMetadata object.
+    # Reflect the database schema using a SQLAlchemy Metadata object.
     hypothetical_animal_db_metadata = MetaData(bind=engine)
     hypothetical_animal_db_metadata.reflect()
 
