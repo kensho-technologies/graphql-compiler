@@ -300,5 +300,9 @@ class IntegrationTests(TestCase):
     def test_statistics_collection(self):
         engine = self.sql_backend_name_to_engine['mssql']
         stats = statistics_collection.create_local_statistics_from_mssql(self.sql_schema_info, engine)
-        print(stats)
+
+        self.assertEqual(4, stats.get_class_count('Animal'))
+        self.assertEqual(0, stats.get_class_count('Animal_ParentOf'))
+        self.assertEqual(0, stats.get_vertex_edge_vertex_count('Animal', 'Animal_ParentOf', 'Animal'))
+        self.assertEqual(4, stats.get_distinct_field_values_count('Animal', 'net_worth'))
 # pylint: enable=no-member

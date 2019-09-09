@@ -651,12 +651,6 @@ def get_sqlalchemy_schema_info():
             'to_table': 'Union__BirthEvent__Event__FeedingEvent',
             'from_column': 'related_event',
             'to_column': 'uuid',
-        }, {
-            'name': 'Entity_Alias',
-            'from_table': 'Entity',
-            'to_table': 'Alias',
-            'from_column': 'uuid',
-            'to_column': 'alias_for',
         }
     ]
 

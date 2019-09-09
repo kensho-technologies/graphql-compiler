@@ -143,39 +143,35 @@ def tear_down_integration_test_backends(sql_test_backends):
 def generate_sql_integration_data(sql_test_backends):
     """Populate test data for SQL backends for integration testing."""
     sql_schema_info = get_sqlalchemy_schema_info()
-    animal_rows = (
-        {
-            'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a51',
-            'name': 'Animal 1',
-            'net_worth': Decimal('100'),
-            'birthday': datetime.date(1900, 1, 1),
-        },
-        {
-            'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a52',
-            'name': 'Animal 2',
-            'net_worth': Decimal('200'),
-            'birthday': datetime.date(1950, 2, 2),
-        },
-        {
-            'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a53',
-            'name': 'Animal 3',
-            'net_worth': Decimal('300'),
-            'birthday': datetime.date(1975, 3, 3),
-        },
-        {
-            'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a54',
-            'name': 'Animal 4',
-            'net_worth': Decimal('400'),
-            'birthday': datetime.date(2000, 4, 4),
-        },
-    )
-    table_values = [
-        (sql_schema_info.vertex_name_to_table['Animal'], animal_rows),
-    ]
+    table_data = {
+        'Animal': (
+            {
+                'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a51',
+                'name': 'Animal 1',
+                'net_worth': Decimal('100'),
+                'birthday': datetime.date(1900, 1, 1),
+            }, {
+                'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a52',
+                'name': 'Animal 2',
+                'net_worth': Decimal('200'),
+                'birthday': datetime.date(1950, 2, 2),
+            }, {
+                'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a53',
+                'name': 'Animal 3',
+                'net_worth': Decimal('300'),
+                'birthday': datetime.date(1975, 3, 3),
+            }, {
+                'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a54',
+                'name': 'Animal 4',
+                'net_worth': Decimal('400'),
+                'birthday': datetime.date(2000, 4, 4),
+            },
+        )
+    }
     for sql_test_backend in six.itervalues(sql_test_backends):
-        for table, insert_values in table_values:
+        for vertex_name, table in six.iteritems(sql_schema_info.vertex_name_to_table):
             table.delete(bind=sql_test_backend.engine)
             table.create(bind=sql_test_backend.engine)
-            for insert_value in insert_values:
-                sql_test_backend.engine.execute(table.insert().values(**insert_value))
+            for row in table_data.get(vertex_name, ()):
+                sql_test_backend.engine.execute(table.insert().values(**row))
     return sql_schema_info

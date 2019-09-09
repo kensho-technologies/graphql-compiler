@@ -117,7 +117,7 @@ def sql_integration_data(request):
     yield
     # tear down the fixture after the testing class runs all tests
     # including rolling back transaction to ensure all fixture data removed.
-    tear_down_integration_test_backends(sql_test_backends)
+    # tear_down_integration_test_backends(sql_test_backends)
 
 
 def pytest_addoption(parser):
