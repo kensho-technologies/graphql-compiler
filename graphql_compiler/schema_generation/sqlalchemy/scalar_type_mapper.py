@@ -75,7 +75,6 @@ MSSQL_CLASS_TO_GRAPHQL_TYPE = {
     mssqltypes.TIME: GraphQLDateTime,
     mssqltypes.TINYINT: GraphQLInt,
     mssqltypes.UNIQUEIDENTIFIER: GraphQLID,
-
 }
 
 UNSUPPORTED_MSSQL_TYPES = frozenset({
