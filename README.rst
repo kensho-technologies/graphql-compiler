@@ -1819,6 +1819,20 @@ pieces in development:
   specific to them: :code:`contains`, :code:`intersects`, :code:`name_or_alias`
 - Meta fields: :code:`__typename`, :code:`_x_count`
 
+Querying Across SQL Schemas
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Some SQL database management systems support the concept of multiple
+`schemas <https://docs.sqlalchemy.org/en/13/core/metadata.html?highlight=schema#specifying-the-schema-name>`__
+and support cross SQL schema queries, (even for schemas in different databases). One can
+generate such queries with the compiler by including SQLAlchemy :code:`Table` objects from
+different schemas in the same :code:`SQLAlchemySchemaInfo`. The compiler uses the :code:`name` and
+:code:`schema` fields to unambiguously reference the underlying SQL
+
+Be wary that tables in different databases/schemas might have the same name, so attempting to
+use just the table names as GraphQL object names might lead to name collisions. This is the reason
+why we've decided to give the user full freedom in specifying the GraphQL object names.
+
 End-To-End SQL Example
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1895,23 +1909,6 @@ for configuring and running SQLAlchemy in a production system.
     #         ON "Animal_1".location = "Location_1".uuid
 
     query_results = [dict(result_proxy) for result_proxy in engine.execute(compilation_result.query)]
-
-
-
-Querying Across SQL Databases
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-For certain SQL database management systems, (namely Microsoft SQL Server), it is possible to
-execute SQL joins between tables residing in different databases of a server or in different
-`schemas <https://docs.sqlalchemy.org/en/13/core/metadata.html?highlight=schema#specifying-the-schema-name>`__
-of a database. One can also generate such queries by using the GraphQL compiler. To do
-so, one must map the cross-database/schema SQLAlchemy :code:`Table` objects to GraphQL objects in
-the same :code:`SQLAlchemySchemaInfo`. During compilation the compiler uses the :code:`name` and
-:code:`schema` fields of the :code:`Table` objects to unambiguously reference the SQL tables.
-
-Be wary that tables in different databases/schemas might have the same name, so attempting to
-use just the table names as GraphQL object names might lead to name collisions. This is the reason
-why we've decided to give the user full freedom in specifying the GraphQL object names.
 
 Miscellaneous
 -------------
