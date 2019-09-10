@@ -244,6 +244,7 @@ def _parse_datetime_value(value):
 
     return arrow.get(value, 'YYYY-MM-DDTHH:mm:ssZZ').datetime
 
+
 GraphQLDate = GraphQLScalarType(
     name='Date',
     description='The `Date` scalar type represents day-accuracy date objects.'
