@@ -1819,6 +1819,93 @@ pieces in development:
   specific to them: :code:`contains`, :code:`intersects`, :code:`name_or_alias`
 - Meta fields: :code:`__typename`, :code:`_x_count`
 
+The are two quite important details to know when compiling to SQL:
+
+- The :code:`query` field in the :code:`CompilationResult` object returned by
+  :code:`graphql_to_sql` is not a string but a SQLAlchemy :code:`Query` object. The
+  :code:`Query` object can be executed in a SQLAlchemy
+  `engine <https://docs.sqlalchemy.org/en/latest/core/engines.html>`__. The compiler
+  does not return strings since SQLAlchemy relies on the DB-API, (e.g :code:`pymssql`), to
+  `print the actual query <https://stackoverflow.com/questions/5631078/sqlalchemy-print-the-actual-query>`__.
+- Since SQL is a relational database language, the compiler relies on additional metadata
+  specified in a :code:`SQLAlchemySchemaInfo` object, (such as information about how to resolve
+  vertex fields), to compile to SQL.
+
+This documentation will proceed to explain how to generate a :code:`SQLAlchemySchemaInfo` object
+and give an intuition of how all the pieces fit together in the `End-To-End SQL Example
+<#end-to-end-sql-example>`__.
+
+Generating a :code:`SQAlchemySchemaInfo` object
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A :code:`SQAlchemySchemaInfo` can be generated through the
+:code:`get_sqlalchemy_schema_info_from_specified_metadata` function.
+However, gathering the necessary input to this function is a bit intricate and can be divided
+into 3 major steps:
+
+- Choosing the compilation :code:`dialect`
+- Mapping SQLAlchemy :code:`Table` objects to GraphQL objects
+- Specifying SQL edges
+
+Choosing the compilation :code:`dialect`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The first step is to specify the SQL :code:`dialect` we are compiling to.
+
+It can either manually specified:
+
+.. code:: python
+
+    from sqlalchemy.dialects.mssql import dialect
+
+    mssql_dialect = dialect()
+
+Or inferred from the SQLAlchemy engine:
+
+.. code:: python
+
+    from sqlalchemy import create_engine
+
+    engine = create_engine('<connection string>')
+    dialect = engine.dialect
+
+If specifying the dialect, please make sure to only use SQL types allowed in that dialect.
+
+Mapping SQLAlchemy :code:`Table` objects to GraphQL objects
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The next step is to map SQLAlchemy :code:`Table` objects to GraphQL objects through the
+:code:`vertex_name_to_table` parameter. This can be roughly divided into
+two steps:
+
+Generating the SQLAlchemy :code:Table objects
+'''''''''''''''''''''''''''''''''''''''''''''
+
+SQLAlchemy :code:`Table` objects are a python representation of underlying SQL tables.
+
+They can either be manually specified:
+
+.. code:: python
+
+    from sqlalchemy import MetaData, Table, Column
+
+
+
+
+.. code:: python
+
+    from sqlalchemy import MetaData, create_engine
+
+    # Prepare a SQLAlchemy engine to query the target relational database.
+    # See https://docs.sqlalchemy.org/en/latest/core/engines.html for more detail on this step.
+    engine = create_engine('<connection string>')
+
+
+
+
+
+
+
 Querying Across SQL Schemas
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1828,8 +1915,6 @@ and support cross SQL schema queries, (even for schemas in different databases).
 generate such queries with the compiler by including SQLAlchemy :code:`Table` objects from
 different schemas in the same :code:`SQLAlchemySchemaInfo`. The compiler uses the :code:`name` and
 :code:`schema` fields of the :code:`Table` to unambiguously reference the underlying SQL table.
-
-
 
 
 End-To-End SQL Example
