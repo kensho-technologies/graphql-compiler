@@ -1827,17 +1827,16 @@ Some SQL database management systems support the concept of multiple
 and support cross SQL schema queries, (even for schemas in different databases). One can
 generate such queries with the compiler by including SQLAlchemy :code:`Table` objects from
 different schemas in the same :code:`SQLAlchemySchemaInfo`. The compiler uses the :code:`name` and
-:code:`schema` fields to unambiguously reference the underlying SQL
+:code:`schema` fields of the :code:`Table` to unambiguously reference the underlying SQL table.
 
-Be wary that tables in different databases/schemas might have the same name, so attempting to
-use just the table names as GraphQL object names might lead to name collisions. This is the reason
-why we've decided to give the user full freedom in specifying the GraphQL object names.
+
+
 
 End-To-End SQL Example
 ~~~~~~~~~~~~~~~~~~~~~~
 
 This section provides an end-to-end example including relevant GraphQL schema
-and SQLAlchemy engine preparation follows.
+and SQLAlchemy engine preparation.
 
 This is intended as a basic example of the setup steps for the SQL
 backend of the GraphQL compiler. It does not represent best practices
@@ -1898,17 +1897,7 @@ for configuring and running SQLAlchemy in a production system.
     parameters = {}
 
     compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
-
-    # WARNING: Strings compiled from SQLAlchemy ClauseElement objects may not be executable.
-    #          See https://stackoverflow.com/questions/5631078/sqlalchemy-print-the-actual-query
-    print(compilation_result.query.compile())
-    # SELECT "Animal_1".NAME   AS animal_name,
-    #       "Location_1".NAME AS location_name
-    # FROM   "animal" AS "Animal_1"
-    #       JOIN "location" AS "Location_1"
-    #         ON "Animal_1".location = "Location_1".uuid
-
-    query_results = [dict(result_proxy) for result_proxy in engine.execute(compilation_result.query)]
+    query_results = [dict(row) for row in engine.execute(compilation_result.query)]
 
 Miscellaneous
 -------------
