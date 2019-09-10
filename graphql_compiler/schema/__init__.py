@@ -242,7 +242,6 @@ def _parse_datetime_value(value):
         # Strip the "Z" and add an explicit time zone instead.
         value = value[:-1] + '+00:00'
 
-
     return arrow.get(value, 'YYYY-MM-DDTHH:mm:ssZZ').datetime
 
 
