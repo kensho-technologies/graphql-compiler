@@ -7,7 +7,7 @@ from .compiler_frontend import graphql_to_ir
 
 
 # The CompilationResult will have the following types for its members:
-# - query: Union[String, sqlalchemy Query], the resulting compiled query with placeholders for
+# - query: Union[String, sqlalchemy Query], the resulting compiled query, with placeholders for
 #          parameters.
 # - language: string, specifying the language to which the query was compiled
 # - output_metadata: dict, output name -> OutputMetadata namedtuple object
