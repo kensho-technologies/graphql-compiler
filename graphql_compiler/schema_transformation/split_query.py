@@ -47,7 +47,7 @@ class SubQueryNode(object):
         # List[SubQueryNode], the queries that depend on the current query
 
 
-def split_query(query_ast, merged_schema_descriptor):
+def split_query(query_ast, merged_schema_descriptor, strict=True):
     """Split input query AST into a tree of SubQueryNodes targeting each individual schema.
 
     Property fields used in the stitch will be added if not already present. @output directives
@@ -62,6 +62,9 @@ def split_query(query_ast, merged_schema_descriptor):
                                   schema: GraphQLSchema representing the merged schema
                                   type_name_to_schema_id: Dict[str, str], mapping type names to
                                                           the id of the schema it came from
+        strict: bool, if set to True then limits query splitting to queries that are guaranteed
+                to be safely splittable. If False, then some queries may be permitted to be split
+                even though they are illegal. Use with caution.
 
     Returns:
         Tuple[SubQueryNode, frozenset[str]]. The first element is the root of the tree of
@@ -77,7 +80,7 @@ def split_query(query_ast, merged_schema_descriptor):
         - SchemaStructureError if the input merged_schema_descriptor appears to be invalid
           or inconsistent
     """
-    check_query_is_valid_to_split(merged_schema_descriptor.schema, query_ast)
+    check_query_is_valid_to_split(merged_schema_descriptor.schema, query_ast, strict=strict)
 
     # If schema directives are correctly represented in the schema object, type_info is all
     # that's needed to detect and address stitching fields. However, GraphQL currently ignores

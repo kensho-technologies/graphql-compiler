@@ -11,8 +11,11 @@ from graphql.validation import validate
 import six
 
 from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
+from ..compiler.helpers import (
+    get_parameter_name, get_uniquely_named_objects_by_name, is_runtime_parameter
+)
 from ..exceptions import GraphQLError, GraphQLValidationError
-from ..schema import FilterDirective, OptionalDirective, OutputDirective
+from ..schema import FilterDirective, OptionalDirective, OutputDirective, RecurseDirective
 
 
 class SchemaTransformError(GraphQLError):
@@ -397,8 +400,16 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
         OptionalDirective.name,
     ))
 
+    def __init__(self, strict):
+        """Initialize the visitor with the appropriate strictness setting."""
+        super(CheckQueryIsValidToSplitVisitor, self).__init__()
+        self.strict = strict
+
     def enter_Directive(self, node, *args):
         """Check that the directive is supported."""
+        if not self.strict:
+            return
+
         if node.name.value not in self.supported_directives:
             raise GraphQLValidationError(
                 u'Directive "{}" is not yet supported, only "{}" are currently '
@@ -443,7 +454,7 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
                     seen_vertex_field = True
 
 
-def check_query_is_valid_to_split(schema, query_ast):
+def check_query_is_valid_to_split(schema, query_ast, strict=True):
     """Check the query is valid for splitting.
 
     In particular, ensure that the query validates against the schema, does not contain
@@ -453,6 +464,9 @@ def check_query_is_valid_to_split(schema, query_ast):
     Args:
         schema: GraphQLSchema object
         query_ast: Document
+        strict: bool, if set to True then limits query splitting to queries that are guaranteed
+                to be safely splittable. If False, then some queries may be permitted to be split
+                even though they are illegal. Use with caution.
 
     Raises:
         GraphQLValidationError if the query doesn't validate against the schema, contains
@@ -466,5 +480,38 @@ def check_query_is_valid_to_split(schema, query_ast):
             u'AST does not validate: {}'.format(built_in_validation_errors)
         )
     # Check no bad directives and fields are in order
-    visitor = CheckQueryIsValidToSplitVisitor()
+    visitor = CheckQueryIsValidToSplitVisitor(strict)
     visit(query_ast, visitor)
+
+
+class QueryRuntimeArgumentsVisitor(Visitor):
+    """Visitor that collects runtime argument names from @filter directives."""
+
+    def __init__(self):
+        """Initialize the visitor."""
+        super(QueryRuntimeArgumentsVisitor, self).__init__()
+        self.runtime_arguments = set()
+
+    def enter_Directive(self, node, *args):
+        """Check that the directive is supported."""
+        if node.name.value != FilterDirective.name:
+            return
+
+        directive_arguments = get_uniquely_named_objects_by_name(node.arguments)
+        entry_names = [
+            list_element.value
+            for list_element in directive_arguments['value'].value.values
+        ]
+
+        self.runtime_arguments.update(
+            get_parameter_name(name)
+            for name in entry_names
+            if is_runtime_parameter(name)
+        )
+
+
+def get_query_runtime_arguments(query_ast):
+    """Return a set containing the names of the runtime arguments required by the query."""
+    visitor = QueryRuntimeArgumentsVisitor()
+    visit(query_ast, visitor)
+    return visitor.runtime_arguments
