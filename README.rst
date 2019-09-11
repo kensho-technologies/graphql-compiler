@@ -1853,15 +1853,21 @@ The first step is to infer the SQL :code:`dialect` we are compiling to from the 
 Mapping SQLAlchemy :code:`Table` objects to GraphQL objects
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-SQL tables will be represented as GraphQL objects in the :code:`schema` field of the
-:code:`SQLALchemySchemaInfo` through the :code:`vertex_name_to_table` parameter.
+The next step is top map SQLAlchemy :code:`Table` reflecting the tables in the underlying
+database to GraphQL objects in the :code:`schema` field of the :code:`SQLALchemySchemaInfo`
+through the :code:`vertex_name_to_table` parameter.
+
+The :code:`get_sqlalchemy_schema_info_from_specified_metadata` uses this parameter to construct
+the GraphQL objects by using the specified GraphQL object name for each table and reflecting the
+columns with matching GraphQL types as fields in the schema.
 
 Constructing this parameter can be divided into two steps:
 
+- Generating the SQLAlchemy :code:`Table` objects
+- Choosing the GraphQL object names
+
 Generating the SQLAlchemy :code:`Table` objects
 '''''''''''''''''''''''''''''''''''''''''''''''
-
-SQLAlchemy :code:`Table` objects are a python representation of underlying SQL tables.
 
 There are two standard workflows when working with SQLAlchemy :code:`Table objects` define the
 tables in python and then `create them in the underlying database
@@ -1905,8 +1911,10 @@ practice is to prepend the schema name as follows:
 
 Specifying SQL Edges
 ^^^^^^^^^^^^^^^^^^^^
-Finally, we can specify edges in SQL through the :code:`direct_edges` parameter as below. We use
-the term :code:`direct_edges`, since we may support other types of SQL edges in the future.
+The final step is to specify edges in SQL through the :code:`direct_edges` parameter as
+below. We use the term :code:`direct_edges`, since the compiler may support other types of SQL
+edges in the future such as edges that are backed by SQL `association tables
+<https://en.wikipedia.org/wiki/Associative_entity>`__.
 
 .. code:: python
 
