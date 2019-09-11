@@ -1940,13 +1940,13 @@ End-To-End SQL Example
     # Step 1: Provide schema information.
     # =================================================================================================
 
-    engine = create_engine('<connection string>')
+    engine = create_engine('<connection string with database name>')
 
     # Reflect default database schema using a SQLAlchemy Metadata object.
     hypothetical_animal_db_metadata = MetaData(bind=engine)
     hypothetical_animal_db_metadata.reflect()
 
-    # We do not have any name conflicts since reflecting tables from a single schema.
+    # We do not have any name conflicts since we are reflecting tables from a single schema.
     vertex_name_to_table = {
         table.name: table
         for table in hypothetical_animal_db_metadata.values()
