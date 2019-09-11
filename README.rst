@@ -1984,6 +1984,7 @@ End-To-End SQL Example
     parameters = {}
 
     compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
+
     query_results = [dict(row) for row in engine.execute(compilation_result.query)]
 
 Miscellaneous
