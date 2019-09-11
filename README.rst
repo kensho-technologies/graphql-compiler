@@ -1807,8 +1807,10 @@ SQL
 ---
 
 Relational databases are supported by compiling to SQLAlchemy core as an intermediate
-language, and then relying on SQLAlchemy's compilation of the dialect-specific SQL string to query
-the target database.
+language, and then relying on SQLAlchemy's compilation of the dialect-specific SQL query. For
+implementation simplicity and security reasons, the compiler does not
+return a string, but instead a SQLAlchemy :code:`Query` object that can be executed through a
+SQLAlchemy `engine <https://docs.sqlalchemy.org/en/latest/core/engines.html>`__.
 
 Our SQL backend supports basic traversals, filters, tags and outputs, but there are still some
 pieces in development:
@@ -1819,48 +1821,27 @@ pieces in development:
   specific to them: :code:`contains`, :code:`intersects`, :code:`name_or_alias`
 - Meta fields: :code:`__typename`, :code:`_x_count`
 
-The are two quite important details to know when compiling to SQL:
-
-- The :code:`query` field in the :code:`CompilationResult` object returned by
-  :code:`graphql_to_sql` is not a string but a SQLAlchemy :code:`Query` object. The
-  :code:`Query` object can be executed in a SQLAlchemy
-  `engine <https://docs.sqlalchemy.org/en/latest/core/engines.html>`__. The compiler
-  does not return strings since SQLAlchemy relies on the DB-API, (e.g :code:`pymssql`), to
-  `print the actual query <https://stackoverflow.com/questions/5631078/sqlalchemy-print-the-actual-query>`__.
-- Since SQL is a relational database language, the compiler relies on additional metadata
-  specified in a :code:`SQLAlchemySchemaInfo` object, (such as information about how to resolve
-  vertex fields), to compile to SQL.
-
-This documentation will proceed to explain how to generate a :code:`SQLAlchemySchemaInfo` object
-and give an intuition of how all the pieces fit together in the `End-To-End SQL Example
-<#end-to-end-sql-example>`__.
-
 Generating a :code:`SQAlchemySchemaInfo` object
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A :code:`SQAlchemySchemaInfo` can be generated through the
+Since SQL is a relational database language, the compiler relies on additional metadata
+specified in a :code:`SQLAlchemySchemaInfo` object, (such as information about how to resolve
+vertex fields), to compile to SQL. It can be generated through the
 :code:`get_sqlalchemy_schema_info_from_specified_metadata` function.
 However, gathering the necessary input to this function is a bit intricate and can be divided
 into 3 major steps:
 
-- Choosing the compilation :code:`dialect`
+- Inferring the :code:`dialect`
 - Mapping SQLAlchemy :code:`Table` objects to GraphQL objects
 - Specifying SQL edges
 
-Choosing the compilation :code:`dialect`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The documentation explains in details and puts everything together in the
+`End to End SQL Example <#end-to-end-sql-example>`__.
 
-The first step is to specify the SQL :code:`dialect` we are compiling to.
+Inferring the :code:`dialect`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-It can either manually specified:
-
-.. code:: python
-
-    from sqlalchemy.dialects.mssql import dialect
-
-    mssql_dialect = dialect()
-
-Or inferred from the SQLAlchemy engine:
+The first step is to infer the SQL :code:`dialect` we are compiling to from the engine:
 
 .. code:: python
 
@@ -1869,63 +1850,83 @@ Or inferred from the SQLAlchemy engine:
     engine = create_engine('<connection string>')
     dialect = engine.dialect
 
-If specifying the dialect, please make sure to only use SQL types allowed in that dialect.
-
 Mapping SQLAlchemy :code:`Table` objects to GraphQL objects
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The next step is to map SQLAlchemy :code:`Table` objects to GraphQL objects through the
-:code:`vertex_name_to_table` parameter. This can be roughly divided into
-two steps:
+SQL tables will be represented as GraphQL objects in the :code:`schema` field of the
+:code:`SQLALchemySchemaInfo` through the :code:`vertex_name_to_table` parameter.
+
+Constructing this parameter can be divided into two steps:
 
 Generating the SQLAlchemy :code:Table objects
 '''''''''''''''''''''''''''''''''''''''''''''
 
 SQLAlchemy :code:`Table` objects are a python representation of underlying SQL tables.
 
-They can either be manually specified:
+There are two standard workflows when working with SQLAlchemy :code:`Table objects: define the
+tables in python and `create them in the underlying database <https://docs.sqlalchemy.org/en/13/core/metadata.html#creating-and-dropping-database-tables>`__
+or `reflect them from the underlying database <https://docs.sqlalchemy.org/en/13/core/reflection.html#reflecting-database-objects>`__.
+
+Regardless of the way the :code:`Table` objects are generated, each :code:`Table` object must have
+a primary key. The primary key columns do not need to be known to the database as primary
+key columns. They do have do have to be an unique and not null identifier for a row. If reflecting
+the SQLAlchemy :code:`Table` objects you can override table columns to be part of the primary key
+by following the instruction in `this link <https://docs.sqlalchemy.org/en/13/core/reflection.html#overriding-reflected-columns>`__.
+
+Choosing the GraphQL object names
+'''''''''''''''''''''''''''''''''
+
+Since some SQL database management systems support the concept of multiple
+`schemas <https://docs.sqlalchemy.org/en/13/core/metadata.html?highlight=schema#specifying-the-schema-name>`__,
+we cannot simply use table names as GraphQL objects because two SQLAlchemy :code:`Table` objects
+tables in different schemas can have the same the name. A solution that is not quite
+guaranteed to work, but will likely work in practice is to prepend the schema name as follows:
 
 .. code:: python
 
-    from sqlalchemy import MetaData, Table, Column
+    vertex_name_to_table = {}
+    for table in metadata.values():
+        # The schema field may be None if the database name is specified in the connection string
+        # and the table is in the default schema, (e.g. 'dbo' for mssql and 'public' for postgres).
+        if table.schema:
+            vertex_name = 'dbo' + table.name
+        else:
+            # If the database name is not specified in the connection string, then
+            # the schema field is of the form <databaseName>.<schemaName>.
+            # Since dots are not allowed GraphQL type names we must remove them here.
+            vertex_name = table.schema.replace('.', '') + table.name
 
+        if vertex_name in vertex_name_to_table:
+            raise AssertionError('Found two tables with conflicting GraphQL object names')
 
+        vertex_name_to_table[vertex_name] = table
 
+Specifying SQL Edges
+^^^^^^^^^^^^^^^^^^^^
+Finally, we can specify edges in SQL through the :code:`direct_edges` parameter as below.
 
 .. code:: python
 
-    from sqlalchemy import MetaData, create_engine
+    from graphql_compiler.schema_generation.sqlalchemy.edge_descriptors import DirectEdgeDescriptor
 
-    # Prepare a SQLAlchemy engine to query the target relational database.
-    # See https://docs.sqlalchemy.org/en/latest/core/engines.html for more detail on this step.
-    engine = create_engine('<connection string>')
+    direct_edge_descriptor = DirectEdgeDescriptor(
+        from_vertex='Animal',  # Name of the source GraphQL object as specified in vertex_name_to_table.
+        from_column='location',  # Name of the column of the underlying source table to join on.
+        to_vertex='Location',  # Name of the destination GraphQL object as specified in vertex_name_to_table.
+        to_column='uuid',   # Name of the column of the underlying destination table to join on.
+    )
 
+    # direct_edges maps direct edge names to direct edge descriptors.
+    direct_edges = {
+        'Animal_LivesIn': direct_edge_descriptor
+    }
 
-
-
-
-
-
-Querying Across SQL Schemas
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Some SQL database management systems support the concept of multiple
-`schemas <https://docs.sqlalchemy.org/en/13/core/metadata.html?highlight=schema#specifying-the-schema-name>`__
-and support cross SQL schema queries, (even for schemas in different databases). One can
-generate such queries with the compiler by including SQLAlchemy :code:`Table` objects from
-different schemas in the same :code:`SQLAlchemySchemaInfo`. The compiler uses the :code:`name` and
-:code:`schema` fields of the :code:`Table` to unambiguously reference the underlying SQL table.
-
+SQL edges gets rendered as :code:`out_edgeName` and :code:`in_edgeName` in the source and
+destination GraphQL objects respectively. The compiler uses the :code:`from_column` and
+:code:`to_column` fields to compile edge traversals to equivalent SQL joins.
 
 End-To-End SQL Example
 ~~~~~~~~~~~~~~~~~~~~~~
-
-This section provides an end-to-end example including relevant GraphQL schema
-and SQLAlchemy engine preparation.
-
-This is intended as a basic example of the setup steps for the SQL
-backend of the GraphQL compiler. It does not represent best practices
-for configuring and running SQLAlchemy in a production system.
 
 .. code:: python
 
@@ -1938,25 +1939,25 @@ for configuring and running SQLAlchemy in a production system.
     # Step 1: Provide schema information.
     # =================================================================================================
 
-    # Prepare a SQLAlchemy engine to query the target relational database.
-    # See https://docs.sqlalchemy.org/en/latest/core/engines.html for more detail on this step.
     engine = create_engine('<connection string>')
 
-    # Reflect the database schema using a SQLAlchemy Metadata object.
+    # Reflect default database schema using a SQLAlchemy Metadata object.
     hypothetical_animal_db_metadata = MetaData(bind=engine)
     hypothetical_animal_db_metadata.reflect()
 
-    # Use table names as GraphQL object names. If including tables from multiple databases, make
-    # sure GraphQL object names do not conflict. For more info see Querying Across SQL Databases.
-    vertex_name_to_table = hypothetical_animal_db_metadata.tables
+    # We do not have any name conflicts since reflecting tables from a single schema.
+    vertex_name_to_table = {
+        table.name: table
+        for table in hypothetical_animal_db_metadata.values()
+    }
 
     # Specify SQL edges.
     direct_edges = {
         'Animal_LivesIn': DirectEdgeDescriptor(
-            from_vertex='Animal',  # Name of the source GraphQL object
-            from_column='location',  # Name of the column of the underlying source table to join on.
-            to_vertex='Location',  # Name of the destination GraphQL object.
-            to_column='uuid',   # Name of the column of the underlying destination table to join on.
+            from_vertex='Animal',
+            from_column='location',
+            to_vertex='Location',
+            to_column='uuid',
         )
     }
 
