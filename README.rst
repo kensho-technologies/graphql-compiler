@@ -1869,7 +1869,7 @@ Constructing this parameter can be divided into two steps:
 Generating the SQLAlchemy :code:`Table` objects
 '''''''''''''''''''''''''''''''''''''''''''''''
 
-There are two standard workflows when working with SQLAlchemy :code:`Table objects` define the
+There are two standard workflows when working with SQLAlchemy :code:`Table` objects define the
 tables in python and then `create them in the underlying database
 <https://docs.sqlalchemy.org/en/13/core/metadata.html#creating-and-dropping-database-tables>`__
 or, if the tables are already defined in SQL simply `reflect them from the database
@@ -1912,7 +1912,7 @@ practice is to prepend the schema name as follows:
 Specifying SQL Edges
 ^^^^^^^^^^^^^^^^^^^^
 The final step is to specify edges in SQL through the :code:`direct_edges` parameter as
-below. We use the term :code:`direct_edges`, since the compiler may support other types of SQL
+below. We use the term :code:`direct_edges` since the compiler may support other types of SQL
 edges in the future such as edges that are backed by SQL `association tables
 <https://en.wikipedia.org/wiki/Associative_entity>`__.
 
