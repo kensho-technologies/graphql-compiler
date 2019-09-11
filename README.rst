@@ -1897,13 +1897,14 @@ guaranteed to work, but will likely work in practice is to prepend the schema na
             vertex_name = table.schema.replace('.', '') + table.name
 
         if vertex_name in vertex_name_to_table:
-            raise AssertionError('Found two tables with conflicting GraphQL object names')
+            raise AssertionError('Found two tables with conflicting GraphQL object names.')
 
         vertex_name_to_table[vertex_name] = table
 
 Specifying SQL Edges
 ^^^^^^^^^^^^^^^^^^^^
-Finally, we can specify edges in SQL through the :code:`direct_edges` parameter as below.
+Finally, we can specify edges in SQL through the :code:`direct_edges` parameter as below. We use
+the term :code:`direct_edges`, since we may support other types of SQL edges in the future.
 
 .. code:: python
 
