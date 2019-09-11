@@ -1932,6 +1932,7 @@ End-To-End SQL Example
 .. code:: python
 
     from sqlalchemy import MetaData, create_engine, dialects
+
     from graphql_compiler import get_sqlalchemy_schema_info_from_specified_metadata, graphql_to_sql
     from graphql_compiler.schema_generation.sqlalchemy.edge_descriptors import DirectEdgeDescriptor
 
