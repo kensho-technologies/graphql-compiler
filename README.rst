@@ -21,8 +21,8 @@ languages.
 
 Furthermore, the GraphQL compiler validates queries through the use of a
 GraphQL schema that specifies the underlying schema of the database. We
-we can currently autogenerate GraphQL schemas from OrientDB databases, (see `End to End Example
-<#end-to-end-example>`__) and from SQL databases, (see `End to End SQL Example
+we can currently autogenerate GraphQL schemas from OrientDB databases, (see `End-to-End Example
+<#end-to-end-example>`__) and from SQL databases, (see `End-to-End SQL Example
 <#end-to-end-sql-example>`__).
 
 For a more detailed overview and getting started guide, please see `our
@@ -33,7 +33,7 @@ Table of contents
 -----------------
 
 -  `Features <#features>`__
--  `End to End Example <#end-to-end-example>`__
+-  `End-to-End Example <#end-to-end-example>`__
 -  `Definitions <#definitions>`__
 -  `Directives <#directives>`__
 
@@ -1835,8 +1835,8 @@ into 3 major steps:
 - Mapping SQLAlchemy :code:`Table` objects to GraphQL objects
 - Specifying SQL edges
 
-The documentation explains in details and puts everything together in the
-`End to End SQL Example <#end-to-end-sql-example>`__.
+The following documentation explain these steps in detail and puts everything together in the
+`End-to-End SQL Example <#end-to-end-sql-example>`__.
 
 Inferring the :code:`dialect`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1863,7 +1863,7 @@ Generating the SQLAlchemy :code:Table objects
 
 SQLAlchemy :code:`Table` objects are a python representation of underlying SQL tables.
 
-There are two standard workflows when working with SQLAlchemy :code:`Table objects: define the
+There are two standard workflows when working with SQLAlchemy :code:`Table objects` define the
 tables in python and `create them in the underlying database <https://docs.sqlalchemy.org/en/13/core/metadata.html#creating-and-dropping-database-tables>`__
 or `reflect them from the underlying database <https://docs.sqlalchemy.org/en/13/core/reflection.html#reflecting-database-objects>`__.
 
