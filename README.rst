@@ -1975,7 +1975,7 @@ End-To-End SQL Example
 
     # Wrap the schema information into a SQLAlchemySchemaInfo object.
     sql_schema_info = get_sqlalchemy_schema_info_from_specified_metadata(
-        vertex_name_to_table, direct_edges, dialects.mssql.dialect())
+        vertex_name_to_table, direct_edges, engine.dialect)
 
 
     # =================================================================================================
