@@ -1858,14 +1858,16 @@ SQL tables will be represented as GraphQL objects in the :code:`schema` field of
 
 Constructing this parameter can be divided into two steps:
 
-Generating the SQLAlchemy :code:Table objects
+Generating the SQLAlchemy :code:`Table` objects
 '''''''''''''''''''''''''''''''''''''''''''''
 
 SQLAlchemy :code:`Table` objects are a python representation of underlying SQL tables.
 
 There are two standard workflows when working with SQLAlchemy :code:`Table objects` define the
-tables in python and `create them in the underlying database <https://docs.sqlalchemy.org/en/13/core/metadata.html#creating-and-dropping-database-tables>`__
-or `reflect them from the underlying database <https://docs.sqlalchemy.org/en/13/core/reflection.html#reflecting-database-objects>`__.
+tables in python and then `create them in the underlying database
+<https://docs.sqlalchemy.org/en/13/core/metadata.html#creating-and-dropping-database-tables>`__
+or, if the tables are already defined in SQL simply `reflect them from the underlying database
+<https://docs.sqlalchemy.org/en/13/core/reflection.html#reflecting-database-objects>`__.
 
 Regardless of the way the :code:`Table` objects are generated, each :code:`Table` object must have
 a primary key. The primary key columns do not need to be known to the database as primary
@@ -1878,9 +1880,9 @@ Choosing the GraphQL object names
 
 Since some SQL database management systems support the concept of multiple
 `schemas <https://docs.sqlalchemy.org/en/13/core/metadata.html?highlight=schema#specifying-the-schema-name>`__,
-we cannot simply use table names as GraphQL objects because two SQLAlchemy :code:`Table` objects
-tables in different schemas can have the same the name. A solution that is not quite
-guaranteed to work, but will likely work in practice is to prepend the schema name as follows:
+we cannot simply use table names as GraphQL objects because two tables in different schemas can
+have the same the name. A solution that is not quite guaranteed to work, but will likely work in
+practice is to prepend the schema name as follows:
 
 .. code:: python
 
