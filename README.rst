@@ -1853,7 +1853,7 @@ The first step is to infer the SQL :code:`dialect` we are compiling to from the 
 Mapping SQLAlchemy :code:`Table` objects to GraphQL objects
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The next step is to map SQLAlchemy :code:`Table` reflecting the tables in the underlying
+The next step is to map SQLAlchemy :code:`Table` objects reflecting the tables in the underlying
 database to GraphQL objects in the :code:`schema` field of the :code:`SQLALchemySchemaInfo`
 through the :code:`vertex_name_to_table` parameter.
 
