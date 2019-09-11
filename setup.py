@@ -5,7 +5,6 @@ import re
 
 from setuptools import find_packages, setup
 
-
 #  https://packaging.python.org/guides/single-sourcing-package-version/
 #  #single-sourcing-the-version
 
@@ -57,10 +56,10 @@ setup(
     license='Apache 2.0',
     packages=find_packages(exclude=['tests*']),
     install_requires=[
-        'arrow>=0.7.0,<1',
-        'funcy>=1.6,<2',
+        'arrow>=0.10.0,<1',
+        'funcy>=1.7.3,<2',
         'graphql-core>=2.1,<3',
-        'pytz>=2016.10',
+        'pytz>=2017.2',
         'six>=1.10.0',
         'sqlalchemy>=1.3.0,<2',
     ],
