@@ -1859,7 +1859,8 @@ through the :code:`vertex_name_to_table` parameter.
 
 The :code:`get_sqlalchemy_schema_info_from_specified_metadata` uses this parameter to construct
 the GraphQL objects by using the specified GraphQL object name for each table and reflecting the
-columns with matching GraphQL types as fields in the schema.
+columns with matching GraphQL types as fields in the :code:`schema` of the
+:code:`SQLALchemySchemaInfo`.
 
 Constructing this parameter can be divided into two steps:
 
