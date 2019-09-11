@@ -1872,7 +1872,7 @@ Generating the SQLAlchemy :code:`Table` objects
 There are two standard workflows when working with SQLAlchemy :code:`Table objects` define the
 tables in python and then `create them in the underlying database
 <https://docs.sqlalchemy.org/en/13/core/metadata.html#creating-and-dropping-database-tables>`__
-or, if the tables are already defined in SQL simply `reflect them from the underlying database
+or, if the tables are already defined in SQL simply `reflect them from the database
 <https://docs.sqlalchemy.org/en/13/core/reflection.html#reflecting-database-objects>`__.
 
 Regardless of the way the :code:`Table` objects are generated, each :code:`Table` object must have
