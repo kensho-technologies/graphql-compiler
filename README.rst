@@ -1859,7 +1859,7 @@ SQL tables will be represented as GraphQL objects in the :code:`schema` field of
 Constructing this parameter can be divided into two steps:
 
 Generating the SQLAlchemy :code:`Table` objects
-'''''''''''''''''''''''''''''''''''''''''''''
+'''''''''''''''''''''''''''''''''''''''''''''''
 
 SQLAlchemy :code:`Table` objects are a python representation of underlying SQL tables.
 
