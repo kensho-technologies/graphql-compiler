@@ -1877,7 +1877,7 @@ or, if the tables are already exist in the database, simply `reflect them
 
 Regardless of the way the :code:`Table` objects are generated, each :code:`Table` object must have
 a primary key. The primary key columns do not need to be known to the database as primary
-key columns. They do have to be a unique and not null identifier for a row. If you are reflecting
+key columns. They do have to be a unique and non-null identifier for a row. If you are reflecting
 a SQLAlchemy :code:`Table` from a table in a database and it is missing a primary key, you can
 override the primary key in SQLAlchemy :code:`Table` by following the instructions in `this link
 <https://docs.sqlalchemy.org/en/13/core/reflection.html#overriding-reflected-columns>`__.
@@ -1885,11 +1885,12 @@ override the primary key in SQLAlchemy :code:`Table` by following the instructio
 Choosing the GraphQL object names
 '''''''''''''''''''''''''''''''''
 
-Since some SQL database management systems support the concept of multiple
-`schemas <https://docs.sqlalchemy.org/en/13/core/metadata.html?highlight=schema#specifying-the-schema-name>`__,
-we cannot simply use table names as GraphQL objects because two tables in different schemas can
-have the same the name. A solution that is not quite guaranteed to work, but will likely work in
-practice is to prepend the schema name as follows:
+SQLAlchemy and SQL database management systems support the concept of multiple `schemas
+<https://docs.sqlalchemy.org/en/13/core/metadata.html?highlight=schema#specifying-the-schema-name>`__.
+When including tables from different schemas, one cannot simply use table names as GraphQL
+objects because two tables in different schemas can have the same the name. A solution that is not
+quite guaranteed to work, but will likely work in practice is to prepend the schema name as
+follows:
 
 .. code:: python
 
