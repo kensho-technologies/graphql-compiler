@@ -1878,8 +1878,8 @@ or, if the tables are already exist in the database, simply `reflect them
 Regardless of the way the :code:`Table` objects are generated, each :code:`Table` object must have
 a primary key. The primary key columns do not need to be known to the database as primary
 key columns. They do have to be a unique and not null identifier for a row. If you are reflecting
-a SQLAlchemy :code:`Table` from a table and it is missing a primary key, you can override
-the primary key in SQLAlchemy :code:`Table` by following the instructions in `this link
+a SQLAlchemy :code:`Table` from a table in a database and it is missing a primary key, you can
+override the primary key in SQLAlchemy :code:`Table` by following the instructions in `this link
 <https://docs.sqlalchemy.org/en/13/core/reflection.html#overriding-reflected-columns>`__.
 
 Choosing the GraphQL object names
