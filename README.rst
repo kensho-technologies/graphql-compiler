@@ -1867,7 +1867,7 @@ Edges can be specified in SQL through the :code:`direct_edges` parameter as illu
 below. SQL edges gets rendered as :code:`out_edgeName` and :code:`in_edgeName` in the source and
 destination GraphQL objects respectively and edge traversals get compiled to SQL joins between the
 source and destination tables using the specified columns. We use the term :code:`direct_edges`
-since the compiler may support other types of SQL edges in the future such as edges that are
+below since the compiler may support other types of SQL edges in the future such as edges that are
 backed by SQL `association tables <https://en.wikipedia.org/wiki/Associative_entity>`__.
 
 .. code:: python
