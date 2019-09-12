@@ -1898,16 +1898,6 @@ the primary key of SQLAlchemy :code:`Table` objects reflected from a database pl
 instructions in `this link
 <https://docs.sqlalchemy.org/en/13/core/reflection.html#overriding-reflected-columns>`__.
 
-Including manually defined :code:`Table` objects
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The :code:`Table` objects in the :code:`SQLAlchemySchemaInfo` do not need to be reflected from the
-database. They also can be manually specified as in `this link
-<https://docs.sqlalchemy.org/en/13/core/metadata.html#creating-and-dropping-database-tables>`__.
-However, if specifying :code:`Table` objects manually, please make sure to include a primary key
-for each table and to use only SQL types allowed for the dialect specified in the
-:code:`SQLAlchemySchemaInfo`.
-
 Including tables from multiple schemas
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1937,6 +1927,16 @@ is to prepend the schema name as follows:
             raise AssertionError('Found two tables with conflicting GraphQL object names.')
 
         vertex_name_to_table[vertex_name] = table
+
+Including manually defined :code:`Table` objects
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :code:`Table` objects in the :code:`SQLAlchemySchemaInfo` do not need to be reflected from the
+database. They also can be manually specified as in `this link
+<https://docs.sqlalchemy.org/en/13/core/metadata.html#creating-and-dropping-database-tables>`__.
+However, if specifying :code:`Table` objects manually, please make sure to include a primary key
+for each table and to use only SQL types allowed for the dialect specified in the
+:code:`SQLAlchemySchemaInfo`.
 
 Miscellaneous
 -------------
