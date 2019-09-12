@@ -673,9 +673,9 @@ def get_sqlalchemy_schema_info():
         for subclass in subclass_set:
             for edge_name, join_info in six.iteritems(join_descriptors.get(class_name, {})):
                 join_descriptors.setdefault(subclass, {})[edge_name] = join_info
-
+    from sqlalchemy.dialects.mssql.pyodbc import dialect
     return make_sqlalchemy_schema_info(
-        schema, type_equivalence_hints, mssql.dialect(), tables, join_descriptors)
+        schema, type_equivalence_hints, dialect(), tables, join_descriptors)
 
 
 def generate_schema_graph(orientdb_client):

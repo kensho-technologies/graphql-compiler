@@ -1807,10 +1807,10 @@ SQL
 ---
 
 Relational databases are supported by compiling to SQLAlchemy core as an intermediate
-language, and then relying on SQLAlchemy's compilation of the dialect-specific SQL query. For
-implementation simplicity and security reasons, the compiler does not
-return a string, but instead a SQLAlchemy :code:`Query` object that can be executed through a
-SQLAlchemy `engine <https://docs.sqlalchemy.org/en/latest/core/engines.html>`__.
+language, and then relying on SQLAlchemy's compilation of the dialect-specific SQL query. The
+compiler does not return a string for SQL compilation, but instead a SQLAlchemy :code:`Query`
+object that can be executed through a SQLAlchemy `engine
+<https://docs.sqlalchemy.org/en/latest/core/engines.html>`__.
 
 Our SQL backend supports basic traversals, filters, tags and outputs, but there are still some
 pieces in development:
