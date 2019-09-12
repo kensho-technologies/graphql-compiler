@@ -1898,8 +1898,8 @@ the primary key of SQLAlchemy :code:`Table` objects reflected from a database pl
 instructions in `this link
 <https://docs.sqlalchemy.org/en/13/core/reflection.html#overriding-reflected-columns>`__.
 
-Including manually defined :Table: objects
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Including manually defined :code:`Table` objects
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^g
 
 The :code:`Table` objects in the :code:`SQLAlchemySchemaInfo` do not need to be reflected from the
 database. They also can be manually specified as in `this link
