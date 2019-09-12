@@ -1828,7 +1828,7 @@ To compile and execute GraphQL a GraphQL query against a SQL backend simply refl
 schema data from the database using SQLAlchemy, compile the GraphQL query to a SQLAlchemy
 :code:`Query`, and execute it against the engine as in the example below:
 
-.. code-block:: python
+.. code:: python
 
     from graphql_compiler import get_sqlalchemy_schema_info_from_specified_metadata, graphql_to_sql
     from sqlalchemy import MetaData, create_engine
