@@ -1901,7 +1901,7 @@ Including tables from multiple schemas
 
 SQLAlchemy and SQL database management systems support the concept of multiple `schemas
 <https://docs.sqlalchemy.org/en/13/core/metadata.html?highlight=schema#specifying-the-schema-name>`__.
-Similarly, one can map :code:`Table` objects from multiple schemas onto the same
+One can include :code:`Table` objects from multiple schemas in the same
 :code:`SQLAlchemySchemaInfo`. However, when doing so, one cannot simply use table names as
 GraphQL object names because two tables in different schemas can have the
 same the name. A solution that is not quite guaranteed to work, but will likely work in practice
