@@ -1835,7 +1835,7 @@ schema data from the database using SQLAlchemy, compile the GraphQL query to a S
 
     engine = create_engine('<connection string>')
 
-    # Reflect the default database schema. By default each table must have a primary key.
+    # Reflect the default database schema. Each table must have a primary key.
     # See "Including tables without primary keys" otherwise.
     hypothetical_db_metadata = MetaData(bind=engine)
     hypothetical_db_metadata.reflect()
