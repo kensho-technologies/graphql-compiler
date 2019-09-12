@@ -8,7 +8,7 @@ from sqlalchemy.dialects.mssql import TINYINT, dialect
 from sqlalchemy.types import Binary, Integer, String
 
 from ... import get_sqlalchemy_schema_info_from_specified_metadata
-from ...schema_generation.exceptions import InvalidSQLEdgeError
+from ...schema_generation.exceptions import InvalidSQLEdgeError, MissingPrimaryKeyError
 from ...schema_generation.sqlalchemy.edge_descriptors import (
     DirectEdgeDescriptor, DirectJoinDescriptor
 )
@@ -21,7 +21,7 @@ def _get_test_vertex_name_to_table():
     table1 = Table(
         'Table1',
         metadata1,
-        Column('column_with_supported_type', String()),
+        Column('column_with_supported_type', String(), primary_key=True),
         Column('column_with_non_supported_type', Binary()),
         Column('column_with_mssql_type', TINYINT()),
         Column('source_column', Integer()),
@@ -32,7 +32,7 @@ def _get_test_vertex_name_to_table():
     table2 = Table(
         'Table2',
         metadata2,
-        Column('destination_column', Integer()),
+        Column('destination_column', Integer(), primary_key=True),
     )
 
     return {'Table1': table1, 'ArbitraryObjectName': table2}
@@ -157,3 +157,16 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(InvalidSQLEdgeError):
             get_sqlalchemy_schema_info_from_specified_metadata(
                 self.vertex_name_to_table, direct_edges, dialect())
+
+    def test_missing_primary_key(self):
+        table_without_primary_key = Table(
+            'TableWithoutPrimaryKey',
+            MetaData(),
+            Column('arbitrary_column', String()),
+        )
+        faulty_vertex_name_to_table = {
+            table_without_primary_key.name: table_without_primary_key
+        }
+        with self.assertRaises(MissingPrimaryKeyError):
+            get_sqlalchemy_schema_info_from_specified_metadata(
+                faulty_vertex_name_to_table, {}, dialect())
