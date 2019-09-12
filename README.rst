@@ -1824,9 +1824,8 @@ pieces in development:
 Generating a :code:`SQAlchemySchemaInfo` object
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The compiler relies on a :code:`SQLAlchemySchemaInfo` object, (such as information about how to
-resolve vertex fields), to compile to SQL. It can be generated through the
-:code:`get_sqlalchemy_schema_info_from_specified_metadata` function.
+The compiler relies on a :code:`SQLAlchemySchemaInfo` object to compile to SQL. It can be 
+generated through the :code:`get_sqlalchemy_schema_info_from_specified_metadata` function.
 Gathering the necessary input to this function can be divided into 3 major steps:
 
 - Inferring the :code:`dialect`
