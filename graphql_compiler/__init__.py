@@ -68,7 +68,9 @@ def graphql_to_sql(sql_schema_info, graphql_query, parameters):
 
     Returns:
         a CompilationResult object, containing:
-            - query: string, the resulting compiled and parameterized query string
+            - query: sqlalchemy Query, the resulting compiled and parameterized query. It can be
+                     executed in a sqlalchemy Engine which can be created through the
+                     sqlalchemy.create_engine function.
             - language: string, specifying the language to which the query was compiled
             - output_metadata: dict, output name -> OutputMetadata namedtuple object
             - input_metadata: dict, name of input variables -> inferred GraphQL type, based on use
