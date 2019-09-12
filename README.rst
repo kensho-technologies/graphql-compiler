@@ -1824,12 +1824,10 @@ pieces in development:
 Generating a :code:`SQAlchemySchemaInfo` object
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Since SQL is a relational database language, the compiler relies on additional metadata
-specified in a :code:`SQLAlchemySchemaInfo` object, (such as information about how to resolve
-vertex fields), to compile to SQL. It can be generated through the
+The compiler relies on a :code:`SQLAlchemySchemaInfo` object, (such as information about how to
+resolve vertex fields), to compile to SQL. It can be generated through the
 :code:`get_sqlalchemy_schema_info_from_specified_metadata` function.
-However, gathering the necessary input to this function is a bit intricate and can be divided
-into 3 major steps:
+Gathering the necessary input to this function can be divided into 3 major steps:
 
 - Inferring the :code:`dialect`
 - Mapping SQLAlchemy :code:`Table` objects to GraphQL objects
