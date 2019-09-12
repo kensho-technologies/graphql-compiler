@@ -1899,7 +1899,7 @@ instructions in `this link
 <https://docs.sqlalchemy.org/en/13/core/reflection.html#overriding-reflected-columns>`__.
 
 Including manually defined :code:`Table` objects
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^g
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The :code:`Table` objects in the :code:`SQLAlchemySchemaInfo` do not need to be reflected from the
 database. They also can be manually specified as in `this link
