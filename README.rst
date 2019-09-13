@@ -1836,13 +1836,13 @@ schema data from the database using SQLAlchemy, compile the GraphQL query to a S
     engine = create_engine('<connection string>')
 
     # Reflect the default database schema. Each table must have a primary key.
-    # See "Including tables without primary keys" otherwise.
-    hypothetical_db_metadata = MetaData(bind=engine)
-    hypothetical_db_metadata.reflect()
+    # See "Including tables without explicitly enforced primary keys" otherwise.
+    metadata = MetaData(bind=engine)
+    metadata.reflect()
 
     # Wrap the schema information into a SQLAlchemySchemaInfo object.
     sql_schema_info = get_sqlalchemy_schema_info_from_specified_metadata(
-        hypothetical_db_metadata.tables, {}, engine.dialect)
+        metadata.tables, {}, engine.dialect)
 
     # Write GraphQL query.
     graphql_query = '''
@@ -1886,8 +1886,8 @@ backed by SQL `association tables <https://en.wikipedia.org/wiki/Associative_ent
         'Animal_LivesIn': direct_edge_descriptor
     }
 
-Including tables without primary keys
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Including tables without explicitly enforced primary keys
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The compiler requires that each SQLAlchemy :code:`Table` object in the :code:`SQLALchemySchemaInfo`
 has a primary key. However, the primary key in the :code:`Table` need not be the primary key in
