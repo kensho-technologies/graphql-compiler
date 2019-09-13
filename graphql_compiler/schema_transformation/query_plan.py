@@ -269,8 +269,8 @@ def print_query_plan(query_plan_descriptor, indentation_depth=4):
         query_str = query_str.replace(u'\n', line_separation)
         query_plan_strings.append(query_str)
 
-    query_plan_strings.append(u'\n\nJoin together outputs as follows: ')
-    query_plan_strings.append(str([
+    query_plan_strings.append(u'\n\nJoin together outputs as follows:\n')
+    query_plan_strings.append('\n'.join([
         ' '.join([
             str(descriptor.output_names),
             'between subplan IDs',
@@ -318,9 +318,6 @@ def execute_query_plan(schema_id_to_execution_func, query_plan_descriptor, query
 
         subquery_graphql = print_ast(query_plan.query_ast)
 
-        print('\n\n********* BEGIN *********\n')
-        print(subquery_graphql)
-
         # HACK(predrag): Add proper error checking for missing arguments here.
         # HACK(predrag): Don't bother running queries if the previous query's stitching outputs
         #                returned no values to pass to the next query.
@@ -329,14 +326,10 @@ def execute_query_plan(schema_id_to_execution_func, query_plan_descriptor, query
             for argument_name in get_query_runtime_arguments(query_plan.query_ast)
         }
 
-        print(subquery_args)
-
         # Run the query and save the results.
         execution_func = schema_id_to_execution_func[schema_id]
         subquery_result = execution_func(subquery_graphql, subquery_args)
         result_components_by_plan_id[plan_id] = subquery_result
-
-        print(subquery_result)
 
         # Capture and record any values that will be used for stitching by other subqueries.
         child_extra_output_names = {
@@ -366,9 +359,6 @@ def execute_query_plan(schema_id_to_execution_func, query_plan_descriptor, query
             for output_argument_name in child_extra_output_names
         }
         full_query_args.update(new_query_args)
-
-        print(new_query_args)
-        print('\n********** END ***********\n')
 
     join_indexes_by_plan_id = _make_join_indexes(
         query_plan_descriptor, result_components_by_plan_id)
@@ -403,9 +393,6 @@ def _make_join_indexes(query_plan_descriptor, result_components_by_plan_id):
 
 def _make_join_index_for_output(results, join_output_name):
     """Return a dict of each value of the join column to a list of row indexes where it appears."""
-    print('making join index on column ', join_output_name)
-    print(results)
-
     join_index = {}
     for row_index, row in enumerate(results):
         join_value = row[join_output_name]
