@@ -23,10 +23,6 @@ from .integration_test_helpers import (
 
 all_backends_list = [
     test_backend.ORIENTDB,
-    test_backend.POSTGRES,
-    test_backend.MARIADB,
-    test_backend.MYSQL,
-    test_backend.SQLITE,
     test_backend.MSSQL,
     test_backend.NEO4J,
     test_backend.REDISGRAPH,
@@ -44,7 +40,7 @@ integration_fixtures = pytest.mark.usefixtures(
 
 
 def use_all_backends(except_backends=()):
-    """Decorator for test functions to use specific backends.
+    """Decorate test functions to make them use specific backends.
 
     By default, tests decorated with this function use all backends. However, some backends don't
     support certain features, so it's useful to exclude certain backends for individual tests.
@@ -106,7 +102,7 @@ class IntegrationTests(TestCase):
         if backend_name in SQL_BACKENDS:
             engine = cls.sql_backend_name_to_engine[backend_name]
             results = compile_and_run_sql_query(
-                cls.schema, graphql_query, parameters, engine, cls.sql_metadata)
+                cls.sql_schema_info, graphql_query, parameters, engine)
         elif backend_name in MATCH_BACKENDS:
             results = compile_and_run_match_query(
                 cls.schema, graphql_query, parameters, cls.orientdb_client)

@@ -28,15 +28,19 @@ done
 # Make sure the current working directory for this script is the root directory.
 cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
+# Get into the graphql-compiler virtualenv. "pipenv shell" returns exit code 1 if already there,
+# which doesn't matter to us so we avoid crashing the script by adding "|| true".
+pipenv shell || true
+
 # Get all python files or directories that need to be linted.
-lintable_locations="graphql_compiler/"
+lintable_locations="."
 # pylint doesn't support linting directories that aren't packages:
 # https://github.com/PyCQA/pylint/issues/352
 # Use **/*.py to supply all python files for individual linting.
-pylint_lintable_locations="graphql_compiler/**/*.py"
+pylint_lintable_locations="**/*.py *.py"
 if [ "$diff_only" -eq 1 ] ; then
     # Quotes don't need to be escaped because they nest with $( ).
-    lintable_locations="$(git diff --name-only master... | grep "\.*\.py$")"
+    lintable_locations="$(git diff --name-only master... | grep ".*\.py$")"
     pylint_lintable_locations="$lintable_locations"
 fi
 
@@ -45,7 +49,7 @@ fi
 set +e
 
 echo -e '*** Running isort... ***\n'
-isort --check-only --settings-path=setup.cfg --diff --recursive graphql_compiler/
+isort --check-only --settings-path=setup.cfg --diff --recursive $lintable_locations
 isort_exit_code=$?
 echo -e "\n*** End of isort run; exit: $isort_exit_code ***\n"
 

@@ -195,12 +195,13 @@ class QueryFormattingTests(unittest.TestCase):
             (GraphQLList(GraphQLInt), ([], [1], [3, 5]), (4, ['a'], [1, 'a'], [True])),
             (GraphQLList(GraphQLString), ([], ['a']), (1, 'a', ['a', 4])),
         )
+        arbitrary_argument_name = 'arbitrary_name'
         for graphql_type, valid_values, invalid_values in test_cases:
             for valid_value in valid_values:
-                validate_argument_type(graphql_type, valid_value)
+                validate_argument_type(arbitrary_argument_name, graphql_type, valid_value)
             for invalid_value in invalid_values:
                 with self.assertRaises(GraphQLInvalidArgumentError):
-                    validate_argument_type(graphql_type, invalid_value)
+                    validate_argument_type(arbitrary_argument_name, graphql_type, invalid_value)
 
     def test_non_null_types_pass_validation(self):
         type_and_value = [
@@ -213,5 +214,6 @@ class QueryFormattingTests(unittest.TestCase):
             (GraphQLNonNull(GraphQLList(GraphQLNonNull(GraphQLString))), ['a', 'b', 'c']),
         ]
 
+        arbitrary_argument_name = 'arbitrary_name'
         for graphql_type, value in type_and_value:
-            validate_argument_type(graphql_type, value)
+            validate_argument_type(arbitrary_argument_name, graphql_type, value)

@@ -1,6 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from graphql.error import GraphQLSyntaxError
-from graphql.language.ast import Document, InlineFragment, OperationDefinition
+from graphql.language.ast import (
+    Document, InlineFragment, ListType, NonNullType, OperationDefinition
+)
 from graphql.language.parser import parse
 
 from .exceptions import GraphQLParsingError
@@ -95,3 +97,24 @@ def get_only_selection_from_ast(ast, desired_error_type):
                                      .format(ast_name))
 
     return selections[0]
+
+
+def get_ast_with_non_null_stripped(ast):
+    """Strip a NonNullType layer around the AST if there is one, return the underlying AST."""
+    if isinstance(ast, NonNullType):
+        stripped_ast = ast.type
+        if isinstance(stripped_ast, NonNullType):
+            raise AssertionError(
+                u'NonNullType is unexpectedly found to wrap around another NonNullType in AST '
+                u'{}, which is not allowed.'.format(ast)
+            )
+        return stripped_ast
+    else:
+        return ast
+
+
+def get_ast_with_non_null_and_list_stripped(ast):
+    """Strip any NonNullType or List layers around the AST, return the underlying AST."""
+    while isinstance(ast, (NonNullType, ListType)):
+        ast = ast.type
+    return ast

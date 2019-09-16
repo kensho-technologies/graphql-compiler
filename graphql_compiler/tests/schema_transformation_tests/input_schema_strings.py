@@ -279,3 +279,59 @@ class InputSchemaStrings(object):
           Giraffe: Giraffe
         }
     ''')
+
+    same_field_schema = dedent('''\
+        schema {
+          query: SchemaQuery
+        }
+
+        type Person {
+          identifier: String
+        }
+
+        type SchemaQuery {
+          Person: Person
+        }
+    ''')
+
+    interface_with_subclasses_schema = dedent('''\
+        schema {
+          query: SchemaQuery
+        }
+
+        interface Individual {
+          ID: String
+        }
+
+        type President implements Individual {
+          ID: String
+          year: Int
+        }
+
+        type SchemaQuery {
+          Individual: Individual
+          President: President
+        }
+    ''')
+
+    union_with_subclasses_schema = dedent('''\
+        schema {
+         query: SchemaQuery
+        }
+
+        type Person {
+          identifier: String
+        }
+
+        type Kid {
+          identifier: String
+          age: Int
+        }
+
+        union PersonOrKid = Person | Kid
+
+        type SchemaQuery {
+          Person: Person
+          Kid: Kid
+        }
+    ''')

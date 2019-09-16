@@ -1,11 +1,15 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from functools import partial
 
-from ..blocks import CoerceType, Filter, Fold, MarkLocation, Recurse, Traverse
-from ..expressions import (
-    BinaryComposition, ContextField, FoldedContextField, LocalField, NullLiteral
+from .. import cypher_helpers
+from ...schema import COUNT_META_FIELD_NAME
+from ..blocks import Backtrack, CoerceType, Filter, Fold, MarkLocation, Recurse, Traverse
+from ..compiler_entities import Expression
+from ..expressions import BinaryComposition, ContextField, LocalField, NullLiteral
+from ..helpers import (
+    FoldScopeLocation, Location, get_only_element_from_collection, is_graphql_type,
+    validate_safe_string
 )
-from ..helpers import FoldScopeLocation, get_only_element_from_collection
 from ..ir_lowering_common.common import merge_consecutive_filter_clauses
 from ..ir_lowering_common.location_renaming import (
     make_location_rewriter_visitor_fn, make_revisit_location_translations
@@ -89,6 +93,88 @@ def remove_mark_location_after_optional_backtrack(ir_blocks, query_metadata_tabl
     return new_ir_blocks
 
 
+class FoldedContextFieldBeforeFolding(Expression):
+    """An expression for a field captured in a @fold scope before it's folded.
+
+    This differs from a regular FoldedContextField because the field_type for FoldedContextField
+    must be of type GraphQLList, i.e. the result of the fold. In this case, we may want to filter
+    on the result set before folding the vertices into a list, which means the field type need not
+    be a GraphQLList.
+
+    In test_input_data.filter_within_fold_scope() we have an example GraphQL query that requires us
+    to filter before folding, so compiling that to Cypher would require this Expression.
+    """
+
+    __slots__ = ('fold_scope_location', 'field_type')
+
+    def __init__(self, fold_scope_location, field_type):
+        """Construct a new FoldedContextFieldBeforeFolding object for this folded field.
+
+        Args:
+            fold_scope_location: FoldScopeLocation specifying the location of
+                                 the context field being output.
+            field_type: GraphQL type object, specifying the type of the field being output.
+
+        Returns:
+            new FoldedContextFieldBeforeFolding object
+        """
+        super(FoldedContextFieldBeforeFolding, self).__init__(
+            fold_scope_location, field_type)
+        self.fold_scope_location = fold_scope_location
+        self.field_type = field_type
+        self.validate()
+
+    def validate(self):
+        """Validate that the FoldedContextFieldBeforeFolding is correctly representable."""
+        if not isinstance(self.fold_scope_location, FoldScopeLocation):
+            raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
+                type(self.fold_scope_location), self.fold_scope_location))
+
+        if self.fold_scope_location.field is None:
+            raise ValueError(u'Expected FoldScopeLocation at a field, but got: {}'
+                             .format(self.fold_scope_location))
+
+        if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
+            raise TypeError(u'Expected fold_scope_location field to not be the _x_count meta-field '
+                            u'because FoldedContextFieldBeforeFolding is specifically for '
+                            u'filtering on individual vertices\' fields in a fold scope, not for '
+                            u'filtering on the size of the list. Got FoldScopeLocation: {}'
+                            .format(self.fold_scope_location))
+
+        if not is_graphql_type(self.field_type):
+            raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
+
+    def to_gremlin(self):
+        """Raise an error since this function shouldn't be called because it's Cypher-specific."""
+        raise NotImplementedError()
+
+    def to_match(self):
+        """Raise an error since this function shouldn't be called because it's Cypher-specific."""
+        raise NotImplementedError()
+
+    def to_cypher(self):
+        """Return a unicode object with the Cypher representation of this expression."""
+        self.validate()
+
+        _, field_name = self.fold_scope_location.get_location_name()
+        mark_name = cypher_helpers.get_fold_scope_location_full_path_name(self.fold_scope_location)
+        validate_safe_string(mark_name)
+        template = u'{mark_name}.{field_name}'
+        return template.format(mark_name=mark_name, field_name=field_name)
+
+    def __eq__(self, other):
+        """Return True if the given object is equal to this one, and False otherwise."""
+        # Since this object has a GraphQL type as a variable, which doesn't implement
+        # the equality operator, we have to override equality and call is_same_type() here.
+        return (type(self) == type(other) and
+                self.fold_scope_location == other.fold_scope_location and
+                self.field_type.is_same_type(other.field_type))
+
+    def __ne__(self, other):
+        """Check another object for non-equality against this one."""
+        return not self.__eq__(other)
+
+
 def replace_local_fields_with_context_fields(ir_blocks):
     """Rewrite LocalField expressions into ContextField expressions referencing that location."""
     def visitor_func_base(location, expression):
@@ -98,7 +184,8 @@ def replace_local_fields_with_context_fields(ir_blocks):
 
         location_at_field = location.navigate_to_field(expression.field_name)
         if isinstance(location, FoldScopeLocation):
-            return FoldedContextField(location_at_field, expression.field_type)
+            return FoldedContextFieldBeforeFolding(location_at_field,
+                                                   expression.field_type)
         else:
             return ContextField(location_at_field, expression.field_type)
 
@@ -186,3 +273,52 @@ def move_filters_in_optional_locations_to_global_operations(cypher_query, query_
             merge_consecutive_filter_clauses(global_filters))
 
     return cypher_query._replace(steps=new_steps, global_where_block=new_global_where_block)
+
+
+def rewrite_locations_visit_counter_to_one(possible_location):
+    """If possible_location is a Location/FoldScopeLocation, update visit_counter to 1."""
+    if isinstance(possible_location, Location):
+        return Location(possible_location.query_path,
+                        field=possible_location.field,
+                        visit_counter=1)
+    elif isinstance(possible_location, FoldScopeLocation):
+        return FoldScopeLocation(
+            rewrite_locations_visit_counter_to_one(possible_location.base_location),
+            possible_location.fold_path,
+            field=possible_location.field)
+    return possible_location
+
+
+def renumber_locations_to_one(ir_blocks):
+    """Re-number Locations' visit_counter to be 1 since Cypher handles optional edges properly.
+
+    Renumbering of locations are required by some backends (such as Gremlin) that do not natively
+    support pattern-matching operators, in order to correctly handle optional edges.
+    When pattern-matching is supported (as in Cypher, via the MATCH / OPTIONAL MATCH operators),
+    renumbering is unnecessary and may be safely removed.
+
+    When renumbering, it's important to ensure we don't have two MarkLocation objects with the same
+    location because that's equivalent to giving two different locations in the query the same name.
+
+    Args:
+        ir_blocks: List[BasicBlock] IR blocks
+
+    Returns:
+        List[BasicBlock] IR blocks after lowering
+    """
+    new_ir_blocks = []
+
+    for block in ir_blocks:
+        # Need to rewrite the directly-contained location within the block,
+        # since the location isn't contained within an Expression object
+        # and won't be affected by the visit_and_update_expressions() call.
+        new_block = block
+        if isinstance(block, Fold):
+            new_block = Fold(rewrite_locations_visit_counter_to_one(block.fold_scope_location))
+        elif isinstance(block, MarkLocation):
+            new_block = MarkLocation(rewrite_locations_visit_counter_to_one(block.location))
+        elif isinstance(block, Backtrack):
+            new_block = Backtrack(rewrite_locations_visit_counter_to_one(block.location))
+
+        new_ir_blocks.append(new_block)
+    return new_ir_blocks
