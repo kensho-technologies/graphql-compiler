@@ -597,7 +597,7 @@ PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
 # A way to describe an index:
 #   - name: string, the name of the index.
 #   - base_classname: string, the name of the class on which the index is defined.
-#   - fields: set of strings, indicating which objects the index encompasses.
+#   - fields: frozenset of strings, indicating which objects the index encompasses.
 #             The 'in' and 'out' strings refer to the base connections.
 #             All other strings reference the base class's properties.
 #   - unique: bool, indicating whether this index is unique.
