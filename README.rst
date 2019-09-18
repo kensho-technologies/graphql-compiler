@@ -1901,7 +1901,7 @@ backed by SQL `association tables <https://en.wikipedia.org/wiki/Associative_ent
     {
         Animal {
             name @output(out_name: "animal_name")
-            out_Animal_LivesIn{
+            out_Animal_LivesIn {
                 name @output(out_name: "location_name")
             }
         }
