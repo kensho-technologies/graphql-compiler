@@ -73,6 +73,7 @@ Table of contents
 -  `SQL <#sql>`__
 
    -  `End-To-End SQL Example <#end-to-end-sql-example>`__
+   -  `Advanced Features <#advanced-features>`__
 
 -  `Miscellaneous <#miscellaneous>`__
 
