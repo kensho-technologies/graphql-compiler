@@ -1872,19 +1872,44 @@ backed by SQL `association tables <https://en.wikipedia.org/wiki/Associative_ent
 
 .. code:: python
 
+    from graphql_compiler import get_sqlalchemy_schema_info_from_specified_metadata, graphql_to_sql
     from graphql_compiler.schema_generation.sqlalchemy.edge_descriptors import DirectEdgeDescriptor
+    from sqlalchemy import MetaData, create_engine
 
-    direct_edge_descriptor = DirectEdgeDescriptor(
-        from_vertex='Animal',  # Name of the source GraphQL object as specified.
-        from_column='location',  # Name of the column of the underlying source table to join on.
-        to_vertex='Location',  # Name of the destination GraphQL object as specified.
-        to_column='uuid',   # Name of the column of the underlying destination table to join on.
-    )
+    # Set engine and reflect database metadata. (See example above for more details).
+    engine = create_engine('<connection string>')
+    metadata = MetaData(bind=engine)
+    metadata.reflect()
 
-    # Map edge names to edge descriptors.
+    # Specify SQL edges.
     direct_edges = {
-        'Animal_LivesIn': direct_edge_descriptor
+        'Animal_LivesIn': DirectEdgeDescriptor(
+            from_vertex='Animal',  # Name of the source GraphQL object as specified.
+            from_column='location',  # Name of the column of the underlying source table to join on.
+            to_vertex='Location',  # Name of the destination GraphQL object as specified.
+            to_column='uuid',   # Name of the column of the underlying destination table to join on.
+         )
     }
+
+    # Wrap the schema information into a SQLAlchemySchemaInfo object.
+    sql_schema_info = get_sqlalchemy_schema_info_from_specified_metadata(
+        metadata.tables, direct_edges, engine.dialect)
+
+    # Write GraphQL query with edge traversal.
+    graphql_query = '''
+    {
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_LivesIn{
+                name @output(out_name: "location_name")
+            }
+        }
+    }
+    '''
+
+    # Compile query. Note that the edge traversal gets compiled to a SQL join.
+    compilation_result = graphql_to_sql(sql_schema_info, graphql_query, {})
+
 
 Including tables without explicitly enforced primary keys
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
