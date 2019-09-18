@@ -2134,23 +2134,30 @@ should be constructed by composing two :code:`out_Animal_ParentOf` together:
     register_macro_edge(your_macro_registry_object, macro_edge_definition, macro_edge_args)
 
 Let's dig into the GraphQL macro edge definition one step at a time:
+
 - We know that the new macro edge is being defined on the `Animal` GraphQL type, since that
-is the type where the definition begins.
+  is the type where the definition begins.
+
 - The :code:`@macro_edge_definition` directive specifies the name of the new macro edge.
+
 - The newly-defined :code:`out_Animal_GrandparentOf` edge connects :code:`Animal` vertices
-to the vertices reachable after exactly two traversals along :code:`out_Animal_ParentOf` edges;
-this is what the :code:`@macro_edge_target` directive signifies.
+  to the vertices reachable after exactly two traversals along :code:`out_Animal_ParentOf` edges;
+  this is what the :code:`@macro_edge_target` directive signifies.
+
 - As the :code:`out_Animal_ParentOf` field containing the :code:`@macro_edge_target` directive
-is of type :code:`[Animal]` (we know this from our schema), the compiler will automatically infer
-that the :code:`out_Animal_GrandparentOf` macro edge also points to vertices of type :code:`Animal`.
+  is of type :code:`[Animal]` (we know this from our schema), the compiler will automatically infer
+  that the :code:`out_Animal_GrandparentOf` macro edge also points to vertices
+  of type :code:`Animal`.
+
 - The :code:`uuid` within the inner :code:`out_Animal_ParentOf` scope is a "pro-forma" field -- it
-is there simply to satisfy the GraphQL parser, since per the GraphQL specification, each pair of
-curly braces must reference at least one field. The named field has no meaning in this definition,
-and the user may choose to use any field that exists within that pair of curly braces.
-The preferred convention for pro-forma fields is to use the field of GraphQL type :code:`ID`
-which is the primary key of the given type in the underlying database.
+  is there simply to satisfy the GraphQL parser, since per the GraphQL specification, each pair of
+  curly braces must reference at least one field. The named field has no meaning in this definition,
+  and the user may choose to use any field that exists within that pair of curly braces.
+  The preferred convention for pro-forma fields is to use the field of GraphQL type :code:`ID`
+  which is the primary key of the given type in the underlying database.
+
 - This macro edge does not take arguments, so we set the :code:`macro_edge_args` value to an empty
-dictionary. We will cover macro edges with arguments later.
+  dictionary. We will cover macro edges with arguments later.
 
 Having defined this macro edge, we are now able to rewrite our original query into a simpler
 yet equivalent form:
