@@ -2135,7 +2135,7 @@ should be constructed by composing two :code:`out_Animal_ParentOf` together:
 
 Let's dig into the GraphQL macro edge definition one step at a time:
 
-- We know that the new macro edge is being defined on the `Animal` GraphQL type, since that
+- We know that the new macro edge is being defined on the :code:`Animal` GraphQL type, since that
   is the type where the definition begins.
 
 - The :code:`@macro_edge_definition` directive specifies the name of the new macro edge.
