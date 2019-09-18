@@ -2031,16 +2031,169 @@ define their own personal macros which are not shared with other users or the se
 the users' GraphQL queries. This is generally not achievable with SQL.
 - Since macro expansion does not interact in any way with the underlying data system, it works
 seamlessly with all databases and even on schemas stitched together from multiple databases.
-In contrast, not all databases support SQL-like `VIEW` functionality.
+In contrast, not all databases support SQL-like :code:`VIEW` functionality.
 
 For now, the compiler supports one type of macro, **macro edges**, though we hope to add more types
 of macros in the future.
+
+Macro registry
+~~~~~~~~~~~~~~
+
+The macro registry is where the definitions of all currently defined macros are stored,
+together with the resulting GraphQL schema they form, as well as any associated metadata
+that the compiler's macro system may need to expand any macros encountered in a query.
+
+To create a macro registry object for a given GraphQL schema, use the :code:`create_macro_registry`
+function:
+
+.. code:: python
+    from graphql_compiler.macros import create_macro_registry
+
+    macro_registry = create_macro_registry(your_graphql_schema_object)
+
+To retrieve the GraphQL schema object with all its macro-based additions, use
+the :code:`get_schema_with_macros` function:
+
+.. code:: python
+    from graphql_compiler.macros import get_schema_with_macros
+
+    graphql_schema = get_schema_with_macros(macro_registry)
+
 
 Macro edges
 ~~~~~~~~~~~
 
 Macro edges allow users to define new edges that become part of the GraphQL schema, using existing
-edges as building blocks. Let us explain the idea through a simple example.
+edges as building blocks. They allow users to define shorthand for common querying operations,
+encapsulating uses of existing query functionality (e.g., tags, filters, recursion,
+type coercions, etc.) into a virtual edge with a user-specified name that exists only on a specific
+GraphQL type (and all its subtypes). Both macro edge definitions and their uses are
+fully type-checked, ensuring the soundness of both the macro definition and any queries that use it.
+
+Overview and use of macro edges
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Let us explain the idea of macro edges through a simple example.
+
+Consider the following query, which returns the list of grandchildren of a given animal:
+
+.. code ::
+    {
+        Animal {
+            name @filter(op_name: "=", value: ["$animal_name"])
+            out_Animal_ParentOf {
+                out_Animal_ParentOf {
+                    name @output(out_name: "grandchild_name")
+                }
+            }
+        }
+    }
+
+If operations on animals' grandchildren are common in our specific use case, we may want to avoid
+having to write the nested :code:`out_Animal_ParentOf` edge traversals every time, and may wish that
+an edge like :code:`out_Animal_GrandparentOf` had existed.
+
+One of our options is to materialize such an edge in the underlying database itself, and therefore
+make it available for querying via the GraphQL compiler. However, this causes denormalization of
+the database -- there are now two places where an animal's grandchildren are written down --
+requiring additional storage space, and introducing potential for user confusion and
+for data inconsistency between the two representations. Furthermore, not all databases support
+materialized views, so this approach is not always viable.
+
+Another option is to introduce a non-materialized view within the database that *makes it appear*
+that such an edge exists, and query this view via the GraphQL compiler. This approach does not alter
+and duplicate the underlying data in the database, but still requires additional permissions on the
+database system, since querying users aren't necessarily able to add views to the database. Adding
+to this the fact that not all databases support non-materialized views, and we see that
+this approach should be used judiciously and is not always a perfect fit.
+
+Macro edges give us the opportunity to define a new :code:`out_Animal_GrandparentOf` edge without
+involving the underlying database systems at all. We are simply able to state that such an edge
+should be constructed by composing two :code:`out_Animal_ParentOf` together:
+
+.. code:: python
+    from graphql_compiler.macros import register_macro_edge
+
+    macro_edge_definition = '''{
+        Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+            out_Animal_ParentOf {
+                out_Animal_ParentOf @macro_edge_target {
+                    uuid
+                }
+            }
+        }
+    }'''
+    macro_edge_args = {}
+
+    register_macro_edge(your_macro_registry_object, macro_edge_definition, macro_edge_args)
+
+Let's dig into the GraphQL macro edge definition one step at a time:
+- We know that the new macro edge is being defined on the `Animal` GraphQL type, since that
+is the type where the definition begins.
+- The :code:`@macro_edge_definition` directive specifies the name of the new macro edge.
+- The newly-defined :code:`out_Animal_GrandparentOf` edge connects :code:`Animal` vertices
+to the vertices reachable after exactly two traversals along :code:`out_Animal_ParentOf` edges;
+this is what the :code:`@macro_edge_target` directive signifies.
+- As the :code:`out_Animal_ParentOf` field containing the :code:`@macro_edge_target` directive
+is of type :code:`[Animal]` (we know this from our schema), the compiler will automatically infer
+that the :code:`out_Animal_GrandparentOf` macro edge also points to vertices of type :code:`Animal`.
+- The :code:`uuid` within the inner :code:`out_Animal_ParentOf` scope is a "pro-forma" field -- it
+is there simply to satisfy the GraphQL parser, since per the GraphQL specification, each pair of
+curly braces must reference at least one field. The named field has no meaning in this definition,
+and the user may choose to use any field that exists within that pair of curly braces.
+The preferred convention for pro-forma fields is to use the field of GraphQL type :code:`ID`
+which is the primary key of the given type in the underlying database.
+- This macro edge does not take arguments, so we set the :code:`macro_edge_args` value to an empty
+dictionary. We will cover macro edges with arguments later.
+
+Having defined this macro edge, we are now able to rewrite our original query into a simpler
+yet equivalent form:
+
+.. code::
+    {
+        Animal {
+            name @filter(op_name: "=", value: ["$animal_name"])
+            out_Animal_GrandparentOf {
+                name @output(out_name: "grandchild_name")
+            }
+        }
+    }
+
+We can now observe the process of macro expansion in action:
+
+.. code:: python
+    from graphql_compiler.macros import perform_macro_expansion
+
+    query = '''{
+        Animal {
+            name @filter(op_name: "=", value: ["$animal_name"])
+            out_Animal_GrandparentOf {
+                name @output(out_name: "grandchild_name")
+            }
+        }
+    }'''
+    args = {
+        'animal_name': 'Hedwig',
+    }
+
+    new_query, new_args = perform_macro_expansion(your_macro_registry_object, query, args)
+
+    print(new_query)
+    # Prints:
+    # {
+    #     Animal {
+    #         name @filter(op_name: "=", value: ["$animal_name"])
+    #         out_Animal_ParentOf {
+    #             out_Animal_ParentOf {
+    #                 name @output(out_name: "grandchild_name")
+    #             }
+    #         }
+    #     }
+    # }
+
+    print(new_args)
+    # Prints:
+    # {'animal_name': 'Hedwig'}
 
 
 Miscellaneous
