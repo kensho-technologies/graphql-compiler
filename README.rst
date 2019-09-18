@@ -2023,17 +2023,20 @@ any additional metadata needed by the compiler. The compiler then leverages this
 to expand queries that rely on macros, rewriting them into equivalent queries that do not contain
 any macros and therefore reflect the actual underlying data model. This makes them somewhat similar
 to SQL's idea of non-materialized views, though there are some key differences:
-- SQL views require database access and special permissions; databases are
-completely oblivious to the use of macros since by the time the database gets the query,
-all macro uses have been already expanded.
-- Macros can be stored and expanded client-side, so different users that query the same system may
-define their own personal macros which are not shared with other users or the server that executes
-the users' GraphQL queries. This is generally not achievable with SQL.
-- Since macro expansion does not interact in any way with the underlying data system, it works
-seamlessly with all databases and even on schemas stitched together from multiple databases.
-In contrast, not all databases support SQL-like :code:`VIEW` functionality.
 
-For now, the compiler supports one type of macro, **macro edges**, though we hope to add more types
+- SQL views require database access and special permissions; databases are
+  completely oblivious to the use of macros since by the time the database gets the query,
+  all macro uses have been already expanded.
+
+- Macros can be stored and expanded client-side, so different users that query the same system may
+  define their own personal macros which are not shared with other users or the server that executes
+  the users' GraphQL queries. This is generally not achievable with SQL.
+
+- Since macro expansion does not interact in any way with the underlying data system, it works
+  seamlessly with all databases and even on schemas stitched together from multiple databases.
+  In contrast, not all databases support SQL-like :code:`VIEW` functionality.
+
+For now, the compiler supports one type of macro, **macro edges**. We hope to add more types
 of macros in the future.
 
 Macro registry
@@ -2047,6 +2050,7 @@ To create a macro registry object for a given GraphQL schema, use the :code:`cre
 function:
 
 .. code:: python
+
     from graphql_compiler.macros import create_macro_registry
 
     macro_registry = create_macro_registry(your_graphql_schema_object)
@@ -2055,10 +2059,10 @@ To retrieve the GraphQL schema object with all its macro-based additions, use
 the :code:`get_schema_with_macros` function:
 
 .. code:: python
+
     from graphql_compiler.macros import get_schema_with_macros
 
     graphql_schema = get_schema_with_macros(macro_registry)
-
 
 Macro edges
 ~~~~~~~~~~~
@@ -2078,6 +2082,7 @@ Let us explain the idea of macro edges through a simple example.
 Consider the following query, which returns the list of grandchildren of a given animal:
 
 .. code ::
+
     {
         Animal {
             name @filter(op_name: "=", value: ["$animal_name"])
@@ -2112,6 +2117,7 @@ involving the underlying database systems at all. We are simply able to state th
 should be constructed by composing two :code:`out_Animal_ParentOf` together:
 
 .. code:: python
+
     from graphql_compiler.macros import register_macro_edge
 
     macro_edge_definition = '''{
@@ -2150,6 +2156,7 @@ Having defined this macro edge, we are now able to rewrite our original query in
 yet equivalent form:
 
 .. code::
+
     {
         Animal {
             name @filter(op_name: "=", value: ["$animal_name"])
@@ -2162,6 +2169,7 @@ yet equivalent form:
 We can now observe the process of macro expansion in action:
 
 .. code:: python
+
     from graphql_compiler.macros import perform_macro_expansion
 
     query = '''{
