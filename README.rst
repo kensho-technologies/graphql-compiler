@@ -1875,9 +1875,9 @@ backed by SQL `association tables <https://en.wikipedia.org/wiki/Associative_ent
     from graphql_compiler.schema_generation.sqlalchemy.edge_descriptors import DirectEdgeDescriptor
 
     direct_edge_descriptor = DirectEdgeDescriptor(
-        from_vertex='Animal',  # Name of the source GraphQL object as specified in vertex_name_to_table.
+        from_vertex='Animal',  # Name of the source GraphQL object as specified.
         from_column='location',  # Name of the column of the underlying source table to join on.
-        to_vertex='Location',  # Name of the destination GraphQL object as specified in vertex_name_to_table.
+        to_vertex='Location',  # Name of the destination GraphQL object as specified.
         to_column='uuid',   # Name of the column of the underlying destination table to join on.
     )
 
