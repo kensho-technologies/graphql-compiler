@@ -42,7 +42,7 @@ PaginationFilter = namedtuple(
 )
 
 
-def generate_parameterized_queries(schema_graph, statistics, query_ast, parameters):
+def generate_parameterized_queries(schema_info, query_ast, parameters):
     """Generate two parameterized queries that can be used to paginate over a given query.
 
     In order to paginate arbitrary GraphQL queries, additional filters may need to be added to be
@@ -51,8 +51,7 @@ def generate_parameterized_queries(schema_graph, statistics, query_ast, paramete
     controlled.
 
     Args:
-        schema_graph: SchemaGraph instance.
-        statistics: Statistics object.
+        schema_info: QueryPlanningSchemaInfo
         query_ast: Document, query that is being paginated.
         parameters: dict, list of parameters for the given query.
 
