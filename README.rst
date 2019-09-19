@@ -1825,9 +1825,9 @@ pieces in development:
 End-to-End SQL Example
 ~~~~~~~~~~~~~~~~~~~~~~
 
-To compile and execute GraphQL a GraphQL query against a SQL backend simply reflect the needed
-schema data from the database using SQLAlchemy, compile the GraphQL query to a SQLAlchemy
-:code:`Query`, and execute the query against the engine as in the example below:
+To query a SQL backend simply reflect the needed schema data from the database using SQLAlchemy,
+compile the GraphQL query to a SQLAlchemy :code:`Query`, and execute the query against the engine
+as in the example below:
 
 .. code:: python
 
