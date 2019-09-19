@@ -76,6 +76,8 @@ Table of contents
 
 -  `Macro system <#macro-system>`__
 
+   -  `Macro registry <#macro-registry>`__
+   -  `Schema for defining macros <#schema-for-defining-macros>`__
    -  `Macro edges <#macro-edges>`__
 
 -  `Miscellaneous <#miscellaneous>`__
@@ -2064,6 +2066,18 @@ the :code:`get_schema_with_macros` function:
 
     graphql_schema = get_schema_with_macros(macro_registry)
 
+Schema for defining macros
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Macro definitions rely on additional directives that are not normally defined in the schema
+the GraphQL compiler uses for querying. We intentionally do not include these directives in
+that schema, since defining macros and writing queries are different modes of use of the compiler,
+and we believe that controlling which sets of directives are available in which mode will minimize
+the potential for user confusion.
+
+You may use the :code:`get_schema_for_macro_definition()` function to transform a querying schema
+into one that is suitable for defining macros.
+
 Macro edges
 ~~~~~~~~~~~
 
@@ -2194,7 +2208,7 @@ We can now observe the process of macro expansion in action:
     new_query, new_args = perform_macro_expansion(your_macro_registry_object, query, args)
 
     print(new_query)
-    # Prints:
+    # Prints out the following query:
     # {
     #     Animal {
     #         name @filter(op_name: "=", value: ["$animal_name"])
@@ -2207,8 +2221,99 @@ We can now observe the process of macro expansion in action:
     # }
 
     print(new_args)
-    # Prints:
+    # Prints out the following arguments:
     # {'animal_name': 'Hedwig'}
+
+Advanced macro edges use cases
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When defining macro edges, one may freely use other compiler query functionality,
+such as :code:`@recurse`, :code:`@filter`, :code:`@tag`, and so on. Here is a more complex
+macro edge definition that relies on such more advanced features to define an edge
+that connects :code:`Animal` vertices to their siblings who are both older an have a
+higher net worth:
+
+.. code:: python
+
+    from graphql_compiler.macros import register_macro_edge
+
+    macro_edge_definition = '''
+    {
+        Animal @macro_edge_definition(name: "out_Animal_RicherOlderSiblings") {
+            net_worth @tag(tag_name: "self_net_worth")
+            out_Animal_BornAt {
+                event_date @tag(tag_name: "self_birthday")
+            }
+            in_Animal_ParentOf {
+                out_Animal_ParentOf @macro_edge_target {
+                    net_worth @filter(op_name: ">", value: ["%self_net_worth"])
+                    out_Animal_BornAt {
+                        event_date @filter(op_name: "<", value: ["%self_birthday"])
+                    }
+                }
+            }
+        }
+    }'''
+    macro_edge_args = {}
+
+    register_macro_edge(your_macro_registry_object, macro_edge_definition, macro_edge_args)
+
+Similarly, macro edge definitions are also able to use runtime parameters in
+their :code:`@filter` directives, by simply including the runtime parameters needed by
+the macro edge in the call to :code:`register_macro_edge()`. The following example defines a
+macro edge connecting :code:`Animal` vertices to their grandchildren that go by the name of "Nate".
+
+.. code:: python
+
+    macro_edge_definition = '''
+    {
+        Animal @macro_edge_definition(name: "out_Animal_GrandchildrenCalledNate") {
+            out_Animal_ParentOf {
+                out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$nate_name"])
+                                    @macro_edge_target {
+                    uuid
+                }
+            }
+        }
+    }'''
+    macro_edge_args = {
+        'nate_name': 'Nate',
+    }
+
+    register_macro_edge(your_macro_registry_object, macro_edge_definition, macro_edge_args)
+
+When a GraphQL query uses this macro edge, the :code:`perform_macro_expansion()` function will
+automatically ensure that the macro edge's arguments become part of the expanded query's arguments:
+
+.. code:: python
+
+    query = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_GrandchildrenCalledNate {
+                uuid @output(out_name: "grandchild_id")
+            }
+        }
+    }'''
+    args = {}
+    expanded_query, new_args = perform_macro_expansion(your_macro_registry_object, query, args)
+
+    print(expanded_query)
+    # Prints out the following query:
+    # {
+    #     Animal {
+    #         name @output(out_name: "animal_name")
+    #         out_Animal_ParentOf {
+    #             out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$nate_name"]) {
+    #                 uuid @output(out_name: "grandchild_id")
+    #             }
+    #         }
+    #     }
+    # }
+
+    print(new_args)
+    # Prints out the following arguments:
+    # {'nate_name': 'Nate'}
 
 
 Miscellaneous
