@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
+import math
 
 from frozendict import frozendict
 import six
@@ -97,17 +98,17 @@ class Statistics(object):
         """
         return None
 
-    def get_quantile_rank_of_value(self, vertex_name, field_name, field_value):
-        """Return a [0-1] float representing the fraction of values that are smaller.
+    def get_field_quantiles(self, vertex_name, field_name):
+        """Return a list dividing the field values in equally-sized groups.
 
         Args:
             vertex_name: str, name of a vertex defined in the GraphQL schema.
             field_name: str, name of a vertex field.
-            field_value: An appropriate value for the given field
 
         Returns:
-            None or the fraction of values for the given field that are smaller than the
-            given value. None is returned when the result is unknown.
+            None or a sorted list of N quantiles dividing the values of the field
+            into N-1 groups of equal size. The first element of the list is the smallest
+            known value, and the last element is the largest known value.
         """
         return None
 
@@ -117,7 +118,7 @@ class LocalStatistics(Statistics):
 
     def __init__(
         self, class_counts, vertex_edge_vertex_counts=None,
-        distinct_field_values_counts=None
+        distinct_field_values_counts=None, field_quantiles=None
     ):
         """Initialize statistics with the given data.
 
@@ -131,10 +132,12 @@ class LocalStatistics(Statistics):
             distinct_field_values_counts: optional dict, (str, str) -> int, mapping vertex class
                                           name and property field name to the count of distinct
                                           values of that vertex class's property field.
-            field_quantiles: optional dict, (str, str) -> list[int], mapping vertex class name
+            field_quantiles: optional dict, (str, str) -> list, mapping vertex class name
                              and property field name to a list of N quantiles, a sorted list of
-                             values seperating the values of the field into N+1 groups of equal
-                             size.
+                             values seperating the values of the field into N-1 groups of equal
+                             size. The first element of the list is the smallest known value,
+                             and the last element is the largest known value. The number N can be
+                             different for each entry.
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
@@ -167,16 +170,7 @@ class LocalStatistics(Statistics):
         statistic_key = (vertex_name, field_name)
         return self._distinct_field_values_counts.get(statistic_key)
 
-    def get_field_quantile(self, vertex_name, field_name, fraction):
+    def get_field_quantiles(self, vertex_name, field_name):
         """See base class."""
         statistic_key = (vertex_name, field_name)
-        if statistic_key not in self._field_quantiles:
-            return None
-        quantiles = self._field_quantiles[statistic_key]
-
-        section_lower_bound = quantiles # XXX
-        raise NotImplementedError()
-
-    def get_quantile_rank_of_value(self, vertex_name, field_name, field_value):
-        """See base class."""
-        raise NotImplementedError()
+        return self._field_quantiles.get(statistic_key)
