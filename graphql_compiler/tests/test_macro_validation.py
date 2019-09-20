@@ -59,6 +59,38 @@ class MacroValidationTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, macro_edge_definition, args)
 
+    def test_macro_with_target_at_optional(self):
+        macro_edge_definition = '''{
+            Animal @macro_edge_definition(name: "out_Animal_OptionalGrandparentOf_Invalid") {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf @optional @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }'''
+        args = {}
+
+        macro_registry = get_empty_test_macro_registry()
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, macro_edge_definition, args)
+
+    def test_macro_with_target_inside_optional(self):
+        macro_edge_definition = '''{
+            Animal @macro_edge_definition(name: "out_Animal_OptionalGrandparentOf_Invalid") {
+                out_Animal_ParentOf @optional {
+                    out_Animal_ParentOf @macro_edge_target {
+                        uuid
+                    }
+                }
+            }
+        }'''
+        args = {}
+
+        macro_registry = get_empty_test_macro_registry()
+        with self.assertRaises(GraphQLInvalidMacroError):
+            register_macro_edge(macro_registry, macro_edge_definition, args)
+
     def test_macro_with_target_inside_fold(self):
         macro_edge_definition = '''{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {

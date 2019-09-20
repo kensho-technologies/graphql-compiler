@@ -265,6 +265,22 @@ VALID_MACROS_TEXT = [
     }''', {
         'num_parents': 0,
     }),
+    # Testing that @optional that doesn't include @macro_edge_target is okay.
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_MaybeYoungerSiblings") {
+            out_Animal_BornAt @optional {
+                event_date @tag(tag_name: "birthday")
+            }
+            in_Animal_ParentOf {
+                out_Animal_ParentOf @macro_edge_target {
+                    out_Animal_BornAt @optional {
+                        event_date @filter(op_name: ">", value: ["%birthday"])
+                    }
+                }
+            }
+        }
+    }''', {}),
     ('''\
     {
         Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings") {
