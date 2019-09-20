@@ -83,21 +83,6 @@ class Statistics(object):
         """
         return None
 
-    def get_field_quantile(self, vertex_name, field_name, fraction):
-        """Return the field value that's larger than a given fraction of all values.
-
-        Args:
-            vertex_name: str, name of a vertex defined in the GraphQL schema.
-            field_name: str, name of a vertex field.
-            fraction: float from 0 to 1, the fraction of values smaller than the result
-
-        Returns:
-            None or a value of the given field with the appropriate type that is larger than
-            a given fraction of all current values for that field. None is returned when the
-            result is unknown.
-        """
-        return None
-
     def get_field_quantiles(self, vertex_name, field_name):
         """Return a list dividing the field values in equally-sized groups.
 
