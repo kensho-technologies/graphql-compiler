@@ -82,6 +82,35 @@ class Statistics(object):
         """
         return None
 
+    def get_field_quantile(self, vertex_name, field_name, fraction):
+        """Return the field value that's larger than a given fraction of all values.
+
+        Args:
+            vertex_name: str, name of a vertex defined in the GraphQL schema.
+            field_name: str, name of a vertex field.
+            fraction: float from 0 to 1, the fraction of values smaller than the result
+
+        Returns:
+            None or a value of the given field with the appropriate type that is larger than
+            a given fraction of all current values for that field. None is returned when the
+            result is unknown.
+        """
+        return None
+
+    def get_quantile_rank_of_value(self, vertex_name, field_name, field_value):
+        """Return a [0-1] float representing the fraction of values that are smaller.
+
+        Args:
+            vertex_name: str, name of a vertex defined in the GraphQL schema.
+            field_name: str, name of a vertex field.
+            field_value: An appropriate value for the given field
+
+        Returns:
+            None or the fraction of values for the given field that are smaller than the
+            given value. None is returned when the result is unknown.
+        """
+        return None
+
 
 class LocalStatistics(Statistics):
     """Statistics class that receives all statistics at initialization, storing them in-memory."""
@@ -130,3 +159,11 @@ class LocalStatistics(Statistics):
         """See base class."""
         statistic_key = (vertex_name, field_name)
         return self._distinct_field_values_counts.get(statistic_key)
+
+    def get_field_quantile(self, vertex_name, field_name, fraction):
+        """See base class."""
+        raise NotImplementedError()
+
+    def get_quantile_rank_of_value(self, vertex_name, field_name, field_value):
+        """See base class."""
+        raise NotImplementedError()
