@@ -13,7 +13,19 @@ from ...cost_estimation.filter_selectivity_utils import (
     adjust_counts_for_filters
 )
 from ...cost_estimation.statistics import LocalStatistics
+from ...schema.schema_info import QueryPlanningSchemaInfo
+from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
+
+
+def _make_schema_info_and_estimate_cardinality(schema_graph, statistics, graphql_input, args):
+    graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+    schema_info = QueryPlanningSchemaInfo(
+        schema=graphql_schema,
+        type_equivalence_hints=type_equivalence_hints,
+        schema_graph=schema_graph,
+        statistics=statistics)
+    return estimate_query_result_cardinality(schema_info, graphql_input, args)
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
@@ -28,6 +40,7 @@ class CostEstimationTests(unittest.TestCase):
     def test_root_count(self):
         """Ensure we correctly estimate the cardinality of the query root."""
         schema_graph = generate_schema_graph(self.orientdb_client)
+
         test_data = test_input_data.immediate_output()
 
         count_data = {
@@ -35,7 +48,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, test_data.graphql_input, dict()
         )
         expected_cardinality_estimate = 3.0
@@ -54,7 +67,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, test_data.graphql_input, dict()
         )
         # For each Animal, there are on average 5.0 / 3.0 Animal_ParentOf edges, so we expect
@@ -77,7 +90,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, test_data.graphql_input, dict()
         )
         # For each Animal, we expect 5.0 / 3.0 out_Species_Eats edges. Out of those FoodOrSpecies,
@@ -119,7 +132,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, dict()
         )
 
@@ -160,7 +173,7 @@ class CostEstimationTests(unittest.TestCase):
             count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
         )
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -197,7 +210,7 @@ class CostEstimationTests(unittest.TestCase):
             count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
         )
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -234,7 +247,7 @@ class CostEstimationTests(unittest.TestCase):
             count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
         )
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -277,7 +290,7 @@ class CostEstimationTests(unittest.TestCase):
             count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data
         )
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -311,7 +324,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, dict()
         )
 
@@ -351,7 +364,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, dict()
         )
 
@@ -371,7 +384,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, dict()
         )
 
@@ -403,7 +416,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, dict()
         )
 
@@ -442,7 +455,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, dict()
         )
 
@@ -462,7 +475,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, dict()
         )
 
@@ -489,7 +502,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, dict()
         )
 
@@ -521,7 +534,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, dict()
         )
 
@@ -552,7 +565,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -593,7 +606,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data, vertex_edge_vertex_counts=vertex_edge_vertex_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -623,7 +636,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -652,7 +665,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -691,7 +704,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -734,7 +747,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -776,7 +789,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -819,7 +832,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -856,7 +869,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -891,7 +904,7 @@ class CostEstimationTests(unittest.TestCase):
         }
         statistics = LocalStatistics(count_data)
 
-        cardinality_estimate = estimate_query_result_cardinality(
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
             schema_graph, statistics, graphql_input, params
         )
 
@@ -900,6 +913,17 @@ class CostEstimationTests(unittest.TestCase):
         # have 13.0 / 7.0 Animal_BornAt edges, giving a total of 7.0 * (13.0 / 7.0) results.
         expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1.0) * 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+
+def _make_schema_info_and_get_filter_selectivity(schema_graph, statistics, filter_info,
+                                                 parameters, location_name):
+    graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+    schema_info = QueryPlanningSchemaInfo(
+        schema=graphql_schema,
+        type_equivalence_hints=type_equivalence_hints,
+        schema_graph=schema_graph,
+        statistics=statistics)
+    return _get_filter_selectivity(schema_info, filter_info, parameters, location_name)
 
 
 class FilterSelectivityUtilsTests(unittest.TestCase):
@@ -965,7 +989,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         filter_on_nonindex = FilterInfo(
             fields=('description',), op_name='=', args=('$description',)
         )
-        selectivity = _get_filter_selectivity(
+        selectivity = _make_schema_info_and_get_filter_selectivity(
             schema_graph, empty_statistics, filter_on_nonindex, params, classname
         )
         expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
@@ -974,7 +998,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         # If we '='-filter on a property that's non-uniquely indexed, with no
         # distinct-field-values-count statistics, return a fractional selectivity of 1.
         nonunique_filter = FilterInfo(fields=('birthday',), op_name='=', args=('$birthday',))
-        selectivity = _get_filter_selectivity(
+        selectivity = _make_schema_info_and_get_filter_selectivity(
             schema_graph, empty_statistics, nonunique_filter, params, classname
         )
         expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
@@ -989,7 +1013,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         # If we '='-filter on a property that's non-uniquely indexed, but has only 3 distinct field
         # values, return a fractional selectivity of 1.0 / 3.0.
         nonunique_filter = FilterInfo(fields=('birthday',), op_name='=', args=('$birthday',))
-        selectivity = _get_filter_selectivity(
+        selectivity = _make_schema_info_and_get_filter_selectivity(
             schema_graph, statistics_with_distinct_birthday_values_data,
             nonunique_filter, params, classname
         )
@@ -998,7 +1022,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
 
         # If we '='-filter on a property that is uniquely indexed, expect exactly 1 result.
         unique_filter = FilterInfo(fields=('uuid',), op_name='=', args=('$uuid',))
-        selectivity = _get_filter_selectivity(
+        selectivity = _make_schema_info_and_get_filter_selectivity(
             schema_graph, empty_statistics, unique_filter, params, classname
         )
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
@@ -1013,7 +1037,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         # If we '='-filter on a property that is both uniquely indexed, and has 3 distinct field
         # values, expect exactly 1 result, since the index overrides the statistic.
         unique_filter = FilterInfo(fields=('uuid',), op_name='=', args=('$uuid',))
-        selectivity = _get_filter_selectivity(
+        selectivity = _make_schema_info_and_get_filter_selectivity(
             schema_graph, statistics_with_distinct_uuid_values_data,
             unique_filter, params, classname
         )
@@ -1035,7 +1059,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         }
         # If we use an in_collection-filter on a property that is not uniquely indexed, with no
         # distinct_field_values_count statistic, return a fractional selectivity of 1.
-        selectivity = _get_filter_selectivity(
+        selectivity = _make_schema_info_and_get_filter_selectivity(
             schema_graph, empty_statistics, nonunique_filter, nonunique_params, classname
         )
         expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
@@ -1050,7 +1074,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         # If we use an in_collection-filter using a collection with 2 elements on a property that is
         # not uniquely indexed, but has 3 distinct values, return a fractional
         # selectivity of 2.0 / 3.0.
-        selectivity = _get_filter_selectivity(
+        selectivity = _make_schema_info_and_get_filter_selectivity(
             schema_graph, statistics_with_distinct_birthday_values_data, nonunique_filter,
             nonunique_params, classname
         )
@@ -1062,7 +1086,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         )
         # If we use an in_collection-filter with 4 elements on a property that is not uniquely
         # indexed, but has 3 distinct values, return a fractional selectivity of 1.0.
-        selectivity = _get_filter_selectivity(
+        selectivity = _make_schema_info_and_get_filter_selectivity(
             schema_graph, statistics_with_distinct_birthday_values_data, nonunique_filter,
             nonunique_params, classname
         )
@@ -1080,14 +1104,16 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         }
         # If we use an in_collection-filter on a property that is uniquely indexed, expect as many
         # results as there are elements in the collection.
-        selectivity = _get_filter_selectivity(
+        selectivity = _make_schema_info_and_get_filter_selectivity(
             schema_graph, empty_statistics, in_collection_filter, unique_params, classname
         )
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
         self.assertEqual(expected_selectivity, selectivity)
 
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_inequality_filters_on_uuid(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         classname = 'Animal'
         between_filter = FilterInfo(fields=('uuid',), op_name='between',
                                     args=('$uuid_lower', '$uuid_upper',))
@@ -1099,10 +1125,14 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             'uuid_upper': '7fffffff-ffff-ffff-ffff-ffffffffffff',
         }
         empty_statistics = LocalStatistics(dict())
+        empty_statistics_schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=empty_statistics)
 
         result_counts = adjust_counts_for_filters(
-            schema_graph, empty_statistics, filter_info_list, params, classname, 32.0
-        )
+            empty_statistics_schema_info, filter_info_list, params, classname, 32.0)
 
         # There are 32 Animals, and an estimated (1.0 / 4.0) of them have a UUID between the
         # parameters given in the parameters dict, so we get a result size of 32.0 * (1.0 / 4.0) =
@@ -1127,8 +1157,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         }
 
         result_counts = adjust_counts_for_filters(
-            schema_graph, empty_statistics, filter_info_list, params, classname, 32.0
-        )
+            empty_statistics_schema_info, filter_info_list, params, classname, 32.0)
 
         # There are 32 Animals, and an estimated (3.0 / 4.0) have a UUID greater or equal to
         # uuid_lower, and an estimated (1.0 / 2.0) have a UUID less than or equal to uuid_upper. The
@@ -1148,8 +1177,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         }
 
         result_counts = adjust_counts_for_filters(
-            schema_graph, empty_statistics, filter_info_list, params, classname, 32.0
-        )
+            empty_statistics_schema_info, filter_info_list, params, classname, 32.0)
 
         # It's impossible for a UUID to simultaneously be below uuid_upper and above uuid_lower as
         # uuid_upper is smaller than uuid_lower, so the result set is empty.
