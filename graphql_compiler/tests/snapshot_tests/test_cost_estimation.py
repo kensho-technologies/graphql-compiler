@@ -20,11 +20,13 @@ from ..test_helpers import generate_schema_graph
 
 def _make_schema_info_and_estimate_cardinality(schema_graph, statistics, graphql_input, args):
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+    pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
     schema_info = QueryPlanningSchemaInfo(
         schema=graphql_schema,
         type_equivalence_hints=type_equivalence_hints,
         schema_graph=schema_graph,
-        statistics=statistics)
+        statistics=statistics,
+        pagination_keys=pagination_keys)
     return estimate_query_result_cardinality(schema_info, graphql_input, args)
 
 
@@ -918,11 +920,13 @@ class CostEstimationTests(unittest.TestCase):
 def _make_schema_info_and_get_filter_selectivity(schema_graph, statistics, filter_info,
                                                  parameters, location_name):
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+    pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
     schema_info = QueryPlanningSchemaInfo(
         schema=graphql_schema,
         type_equivalence_hints=type_equivalence_hints,
         schema_graph=schema_graph,
-        statistics=statistics)
+        statistics=statistics,
+        pagination_keys=pagination_keys)
     return _get_filter_selectivity(schema_info, filter_info, parameters, location_name)
 
 
@@ -1114,6 +1118,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
     def test_inequality_filters_on_uuid(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
         classname = 'Animal'
         between_filter = FilterInfo(fields=('uuid',), op_name='between',
                                     args=('$uuid_lower', '$uuid_upper',))
@@ -1129,7 +1134,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema=graphql_schema,
             type_equivalence_hints=type_equivalence_hints,
             schema_graph=schema_graph,
-            statistics=empty_statistics)
+            statistics=empty_statistics,
+            pagination_keys=pagination_keys)
 
         result_counts = adjust_counts_for_filters(
             empty_statistics_schema_info, filter_info_list, params, classname, 32.0)

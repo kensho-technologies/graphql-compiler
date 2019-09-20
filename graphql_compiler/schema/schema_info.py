@@ -197,4 +197,9 @@ QueryPlanningSchemaInfo = namedtuple('QueryPlanningSchemaInfo', (
 
     # A Statistics object giving statistical information about all objects in the schema.
     'statistics',
+
+    # Dict mapping all vertex names in the schema to the Int or ID type property name
+    # to be used for pagination on that vertex. This property should be non-null and
+    # unique for all rows. An easy choice in most situations is the primary key.
+    'pagination_keys',
 ))
