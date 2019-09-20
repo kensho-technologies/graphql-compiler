@@ -88,7 +88,8 @@ class Statistics(object):
 
         Args:
             vertex_name: str, name of a vertex defined in the GraphQL schema.
-            field_name: str, name of a vertex field.
+            field_name: str, name of a vertex field. This field has to have a type on which
+                        the < operator makes sense.
 
         Returns:
             None or a sorted list of N quantiles dividing the values of the field
