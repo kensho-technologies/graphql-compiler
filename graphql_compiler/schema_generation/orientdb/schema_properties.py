@@ -22,11 +22,6 @@ NON_UNIQUE_INDEX_TYPES = frozenset({
     ORDERED_NON_UNIQUE_INDEX_TYPE,
     HASHED_NON_UNIQUE_INDEX_TYPE,
 })
-ORDERED_INDEX_TYPES = frozenset({
-    ORDERED_UNIQUE_INDEX_TYPE,
-    ORDERED_NON_UNIQUE_INDEX_TYPE,
-})
-
 # The naming stems from OrientDB naming conventions for builtin link properties for edges.
 EDGE_SOURCE_PROPERTY_NAME = 'out'
 EDGE_DESTINATION_PROPERTY_NAME = 'in'

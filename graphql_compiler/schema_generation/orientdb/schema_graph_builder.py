@@ -12,9 +12,9 @@ from ..schema_graph import (
 )
 from .schema_properties import (
     COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES,
-    EDGE_SOURCE_PROPERTY_NAME, ORDERED_INDEX_TYPES, ORIENTDB_BASE_EDGE_CLASS_NAME,
-    ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_LINK_ID, UNIQUE_INDEX_TYPES,
-    parse_default_property_value, try_get_graphql_scalar_type
+    EDGE_SOURCE_PROPERTY_NAME, ORIENTDB_BASE_EDGE_CLASS_NAME, ORIENTDB_BASE_VERTEX_CLASS_NAME,
+    PROPERTY_TYPE_LINK_ID, UNIQUE_INDEX_TYPES, parse_default_property_value,
+    try_get_graphql_scalar_type
 )
 
 
@@ -453,7 +453,6 @@ def _get_indexes(index_data, elements):
         index_name = index['name']
         index_type = index['type']
         index_unique = index_type in UNIQUE_INDEX_TYPES
-        index_ordered = index_type in ORDERED_INDEX_TYPES
         index_definition = index['indexDefinition']
         index_base_classname = index_definition['className']
         index_ignore_nulls = index_definition['nullValuesIgnored']
@@ -490,7 +489,6 @@ def _get_indexes(index_data, elements):
             fields=index_fields,
             unique=index_unique,
             ignore_nulls=index_ignore_nulls,
-            ordered=index_ordered,
         )
         all_indexes.add(definition)
 

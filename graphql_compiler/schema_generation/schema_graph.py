@@ -601,8 +601,7 @@ PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
 #             The 'in' and 'out' strings refer to the base connections.
 #             All other strings reference the base class's properties.
 #   - unique: bool, indicating whether this index is unique.
-#   - ordered: bool, indicating whether this index is ordered.
 #   - ignore_nulls: bool, indicating if the index ignores null values.
 IndexDefinition = namedtuple(
     'IndexDefinition',
-    ('name', 'base_classname', 'fields', 'unique', 'ordered', 'ignore_nulls'))
+    ('name', 'base_classname', 'fields', 'unique', 'ignore_nulls'))
