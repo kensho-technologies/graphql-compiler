@@ -13,8 +13,8 @@ from ...cost_estimation.filter_selectivity_utils import (
     adjust_counts_for_filters
 )
 from ...cost_estimation.statistics import LocalStatistics
-from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ...schema.schema_info import QueryPlanningSchemaInfo
+from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
 
 

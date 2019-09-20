@@ -84,8 +84,8 @@ def _get_base_class_names_of_parent_and_child_from_edge(schema_graph, current_lo
     return parent_base_class_name, child_base_class_name
 
 
-def _query_statistics_for_vertex_edge_vertex_count(
-    statistics, query_metadata, parent_location, child_location):
+def _query_statistics_for_vertex_edge_vertex_count(statistics, query_metadata,
+                                                   parent_location, child_location):
     """Query statistics for the count of edges connecting parent and child_location vertices.
 
     Given a parent location and a child location, there are three constraints on each edge directly
@@ -238,8 +238,8 @@ def _estimate_edges_to_children_per_parent(schema_info, query_metadata, paramete
     return child_counts_per_parent
 
 
-def _estimate_subexpansion_cardinality(
-    schema_info, query_metadata, parameters, parent_location, child_location):
+def _estimate_subexpansion_cardinality(schema_info, query_metadata, parameters,
+                                       parent_location, child_location):
     """Estimate the cardinality associated with the subexpansion of a child_location vertex.
 
     Args:

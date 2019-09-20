@@ -4,9 +4,9 @@ import unittest
 import pytest
 
 from ...cost_estimation.statistics import LocalStatistics
-from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...query_pagination import QueryStringWithParameters, paginate_query
+from ...schema.schema_info import QueryPlanningSchemaInfo
+from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
 
 
