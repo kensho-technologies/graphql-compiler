@@ -2280,6 +2280,14 @@ automatically ensure that the macro edge's arguments become part of the expanded
     # Prints out the following arguments:
     # {'nate_name': 'Nate'}
 
+Constraints and rules for macro edge definitions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Constraints and rules for macro edge usage
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
 
 Miscellaneous
 -------------
