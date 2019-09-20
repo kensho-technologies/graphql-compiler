@@ -131,15 +131,22 @@ class LocalStatistics(Statistics):
             distinct_field_values_counts: optional dict, (str, str) -> int, mapping vertex class
                                           name and property field name to the count of distinct
                                           values of that vertex class's property field.
+            field_quantiles: optional dict, (str, str) -> list[int], mapping vertex class name
+                             and property field name to a list of N quantiles, a sorted list of
+                             values seperating the values of the field into N+1 groups of equal
+                             size.
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
         if distinct_field_values_counts is None:
             distinct_field_values_counts = dict()
+        if field_quantiles is None:
+            field_quantiles = dict()
 
         self._class_counts = frozendict(class_counts)
         self._vertex_edge_vertex_counts = frozendict(vertex_edge_vertex_counts)
         self._distinct_field_values_counts = frozendict(distinct_field_values_counts)
+        self._field_quantiles = frozendict(field_quantiles)
 
     def get_class_count(self, class_name):
         """See base class."""
@@ -162,6 +169,12 @@ class LocalStatistics(Statistics):
 
     def get_field_quantile(self, vertex_name, field_name, fraction):
         """See base class."""
+        statistic_key = (vertex_name, field_name)
+        if statistic_key not in self._field_quantiles:
+            return None
+        quantiles = self._field_quantiles[statistic_key]
+
+        section_lower_bound = quantiles # XXX
         raise NotImplementedError()
 
     def get_quantile_rank_of_value(self, vertex_name, field_name, field_value):
