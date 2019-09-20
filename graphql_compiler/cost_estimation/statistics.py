@@ -1,6 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
-import math
 
 from frozendict import frozendict
 import six
