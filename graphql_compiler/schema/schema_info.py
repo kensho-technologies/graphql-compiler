@@ -197,4 +197,16 @@ QueryPlanningSchemaInfo = namedtuple('QueryPlanningSchemaInfo', (
 
     # A Statistics object giving statistical information about all objects in the schema.
     'statistics',
+
+    # Dict mapping vertex names in the graphql schema to the Int or ID type property name
+    # to be used for pagination on that vertex. This property should be non-null and
+    # unique for all rows.  An easy choice for pagination key in most situations is the
+    # primary key. The pagination key for a vertex can be omitted making the vertex
+    # ineligible for pagination.
+    #
+    # NOTE(bojanserafimov): The type of this property might be different in the
+    #                       schema graph, due to the process of type overrides that happens
+    #                       during schema generation.
+    # HACK(bojanserafimov): All ID types are assumed to be uniformly-distributed uuid4s.
+    'pagination_keys',
 ))
