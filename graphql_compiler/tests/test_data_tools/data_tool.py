@@ -191,6 +191,7 @@ def generate_sql_integration_data(sql_test_backends):
         )
     }
 
+    # Find the class name of each vertex uuid
     uuid_to_class_name = {}
     for vertex_name, values in six.iteritems(vertex_values):
         for value in values:
@@ -198,6 +199,7 @@ def generate_sql_integration_data(sql_test_backends):
                 raise AssertionError(u'Duplicate uuid found {}'.format(value['uuid']))
             uuid_to_class_name[value['uuid']] = vertex_name
 
+    # Represent all edges as foreign keys
     uuid_to_foreign_key_values = {}
     for edge_name, edge_values in six.iteritems(edge_values):
         for edge_value in edge_values:
@@ -216,6 +218,7 @@ def generate_sql_integration_data(sql_test_backends):
                                           .format(edge_name, edge_value['from_uuid']))
             existing_foreign_key_values[join_descriptor.from_column] = edge_value['to_uuid']
 
+    # Insert all the prepared data into the test database
     for sql_test_backend in six.itervalues(sql_test_backends):
         for vertex_name, insert_values in six.iteritems(vertex_values):
             table = sql_schema_info.vertex_name_to_table[vertex_name]
