@@ -1399,6 +1399,27 @@ def starts_with_op_filter():  # noqa: D103
         type_equivalence_hints=None)
 
 
+def starts_with_op_filter_no_value():  # noqa: D103
+    graphql_input = '''{
+        Animal {
+            name @filter(op_name: "starts_with")
+                 @output(out_name: "animal_name")
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {
+        'wanted': GraphQLString,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def has_substring_op_filter():  # noqa: D103
     graphql_input = '''{
         Animal {
@@ -1565,6 +1586,27 @@ def has_edge_degree_op_filter_with_fold():  # noqa: D103
         type_equivalence_hints=None)
 
 
+def is_null_op_filter_optional_value():  # noqa: D103
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "name")
+            net_worth @filter(op_name: "is_null")
+        }
+    }'''
+
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False)
+    }
+
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def is_null_op_filter():  # noqa: D103
     graphql_input = '''{
         Animal {
@@ -1591,6 +1633,27 @@ def is_not_null_op_filter():  # noqa: D103
         Animal {
             name @output(out_name: "name")
             net_worth @filter(op_name: "is_not_null", value: [])
+        }
+    }'''
+
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False)
+    }
+
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def is_not_null_op_filter_optional_value():  # noqa: D103
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "name")
+            net_worth @filter(op_name: "is_not_null")
         }
     }'''
 

@@ -2,7 +2,7 @@
 from functools import partial, wraps
 
 from graphql import GraphQLInt, GraphQLList, GraphQLScalarType, GraphQLString, GraphQLUnionType
-from graphql.language.ast import InlineFragment, ListValue
+from graphql.language.ast import InlineFragment, ListValue, Argument, Name
 from graphql.type.definition import is_leaf_type
 
 from . import blocks, expressions
@@ -829,7 +829,10 @@ def _get_filter_op_name_and_values(directive):
     if 'op_name' not in args:
         raise AssertionError(u'op_name not found in filter directive arguments!'
                              u'Validation should have caught this: {}'.format(directive))
-
+    if args['op_name'].value.value in UNARY_FILTERS:
+        args['value'] = Argument(Name('value'), ListValue([], loc=args['op_name'].loc))
+    elif 'value' not in args:
+        raise GraphQLValidationError(u'Directive value omitted for non-unary filter: {}'.format(directive))
     # HACK(predrag): Workaround for graphql-core validation issue
     #                https://github.com/graphql-python/graphql-core/issues/97
     if not isinstance(args['value'].value, ListValue):
@@ -859,6 +862,10 @@ PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset({
     u'has_edge_degree',
     u'is_null',
     u'is_not_null',
+})
+UNARY_FILTERS = frozenset({
+    u'is_null',
+    u'is_not_null'
 })
 
 # Vertex field filtering operators can apply to the inner scope or the outer scope.
