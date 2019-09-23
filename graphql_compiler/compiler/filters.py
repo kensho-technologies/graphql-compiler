@@ -829,10 +829,11 @@ def _get_filter_op_name_and_values(directive):
     if 'op_name' not in args:
         raise AssertionError(u'op_name not found in filter directive arguments!'
                              u'Validation should have caught this: {}'.format(directive))
-    if args['op_name'].value.value in UNARY_FILTERS:
+    if args['op_name'].value.value in UNARY_FILTERS and 'value' not in args:
         args['value'] = Argument(Name('value'), ListValue([], loc=args['op_name'].loc))
-    elif 'value' not in args:
+    if args['op_name'].value.value in UNARY_FILTERS and 'value' not in args:
         raise GraphQLValidationError(u'Directive value omitted for non-unary filter: {}'.format(directive))
+
     # HACK(predrag): Workaround for graphql-core validation issue
     #                https://github.com/graphql-python/graphql-core/issues/97
     if not isinstance(args['value'].value, ListValue):
