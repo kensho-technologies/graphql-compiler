@@ -144,6 +144,8 @@ def tear_down_integration_test_backends(sql_test_backends):
 def generate_sql_integration_data(sql_test_backends):
     """Populate test data for SQL backends for integration testing."""
     sql_schema_info = get_sqlalchemy_schema_info()
+
+    # Map vertex classes tuples containing the properties of each vertex of that class
     vertex_values = {
         'Animal': (
             {
@@ -179,13 +181,7 @@ def generate_sql_integration_data(sql_test_backends):
         ),
     }
 
-    uuid_to_class_name = {}
-    for vertex_name, values in six.iteritems(vertex_values):
-        for value in values:
-            if value['uuid'] in uuid_to_class_name:
-                raise AssertionError(u'Duplicate uuid found {}'.format(value['uuid']))
-            uuid_to_class_name[value['uuid']] = vertex_name
-
+    # Map edges to tuples containing the source and destination vertex of each edge of that class
     edge_values = {
         'Entity_Related': (
             {
@@ -195,11 +191,17 @@ def generate_sql_integration_data(sql_test_backends):
         )
     }
 
+    uuid_to_class_name = {}
+    for vertex_name, values in six.iteritems(vertex_values):
+        for value in values:
+            if value['uuid'] in uuid_to_class_name:
+                raise AssertionError(u'Duplicate uuid found {}'.format(value['uuid']))
+            uuid_to_class_name[value['uuid']] = vertex_name
+
     uuid_to_foreign_key_values = {}
     for edge_name, edge_values in six.iteritems(edge_values):
         for edge_value in edge_values:
             from_classname = uuid_to_class_name[edge_value['from_uuid']]
-            to_classname = uuid_to_class_name[edge_value['to_uuid']]
             edge_field_name = 'out_{}'.format(edge_name)
             join_descriptor = sql_schema_info.join_descriptors[from_classname][edge_field_name]
             if join_descriptor.to_column != 'uuid':
