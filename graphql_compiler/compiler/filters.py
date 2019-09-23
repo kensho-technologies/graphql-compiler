@@ -831,7 +831,7 @@ def _get_filter_op_name_and_values(directive):
                              u'Validation should have caught this: {}'.format(directive))
     if args['op_name'].value.value in UNARY_FILTERS and 'value' not in args:
         args['value'] = Argument(Name('value'), ListValue([], loc=args['op_name'].loc))
-    if args['op_name'].value.value in UNARY_FILTERS and 'value' not in args:
+    if args['op_name'].value.value not in UNARY_FILTERS and 'value' not in args:
         raise GraphQLValidationError(u'Directive value omitted for'
                                      u' non-unary filter: {}'.format(directive))
 

@@ -4,6 +4,8 @@ import unittest
 from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 import six
 
+from graphql_compiler import GraphQLValidationError
+
 from . import test_input_data
 from ..compiler import blocks, expressions, helpers
 from ..compiler.compiler_frontend import OutputMetadata, graphql_to_ir
@@ -2485,6 +2487,34 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_starts_with_op_filter_no_value(self):
+        test_data = test_input_data.starts_with_op_filter_no_value()
+
+        base_location = helpers.Location(('Animal',))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'starts_with',
+                    expressions.LocalField('name', GraphQLString),
+                    expressions.Variable('$wanted', GraphQLString)
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+        }
+
+        with self.assertRaises(GraphQLValidationError):
+            check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_ends_with_op_filter(self):
         test_data = test_input_data.ends_with_op_filter()
 
@@ -2921,8 +2951,62 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_is_null_op_filter_optional_value(self):
+        test_data = test_input_data.is_null_op_filter_optional_value()
+
+        base_location = helpers.Location(('Animal',))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'=',
+                    expressions.LocalField('net_worth', GraphQLDecimal),
+                    expressions.NullLiteral
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString)
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_is_not_null_op_filter(self):
         test_data = test_input_data.is_not_null_op_filter()
+
+        base_location = helpers.Location(('Animal',))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'!=',
+                    expressions.LocalField('net_worth', GraphQLDecimal),
+                    expressions.NullLiteral
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString)
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_is_not_null_op_filter_optional_value(self):
+        test_data = test_input_data.is_not_null_op_filter_optional_value()
 
         base_location = helpers.Location(('Animal',))
 
