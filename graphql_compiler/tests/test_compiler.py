@@ -3022,8 +3022,8 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
 
-    def test_starts_with_op_filter_no_value(self):
-        test_data = test_input_data.starts_with_op_filter_no_value()
+    def test_starts_with_op_filter_missing_value_argument(self):
+        test_data = test_input_data.starts_with_op_filter_missing_value_argument()
 
         expected_match = '''
             SELECT
@@ -3701,8 +3701,8 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
 
-    def test_is_not_null_op_filter_optional_value(self):
-        test_data = test_input_data.is_not_null_op_filter_optional_value()
+    def test_is_not_null_op_filter_missing_value_argument(self):
+        test_data = test_input_data.is_not_null_op_filter_missing_value_argument()
 
         expected_match = '''
             SELECT
@@ -3741,8 +3741,8 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
 
-    def test_is_null_op_filter_optional_value(self):
-        test_data = test_input_data.is_null_op_filter_optional_value()
+    def test_is_null_op_filter_missing_value_argument(self):
+        test_data = test_input_data.is_null_op_filter_missing_value_argument()
 
         expected_match = '''
             SELECT

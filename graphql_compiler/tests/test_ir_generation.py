@@ -2487,8 +2487,8 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
-    def test_starts_with_op_filter_no_value(self):
-        test_data = test_input_data.starts_with_op_filter_no_value()
+    def test_starts_with_op_filter_missing_value_argument(self):
+        test_data = test_input_data.starts_with_op_filter_missing_value_argument()
 
         base_location = helpers.Location(('Animal',))
 
@@ -2951,8 +2951,8 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
-    def test_is_null_op_filter_optional_value(self):
-        test_data = test_input_data.is_null_op_filter_optional_value()
+    def test_is_null_op_filter_missing_value_argument(self):
+        test_data = test_input_data.is_null_op_filter_missing_value_argument()
 
         base_location = helpers.Location(('Animal',))
 
@@ -3005,8 +3005,8 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
-    def test_is_not_null_op_filter_optional_value(self):
-        test_data = test_input_data.is_not_null_op_filter_optional_value()
+    def test_is_not_null_op_filter_missing_value_argument(self):
+        test_data = test_input_data.is_not_null_op_filter_missing_value_argument()
 
         base_location = helpers.Location(('Animal',))
 

@@ -2,7 +2,7 @@
 from functools import partial, wraps
 
 from graphql import GraphQLInt, GraphQLList, GraphQLScalarType, GraphQLString, GraphQLUnionType
-from graphql.language.ast import Argument, InlineFragment, ListValue, Name
+from graphql.language.ast import InlineFragment, ListValue
 from graphql.type.definition import is_leaf_type
 
 from . import blocks, expressions
@@ -18,8 +18,10 @@ from .metadata import FilterInfo
 
 def scalar_leaf_only(operator):
     """Ensure the filter function is only applied to scalar leaf types."""
+
     def decorator(f):
         """Decorate the supplied function with the "scalar_leaf_only" logic."""
+
         @wraps(f)
         def wrapper(filter_operation_info, context, parameters, *args, **kwargs):
             """Check that the type on which the operator operates is a scalar leaf type."""
@@ -41,8 +43,10 @@ def scalar_leaf_only(operator):
 
 def vertex_field_only(operator):
     """Ensure the filter function is only applied to vertex field types."""
+
     def decorator(f):
         """Decorate the supplied function with the "vertex_field_only" logic."""
+
         @wraps(f)
         def wrapper(filter_operation_info, context, parameters, *args, **kwargs):
             """Check that the type on which the operator operates is a vertex field type."""
@@ -65,14 +69,18 @@ def vertex_field_only(operator):
 
 def takes_parameters(count):
     """Ensure the filter function has "count" parameters specified."""
+
     def decorator(f):
         """Decorate the supplied function with the "takes_parameters" logic."""
+
         @wraps(f)
         def wrapper(filter_operation_info, location, context, parameters, *args, **kwargs):
             """Check that the supplied number of parameters equals the expected number."""
-            if len(parameters) != count:
+            if (len(parameters) if parameters else 0) != count:
                 raise GraphQLCompilationError(u'Incorrect number of parameters, expected {} got '
-                                              u'{}: {}'.format(count, len(parameters), parameters))
+                                              u'{}: {}'.format(count,
+                                                               len(parameters) if parameters else 0,
+                                                               parameters))
 
             return f(filter_operation_info, location, context, parameters, *args, **kwargs)
 
@@ -781,7 +789,7 @@ def _process_is_null_filter_directive(filter_operation_info, location, context, 
     filtered_field_type = filter_operation_info.field_type
     filtered_field_name = filter_operation_info.field_name
 
-    if len(parameters) != 0:
+    if (len(parameters) if parameters else 0) != 0:
         raise GraphQLCompilationError(u'No parameters should be passed to "is_null" filter. '
                                       u'Received parameter(s) {}'.format(parameters))
 
@@ -811,7 +819,7 @@ def _process_is_not_null_filter_directive(filter_operation_info, location, conte
     filtered_field_type = filter_operation_info.field_type
     filtered_field_name = filter_operation_info.field_name
 
-    if len(parameters) != 0:
+    if (len(parameters) if parameters else 0) != 0:
         raise GraphQLCompilationError(u'No parameters should be passed to "is_not_null" filter. '
                                       u'Received parameter(s) {}'.format(parameters))
 
@@ -829,18 +837,19 @@ def _get_filter_op_name_and_values(directive):
     if 'op_name' not in args:
         raise AssertionError(u'op_name not found in filter directive arguments!'
                              u'Validation should have caught this: {}'.format(directive))
-    if args['op_name'].value.value in UNARY_FILTERS and 'value' not in args:
-        args['value'] = Argument(Name('value'), ListValue([], loc=args['op_name'].loc))
-    if args['op_name'].value.value not in UNARY_FILTERS and 'value' not in args:
-        raise GraphQLValidationError(u'Directive value omitted for'
-                                     u' non-unary filter: {}'.format(directive))
 
+    if args['op_name'].value.value not in UNARY_FILTERS and 'value' not in args:
+        raise GraphQLValidationError(u'Filter directive value argument omitted for non-unary '
+                                     u'filter operation: {} \nPlease provide a value argument'
+                                     u' for all filters not in the following list: {}'
+                                     .format(args['op_name'].value.value, list(UNARY_FILTERS)))
+    op_name = args['op_name'].value.value
+    if args['op_name'].value.value in UNARY_FILTERS:
+        return (op_name, None)
     # HACK(predrag): Workaround for graphql-core validation issue
     #                https://github.com/graphql-python/graphql-core/issues/97
     if not isinstance(args['value'].value, ListValue):
         raise GraphQLValidationError(u'Filter directive value was not a list: {}'.format(directive))
-
-    op_name = args['op_name'].value.value
     operator_params = [x.value for x in args['value'].value.values]
 
     return (op_name, operator_params)
@@ -958,7 +967,9 @@ def process_filter_directive(filter_operation_info, location, context):
 
     context['metadata'].record_filter_info(
         location,
-        FilterInfo(fields=fields, op_name=op_name, args=tuple(operator_params))
+        FilterInfo(fields=fields,
+                   op_name=op_name,
+                   args=tuple(operator_params) if operator_params else None)
     )
 
     return process_func(filter_operation_info, location, context, operator_params)
