@@ -2,7 +2,7 @@
 from functools import partial, wraps
 
 from graphql import GraphQLInt, GraphQLList, GraphQLScalarType, GraphQLString, GraphQLUnionType
-from graphql.language.ast import InlineFragment, ListValue, Argument, Name
+from graphql.language.ast import Argument, InlineFragment, ListValue, Name
 from graphql.type.definition import is_leaf_type
 
 from . import blocks, expressions
@@ -832,7 +832,8 @@ def _get_filter_op_name_and_values(directive):
     if args['op_name'].value.value in UNARY_FILTERS and 'value' not in args:
         args['value'] = Argument(Name('value'), ListValue([], loc=args['op_name'].loc))
     if args['op_name'].value.value in UNARY_FILTERS and 'value' not in args:
-        raise GraphQLValidationError(u'Directive value omitted for non-unary filter: {}'.format(directive))
+        raise GraphQLValidationError(u'Directive value omitted for'
+                                     u' non-unary filter: {}'.format(directive))
 
     # HACK(predrag): Workaround for graphql-core validation issue
     #                https://github.com/graphql-python/graphql-core/issues/97
