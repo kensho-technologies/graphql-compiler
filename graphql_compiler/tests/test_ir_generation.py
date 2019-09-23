@@ -4,8 +4,6 @@ import unittest
 from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 import six
 
-from graphql_compiler import GraphQLValidationError
-
 from . import test_input_data
 from ..compiler import blocks, expressions, helpers
 from ..compiler.compiler_frontend import OutputMetadata, graphql_to_ir
