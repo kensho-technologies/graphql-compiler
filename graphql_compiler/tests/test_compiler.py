@@ -3022,48 +3022,6 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
 
-    def test_starts_with_op_filter_missing_value_argument(self):
-        test_data = test_input_data.starts_with_op_filter_missing_value_argument()
-
-        expected_match = '''
-            SELECT
-                Animal___1.name AS `animal_name`
-            FROM (
-                MATCH {{
-                    class: Animal,
-                    where: ((name LIKE ({wanted} + '%'))),
-                    as: Animal___1
-                }}
-                RETURN $matches
-            )
-        '''
-        expected_gremlin = '''
-            g.V('@class', 'Animal')
-            .filter{it, m -> it.name.startsWith($wanted)}
-            .as('Animal___1')
-            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                animal_name: m.Animal___1.name
-            ])}
-        '''
-        expected_sql = '''
-            SELECT
-                [Animal_1].name AS animal_name
-            FROM
-                db_1.schema_1.[Animal] AS [Animal_1]
-            WHERE
-                ([Animal_1].name LIKE :wanted + '%')
-        '''
-        expected_cypher = '''
-            MATCH (Animal___1:Animal)
-                WHERE (Animal___1.name STARTS WITH $wanted)
-            RETURN
-                Animal___1.name AS `animal_name`
-        '''
-
-        with self.assertRaises(GraphQLValidationError):
-            check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                            expected_cypher)
-
     def test_ends_with_op_filter(self):
         test_data = test_input_data.ends_with_op_filter()
 

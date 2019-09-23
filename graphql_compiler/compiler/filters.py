@@ -18,10 +18,8 @@ from .metadata import FilterInfo
 
 def scalar_leaf_only(operator):
     """Ensure the filter function is only applied to scalar leaf types."""
-
     def decorator(f):
         """Decorate the supplied function with the "scalar_leaf_only" logic."""
-
         @wraps(f)
         def wrapper(filter_operation_info, context, parameters, *args, **kwargs):
             """Check that the type on which the operator operates is a scalar leaf type."""
@@ -43,10 +41,8 @@ def scalar_leaf_only(operator):
 
 def vertex_field_only(operator):
     """Ensure the filter function is only applied to vertex field types."""
-
     def decorator(f):
         """Decorate the supplied function with the "vertex_field_only" logic."""
-
         @wraps(f)
         def wrapper(filter_operation_info, context, parameters, *args, **kwargs):
             """Check that the type on which the operator operates is a vertex field type."""
@@ -69,10 +65,8 @@ def vertex_field_only(operator):
 
 def takes_parameters(count):
     """Ensure the filter function has "count" parameters specified."""
-
     def decorator(f):
         """Decorate the supplied function with the "takes_parameters" logic."""
-
         @wraps(f)
         def wrapper(filter_operation_info, location, context, parameters, *args, **kwargs):
             """Check that the supplied number of parameters equals the expected number."""
