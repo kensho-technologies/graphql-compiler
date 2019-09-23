@@ -571,11 +571,12 @@ def get_sqlalchemy_schema_info():
         'Species': sqlalchemy.Table(
             'Species',
             sqlalchemy_metadata_2,
-            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('eats', uuid_type, nullable=True),
-            sqlalchemy.Column('limbs', sqlalchemy.Integer, nullable=False),
+            sqlalchemy.Column('limbs', sqlalchemy.Integer, nullable=True),
+            sqlalchemy.Column('related_entity', uuid_type, nullable=True),
             schema='db_1.schema_1'
         ),
         'UniquelyIdentifiable': sqlalchemy.Table(
