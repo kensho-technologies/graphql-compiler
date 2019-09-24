@@ -89,15 +89,25 @@ def generate_orient_snapshot_data(client):
     _load_sql_files_to_orient_client(client, sql_files)
 
 
+def _write_orient_set_clause(field_name, field_value):
+    if not isinstance(field_name, six.string_types):
+        raise AssertionError(u'Expected string field_name. Received {}'.format(field_name))
+    # TODO(bojanserafimov): SQL injection is possible
+    field_value_representation = repr(field_value)
+    if isinstance(field_value, datetime.date):
+        field_value_representation = 'DATE("' + field_value.isoformat() + ' 00:00:00")'
+    template = '{} = {}'
+    return template.format(field_name, field_value_representation)
+
+
 def generate_orient_integration_data(client):
     """Create OrientDB test DB from the standard integration data."""
     vertex_values, edge_values, uuid_to_class_name = get_integration_data()
     for vertex_name, vertices in six.iteritems(vertex_values):
         for vertex_props in vertices:
-            # XXX SQL injection
-            # XXX string formatting is bad for some types
+            # TODO(bojanserafimov): SQL injection is possible
             command = 'CREATE VERTEX {} SET '.format(vertex_name) + ', '.join(
-                '{} = \'{}\''.format(key, str(value))
+                _write_orient_set_clause(key, value)
                 for key, value in six.iteritems(vertex_props)
             )
             client.command(command)
@@ -120,10 +130,7 @@ def generate_neo4j_integration_data(client):
         session.run('match (n) detach delete n')
         for vertex_name, vertices in six.iteritems(vertex_values):
             for vertex_props in vertices:
-                for prop_name in vertex_props:
-                    if any (not char.isalpha() for char in prop_name):
-                        raise AssertionError(u'Property names can only contain letters. Found {}'
-                                             .format(prop_name))
+                # XXX SQL injection
                 command = 'create (:{} {{{}}})'.format(vertex_name, ', '.join(
                     '{}: ${}'.format(key, key) for key in vertex_props))
                 session.run(command, vertex_props)
