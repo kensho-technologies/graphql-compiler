@@ -124,7 +124,8 @@ With the query at hand, we can compile it and get the corresponding results from
 
     from graphql_compiler import graphql_to_match
 
-    compilation_result = graphql_to_match(schema, graphql_query, parameters, type_equivalence_hints)
+    compilation_result = graphql_to_match(
+        schema, graphql_query, parameters, type_equivalence_hints)
 
     # Execute query assuming a pyorient client. Other clients may have a different interface.
     print([result.oRecordData for result in client.query(query)])
