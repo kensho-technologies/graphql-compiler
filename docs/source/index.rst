@@ -19,8 +19,8 @@ The GraphQL Compiler
    :description: Turn complex GraphQL queries into optimized database queries.
    :keywords: graphql compiler, database, orientdb, sql
 
-The GraphQL Compiler simplifies database querying and exploration by exposing one common
-query language for multiple database backends.  The query language is:
+The GraphQL Compiler is a library that simplifies database querying and exploration by exposing one
+common query language for multiple database backends.  The query language is:
 
 .. EDUCATIONAL: The pattern below is what you would call a definition list in restructuredtext.
    The "terms" get special rendering in the readthedocs html file.
@@ -45,8 +45,8 @@ Designed for cross-database querying
 Getting Started
 ---------------
 
-Schema Info
-~~~~~~~~~~~
+Representing the
+~~~~~~~~~~~~~~~~
 
 ..  TODO: Encapsulate all schema info in a SchemaInfo class.
 
@@ -162,9 +162,10 @@ To learn more about the core specification of the GraphQL query language see:
 Databases
 ~~~~~~~~~
 
-To learn more about how to generate a schema for your target database, and any limitations
-or intricacies related to working with said database please refer to this section. We currently
-support two types of database backends:
+Refer to this section to learn how the compiler integrates with the target database. The database
+home pages include an end-to-end example, instruction for schema info generation, and any
+limitations or intricacies related to working with said database. We currently support two
+types of database backends:
 
     - :doc:`OrientDB <databases/orientdb>`
     - :doc:`SQL Databases <databases/sql>`, including SQL Server, Postgres and more.
@@ -182,8 +183,9 @@ Advanced Features
 
 To learn more about the advanced features in the GraphQL compiler see:
 
-    - :doc:`Macro System <advanced_features/macro_system>`, to learn how to capture complex
-      navigational patterns with simple **vertex fields**.
+    - :doc:`Macro System <advanced_features/macro_system>`, to learn how to write "macro edges",
+      which allow users to define new edges that become part of the GraphQL schema, using existing
+      edges as building blocks.
     - :doc:`Schema Stitching <advanced_features/schema_stitching>`, to learn how to stitch-schemas
       together and execute cross-database queries.
     - :doc:`Schema Transformations <advanced_features/schema_transformations>`, to learn how to
