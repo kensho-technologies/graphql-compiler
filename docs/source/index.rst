@@ -2,10 +2,8 @@ The GraphQL Compiler
 ====================
 
 .. EDUCATIONAL: The toctree (Table Of Contents Tree) specifies the table of contents at the left
-   side. The maxdepth indicates the header depth for the navigational bar. The toctree by default
-   uses the title of each document for the navigational bar. However, this can be overriden.
-   self is a special keyword and indicates a self reference.
-   The hidden parameter specifies not to show the toctree in this page.
+   side. The maxdepth indicates the header depth for the navigational bar.
+   :hidden: specifies not to show the toctree in this page.
 
 .. ISSUE: Tree doesn't include subsections for `self` in toctree.
           https://github.com/sphinx-doc/sphinx/issues/2103
@@ -39,12 +37,10 @@ Directly compiled to the target database language
    Furthermore, by using schema information from the target database, the compiler is able to
    extensively validate queries, often more so than the DB-API, (e.g. :code:`pymssql`).
 
-.. TODO: Create Schema Stitching section and add hyperlink.
-
 Designed for cross-database querying
    Since the query language always has the same semantics regardless of the underlying database,
-   we have been able to build a Schema Stitching system that allows for seamless cross-database
-   querying.
+   we have been able to build a :doc:`Schema Stitching <advanced_features/schema_stitching>` system
+   that allows for seamless cross-database querying.
 
 Getting Started
 ---------------
@@ -52,8 +48,7 @@ Getting Started
 Schema Info
 ~~~~~~~~~~~
 
-.. TODO: Insert hyperlinks once backend sections are built.
-   TODO: Encapsulate all schema info in a SchemaInfo class.
+..  TODO: Encapsulate all schema info in a SchemaInfo class.
 
 To use the GraphQL compiler the first thing one needs to do is to generate the schema info from the
 underlying database as in the example below. Even though the example below generates schema info
@@ -75,7 +70,7 @@ See the section for the target backend for schema generation instructions.
 
 
 At the core of generated schema info is the GraphQL :code:`schema`. The database might be
-reflected as follows in the schema:
+in the schema as follows:
 
 .. code::
 
@@ -89,8 +84,6 @@ reflected as follows in the schema:
         in_AnimalLivesIn: [Animal]
     }
 
-.. TODO: Add hyperlinks below for the SQL section.
-
 In the schema above:
 
 -   :code:`Animal` represents a non-abstract vertex. For relational databases, we think of
@@ -98,7 +91,7 @@ In the schema above:
 -   :code:`name` is a **property field** and :code:`out_Animal_LivesIn` is a **vertex field**.
     **Vertex fields** represents an outbound edge to a vertex in the graph. For graph databases,
     edges can be reflected from the database schema. However, for relational databases they have
-    to be manually specified. See SQL for more information.
+    to be manually specified. See :doc:`SQL <databases/sql>` for more information.
 
 
 Query Compilation and Execution
@@ -125,15 +118,10 @@ There are a couple of things to notice about queries:
 
 - All queries start with a vertex and branch to other vertices using **vertex fields**.
 - **Directives** such as, :code:`@output` and :code:`@filter`, specify the semantics of a query.
+  :code:`@output` indicates which properties to emit and :code:`@filter` specifies a filter
+  operation.
 
-..
-
-    - :code:`@output` indicates which properties to emit.
-    - :code:`@filter` specifies a filter operation. Note that most filter operations require the use
-      use of **runtime parameters**, (e.g. :code:`$continent`), which must be prefixed with
-      :code:`$`.
-
-Now that we have can use the compiler to emit a query that can be run against the OrientDB database.
+With the query at hand, we can compile it and get the corresponding results from OrientDB.
 
 .. code:: python
 
@@ -199,8 +187,10 @@ To learn more about the advanced features in the GraphQL compiler see:
 
     - :doc:`Macro System <advanced_features/macro_system>`, to learn how to capture complex
       navigational patterns with simple **vertex fields**.
+    - :doc:`Schema Stitching <advanced_features/schema_stitching>`, to learn how to stitch-schemas
+      together and execute cross-database queries.
     - :doc:`Schema Transformations <advanced_features/schema_transformations>`, to learn how to
-      rename types, stitch database schemas, write cross-database queries and more.
+      rename objects and prevent schema collisions when stitching schemas.
     - :doc:`Schema Graph <advanced_features/schema_graph>`, for an utility that makes it
       easy to explore schema structure, including index info.
 
@@ -210,5 +200,6 @@ To learn more about the advanced features in the GraphQL compiler see:
    :hidden:
 
    Macro System <advanced_features/macro_system>
+   Schema Stitching <advanced_features/schema_stitching>
    Schema Transformations <advanced_features/schema_transformations>
    Schema Graph <advanced_features/schema_graph>
