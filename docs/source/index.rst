@@ -45,8 +45,8 @@ Designed for cross-database querying
 Getting Started
 ---------------
 
-Representing the
-~~~~~~~~~~~~~~~~
+Generating the necessary schema info
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ..  TODO: Encapsulate all schema info in a SchemaInfo class.
 
