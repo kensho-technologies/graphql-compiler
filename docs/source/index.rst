@@ -86,9 +86,9 @@ In the :code:`schema` above:
 
 -   :code:`Animal` represents a non-abstract vertex. For relational databases, we think of
     tables as the non-abstract vertices.
--   :code:`name` is a **property field** and :code:`out_Animal_LivesIn` is a **vertex field**.
-    **Vertex fields** represents an outbound edge to a vertex in the graph. For graph databases,
-    edges can be reflected from the database schema. However, for relational databases they have
+-   :code:`name` is a **property field** and :code:`out_Animal_LivesIn` is a **vertex field**,
+    which represent an outbound edge to a vertex in the graph. For graph databases,
+    edges can be reflected from the database schema. However, for relational databases edges have
     to be manually specified. See :doc:`SQL <databases/sql>` for more information.
 
 Query Compilation and Execution
