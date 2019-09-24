@@ -2,8 +2,8 @@ The GraphQL Compiler
 ====================
 
 .. EDUCATIONAL: The toctree (Table Of Contents Tree) specifies the table of contents at the left
-   side. The maxdepth indicates the header depth for the navigational bar.
-   :hidden: specifies not to show the toctree in this page.
+   side of the page. The maxdepth indicates which headers to include in the table of contents.
+   :hidden: specifies not to include a table of contents in this page.
 
 .. ISSUE: Tree doesn't include subsections for `self` in toctree.
           https://github.com/sphinx-doc/sphinx/issues/2103
@@ -53,8 +53,7 @@ Schema Info
 To use the GraphQL compiler the first thing one needs to do is to generate the schema info from the
 underlying database as in the example below. Even though the example below generates schema info
 from an OrientDB database, it is meant as a generic schema info generation example.
-See the section for the target backend for schema generation instructions.
-
+See the target database homepage for schema generation instructions.
 
 .. code:: python
 
@@ -68,9 +67,8 @@ See the section for the target backend for schema generation instructions.
     schema_data = [record.oRecordData for record in schema_records]
     schema, type_equivalence_hints = get_graphql_schema_from_orientdb_schema_data(schema_data)
 
-
 At the core of generated schema info is the GraphQL :code:`schema`. The database might be
-in the schema as follows:
+reflected in the :code:`schema` as follows:
 
 .. code::
 
@@ -84,7 +82,7 @@ in the schema as follows:
         in_AnimalLivesIn: [Animal]
     }
 
-In the schema above:
+In the :code:`schema` above:
 
 -   :code:`Animal` represents a non-abstract vertex. For relational databases, we think of
     tables as the non-abstract vertices.
@@ -93,11 +91,11 @@ In the schema above:
     edges can be reflected from the database schema. However, for relational databases they have
     to be manually specified. See :doc:`SQL <databases/sql>` for more information.
 
-
 Query Compilation and Execution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Once we have the schema info we can write the following query:
+Once we have the schema info we can write the following query to get the names of all the animals
+that live in Africa:
 
 .. code:: python
 
@@ -113,11 +111,10 @@ Once we have the schema info we can write the following query:
     """
     parameters = {'continent': 'Africa'}
 
-This query returns all of the the name of all of the animals that live in Africa.
 There are a couple of things to notice about queries:
 
 - All queries start with a vertex and branch to other vertices using **vertex fields**.
-- **Directives** such as, :code:`@output` and :code:`@filter`, specify the semantics of a query.
+- **Directives**, such as :code:`@output` and :code:`@filter`, specify the semantics of a query.
   :code:`@output` indicates which properties to emit and :code:`@filter` specifies a filter
   operation.
 
@@ -145,12 +142,12 @@ Core Specification
 To learn more about the core specification of the GraphQL query language see:
 
     - :doc:`Definitions <core_specification/definitions>`, for the definitions of key terms that we
-      use define the language.
+      use to define the language.
     - :doc:`Schema Types <core_specification/schema_types>`, for information about the full
-      breadth of schema types that we use to to represent database schemas and how to interact
+      breadth of schema types that we use to represent database schemas and how to interact
       with them using GraphQL queries.
     - :doc:`Query Directives <core_specification/query_directives>`, to learn more about the
-      available directives and how to use them to create expressive queries..
+      available directives and how to use them to create powerful queries.
 
 .. toctree::
    :maxdepth: 2
@@ -165,12 +162,11 @@ Databases
 ~~~~~~~~~
 
 To learn more about how to generate a schema for your target database, and any limitations
-or intricacies related to working said database please refer to this section. We currently support
-two types of database backends:
+or intricacies related to working with said database please refer to this section. We currently
+support two types of database backends:
 
-    - :doc:`OrientDB <databases/orientdb>`, which includes the OrientDB database.
-    - :doc:`SQL Databases <databases/sql>`, which includes a number of SQL database management
-      systems such as Postgres, SQL Server and more.
+    - :doc:`OrientDB <databases/orientdb>`
+    - :doc:`SQL Databases <databases/sql>`, including SQL Server, Postgres and more.
 
 .. toctree::
    :maxdepth: 2
@@ -192,7 +188,7 @@ To learn more about the advanced features in the GraphQL compiler see:
     - :doc:`Schema Transformations <advanced_features/schema_transformations>`, to learn how to
       rename objects and prevent schema collisions when stitching schemas.
     - :doc:`Schema Graph <advanced_features/schema_graph>`, for an utility that makes it
-      easy to explore schema structure, including index info.
+      easy to explore the schema of a database, including the databases indexes.
 
 .. toctree::
    :maxdepth: 2
