@@ -1,6 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import datetime
-from decimal import Decimal
 from glob import glob
 from os import path
 
@@ -18,7 +17,17 @@ from ..test_helpers import get_sqlalchemy_schema_info
 
 
 def get_integration_data():
-    # Map vertex classes tuples containing the properties of each vertex of that class
+    """Get the small integration data set.
+
+    Returns:
+        tuple containing:
+        - vertex_values: Dict mapping vertex classes tuples containing the properties of
+                         each vertex of that class.
+        - edge_values: Dict mapping edges to tuples containing the source and destination vertex
+                       of each edge of that class.
+        - uuid_to_class_name: Dict mapping vertex uuids to their classnames. The data is
+                              already contained in vertex_values, but this can be convenient.
+    """
     vertex_values = {
         'Animal': (
             {
@@ -53,8 +62,6 @@ def get_integration_data():
             },
         ),
     }
-
-    # Map edges to tuples containing the source and destination vertex of each edge of that class
     edge_values = {
         'Entity_Related': (
             {
@@ -64,7 +71,6 @@ def get_integration_data():
         )
     }
 
-    # Find the class name of each vertex uuid
     uuid_to_class_name = {}
     for vertex_name, values in six.iteritems(vertex_values):
         for value in values:
@@ -84,7 +90,7 @@ def generate_orient_snapshot_data(client):
 
 
 def generate_orient_integration_data(client):
-    """Create OrientDB test DB from the SQL commands file for snapshot testing."""
+    """Create OrientDB test DB from the standard integration data."""
     vertex_values, edge_values, uuid_to_class_name = get_integration_data()
     for vertex_name, vertices in six.iteritems(vertex_values):
         for vertex_props in vertices:
@@ -108,19 +114,21 @@ def generate_orient_integration_data(client):
 
 
 def generate_neo4j_integration_data(client):
-    """Create Neo4j test DB from the SQL commands file for integration testing."""
+    """Create Neo4j test DB from the standard integration data."""
     vertex_values, edge_values, _ = get_integration_data()
     with client.driver.session() as session:
-        session.run('match (n) detach delete n')  # XXX does this belong here?
+        session.run('match (n) detach delete n')
         for vertex_name, vertices in six.iteritems(vertex_values):
             for vertex_props in vertices:
-                # XXX SQL injection. Validate keys are made of letters
+                for prop_name in vertex_props:
+                    if any (not char.isalpha() for char in prop_name):
+                        raise AssertionError(u'Property names can only contain letters. Found {}'
+                                             .format(prop_name))
                 command = 'create (:{} {{{}}})'.format(vertex_name, ', '.join(
                     '{}: ${}'.format(key, key) for key in vertex_props))
                 session.run(command, vertex_props)
         for edge_name, edges in six.iteritems(edge_values):
             for edge_spec in edges:
-                # XXX SQL injection.
                 command = '''
                     match (a {uuid: $from_uuid}) (b {uuid: $to_uuid})
                     create (a)-[:$edge_name]->(b)'
@@ -134,13 +142,15 @@ def generate_neo4j_integration_data(client):
 
 
 def generate_redisgraph_integration_data(client):
-    """Create Redisgraph test DB from the SQL commands file for integration testing."""
+    """Create Redisgraph test DB from the standard integration data."""
     vertex_values, edge_values, _ = get_integration_data()
-    client.query('create (n)')  # XXX does this belong here?
-    client.query('match (n) delete n')  # XXX does this belong here?
+    client.query('create (n)')
+    client.query('match (n) delete n')
     uuid_to_node = {}
     for vertex_name, vertices in six.iteritems(vertex_values):
         for vertex_props in vertices:
+            # NOTE(bojanserafimov): Dates and datetimes are not supported in redisgraph,
+            #                       so we just omit them from the dataset.
             uuid_to_node[vertex_props['uuid']] = Node(label=vertex_name, properties={
                 key: value
                 for key, value in six.iteritems(vertex_props)
