@@ -602,8 +602,8 @@ def get_sqlalchemy_schema_info():
             'name': 'Animal_ParentOf',
             'from_table': 'Animal',
             'to_table': 'Animal',
-            'from_column': 'parent',
-            'to_column': 'uuid',
+            'from_column': 'uuid',
+            'to_column': 'parent',
         }, {
             'name': 'Animal_OfSpecies',
             'from_table': 'Animal',
