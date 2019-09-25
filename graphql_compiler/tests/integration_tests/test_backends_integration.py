@@ -232,6 +232,140 @@ class IntegrationTests(TestCase):
         ]
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
+    @integration_fixtures
+    def test_recurse(self):
+        parameters = {
+            'starting_animal_name': 'Animal 1',
+        }
+
+        # (query, expected_results) pairs. All of them running with the same parameters.
+        # The queries are ran in the order specified here.
+        queries = [
+            # Query 1: Just the root
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                         @output(out_name: "root_name")
+                }
+            }''', [
+                {'root_name': 'Animal 1'}
+            ]),
+            # Query 2: Immediate children
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf {
+                        name @output(out_name: "descendant_name")
+                    }
+                }
+            }''', [
+                {'descendant_name': 'Animal 1'},
+                {'descendant_name': 'Animal 2'},
+                {'descendant_name': 'Animal 3'},
+            ]),
+            # Query 3: Grandchildren
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf {
+                        out_Animal_ParentOf {
+                            name @output(out_name: "descendant_name")
+                        }
+                    }
+                }
+            }''', [
+                {'descendant_name': 'Animal 1'},
+                {'descendant_name': 'Animal 2'},
+                {'descendant_name': 'Animal 3'},
+                {'descendant_name': 'Animal 4'},
+            ]),
+            # Query 4: Grand-grandchildren
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf {
+                        out_Animal_ParentOf {
+                            out_Animal_ParentOf {
+                                name @output(out_name: "descendant_name")
+                            }
+                        }
+                    }
+                }
+            }''', [
+                {'descendant_name': 'Animal 1'},
+                {'descendant_name': 'Animal 2'},
+                {'descendant_name': 'Animal 3'},
+                {'descendant_name': 'Animal 4'},
+            ]),
+            # Query 5: Recurse depth 1
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf @recurse(depth: 1){
+                        name @output(out_name: "descendant_name")
+                    }
+                }
+            }''', [
+                {'descendant_name': 'Animal 1'},  # depth 0 match
+                {'descendant_name': 'Animal 1'},  # depth 1 match
+                {'descendant_name': 'Animal 2'},  # depth 1 match
+                {'descendant_name': 'Animal 3'},  # depth 1 match
+            ]),
+            # Query 6: Recurse depth 2
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf @recurse(depth: 2){
+                        name @output(out_name: "descendant_name")
+                    }
+                }
+            }''', [
+                {'descendant_name': 'Animal 1'},  # depth 0 match
+                {'descendant_name': 'Animal 1'},  # depth 1 match
+                {'descendant_name': 'Animal 2'},  # depth 1 match
+                {'descendant_name': 'Animal 3'},  # depth 1 match
+                {'descendant_name': 'Animal 1'},  # depth 2 match
+                {'descendant_name': 'Animal 2'},  # depth 2 match
+                {'descendant_name': 'Animal 3'},  # depth 2 match
+                {'descendant_name': 'Animal 4'},  # depth 2 match
+            ]),
+            # Query 7: Recurse depth 3
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf @recurse(depth: 3){
+                        name @output(out_name: "descendant_name")
+                    }
+                }
+            }''', [
+                {'descendant_name': 'Animal 1'},  # depth 0 match
+                {'descendant_name': 'Animal 1'},  # depth 1 match
+                {'descendant_name': 'Animal 2'},  # depth 1 match
+                {'descendant_name': 'Animal 3'},  # depth 1 match
+                {'descendant_name': 'Animal 1'},  # depth 2 match
+                {'descendant_name': 'Animal 2'},  # depth 2 match
+                {'descendant_name': 'Animal 3'},  # depth 2 match
+                {'descendant_name': 'Animal 4'},  # depth 2 match
+                {'descendant_name': 'Animal 1'},  # depth 3 match
+                {'descendant_name': 'Animal 2'},  # depth 3 match
+                {'descendant_name': 'Animal 3'},  # depth 3 match
+                {'descendant_name': 'Animal 4'},  # depth 3 match
+            ]),
+        ]
+
+        # TODO(bojanserafimov): Only tested in MSSQL. To test in other backends, they should read in
+        #                       the standard integration test schema used by the SQL backend.
+        for graphql_query, expected_results in queries:
+            self.assertResultsEqual(graphql_query, parameters, test_backend.MSSQL, expected_results)
+
+
     # RedisGraph doesn't support temporal types, so Date types aren't supported.
     @use_all_backends(except_backends=(test_backend.REDISGRAPH))
     @integration_fixtures
@@ -294,4 +428,5 @@ class IntegrationTests(TestCase):
             'human_name_out': 'Child'
         }
         self.assertEqual(expected_custom_class_fields, parent_of_edge.class_fields)
+
 # pylint: enable=no-member
