@@ -134,6 +134,7 @@ def generate_orient_integration_data(client):
                 for key, value in six.iteritems(vertex_props)
             )
             client.command(command)
+    # XXX is there an error here causing integration test to fail on recurse?
     for edge_name, edges in six.iteritems(edge_values):
         for edge_spec in edges:
             # XXX SQL injection
@@ -142,7 +143,8 @@ def generate_orient_integration_data(client):
             vertex_template = 'SELECT FROM {} WHERE uuid = \'{}\''
             from_selection = vertex_template.format(from_classname, edge_spec['from_uuid'])
             to_selection = vertex_template.format(to_classname, edge_spec['to_uuid'])
-            command = 'CREATE EDGE FROM ({}) TO ({})'.format(from_selection, to_selection)
+            command = 'CREATE EDGE {} FROM ({}) TO ({})'.format(
+                edge_name, from_selection, to_selection)
             client.command(command)
 
 
@@ -280,20 +282,29 @@ def generate_sql_integration_data(sql_test_backends):
             from_classname = uuid_to_class_name[edge_value['from_uuid']]
             edge_field_name = 'out_{}'.format(edge_name)
             join_descriptor = sql_schema_info.join_descriptors[from_classname][edge_field_name]
-            # XXX this is very broken. In fact, the join descriptor does not have enough information
-            # on how to insert an edge. Do you edit the from_column, or the to_column? If one of them
-            # is uuid, pick the other one?
-            if join_descriptor.to_column != 'uuid':
-                raise NotImplementedError(u'Expected to_column to be uuid, found {} for {}'
-                                          .format(join_descriptor.to_column, edge_name))
 
-            existing_foreign_key_values = uuid_to_foreign_key_values.setdefault(
-                edge_value['from_uuid'], {})
-            if join_descriptor.from_column in existing_foreign_key_values:
-                raise NotImplementedError(u'The SQL backend does not support many-to-many edges.'
-                                          u'Found multiple edges of class {} from vertex {}'
-                                          .format(edge_name, edge_value['from_uuid']))
-            existing_foreign_key_values[join_descriptor.from_column] = edge_value['to_uuid']
+            is_from_uuid = join_descriptor.from_column == 'uuid'
+            is_to_uuid = join_descriptor.to_column == 'uuid'
+            if is_from_uuid == is_to_uuid:
+                raise NotImplementedError(u'Exactly one of the join columns was expected to'
+                                          u'be uuid. found {}'.format(join_descriptor))
+
+            if is_from_uuid:
+                existing_foreign_key_values = uuid_to_foreign_key_values.setdefault(
+                    edge_value['to_uuid'], {})
+                if join_descriptor.to_column in existing_foreign_key_values:
+                    raise NotImplementedError(u'The SQL backend does not support many-to-many edges.'
+                                              u'Found multiple edges of class {} from vertex {}'
+                                              .format(edge_name, edge_value['to_uuid']))
+                existing_foreign_key_values[join_descriptor.to_column] = edge_value['from_uuid']
+            elif is_to_uuid:
+                existing_foreign_key_values = uuid_to_foreign_key_values.setdefault(
+                    edge_value['from_uuid'], {})
+                if join_descriptor.from_column in existing_foreign_key_values:
+                    raise NotImplementedError(u'The SQL backend does not support many-to-many edges.'
+                                              u'Found multiple edges of class {} from vertex {}'
+                                              .format(edge_name, edge_value['from_uuid']))
+                existing_foreign_key_values[join_descriptor.from_column] = edge_value['to_uuid']
 
     # Insert all the prepared data into the test database
     for sql_test_backend in six.itervalues(sql_test_backends):
