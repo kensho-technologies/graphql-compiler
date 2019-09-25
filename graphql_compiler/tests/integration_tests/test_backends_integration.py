@@ -363,7 +363,7 @@ class IntegrationTests(TestCase):
         # TODO(bojanserafimov): Only tested in MSSQL. To test in other backends, they should read in
         #                       the standard integration test schema used by the SQL backend.
         for graphql_query, expected_results in queries:
-            self.assertResultsEqual(graphql_query, parameters, test_backend.MSSQL, expected_results)
+            self.assertResultsEqual(graphql_query, parameters, test_backend.ORIENTDB, expected_results)
 
     # RedisGraph doesn't support temporal types, so Date types aren't supported.
     @use_all_backends(except_backends=(test_backend.REDISGRAPH))
