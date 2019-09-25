@@ -115,7 +115,7 @@ def generate_orient_snapshot_data(client):
 
 
 def _validate_name(name):
-    """A conservative check for allowed vertex and field names."""
+    """Check conservatively for allowed vertex and field names."""
     if not isinstance(name, six.string_types):
         raise AssertionError(u'Expected string name. Received {}'.format(name))
     allowed_characters = string.ascii_uppercase + string.ascii_lowercase + string.digits + '_'
