@@ -1,6 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import datetime
-from decimal import Decimal
 from glob import glob
 from os import path
 
@@ -236,17 +235,19 @@ def generate_sql_integration_data(sql_test_backends):
                 existing_foreign_key_values = uuid_to_foreign_key_values.setdefault(
                     edge_value['to_uuid'], {})
                 if join_descriptor.to_column in existing_foreign_key_values:
-                    raise NotImplementedError(u'The SQL backend does not support many-to-many edges.'
-                                              u'Found multiple edges of class {} from vertex {}'
+                    raise NotImplementedError(u'The SQL backend does not support many-to-many '
+                                              u'edges. Found multiple edges of class {} from '
+                                              u'vertex {}.'
                                               .format(edge_name, edge_value['to_uuid']))
                 existing_foreign_key_values[join_descriptor.to_column] = edge_value['from_uuid']
             elif is_to_uuid:
                 existing_foreign_key_values = uuid_to_foreign_key_values.setdefault(
                     edge_value['from_uuid'], {})
                 if join_descriptor.from_column in existing_foreign_key_values:
-                    raise NotImplementedError(u'The SQL backend does not support many-to-many edges.'
-                                              u'Found multiple edges of class {} from vertex {}'
-                                              .format(edge_name, edge_value['from_uuid']))
+                    raise NotImplementedError(u'The SQL backend does not support many-to-many '
+                                              u'edges. Found multiple edges of class {} to '
+                                              u'vertex {}.'
+                                              .format(edge_name, edge_value['to_uuid']))
                 existing_foreign_key_values[join_descriptor.from_column] = edge_value['to_uuid']
 
     # Insert all the prepared data into the test database
