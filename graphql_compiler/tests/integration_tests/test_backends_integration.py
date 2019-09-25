@@ -365,7 +365,6 @@ class IntegrationTests(TestCase):
         for graphql_query, expected_results in queries:
             self.assertResultsEqual(graphql_query, parameters, test_backend.MSSQL, expected_results)
 
-
     # RedisGraph doesn't support temporal types, so Date types aren't supported.
     @use_all_backends(except_backends=(test_backend.REDISGRAPH))
     @integration_fixtures
@@ -428,5 +427,4 @@ class IntegrationTests(TestCase):
             'human_name_out': 'Child'
         }
         self.assertEqual(expected_custom_class_fields, parent_of_edge.class_fields)
-
 # pylint: enable=no-member
