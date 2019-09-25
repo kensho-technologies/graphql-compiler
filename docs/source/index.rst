@@ -86,10 +86,12 @@ In the :code:`schema` above:
 
 -   :code:`Animal` represents a non-abstract vertex. For relational databases, we think of
     tables as the non-abstract vertices.
--   :code:`name` is a **property field** and :code:`out_Animal_LivesIn` is a **vertex field**,
-    which represent an outbound edge to a vertex in the graph. For graph databases,
-    edges can be reflected from the database schema. However, for relational databases edges have
-    to be manually specified. See :doc:`SQL <databases/sql>` for more information.
+-   :code:`name` is a **property field** which represents a property of the :code:`Animal` vertex.
+    Think of **property fields** as the conceptual equivalent to table columns.
+-   :code:`out_Animal_LivesIn` is a **vertex field** which represents an outbound edge to a vertex
+    in the graph. For graph databases, edges can be reflected from the database schema. However,
+    for relational databases edges have to be manually specified. See :doc:`SQL <databases/sql>`
+    for more information.
 
 Query Compilation and Execution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -113,12 +115,12 @@ that live in Africa:
 
 There are a couple of things to notice about queries:
 
-- All queries start with a vertex and branch to other vertices using **vertex fields**.
-- **Directives**, such as :code:`@output` and :code:`@filter`, specify the semantics of a query.
-  :code:`@output` indicates which properties to emit and :code:`@filter` specifies a filter
-  operation.
+- All queries start with a vertex and expand to other vertices using **vertex fields**.
+- **Directives** specify the semantics of a query. :code:`@output` indicates which properties to
+  emit. :code:`@filter` specifies a filter operation.
 
-With the query at hand, we can compile it and get the corresponding results from OrientDB.
+With the query and its parameters at hand, we can compile it and get the corresponding results from
+OrientDB.
 
 .. code:: python
 
