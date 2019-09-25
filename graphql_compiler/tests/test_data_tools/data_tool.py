@@ -2,6 +2,7 @@
 import datetime
 from glob import glob
 from os import path
+import string
 
 from funcy import retry
 from redisgraph import Edge, Node
@@ -113,10 +114,29 @@ def generate_orient_snapshot_data(client):
     _load_sql_files_to_orient_client(client, sql_files)
 
 
-def _write_orient_set_clause(field_name, field_value):
-    if not isinstance(field_name, six.string_types):
-        raise AssertionError(u'Expected string field_name. Received {}'.format(field_name))
-    # TODO(bojanserafimov): SQL injection is possible
+def _validate_name(name):
+    """A conservative check for allowed vertex and field names."""
+    if not isinstance(name, six.string_types):
+        raise AssertionError(u'Expected string name. Received {}'.format(name))
+    allowed_characters = string.ascii_uppercase + string.ascii_lowercase + string.digits + '_'
+    if any(c not in allowed_characters for c in str(name)):
+        raise AssertionError(u'Name {} contains disallowed characters'.format(name))
+
+
+def _write_orient_equality(field_name, field_value):
+    """Write a '{} = {}' statement to be used in queries, validating against SQL injection."""
+    _validate_name(field_name)
+    if isinstance(field_value, six.string_types):
+        allowed_characters = string.ascii_uppercase + string.ascii_lowercase + string.digits + '-_ '
+        if any(c not in allowed_characters for c in str(field_value)):
+            raise AssertionError(u'String value {} contains disallowed characters'
+                                 .format(field_value))
+    elif isinstance(field_value, (six.integer_types, float, datetime.date)):
+        pass
+    else:
+        raise NotImplementedError(u'Value validation for type {} is not implemented'
+                                  .format(type(field_value)))
+
     field_value_representation = repr(field_value)
     if isinstance(field_value, datetime.date):
         field_value_representation = 'DATE("' + field_value.isoformat() + ' 00:00:00")'
@@ -129,20 +149,23 @@ def generate_orient_integration_data(client):
     vertex_values, edge_values, uuid_to_class_name = get_integration_data()
     for vertex_name, vertices in six.iteritems(vertex_values):
         for vertex_props in vertices:
-            # TODO(bojanserafimov): SQL injection is possible
+            _validate_name(vertex_name)
             command = 'CREATE VERTEX {} SET '.format(vertex_name) + ', '.join(
-                _write_orient_set_clause(key, value)
+                _write_orient_equality(key, value)
                 for key, value in six.iteritems(vertex_props)
             )
             client.command(command)
     for edge_name, edges in six.iteritems(edge_values):
         for edge_spec in edges:
-            # XXX SQL injection
             from_classname = uuid_to_class_name[edge_spec['from_uuid']]
             to_classname = uuid_to_class_name[edge_spec['to_uuid']]
-            vertex_template = 'SELECT FROM {} WHERE uuid = \'{}\''
-            from_selection = vertex_template.format(from_classname, edge_spec['from_uuid'])
-            to_selection = vertex_template.format(to_classname, edge_spec['to_uuid'])
+            _validate_name(from_classname)
+            _validate_name(to_classname)
+            vertex_template = 'SELECT FROM {} WHERE {}'
+            from_selection = vertex_template.format(
+                from_classname, _write_orient_equality('uuid', edge_spec['from_uuid']))
+            to_selection = vertex_template.format(
+                from_classname, _write_orient_equality('uuid', edge_spec['to_uuid']))
             command = 'CREATE EDGE {} FROM ({}) TO ({})'.format(
                 edge_name, from_selection, to_selection)
             client.command(command)
@@ -154,8 +177,10 @@ def generate_neo4j_integration_data(client):
     with client.driver.session() as session:
         session.run('match (n) detach delete n')
         for vertex_name, vertices in six.iteritems(vertex_values):
+            _validate_name(vertex_name)
             for vertex_props in vertices:
-                # XXX SQL injection
+                for key in vertex_props:
+                    _validate_name(key)
                 command = 'create (:{} {{{}}})'.format(vertex_name, ', '.join(
                     '{}: ${}'.format(key, key) for key in vertex_props))
                 session.run(command, vertex_props)
