@@ -20,7 +20,7 @@ The GraphQL Compiler
    :keywords: graphql compiler, database, orientdb, sql
 
 The GraphQL Compiler is a library that simplifies database querying and exploration by exposing one
-common query language for multiple database backends.  The query language is:
+common query language for multiple database backends. The query language is:
 
 .. EDUCATIONAL: The pattern below is what you would call a definition list in restructuredtext.
    The "terms" get special rendering in the readthedocs html file.
@@ -87,11 +87,11 @@ In the :code:`schema` above:
 -   :code:`Animal` represents a non-abstract vertex. For relational databases, we think of
     tables as the non-abstract vertices.
 -   :code:`name` is a **property field** which represents a property of the :code:`Animal` vertex.
-    Think of **property fields** as the conceptual equivalent to table columns.
+    Think of **property fields** as the leaf fields of GraphQL that represent concrete data.
 -   :code:`out_Animal_LivesIn` is a **vertex field** which represents an outbound edge to a vertex
-    in the graph. For graph databases, edges can be reflected from the database schema. However,
-    for relational databases edges have to be manually specified. See :doc:`SQL <databases/sql>`
-    for more information.
+    in the graph. For graph databases, edges can be automatically generated from the database
+    schema. However, for relational databases, edges currently have to be manually specified. See
+    :doc:`SQL <databases/sql>` for more information.
 
 Query Compilation and Execution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -116,11 +116,10 @@ that live in Africa:
 There are a couple of things to notice about queries:
 
 - All queries start with a vertex and expand to other vertices using **vertex fields**.
-- **Directives** specify the semantics of a query. :code:`@output` indicates which properties to
-  emit. :code:`@filter` specifies a filter operation.
+- **Directives** specify the semantics of a query. :code:`@output` indicates the properties whose
+  values should be returned. :code:`@filter` specifies a filter operation.
 
-With the query and its parameters at hand, we can compile it and get the corresponding results from
-OrientDB.
+We can then use the query with its parameters to get the corresponding results from OrientDB.
 
 .. code:: python
 
@@ -129,7 +128,7 @@ OrientDB.
     compilation_result = graphql_to_match(
         schema, graphql_query, parameters, type_equivalence_hints)
 
-    # Execute query assuming a pyorient client. Other clients may have a different interface.
+    # Executing query assuming a pyorient client. Other clients may have a different interface.
     print([result.oRecordData for result in client.query(query)])
     # [{'animal_name': 'Elephant'}, {'animal_name': 'Lion'}, ...]
 
