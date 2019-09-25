@@ -48,15 +48,14 @@ def main():
     sys.stdout.write(
         log_message.format(path=module_path, datetime=current_datetime, version=find_version()))
 
-    sql_command_generators = [
-        get_event_generation_commands,
-        get_species_generation_commands,
-        get_animal_generation_commands,
-    ]
-    for sql_command_generator in sql_command_generators:
-        sql_command_list = sql_command_generator()
-        sys.stdout.write('\n'.join(sql_command_list))
-        sys.stdout.write('\n')
+    elements = []
+    elements.extend(get_event_generation_commands())
+    elements.extend(get_species_generation_commands())
+    elements.extend(get_animal_generation_commands())
+
+    import json
+    with open('data.json', 'w') as f:
+        json.dump(elements, f, indent=4, sort_keys=True)
 
 
 if __name__ == '__main__':

@@ -294,4 +294,5 @@ class IntegrationTests(TestCase):
             'human_name_out': 'Child'
         }
         self.assertEqual(expected_custom_class_fields, parent_of_edge.class_fields)
+
 # pylint: enable=no-member
