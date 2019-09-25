@@ -119,7 +119,8 @@ def generate_orient_integration_data(client):
             vertex_template = 'SELECT FROM {} WHERE uuid = \'{}\''
             from_selection = vertex_template.format(from_classname, edge_spec['from_uuid'])
             to_selection = vertex_template.format(to_classname, edge_spec['to_uuid'])
-            command = 'CREATE EDGE FROM ({}) TO ({})'.format(from_selection, to_selection)
+            command = 'CREATE EDGE {} FROM ({}) TO ({})'.format(
+                edge_name, from_selection, to_selection)
             client.command(command)
 
 
