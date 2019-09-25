@@ -144,50 +144,69 @@ def tear_down_integration_test_backends(sql_test_backends):
 def generate_sql_integration_data(sql_test_backends):
     """Populate test data for SQL backends for integration testing."""
     sql_schema_info = get_sqlalchemy_schema_info()
-
-    # Map vertex classes tuples containing the properties of each vertex of that class
+    uuids = {
+        'A1': 'cfc6e625-8594-0927-468f-f53d864a7a51',
+        'A2': 'cfc6e625-8594-0927-468f-f53d864a7a52',
+        'A3': 'cfc6e625-8594-0927-468f-f53d864a7a53',
+        'A4': 'cfc6e625-8594-0927-468f-f53d864a7a54',
+        'S1': 'c2c14d8b-0e13-4e64-be63-c86704161850',
+        'S2': '35d33f6a-14ab-4b5c-a797-ee9ab817c1fb',
+    }
     vertex_values = {
         'Animal': (
             {
-                'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a51',
+                'uuid': uuids['A1'],
                 'name': 'Animal 1',
-                'net_worth': Decimal('100'),
+                'net_worth': 100,
                 'birthday': datetime.date(1900, 1, 1),
             }, {
-                'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a52',
+                'uuid': uuids['A2'],
                 'name': 'Animal 2',
-                'net_worth': Decimal('200'),
+                'net_worth': 200,
                 'birthday': datetime.date(1950, 2, 2),
             }, {
-                'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a53',
+                'uuid': uuids['A3'],
                 'name': 'Animal 3',
-                'net_worth': Decimal('300'),
+                'net_worth': 300,
                 'birthday': datetime.date(1975, 3, 3),
             }, {
-                'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a54',
+                'uuid': uuids['A4'],
                 'name': 'Animal 4',
-                'net_worth': Decimal('400'),
+                'net_worth': 400,
                 'birthday': datetime.date(2000, 4, 4),
             },
         ),
         'Species': (
             {
-                'uuid': 'c2c14d8b-0e13-4e64-be63-c86704161850',
+                'uuid': uuids['S1'],
                 'name': 'Species 1',
             }, {
-                'uuid': '35d33f6a-14ab-4b5c-a797-ee9ab817c1fb',
+                'uuid': uuids['S2'],
                 'name': 'Species 2',
             },
         ),
     }
-
-    # Map edges to tuples containing the source and destination vertex of each edge of that class
     edge_values = {
         'Entity_Related': (
             {
-                'from_uuid': 'c2c14d8b-0e13-4e64-be63-c86704161850',
-                'to_uuid': '35d33f6a-14ab-4b5c-a797-ee9ab817c1fb',
+                'from_uuid': uuids['S1'],
+                'to_uuid': uuids['S2'],
             },
+        ),
+        'Animal_ParentOf': (
+            {
+                'from_uuid': uuids['A1'],
+                'to_uuid': uuids['A1'],
+            }, {
+                'from_uuid': uuids['A1'],
+                'to_uuid': uuids['A2'],
+            }, {
+                'from_uuid': uuids['A1'],
+                'to_uuid': uuids['A3'],
+            }, {
+                'from_uuid': uuids['A3'],
+                'to_uuid': uuids['A4'],
+            }
         )
     }
 
