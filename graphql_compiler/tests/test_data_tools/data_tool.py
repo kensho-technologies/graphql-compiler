@@ -184,16 +184,16 @@ def generate_neo4j_integration_data(client):
                 command = 'create (:{} {{{}}})'.format(vertex_name, ', '.join(
                     '{}: ${}'.format(key, key) for key in vertex_props))
                 session.run(command, vertex_props)
+    with client.driver.session() as session:
         for edge_name, edges in six.iteritems(edge_values):
+            _validate_name(edge_name)
             for edge_spec in edges:
                 command = '''
-                    match (a {uuid: $from_uuid}) (b {uuid: $to_uuid})
-                    create (a)-[:$edge_name]->(b)'
-                '''
+                    match (a {uuid: $from_uuid}), (b {uuid: $to_uuid})
+                    create (a)-[:''' + edge_name + ']->(b)'
                 args = {
                     'from_uuid': edge_spec['from_uuid'],
                     'to_uuid': edge_spec['to_uuid'],
-                    'edge_name': edge_name,
                 }
                 session.run(command, args)
 
