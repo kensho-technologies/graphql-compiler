@@ -102,10 +102,10 @@ since we will immediately proceed to dissect the schema.
     :code:`graphql.utils.schema_printer` module.
 
 
-GraphQL Objects and Fields
+Objects and Fields
 --------------------------
 
-The core components of a GraphQL schema are *GraphQL Object Types*. They conceptually represent the
+The core components of a GraphQL schema are GraphQL object types. They conceptually represent the
 concrete vertices in the underlying database. For relational databases, we think of the tables as
 the concrete vertices.
 
@@ -120,21 +120,17 @@ Lets go over a toy example of a GraphQL object type:
 
 Here are some of the details:
 
-- :code:`name` is a **property field** representing a property of a vertex. Property fields
-  are the leaf fields that represent concrete data.
-- :code:`in_Animal_PlaysWith` is a **vertex field** representing an outbound edge to other
-  vertices in the graph. All vertex fields begin with an :code:`in_` or :code:`out_` prefix.
-- :code:`String` is a built-in *GraphQL Scalar Type*. The compiler uses the built-in GraphQL
-  scalar types and a couple of custom scalar types. We will talk more about these in the
-  `scalar types <#scalar-types>`__ section.
-- :code:`[Animal]` is a *GraphQL List Type* that represents an array of :code:`Animal`
-   objects. All vertex fields have a GraphQL list type.
+- :code:`name` is a **property field** that represents concretes data.
+- :code:`in_Animal_PlaysWith` is a **vertex field** representing an outbound edge.
+- :code:`String` is a built-in GraphQL scalar type.
+- :code:`[Animal]` is a GraphQL list type that represents an array of :code:`Animal`
+  objects.
 
 Now that we have an idea of a rough idea of how GraphQL objects works, lets go over some of the
 other components.
 
-GraphQL Directives
-------------------
+Directives
+----------
 
 In this section we'll go over how query directives are defined. For information on the available
 query directives and their semantics see :doc:`query directives <query_directives>`.
@@ -146,8 +142,7 @@ Let's look at the :code:`@output` directive:
    directive @output(out_name: String!) on FIELD
 
 - :code:`@output` defines the directive name.
-- :code:`out_name: String!` is a *GraphQL Argument*. The :code:`!` indicates that the string
-  :code:`out_name` argument must not be null.
+- :code:`out_name: String!` is a GraphQL argument. The :code:`!` indicates that it must not be null.
 - :code:`on FIELD` defines where the directive can be located. According to the definition, this
   directive can only be located next to fields. The compiler might have additional restrictions
   for where a query can be located. See :doc:`query directives <query_directives>` for more info.
@@ -156,7 +151,7 @@ Query Operation
 ---------------
 
 GraphQL allows for three operation types *query*, *mutation* and *subscription*. The compiler
-only allows *query* operation types as shown in the code snippet below:
+only allows query operation types as shown in the code snippet below:
 
 .. code::
 
@@ -164,7 +159,8 @@ only allows *query* operation types as shown in the code snippet below:
         query: RootSchemaQuery
     }
 
-The special :code:`RootSchemaQuery` GraphQL object defines all the "entry points" of the query:
+A query may begin in any of the **root vertex types** specified by the :code:`RootSchemaQuery`
+object:
 
 .. code::
 
@@ -176,10 +172,8 @@ The special :code:`RootSchemaQuery` GraphQL object defines all the "entry points
         Toy: [Toy]
     }
 
-
-
-Scalar Types
-------------
+Scalars
+-------
 
 The compiler uses the built-in GraphQL
 `scalar types <https://graphql.org/learn/schema/#scalar-types>`__ as well as three custom scalars:
@@ -189,18 +183,75 @@ The compiler uses the built-in GraphQL
 - :code:`Decimal` is an arbitrary-precision decimal number object useful for representing values
   that should never be rounded, such as currency amounts.
 
-GraphQL Inheritance
--------------------
+Inheritance
+-----------
 
 If compiling to a database without any inheritance, (e.g. all SQL databases), feel free to
 ignore this section.
 
-We use two types to model type inheritance in GraphQL: *GraphQL Interface Types* and *GraphQL
-Union Types*. We will first explain how to query them and then proceed to explain how are they
-structured and what they conceptually represent.
+Interfaces
+~~~~~~~~~~
 
-GraphQL interfaces can be queried in the same way that GraphQL objects are queried. They can also
-be *type coerced*. GraphQL unions may only be used in a query when type coerced.
+GraphQL interfaces represent the abstract vertices of the underlying database.
+
+.. code::
+
+    interface Entity {
+        _x_count: Int
+        name: String
+        alias: [String]
+        in_Entity_Related: [Entity]
+        out_Entity_Related: [Entity]
+    }
+
+GraphQL objects can *implement* interfaces, (as in the example below). If an object
+implements an interface, then it means that the interface is a superclass of said object.
+
+.. code::
+
+    type Food implements Entity {
+        _x_count: Int
+        name: String
+        alias: [String]
+        in_Entity_Related: [Entity]
+        out_Entity_Related: [Entity]
+        in_Species_Eats: [Species]
+    }
+
+Unions and :code:`type_equivalence_hints`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+GraphQL does not support a notion of concrete inheritance, (GraphQL objects cannot inherit from
+other GraphQL objects), which we need to be able to represent the schemas of certain databases
+and emit the correct queries during compilation.
+
+We use GraphQL unions along with the :code:`type_equivalence_hints` parameter, (which
+signals an equivalence between a GraphQL union and a GraphQL object), to model concrete type
+inheritance. Let's look at an example:
+
+Suppose :code:`Food` and :code:`Species` are concrete types and :code:`Food` is a superclass of
+:code:`Species`. Then during the schema info generation, the compiler would generate a type
+representing the union of food or species:
+
+.. code::
+
+    union Union__Food__Species = Food | Species
+
+The schema info generation function would also generate a entry in :code:`type_equivalence_hints`
+mapping the :code:`Food` :code:`GraphQLObjectType` to the :code:`Union__Food__Species` the
+:code:`GraphQLUnionType` to signify their equivalence. The :code:`type_equivalence_hints`
+could then be passed to the compilation function:
+
+.. code:: python
+
+   from graphql_compiler import graphql_to_match
+   graphql_to_match(schema, query, parameters, type_equivalence_hints=type_equivalence_hints)
+
+.. note::
+
+   :code:`GraphQLObjectType` and :code:`GraphQLObjectType` are python representations GraphQL
+   types. All GraphQL types have an equivalent python representation.
+
 
 Type coercions
 ~~~~~~~~~~~~~~
@@ -250,63 +301,6 @@ and discarded.
 In this query, the :code:`out_Entity_Related` is of :code:`Entity` type.
 However, the query only wants to return results where the related entity
 is a :code:`Species`, which :code:`... on Species` ensures is the case.
-
-GraphQL Interface Types
-~~~~~~~~~~~~~~~~~~~~~~~
-
-GraphQL interfaces represent the abstract vertices of the underlying database.
-
-.. code::
-
-    interface Entity {
-        _x_count: Int
-        name: String
-        alias: [String]
-        in_Entity_Related: [Entity]
-        out_Entity_Related: [Entity]
-    }
-
-GraphQL objects can *implement* interfaces, (as in the example below). If an object
-implements an interface, then it means that the interface is a superclass of said object.
-
-.. code::
-
-    type Food implements Entity {
-        _x_count: Int
-        name: String
-        alias: [String]
-        in_Entity_Related: [Entity]
-        out_Entity_Related: [Entity]
-        in_Species_Eats: [Species]
-    }
-
-GraphQL Union Types and :code:`type_equivalence_hints`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-GraphQL does not support a notion of concrete inheritance, (GraphQL objects cannot inherit from
-other GraphQL objects), which we need to be able to represent the schemas of certain databases
-and emit the correct queries during compilation.
-
-We use GraphQL unions along with the :code:`type_equivalence_hints` parameter, (which
-signals an equivalence between a GraphQL union and a GraphQL object), to model concrete type
-inheritance. Let's look at an example:
-
-Suppose :code:`Food` and :code:`Species` are concrete types and :code:`Food` is a superclass of
-:code:`Species`. Then during the schema info generation, the compiler would generate a type
-representing the union of food or species:
-
-.. code::
-
-    union Union__Food__Species = Food | Species
-
-The schema info generation function would also generate a entry in :code:`type_equivalence_hints`
-mapping the :code:`Food` :code:`GraphQLObjectType` to the :code:`Union__Food__Species` the
-:code:`GraphQLUnionType` to signify their equivalence.
-
-.. note::
-
-   :code:`GraphQLObjectType` and :code:`GraphQLObjectType` are python representations GraphQL
-   types. All GraphQL types have an equivalent python representation.
 
 Meta fields
 -----------
