@@ -51,7 +51,7 @@ Directly compiled to the target database language
 
 Designed for cross-database querying
    Since the query language always has the same semantics regardless of the underlying database,
-   we have been able to build a :doc:`Schema Stitching <advanced_features/schema_stitching>` system
+   we have been able to build a :doc:`schema stitching <advanced_features/schema_stitching>` system
    that allows for seamless cross-database querying.
 
 Getting Started
@@ -85,11 +85,11 @@ In the snippet above the are two pieces of schema info:
 
 -   :code:`schema` which represents the database using GraphQL's type system.
 -   :code:`type_equivalence_hints` which helps deal with GraphQL's lack of concrete inheritance,
-    (see :doc:`Schema Types <core_specification/schema_types>` for more info).
+    (see :doc:`schema types <core_specification/schema_types>` for more info).
 
 Besides representing the database schema, a GraphQL schema includes other metadata such as a list
 of custom scalar types used by the compiler. We'll talk more about this metadata in
-:doc:`Schema Types <core_specification/schema_types>`. For now let's focus on how a database
+:doc:`schema types <core_specification/schema_types>`. For now let's focus on how a database
 schema might be represented in a GraphQL schema:
 
 .. code::
