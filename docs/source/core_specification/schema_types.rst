@@ -217,7 +217,7 @@ If an object implements an interface, then the object must be a subclass of said
         in_Species_Eats: [Species]
     }
 
-Unions and :code:`type_equivalence_hints`
+Unions and type_equivalence_hints
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 GraphQL does not support a notion of concrete inheritance, (GraphQL objects cannot inherit from
