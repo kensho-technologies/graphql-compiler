@@ -204,8 +204,7 @@ GraphQL interfaces represent the abstract vertices of the underlying database.
         out_Entity_Related: [Entity]
     }
 
-GraphQL objects can *implement* interfaces, (as in the example below). If an object
-implements an interface, then it means that the interface is a superclass of said object.
+Objects can be implemented by interfaces.
 
 .. code::
 
