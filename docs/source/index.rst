@@ -156,8 +156,8 @@ query that we can directly execute against OrientDB.
     print([result.oRecordData for result in client.query(query)])
     # [{'animal_name': 'Elephant'}, {'animal_name': 'Lion'}, ...]
 
-What's Next?
-------------
+Features
+--------
 
 Core Specification
 ~~~~~~~~~~~~~~~~~~
