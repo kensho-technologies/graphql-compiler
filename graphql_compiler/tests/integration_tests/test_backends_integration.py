@@ -366,7 +366,6 @@ class IntegrationTests(TestCase):
             self.assertResultsEqual(graphql_query, parameters, test_backend.MSSQL, expected_results)
 
     @use_all_backends(except_backends=(
-        test_backend.ORIENTDB,  # TODO(bojanserafimov): Resolve KeyError
         test_backend.REDISGRAPH,  # TODO(bojanserafimov): Resolve syntax error
     ))
     @integration_fixtures
