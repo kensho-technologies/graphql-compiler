@@ -87,7 +87,7 @@ In the :code:`schema` above:
 -   :code:`Animal` represents a non-abstract vertex. For relational databases, we think of
     tables as the non-abstract vertices.
 -   :code:`name` is a **property field** which represents a property of the :code:`Animal` vertex.
-    Think of **property fields** as the leaf fields of GraphQL that represent concrete data.
+    Think of **property fields** as the leaf fields that represent concrete data.
 -   :code:`out_Animal_LivesIn` is a **vertex field** which represents an outbound edge to a vertex
     in the graph. For graph databases, edges can be automatically generated from the database
     schema. However, for relational databases, edges currently have to be manually specified. See
@@ -119,7 +119,8 @@ There are a couple of things to notice about queries:
 - **Directives** specify the semantics of a query. :code:`@output` indicates the properties whose
   values should be returned. :code:`@filter` specifies a filter operation.
 
-We can then use the query with its parameters to get the corresponding results from OrientDB.
+With the query and its parameters at hand, we can use the compiler to obtain a query that we
+can directly execute against OrientDB.
 
 .. code:: python
 

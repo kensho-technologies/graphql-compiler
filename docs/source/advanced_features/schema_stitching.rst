@@ -1,2 +1,2 @@
-Schema Stiching
-===============
+Schema Stitching
+================
