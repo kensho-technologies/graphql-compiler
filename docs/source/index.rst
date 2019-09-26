@@ -8,6 +8,18 @@ The GraphQL Compiler
 .. ISSUE: Tree doesn't include subsections for `self` in toctree.
           https://github.com/sphinx-doc/sphinx/issues/2103
 
+.. TODO: Solve the issue above. There a number of ways to solve this. Each solution has its pros
+         and cons:
+         -  One way is to separate this document into a landing page, (the page you get when
+            clicking the logo at the top left side), and a "Getting Started" which could be the top
+            page in the table of contents. That way at least the "Getting Started" page would
+            have its subsections included in the table of contents navigational bar at the left.
+            I personally prefer the concept of one "Home" page so I am not completely in favor of
+            this solution.
+         -  Another way is to write "Home <index>" instead of "Home <self>". This is a hack
+            that fixes the issue, but leads to some error messages that will be confusing for
+            GraphQL Compiler Readthedocs contributors.
+
 .. toctree::
    :maxdepth: 2
    :hidden:
@@ -24,8 +36,6 @@ common query language for multiple database backends. The query language is:
 
 .. EDUCATIONAL: The pattern below is what you would call a definition list in restructuredtext.
    The "terms" get special rendering in the readthedocs html file.
-
-.. TODO: Fix the style of the sections below.
 
 Written in valid GraphQL syntax
    Since it uses GraphQL syntax, the user get access to the entire GraphQL ecosystem,
@@ -77,10 +87,9 @@ In the snippet above the are two pieces of schema info:
 -   :code:`type_equivalence_hints` which helps deal with GraphQL's lack of concrete inheritance,
     (see :doc:`Schema Types <core_specification/schema_types>` for more info).
 
-Besides representing the database schema, a GraphQL schema includes other metadata such as a list of
-query **directives** that specify allowed query operations. We'll talk more about these in
-the :doc:`Schema Types <core_specification/schema_types>` and :doc:`Query Directives
-<core_specification/query_directives>` sections. For now let's focus on how a database
+Besides representing the database schema, a GraphQL schema includes other metadata such as a list
+of custom scalar types used by the compiler. We'll talk more about this metadata in
+:doc:`Schema Types <core_specification/schema_types>`. For now let's focus on how a database
 schema might be represented in a GraphQL schema:
 
 .. code::
