@@ -126,10 +126,10 @@ Here are some of the details:
     - :code:`String` is a built-in scalar type. The compiler uses the built-in GraphQL scalar types
       and a couple of custom scalar types. We will talk more about these in a later section.
     - :code:`in_Animal_PlaysWith` is a **vertex field** representing an outbound edge to other
-      vertices in the graph. All **vertex fields** begin with an :code:`in_` or :code:`out_`
+      vertices in the graph. All vertex fields begin with an :code:`in_` or :code:`out_`
       prefix.
     - :code:`[Animal]` is a *GraphQL List Type* that represents an array of :code:`Animal`
-      objects. All **vertex fields** have a *GraphQL List Type*.
+      objects. All vertex fields have a GraphQL list type.
 
 Now that we have an idea of a rough idea of how GraphQL objects works, lets go over some of the
 other components.
@@ -198,4 +198,56 @@ The compiler uses the built-in GraphQL
     in decimal format, without thousands separators and using a "." as the decimal separator: for
     example, "12345678.012345".
 
--------
+GraphQL Inheritance
+-------------------
+
+If compiling to a database without any inheritance, (e.g. all SQL databases), feel free to
+ignore this section.
+
+We use two types to model type inheritance in GraphQL: *GraphQL Interface Types* and *GraphQL
+Union Types*.
+
+GraphQL Interface Types
+~~~~~~~~~~~~~~~~~~~~~~~
+
+GraphQL interfaces represent abstract vertices. They can be queried in the same way that
+GraphQL objects are queried and they can be `type coerced <#type-coercion>`.
+
+.. code::
+
+    interface Entity {
+        _x_count: Int
+        name: String
+        alias: [String]
+        in_Entity_Related: [Entity]
+        out_Entity_Related: [Entity]
+    }
+
+GraphQL objects can *implement* interfaces, (as in the example below). If an object
+implements an interface, then it means that the interface is a superclass of said object. To
+implement an interface an object must also contain all of the interface's fields.
+
+.. code::
+   :emphasize-lines: 1
+
+    type Food implements Entity {
+        _x_count: Int
+        name: String
+        alias: [String]
+        in_Entity_Related: [Entity]
+        out_Entity_Related: [Entity]
+        in_Species_Eats: [Species]
+    }
+
+GraphQL Union Types
+~~~~~~~~~~~~~~~~~~~
+
+In the compiler, GraphQL union types along with :code:`type_equivalence_hints` are used to
+model concrete inheritance as in the following example.
+
+:code:`Food` is a concrete type. :code:`Species` is also a concrete type. However,
+Dogs, Cats and :code:`Food`
+
+
+
+
