@@ -109,7 +109,7 @@ In the GraphQL schema above:
 -   :code:`Animal` represents a concrete, (non-abstract), vertex. For relational databases, we
     think of tables as the concrete vertices.
 -   :code:`name` is a **property field** which represents a property of the :code:`Animal` vertex.
-    Think of **property fields** as leaf fields that represent concrete data.
+    Think of property fields as leaf fields that represent concrete data.
 -   :code:`out_Animal_LivesIn` is a **vertex field** which represents an outbound edge to a vertex
     in the graph. For graph databases, edges can be automatically generated from the database
     schema. However, for relational databases, edges currently have to be manually specified. See
@@ -138,7 +138,7 @@ that live in Africa:
 There are a couple of things to notice about queries:
 
 - All queries start with a vertex, (e.g. :code:`Animal`), and expand to other vertices using
-  **vertex fields**.
+  vertex fields.
 - **Directives** specify the semantics of a query. :code:`@output` indicates the properties whose
   values should be returned. :code:`@filter` specifies a filter operation.
 
