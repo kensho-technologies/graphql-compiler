@@ -24,6 +24,7 @@ copyright = '2017-present Kensho Technologies, LLC.'
 # pylint: enable=redefined-builtin
 author = 'Predrag Gruevski, Pedro Mantica, Amartya Shankha Biswas, and Jeremy Meulemans'
 
+master_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
 

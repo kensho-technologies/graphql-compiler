@@ -247,7 +247,3 @@ model concrete inheritance as in the following example.
 
 :code:`Food` is a concrete type. :code:`Species` is also a concrete type. However,
 Dogs, Cats and :code:`Food`
-
-
-
-

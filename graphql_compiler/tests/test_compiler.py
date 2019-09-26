@@ -412,7 +412,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_2]
                 JOIN db_1.schema_1.[Animal] AS [Animal_1]
-                    ON [Animal_2].parent = [Animal_1].uuid
+                    ON [Animal_2].uuid = [Animal_1].parent
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -482,7 +482,7 @@ class CompilerTests(unittest.TestCase):
                 JOIN db_1.schema_1.[Species] AS [Species_1]
                     ON [Animal_2].species = [Species_1].uuid
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
-                    ON [Animal_2].parent = [Animal_1].uuid
+                    ON [Animal_2].uuid = [Animal_1].parent
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -814,9 +814,9 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].parent = [Animal_2].uuid
+                    ON [Animal_1].uuid = [Animal_2].parent
             WHERE
-                [Animal_2].name = :name OR [Animal_2].uuid IS NULL
+                [Animal_2].name = :name OR [Animal_2].parent IS NULL
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -1364,15 +1364,15 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
                 JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].parent = [Animal_2].uuid
+                    ON [Animal_1].uuid = [Animal_2].parent
                 LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
                     ON [Animal_2].fed_at = [FeedingEvent_1].uuid
                 JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                    ON [Animal_2].uuid = [Animal_3].parent
+                    ON [Animal_2].parent = [Animal_3].uuid
                 LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_3]
                     ON [Animal_3].fed_at = [FeedingEvent_3].uuid
                 JOIN db_1.schema_1.[Animal] AS [Animal_4]
-                    ON [Animal_1].uuid = [Animal_4].parent
+                    ON [Animal_1].parent = [Animal_4].uuid
                 JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_2]
                     ON [Animal_4].fed_at = [FeedingEvent_2].uuid
             WHERE (
@@ -1617,15 +1617,15 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
                 JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].parent = [Animal_2].uuid
+                    ON [Animal_1].uuid = [Animal_2].parent
                 LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
                     ON [Animal_2].fed_at = [FeedingEvent_1].uuid
                 JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                    ON [Animal_2].uuid = [Animal_3].parent
+                    ON [Animal_2].parent = [Animal_3].uuid
                 LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_3]
                     ON [Animal_3].fed_at = [FeedingEvent_3].uuid
                 JOIN db_1.schema_1.[Animal] AS [Animal_4]
-                    ON [Animal_1].uuid = [Animal_4].parent
+                    ON [Animal_1].parent = [Animal_4].uuid
                 JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_2]
                     ON [Animal_4].fed_at = [FeedingEvent_2].uuid
             WHERE
@@ -1805,7 +1805,7 @@ class CompilerTests(unittest.TestCase):
                     FROM
                         anon_1
                         JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                            ON anon_1.parent = [Animal_3].uuid
+                            ON anon_1.uuid = [Animal_3].parent
                     WHERE anon_1.__cte_depth < 1
             )
             SELECT
@@ -2163,7 +2163,7 @@ class CompilerTests(unittest.TestCase):
                    FROM
                        anon_1
                        JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                           ON anon_1.parent = [Animal_3].uuid
+                           ON anon_1.uuid = [Animal_3].parent
                    WHERE anon_1.__cte_depth < 3
             )
             SELECT
@@ -3210,7 +3210,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
                 JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].parent = [Animal_2].uuid
+                    ON [Animal_1].uuid = [Animal_2].parent
             WHERE
                 ([Animal_2].name LIKE '%' + [Animal_1].name + '%')
         '''
@@ -3299,11 +3299,11 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].uuid = [Animal_2].parent
+                    ON [Animal_1].parent = [Animal_2].uuid
                 JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                    ON [Animal_1].parent = [Animal_3].uuid
+                    ON [Animal_1].uuid = [Animal_3].parent
             WHERE
-                [Animal_2].parent IS NULL OR
+                [Animal_2].uuid IS NULL OR
                 ([Animal_3].name LIKE '%' + [Animal_2].name + '%')
         '''
         expected_cypher = SKIP_TEST
@@ -4075,7 +4075,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_2]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
-                    ON [Animal_2].parent = [Animal_1].uuid
+                    ON [Animal_2].uuid = [Animal_1].parent
                 LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
                     ON [Animal_2].species = [Species_1].uuid
                 LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
@@ -4885,9 +4885,9 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_2]
                 JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                    ON [Animal_2].parent = [Animal_3].uuid
+                    ON [Animal_2].uuid = [Animal_3].parent
                 JOIN db_1.schema_1.[Animal] AS [Animal_1]
-                    ON [Animal_3].parent = [Animal_1].uuid
+                    ON [Animal_3].uuid = [Animal_1].parent
                 JOIN db_1.schema_1.[Entity] AS [Entity_1]
                     ON [Animal_3].related_entity = [Entity_1].uuid
             WHERE
@@ -5503,11 +5503,11 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_3]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
-                    ON [Animal_3].uuid = [Animal_1].parent
+                    ON [Animal_3].parent = [Animal_1].uuid
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].uuid = [Animal_2].parent
+                    ON [Animal_1].parent = [Animal_2].uuid
             WHERE
-                [Animal_2].parent IS NOT NULL OR [Animal_1].parent IS NULL
+                [Animal_2].uuid IS NOT NULL OR [Animal_1].uuid IS NULL
         '''
         expected_cypher = SKIP_TEST
 
@@ -5592,14 +5592,14 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_3]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
-                    ON [Animal_3].uuid = [Animal_1].parent
+                    ON [Animal_3].parent = [Animal_1].uuid
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].uuid = [Animal_2].parent
+                    ON [Animal_1].parent = [Animal_2].uuid
             WHERE (
                 [Animal_3].name LIKE '%' + :wanted + '%'
             ) AND (
-                [Animal_2].parent IS NOT NULL OR
-                [Animal_1].parent IS NULL
+                [Animal_2].uuid IS NOT NULL OR
+                [Animal_1].uuid IS NULL
             )
         '''
         expected_cypher = SKIP_TEST
@@ -5699,17 +5699,17 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].uuid = [Animal_2].parent
+                    ON [Animal_1].parent = [Animal_2].uuid
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                    ON [Animal_2].parent = [Animal_3].uuid
+                    ON [Animal_2].uuid = [Animal_3].parent
                 LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
                     ON [Animal_3].species = [Species_1].uuid
             WHERE (
-                [Animal_3].uuid IS NOT NULL OR
-                [Animal_2].parent IS NULL
+                [Animal_3].parent IS NOT NULL OR
+                [Animal_2].uuid IS NULL
             ) AND (
                 [Species_1].uuid IS NOT NULL OR
-                [Animal_3].uuid IS NULL
+                [Animal_3].parent IS NULL
             )
         '''
         expected_cypher = SKIP_TEST
@@ -5811,13 +5811,13 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
                 JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].uuid = [Animal_2].parent
+                    ON [Animal_1].parent = [Animal_2].uuid
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                    ON [Animal_2].parent = [Animal_3].uuid
+                    ON [Animal_2].uuid = [Animal_3].parent
                 LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
                     ON [Animal_3].species = [Species_1].uuid
             WHERE
-                [Species_1].uuid IS NOT NULL OR [Animal_3].uuid IS NULL
+                [Species_1].uuid IS NOT NULL OR [Animal_3].parent IS NULL
 
         '''
         expected_cypher = SKIP_TEST
@@ -5996,21 +5996,21 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].uuid = [Animal_2].parent
+                    ON [Animal_1].parent = [Animal_2].uuid
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_4]
-                    ON [Animal_2].parent = [Animal_4].uuid
+                    ON [Animal_2].uuid = [Animal_4].parent
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                    ON [Animal_1].parent = [Animal_3].uuid
+                    ON [Animal_1].uuid = [Animal_3].parent
                 LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
                     ON [Animal_3].species = [Species_1].uuid
             WHERE (
                 [Animal_1].name LIKE '%' + :wanted + '%'
             ) AND (
-                [Animal_4].uuid IS NOT NULL OR
-                [Animal_2].parent IS NULL
+                [Animal_4].parent IS NOT NULL OR
+                [Animal_2].uuid IS NULL
             ) AND (
                 [Species_1].uuid IS NOT NULL OR
-                [Animal_3].uuid IS NULL
+                [Animal_3].parent IS NULL
             )
         '''
         expected_cypher = SKIP_TEST
@@ -6144,16 +6144,16 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].uuid = [Animal_2].parent
+                    ON [Animal_1].parent = [Animal_2].uuid
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                    ON [Animal_1].parent = [Animal_3].uuid
+                    ON [Animal_1].uuid = [Animal_3].parent
                 LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
                     ON [Animal_3].species = [Species_1].uuid
             WHERE (
                 [Animal_1].name LIKE '%' + :wanted + '%'
             ) AND (
                 [Species_1].uuid IS NOT NULL OR
-                [Animal_3].uuid IS NULL
+                [Animal_3].parent IS NULL
             )
         '''
         expected_cypher = SKIP_TEST
@@ -6667,21 +6667,21 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
                 JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].parent = [Animal_2].uuid
+                    ON [Animal_1].uuid = [Animal_2].parent
                 LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_3]
                     ON [Animal_2].fed_at = [FeedingEvent_3].uuid
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                    ON [Animal_2].uuid = [Animal_3].parent
+                    ON [Animal_2].parent = [Animal_3].uuid
                 LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_2]
                     ON [Animal_3].fed_at = [FeedingEvent_2].uuid
                 JOIN db_1.schema_1.[Animal] AS [Animal_4]
-                    ON [Animal_1].uuid = [Animal_4].parent
+                    ON [Animal_1].parent = [Animal_4].uuid
                 JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
                     ON [Animal_4].fed_at = [FeedingEvent_1].uuid
             WHERE
                 [Animal_1].name = :animal_name AND (
                      [FeedingEvent_2].uuid IS NOT NULL OR
-                     [Animal_3].parent IS NULL
+                     [Animal_3].uuid IS NULL
                 ) AND (
                      [FeedingEvent_3].uuid IS NULL OR
                      [FeedingEvent_1].name = [FeedingEvent_3].name
@@ -6794,7 +6794,7 @@ class CompilerTests(unittest.TestCase):
                     FROM
                         anon_1
                         JOIN db_1.schema_1.[Animal] AS [Animal_4]
-                            ON anon_1.parent = [Animal_4].uuid
+                            ON anon_1.uuid = [Animal_4].parent
                     WHERE anon_1.__cte_depth < 3
             )
             SELECT
@@ -6804,10 +6804,10 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_2]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
-                    ON [Animal_2].uuid = [Animal_1].parent
+                    ON [Animal_2].parent = [Animal_1].uuid
                 LEFT OUTER JOIN anon_1 ON [Animal_1].uuid = anon_1.__cte_key
             WHERE
-                anon_1.__cte_key IS NOT NULL OR [Animal_1].parent IS NULL
+                anon_1.__cte_key IS NOT NULL OR [Animal_1].uuid IS NULL
         '''
         expected_cypher = SKIP_TEST
 
@@ -6904,17 +6904,17 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_3]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
-                    ON [Animal_3].uuid = [Animal_1].parent
+                    ON [Animal_3].parent = [Animal_1].uuid
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].uuid = [Animal_2].parent
+                    ON [Animal_1].parent = [Animal_2].uuid
                 LEFT OUTER JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
                     ON [Animal_1].fed_at = [FeedingEvent_1].uuid
             WHERE (
-                [Animal_2].parent IS NOT NULL OR
-                [Animal_1].parent IS NULL
+                [Animal_2].uuid IS NOT NULL OR
+                [Animal_1].uuid IS NULL
             ) AND (
                 [FeedingEvent_1].uuid IS NOT NULL OR
-                [Animal_1].parent IS NULL
+                [Animal_1].uuid IS NULL
             )
         '''
         expected_cypher = SKIP_TEST
@@ -7496,12 +7496,12 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON [Animal_1].uuid = [Animal_2].parent
+                    ON [Animal_1].parent = [Animal_2].uuid
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                    ON [Animal_2].parent = [Animal_3].uuid
+                    ON [Animal_2].uuid = [Animal_3].parent
                 LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
                     ON [Animal_3].species = [Species_1].uuid
-            WHERE [Species_1].uuid IS NOT NULL OR [Animal_3].uuid IS NULL
+            WHERE [Species_1].uuid IS NOT NULL OR [Animal_3].parent IS NULL
         '''
         expected_cypher = SKIP_TEST
 
