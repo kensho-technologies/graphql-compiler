@@ -105,9 +105,9 @@ since we will immediately proceed to dissect the schema.
 GraphQL Objects and Fields
 --------------------------
 
-The core components of a GraphQL schema are *GraphQL Object Types*.They conceptually represent the
-concrete, (non-abstract), vertices in the underlying database. For relational databases, we think
-of the tables as the concrete vertices.
+The core components of a GraphQL schema are *GraphQL Object Types*. They conceptually represent the
+concrete vertices in the underlying database. For relational databases, we think of the tables as
+the concrete vertices.
 
 Lets go over a toy example of a GraphQL object type:
 
@@ -120,16 +120,15 @@ Lets go over a toy example of a GraphQL object type:
 
 Here are some of the details:
 
-    - :code:`name` is a **property field** representing a property of a vertex, (think of table
-      columns for relational databases).
-    - :code:`String` is a built-in *GraphQL scalar type*. The compiler uses the built-in GraphQL
-      scalar types and a couple of custom scalar types. We will talk more about these in a later
-      section.
-    - :code:`in_Animal_PlaysWith` is a **vertex field** representing an outbound edge to other
-      vertices in the graph. All vertex fields begin with an :code:`in_` or :code:`out_`
-      prefix.
-    - :code:`[Animal]` is a *GraphQL List Type* that represents an array of :code:`Animal`
-      objects. All vertex fields have a GraphQL list type.
+- :code:`name` is a **property field** representing a property of a vertex. Property fields
+  are the leaf fields that represent concrete data.
+- :code:`in_Animal_PlaysWith` is a **vertex field** representing an outbound edge to other
+  vertices in the graph. All vertex fields begin with an :code:`in_` or :code:`out_` prefix.
+- :code:`String` is a built-in *GraphQL Scalar Type*. The compiler uses the built-in GraphQL
+  scalar types and a couple of custom scalar types. We will talk more about these in the
+  `scalar types <#scalar-types>`__ section.
+- :code:`[Animal]` is a *GraphQL List Type* that represents an array of :code:`Animal`
+   objects. All vertex fields have a GraphQL list type.
 
 Now that we have an idea of a rough idea of how GraphQL objects works, lets go over some of the
 other components.
@@ -138,19 +137,20 @@ GraphQL Directives
 ------------------
 
 In this section we'll go over how query directives are defined. For information on the available
-query directives and their semantics see :doc:`Query Directives <query_directives>`.
+query directives and their semantics see :doc:`query directives <query_directives>`.
 
 Let's look at the :code:`@output` directive:
 
 .. code::
 
-    directive @output(out_name: String!) on FIELD
+   directive @output(out_name: String!) on FIELD
 
--   :code:`@output` defines the directive name.
--   :code:`out_name: String!` is a *GraphQL Argument*. The :code:`!` indicates that the string
-    :code:`out_name` argument must not be null.
--   :code:`on FIELD` defines where the locations where the query can be included. This query can
-    be included on any field.
+- :code:`@output` defines the directive name.
+- :code:`out_name: String!` is a *GraphQL Argument*. The :code:`!` indicates that the string
+  :code:`out_name` argument must not be null.
+- :code:`on FIELD` defines where the directive can be located. According to the definition, this
+  directive can only be located next to fields. The compiler might have additional restrictions
+  for where a query can be located. See :doc:`query directives <query_directives>` for more info.
 
 Query Operation
 ---------------
@@ -176,7 +176,7 @@ The special :code:`RootSchemaQuery` GraphQL object defines all the "entry points
         Toy: [Toy]
     }
 
-For the GraphQL compiler, all vertices are valid entry points.
+
 
 Scalar Types
 ------------
@@ -184,10 +184,10 @@ Scalar Types
 The compiler uses the built-in GraphQL
 `scalar types <https://graphql.org/learn/schema/#scalar-types>`__ as well as three custom scalars:
 
--   :code:`DateTime` represents timezone-aware second-accuracy timestamps.
--   :code:`Date` represents day-accuracy date objects.
--   :code:`Decimal` is an arbitrary-precision decimal number object useful for representing values
-    that should never be rounded, such as currency amounts.
+- :code:`DateTime` represents timezone-aware second-accuracy timestamps.
+- :code:`Date` represents day-accuracy date objects.
+- :code:`Decimal` is an arbitrary-precision decimal number object useful for representing values
+  that should never be rounded, such as currency amounts.
 
 GraphQL Inheritance
 -------------------
@@ -200,7 +200,7 @@ Union Types*. We will first explain how to query them and then proceed to explai
 structured and what they conceptually represent.
 
 GraphQL interfaces can be queried in the same way that GraphQL objects are queried. They can also
-be *type coerced*. GraphQL unions may only be used in a query when *type coerced*.
+be *type coerced*. GraphQL unions may only be used in a query when type coerced.
 
 Type coercions
 ~~~~~~~~~~~~~~

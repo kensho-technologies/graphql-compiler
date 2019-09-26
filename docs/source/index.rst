@@ -83,9 +83,9 @@ database for more instructions on how to generate the necessary schema info.
 
 In the snippet above the are two pieces of schema info:
 
--   :code:`schema` which represents the database using GraphQL's type system.
--   :code:`type_equivalence_hints` which helps deal with GraphQL's lack of concrete inheritance,
-    (see :doc:`schema types <core_specification/schema_types>` for more info).
+- :code:`schema` which represents the database using GraphQL's type system.
+- :code:`type_equivalence_hints` which helps deal with GraphQL's lack of concrete inheritance,
+  (see :doc:`schema types <core_specification/schema_types>` for more info).
 
 Besides representing the database schema, a GraphQL schema includes other metadata such as a list
 of custom scalar types used by the compiler. We'll talk more about this metadata in
@@ -106,14 +106,14 @@ schema might be represented in a GraphQL schema:
 
 In the GraphQL schema above:
 
--   :code:`Animal` represents a concrete, (non-abstract), vertex. For relational databases, we
-    think of tables as the concrete vertices.
--   :code:`name` is a **property field** which represents a property of the :code:`Animal` vertex.
-    Think of property fields as leaf fields that represent concrete data.
--   :code:`out_Animal_LivesIn` is a **vertex field** which represents an outbound edge to a vertex
-    in the graph. For graph databases, edges can be automatically generated from the database
-    schema. However, for relational databases, edges currently have to be manually specified. See
-    :doc:`SQL <databases/sql>` for more information.
+- :code:`Animal` represents a concrete, (non-abstract), vertex. For relational databases, we
+  think of tables as the concrete vertices.
+- :code:`name` is a **property field** which represents a property of the :code:`Animal` vertex.
+  Think of property fields as leaf fields that represent concrete data.
+- :code:`out_Animal_LivesIn` is a **vertex field** which represents an outbound edge to a vertex
+  in the graph. For graph databases, edges can be automatically generated from the database
+  schema. However, for relational databases, edges currently have to be manually specified. See
+  :doc:`SQL <databases/sql>` for more information.
 
 Query Compilation and Execution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -167,13 +167,13 @@ Core Specification
 
 To learn more about the core specification of the GraphQL query language see:
 
-    - :doc:`Definitions <core_specification/definitions>`, for the definitions of key terms that we
-      use to define the language.
-    - :doc:`Schema Types <core_specification/schema_types>`, for information about the full
-      breadth of schema types that we use to represent database schemas and how to interact
-      with them using GraphQL queries.
-    - :doc:`Query Directives <core_specification/query_directives>`, to learn more about the
-      available directives and how to use them to create powerful queries.
+- :doc:`Definitions <core_specification/definitions>`, for the definitions of key terms that we
+  use to define the language.
+- :doc:`Schema Types <core_specification/schema_types>`, for information about the full
+  breadth of schema types that we use to represent database schemas and how to interact
+  with them using GraphQL queries.
+- :doc:`Query Directives <core_specification/query_directives>`, to learn more about the
+  available directives and how to use them to create powerful queries.
 
 .. toctree::
    :maxdepth: 2
@@ -192,8 +192,8 @@ home pages include an end-to-end example, instruction for schema info generation
 limitations or intricacies related to working with said database. We currently support two
 types of database backends:
 
-    - :doc:`OrientDB <databases/orientdb>`
-    - :doc:`SQL Databases <databases/sql>`, including SQL Server, Postgres and more.
+- :doc:`OrientDB <databases/orientdb>`
+- :doc:`SQL Databases <databases/sql>`, including SQL Server, Postgres and more.
 
 .. toctree::
    :maxdepth: 2
@@ -208,15 +208,15 @@ Advanced Features
 
 To learn more about the advanced features in the GraphQL compiler see:
 
-    - :doc:`Macro System <advanced_features/macro_system>`, to learn how to write "macro edges",
-      which allow users to define new edges that become part of the GraphQL schema, using existing
-      edges as building blocks.
-    - :doc:`Schema Stitching <advanced_features/schema_stitching>`, to learn how to stitch-schemas
-      together and execute cross-database queries.
-    - :doc:`Schema Transformations <advanced_features/schema_transformations>`, to learn how to
-      rename objects and prevent schema collisions when stitching schemas.
-    - :doc:`Schema Graph <advanced_features/schema_graph>`, for an utility that makes it
-      easy to explore the schema of a database, including the databases indexes.
+- :doc:`Macro System <advanced_features/macro_system>`, to learn how to write "macro edges",
+  which allow users to define new edges that become part of the GraphQL schema, using existing
+  edges as building blocks.
+- :doc:`Schema Stitching <advanced_features/schema_stitching>`, to learn how to stitch-schemas
+  together and execute cross-database queries.
+- :doc:`Schema Transformations <advanced_features/schema_transformations>`, to learn how to
+  rename objects and prevent schema collisions when stitching schemas.
+- :doc:`Schema Graph <advanced_features/schema_graph>`, for an utility that makes it
+  easy to explore the schema of a database, including the databases indexes.
 
 .. toctree::
    :maxdepth: 2
