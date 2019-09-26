@@ -1,6 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import datetime
-from decimal import Decimal
 from glob import glob
 from os import path
 
@@ -144,50 +143,69 @@ def tear_down_integration_test_backends(sql_test_backends):
 def generate_sql_integration_data(sql_test_backends):
     """Populate test data for SQL backends for integration testing."""
     sql_schema_info = get_sqlalchemy_schema_info()
-
-    # Map vertex classes tuples containing the properties of each vertex of that class
+    uuids = {
+        'A1': 'cfc6e625-8594-0927-468f-f53d864a7a51',
+        'A2': 'cfc6e625-8594-0927-468f-f53d864a7a52',
+        'A3': 'cfc6e625-8594-0927-468f-f53d864a7a53',
+        'A4': 'cfc6e625-8594-0927-468f-f53d864a7a54',
+        'S1': 'c2c14d8b-0e13-4e64-be63-c86704161850',
+        'S2': '35d33f6a-14ab-4b5c-a797-ee9ab817c1fb',
+    }
     vertex_values = {
         'Animal': (
             {
-                'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a51',
+                'uuid': uuids['A1'],
                 'name': 'Animal 1',
-                'net_worth': Decimal('100'),
+                'net_worth': 100,
                 'birthday': datetime.date(1900, 1, 1),
             }, {
-                'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a52',
+                'uuid': uuids['A2'],
                 'name': 'Animal 2',
-                'net_worth': Decimal('200'),
+                'net_worth': 200,
                 'birthday': datetime.date(1950, 2, 2),
             }, {
-                'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a53',
+                'uuid': uuids['A3'],
                 'name': 'Animal 3',
-                'net_worth': Decimal('300'),
+                'net_worth': 300,
                 'birthday': datetime.date(1975, 3, 3),
             }, {
-                'uuid': 'cfc6e625-8594-0927-468f-f53d864a7a54',
+                'uuid': uuids['A4'],
                 'name': 'Animal 4',
-                'net_worth': Decimal('400'),
+                'net_worth': 400,
                 'birthday': datetime.date(2000, 4, 4),
             },
         ),
         'Species': (
             {
-                'uuid': 'c2c14d8b-0e13-4e64-be63-c86704161850',
+                'uuid': uuids['S1'],
                 'name': 'Species 1',
             }, {
-                'uuid': '35d33f6a-14ab-4b5c-a797-ee9ab817c1fb',
+                'uuid': uuids['S2'],
                 'name': 'Species 2',
             },
         ),
     }
-
-    # Map edges to tuples containing the source and destination vertex of each edge of that class
     edge_values = {
         'Entity_Related': (
             {
-                'from_uuid': 'c2c14d8b-0e13-4e64-be63-c86704161850',
-                'to_uuid': '35d33f6a-14ab-4b5c-a797-ee9ab817c1fb',
+                'from_uuid': uuids['S1'],
+                'to_uuid': uuids['S2'],
             },
+        ),
+        'Animal_ParentOf': (
+            {
+                'from_uuid': uuids['A1'],
+                'to_uuid': uuids['A1'],
+            }, {
+                'from_uuid': uuids['A1'],
+                'to_uuid': uuids['A2'],
+            }, {
+                'from_uuid': uuids['A1'],
+                'to_uuid': uuids['A3'],
+            }, {
+                'from_uuid': uuids['A3'],
+                'to_uuid': uuids['A4'],
+            }
         )
     }
 
@@ -206,17 +224,31 @@ def generate_sql_integration_data(sql_test_backends):
             from_classname = uuid_to_class_name[edge_value['from_uuid']]
             edge_field_name = 'out_{}'.format(edge_name)
             join_descriptor = sql_schema_info.join_descriptors[from_classname][edge_field_name]
-            if join_descriptor.to_column != 'uuid':
-                raise NotImplementedError(u'Expected to_column to be uuid, found {} for {}'
-                                          .format(join_descriptor.to_column, edge_name))
 
-            existing_foreign_key_values = uuid_to_foreign_key_values.setdefault(
-                edge_value['from_uuid'], {})
-            if join_descriptor.from_column in existing_foreign_key_values:
-                raise NotImplementedError(u'The SQL backend does not support many-to-many edges.'
-                                          u'Found multiple edges of class {} from vertex {}'
-                                          .format(edge_name, edge_value['from_uuid']))
-            existing_foreign_key_values[join_descriptor.from_column] = edge_value['to_uuid']
+            is_from_uuid = join_descriptor.from_column == 'uuid'
+            is_to_uuid = join_descriptor.to_column == 'uuid'
+            if is_from_uuid == is_to_uuid:
+                raise NotImplementedError(u'Exactly one of the join columns was expected to'
+                                          u'be uuid. found {}'.format(join_descriptor))
+
+            if is_from_uuid:
+                existing_foreign_key_values = uuid_to_foreign_key_values.setdefault(
+                    edge_value['to_uuid'], {})
+                if join_descriptor.to_column in existing_foreign_key_values:
+                    raise NotImplementedError(u'The SQL backend does not support many-to-many '
+                                              u'edges. Found multiple edges of class {} from '
+                                              u'vertex {}.'
+                                              .format(edge_name, edge_value['to_uuid']))
+                existing_foreign_key_values[join_descriptor.to_column] = edge_value['from_uuid']
+            elif is_to_uuid:
+                existing_foreign_key_values = uuid_to_foreign_key_values.setdefault(
+                    edge_value['from_uuid'], {})
+                if join_descriptor.from_column in existing_foreign_key_values:
+                    raise NotImplementedError(u'The SQL backend does not support many-to-many '
+                                              u'edges. Found multiple edges of class {} to '
+                                              u'vertex {}.'
+                                              .format(edge_name, edge_value['to_uuid']))
+                existing_foreign_key_values[join_descriptor.from_column] = edge_value['to_uuid']
 
     # Insert all the prepared data into the test database
     for sql_test_backend in six.itervalues(sql_test_backends):
