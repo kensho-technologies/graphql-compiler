@@ -25,6 +25,8 @@ common query language for multiple database backends. The query language is:
 .. EDUCATIONAL: The pattern below is what you would call a definition list in restructuredtext.
    The "terms" get special rendering in the readthedocs html file.
 
+.. TODO: Fix the style of the sections below.
+
 Written in valid GraphQL syntax
    Since it uses GraphQL syntax, the user get access to the entire GraphQL ecosystem,
    including the typeahead capabilities and query validation capabilities of `GraphiQL
@@ -51,9 +53,9 @@ Generating the necessary schema info
 ..  TODO: Encapsulate all schema info in a SchemaInfo class.
 
 To use the GraphQL compiler the first thing one needs to do is to generate the schema info from the
-underlying database as in the example below. Even though the example below generates schema info
-from an OrientDB database, it is meant as a generic schema info generation example.
-See the target database homepage for schema generation instructions.
+underlying database as in the example below. Even though the example targets an OrientDB
+database, it is meant as a generic schema info generation example. See the homepage of your target
+database for more instructions on how to generate the necessary schema info.
 
 .. code:: python
 
@@ -67,8 +69,19 @@ See the target database homepage for schema generation instructions.
     schema_data = [record.oRecordData for record in schema_records]
     schema, type_equivalence_hints = get_graphql_schema_from_orientdb_schema_data(schema_data)
 
-At the core of the generated schema info is the GraphQL :code:`schema`. The database might be
-reflected in the :code:`schema` as follows:
+.. TODO: Add a more precise link for type equivalence hints once the schema types section is ready.
+
+In the snippet above the are two pieces of schema info:
+
+-   :code:`schema` which represents the database using GraphQL's type system.
+-   :code:`type_equivalence_hints` which helps deal with GraphQL's lack of concrete inheritance,
+    (see :doc:`Schema Types <core_specification/schema_types>` for more info).
+
+Besides representing the database schema, a GraphQL schema includes other metadata such as a list of
+query **directives** that specify allowed query operations. We'll talk more about these in
+the :doc:`Schema Types <core_specification/schema_types>` and :doc:`Query Directives
+<core_specification/query_directives>` sections. For now let's focus on how a database
+schema might be represented in a GraphQL schema:
 
 .. code::
 
@@ -82,12 +95,12 @@ reflected in the :code:`schema` as follows:
         in_AnimalLivesIn: [Animal]
     }
 
-In the :code:`schema` above:
+In the GraphQL schema above:
 
--   :code:`Animal` represents a non-abstract vertex. For relational databases, we think of
-    tables as the non-abstract vertices.
+-   :code:`Animal` represents a concrete, (non-abstract), vertex. For relational databases, we
+    think of tables as the concrete vertices.
 -   :code:`name` is a **property field** which represents a property of the :code:`Animal` vertex.
-    Think of **property fields** as the leaf fields that represent concrete data.
+    Think of **property fields** as leaf fields that represent concrete data.
 -   :code:`out_Animal_LivesIn` is a **vertex field** which represents an outbound edge to a vertex
     in the graph. For graph databases, edges can be automatically generated from the database
     schema. However, for relational databases, edges currently have to be manually specified. See
@@ -120,8 +133,8 @@ There are a couple of things to notice about queries:
 - **Directives** specify the semantics of a query. :code:`@output` indicates the properties whose
   values should be returned. :code:`@filter` specifies a filter operation.
 
-With the query and its parameters at hand, we can use the compiler to obtain a query that we
-can directly execute against OrientDB.
+Finally, with the GraphQL query and its parameters at hand, we can use the compiler to obtain a
+query that we can directly execute against OrientDB.
 
 .. code:: python
 
