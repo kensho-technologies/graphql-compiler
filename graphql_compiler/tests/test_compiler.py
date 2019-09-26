@@ -4117,7 +4117,23 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS child_names_list
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            LEFT OUTER JOIN (
+                SELECT
+                    array_agg([Animal_1].name) AS fold_output_1,
+                    [Animal_1].parent AS parent
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_1]
+                GROUP BY [Animal_1].parent
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.parent
+        '''
+
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -4170,7 +4186,21 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+        SELECT
+            [Animal_1].name AS animal_name,
+            coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS sibling_and_self_names_list
+        FROM db_1.schema_1.[Animal] AS [Animal_1]
+        JOIN db_1.schema_1.[Animal] AS [Animal_2]
+        ON [Animal_1].uuid = [Animal_2].parent
+        LEFT OUTER JOIN (
+            SELECT
+                array_agg([Animal_2].name) AS fold_output_1,
+                [Animal_2].parent AS parent
+            FROM db_1.schema_1.[Animal] AS [Animal_2]
+            GROUP BY [Animal_2].parent
+        ) AS folded_subquery_1
+        ON [Animal_2].uuid = folded_subquery_1.parent'''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -4742,7 +4772,8 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = NotImplementedError
+        # TODO: needs alias dictionary keys update to work
+        expected_sql = SKIP_TEST
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_FedAt]->(Animal__out_Animal_FedAt___1:FeedingEvent)
@@ -4835,7 +4866,19 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+        SELECT
+            [Animal_1].name AS animal_name,
+            coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS related_entities
+        FROM db_1.schema_1.[Animal] AS [Animal_1]
+        LEFT OUTER JOIN (
+            SELECT
+                array_agg([Animal_1].name) AS fold_output_1,
+                [Animal_1].related_entity AS related_entity
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            GROUP BY [Animal_1].related_entity
+        ) AS folded_subquery_1
+        ON [Animal_1].uuid = folded_subquery_1.related_entity'''
         expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -6975,7 +7018,23 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+        SELECT
+            [Animal_1].name AS animal_name,
+            coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS child_names_list,
+            [Animal_2].name AS parent_name
+        FROM db_1.schema_1.[Animal] AS [Animal_1]
+        LEFT OUTER JOIN
+            db_1.schema_1.[Animal] AS [Animal_2]
+        ON [Animal_1].uuid = [Animal_2].parent
+        LEFT OUTER JOIN (
+            SELECT
+                array_agg([Animal_1].name) AS fold_output_1,
+                [Animal_1].parent AS parent
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            GROUP BY [Animal_1].parent
+        ) AS folded_subquery_1
+        ON [Animal_1].uuid = folded_subquery_1.parent'''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -7050,7 +7109,23 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_sql = '''
+        SELECT
+            [Animal_1].name AS animal_name,
+            coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS child_names_list,
+            [Animal_2].name AS parent_name
+        FROM db_1.schema_1.[Animal] AS [Animal_1]
+        LEFT OUTER JOIN (
+            SELECT
+                array_agg([Animal_1].name) AS fold_output_1,
+                [Animal_1].parent AS parent
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            GROUP BY [Animal_1].parent
+        ) AS folded_subquery_1
+        ON [Animal_1].uuid = folded_subquery_1.parent
+        LEFT OUTER JOIN
+            db_1.schema_1.[Animal] AS [Animal_2]
+        ON [Animal_1].uuid = [Animal_2].parent'''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
