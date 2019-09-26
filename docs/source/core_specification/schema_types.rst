@@ -1,10 +1,8 @@
 Schema Types
 ============
 
-A GraphQL schema representing a database schema might look like the one below.
-
-Do not be intimidated by the number of components since we will proceed to dissect the schema
-part by part.
+A GraphQL schema might look like the one below. Do not be intimidated by the number of components
+since we will proceed to dissect the schema part by part.
 
 .. TODO: Use a better "documentation" schema. I used a subset of the schema that we used in tests
    because it was the one referenced by all the queries in the Directives section and I can
@@ -108,11 +106,10 @@ part by part.
 GraphQL Objects and Fields
 --------------------------
 
-The core components of a GraphQL schema are *GraphQL Object Types*.
+The core components of a GraphQL schema are *GraphQL Object Types*.They conceptually represent the concrete, (non-abstract), vertices in the underlying database. For
+relational databases, we think of the tables as the concrete vertices.
 
-They conceptually represent the concrete, (non-abstract), vertices in the underlying database. For
-relational databases, we think of the tables as the concrete vertices. Lets go over a toy example
-of a GraphQL object type:
+Lets go over a toy example of a GraphQL object type:
 
 .. code::
 
@@ -127,7 +124,7 @@ of a GraphQL object type:
 Here are some of the details:
 
     - :code:`_x_count` is a **meta field**. It is used in conjunction with the :code:`@fold`
-      directive and it is explained in the :doc:`Query Directives <query_directives>` section.
+      directive and it is explained in the `Meta Fields <#meta-fields>`__ section.
     - :code:`name` is a **property field** representing a property of a vertex, (think of table
       columns for relational databases).
     - :code:`String` is a built-in scalar type. The compiler uses the built-in GraphQL scalar types
@@ -147,7 +144,7 @@ GraphQL Directives
 In this section we'll go over how query directives are defined. For information on the available
 query directives and their semantics see :doc:`Query Directives <query_directives>`.
 
-Let's look at how the :code:`@output` directive is defined:
+Let's look at the :code:`@output` directive:
 
 .. code::
 
@@ -157,7 +154,7 @@ Let's look at how the :code:`@output` directive is defined:
 -   :code:`out_name: String!` is a *GraphQL Argument*. The :code:`!` indicates that the string
     :code:`out_name` argument must not be null.
 -   :code:`on FIELD` defines where the locations where the query can be included. This query can
-    included near all argument fields.
+    be included on any field.
 
 Query Operation
 ---------------
@@ -171,7 +168,7 @@ only allows *query* operation types as shown in the code snippet below:
         query: RootSchemaQuery
     }
 
-The :code:`RootSchemaQuery` defines all the "entry points" of the query:
+The special :code:`RootSchemaQuery` GraphQL object defines all the "entry points" of the query:
 
 .. code::
 
@@ -185,25 +182,16 @@ The :code:`RootSchemaQuery` defines all the "entry points" of the query:
 
 For the GraphQL compiler, all vertices are valid entry points.
 
-
 Scalar Types
 ------------
 
 The compiler uses the built-in GraphQL
-`scalar types <https://graphql.org/learn/schema/#scalar-types>`__ as well as three custom types:
+`scalar types <https://graphql.org/learn/schema/#scalar-types>`__ as well as three custom scalars:
 
--   :code:`DateTime` represents timezone-aware second-accuracy timestamps. Values are
-    serialized following the ISO-8601 datetime format specification, for example
-    "2017-03-21T12:34:56+00:00". All of these fields must be included, including the seconds and the
-    time zone, and the format followed exactly, or the behavior is undefined.
--   :code:`Date` represents day-accuracy date objects. Values are serialized following the
-    ISO-8601 datetime format specification, for example "2017-03-21". The year, month and day fields
-    must be included, and the format followed exactly, or the behavior is undefined.
+-   :code:`DateTime` represents timezone-aware second-accuracy timestamps.
+-   :code:`Date` represents day-accuracy date objects.
 -   :code:`Decimal` is an arbitrary-precision decimal number object useful for representing values
-    that should never be rounded, such as currency amounts. Values are allowed to be transported as
-    either a native Decimal type, if the underlying transport allows that, or serialized as strings
-    in decimal format, without thousands separators and using a "." as the decimal separator: for
-    example, "12345678.012345".
+    that should never be rounded, such as currency amounts.
 
 GraphQL Inheritance
 -------------------
@@ -272,7 +260,7 @@ is a :code:`Species`, which :code:`... on Species` ensures is the case.
 GraphQL Interface Types
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-GraphQL interfaces represent abstract vertices.
+GraphQL interfaces represent the abstract vertices of the underlying database.
 
 .. code::
 
@@ -285,8 +273,7 @@ GraphQL interfaces represent abstract vertices.
     }
 
 GraphQL objects can *implement* interfaces, (as in the example below). If an object
-implements an interface, then it means that the interface is a superclass of said object. To
-implement an interface an object must also contain all of the interface's fields.
+implements an interface, then it means that the interface is a superclass of said object.
 
 .. code::
 
@@ -306,12 +293,12 @@ GraphQL does not support a notion of concrete inheritance, (GraphQL objects cann
 other GraphQL objects), which we need to be able to represent the schemas of certain databases
 and emit the correct queries during compilation.
 
-We, therefore, use GraphQL unions along with the :code:`type_equivalence_hints` parameter, (which
+We use GraphQL unions along with the :code:`type_equivalence_hints` parameter, (which
 signals an equivalence between a GraphQL union and a GraphQL object), to model concrete type
 inheritance. Let's look at the example.
 
-In the schema above :code:`Food` and :code:`Species` are concrete types and :code:`Food`
-is a superclass of :code:`Species`.
+Suppose :code:`Food` and :code:`Species` are concrete types and :code:`Food` is a superclass of
+:code:`Species`.
 
 Then during the schema generation, the compiler would generate a type representing the union of
 food or species.
@@ -322,9 +309,12 @@ food or species.
 
 The schema generation function would also generate a entry in :code:`type_equivalence_hints`
 mapping the :code:`Food` :code:`GraphQLObjectType` to the :code:`Union__Food__Species` the
-:code:`GraphQLUnionType` to signify their equivalence.  (:code:`GraphQLObjectType` and
-:code:`GraphQLObjectType` the python representations of the corresponding GraphQL concepts).
+:code:`GraphQLUnionType` to signify their equivalence.
 
+.. note::
+
+   :code:`GraphQLObjectType` and :code:`GraphQLObjectType` the python representations of the
+   corresponding GraphQL concepts. All GraphQL types have an equivalent python representation.
 
 Meta fields
 -----------
