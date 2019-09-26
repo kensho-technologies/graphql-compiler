@@ -388,5 +388,5 @@ in directives, fields, or any other artifacts.
 Example Use
 ^^^^^^^^^^^
 
-Since the :code:`_x_count` field can only be used with the :code:`@fold` please see `@fold
+Since the :code:`_x_count` field can only be used with the :code:`@fold` please see :doc:`@fold
 <query_directives>` for an example use.
