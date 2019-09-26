@@ -25,22 +25,19 @@ common query language for multiple database backends. The query language is:
 .. EDUCATIONAL: The pattern below is what you would call a definition list in restructuredtext.
    The "terms" get special rendering in the readthedocs html file.
 
-**Written in valid GraphQL syntax**
-
+Written in valid GraphQL syntax
    Since it uses GraphQL syntax, the user get access to the entire GraphQL ecosystem,
    including the typeahead capabilities and query validation capabilities of `GraphiQL
    <https://github.com/graphql/graphiql>`__, user friendly error messages from the
    reference GraphQL python implementation, and more.
 
-**Directly compiled to the target database language**
-
+Directly compiled to the target database language
    By compiling instead of interpreting the query language, the compiler highly improves query
    performance and empowers the user with the ability to write deep and complex queries.
    Furthermore, by using schema information from the target database, the compiler is able to
    extensively validate queries, often more so than the DB-API, (e.g. :code:`pymssql`).
 
-**Designed for cross-database querying**
-
+Designed for cross-database querying
    Since the query language always has the same semantics regardless of the underlying database,
    we have been able to build a :doc:`Schema Stitching <advanced_features/schema_stitching>` system
    that allows for seamless cross-database querying.
@@ -70,7 +67,7 @@ See the target database homepage for schema generation instructions.
     schema_data = [record.oRecordData for record in schema_records]
     schema, type_equivalence_hints = get_graphql_schema_from_orientdb_schema_data(schema_data)
 
-At the core of generated schema info is the GraphQL :code:`schema`. The database might be
+At the core of the generated schema info is the GraphQL :code:`schema`. The database might be
 reflected in the :code:`schema` as follows:
 
 .. code::
