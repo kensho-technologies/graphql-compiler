@@ -122,8 +122,9 @@ Here are some of the details:
 
     - :code:`name` is a **property field** representing a property of a vertex, (think of table
       columns for relational databases).
-    - :code:`String` is a built-in scalar type. The compiler uses the built-in GraphQL scalar types
-      and a couple of custom scalar types. We will talk more about these in a later section.
+    - :code:`String` is a built-in *GraphQL scalar type*. The compiler uses the built-in GraphQL
+      scalar types and a couple of custom scalar types. We will talk more about these in a later
+      section.
     - :code:`in_Animal_PlaysWith` is a **vertex field** representing an outbound edge to other
       vertices in the graph. All vertex fields begin with an :code:`in_` or :code:`out_`
       prefix.
@@ -202,7 +203,7 @@ GraphQL interfaces can be queried in the same way that GraphQL objects are queri
 be *type coerced*. GraphQL unions may only be used in a query when *type coerced*.
 
 Type coercions
---------------
+~~~~~~~~~~~~~~
 
 Type coercions are operations that create a new scope whose type is
 different than the type of the enclosing scope of the coercion -- they
@@ -210,7 +211,7 @@ coerce the enclosing scope into a different type. Type coercions are
 represented with GraphQL inline fragments.
 
 Example Use
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. code::
 
