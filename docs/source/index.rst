@@ -115,7 +115,8 @@ that live in Africa:
 
 There are a couple of things to notice about queries:
 
-- All queries start with a vertex and expand to other vertices using **vertex fields**.
+- All queries start with a vertex, (e.g. :code:`Animal`), and expand to other vertices using
+  **vertex fields**.
 - **Directives** specify the semantics of a query. :code:`@output` indicates the properties whose
   values should be returned. :code:`@filter` specifies a filter operation.
 
