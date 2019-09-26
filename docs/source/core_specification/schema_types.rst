@@ -106,8 +106,9 @@ since we will proceed to dissect the schema part by part.
 GraphQL Objects and Fields
 --------------------------
 
-The core components of a GraphQL schema are *GraphQL Object Types*.They conceptually represent the concrete, (non-abstract), vertices in the underlying database. For
-relational databases, we think of the tables as the concrete vertices.
+The core components of a GraphQL schema are *GraphQL Object Types*.They conceptually represent the
+concrete, (non-abstract), vertices in the underlying database. For relational databases, we think
+of the tables as the concrete vertices.
 
 Lets go over a toy example of a GraphQL object type:
 
@@ -118,8 +119,6 @@ Lets go over a toy example of a GraphQL object type:
         name: String
         in_Animal_PlaysWith: [Animal]
     }
-
-.. TODO: Add a better hyperlink below for metafields.
 
 Here are some of the details:
 
@@ -255,8 +254,6 @@ In this query, the :code:`out_Entity_Related` is of :code:`Entity` type.
 However, the query only wants to return results where the related entity
 is a :code:`Species`, which :code:`... on Species` ensures is the case.
 
-
-
 GraphQL Interface Types
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -295,26 +292,24 @@ and emit the correct queries during compilation.
 
 We use GraphQL unions along with the :code:`type_equivalence_hints` parameter, (which
 signals an equivalence between a GraphQL union and a GraphQL object), to model concrete type
-inheritance. Let's look at the example.
+inheritance. Let's look at an example:
 
 Suppose :code:`Food` and :code:`Species` are concrete types and :code:`Food` is a superclass of
-:code:`Species`.
-
-Then during the schema generation, the compiler would generate a type representing the union of
-food or species.
+:code:`Species`. Then during the schema info generation, the compiler would generate a type
+representing the union of food or species:
 
 .. code::
 
     union Union__Food__Species = Food | Species
 
-The schema generation function would also generate a entry in :code:`type_equivalence_hints`
+The schema info generation function would also generate a entry in :code:`type_equivalence_hints`
 mapping the :code:`Food` :code:`GraphQLObjectType` to the :code:`Union__Food__Species` the
 :code:`GraphQLUnionType` to signify their equivalence.
 
 .. note::
 
-   :code:`GraphQLObjectType` and :code:`GraphQLObjectType` the python representations of the
-   corresponding GraphQL concepts. All GraphQL types have an equivalent python representation.
+   :code:`GraphQLObjectType` and :code:`GraphQLObjectType` are python representations GraphQL
+   types. All GraphQL types have an equivalent python representation.
 
 Meta fields
 -----------
