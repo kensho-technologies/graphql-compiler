@@ -2,7 +2,7 @@ Schema Types
 ============
 
 A GraphQL schema might look like the one below. Do not be intimidated by the number of components
-since we will proceed to dissect the schema part by part.
+since we will immediately proceed to dissect the schema.
 
 .. TODO: Use a better "documentation" schema. I used a subset of the schema that we used in tests
    because it was the one referenced by all the queries in the Directives section and I can
@@ -81,7 +81,6 @@ since we will proceed to dissect the schema part by part.
     }
 
     type Toy {
-        _x_count: Int
         name: String
         in_Animal_PlaysWith: [Animal]
     }
@@ -99,7 +98,7 @@ since we will proceed to dissect the schema part by part.
 
 .. note::
 
-    A GraphQL schema can be serialized as with the :code:`print_schema` function from the
+    A GraphQL schema can be serialized with the :code:`print_schema` function from the
     :code:`graphql.utils.schema_printer` module.
 
 
@@ -115,15 +114,12 @@ Lets go over a toy example of a GraphQL object type:
 .. code::
 
     type Toy {
-        _x_count: Int
         name: String
         in_Animal_PlaysWith: [Animal]
     }
 
 Here are some of the details:
 
-    - :code:`_x_count` is a **meta field**. It is used in conjunction with the :code:`@fold`
-      directive and it is explained in the `Meta Fields <#meta-fields>`__ section.
     - :code:`name` is a **property field** representing a property of a vertex, (think of table
       columns for relational databases).
     - :code:`String` is a built-in scalar type. The compiler uses the built-in GraphQL scalar types
