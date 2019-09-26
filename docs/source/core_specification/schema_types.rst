@@ -6,6 +6,13 @@ A GraphQL schema representing a database schema might look like the one below.
 Do not be intimidated by the number of components since we will proceed to dissect the schema
 part by part.
 
+.. TODO: Use a better "documentation" schema. I used a subset of the schema that we used in tests
+   because it was the one referenced by all the queries in the Directives section and I can
+   easily modify  the directives section so that it only includes types in this subset. However,
+   it is  a bit more difficult to completely change what schema we are using for documentation.
+   Though this schema is less than ideal for documentation. It is to large and some of types,
+   like Entity, are not intuitive.
+
 .. code::
 
     schema {
@@ -138,7 +145,7 @@ GraphQL Directives
 ------------------
 
 In this section we'll go over how query directives are defined. For information on the available
-query directives and their semantics see :doc:`Query Directives <query_directives`.
+query directives and their semantics see :doc:`Query Directives <query_directives>`.
 
 Let's look at how the :code:`@output` directive is defined:
 
@@ -205,13 +212,67 @@ If compiling to a database without any inheritance, (e.g. all SQL databases), fe
 ignore this section.
 
 We use two types to model type inheritance in GraphQL: *GraphQL Interface Types* and *GraphQL
-Union Types*.
+Union Types*. We will first explain how to query them and then proceed to explain how are they
+structured and what they conceptually represent.
+
+GraphQL interfaces can be queried in the same way that GraphQL objects are queried. They can also
+be *type coerced*. GraphQL unions may only be used in a query when *type coerced*.
+
+Type coercions
+--------------
+
+Type coercions are operations that create a new scope whose type is
+different than the type of the enclosing scope of the coercion -- they
+coerce the enclosing scope into a different type. Type coercions are
+represented with GraphQL inline fragments.
+
+Example Use
+~~~~~~~~~~~
+
+.. code::
+
+    {
+        Species {
+            name @output(out_name: "species_name")
+            out_Species_Eats {
+                ... on Food {
+                    name @output(out_name: "food_name")
+                }
+            }
+        }
+    }
+
+Here, the :code:`out_Species_Eats` vertex field is of the
+:code:`Union__Food__FoodOrSpecies__Species` union type. To proceed with the
+query, the user must choose which of the types in the
+:code:`Union__Food__FoodOrSpecies__Species` union to use. In this example,
+:code:`... on Food` indicates that the :code:`Food` type was chosen, and any
+vertices at that scope that are not of type :code:`Food` are filtered out
+and discarded.
+
+.. code::
+
+    {
+        Species {
+            name @output(out_name: "species_name")
+            out_Entity_Related {
+                ... on Species {
+                    name @output(out_name: "food_name")
+                }
+            }
+        }
+    }
+
+In this query, the :code:`out_Entity_Related` is of :code:`Entity` type.
+However, the query only wants to return results where the related entity
+is a :code:`Species`, which :code:`... on Species` ensures is the case.
+
+
 
 GraphQL Interface Types
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-GraphQL interfaces represent abstract vertices. They can be queried in the same way that
-GraphQL objects are queried and they can be `type coerced <#type-coercion>`.
+GraphQL interfaces represent abstract vertices.
 
 .. code::
 
@@ -228,7 +289,6 @@ implements an interface, then it means that the interface is a superclass of sai
 implement an interface an object must also contain all of the interface's fields.
 
 .. code::
-   :emphasize-lines: 1
 
     type Food implements Entity {
         _x_count: Int
@@ -239,11 +299,94 @@ implement an interface an object must also contain all of the interface's fields
         in_Species_Eats: [Species]
     }
 
-GraphQL Union Types
-~~~~~~~~~~~~~~~~~~~
+GraphQL Union Types and :code:`type_equivalence_hints`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the compiler, GraphQL union types along with :code:`type_equivalence_hints` are used to
-model concrete inheritance as in the following example.
+GraphQL does not support a notion of concrete inheritance, (GraphQL objects cannot inherit from
+other GraphQL objects), which we need to be able to represent the schemas of certain databases
+and emit the correct queries during compilation.
 
-:code:`Food` is a concrete type. :code:`Species` is also a concrete type. However,
-Dogs, Cats and :code:`Food`
+We, therefore, use GraphQL unions along with the :code:`type_equivalence_hints` parameter, (which
+signals an equivalence between a GraphQL union and a GraphQL object), to model concrete type
+inheritance. Let's look at the example.
+
+In the schema above :code:`Food` and :code:`Species` are concrete types and :code:`Food`
+is a superclass of :code:`Species`.
+
+Then during the schema generation, the compiler would generate a type representing the union of
+food or species.
+
+.. code::
+
+    union Union__Food__Species = Food | Species
+
+The schema generation function would also generate a entry in :code:`type_equivalence_hints`
+mapping the :code:`Food` :code:`GraphQLObjectType` to the :code:`Union__Food__Species` the
+:code:`GraphQLUnionType` to signify their equivalence.  (:code:`GraphQLObjectType` and
+:code:`GraphQLObjectType` the python representations of the corresponding GraphQL concepts).
+
+
+Meta fields
+-----------
+
+\_\_typename
+~~~~~~~~~~~~
+
+The compiler supports the standard GraphQL meta field :code:`__typename`,
+which returns the runtime type of the scope where the field is found.
+Assuming the GraphQL schema matches the database's schema, the runtime
+type will always be a subtype of (or exactly equal to) the static type
+of the scope determined by the GraphQL type system. Below, we provide an
+example query in which the runtime type is a subtype of the static type,
+but is not equal to it.
+
+The :code:`__typename` field is treated as a property field of type
+:code:`String`, and supports all directives that can be applied to any other
+property field.
+
+Example Use
+^^^^^^^^^^^
+
+.. code::
+
+    {
+        Entity {
+            __typename @output(out_name: "entity_type")
+            name @output(out_name: "entity_name")
+        }
+    }
+
+This query returns one row for each :code:`Entity` vertex. The scope in
+which :code:`__typename` appears is of static type :code:`Entity`. However,
+:code:`Animal` is a type of :code:`Entity`, as are :code:`Species`, :code:`Food`, and
+others. Vertices of all subtypes of :code:`Entity` will therefore be
+returned, and the :code:`entity_type` column that outputs the :code:`__typename`
+field will show their runtime type: :code:`Animal`, :code:`Species`, :code:`Food`,
+etc.
+
+\_x\_count
+~~~~~~~~~~
+
+The :code:`_x_count` meta field is a non-standard meta field defined by the
+GraphQL compiler that makes it possible to interact with the *number* of
+elements in a scope marked :code:`@fold`. By applying directives like
+:code:`@output` and :code:`@filter` to this meta field, queries can output the
+number of elements captured in the :code:`@fold` and filter down results to
+select only those with the desired fold sizes.
+
+We use the :code:`_x_` prefix to signify that this is an extension meta
+field introduced by the compiler, and not part of the canonical set of
+GraphQL meta fields defined by the GraphQL specification. We do not use
+the GraphQL standard double-underscore (:code:`__`) prefix for meta fields,
+since all names with that prefix are `explicitly reserved and prohibited
+from being
+used <https://facebook.github.io/graphql/draft/#sec-Reserved-Names>`__
+in directives, fields, or any other artifacts.
+
+.. TODO: Add a more specific link below to point to the fold directives.
+
+Example Use
+^^^^^^^^^^^
+
+Since the :code:`_x_count` field can only be used with the :code:`@fold` please see `@fold
+<query_directives>` for an example use.
