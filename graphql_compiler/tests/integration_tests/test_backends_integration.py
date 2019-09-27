@@ -440,6 +440,75 @@ class IntegrationTests(TestCase):
         for graphql_query, parameters, expected_results in queries:
             self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
+    @use_all_backends(except_backends=(
+        test_backend.REDISGRAPH,  # TODO(bojanserafimov): Resolve syntax error
+    ))
+    @integration_fixtures
+    def test_optional_basic(self, backend_name):
+        # (query, args, expected_results) tuples.
+        # The queries are ran in the order specified here.
+        queries = [
+            # Query 1: Children of Animal 1
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf {
+                        name @output(out_name: "child_name")
+                    }
+                }
+            }''', {
+                'starting_animal_name': 'Animal 1',
+            }, [
+                {'child_name': 'Animal 1'},
+                {'child_name': 'Animal 2'},
+                {'child_name': 'Animal 3'},
+            ]),
+            # Query 2: Grandchildren of Animal 1
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf {
+                        out_Animal_ParentOf {
+                            name @output(out_name: "grandchild_name")
+                        }
+                    }
+                }
+            }''', {
+                'starting_animal_name': 'Animal 1',
+            }, [
+                {'grandchild_name': 'Animal 1'},
+                {'grandchild_name': 'Animal 2'},
+                {'grandchild_name': 'Animal 3'},
+                {'grandchild_name': 'Animal 4'},
+            ]),
+            # Query 3: Unfolded children of Animal 1 and their children
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf {
+                        name @output(out_name: "child_name")
+                        out_Animal_ParentOf @optional {
+                            name @output(out_name: "grandchild_name")
+                        }
+                    }
+                }
+            }''', {
+                'starting_animal_name': 'Animal 1',
+            }, [
+                {'child_name': 'Animal 1', 'grandchild_name': 'Animal 1'},
+                {'child_name': 'Animal 1', 'grandchild_name': 'Animal 2'},
+                {'child_name': 'Animal 1', 'grandchild_name': 'Animal 3'},
+                {'child_name': 'Animal 2', 'grandchild_name': None},
+                {'child_name': 'Animal 3', 'grandchild_name': 'Animal 4'},
+            ]),
+        ]
+
+        for graphql_query, parameters, expected_results in queries:
+            self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
+
     # RedisGraph doesn't support temporal types, so Date types aren't supported.
     @use_all_backends(except_backends=(test_backend.REDISGRAPH))
     @integration_fixtures
