@@ -2,7 +2,7 @@ The GraphQL Compiler
 ====================
 
 .. EDUCATIONAL: The toctree (Table Of Contents Tree) specifies the table of contents at the left
-   side of the page. The maxdepth indicates which headers to include in the table of contents.
+   side of the page.
    :hidden: specifies not to include a table of contents in this page.
 
 .. ISSUE: Tree doesn't include subsections for `self` in toctree.
@@ -21,7 +21,6 @@ The GraphQL Compiler
             GraphQL Compiler Readthedocs contributors.
 
 .. toctree::
-   :maxdepth: 2
    :hidden:
 
    Home <self>
@@ -176,7 +175,6 @@ To learn more about the core specification of the GraphQL query language see:
   available directives and how to use them to create powerful queries.
 
 .. toctree::
-   :maxdepth: 2
    :caption: Core Specification
    :hidden:
 
@@ -196,7 +194,6 @@ types of database backends:
 - :doc:`SQL Databases <databases/sql>`, including SQL Server, Postgres and more.
 
 .. toctree::
-   :maxdepth: 2
    :caption: Databases
    :hidden:
 
@@ -219,7 +216,6 @@ To learn more about the advanced features in the GraphQL compiler see:
   easy to explore the schema of a database, including the databases indexes.
 
 .. toctree::
-   :maxdepth: 2
    :caption: Advanced Features
    :hidden:
 
