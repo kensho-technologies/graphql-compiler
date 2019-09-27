@@ -50,7 +50,7 @@ def compile_and_run_match_query(schema, graphql_query, parameters, orientdb_clie
     results = []
     for row in orientdb_client.command(query):
         row_dict = row.oRecordData
-        for output_name, output_info in six.iteritems(compilation_result.output_metadata):
+        for output_name in compilation_result.output_metadata:
             if output_name not in row_dict:
                 row_dict[output_name] = None
         results.append(row.oRecordData)
