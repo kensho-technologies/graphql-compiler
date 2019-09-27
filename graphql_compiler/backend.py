@@ -1,11 +1,14 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
+import sqlalchemy
+
 from .compiler import (
     emit_cypher, emit_gremlin, emit_match, emit_sql, ir_lowering_cypher, ir_lowering_gremlin,
     ir_lowering_match, ir_lowering_sql
 )
 from .schema import schema_info
+from .query_running import run_sql_query
 
 
 # A backend is a compilation target (a language we can compile to)
@@ -26,6 +29,13 @@ Backend = namedtuple('Backend', (
     # Given a SchemaInfoClass and a lowered IR that respects its schema, emit a query
     # in this language with the same semantics.
     'emit_func',
+
+    # The type of object sufficient to make databse calls with retries.
+    'ConnectionPoolClass',
+
+    # Given a ConnectionPoolClass, a compilation result and query parameters, return a
+    # result formatted as a list of dicts.
+    'run_func',
 ))
 
 
@@ -34,6 +44,8 @@ gremlin_backend = Backend(
     SchemaInfoClass=schema_info.CommonSchemaInfo,
     lower_func=ir_lowering_gremlin.lower_ir,
     emit_func=emit_gremlin.emit_code_from_ir,
+    ConnectionPoolClass=NotImplementedError,
+    run_func=NotImplementedError,
 )
 
 match_backend = Backend(
@@ -41,6 +53,8 @@ match_backend = Backend(
     SchemaInfoClass=schema_info.CommonSchemaInfo,
     lower_func=ir_lowering_match.lower_ir,
     emit_func=emit_match.emit_code_from_ir,
+    ConnectionPoolClass=NotImplementedError,
+    run_func=NotImplementedError,
 )
 
 cypher_backend = Backend(
@@ -48,6 +62,8 @@ cypher_backend = Backend(
     SchemaInfoClass=schema_info.CommonSchemaInfo,
     lower_func=ir_lowering_cypher.lower_ir,
     emit_func=emit_cypher.emit_code_from_ir,
+    ConnectionPoolClass=NotImplementedError,
+    run_func=NotImplementedError,
 )
 
 sql_backend = Backend(
@@ -55,4 +71,6 @@ sql_backend = Backend(
     SchemaInfoClass=schema_info.SQLAlchemySchemaInfo,
     lower_func=ir_lowering_sql.lower_ir,
     emit_func=emit_sql.emit_code_from_ir,
+    ConnectionPoolClass=sqlalchemy.engine.Engine,
+    run_func=run_sql_query,
 )

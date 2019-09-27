@@ -8,6 +8,8 @@ from graphql.utils.schema_printer import print_schema
 from parameterized import parameterized
 import pytest
 
+from ...compiler.common import compile_graphql_generic
+from ...backend import sql_backend
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...tests import test_backend
 from ...tests.test_helpers import generate_schema, generate_schema_graph
@@ -100,9 +102,10 @@ class IntegrationTests(TestCase):
             List[Dict[str, Any]], backend results as a list of dictionaries.
         """
         if backend_name in SQL_BACKENDS:
+            backend = sql_backend
             engine = cls.sql_backend_name_to_engine[backend_name]
-            results = compile_and_run_sql_query(
-                cls.sql_schema_info, graphql_query, parameters, engine)
+            compilation_result = compile_graphql_generic(backend, cls.sql_schema_info, graphql_query)
+            results = backend.run_func(engine, compilation_result, parameters)
         elif backend_name in MATCH_BACKENDS:
             results = compile_and_run_match_query(
                 cls.schema, graphql_query, parameters, cls.orientdb_client)

@@ -47,7 +47,7 @@ def compile_graphql_to_match(schema, graphql_string, type_equivalence_hints=None
         a CompilationResult object
     """
     schema_info = CommonSchemaInfo(schema, type_equivalence_hints)
-    return _compile_graphql_generic(backend.match_backend, schema_info, graphql_string)
+    return compile_graphql_generic(backend.match_backend, schema_info, graphql_string)
 
 
 def compile_graphql_to_gremlin(schema, graphql_string, type_equivalence_hints=None):
@@ -76,7 +76,7 @@ def compile_graphql_to_gremlin(schema, graphql_string, type_equivalence_hints=No
         a CompilationResult object
     """
     schema_info = CommonSchemaInfo(schema, type_equivalence_hints)
-    return _compile_graphql_generic(backend.gremlin_backend, schema_info, graphql_string)
+    return compile_graphql_generic(backend.gremlin_backend, schema_info, graphql_string)
 
 
 def compile_graphql_to_sql(sql_schema_info, graphql_string):
@@ -89,7 +89,7 @@ def compile_graphql_to_sql(sql_schema_info, graphql_string):
     Returns:
         a CompilationResult object
     """
-    return _compile_graphql_generic(backend.sql_backend, sql_schema_info, graphql_string)
+    return compile_graphql_generic(backend.sql_backend, sql_schema_info, graphql_string)
 
 
 def compile_graphql_to_cypher(schema, graphql_string, type_equivalence_hints=None):
@@ -118,10 +118,10 @@ def compile_graphql_to_cypher(schema, graphql_string, type_equivalence_hints=Non
         a CompilationResult object
     """
     schema_info = CommonSchemaInfo(schema, type_equivalence_hints)
-    return _compile_graphql_generic(backend.cypher_backend, schema_info, graphql_string)
+    return compile_graphql_generic(backend.cypher_backend, schema_info, graphql_string)
 
 
-def _compile_graphql_generic(target_backend, schema_info, graphql_string):
+def compile_graphql_generic(target_backend, schema_info, graphql_string):
     """Compile the GraphQL input, lowering and emitting the query using the given functions.
 
     Args:
