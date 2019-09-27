@@ -46,7 +46,6 @@ since we will immediately proceed to dissect the schema.
     scalar Decimal
 
     type Animal implements Entity {
-        _x_count: Int
         name: String
         alias: [String]
         birthday: Date
@@ -60,7 +59,6 @@ since we will immediately proceed to dissect the schema.
     }
 
     type Food implements Entity {
-        _x_count: Int
         name: String
         alias: [String]
         in_Entity_Related: [Entity]
@@ -69,7 +67,6 @@ since we will immediately proceed to dissect the schema.
     }
 
     type Species implements Entity {
-        _x_count: Int
         name: String
         alias: [String]
         description: String
@@ -86,7 +83,6 @@ since we will immediately proceed to dissect the schema.
     }
 
     interface Entity {
-        _x_count: Int
         name: String
         alias: [String]
         in_Entity_Related: [Entity]
@@ -179,81 +175,14 @@ object:
         Food: [Food]
         Species: [Species]
         Toy: [Toy]
-    }
-
-
-.. TODO: Make the Meta Fields with the ones above.
-
-Meta fields
------------
-
-\_\_typename
-~~~~~~~~~~~~
-
-The compiler supports the standard GraphQL meta field :code:`__typename`,
-which returns the runtime type of the scope where the field is found.
-Assuming the GraphQL schema matches the database's schema, the runtime
-type will always be a subtype of (or exactly equal to) the static type
-of the scope determined by the GraphQL type system. Below, we provide an
-example query in which the runtime type is a subtype of the static type,
-but is not equal to it.
-
-The :code:`__typename` field is treated as a property field of type
-:code:`String`, and supports all directives that can be applied to any other
-property field.
-
-Example Use
-^^^^^^^^^^^
-
-.. code::
-
-    {
-        Entity {
-            __typename @output(out_name: "entity_type")
-            name @output(out_name: "entity_name")
-        }
-    }
-
-This query returns one row for each :code:`Entity` vertex. The scope in
-which :code:`__typename` appears is of static type :code:`Entity`. However,
-:code:`Animal` is a type of :code:`Entity`, as are :code:`Species`, :code:`Food`, and
-others. Vertices of all subtypes of :code:`Entity` will therefore be
-returned, and the :code:`entity_type` column that outputs the :code:`__typename`
-field will show their runtime type: :code:`Animal`, :code:`Species`, :code:`Food`,
-etc.
-
-\_x\_count
-~~~~~~~~~~
-
-The :code:`_x_count` meta field is a non-standard meta field defined by the
-GraphQL compiler that makes it possible to interact with the *number* of
-elements in a scope marked :code:`@fold`. By applying directives like
-:code:`@output` and :code:`@filter` to this meta field, queries can output the
-number of elements captured in the :code:`@fold` and filter down results to
-select only those with the desired fold sizes.
-
-We use the :code:`_x_` prefix to signify that this is an extension meta
-field introduced by the compiler, and not part of the canonical set of
-GraphQL meta fields defined by the GraphQL specification. We do not use
-the GraphQL standard double-underscore (:code:`__`) prefix for meta fields,
-since all names with that prefix are `explicitly reserved and prohibited
-from being
-used <https://facebook.github.io/graphql/draft/#sec-Reserved-Names>`__
-in directives, fields, or any other artifacts.
-
-.. TODO: Add a more specific link below to point to the fold directives.
-
-Example Use
-^^^^^^^^^^^
-
-Please see :doc:`@fold <query_directives>` for an example use.
-
+    }s
 
 Inheritance
 -----------
 
 The compiler uses GraphQL interfaces and GraphQL unions in representing the inheritance structure
-of the underlying schema.
+of the underlying schema. You may ignore this section if are compiling to a language with no
+inheritance structure, (e.g. SQL).
 
 Interfaces
 ~~~~~~~~~~
@@ -263,7 +192,6 @@ GraphQL interfaces represent the abstract vertices of the underlying database.
 .. code::
 
     interface Entity {
-        _x_count: Int
         name: String
         alias: [String]
         in_Entity_Related: [Entity]
@@ -275,7 +203,6 @@ Abstract inheritance is modeled through interface implementation.
 .. code::
 
     type Food implements Entity {
-        _x_count: Int
         name: String
         alias: [String]
         in_Entity_Related: [Entity]
@@ -295,7 +222,7 @@ subclasses and a :code:`type_equivalence_hints` parameter to signify that object
 the GraphQL union.
 
 For example, suppose :code:`Food` and :code:`Species` are concrete types and :code:`Food` is a
-superclass of :code:`Species` in an OrientDB schema. Then the OrientDB schema generation function
+superclass of :code:`Species` in an OrientDB schema. Then the GraphQL schema generation function
 would generate an union class in the schema
 
 .. code::
