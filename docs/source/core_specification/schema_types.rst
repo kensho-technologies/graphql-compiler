@@ -126,8 +126,6 @@ Here are some of the details:
 - :code:`[Animal]` is a GraphQL list type that represents an array of :code:`Animal`
   objects.
 
-Now that we have an idea of a rough idea of how GraphQL objects works, lets go over some of the
-other components.
 
 Directives
 ----------
@@ -146,6 +144,17 @@ Let's look at the :code:`@output` directive:
 - :code:`on FIELD` defines where the directive can be located. According to the definition, this
   directive can only be located next to fields. The compiler might have additional restrictions
   for where a query can be located. See :doc:`query directives <query_directives>` for more info.
+
+Scalars
+-------
+
+The compiler uses the built-in GraphQL
+`scalar types <https://graphql.org/learn/schema/#scalar-types>`__ as well as three custom scalars:
+
+- :code:`DateTime` represents timezone-aware second-accuracy timestamps.
+- :code:`Date` represents day-accuracy date objects.
+- :code:`Decimal` is an arbitrary-precision decimal number object useful for representing values
+  that should never be rounded, such as currency amounts.
 
 Query Operation
 ---------------
@@ -172,18 +181,8 @@ object:
         Toy: [Toy]
     }
 
-Scalars
--------
 
-The compiler uses the built-in GraphQL
-`scalar types <https://graphql.org/learn/schema/#scalar-types>`__ as well as three custom scalars:
-
-- :code:`DateTime` represents timezone-aware second-accuracy timestamps.
-- :code:`Date` represents day-accuracy date objects.
-- :code:`Decimal` is an arbitrary-precision decimal number object useful for representing values
-  that should never be rounded, such as currency amounts.
-
-.. TODO: Make the sections below with the ones above.
+.. TODO: Make the Meta Fields with the ones above.
 
 Meta fields
 -----------
@@ -291,12 +290,13 @@ GraphQL does not support a notion of concrete inheritance. In other words, Graph
 inherit from other objects. However, for certain query dialects, the compiler needs concrete
 inheritance information to emit the right query.
 
-To model concrete inheritance. we use GraphQL unions to create an union that encompass an object's
+To model concrete inheritance. we use GraphQL unions that encompass an object's
 subclasses and a :code:`type_equivalence_hints` parameter to signify that object is equivalent to
 the GraphQL union. Let's look at an example:
 
 Suppose :code:`Food` and :code:`Species` are concrete types and :code:`Food` is a superclass of
-:code:`Species`. Then the schema generation function will generate the following type in the schema
+:code:`Species`. Then for instance the OrientDB schema generation function would generate an union
+class in the schema
 
 .. code::
 
