@@ -367,7 +367,6 @@ class IntegrationTests(TestCase):
 
     @use_all_backends(except_backends=(
         test_backend.MSSQL,  # Not implemented yet
-        test_backend.NEO4J,   # Not implemented yet
         test_backend.REDISGRAPH,  # Not implemented yet
     ))
     @integration_fixtures
