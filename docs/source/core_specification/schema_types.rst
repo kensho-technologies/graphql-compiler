@@ -183,123 +183,7 @@ The compiler uses the built-in GraphQL
 - :code:`Decimal` is an arbitrary-precision decimal number object useful for representing values
   that should never be rounded, such as currency amounts.
 
-Inheritance
------------
-
-If compiling to a database without any inheritance, (e.g. all SQL databases), feel free to
-ignore this section.
-
-Interfaces
-~~~~~~~~~~
-
-GraphQL interfaces represent the abstract vertices of the underlying database.
-
-.. code::
-
-    interface Entity {
-        _x_count: Int
-        name: String
-        alias: [String]
-        in_Entity_Related: [Entity]
-        out_Entity_Related: [Entity]
-    }
-
-If an object implements an interface, then the object must be a subclass of said interface.
-
-.. code::
-
-    type Food implements Entity {
-        _x_count: Int
-        name: String
-        alias: [String]
-        in_Entity_Related: [Entity]
-        out_Entity_Related: [Entity]
-        in_Species_Eats: [Species]
-    }
-
-Unions and type_equivalence_hints
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-GraphQL does not support a notion of concrete inheritance, (GraphQL objects cannot inherit from
-other GraphQL objects), which we need to be able to represent the schemas of certain databases
-and emit the correct queries during compilation.
-
-We use GraphQL unions along with the :code:`type_equivalence_hints` parameter, (which
-signals an equivalence between a GraphQL union and a GraphQL object), to model concrete type
-inheritance. Let's look at an example:
-
-Suppose :code:`Food` and :code:`Species` are concrete types and :code:`Food` is a superclass of
-:code:`Species`. Then during the schema info generation, the compiler would generate a type
-representing the union of food or species:
-
-.. code::
-
-    union Union__Food__Species = Food | Species
-
-The schema info generation function would also generate a entry in :code:`type_equivalence_hints`
-mapping the :code:`Food` :code:`GraphQLObjectType` to the :code:`Union__Food__Species` the
-:code:`GraphQLUnionType` to signify their equivalence. The :code:`type_equivalence_hints`
-could then be passed to the compilation function:
-
-.. code:: python
-
-   from graphql_compiler import graphql_to_match
-   graphql_to_match(schema, query, parameters, type_equivalence_hints=type_equivalence_hints)
-
-.. note::
-
-   :code:`GraphQLObjectType` and :code:`GraphQLObjectType` are python representations GraphQL
-   types. All GraphQL types have an equivalent python representation.
-
-
-Type coercions
-~~~~~~~~~~~~~~
-
-Type coercions are operations that create a new scope whose type is
-different than the type of the enclosing scope of the coercion -- they
-coerce the enclosing scope into a different type. Type coercions are
-represented with GraphQL inline fragments.
-
-Example Use
-^^^^^^^^^^^
-
-.. code::
-
-    {
-        Species {
-            name @output(out_name: "species_name")
-            out_Species_Eats {
-                ... on Food {
-                    name @output(out_name: "food_name")
-                }
-            }
-        }
-    }
-
-Here, the :code:`out_Species_Eats` vertex field is of the
-:code:`Union__Food__FoodOrSpecies__Species` union type. To proceed with the
-query, the user must choose which of the types in the
-:code:`Union__Food__FoodOrSpecies__Species` union to use. In this example,
-:code:`... on Food` indicates that the :code:`Food` type was chosen, and any
-vertices at that scope that are not of type :code:`Food` are filtered out
-and discarded.
-
-.. code::
-
-    {
-        Species {
-            name @output(out_name: "species_name")
-            out_Entity_Related {
-                ... on Species {
-                    name @output(out_name: "food_name")
-                }
-            }
-        }
-    }
-
-In this query, the :code:`out_Entity_Related` is of :code:`Entity` type.
-However, the query only wants to return results where the related entity
-is a :code:`Species`, which :code:`... on Species` ensures is the case.
+.. TODO: Make the sections below with the ones above.
 
 Meta fields
 -----------
@@ -363,5 +247,109 @@ in directives, fields, or any other artifacts.
 Example Use
 ^^^^^^^^^^^
 
-Since the :code:`_x_count` field can only be used with the :code:`@fold` please see :doc:`@fold
-<query_directives>` for an example use.
+Please see :doc:`@fold <query_directives>` for an example use.
+
+
+Inheritance
+-----------
+
+The compiler uses GraphQL interfaces and GraphQL unions in representing the inheritance structure
+of the underlying schema.
+
+Interfaces
+~~~~~~~~~~
+
+GraphQL interfaces represent the abstract vertices of the underlying database.
+
+.. code::
+
+    interface Entity {
+        _x_count: Int
+        name: String
+        alias: [String]
+        in_Entity_Related: [Entity]
+        out_Entity_Related: [Entity]
+    }
+
+Abstract inheritance is modeled through interface implementation as in the example below:
+
+.. code::
+
+    type Food implements Entity {
+        _x_count: Int
+        name: String
+        alias: [String]
+        in_Entity_Related: [Entity]
+        out_Entity_Related: [Entity]
+        in_Species_Eats: [Species]
+    }
+
+Unions and type_equivalence_hints
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+GraphQL does not support a notion of concrete inheritance. In other words, GraphQL objects cannot
+inherit from other objects. However, for certain query dialects, the compiler needs concrete
+inheritance information to emit the right query.
+
+To model concrete inheritance. we use GraphQL unions to create an union that encompass an object's
+subclasses and a :code:`type_equivalence_hints` parameter to signify that object is equivalent to
+the GraphQL union. Let's look at an example:
+
+Suppose :code:`Food` and :code:`Species` are concrete types and :code:`Food` is a superclass of
+:code:`Species`. Then the schema generation function will generate the following type in the schema
+
+.. code::
+
+    union Union__Food__Species = Food | Species
+
+and an entry in :code:`type_equivalence_hints` mapping :code:`Food` to
+:code:`Union_Food_Species`.
+
+
+Type coercions
+~~~~~~~~~~~~~~
+
+Type coercions are operations than can be run against interfaces and unions to create a new scope
+whose type is different than the type of the enclosing scope of the coercion. Type coercions are
+represented with GraphQL inline fragments.
+
+Example Use
+^^^^^^^^^^^
+
+.. code::
+
+    {
+        Species {
+            name @output(out_name: "species_name")
+            out_Species_Eats {
+                ... on Food {
+                    name @output(out_name: "food_name")
+                }
+            }
+        }
+    }
+
+Here, the :code:`out_Species_Eats` vertex field is of the
+:code:`Union__Food__FoodOrSpecies__Species` union type. To proceed with the
+query, the user must choose which of the types in the
+:code:`Union__Food__FoodOrSpecies__Species` union to use. In this example,
+:code:`... on Food` indicates that the :code:`Food` type was chosen, and any
+vertices at that scope that are not of type :code:`Food` are filtered out
+and discarded.
+
+.. code::
+
+    {
+        Species {
+            name @output(out_name: "species_name")
+            out_Entity_Related {
+                ... on Species {
+                    name @output(out_name: "food_name")
+                }
+            }
+        }
+    }
+
+In this query, the :code:`out_Entity_Related` is of :code:`Entity` type.
+However, the query only wants to return results where the related entity
+is a :code:`Species`, which :code:`... on Species` ensures is the case.
