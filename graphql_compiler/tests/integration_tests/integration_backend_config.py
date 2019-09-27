@@ -39,7 +39,7 @@ REDISGRAPH_BACKENDS = {
 SQL_BACKEND_TO_CONNECTION_STRING = {
     # HACK(bojanserafimov): Entries are commented-out because MSSQL is the only one whose scheme
     #                       initialization is properly configured, with a hierarchy of multiple
-    #                       supported_databases and schemas. I'm keeping the code to remember the connection
+    #                       databases and schemas. I'm keeping the code to remember the connection
     #                       string formats.
     #
     # test_backend.POSTGRES:

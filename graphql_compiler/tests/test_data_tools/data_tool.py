@@ -246,13 +246,13 @@ def init_sql_integration_test_backends():
         # safely create the test DATABASE for all SQL backends except sqlite
         # sqlite's in-memory database does not need to be explicitly created/dropped.
         if backend_name in EXPLICIT_DB_BACKENDS:
-            # Drop supported_databases if they exist
+            # Drop databases if they exist
             engine.execution_options(isolation_level='AUTOCOMMIT').execute(
                 text('DROP DATABASE IF EXISTS db_1;'))
             engine.execution_options(isolation_level='AUTOCOMMIT').execute(
                 text('DROP DATABASE IF EXISTS db_2;'))
 
-            # create the test supported_databases
+            # create the test databases
             engine.execution_options(isolation_level='AUTOCOMMIT').execute(
                 text('CREATE DATABASE db_1;'))
             engine.execution_options(isolation_level='AUTOCOMMIT').execute(
