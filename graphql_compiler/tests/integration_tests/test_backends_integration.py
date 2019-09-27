@@ -365,8 +365,8 @@ class IntegrationTests(TestCase):
         #                       - Our Match backend would represent each result once, even though it
         #                         was reached multiple times by different paths.
         #                       - Our SQL backend would duplicate the output row once for each path
-        #                       - Our Neo4j backend would find all different paths that use each edge
-        #                         at most once, and duplicate the result for each one.
+        #                       - Our Neo4j backend would find all different paths that use each
+        #                         edge at most once, and duplicate the result for each one.
         for graphql_query, expected_results in queries:
             self.assertResultsEqual(graphql_query, parameters, test_backend.MSSQL, expected_results)
 
