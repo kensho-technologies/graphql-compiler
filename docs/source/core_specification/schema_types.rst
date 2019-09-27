@@ -6,9 +6,9 @@ since we will immediately proceed to dissect the schema.
 
 .. TODO: Use a better "documentation" schema. I used a subset of the schema that we used in tests
    because it was the one referenced by all the queries in the Directives section and I can
-   easily modify  the directives section so that it only includes types in this subset. However,
-   it is  a bit more difficult to completely change what schema we are using for documentation.
-   Though this schema is less than ideal for documentation. It is to large and some of types,
+   easily modify the directives section so that it only includes types in this subset. However,
+   it is a bit more difficult to completely change what schema we are using for documentation.
+   Though this schema is less than ideal for documentation. It is too large and some of types,
    like Entity, are not intuitive.
 
 .. code::
@@ -98,12 +98,12 @@ since we will immediately proceed to dissect the schema.
     :code:`graphql.utils.schema_printer` module.
 
 
-Objects and Fields
---------------------------
+Objects types and fields
+------------------------
 
 The core components of a GraphQL schema are GraphQL object types. They conceptually represent the
-concrete vertices in the underlying database. For relational databases, we think of the tables as
-the concrete vertices.
+concrete vertex types in the underlying database. For relational databases, we think of the
+tables as the concrete vertex types.
 
 Lets go over a toy example of a GraphQL object type:
 
@@ -116,8 +116,8 @@ Lets go over a toy example of a GraphQL object type:
 
 Here are some of the details:
 
-- :code:`name` is a **property field** that represents concretes data.
-- :code:`in_Animal_PlaysWith` is a **vertex field** representing an outbound edge.
+- :code:`name` is a **property field** that represents concrete data.
+- :code:`in_Animal_PlaysWith` is a **vertex field** representing an inbound edge.
 - :code:`String` is a built-in GraphQL scalar type.
 - :code:`[Animal]` is a GraphQL list type that represents an array of :code:`Animal`
   objects.
@@ -129,7 +129,7 @@ Directives
 In this section we'll go over how query directives are defined. For information on the available
 query directives and their semantics see :doc:`query directives <query_directives>`.
 
-Let's look at the :code:`@output` directive:
+Lets look at the :code:`@output` directive:
 
 .. code::
 
@@ -141,8 +141,8 @@ Let's look at the :code:`@output` directive:
   directive can only be located next to fields. The compiler might have additional restrictions
   for where a query can be located. See :doc:`query directives <query_directives>` for more info.
 
-Scalars
--------
+Scalar types
+------------
 
 The compiler uses the built-in GraphQL
 `scalar types <https://graphql.org/learn/schema/#scalar-types>`__ as well as three custom scalars:
@@ -155,8 +155,8 @@ The compiler uses the built-in GraphQL
 Query Operation
 ---------------
 
-GraphQL allows for three operation types *query*, *mutation* and *subscription*. The compiler
-only allows query operation types as shown in the code snippet below:
+GraphQL allows for three types *query*, *mutation* and *subscription*. The compiler
+only allows for *query* operation types as shown in the code snippet below:
 
 .. code::
 
@@ -175,7 +175,7 @@ object:
         Food: [Food]
         Species: [Species]
         Toy: [Toy]
-    }s
+    }
 
 Inheritance
 -----------
@@ -217,7 +217,7 @@ GraphQL does not support a notion of concrete inheritance. In other words, Graph
 inherit from other objects. However, for certain query dialects, the compiler needs concrete
 inheritance information to emit the right query.
 
-To model concrete inheritance. we use GraphQL unions that encompass an object's
+To model concrete inheritance, we use GraphQL unions that encompass an object's
 subclasses and a :code:`type_equivalence_hints` parameter to signify that object is equivalent to
 the GraphQL union.
 
