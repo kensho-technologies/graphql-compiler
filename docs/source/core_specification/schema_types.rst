@@ -292,10 +292,10 @@ inheritance information to emit the right query.
 
 To model concrete inheritance. we use GraphQL unions that encompass an object's
 subclasses and a :code:`type_equivalence_hints` parameter to signify that object is equivalent to
-the GraphQL union. Lets look at an example.
+the GraphQL union.
 
-Suppose :code:`Food` and :code:`Species` are concrete types and :code:`Food` is a superclass of
-:code:`Species` in an OrientDB schema. Then the OrientDB schema generation function
+For example, suppose :code:`Food` and :code:`Species` are concrete types and :code:`Food` is a
+superclass of :code:`Species` in an OrientDB schema. Then the OrientDB schema generation function
 would generate an union class in the schema
 
 .. code::
