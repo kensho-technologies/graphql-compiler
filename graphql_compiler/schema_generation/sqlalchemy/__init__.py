@@ -11,7 +11,7 @@ def get_sqlalchemy_schema_info_from_specified_metadata(
 ):
     """Return a SQLAlchemySchemaInfo from the metadata.
 
-    Relational databases are supported by compiling to SQLAlchemy core as an intermediate
+    Relational supported_databases are supported by compiling to SQLAlchemy core as an intermediate
     language, and then relying on SQLAlchemy's compilation of the dialect-specific SQL string to
     query the target database.
 
