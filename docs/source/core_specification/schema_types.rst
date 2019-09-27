@@ -283,8 +283,8 @@ Abstract inheritance is modeled through interface implementation.
         in_Species_Eats: [Species]
     }
 
-Unions and type_equivalence_hints
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Unions and :code:`type_equivalence_hints`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 GraphQL does not support a notion of concrete inheritance. In other words, GraphQL objects cannot
 inherit from other objects. However, for certain query dialects, the compiler needs concrete
