@@ -24,7 +24,16 @@ def sort_db_results(results):
         """Convert None/Not None to avoid comparisons of None to a non-None type."""
         return tuple((result[col] is not None, result[col]) for col in sort_order)
 
-    return sorted(results, key=sort_key)
+    def sorted_value(value):
+        """Return a sorted version of a value, if it is a list."""
+        if isinstance(value, list):
+            return sorted(value)
+        return value
+
+    return sorted([
+        {k: sorted_value(v) for k, v in six.iteritems(row)}
+        for row in results
+    ], key=sort_key)
 
 
 def try_convert_decimal_to_string(value):
