@@ -52,10 +52,6 @@ def compile_and_run_match_query(schema, graphql_query, parameters, orientdb_clie
         row_dict = row.oRecordData
         for output_name, output_info in six.iteritems(compilation_result.output_metadata):
             if output_name not in row_dict:
-                if not output_info.optional:
-                    raise AssertionError(
-                        u'Output {} was not optional, but absent from the output. {} {}'
-                        .format(output_name, graphql_query, parameters))
                 row_dict[output_name] = None
         results.append(row.oRecordData)
     return results
