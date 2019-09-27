@@ -366,6 +366,77 @@ class IntegrationTests(TestCase):
             self.assertResultsEqual(graphql_query, parameters, test_backend.MSSQL, expected_results)
 
     @use_all_backends(except_backends=(
+        test_backend.MSSQL,  # Not implemented yet
+        test_backend.NEO4J,   # Not implemented yet
+        test_backend.REDISGRAPH,  # Not implemented yet
+    ))
+    @integration_fixtures
+    def test_fold_basic(self, backend_name):
+        # (query, args, expected_results) tuples.
+        # The queries are ran in the order specified here.
+        queries = [
+            # Query 1: Unfolded children of Animal 1
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf {
+                        name @output(out_name: "descendant_name")
+                    }
+                }
+            }''', {
+                'starting_animal_name': 'Animal 1',
+            }, [
+                {'descendant_name': 'Animal 1'},
+                {'descendant_name': 'Animal 2'},
+                {'descendant_name': 'Animal 3'},
+            ]),
+            # Query 2: Folded children of Animal 1
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf @fold {
+                        name @output(out_name: "child_names")
+                    }
+                }
+            }''', {
+                'starting_animal_name': 'Animal 1',
+            }, [
+                {'child_names': ['Animal 1', 'Animal 2', 'Animal 3']},
+            ]),
+            # Query 3: Unfolded children of Animal 4
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf {
+                        name @output(out_name: "descendant_name")
+                    }
+                }
+            }''', {
+                'starting_animal_name': 'Animal 4',
+            }, []),
+            # Query 4: Folded children of Animal 4
+            ('''
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf @fold {
+                        name @output(out_name: "child_names")
+                    }
+                }
+            }''', {
+                'starting_animal_name': 'Animal 4',
+            }, [
+                {'child_names': []},
+            ]),
+        ]
+
+        for graphql_query, parameters, expected_results in queries:
+            self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
+
+    @use_all_backends(except_backends=(
         test_backend.REDISGRAPH,  # TODO(bojanserafimov): Resolve syntax error
     ))
     @integration_fixtures
