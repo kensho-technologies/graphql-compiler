@@ -54,6 +54,8 @@ Designed for cross-database querying
    we have been able to build a :doc:`schema stitching <advanced_features/schema_stitching>` system
    that allows for seamless cross-database querying.
 
+.. _getting-started:
+
 Getting Started
 ---------------
 
@@ -74,7 +76,7 @@ database for more instructions on how to generate the necessary schema info.
     )
     from graphql_compiler.schema_generation.orientdb.utils import ORIENTDB_SCHEMA_RECORDS_QUERY
 
-    client = your_function_that_returns_an_orientdb_client()
+    client = your_function_that_returns_a_pyorient_client()
     schema_records = client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [record.oRecordData for record in schema_records]
     schema, type_equivalence_hints = get_graphql_schema_from_orientdb_schema_data(schema_data)

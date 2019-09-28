@@ -46,6 +46,7 @@ since we will immediately proceed to dissect the schema.
     scalar Decimal
 
     type Animal implements Entity {
+        _x_count: Int
         name: String
         alias: [String]
         birthday: Date
@@ -59,6 +60,7 @@ since we will immediately proceed to dissect the schema.
     }
 
     type Food implements Entity {
+        _x_count: Int
         name: String
         alias: [String]
         in_Entity_Related: [Entity]
@@ -67,6 +69,7 @@ since we will immediately proceed to dissect the schema.
     }
 
     type Species implements Entity {
+        _x_count: Int
         name: String
         alias: [String]
         description: String
@@ -78,11 +81,13 @@ since we will immediately proceed to dissect the schema.
     }
 
     type Toy {
+        _x_count: Int
         name: String
         in_Animal_PlaysWith: [Animal]
     }
 
     interface Entity {
+        _x_count: Int
         name: String
         alias: [String]
         in_Entity_Related: [Entity]
@@ -110,6 +115,7 @@ Lets go over a toy example of a GraphQL object type:
 .. code::
 
     type Toy {
+        _x_count: Int
         name: String
         in_Animal_PlaysWith: [Animal]
     }
