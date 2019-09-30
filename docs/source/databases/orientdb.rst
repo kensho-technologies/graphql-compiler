@@ -5,8 +5,7 @@ OrientDB
          edge classes get mapped to OrientDB constructs).
 
 The best way to integrate the compiler with OrientDB is by compiling to MATCH, our name for the
-SQL dialect that OrientDB uses. Since the compiler was originally built to target an OrientDB
-database backend, all query directives are supported when compiling to MATCH. Additionally, since
+SQL dialect that OrientDB uses. All query directives are supported when compiling to MATCH. Additionally, since
 OrientDB is a graph database, generating a GraphQL schema from an OrientDB database requires
 minimal configuration.
 
