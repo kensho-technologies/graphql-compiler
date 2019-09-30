@@ -175,7 +175,7 @@ To learn more about the language specification see:
   available directives and how to use them to create powerful queries.
 
 .. toctree::
-   :caption: Core Specification
+   :caption: Language Specification
    :hidden:
 
    Definitions <language_specification/definitions>
@@ -194,7 +194,7 @@ types of database backends:
 - :doc:`SQL Databases <supported_databases/sql>`, including SQL Server, Postgres and more.
 
 .. toctree::
-   :caption: Databases
+   :caption: Supported Databases
    :hidden:
 
    OrientDB <supported_databases/orientdb>
