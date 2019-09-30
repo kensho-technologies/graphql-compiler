@@ -1322,7 +1322,7 @@ and discarded.
             name @output(out_name: "species_name")
             out_Entity_Related {
                 ... on Species {
-                    name @output(out_name: "food_name")
+                    name @output(out_name: "entity_name")
                 }
             }
         }
