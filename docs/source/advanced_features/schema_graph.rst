@@ -26,7 +26,7 @@ See below for a mock example of how to build and use the
     )
 
     # Get schema metadata from hypothetical Animals database.
-    client = your_function_that_returns_an_orientdb_client()
+    client = your_function_that_returns_a_pyorient_client()
     schema_records = client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [record.oRecordData for record in schema_records]
 
@@ -57,6 +57,6 @@ See below for a mock example of how to build and use the
     print(schema_graph.get_unique_indexes_for_class('Animal'))
     # [IndexDefinition(name='uuid', 'base_classname'='Animal', fields={'uuid'}, unique=True, ordered=False, ignore_nulls=False)]
 
-In the future, we plan to add :code:`SchemaGraph` generation from SQLAlchemy
-metadata. We also plan to add a mechanism where one can query a
-:code:`SchemaGraph` using GraphQL queries.
+We currently support :code:`SchemaGraph` auto-generation for both OrientDB and SQL database
+backends. In the future, we plan to add a mechanism where one can query a :code:`SchemaGraph` using
+GraphQL queries.
