@@ -2282,11 +2282,28 @@ automatically ensure that the macro edge's arguments become part of the expanded
 
 Constraints and rules for macro edge definitions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+- Macro edge definitions cannot use other macros as part of their definition.
+- A macro definition contains exactly one :code:`@macro_edge_definition` and
+  one :code:`@macro_edge_target` directive. These directives can only be used
+  within macro edge definitions.
+- The :code:`@macro_edge_target` cannot be at or within a scope
+  marked :code:`@fold` or :code:`@optional`.
+- The scope marked :code:`@macro_edge_target` cannot immediately contain a type coercion.
+  Instead, place the :code:`@macro_edge_target` directive at the type coercion itself instead of
+  on its enclosing scope.
+- Macros edge definitions cannot contain uses of :code:`@output` or :code:`@output_source`.
 
 
 Constraints and rules for macro edge usage
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+- The :code:`@optional` and :code:`@recurse` directives cannot be used on macro edges.
+- During the process of macro edge expansion, any directives applied on the vertex field belonging
+  to the macro edge are applied to the vertex field marked with :code:`@macro_edge_target` in the
+  macro edge's definition.
 
+In the future, we hope to add support for using :code:`@optional` on macro edges. We have opened
+`a GitHub issue <https://github.com/kensho-technologies/graphql-compiler/issues/586>`_ to track
+this effort, and we welcome contributions!
 
 
 Miscellaneous
