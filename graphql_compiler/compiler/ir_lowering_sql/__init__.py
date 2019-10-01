@@ -90,7 +90,7 @@ class ContextColumn(expressions.Expression):
     def to_sql(self, aliases, current_alias, folded_output_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
         self.validate()
-        return aliases[self._vertex_query_path].c[self._column_name]
+        return aliases[(self._vertex_query_path, None)].c[self._column_name]
 
 
 def _lower_sql_context_field_existence(schema_info, ir_blocks, query_metadata_table):

@@ -346,12 +346,12 @@ class CompilationState(object):
         # append the subquery field to group by/join on
         self._fold_outputs.append(
             self._aliases[fold_scope_location.base_location.at_vertex().query_path, self._fold_location].c[
-                edge.from_column
+                edge.to_column
             ]
         )
         self._fold_group_by.append(
             self._aliases[fold_scope_location.base_location.at_vertex().query_path, self._fold_location].c[
-                edge.from_column
+                edge.to_column
             ]
         )
 
@@ -375,7 +375,7 @@ class CompilationState(object):
         parent_alias = self._aliases[(self._pre_fold_location.query_path, None)] # None because the parent existed outside a fold
         self._from_clause = self._from_clause.outerjoin(
             folded_subquery,
-            onclause=(parent_alias.c[edge.to_column] == folded_subquery.c[edge.from_column])
+            onclause=(parent_alias.c[edge.from_column] == folded_subquery.c[edge.to_column])
         )
 
         # reset the folded subquery

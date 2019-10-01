@@ -491,7 +491,7 @@ class ContextField(Expression):
         if self.location.field is not None:
             if '@' in self.location.field:
                 raise NotImplementedError(u'The SQL backend does not support __typename.')
-            return aliases[self.location.at_vertex().query_path].c[self.location.field]
+            return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
         else:
             raise AssertionError(u'This is a bug. The SQL backend does not use '
                                  u'context fields to point to vertices.')

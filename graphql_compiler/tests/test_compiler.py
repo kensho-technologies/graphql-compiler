@@ -4127,11 +4127,11 @@ class CompilerTests(unittest.TestCase):
                 db_1.schema_1.[Animal] AS [Animal_1]
             LEFT OUTER JOIN (
                 SELECT
-                    array_agg([Animal_1].name) AS fold_output_1,
-                    [Animal_1].parent AS parent
+                    array_agg([Animal_2].name) AS fold_output_1,
+                    [Animal_2].parent AS parent
                 FROM
-                    db_1.schema_1.[Animal] AS [Animal_1]
-                GROUP BY [Animal_1].parent
+                    db_1.schema_1.[Animal] AS [Animal_2]
+                GROUP BY [Animal_2].parent
             ) AS folded_subquery_1
             ON [Animal_1].uuid = folded_subquery_1.parent
         '''
@@ -4194,7 +4194,7 @@ class CompilerTests(unittest.TestCase):
             coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS sibling_and_self_names_list
         FROM db_1.schema_1.[Animal] AS [Animal_1]
         JOIN db_1.schema_1.[Animal] AS [Animal_2]
-        ON [Animal_1].uuid = [Animal_2].parent
+        ON [Animal_1].parent = [Animal_2].uuid
         LEFT OUTER JOIN (
             SELECT
                 array_agg([Animal_3].name) AS fold_output_1,
@@ -4893,6 +4893,7 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
+        # Not working b/c join descriptors for hyper edges not working properly
         expected_sql = '''
         SELECT
             [Animal_1].name AS animal_name,
@@ -7053,7 +7054,7 @@ class CompilerTests(unittest.TestCase):
         FROM db_1.schema_1.[Animal] AS [Animal_1]
         LEFT OUTER JOIN
             db_1.schema_1.[Animal] AS [Animal_2]
-        ON [Animal_1].uuid = [Animal_2].parent
+        ON [Animal_1].parent = [Animal_2].uuid
         LEFT OUTER JOIN (
             SELECT
                 array_agg([Animal_3].name) AS fold_output_1,
