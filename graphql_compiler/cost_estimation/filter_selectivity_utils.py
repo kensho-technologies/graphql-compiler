@@ -335,14 +335,11 @@ def _get_selectivity_of_integer_inequality_filter(
     return field_selectivity
 
 
-def _estimate_inequality_filter_selectivity(
-    schema_graph, statistics, filter_info, parameters, location_name
-):
+def _estimate_inequality_filter_selectivity(schema_info, filter_info, parameters, location_name):
     """Calculate the selectivity of a specific inequality filter at a given location.
 
     Args:
-        schema_graph: SchemaGraph object
-        statistics: Statistics object
+        schema_info: QueryPlanningSchemaInfo
         filter_info: FilterInfo object, inequality filter on the location being filtered
         parameters: dict, parameters with which query will be executed
         location_name: string, type of the location being filtered
@@ -391,9 +388,7 @@ def _estimate_inequality_filter_selectivity(
     return result_selectivity
 
 
-def _estimate_filter_selectivity_of_equality(
-    schema_graph, statistics, location_name, filter_fields
-):
+def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_fields):
     """Calculate the selectivity of equality filter(s) at a given location.
 
     Using the available unique indexes and/or the distinct_field_values_count statistic, this
@@ -401,8 +396,7 @@ def _estimate_filter_selectivity_of_equality(
     Selectivity object.
 
     Args:
-        schema_graph: SchemaGraph object
-        statistics: Statistics object
+        schema_info: QueryPlanningSchemaInfo
         location_name: string, type of the location being filtered
         filter_fields: tuple of str, listing all the fields being filtered over
 
@@ -411,13 +405,14 @@ def _estimate_filter_selectivity_of_equality(
     """
     all_selectivities = []
 
-    unique_indexes = schema_graph.get_unique_indexes_for_class(location_name)
+    unique_indexes = schema_info.schema_graph.get_unique_indexes_for_class(location_name)
     if _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
         # TODO(evan): don't return a higher absolute selectivity than class counts.
         all_selectivities.append(Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0))
 
     for field_name in filter_fields:
-        statistics_result = statistics.get_distinct_field_values_count(location_name, field_name)
+        statistics_result = schema_info.statistics.get_distinct_field_values_count(
+            location_name, field_name)
 
         if statistics_result is not None:
             # Assumption: all distinct field values are distributed evenly among vertex instances,
@@ -431,14 +426,11 @@ def _estimate_filter_selectivity_of_equality(
     return result_selectivity
 
 
-def _get_filter_selectivity(
-    schema_graph, statistics, filter_info, parameters, location_name
-):
+def _get_filter_selectivity(schema_info, filter_info, parameters, location_name):
     """Calculate the selectivity of an individual filter at a given location.
 
     Args:
-        schema_graph: SchemaGraph object
-        statistics: Statistics object
+        schema_info: QueryPlanningSchemaInfo
         filter_info: FilterInfo object, filter on the location being filtered
         parameters: dict, parameters with which query will be executed
         location_name: string, type of the location being filtered
@@ -452,15 +444,13 @@ def _get_filter_selectivity(
 
     if filter_info.op_name == '=':
         result_selectivity = _estimate_filter_selectivity_of_equality(
-            schema_graph, statistics, location_name, filter_info.fields
-        )
+            schema_info, location_name, filter_info.fields)
     elif filter_info.op_name == 'in_collection':
         collection_name = get_parameter_name(filter_info.args[0])
         collection_size = len(parameters[collection_name])
 
         selectivity_per_entry_in_collection = _estimate_filter_selectivity_of_equality(
-            schema_graph, statistics, location_name, filter_info.fields
-        )
+            schema_info, location_name, filter_info.fields)
 
         # Assumption: the selectivity is proportional to the number of entries in the collection.
         # This will not hold in case of duplicates.
@@ -484,8 +474,7 @@ def _get_filter_selectivity(
         #             FilterSelectivityTests/test_inequality_filters_on_uuid function for further
         #             information.
         result_selectivity = _estimate_inequality_filter_selectivity(
-            schema_graph, statistics, filter_info, parameters, location_name
-        )
+            schema_info, filter_info, parameters, location_name)
 
     return result_selectivity
 
@@ -518,14 +507,11 @@ def _combine_filter_selectivities(selectivities):
     return Selectivity(kind=combined_selectivity_kind, value=combined_selectivity_value)
 
 
-def adjust_counts_for_filters(
-    schema_graph, statistics, filter_infos, parameters, location_name, counts
-):
+def adjust_counts_for_filters(schema_info, filter_infos, parameters, location_name, counts):
     """Adjust result counts for filters on a given location by calculating selectivities.
 
     Args:
-        schema_graph: SchemaGraph object
-        statistics: Statistics object
+        schema_info: QueryPlanningSchemaInfo
         filter_infos: list of FilterInfos, filters on the location being filtered
         parameters: dict, parameters with which query will be executed
         location_name: string, type of the location being filtered
@@ -535,9 +521,7 @@ def adjust_counts_for_filters(
         float, counts updated for filter selectivities.
     """
     selectivities = [
-        _get_filter_selectivity(
-            schema_graph, statistics, filter_info, parameters, location_name
-        )
+        _get_filter_selectivity(schema_info, filter_info, parameters, location_name)
         for filter_info in filter_infos
     ]
 
