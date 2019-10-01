@@ -102,6 +102,22 @@ def _find_folded_outputs(ir):
     return folded_outputs
 
 
+class UniqueAliasGenerator(object):
+    def __init__(self):
+        self._folded_output_count = 1
+        self._fold_count = 1
+
+    def gen_subquery(self):
+        alias = "folded_subquery_{}".format(self._fold_count)
+        self._fold_count += 1
+        return alias
+
+    def gen_output_column(self):
+        alias = "fold_output_{}".format(self._folded_output_count)
+        self._folded_output_count += 1
+        return alias
+
+
 class CompilationState(object):
     """Mutable class used to keep track of state while emitting a sql query."""
 
@@ -117,7 +133,7 @@ class CompilationState(object):
         # Current query location state. Only mutable by calling _relocate.
         self._current_location = None  # the current location in the query. None means global.
         self._current_alias = None  # a sqlalchemy table Alias at the current location
-        # TODO: keys should be (query_path, fold_path). Aliases not inside a fold, fold_path = None
+        # TODO: keys are (query_path, fold_path). Aliases not inside a fold, fold_path = None
         self._aliases = {}  # mapping marked query paths to table _Aliases representing them
         self._relocate(ir.query_metadata_table.root_location)
         self._came_from = {}  # mapping aliases to the column used to join into them.
@@ -140,8 +156,7 @@ class CompilationState(object):
 
         # Information to keep track of fold aliases
         self._folded_output_aliases = {}  # mapping FoldScopeLocations to their intermediate alias
-        self._folded_output_count = 1
-        self._fold_count = 1
+        self._alias_generator = UniqueAliasGenerator()
 
     def _relocate(self, new_location):
         """Move to a different location in the query, updating the _alias."""
@@ -329,9 +344,8 @@ class CompilationState(object):
                 # create an intermediate output name, store the alias, and increment the counter
                 # for the next intermediate alias
                 # TODO: give better fold output names
-                intermediate_fold_output_name = "fold_output_{}".format(self._folded_output_count)
+                intermediate_fold_output_name = self._alias_generator.gen_output_column()
                 self._folded_output_aliases[fold_output] = intermediate_fold_output_name
-                self._folded_output_count += 1
                 # add array aggregated intermediate output to self._fold_outputs
                 self._fold_outputs.append(
                     sqlalchemy.func.array_agg(
@@ -365,8 +379,7 @@ class CompilationState(object):
             self._fold_from_clause
         ).group_by(
             *self._fold_group_by
-        ).alias("folded_subquery_{}".format(self._fold_count))  # TODO: give better subquery names
-        self._fold_count += 1
+        ).alias(self._alias_generator.gen_subquery())  # TODO: give better subquery names
         self._aliases[(self._fold_location.fold_path, None)] = folded_subquery
 
         # left join to the self._from_clause on self._fold_join_vertex_field
