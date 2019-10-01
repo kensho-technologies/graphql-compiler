@@ -92,7 +92,7 @@ class Statistics(object):
 
         Returns:
             None or a sorted list of N quantiles dividing the values of the field
-            into N-1 groups of equal size. The first element of the list is the smallest
+            into N-1 groups of almost equal size. The first element of the list is the smallest
             known value, and the last element is the largest known value.
         """
         return None
@@ -119,10 +119,13 @@ class LocalStatistics(Statistics):
                                           values of that vertex class's property field.
             field_quantiles: optional dict, (str, str) -> list, mapping vertex class name
                              and property field name to a list of N quantiles, a sorted list of
-                             values seperating the values of the field into N-1 groups of equal
-                             size. The first element of the list is the smallest known value,
-                             and the last element is the largest known value. The number N can be
-                             different for each entry.
+                             values separating the values of the field into N-1 groups of almost
+                             equal size. The first element of the list is the smallest known value,
+                             and the last element is the largest known value. Generally, the i-th
+                             element is a value greater than around i/N of all present values.
+                             The number N can be different for each entry. When a table has very
+                             few values, or no data is available, it is better not to provide
+                             information than to provide interpolated information.
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
