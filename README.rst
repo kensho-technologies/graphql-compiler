@@ -2195,7 +2195,7 @@ Advanced macro edges use cases
 When defining macro edges, one may freely use other compiler query functionality,
 such as :code:`@recurse`, :code:`@filter`, :code:`@tag`, and so on. Here is a more complex
 macro edge definition that relies on such more advanced features to define an edge
-that connects :code:`Animal` vertices to their siblings who are both older an have a
+that connects :code:`Animal` vertices to their siblings who are both older and have a
 higher net worth:
 
 .. code:: python
