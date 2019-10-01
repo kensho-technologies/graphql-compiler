@@ -121,11 +121,9 @@ class LocalStatistics(Statistics):
                              and property field name to a list of N quantiles, a sorted list of
                              values separating the values of the field into N-1 groups of almost
                              equal size. The first element of the list is the smallest known value,
-                             and the last element is the largest known value. Generally, the i-th
-                             element is a value greater than around i/N of all present values.
-                             The number N can be different for each entry. When a table has very
-                             few values, or no data is available, it is better not to provide
-                             information than to provide interpolated information.
+                             and the last element is the largest known value. The i-th
+                             element is a value greater than or equal to aroune i/N of all present
+                             values. The number N can be different for each entry.
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
