@@ -19,7 +19,7 @@ QueryStringWithParameters = namedtuple(
 )
 
 
-def paginate_query_ast(schema_graph, statistics, query_ast, parameters, page_size):
+def paginate_query_ast(schema_info, query_ast, parameters, page_size):
     """Generate a query fetching a page of results and the remainder query for a query AST.
 
     Since the cost estimator may underestimate or overestimate the actual number of pages, you
@@ -27,8 +27,7 @@ def paginate_query_ast(schema_graph, statistics, query_ast, parameters, page_siz
     magnitude of the estimate.
 
     Args:
-        schema_graph: SchemaGraph instance.
-        statistics: Statistics object.
+        schema_info: QueryPlanningSchemaInfo
         query_ast: Document, AST of the GraphQL query that is being paginated.
         parameters: dict, parameters with which query will be estimated.
         page_size: int, describes the desired number of result rows per page.
@@ -58,18 +57,15 @@ def paginate_query_ast(schema_graph, statistics, query_ast, parameters, page_siz
     # HACK(vlad): Since the current cost estimator expects GraphQL queries given as a string, we
     #             print the given AST and provide that to the cost estimator.
     graphql_query_string = print_ast(query_ast)
-    num_pages = estimate_number_of_pages(
-        schema_graph, statistics, graphql_query_string, parameters, page_size
-    )
+    num_pages = estimate_number_of_pages(schema_info, graphql_query_string, parameters, page_size)
     if num_pages > 1:
         result_queries = split_into_page_query_and_remainder_query(
-            schema_graph, statistics, query_ast, parameters, num_pages
-        )
+            schema_info, query_ast, parameters, num_pages)
 
     return result_queries
 
 
-def paginate_query(schema_graph, statistics, query_string, parameters, page_size):
+def paginate_query(schema_info, query_string, parameters, page_size):
     """Generate a query fetching a page of results and the remainder query for a query string.
 
     Since the cost estimator may underestimate or overestimate the actual number of pages, you
@@ -77,6 +73,7 @@ def paginate_query(schema_graph, statistics, query_string, parameters, page_size
     magnitude of the estimate.
 
     Args:
+        schema_info: QueryPlanningSchemaInfo
         schema_graph: SchemaGraph instance.
         statistics: Statistics object.
         query_string: str, valid GraphQL query to be paginated.
@@ -95,8 +92,7 @@ def paginate_query(schema_graph, statistics, query_string, parameters, page_size
     query_ast = safe_parse_graphql(query_string)
 
     next_page_ast_with_parameters, remainder_ast_with_parameters = paginate_query_ast(
-        schema_graph, statistics, query_ast, parameters, page_size
-    )
+        schema_info, query_ast, parameters, page_size)
 
     page_query_with_parameters = QueryStringWithParameters(
         print_ast(next_page_ast_with_parameters.query_ast),

@@ -3,6 +3,7 @@ from ...schema.schema_info import SQLAlchemySchemaInfo
 from ..graphql_schema import get_graphql_schema_from_schema_graph
 from .edge_descriptors import get_join_descriptors_from_edge_descriptors, validate_edge_descriptors
 from .schema_graph_builder import get_sqlalchemy_schema_graph
+from .utils import validate_that_tables_have_primary_keys
 
 
 def get_sqlalchemy_schema_info_from_specified_metadata(
@@ -50,6 +51,8 @@ def get_sqlalchemy_schema_info_from_specified_metadata(
         SQLAlchemySchemaInfo containing the full information needed to compile SQL queries.
     """
     validate_edge_descriptors(vertex_name_to_table, direct_edges)
+    validate_that_tables_have_primary_keys(vertex_name_to_table.values())
+
     schema_graph = get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges)
 
     # Since there will be no inheritance in the GraphQL schema, it is simpler to omit the class.

@@ -56,11 +56,12 @@ setup(
     author_email='graphql-compiler-maintainer@kensho.com',
     license='Apache 2.0',
     packages=find_packages(exclude=['tests*']),
-    install_requires=[
-        'arrow>=0.7.0,<1',
-        'funcy>=1.6,<2',
+    install_requires=[  # Make sure to keep in sync with Pipfile requirements.
+        'arrow>=0.10.0,<1',
+        'frozendict>=1.2,<2',
+        'funcy>=1.7.3,<2',
         'graphql-core>=2.1,<3',
-        'pytz>=2016.10',
+        'pytz>=2017.2',
         'six>=1.10.0',
         'sqlalchemy>=1.3.0,<2',
     ],
