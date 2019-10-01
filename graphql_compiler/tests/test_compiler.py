@@ -806,6 +806,8 @@ class CompilerTests(unittest.TestCase):
                           m.Animal__out_Animal_ParentOf___1.uuid : null)
             ])}
         '''
+        # I am getting different behavior between this and the test on line 7128 in terms of the cols used in the
+        # join predicate
         expected_sql = '''
             SELECT
                 [Animal_1].name AS animal_name,
@@ -4195,10 +4197,10 @@ class CompilerTests(unittest.TestCase):
         ON [Animal_1].uuid = [Animal_2].parent
         LEFT OUTER JOIN (
             SELECT
-                array_agg([Animal_2].name) AS fold_output_1,
-                [Animal_2].parent AS parent
-            FROM db_1.schema_1.[Animal] AS [Animal_2]
-            GROUP BY [Animal_2].parent
+                array_agg([Animal_3].name) AS fold_output_1,
+                [Animal_3].parent AS parent
+            FROM db_1.schema_1.[Animal] AS [Animal_3]
+            GROUP BY [Animal_3].parent
         ) AS folded_subquery_1
         ON [Animal_2].uuid = folded_subquery_1.parent'''
         expected_cypher = '''
@@ -4773,7 +4775,32 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         # TODO: needs alias dictionary keys update to work
-        expected_sql = SKIP_TEST
+        expected_sql = '''
+                    SELECT
+                        [Animal_1].name AS animal_name,
+                        coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS child_birthdays_list,
+                        coalesce(folded_subquery_2.fold_output_1, ARRAY[]::VARCHAR[]) AS fed_at_datetimes_list
+                    FROM
+                        db_1.schema_1.[Animal] AS [Animal_1]
+                    LEFT OUTER JOIN (
+                        SELECT
+                            array_agg([Animal_1].birthday) AS fold_output_1,
+                            [Animal_1].parent AS parent
+                        FROM
+                            db_1.schema_1.[Animal] AS [Animal_1]
+                        GROUP BY [Animal_1].parent
+                    ) AS folded_subquery_1
+                    ON [Animal_1].uuid = folded_subquery_1.parent
+                    LEFT OUTER JOIN (
+                        SELECT
+                            array_agg([FeedingEvent_1].event_date) AS fold_output_2,
+                            [FeedingEvent_1].uuid AS uuid
+                        FROM
+                            db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
+                        GROUP BY [FeedingEvent_1].uuid
+                    ) AS folded_subquery_2
+                    ON [Animal_1].fed_at = folded_subquery_1.uuid
+                '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_FedAt]->(Animal__out_Animal_FedAt___1:FeedingEvent)
@@ -4873,10 +4900,10 @@ class CompilerTests(unittest.TestCase):
         FROM db_1.schema_1.[Animal] AS [Animal_1]
         LEFT OUTER JOIN (
             SELECT
-                array_agg([Animal_1].name) AS fold_output_1,
-                [Animal_1].related_entity AS related_entity
-            FROM db_1.schema_1.[Animal] AS [Animal_1]
-            GROUP BY [Animal_1].related_entity
+                array_agg([Entity_1].name) AS fold_output_1,
+                [Entity_1].related_entity AS related_entity
+            FROM db_1.schema_1.[Entity] AS [Entity_1]
+            GROUP BY [Entity_1].related_entity
         ) AS folded_subquery_1
         ON [Animal_1].uuid = folded_subquery_1.related_entity'''
         expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
@@ -7029,10 +7056,10 @@ class CompilerTests(unittest.TestCase):
         ON [Animal_1].uuid = [Animal_2].parent
         LEFT OUTER JOIN (
             SELECT
-                array_agg([Animal_1].name) AS fold_output_1,
-                [Animal_1].parent AS parent
-            FROM db_1.schema_1.[Animal] AS [Animal_1]
-            GROUP BY [Animal_1].parent
+                array_agg([Animal_3].name) AS fold_output_1,
+                [Animal_3].parent AS parent
+            FROM db_1.schema_1.[Animal] AS [Animal_3]
+            GROUP BY [Animal_3].parent
         ) AS folded_subquery_1
         ON [Animal_1].uuid = folded_subquery_1.parent'''
         expected_cypher = '''
@@ -7117,15 +7144,15 @@ class CompilerTests(unittest.TestCase):
         FROM db_1.schema_1.[Animal] AS [Animal_1]
         LEFT OUTER JOIN (
             SELECT
-                array_agg([Animal_1].name) AS fold_output_1,
-                [Animal_1].parent AS parent
-            FROM db_1.schema_1.[Animal] AS [Animal_1]
-            GROUP BY [Animal_1].parent
+                array_agg([Animal_3].name) AS fold_output_1,
+                [Animal_3].parent AS parent
+            FROM db_1.schema_1.[Animal] AS [Animal_3]
+            GROUP BY [Animal_3].parent
         ) AS folded_subquery_1
         ON [Animal_1].uuid = folded_subquery_1.parent
         LEFT OUTER JOIN
             db_1.schema_1.[Animal] AS [Animal_2]
-        ON [Animal_1].uuid = [Animal_2].parent'''
+        ON [Animal_1].parent = [Animal_2].uuid'''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)

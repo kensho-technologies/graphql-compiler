@@ -136,6 +136,7 @@ class CompilationState(object):
         self._pre_fold_location = None  # the current Location prior to fold
         self._fold_location = None  # the fold's FoldScopeLocation
         self._fold_join_vertex_field = None  # field to perform LEFT JOIN on
+        self._fold_location_info = None # This tells us the vertex that we are folding on
 
         # Information to keep track of fold aliases
         self._folded_output_aliases = {}  # mapping FoldScopeLocations to their intermediate alias
@@ -145,12 +146,23 @@ class CompilationState(object):
     def _relocate(self, new_location):
         """Move to a different location in the query, updating the _alias."""
         self._current_location = new_location
-        if self._current_location.query_path in self._aliases:
-            self._current_alias = self._aliases[self._current_location.query_path]
+        if (self._current_location.query_path, None) in self._aliases:
+            self._current_alias = self._aliases[(self._current_location.query_path, None)]
         else:
             self._current_alias = (
                 self._sql_schema_info.vertex_name_to_table[self._current_classname].alias()
             )
+
+    def _fold_relocate(self, new_location):
+        """Move to a different location in the query, updating the _alias."""
+        self._current_location = new_location
+        if (self._current_location.query_path, self._fold_location) in self._aliases:
+            self._current_alias = self._aliases[(self._current_location.query_path, self._fold_location)]
+        else:
+            self._current_alias = (
+                self._sql_schema_info.vertex_name_to_table[self._fold_location_info.type.name].alias()
+            )
+            self._aliases[(self._current_location.query_path, self._fold_location)] = self._current_alias
 
     def _join_to_parent_location(self, parent_alias, from_column, to_column, optional):
         """Join the current location to the parent location using the column names specified."""
@@ -178,7 +190,7 @@ class CompilationState(object):
         # Join to where we came from
         self._from_clause = self._from_clause.join(
             self._current_alias,
-            onclause=(parent_alias.c[from_column] == self._current_alias.c[to_column]),
+            onclause=(parent_alias.c[from_column] == self._current_alias.c[to_column]), # modified to use the same indexing as in the fold method
             isouter=self._is_in_optional_scope())
 
     @property
@@ -292,12 +304,22 @@ class CompilationState(object):
         if self._fold_from_clause or self._in_fold:
             raise AssertionError(u'Reached an invalid fold state.')
 
+
         # begin the fold
         self._in_fold = True
         self._pre_fold_location = self._current_location
         self._fold_location = fold_scope_location
-        self._relocate(fold_scope_location.base_location)
+        self._fold_location_info = self._ir.query_metadata_table.get_location_info(fold_scope_location)
+        self._fold_relocate(fold_scope_location.base_location)
         self._fold_from_clause = self._current_alias
+
+        # collect edge information to join the fold subquery to the main selectable
+        edge_direction = fold_scope_location.fold_path[0][0]
+        edge_name = fold_scope_location.fold_path[0][1]
+        self._fold_join_vertex_field = "{}_{}".format(edge_direction, edge_name)
+        edge = self._sql_schema_info.join_descriptors[
+            self._current_classname][self._fold_join_vertex_field]
+
 
         # find outputs for this fold in self._all_folded_outputs and add to self._fold_outputs
         if fold_scope_location.fold_path in self._all_folded_outputs:
@@ -314,26 +336,21 @@ class CompilationState(object):
                 self._fold_outputs.append(
                     sqlalchemy.func.array_agg(
                         self._aliases[(
-                            fold_output.base_location.at_vertex().query_path
+                            fold_output.base_location.at_vertex().query_path, self._fold_location
                         )].c[fold_output.field]
                     ).label(intermediate_fold_output_name)
                 )
 
-        # collect edge information to join the fold subquery to the main selectable
-        edge_direction = fold_scope_location.fold_path[0][0]
-        edge_name = fold_scope_location.fold_path[0][1]
-        self._fold_join_vertex_field = "{}_{}".format(edge_direction, edge_name)
-        edge = self._sql_schema_info.join_descriptors[
-            self._current_classname][self._fold_join_vertex_field]
+
 
         # append the subquery field to group by/join on
         self._fold_outputs.append(
-            self._aliases[fold_scope_location.base_location.at_vertex().query_path].c[
+            self._aliases[fold_scope_location.base_location.at_vertex().query_path, self._fold_location].c[
                 edge.from_column
             ]
         )
         self._fold_group_by.append(
-            self._aliases[fold_scope_location.base_location.at_vertex().query_path].c[
+            self._aliases[fold_scope_location.base_location.at_vertex().query_path, self._fold_location].c[
                 edge.from_column
             ]
         )
@@ -350,12 +367,12 @@ class CompilationState(object):
             *self._fold_group_by
         ).alias("folded_subquery_{}".format(self._fold_count))  # TODO: give better subquery names
         self._fold_count += 1
-        self._aliases[self._fold_location.fold_path] = folded_subquery
+        self._aliases[(self._fold_location.fold_path, None)] = folded_subquery
 
         # left join to the self._from_clause on self._fold_join_vertex_field
         edge = self._sql_schema_info.join_descriptors[
             self._current_classname][self._fold_join_vertex_field]
-        parent_alias = self._aliases[self._pre_fold_location.query_path]
+        parent_alias = self._aliases[(self._pre_fold_location.query_path, None)] # None because the parent existed outside a fold
         self._from_clause = self._from_clause.outerjoin(
             folded_subquery,
             onclause=(parent_alias.c[edge.to_column] == folded_subquery.c[edge.from_column])
@@ -369,10 +386,10 @@ class CompilationState(object):
         self._fold_location = None
         self._fold_group_by = []
         self._fold_join_vertex_field = None
-
+        self._current_alias = parent_alias
     def mark_location(self):
         """Execute a MarkLocation Block."""
-        self._aliases[self._current_location.query_path] = self._current_alias
+        self._aliases[(self._current_location.query_path, self._fold_location if self._in_fold else None)] = self._current_alias
 
     def construct_result(self, output_name, field):
         """Execute a ConstructResult Block."""

@@ -1857,11 +1857,11 @@ def fold_date_and_datetime_fields():  # noqa: D103
     graphql_input = '''{
         Animal {
             name @output(out_name: "animal_name")
-            out_Animal_ParentOf @fold {
-                birthday @output(out_name: "child_birthdays_list")
-            }
             out_Animal_FedAt @fold {
                 event_date @output(out_name: "fed_at_datetimes_list")
+            }
+            out_Animal_ParentOf @fold {
+                birthday @output(out_name: "child_birthdays_list")
             }
         }
     }'''

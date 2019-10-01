@@ -605,7 +605,7 @@ class OutputContextField(Expression):
         if '@' in self.location.field:
             raise NotImplementedError(u'The sql backend does not support typename.')
 
-        return aliases[self.location.at_vertex().query_path].c[self.location.field]
+        return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
@@ -736,7 +736,7 @@ class FoldedContextField(Expression):
         empty_array = 'ARRAY[]::{}[]'.format(sql_array_type)
         return sqlalchemy.func.coalesce(
             aliases[
-                self.fold_scope_location.fold_path].c[folded_output_aliases[self.fold_scope_location]],
+                self.fold_scope_location.fold_path, None].c[folded_output_aliases[self.fold_scope_location]],
             sqlalchemy.literal_column(empty_array)
         )
 
