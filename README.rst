@@ -1971,6 +1971,9 @@ for each table and to use only SQL types allowed for the dialect specified in th
 Macro system
 ------------
 
+The macro system allows users to reshape how they *perceive* their data, without requiring changes
+to the underlying database structures themselves.
+
 In many real-life situations, the database schema does not fit the user's mental model of the data.
 There are many causes of this, the most common one being database normalization.
 The representation of the data that is convenient for storage within a database is rarely
@@ -1989,8 +1992,10 @@ data structure that tracks all currently available macros, the resulting GraphQL
 (accounting for macros), and any additional metadata needed by the compiler.
 The compiler then leverages this registry to expand queries that rely on macros,
 rewriting them into equivalent queries that do not contain any macros and therefore
-reflect the actual underlying data model. This makes them somewhat similar
-to SQL's idea of non-materialized views, though there are some key differences:
+reflect the actual underlying data model.
+
+This makes macros somewhat similar to SQL's idea of non-materialized views,
+though there are some key differences:
 
 - SQL views require database access and special permissions; databases are
   completely oblivious to the use of macros since by the time the database gets the query,
@@ -2004,8 +2009,8 @@ to SQL's idea of non-materialized views, though there are some key differences:
   seamlessly with all databases and even on schemas stitched together from multiple databases.
   In contrast, not all databases support SQL-like :code:`VIEW` functionality.
 
-At the moment, the compiler supports one type of macro, `macro edges <Macro edges>`_.
-We hope to add more types of macros in the future.
+Currently, the compiler supports one type of macro, `macro edges <Macro edges>`_.
+More types of macros are coming in the future.
 
 Macro registry
 ~~~~~~~~~~~~~~
