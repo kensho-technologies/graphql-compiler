@@ -265,142 +265,6 @@ def _get_query_interval_of_integer_inequality_filter(parameter_values, filter_op
     return query_interval
 
 
-def _get_selectivity_of_integer_inequality_filter(
-    domain_interval, parameter_values, filter_operator
-):
-    """Return the selectivity of a given integer inequality filter filtering over a given interval.
-
-    First, we represent the filter being done in terms of the set of numbers that pass through the
-    given filter as an IntegerInterval. If a lower or upper bound does not exist, this is indicated
-    using None in the interval representation. For example, a '<' filter with a parameter value of 4
-    would be represented as (None, 4).
-    After this, we find the intersection of the domain being filtered and the filter interval.
-    The larger the intersection relative to the domain interval, the higher the selectivity. For
-    example, if the intersection is half as big as the domain interval, this will correspond to a
-    Fractional Selectivity with a selectivity factor of 0.5 (i.e. roughly 50% of elements pass
-    through the filter).
-
-    Args:
-        domain_interval: IntegerInterval namedtuple, describing the finite non-empty interval
-                         of integers being filtered.
-        parameter_values: List[int], describing the parameters for the inequality filter.
-        filter_operator: str, describing the inequality filter operation being performed.
-
-    Returns:
-        Selectivity object, describing the selectivity of the integer inequality filter.
-
-    Raises:
-        ValueError if:
-            - The domain interval's lower or upper bound is not defined.
-            - The domain interval is empty i.e. its lower bound is greater than its upper bound.
-    """
-    if domain_interval.lower_bound is None or domain_interval.upper_bound is None:
-        raise ValueError(u'Expected domain interval {} to have both a lower and upper bound.'
-                         .format(domain_interval))
-    if domain_interval.lower_bound > domain_interval.upper_bound:
-        raise ValueError(u'Received empty domain interval {}.'.format(domain_interval))
-
-    query_interval = _get_query_interval_of_integer_inequality_filter(
-        parameter_values, filter_operator
-    )
-
-    if query_interval is None:
-        field_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=0.0)
-        return field_selectivity
-
-    intersection = _get_intersection_of_intervals(domain_interval, query_interval)
-
-    # If the interval of values passing through the filters is empty, no results will be
-    # returned. This happens if the interval's upper bound is smaller than the lower bound.
-    if intersection is None:
-        field_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=0.0)
-        return field_selectivity
-
-    if (
-        not domain_interval.lower_bound <= intersection.lower_bound <=
-            intersection.upper_bound <= domain_interval.upper_bound
-    ):
-        raise AssertionError(u'Intersection between domain interval and query interval {} is not '
-                             u'a subset of the given domain interval {}.'
-                             .format(intersection, domain_interval))
-
-    # Assumption: the values of the integers being filtered are evenly distributed among the domain
-    # of valid values.
-    intersection_size = intersection.upper_bound - intersection.lower_bound + 1
-    domain_interval_size = domain_interval.upper_bound - domain_interval.lower_bound + 1
-
-    # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
-    # pylint: disable=old-division
-    #
-    fraction_of_domain_queried = float(intersection_size) / domain_interval_size
-    # pylint: enable=old-division
-
-    field_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried)
-    return field_selectivity
-
-
-def _estimate_inequality_filter_selectivity(schema_info, filter_info, parameters, location_name):
-    """Calculate the selectivity of a specific inequality filter at a given location.
-
-    Args:
-        schema_info: QueryPlanningSchemaInfo
-        filter_info: FilterInfo object, inequality filter on the location being filtered
-        parameters: dict, parameters with which query will be executed
-        location_name: string, type of the location being filtered
-
-    Returns:
-        Selectivity object, the selectivity of a specific inequality filter at a given location.
-
-    Raises:
-        ValueError if the received filter is not an inequality filter.
-    """
-    filter_operator = filter_info.op_name
-    if filter_operator not in INEQUALITY_OPERATORS:
-        raise ValueError(u'Inequality filter selectivity estimator received a filter '
-                         u'with non-inequality filter operator {}: {} {}'
-                         .format(filter_operator, filter_info, location_name))
-
-    all_selectivities = []
-    for field_name in filter_info.fields:
-        field_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
-        parameter_values = [
-            parameters[get_parameter_name(filter_argument)]
-            for filter_argument in filter_info.args
-        ]
-
-        # TODO(vlad): Improve inequality estimation by implementing histograms.
-        # HACK(vlad): Currently, each UUID is assumed to have a name of 'uuid'. Using the schema
-        #             graph for knowledge about UUID fields would generalize better.
-        # XXX better infer if the field is a uuid
-        if field_name == 'uuid':
-            uuid_domain = IntegerInterval(MIN_UUID_INT, MAX_UUID_INT)
-
-            # Instead of working with UUIDs, we convert each occurence of UUID to its corresponding
-            # integer representation.
-            parameter_values_as_integers = [
-                _convert_uuid_string_to_int(vale) for value in parameter_values
-            ]
-
-            # Assumption: UUID values are uniformly distributed among the set of valid UUIDs.
-            # This implies e.g. if the query interval is half the size of the set of all valid
-            # UUIDs, the Selectivity will be Fractional with a selectivity value of 0.5.
-            field_selectivity = _get_selectivity_of_integer_inequality_filter(
-                uuid_domain, parameter_values_as_integers, filter_operator
-            )
-        elif False:  # XXX see if field is an integer
-            int_domain = None  # unbounded
-
-            field_selectivity = _get_selectivity_of_integer_inequality_filter(
-
-            )
-            pass  # XXX use histogram
-
-        all_selectivities.append(field_selectivity)
-
-    result_selectivity = _combine_filter_selectivities(all_selectivities)
-    return result_selectivity
-
-
 def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_fields):
     """Calculate the selectivity of equality filter(s) at a given location.
 
@@ -440,59 +304,6 @@ def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_
     return result_selectivity
 
 
-def _get_filter_selectivity(schema_info, filter_info, parameters, location_name):
-    """Calculate the selectivity of an individual filter at a given location.
-
-    Args:
-        schema_info: QueryPlanningSchemaInfo
-        filter_info: FilterInfo object, filter on the location being filtered
-        parameters: dict, parameters with which query will be executed
-        location_name: string, type of the location being filtered
-
-    Returns:
-        Selectivity object, the selectivity of a specific filter at a given location.
-    """
-    result_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
-    # TODO(vlad): Support for inequality operators like '>', '<', 'between' using histograms
-    # TODO(vlad): Support for other filters like '!='
-
-    if filter_info.op_name == '=':
-        result_selectivity = _estimate_filter_selectivity_of_equality(
-            schema_info, location_name, filter_info.fields)
-    elif filter_info.op_name == 'in_collection':
-        collection_name = get_parameter_name(filter_info.args[0])
-        collection_size = len(parameters[collection_name])
-
-        selectivity_per_entry_in_collection = _estimate_filter_selectivity_of_equality(
-            schema_info, location_name, filter_info.fields)
-
-        # Assumption: the selectivity is proportional to the number of entries in the collection.
-        # This will not hold in case of duplicates.
-        if _is_absolute(selectivity_per_entry_in_collection):
-            result_selectivity = Selectivity(
-                kind=ABSOLUTE_SELECTIVITY,
-                value=float(collection_size) * selectivity_per_entry_in_collection.value
-            )
-        elif _is_fractional(selectivity_per_entry_in_collection):
-            result_selectivity = Selectivity(
-                kind=FRACTIONAL_SELECTIVITY,
-                value=min(float(collection_size) * selectivity_per_entry_in_collection.value,
-                          1.0)
-                # The estimate may be above 1.0 in case of duplicates in the collection
-                # so we make sure the value is <= 1.0
-            )
-    elif filter_info.op_name in INEQUALITY_OPERATORS:
-        # TODO(vlad): Since we assume each filter is independent, we don't consider the correlation
-        #             inequality filters often have. For example, a 'between' filter and an
-        #             equivalent pair of '>=' and '<=' are estimated differently. Consult the
-        #             FilterSelectivityTests/test_inequality_filters_on_uuid function for further
-        #             information.
-        result_selectivity = _estimate_inequality_filter_selectivity(
-            schema_info, filter_info, parameters, location_name)
-
-    return result_selectivity
-
-
 def _combine_filter_selectivities(selectivities):
     """Calculate the combined selectivity given a set of selectivities.
 
@@ -525,8 +336,8 @@ def _get_field_type(schema_info, vertex_name, field_name):
     return schema_info.schema.get_type(vertex_name).fields[field_name].type.name
 
 
-def adjust_counts_for_filters(schema_info, filter_infos, parameters, location_name, counts):
-    """Adjust result counts for filters on a given location by calculating selectivities.
+def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, location_name):
+    """Get the combined selectivity of all filters at the vertex.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
@@ -536,7 +347,7 @@ def adjust_counts_for_filters(schema_info, filter_infos, parameters, location_na
         counts: float, result count that we're adjusting for filters
 
     Returns:
-        float, counts updated for filter selectivities.
+        Selectivity object
     """
     # Group filters by field
     single_field_filters = {}
@@ -558,17 +369,17 @@ def adjust_counts_for_filters(schema_info, filter_infos, parameters, location_na
         is_uuid4_field = field_name in schema_info.uuid4_fields.get(location_name, {})
         if is_uuid4_field:
             for filter_info in filters_on_field:
-                parameter_values = [
-                    parameters[get_parameter_name(filter_argument)]
-                    for filter_argument in filter_info.args
-                ]
-
-                # Map uuid4 values to their corresponding integer values
-                parameter_values = [
-                    _convert_uuid_string_to_int(value) for value in parameter_values
-                ]
-
                 if filter_info.op_name in INEQUALITY_OPERATORS:
+                    parameter_values = [
+                        parameters[get_parameter_name(filter_argument)]
+                        for filter_argument in filter_info.args
+                    ]
+
+                    # Map uuid4 values to their corresponding integer values
+                    parameter_values = [
+                        _convert_uuid_string_to_int(value) for value in parameter_values
+                    ]
+
                     filter_interval = _get_query_interval_of_integer_inequality_filter(
                         parameter_values, filter_info.op_name)
                     interval = _get_intersection_of_intervals(interval, filter_interval)
@@ -596,13 +407,13 @@ def adjust_counts_for_filters(schema_info, filter_infos, parameters, location_na
                 if _is_absolute(selectivity_per_entry_in_collection):
                     selectivity = Selectivity(
                         kind=ABSOLUTE_SELECTIVITY,
-                        value=float(collection_size) * selectivity_per_entry_in_collection.value
+                        value=float(len(collection)) * selectivity_per_entry_in_collection.value
                     )
                 elif _is_fractional(selectivity_per_entry_in_collection):
                     selectivity = Selectivity(
                         kind=FRACTIONAL_SELECTIVITY,
                         value=min(
-                            float(collection_size) * selectivity_per_entry_in_collection.value,
+                            float(len(collection)) * selectivity_per_entry_in_collection.value,
                             1.0)
                         # The estimate may be above 1.0 in case of duplicates in the collection
                         # so we make sure the value is <= 1.0
@@ -613,8 +424,8 @@ def adjust_counts_for_filters(schema_info, filter_infos, parameters, location_na
         # Process equality filters
         for filter_info in filters_on_field:
             if filter_info.op_name == '=':
-                filter_value = parameters[get_parameter_name(filter_info.args[0])]
                 # TODO check if filter_value is in interval
+                # filter_value = parameters[get_parameter_name(filter_info.args[0])]
                 selectivity = _estimate_filter_selectivity_of_equality(
                     schema_info, location_name, filter_info.fields)
                 selectivity_at_field = _combine_filter_selectivities(
@@ -622,8 +433,26 @@ def adjust_counts_for_filters(schema_info, filter_infos, parameters, location_na
 
         selectivities.append(selectivity_at_field)
 
-    # Combine and apply selectivities
+    # Combine selectivities
     combined_selectivity = _combine_filter_selectivities(selectivities)
+    return combined_selectivity
+
+
+def adjust_counts_for_filters(schema_info, filter_infos, parameters, location_name, counts):
+    """Adjust result counts for filters on a given location by calculating selectivities.
+
+    Args:
+        schema_info: QueryPlanningSchemaInfo
+        filter_infos: list of FilterInfos, filters on the location being filtered
+        parameters: dict, parameters with which query will be executed
+        location_name: string, type of the location being filtered
+        counts: float, result count that we're adjusting for filters
+
+    Returns:
+        float, counts updated for filter selectivities.
+    """
+    combined_selectivity = get_selectivity_of_filters_at_vertex(
+        schema_info, filter_infos, parameters, location_name)
     adjusted_counts = counts
     if _is_absolute(combined_selectivity):
         adjusted_counts = combined_selectivity.value

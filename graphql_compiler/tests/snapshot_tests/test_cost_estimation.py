@@ -9,7 +9,7 @@ from ...compiler.metadata import FilterInfo
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.filter_selectivity_utils import (
     ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity, _combine_filter_selectivities,
-    _create_integer_interval, _get_filter_selectivity, _get_intersection_of_intervals,
+    _create_integer_interval, get_selectivity_of_filters_at_vertex, _get_intersection_of_intervals,
     adjust_counts_for_filters
 )
 from ...cost_estimation.statistics import LocalStatistics
@@ -931,7 +931,7 @@ def _make_schema_info_and_get_filter_selectivity(schema_graph, statistics, filte
         statistics=statistics,
         pagination_keys=pagination_keys,
         uuid4_fields=uuid4_fields)
-    return _get_filter_selectivity(schema_info, filter_info, parameters, location_name)
+    return get_selectivity_of_filters_at_vertex(schema_info, [filter_info], parameters, location_name)
 
 
 class FilterSelectivityUtilsTests(unittest.TestCase):
