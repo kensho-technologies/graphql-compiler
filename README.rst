@@ -1984,11 +1984,12 @@ users to define **macros** -- type-safe rules for programmatic query rewriting
 that transform user-provided queries on the *desired* data model into
 queries on the *actual* data model in the underlying data systems.
 
-When macros are defined, the compiler loads them into a **macro registry** -- a data structure
-that tracks all currently available macros, the resulting GraphQL schema (accounting for macros),
-and any additional metadata needed by the compiler. The compiler then leverages this registry
-to expand queries that rely on macros, rewriting them into equivalent queries that do not contain
-any macros and therefore reflect the actual underlying data model. This makes them somewhat similar
+When macros are defined, the compiler loads them into a `macro registry <Macro registry>`_ -- a
+data structure that tracks all currently available macros, the resulting GraphQL schema
+(accounting for macros), and any additional metadata needed by the compiler.
+The compiler then leverages this registry to expand queries that rely on macros,
+rewriting them into equivalent queries that do not contain any macros and therefore
+reflect the actual underlying data model. This makes them somewhat similar
 to SQL's idea of non-materialized views, though there are some key differences:
 
 - SQL views require database access and special permissions; databases are
@@ -2003,8 +2004,8 @@ to SQL's idea of non-materialized views, though there are some key differences:
   seamlessly with all databases and even on schemas stitched together from multiple databases.
   In contrast, not all databases support SQL-like :code:`VIEW` functionality.
 
-For now, the compiler supports one type of macro, **macro edges**. We hope to add more types
-of macros in the future.
+At the moment, the compiler supports one type of macro, `macro edges <Macro edges>`_.
+We hope to add more types of macros in the future.
 
 Macro registry
 ~~~~~~~~~~~~~~
@@ -2302,7 +2303,7 @@ Constraints and rules for macro edge usage
   macro edge's definition.
 
 In the future, we hope to add support for using :code:`@optional` on macro edges. We have opened
-`a GitHub issue <https://github.com/kensho-technologies/graphql-compiler/issues/586>`_ to track
+a `GitHub issue <https://github.com/kensho-technologies/graphql-compiler/issues/586>`_ to track
 this effort, and we welcome contributions!
 
 
