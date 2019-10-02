@@ -51,8 +51,8 @@ def _has_any_absolute(selectivities):
     return False
 
 
-# XXX class name is not taken into account
-# XXX this doesn't work with multiple fields
+# TODO(bojanserafimov): The class name should be checked against the class name of the index.
+# TODO(bojanserafimov): This is not correct for len(filter_fields) > 1.
 def _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
     """Return True if the field(s) being filtered are uniquely indexed."""
     # Filter fields are tuples, so cast as a frozenset for direct comparison with index fields.
@@ -267,6 +267,7 @@ def _get_query_interval_of_integer_inequality_filter(parameter_values, filter_op
     return query_interval
 
 
+# TODO(bojanserafimov): This function can be simplified, as len(filter_fields) is always 1.
 def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_fields):
     """Calculate the selectivity of equality filter(s) at a given location.
 
@@ -285,7 +286,6 @@ def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_
     all_selectivities = []
 
     unique_indexes = schema_info.schema_graph.get_unique_indexes_for_class(location_name)
-    # XXX Don't use this function
     if _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
         # TODO(evan): don't return a higher absolute selectivity than class counts.
         all_selectivities.append(Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0))
