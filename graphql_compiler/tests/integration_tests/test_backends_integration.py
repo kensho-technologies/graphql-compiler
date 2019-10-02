@@ -615,8 +615,8 @@ class IntegrationTests(TestCase):
             for column in
             metadata.tables[table_with_many_primary_keys.fullname].primary_key
         )
-        self.assertEquals({'primary_key_column1', 'primary_key_column2'},
-                          explicit_primary_key_columns)
+        self.assertEqual({'primary_key_column1', 'primary_key_column2'},
+                         explicit_primary_key_columns)
 
         # Test primary key patching.
         patched_primary_key_column = set(
@@ -624,7 +624,7 @@ class IntegrationTests(TestCase):
             for column in
             metadata.tables[table_without_primary_key.fullname].primary_key
         )
-        self.assertEquals({'column_with_no_primary_key'}, patched_primary_key_column)
+        self.assertEqual({'column_with_no_primary_key'}, patched_primary_key_column)
 
         table_without_primary_key.delete(bind=engine)
         table_with_many_primary_keys.delete(bind=engine)
