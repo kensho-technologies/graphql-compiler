@@ -1,6 +1,7 @@
+import re
+
 from sqlalchemy import Column, Table, text
 from sqlalchemy.dialects.mssql.base import ischema_names
-import re
 
 
 def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None):
