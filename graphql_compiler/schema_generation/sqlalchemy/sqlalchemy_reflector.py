@@ -17,7 +17,8 @@ def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None)
         schema: string in the format <databaseName>.<schemaName> specifying the schema
                 to reflect into the metadata.
         primary_key_selector: optional function that takes in a table name and list of dicts
-                              specifying column metadata and returns a set of column names.
+                              specifying column metadata and returns a set of column names to use
+                              as the primary key corresponding SQLAlchemy Table object.
                               The compiler requires each SQLAlchemy Table to have a primary key.
                               The primary keys do not need to be the primary keys in the underlying
                               tables. They just need to be an unique and non-null identifier of
