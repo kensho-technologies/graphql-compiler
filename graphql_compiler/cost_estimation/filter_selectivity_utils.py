@@ -51,6 +51,8 @@ def _has_any_absolute(selectivities):
     return False
 
 
+# XXX class name is not taken into account
+# XXX this doesn't work with multiple fields
 def _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
     """Return True if the field(s) being filtered are uniquely indexed."""
     # Filter fields are tuples, so cast as a frozenset for direct comparison with index fields.
