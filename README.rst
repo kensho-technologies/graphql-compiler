@@ -2009,7 +2009,8 @@ though there are some key differences:
   seamlessly with all databases and even on schemas stitched together from multiple databases.
   In contrast, not all databases support SQL-like :code:`VIEW` functionality.
 
-Currently, the compiler supports one type of macro, `macro edges <Macro edges>`_.
+Currently, the compiler supports one type of macro: `macro edges <Macro edges>`_, which allow
+the creation of "virtual" edges computed from existing ones.
 More types of macros are coming in the future.
 
 Macro registry
@@ -2017,7 +2018,7 @@ Macro registry
 
 The macro registry is where the definitions of all currently defined macros are stored,
 together with the resulting GraphQL schema they form, as well as any associated metadata
-that the compiler's macro system may need to expand any macros encountered in a query.
+that the compiler's macro system may need in order to expand any macros encountered in a query.
 
 To create a macro registry object for a given GraphQL schema, use the :code:`create_macro_registry`
 function:
