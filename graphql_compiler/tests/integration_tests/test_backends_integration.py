@@ -602,12 +602,12 @@ class IntegrationTests(TestCase):
                                 primary_key_selector=get_first_column_in_table)
 
         # Test expected tables are included.
-        self.assertIn("db_1.schema_1.Animal", metadata.tables)
-        self.assertIn("db_1.schema_1.Species", metadata.tables)
-        self.assertNotIn("db_1.schema_2.FeedingEvent", metadata.tables)
+        self.assertIn('db_1.schema_1.Animal', metadata.tables)
+        self.assertIn('db_1.schema_1.Species', metadata.tables)
+        self.assertNotIn('db_1.schema_2.FeedingEvent', metadata.tables)
 
         # Test column types are correctly reflected
-        self.assertIsInstance(metadata.tables["db_1.schema_1.Animal"].columns["color"].type, String)
+        self.assertIsInstance(metadata.tables['db_1.schema_1.Animal'].columns['color'].type, String)
 
         # Test explicit primary key reflection.
         explicit_primary_key_columns = set(
