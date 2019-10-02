@@ -9,8 +9,8 @@ from ...compiler.metadata import FilterInfo
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.filter_selectivity_utils import (
     ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity, _combine_filter_selectivities,
-    _create_integer_interval, get_selectivity_of_filters_at_vertex, _get_intersection_of_intervals,
-    adjust_counts_for_filters
+    _create_integer_interval, _get_intersection_of_intervals, adjust_counts_for_filters,
+    get_selectivity_of_filters_at_vertex
 )
 from ...cost_estimation.statistics import LocalStatistics
 from ...schema.schema_info import QueryPlanningSchemaInfo
