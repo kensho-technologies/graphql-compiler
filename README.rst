@@ -2129,8 +2129,8 @@ Let's dig into the GraphQL macro edge definition one step at a time:
   is there simply to satisfy the GraphQL parser, since per the GraphQL specification, each pair of
   curly braces must reference at least one field. The named field has no meaning in this definition,
   and the user may choose to use any field that exists within that pair of curly braces.
-  The preferred convention for pro-forma fields is to use the field of GraphQL type :code:`ID`
-  which is the primary key of the given type in the underlying database.
+  The preferred convention for pro-forma fields is to use whichever field represents
+  the primary key of the given type in the underlying database.
 
 - This macro edge does not take arguments, so we set the :code:`macro_edge_args` value to an empty
   dictionary. We will cover macro edges with arguments later.
