@@ -58,7 +58,7 @@ def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None)
                         primary_key=column_name in primary_key_columns,
                     )
                 )
-        # Insert specified table into MetaData object
+        # Insert specified table into MetaData object.
         Table(table_name, metadata, *sqlalchemy_columns, schema=schema)
 
 
