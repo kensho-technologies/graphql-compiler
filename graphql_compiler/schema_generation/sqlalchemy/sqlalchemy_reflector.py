@@ -9,7 +9,7 @@ def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None)
 
     This function is roughly a faster, but shallower equivalent to the SQLAlchemy metadata.reflect()
     method. It currently only reflects: columns, column types and primary keys. Other information,
-    like foreign key metadata, is currently ignored though it might be inferred in the future.
+    like foreign key metadata, is currently ignored but might be inferred in the future.
 
     Args:
         engine: SQLAlchemy Engine, engine connected to a SQL server. It must connected to the master
@@ -19,7 +19,7 @@ def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None)
                 to reflect into the metadata.
         primary_key_selector: optional function that takes in a table name and list of dicts
                               specifying column metadata and returns a set of column names to use
-                              as the primary key corresponding SQLAlchemy Table object.
+                              as the primary key for the corresponding SQLAlchemy Table object.
                               The compiler requires each SQLAlchemy Table to have a primary key.
                               The primary keys do not need to be the primary keys in the underlying
                               tables. They just need to be an unique and non-null identifier of
@@ -65,6 +65,10 @@ def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None)
 def get_first_column_in_table(table_name, column_metadata):
     """Return a string set with one element: the first column of the table.
 
+    In the case where the first column of each table in a schema is a non-explicitly enforced
+    primary key, this function can be used as the primary_key_selector parameter in
+    fast_sql_server_reflect to amend Table objects with missing primary keys.
+
     Args:
         table_name: str, name of the table.
         column_metadata: list of dicts, str -> Any, specifying metadata about the columns in a
@@ -85,7 +89,7 @@ def _get_table_to_column_metadata(engine, database_name, schema_name):
     SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, ORDINAL_POSITION
     FROM {database}.INFORMATION_SCHEMA.COLUMNS
     WHERE TABLE_SCHEMA = '{schema}';
-    '''.format(database=database_name, schema=schema_name)
+    '''.format(database=database_name, schema=schema_name)  # nosec
     )
 
     result_proxy = engine.execute(columns_query)
@@ -105,7 +109,7 @@ def _get_table_to_explicit_primary_key_columns(engine, database_name, schema_nam
               ON TC.CONSTRAINT_TYPE = 'PRIMARY KEY' AND
                  TC.CONSTRAINT_NAME = KU.CONSTRAINT_NAME
     WHERE KU.CONSTRAINT_SCHEMA = '{schema}'
-    '''.format(database=database_name, schema=schema_name)
+    '''.format(database=database_name, schema=schema_name)  # nosec
     )
 
     result_proxy = engine.execute(primary_key_query)
