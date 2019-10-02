@@ -21,12 +21,14 @@ from ..test_helpers import generate_schema_graph
 def _make_schema_info_and_estimate_cardinality(schema_graph, statistics, graphql_input, args):
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
     pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+    uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
     schema_info = QueryPlanningSchemaInfo(
         schema=graphql_schema,
         type_equivalence_hints=type_equivalence_hints,
         schema_graph=schema_graph,
         statistics=statistics,
-        pagination_keys=pagination_keys)
+        pagination_keys=pagination_keys,
+        uuid4_fields=uuid4_fields)
     return estimate_query_result_cardinality(schema_info, graphql_input, args)
 
 
@@ -921,12 +923,14 @@ def _make_schema_info_and_get_filter_selectivity(schema_graph, statistics, filte
                                                  parameters, location_name):
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
     pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+    uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
     schema_info = QueryPlanningSchemaInfo(
         schema=graphql_schema,
         type_equivalence_hints=type_equivalence_hints,
         schema_graph=schema_graph,
         statistics=statistics,
-        pagination_keys=pagination_keys)
+        pagination_keys=pagination_keys,
+        uuid4_fields=uuid4_fields)
     return _get_filter_selectivity(schema_info, filter_info, parameters, location_name)
 
 
@@ -1119,6 +1123,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
         classname = 'Animal'
         between_filter = FilterInfo(fields=('uuid',), op_name='between',
                                     args=('$uuid_lower', '$uuid_upper',))
@@ -1135,7 +1140,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             type_equivalence_hints=type_equivalence_hints,
             schema_graph=schema_graph,
             statistics=empty_statistics,
-            pagination_keys=pagination_keys)
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
 
         result_counts = adjust_counts_for_filters(
             empty_statistics_schema_info, filter_info_list, params, classname, 32.0)
@@ -1169,7 +1175,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         # uuid_lower, and an estimated (1.0 / 2.0) have a UUID less than or equal to uuid_upper. The
         # cost estimator considers both of these filters independently, so the result size is 32 *
         # (3.0 / 4.0) * (1.0 / 2.0) = 12.0 results.
-        expected_counts = 32.0 * (3.0 / 4.0) * (1.0 / 2.0)
+        # XXX update comment
+        expected_counts = 32.0 * (1.0 / 4.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
         between_filter = FilterInfo(fields=('uuid',), op_name='between',

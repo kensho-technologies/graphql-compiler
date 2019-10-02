@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
+import six
 import sys
 from uuid import UUID
 
@@ -143,14 +144,17 @@ def _get_intersection_of_intervals(interval_a, interval_b):
     """Return the intersection of two IntegerIntervals, or None if the intervals are disjoint.
 
     Args:
-        interval_a: IntegerInterval namedtuple.
-        interval_b: IntegerInterval namedtuple.
+        interval_a: None or IntegerInterval namedtuple. None means empty interval.
+        interval_b: None or IntegerInterval namedtuple. None means empty interval.
 
     Returns:
         - IntegerInterval namedtuple, intersection of the two given IntegerIntervals, if the
           intersection is not empty.
         - None otherwise.
     """
+    if interval_a is None or interval_b is None:
+        return None
+
     strong_lower_bound = _get_stronger_lower_bound(interval_a.lower_bound, interval_b.lower_bound)
     strong_upper_bound = _get_stronger_upper_bound(interval_a.upper_bound, interval_b.upper_bound)
 
@@ -359,21 +363,23 @@ def _estimate_inequality_filter_selectivity(schema_info, filter_info, parameters
     all_selectivities = []
     for field_name in filter_info.fields:
         field_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+        parameter_values = [
+            parameters[get_parameter_name(filter_argument)]
+            for filter_argument in filter_info.args
+        ]
 
         # TODO(vlad): Improve inequality estimation by implementing histograms.
         # HACK(vlad): Currently, each UUID is assumed to have a name of 'uuid'. Using the schema
         #             graph for knowledge about UUID fields would generalize better.
+        # XXX better infer if the field is a uuid
         if field_name == 'uuid':
             uuid_domain = IntegerInterval(MIN_UUID_INT, MAX_UUID_INT)
 
             # Instead of working with UUIDs, we convert each occurence of UUID to its corresponding
             # integer representation.
-            parameter_values_as_integers = []
-            for filter_argument in filter_info.args:
-                parameter_name = get_parameter_name(filter_argument)
-                parameter_value = parameters[parameter_name]
-                parameter_value_as_integer = _convert_uuid_string_to_int(parameter_value)
-                parameter_values_as_integers.append(parameter_value_as_integer)
+            parameter_values_as_integers = [
+                _convert_uuid_string_to_int(vale) for value in parameter_values
+            ]
 
             # Assumption: UUID values are uniformly distributed among the set of valid UUIDs.
             # This implies e.g. if the query interval is half the size of the set of all valid
@@ -381,6 +387,13 @@ def _estimate_inequality_filter_selectivity(schema_info, filter_info, parameters
             field_selectivity = _get_selectivity_of_integer_inequality_filter(
                 uuid_domain, parameter_values_as_integers, filter_operator
             )
+        elif False:  # XXX see if field is an integer
+            int_domain = None  # unbounded
+
+            field_selectivity = _get_selectivity_of_integer_inequality_filter(
+
+            )
+            pass  # XXX use histogram
 
         all_selectivities.append(field_selectivity)
 
@@ -406,6 +419,7 @@ def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_
     all_selectivities = []
 
     unique_indexes = schema_info.schema_graph.get_unique_indexes_for_class(location_name)
+    # XXX Don't use this function
     if _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
         # TODO(evan): don't return a higher absolute selectivity than class counts.
         all_selectivities.append(Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0))
@@ -507,6 +521,10 @@ def _combine_filter_selectivities(selectivities):
     return Selectivity(kind=combined_selectivity_kind, value=combined_selectivity_value)
 
 
+def _get_field_type(schema_info, vertex_name, field_name):
+    return schema_info.schema.get_type(vertex_name).fields[field_name].type.name
+
+
 def adjust_counts_for_filters(schema_info, filter_infos, parameters, location_name, counts):
     """Adjust result counts for filters on a given location by calculating selectivities.
 
@@ -520,13 +538,66 @@ def adjust_counts_for_filters(schema_info, filter_infos, parameters, location_na
     Returns:
         float, counts updated for filter selectivities.
     """
-    selectivities = [
-        _get_filter_selectivity(schema_info, filter_info, parameters, location_name)
-        for filter_info in filter_infos
-    ]
+    # Group filters by field
+    single_field_filters = {}
+    for filter_info in filter_infos:
+        if len(filter_info.fields) == 0:
+            raise AssertionError(u'Got filter on 0 fields {} {}'.format(filter_info, location_name))
+        elif len(filter_info.fields) == 1:
+            single_field_filters.setdefault(filter_info.fields[0], []).append(filter_info)
+        else:
+            pass  # We don't do anything for multi-field filters yet
 
+    # Find the selectivity of filters on each field
+    selectivities = []
+    for field_name, filters_on_field in six.iteritems(single_field_filters):
+        selectivity_at_field = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+        interval = _create_integer_interval(None, None)
+
+        # Process inequality filters
+        is_uuid4_field = field_name in schema_info.uuid4_fields.get(location_name, {})
+        if is_uuid4_field:
+            for filter_info in filters_on_field:
+                parameter_values = [
+                    parameters[get_parameter_name(filter_argument)]
+                    for filter_argument in filter_info.args
+                ]
+
+                # Map uuid4 values to their corresponding integer values
+                parameter_values = [
+                    _convert_uuid_string_to_int(value) for value in parameter_values
+                ]
+
+                if filter_info.op_name in INEQUALITY_OPERATORS:
+                    filter_interval = _get_query_interval_of_integer_inequality_filter(
+                        parameter_values, filter_info.op_name)
+                    interval = _get_intersection_of_intervals(interval, filter_interval)
+
+            if interval is None:
+                selectivity_at_field = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=0.0)
+            else:
+                domain_interval = _create_integer_interval(MIN_UUID_INT, MAX_UUID_INT)
+                domain_interval_size = domain_interval.upper_bound - domain_interval.lower_bound + 1
+                interval = _get_intersection_of_intervals(interval, domain_interval)
+                interval_size = interval.upper_bound - interval.lower_bound + 1
+                fraction_of_domain_queried = float(interval_size) / domain_interval_size
+                selectivity_at_field = Selectivity(
+                    kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried)
+
+        # Process equality filters
+        for filter_info in filters_on_field:
+            if filter_info.op_name == '=':
+                filter_value = parameters[get_parameter_name(filter_info.args[0])]
+                # TODO check if filter_value is in interval
+                selectivity = _estimate_filter_selectivity_of_equality(
+                    schema_info, location_name, filter_info.fields)
+                selectivity_at_field = _combine_filter_selectivities(
+                    [selectivity_at_field, selectivity])
+
+        selectivities.append(selectivity_at_field)
+
+    # Combine and apply selectivities
     combined_selectivity = _combine_filter_selectivities(selectivities)
-
     adjusted_counts = counts
     if _is_absolute(combined_selectivity):
         adjusted_counts = combined_selectivity.value
