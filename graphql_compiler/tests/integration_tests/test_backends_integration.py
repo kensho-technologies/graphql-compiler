@@ -626,7 +626,11 @@ class IntegrationTests(TestCase):
         )
         self.assertEqual({'column_with_no_primary_key'}, patched_primary_key_column)
 
+        # The linting error is sqlalchemy-pylint bug
+        # https://github.com/sqlalchemy/sqlalchemy/issues/4656
+        # pylint: disable=no-value-for-parameter
         table_without_primary_key.delete(bind=engine)
         table_with_many_primary_keys.delete(bind=engine)
+        # pylint: enable=no-value-for-parameter
 
 # pylint: enable=no-member
