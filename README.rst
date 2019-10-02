@@ -2043,12 +2043,14 @@ Schema for defining macros
 
 Macro definitions rely on additional directives that are not normally defined in the schema
 the GraphQL compiler uses for querying. We intentionally do not include these directives in
-that schema, since defining macros and writing queries are different modes of use of the compiler,
-and we believe that controlling which sets of directives are available in which mode will minimize
-the potential for user confusion.
+the schema used for querying, since defining macros and writing queries are different modes
+of use of the compiler, and we believe that controlling which sets of directives
+are available in which mode will minimize the potential for user confusion.
 
-You may use the :code:`get_schema_for_macro_definition()` function to transform a querying schema
-into one that is suitable for defining macros.
+The :code:`get_schema_for_macro_definition()` function is able to transform a querying schema
+into one that is suitable for defining macros. Getting such a schema may be useful, for example,
+when setting up a GraphQL editor (such as GraphiQL) to create and edit macros.
+
 
 Macro edges
 ~~~~~~~~~~~
