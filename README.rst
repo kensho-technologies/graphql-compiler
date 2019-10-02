@@ -1984,9 +1984,9 @@ users to define **macros** -- type-safe rules for programmatic query rewriting
 that transform user-provided queries on the *desired* data model into
 queries on the *actual* data model in the underlying data systems.
 
-When macros are defined, the compiler loads them into a macro registry -- a data structure used to
-track all currently available macros, the resulting GraphQL schema (accounting for macros), and
-any additional metadata needed by the compiler. The compiler then leverages this registry
+When macros are defined, the compiler loads them into a **macro registry** -- a data structure
+that tracks all currently available macros, the resulting GraphQL schema (accounting for macros),
+and any additional metadata needed by the compiler. The compiler then leverages this registry
 to expand queries that rely on macros, rewriting them into equivalent queries that do not contain
 any macros and therefore reflect the actual underlying data model. This makes them somewhat similar
 to SQL's idea of non-materialized views, though there are some key differences:
