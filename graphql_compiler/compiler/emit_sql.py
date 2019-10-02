@@ -102,6 +102,40 @@ def _find_folded_outputs(ir):
     return folded_outputs
 
 
+class SQLFoldObject(object):
+    def __init__(self):
+        self._outer_vertex_location = None
+        self._outer_vertex_field = None
+        self._folded_vertex_location = None
+        self._from_clause = None
+        self._outputs = []
+        self._group_by = []
+
+    @property
+    def outer_vertex_field(self):
+        return self._outer_vertex_field
+
+    @property
+    def folded_vertex_location(self):
+        return self._folded_vertex_location
+
+    @property
+    def outputs(self):
+        return self._outputs
+
+    @property
+    def group_by(self):
+        return self._group_by
+
+    @property
+    def from_clause(self):
+        return self._from_clause
+
+    @property
+    def outer_vertex_location(self):
+        return self._outer_vertex_location
+
+
 class UniqueAliasGenerator(object):
     def __init__(self):
         self._folded_output_count = 1
@@ -123,12 +157,12 @@ class CompilationState(object):
 
     def __init__(self, sql_schema_info, ir):
         """Initialize a CompilationState, setting the current location at the root of the query."""
-        # Metadata
+        # Immutable metadata
         self._sql_schema_info = sql_schema_info
         self._ir = ir
         self._used_columns = _find_columns_used_outside_folds(sql_schema_info, ir)
         self._all_folded_outputs = _find_folded_outputs(ir)
-        self._in_fold = False
+
 
         # Current query location state. Only mutable by calling _relocate.
         self._current_location = None  # the current location in the query. None means global.
@@ -143,20 +177,14 @@ class CompilationState(object):
         self._outputs = []  # sqlalchemy Columns labelled correctly for output
         self._filters = []  # sqlalchemy Expressions to be used in the where clause
 
-        # The folded subquery being constructed as the IR is processed (reset for each fold)
-        self._fold_from_clause = None  # the main sqlalchemy Selectable for the fold subquery
-        self._fold_outputs = []  # sqlalchemy fold subquery outputs
-        self._fold_group_by = []  # sqlalchemy fold subquery Columns to GROUP BY
-
-        # Information needed to LEFT JOIN fold subquery to main Selectable (reset for each fold)
-        self._pre_fold_location = None  # the current Location prior to fold
-        self._fold_location = None  # the fold's FoldScopeLocation
-        self._fold_join_vertex_field = None  # field to perform LEFT JOIN on
-        self._fold_location_info = None # This tells us the vertex that we are folding on
+        self._fold = SQLFoldObject()
+        self._in_fold = False
 
         # Information to keep track of fold aliases
-        self._folded_output_aliases = {}  # mapping FoldScopeLocations to their intermediate alias
+        self._fold_output_column_aliases = {}  # mapping FoldScopeLocations to their intermediate alias
         self._alias_generator = UniqueAliasGenerator()
+
+
 
     def _relocate(self, new_location):
         """Move to a different location in the query, updating the _alias."""
@@ -171,13 +199,10 @@ class CompilationState(object):
     def _fold_relocate(self, new_location):
         """Move to a different location in the query, updating the _alias."""
         self._current_location = new_location
-        if (self._current_location.query_path, self._fold_location) in self._aliases:
-            self._current_alias = self._aliases[(self._current_location.query_path, self._fold_location)]
-        else:
-            self._current_alias = (
+        self._current_alias = (
                 self._sql_schema_info.vertex_name_to_table[self._fold_location_info.type.name].alias()
             )
-            self._aliases[(self._current_location.query_path, self._fold_location)] = self._current_alias
+        self._aliases[(self._current_location.query_path, self._fold._folded_vertex_location)] = self._current_alias
 
     def _join_to_parent_location(self, parent_alias, from_column, to_column, optional):
         """Join the current location to the parent location using the column names specified."""
@@ -308,7 +333,7 @@ class CompilationState(object):
         if self._in_fold or isinstance(predicate.left, FoldedContextField) or isinstance(predicate.right, FoldedContextField):
             raise NotImplementedError("Filters inside a fold are not implemented yet.")
 
-        sql_expression = predicate.to_sql(self._aliases, self._current_alias, self._folded_output_aliases)
+        sql_expression = predicate.to_sql(self._aliases, self._current_alias, self._fold_output_column_aliases)
         if self._is_in_optional_scope():
             sql_expression = sqlalchemy.or_(sql_expression,
                                             self._came_from[self._current_alias].is_(None))
@@ -316,24 +341,25 @@ class CompilationState(object):
 
     def fold(self, fold_scope_location):
         """Begin execution of a Fold Block"""
-        if self._fold_from_clause or self._in_fold:
+        if self._fold._from_clause or self._in_fold:
             raise AssertionError(u'Reached an invalid fold state.')
 
 
         # begin the fold
         self._in_fold = True
-        self._pre_fold_location = self._current_location
-        self._fold_location = fold_scope_location
+        self._fold._outer_vertex_location = self._current_location
+        self._fold._folded_vertex_location = fold_scope_location
         self._fold_location_info = self._ir.query_metadata_table.get_location_info(fold_scope_location)
         self._fold_relocate(fold_scope_location.base_location)
-        self._fold_from_clause = self._current_alias
+        self._fold._from_clause = self._current_alias
+
 
         # collect edge information to join the fold subquery to the main selectable
         edge_direction = fold_scope_location.fold_path[0][0]
         edge_name = fold_scope_location.fold_path[0][1]
-        self._fold_join_vertex_field = "{}_{}".format(edge_direction, edge_name)
+        self._fold._outer_vertex_field = "{}_{}".format(edge_direction, edge_name)
         edge = self._sql_schema_info.join_descriptors[
-            self._current_classname][self._fold_join_vertex_field]
+            self._current_classname][self._fold.outer_vertex_field]
 
 
         # find outputs for this fold in self._all_folded_outputs and add to self._fold_outputs
@@ -345,12 +371,12 @@ class CompilationState(object):
                 # for the next intermediate alias
                 # TODO: give better fold output names
                 intermediate_fold_output_name = self._alias_generator.gen_output_column()
-                self._folded_output_aliases[fold_output] = intermediate_fold_output_name
+                self._fold_output_column_aliases[fold_output] = intermediate_fold_output_name
                 # add array aggregated intermediate output to self._fold_outputs
-                self._fold_outputs.append(
+                self._fold.outputs.append(
                     sqlalchemy.func.array_agg(
                         self._aliases[(
-                            fold_output.base_location.at_vertex().query_path, self._fold_location
+                            fold_output.base_location.at_vertex().query_path, self._fold.folded_vertex_location
                         )].c[fold_output.field]
                     ).label(intermediate_fold_output_name)
                 )
@@ -358,13 +384,13 @@ class CompilationState(object):
 
 
         # append the subquery field to group by/join on
-        self._fold_outputs.append(
-            self._aliases[fold_scope_location.base_location.at_vertex().query_path, self._fold_location].c[
+        self._fold.outputs.append(
+            self._aliases[fold_scope_location.base_location.at_vertex().query_path, self._fold.folded_vertex_location].c[
                 edge.to_column
             ]
         )
-        self._fold_group_by.append(
-            self._aliases[fold_scope_location.base_location.at_vertex().query_path, self._fold_location].c[
+        self._fold.group_by.append(
+            self._aliases[fold_scope_location.base_location.at_vertex().query_path, self._fold.folded_vertex_location].c[
                 edge.to_column
             ]
         )
@@ -374,39 +400,34 @@ class CompilationState(object):
         # Create the folded select statement, updating the fold count and adding the subquery
         # to self._aliases
         folded_subquery = sqlalchemy.select(
-            self._fold_outputs
+            self._fold.outputs
         ).select_from(
-            self._fold_from_clause
+            self._fold.from_clause
         ).group_by(
-            *self._fold_group_by
+            *self._fold.group_by
         ).alias(self._alias_generator.gen_subquery())  # TODO: give better subquery names
-        self._aliases[(self._fold_location.fold_path, None)] = folded_subquery
+        self._aliases[(self._fold.folded_vertex_location.fold_path, None)] = folded_subquery
 
         # left join to the self._from_clause on self._fold_join_vertex_field
         edge = self._sql_schema_info.join_descriptors[
-            self._current_classname][self._fold_join_vertex_field]
-        parent_alias = self._aliases[(self._pre_fold_location.query_path, None)] # None because the parent existed outside a fold
+            self._current_classname][self._fold.outer_vertex_field]
+        parent_alias = self._aliases[(self._fold.outer_vertex_location.query_path, None)] # None because the parent existed outside a fold
         self._from_clause = self._from_clause.outerjoin(
             folded_subquery,
             onclause=(parent_alias.c[edge.from_column] == folded_subquery.c[edge.to_column])
         )
 
         # reset the folded subquery
-        self._fold_from_clause = None
+        self._fold = SQLFoldObject()
         self._in_fold = False
-        self._fold_outputs = []
-        self._pre_fold_location = None
-        self._fold_location = None
-        self._fold_group_by = []
-        self._fold_join_vertex_field = None
         self._current_alias = parent_alias
     def mark_location(self):
         """Execute a MarkLocation Block."""
-        self._aliases[(self._current_location.query_path, self._fold_location if self._in_fold else None)] = self._current_alias
+        self._aliases[(self._current_location.query_path, self._fold.folded_vertex_location if self._in_fold else None)] = self._current_alias
 
     def construct_result(self, output_name, field):
         """Execute a ConstructResult Block."""
-        self._outputs.append(field.to_sql(self._aliases, self._current_alias, self._folded_output_aliases).label(output_name))
+        self._outputs.append(field.to_sql(self._aliases, self._current_alias, self._fold_output_column_aliases).label(output_name))
 
     def get_query(self):
         """After all IR Blocks are processed, return the resulting sqlalchemy query."""
