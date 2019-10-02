@@ -335,6 +335,7 @@ def _combine_filter_selectivities(selectivities):
 
 
 def _get_field_type(schema_info, vertex_name, field_name):
+    """Get the GraphQL type name (string) of the given field."""
     return schema_info.schema.get_type(vertex_name).fields[field_name].type.name
 
 
