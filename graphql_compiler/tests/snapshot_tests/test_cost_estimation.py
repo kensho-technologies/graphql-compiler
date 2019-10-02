@@ -9,7 +9,7 @@ from ...compiler.metadata import FilterInfo
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.filter_selectivity_utils import (
     ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity, _combine_filter_selectivities,
-    _create_integer_interval, _get_intersection_of_intervals,
+    _create_integer_interval, _get_filter_selectivity, _get_intersection_of_intervals,
     adjust_counts_for_filters
 )
 from ...cost_estimation.statistics import LocalStatistics
@@ -933,6 +933,272 @@ def _make_schema_info_and_get_filter_selectivity(schema_graph, statistics, filte
         uuid4_fields=uuid4_fields)
     return _get_filter_selectivity(schema_info, filter_info, parameters, location_name)
 
+
+class FilterSelectivityUtilsTests(unittest.TestCase):
+    def test_combine_filter_selectivities(self):
+        """Test filter combination function."""
+        # When there are no selectivities (e.g. there are no filters at a location, we should return
+        # a dummy selectivity that doesn't affect the counts
+        selectivities = []
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, _combine_filter_selectivities(selectivities))
+
+        # When there's a single selectivity, we should return that selectivity.
+        fractional_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=0.5)
+        self.assertEqual(
+            fractional_selectivity, _combine_filter_selectivities([fractional_selectivity])
+        )
+
+        absolute_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=5.0)
+        self.assertEqual(
+            absolute_selectivity, _combine_filter_selectivities([absolute_selectivity])
+        )
+
+        # When there are multiple fractional selectivities, multiply the values.
+        fractional_selectivity1 = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=0.5)
+        fractional_selectivity2 = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=0.6)
+        selectivities = [fractional_selectivity1, fractional_selectivity2]
+
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=0.3)
+        self.assertEqual(expected_selectivity, _combine_filter_selectivities(selectivities))
+
+        # When there are multiple absolute selectivities, use the lowest value
+        absolute_selectivity1 = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=2.0)
+        absolute_selectivity2 = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
+        selectivities = [absolute_selectivity1, absolute_selectivity2]
+
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=2.0)
+        self.assertEqual(expected_selectivity, _combine_filter_selectivities(selectivities))
+
+        # When there are mixed selectivities, use the lowest absolute-kind value.
+        absolute_selectivity1 = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=4.0)
+        fractional_selectivity1 = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=0.5)
+        absolute_selectivity2 = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=2.0)
+        fractional_selectivity2 = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=0.6)
+        absolute_selectivity3 = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
+        selectivities = [
+            absolute_selectivity1, fractional_selectivity1, absolute_selectivity2,
+            fractional_selectivity2, absolute_selectivity3
+        ]
+
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=2.0)
+        self.assertEqual(expected_selectivity, _combine_filter_selectivities(selectivities))
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_get_equals_filter_selectivity(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        classname = 'Animal'
+
+        empty_statistics = LocalStatistics(dict())
+        params = dict()
+
+        # If we '='-filter on a property that isn't an index, with no distinct-field-values-count
+        # statistics, return a fractional selectivity of 1.
+        filter_on_nonindex = FilterInfo(
+            fields=('description',), op_name='=', args=('$description',)
+        )
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph, empty_statistics, filter_on_nonindex, params, classname
+        )
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        # If we '='-filter on a property that's non-uniquely indexed, with no
+        # distinct-field-values-count statistics, return a fractional selectivity of 1.
+        nonunique_filter = FilterInfo(fields=('birthday',), op_name='=', args=('$birthday',))
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph, empty_statistics, nonunique_filter, params, classname
+        )
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        distinct_birthday_values_data = {
+            ('Animal', 'birthday'): 3
+        }
+        statistics_with_distinct_birthday_values_data = LocalStatistics(
+            dict(), distinct_field_values_counts=distinct_birthday_values_data
+        )
+        # If we '='-filter on a property that's non-uniquely indexed, but has only 3 distinct field
+        # values, return a fractional selectivity of 1.0 / 3.0.
+        nonunique_filter = FilterInfo(fields=('birthday',), op_name='=', args=('$birthday',))
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph, statistics_with_distinct_birthday_values_data,
+            nonunique_filter, params, classname
+        )
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0 / 3.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        # If we '='-filter on a property that is uniquely indexed, expect exactly 1 result.
+        unique_filter = FilterInfo(fields=('uuid',), op_name='=', args=('$uuid',))
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph, empty_statistics, unique_filter, params, classname
+        )
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        distinct_uuid_values_data = {
+            ('Animal', 'uuid'): 3
+        }
+        statistics_with_distinct_uuid_values_data = LocalStatistics(
+            dict(), distinct_field_values_counts=distinct_uuid_values_data
+        )
+        # If we '='-filter on a property that is both uniquely indexed, and has 3 distinct field
+        # values, expect exactly 1 result, since the index overrides the statistic.
+        unique_filter = FilterInfo(fields=('uuid',), op_name='=', args=('$uuid',))
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph, statistics_with_distinct_uuid_values_data,
+            unique_filter, params, classname
+        )
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_get_in_collection_filter_selectivity(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        classname = 'Animal'
+        empty_statistics = LocalStatistics(dict())
+        nonunique_filter = FilterInfo(fields=('birthday',), op_name='in_collection',
+                                      args=('$birthday_collection',))
+        nonunique_params = {
+            'birthday_collection': [
+                date(2017, 3, 22),
+                date(1999, 12, 31),
+            ]
+        }
+        # If we use an in_collection-filter on a property that is not uniquely indexed, with no
+        # distinct_field_values_count statistic, return a fractional selectivity of 1.
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph, empty_statistics, nonunique_filter, nonunique_params, classname
+        )
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        distinct_birthday_values_data = {
+            ('Animal', 'birthday'): 3
+        }
+        statistics_with_distinct_birthday_values_data = LocalStatistics(
+            dict(), distinct_field_values_counts=distinct_birthday_values_data
+        )
+        # If we use an in_collection-filter using a collection with 2 elements on a property that is
+        # not uniquely indexed, but has 3 distinct values, return a fractional
+        # selectivity of 2.0 / 3.0.
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph, statistics_with_distinct_birthday_values_data, nonunique_filter,
+            nonunique_params, classname
+        )
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=2.0 / 3.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        statistics_with_distinct_birthday_values_data = LocalStatistics(
+            dict(), distinct_birthday_values_data
+        )
+        # If we use an in_collection-filter with 4 elements on a property that is not uniquely
+        # indexed, but has 3 distinct values, return a fractional selectivity of 1.0.
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph, statistics_with_distinct_birthday_values_data, nonunique_filter,
+            nonunique_params, classname
+        )
+        expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        in_collection_filter = FilterInfo(fields=('uuid',), op_name='in_collection',
+                                          args=('$uuid_collection',))
+        unique_params = {
+            'uuid_collection': [
+                '00000000-0000-0000-0000-000000000000',
+                '00000000-0000-0000-0000-000000000001',
+                '00000000-0000-0000-0000-000000000002'
+            ]
+        }
+        # If we use an in_collection-filter on a property that is uniquely indexed, expect as many
+        # results as there are elements in the collection.
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph, empty_statistics, in_collection_filter, unique_params, classname
+        )
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_inequality_filters_on_uuid(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        classname = 'Animal'
+        between_filter = FilterInfo(fields=('uuid',), op_name='between',
+                                    args=('$uuid_lower', '$uuid_upper',))
+        filter_info_list = [between_filter]
+        # The number of UUIDs between the two parameter values is effectively a quarter of all valid
+        # UUIDs.
+        params = {
+            'uuid_lower': '40000000-0000-0000-0000-000000000000',
+            'uuid_upper': '7fffffff-ffff-ffff-ffff-ffffffffffff',
+        }
+        empty_statistics = LocalStatistics(dict())
+        empty_statistics_schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=empty_statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        result_counts = adjust_counts_for_filters(
+            empty_statistics_schema_info, filter_info_list, params, classname, 32.0)
+
+        # There are 32 Animals, and an estimated (1.0 / 4.0) of them have a UUID between the
+        # parameters given in the parameters dict, so we get a result size of 32.0 * (1.0 / 4.0) =
+        # 8.0 results.
+        expected_counts = 32.0 * (1.0 / 4.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # We query for the same UUID filtering range as the one above, but this time with '>=' and
+        # '<=' instead of 'between'. Even though the two filter intervals are equivalent, the cost
+        # estimator assumes the '>=' and '<=' filters are uncorrelated, and considers the product of
+        # each individual inequality filter's selectivity.
+        less_or_equal_to_filter = FilterInfo(fields=('uuid',), op_name='>=',
+                                             args=('$uuid_lower',))
+        greater_or_equal_to_filter = FilterInfo(fields=('uuid',), op_name='<=',
+                                                args=('$uuid_upper',))
+        filter_info_list = [less_or_equal_to_filter, greater_or_equal_to_filter]
+        # The number of UUIDs between the two parameter values is effectively a quarter of all valid
+        # UUIDs.
+        params = {
+            'uuid_lower': '40000000-0000-0000-0000-000000000000',
+            'uuid_upper': '7fffffff-ffff-ffff-ffff-ffffffffffff',
+        }
+
+        result_counts = adjust_counts_for_filters(
+            empty_statistics_schema_info, filter_info_list, params, classname, 32.0)
+
+        # There are 32 Animals, and an estimated (3.0 / 4.0) have a UUID greater or equal to
+        # uuid_lower, and an estimated (1.0 / 2.0) have a UUID less than or equal to uuid_upper. The
+        # cost estimator considers both of these filters independently, so the result size is 32 *
+        # (3.0 / 4.0) * (1.0 / 2.0) = 12.0 results.
+        # XXX update comment
+        expected_counts = 32.0 * (1.0 / 4.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        between_filter = FilterInfo(fields=('uuid',), op_name='between',
+                                    args=('$uuid_lower', '$uuid_upper',))
+        filter_info_list = [between_filter]
+        # Note that the the lower bound parameter is higher than the upper bound parameter, so the
+        # 'between' filter is impossible to satisfy.
+        params = {
+            'uuid_lower': 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+            'uuid_upper': '00000000-0000-0000-0000-000000000000',
+        }
+
+        result_counts = adjust_counts_for_filters(
+            empty_statistics_schema_info, filter_info_list, params, classname, 32.0)
+
+        # It's impossible for a UUID to simultaneously be below uuid_upper and above uuid_lower as
+        # uuid_upper is smaller than uuid_lower, so the result set is empty.
+        expected_counts = 0.0
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+
+# pylint: enable=no-member
 
 class IntegerIntervalTests(unittest.TestCase):
     """Test methods that create IntegerIntervals."""
