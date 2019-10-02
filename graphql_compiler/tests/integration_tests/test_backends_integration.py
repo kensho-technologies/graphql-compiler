@@ -8,6 +8,10 @@ from graphql.utils.schema_printer import print_schema
 from parameterized import parameterized
 import pytest
 
+from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
+    fast_sql_server_reflect, get_first_column_in_table
+)
+from sqlalchemy import MetaData, Column, Integer, Table, String
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...tests import test_backend
 from ...tests.test_helpers import generate_schema, generate_schema_graph
@@ -571,4 +575,58 @@ class IntegrationTests(TestCase):
             'human_name_out': 'Child'
         }
         self.assertEqual(expected_custom_class_fields, parent_of_edge.class_fields)
+
+    @integration_fixtures
+    def test_sqlalchemy_fast_reflect(self):
+        engine = IntegrationTests.sql_backend_name_to_engine[test_backend.MSSQL]
+
+        table_without_primary_key = Table(
+            'TableWithoutPrimaryKey',
+            MetaData(),
+            Column('column_with_no_primary_key', Integer()),
+            schema='db_1.schema_1'
+        )
+        table_with_many_primary_keys = Table(
+            'TableWithManyPrimaryKeyColumns',
+            MetaData(),
+            Column('primary_key_column1', Integer(), primary_key=True),
+            Column('primary_key_column2', Integer(), primary_key=True),
+            schema='db_1.schema_1'
+        )
+
+        table_without_primary_key.create(bind=engine)
+        table_with_many_primary_keys.create(bind=engine)
+
+        metadata = MetaData()
+        fast_sql_server_reflect(engine, metadata, 'db_1.schema_1',
+                                primary_key_selector=get_first_column_in_table)
+
+        # Test expected tables are included.
+        self.assertIn("db_1.schema_1.Animal", metadata.tables)
+        self.assertIn("db_1.schema_1.Species", metadata.tables)
+        self.assertNotIn("db_1.schema_2.FeedingEvent", metadata.tables)
+
+        # Test column types are correctly reflected
+        self.assertIsInstance(metadata.tables["db_1.schema_1.Animal"].columns["color"].type, String)
+
+        # Test explicit primary key reflection.
+        explicit_primary_key_columns = set(
+            column.name
+            for column in
+            metadata.tables[table_with_many_primary_keys.fullname].primary_key
+        )
+        self.assertEquals({'primary_key_column1', 'primary_key_column2'},
+                          explicit_primary_key_columns)
+
+        # Test primary key patching.
+        patched_primary_key_column = set(
+            column.name
+            for column in
+            metadata.tables[table_without_primary_key.fullname].primary_key
+        )
+        self.assertEquals({'column_with_no_primary_key'}, patched_primary_key_column)
+
+        table_without_primary_key.delete(bind=engine)
+        table_with_many_primary_keys.delete(bind=engine)
+
 # pylint: enable=no-member

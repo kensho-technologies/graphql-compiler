@@ -12,3 +12,5 @@ def validate_that_tables_have_primary_keys(tables):
                                          'the underlying row. They must simple be unique and '
                                          'non-null identifiers of each row.'
                                          .format(table.name, table.schema))
+
+
