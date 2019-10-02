@@ -3,22 +3,6 @@ import warnings
 
 from sqlalchemy import Column, Table, text
 from sqlalchemy.dialects.mssql.base import ischema_names
-from collections import namedtuple
-
-# This class encompasses a log of the fast SQLAlchemy reflection process.
-# - inferred_primary_keys: dict, string -> set of strings, mapping the fullname of tables, (e.g.
-#                          databaseName.schemaName.tableName), to the set of columns that were
-#                          inferred as primary keys. If the primary key was not inferred for a
-#                          table, then the table will not appear in the dict.
-# - ignored_columns: dict, string -> list of tuple of strings, mapping the fullname of tables to a
-#   `                list of (columnName, dataType) tuples describing the ignored types. If none
-#                    of a tables columns were ignored, then the table will not appear in the dict.
-SQLAlchemyReflectionLog = namedtuple(
-    'SQLAlchemyReflectionLog', (
-        'inferred_primary_keys',
-        'ignored_columns'
-    )
-)
 
 
 def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None):
@@ -44,9 +28,6 @@ def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None)
                               tables. They just need to be an unique and non-null identifier of
                               each row. This parameter should be used to amend SQLAlchemy Table
                               objects with such non-explicitly enforced primary keys.
-
-    Returns:
-        SQLAlchemyReflectionLog namedtuple logging info about the reflection process.
     """
     database_name, schema_name = schema.split('.')
 
@@ -64,7 +45,6 @@ def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None)
     table_to_primary_key_columns = _get_table_to_primary_key_columns(
         table_to_column_metadata, table_to_explicit_primary_key_columns, primary_key_selector
     )
-    ignored_columns = {}
     for table_name, column_metadata in table_to_column_metadata.items():
         primary_key_columns = table_to_primary_key_columns[table_name]
         sqlalchemy_columns = []
@@ -82,16 +62,10 @@ def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None)
                     )
                 )
             else:
-                fullname = schema + '.'+ table_name
-                ignored_columns.setdefault(fullname, []).append((column_name, data_type))
+                warnings.warn('Ignoring column {} with custom data type {} in table {} '
+                              'of schema {}.'.format(column_name, data_type, table_name, schema))
         # Insert specified table into MetaData object
         Table(table_name, metadata, *sqlalchemy_columns, schema=schema)
-    inferred_primary_keys = {
-        schema + '.' + table_name: table_to_primary_key_columns[table_name]
-        for table_name in
-        set(table_to_primary_key_columns) - set(table_to_explicit_primary_key_columns)
-    }
-    return SQLAlchemyReflectionLog(inferred_primary_keys, ignored_columns)
 
 
 def get_first_column_in_table(table_name, column_metadata):
