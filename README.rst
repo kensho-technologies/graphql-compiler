@@ -2074,27 +2074,23 @@ Consider the following query, which returns the list of grandchildren of a given
         }
     }
 
-If operations on animals' grandchildren are common in our specific use case, we may want to avoid
-having to write the nested :code:`out_Animal_ParentOf` edge traversals every time, and may wish that
-an edge like :code:`out_Animal_GrandparentOf` had existed.
+If operations on animals' grandchildren are common in our use case, we may wish that
+an edge like :code:`out_Animal_GrandparentOf` had existed and saved us some repetitive typing.
 
-One of our options is to materialize such an edge in the underlying database itself, and therefore
-make it available for querying via the GraphQL compiler. However, this causes denormalization of
-the database -- there are now two places where an animal's grandchildren are written down --
-requiring additional storage space, and introducing potential for user confusion and
-for data inconsistency between the two representations. Furthermore, not all databases support
-materialized views, so this approach is not always viable.
+One of our options is to materialize such an edge in the underlying database itself.
+However, this causes denormalization of the database -- there are now two places where
+an animal's grandchildren are written down -- requiring additional storage space,
+and introducing potential for user confusion and data inconsistency between the two representations.
 
 Another option is to introduce a non-materialized view within the database that *makes it appear*
-that such an edge exists, and query this view via the GraphQL compiler. This approach does not alter
-and duplicate the underlying data in the database, but still requires additional permissions on the
-database system, since querying users aren't necessarily able to add views to the database. Adding
-to this the fact that not all databases support non-materialized views, and we see that
-this approach should be used judiciously and is not always a perfect fit.
+that such an edge exists, and query this view via the GraphQL compiler. While this avoids some
+of the drawbacks of the previous approach, not all databases support non-materialized views.
+Also, querying users are not always able to add views to the database, and may require additional
+permissions on the database system.
 
 Macro edges give us the opportunity to define a new :code:`out_Animal_GrandparentOf` edge without
-involving the underlying database systems at all. We are simply able to state that such an edge
-should be constructed by composing two :code:`out_Animal_ParentOf` together:
+involving the underlying database systems at all. We simply state that such an edge
+is constructed by composing two :code:`out_Animal_ParentOf` edges together:
 
 .. code:: python
 
