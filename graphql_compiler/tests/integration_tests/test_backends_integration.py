@@ -606,7 +606,7 @@ class IntegrationTests(TestCase):
         self.assertIn('db_1.schema_1.Species', metadata.tables)
         self.assertNotIn('db_1.schema_2.FeedingEvent', metadata.tables)
 
-        # Test column types are correctly reflected
+        # Test column types are correctly reflected.
         self.assertIsInstance(metadata.tables['db_1.schema_1.Animal'].columns['color'].type, String)
 
         # Test explicit primary key reflection.
