@@ -1,8 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-import six
 import sys
 from uuid import UUID
+
+import six
 
 from ..compiler.helpers import get_parameter_name
 

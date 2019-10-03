@@ -1171,11 +1171,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         result_counts = adjust_counts_for_filters(
             empty_statistics_schema_info, filter_info_list, params, classname, 32.0)
 
-        # There are 32 Animals, and an estimated (3.0 / 4.0) have a UUID greater or equal to
-        # uuid_lower, and an estimated (1.0 / 2.0) have a UUID less than or equal to uuid_upper. The
-        # cost estimator considers both of these filters independently, so the result size is 32 *
-        # (3.0 / 4.0) * (1.0 / 2.0) = 12.0 results.
-        # XXX update comment
+        # The pair of >= and <= filters should return the same result as the in_between filter.
         expected_counts = 32.0 * (1.0 / 4.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
