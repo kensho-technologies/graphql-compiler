@@ -1218,7 +1218,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         result_counts = adjust_counts_for_filters(
             schema_info, filter_info_list, params, classname, 32.0)
 
-        # The value 10 is in the middle of the third quantile out of six.
+        # The value 8 is in the middle of the third quantile out of six.
         expected_counts = 32.0 * (2.0 / 6.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
