@@ -335,11 +335,6 @@ def _combine_filter_selectivities(selectivities):
     return Selectivity(kind=combined_selectivity_kind, value=combined_selectivity_value)
 
 
-def _get_field_type(schema_info, vertex_name, field_name):
-    """Get the GraphQL type name (string) of the given field."""
-    return schema_info.schema.get_type(vertex_name).fields[field_name].type.name
-
-
 def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, location_name):
     """Get the combined selectivity of all filters at the vertex.
 
@@ -402,6 +397,8 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
         # Process in_collection filters
         for filter_info in filters_on_field:
             if filter_info.op_name == 'in_collection':
+                # TODO(bojanserafimov): Check if the filter values are in the interval selected
+                #                       by the inequality filters.
                 collection = parameters[get_parameter_name(filter_info.args[0])]
                 selectivity_per_entry_in_collection = _estimate_filter_selectivity_of_equality(
                     schema_info, location_name, filter_info.fields)
@@ -428,8 +425,8 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
         # Process equality filters
         for filter_info in filters_on_field:
             if filter_info.op_name == '=':
-                # TODO check if filter_value is in interval
-                # filter_value = parameters[get_parameter_name(filter_info.args[0])]
+                # TODO(bojanserafimov): Check if the filter value is in the interval selected
+                #                       by the inequality filters.
                 selectivity = _estimate_filter_selectivity_of_equality(
                     schema_info, location_name, filter_info.fields)
                 selectivity_at_field = _combine_filter_selectivities(
