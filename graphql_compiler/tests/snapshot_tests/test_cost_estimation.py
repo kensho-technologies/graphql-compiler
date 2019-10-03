@@ -1194,6 +1194,34 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_counts = 0.0
         self.assertAlmostEqual(expected_counts, result_counts)
 
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_inequality_filters_on_int(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        statistics = LocalStatistics(dict(), field_quantiles={
+            ('Species', 'limbs'): [3, 6, 7, 9, 11, 55, 80],
+        })
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        classname = 'Species'
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='<=', args=('$limbs_upper',))]
+        params = {'limbs_upper': 8}
+
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, classname, 32.0)
+
+        # The value 10 is in the middle of the third quantile out of six.
+        expected_counts = 32.0 * (2.0 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
 
 # pylint: enable=no-member
 

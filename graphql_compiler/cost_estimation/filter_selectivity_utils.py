@@ -1,10 +1,12 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from __future__ import division
 
+import bisect
 from collections import namedtuple
 import sys
 from uuid import UUID
 
+from graphql import GraphQLInt
 import six
 
 from ..compiler.helpers import get_parameter_name
@@ -337,6 +339,11 @@ def _combine_filter_selectivities(selectivities):
     return Selectivity(kind=combined_selectivity_kind, value=combined_selectivity_value)
 
 
+def _is_int_field_type(schema_info, location_name, field_name):
+    field_type = schema_info.schema.get_type(location_name).fields[field_name].type
+    return field_type == GraphQLInt
+
+
 def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, location_name):
     """Get the combined selectivity of all filters at the vertex.
 
@@ -368,7 +375,9 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
 
         # Process inequality filters
         is_uuid4_field = field_name in schema_info.uuid4_fields.get(location_name, {})
-        if is_uuid4_field:
+        is_int_field = _is_int_field_type(schema_info, location_name, field_name)
+        is_inequality_filter_estimation_supported = is_uuid4_field or is_int_field
+        if is_inequality_filter_estimation_supported:
             for filter_info in filters_on_field:
                 if filter_info.op_name in INEQUALITY_OPERATORS:
                     parameter_values = [
@@ -377,9 +386,10 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                     ]
 
                     # Map uuid4 values to their corresponding integer values
-                    parameter_values = [
-                        _convert_uuid_string_to_int(value) for value in parameter_values
-                    ]
+                    if is_uuid4_field:
+                        parameter_values = [
+                            _convert_uuid_string_to_int(value) for value in parameter_values
+                        ]
 
                     filter_interval = _get_query_interval_of_integer_inequality_filter(
                         parameter_values, filter_info.op_name)
@@ -387,7 +397,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
 
             if interval is None:
                 selectivity_at_field = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=0.0)
-            else:
+            elif is_uuid4_field:
                 domain_interval = _create_integer_interval(MIN_UUID_INT, MAX_UUID_INT)
                 domain_interval_size = domain_interval.upper_bound - domain_interval.lower_bound + 1
                 interval = _get_intersection_of_intervals(interval, domain_interval)
@@ -397,6 +407,27 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                     kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried)
                 selectivity_at_field = _combine_filter_selectivities(
                     [selectivity_at_field, selectivity])
+            elif is_int_field:
+                quantiles = schema_info.statistics.get_field_quantiles(location_name, field_name)
+                if quantiles is not None:
+                    if interval.lower_bound is None:
+                        lower_bound_rank = 0
+                    else:
+                        lower_bound_rank = bisect.bisect_left(quantiles, interval.lower_bound)
+                    if interval.upper_bound is None:
+                        upper_bound_rank = len(quantiles)
+                    else:
+                        upper_bound_rank = bisect.bisect_left(quantiles, interval.upper_bound)
+                    domain_interval_size = len(quantiles) - 1
+                    interval_size = upper_bound_rank - lower_bound_rank - 1
+                    fraction_of_domain_queried = float(interval_size) / domain_interval_size
+                    selectivity = Selectivity(
+                        kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried)
+                    selectivity_at_field = _combine_filter_selectivities(
+                        [selectivity_at_field, selectivity])
+            else:
+                raise AssertionError(u'Field {}.{} is not uuid4 or int. Inequality filters are '
+                                     u'not supported'.format(location_name, field_name))
 
         # Process in_collection filters
         for filter_info in filters_on_field:
