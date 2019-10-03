@@ -9,8 +9,8 @@ from ...compiler.metadata import FilterInfo
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.filter_selectivity_utils import (
     ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity, _combine_filter_selectivities,
-    _create_integer_interval, _get_filter_selectivity, _get_intersection_of_intervals,
-    adjust_counts_for_filters
+    _create_integer_interval, _get_intersection_of_intervals, adjust_counts_for_filters,
+    get_selectivity_of_filters_at_vertex
 )
 from ...cost_estimation.statistics import LocalStatistics
 from ...schema.schema_info import QueryPlanningSchemaInfo
@@ -21,12 +21,14 @@ from ..test_helpers import generate_schema_graph
 def _make_schema_info_and_estimate_cardinality(schema_graph, statistics, graphql_input, args):
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
     pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+    uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
     schema_info = QueryPlanningSchemaInfo(
         schema=graphql_schema,
         type_equivalence_hints=type_equivalence_hints,
         schema_graph=schema_graph,
         statistics=statistics,
-        pagination_keys=pagination_keys)
+        pagination_keys=pagination_keys,
+        uuid4_fields=uuid4_fields)
     return estimate_query_result_cardinality(schema_info, graphql_input, args)
 
 
@@ -921,13 +923,16 @@ def _make_schema_info_and_get_filter_selectivity(schema_graph, statistics, filte
                                                  parameters, location_name):
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
     pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+    uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
     schema_info = QueryPlanningSchemaInfo(
         schema=graphql_schema,
         type_equivalence_hints=type_equivalence_hints,
         schema_graph=schema_graph,
         statistics=statistics,
-        pagination_keys=pagination_keys)
-    return _get_filter_selectivity(schema_info, filter_info, parameters, location_name)
+        pagination_keys=pagination_keys,
+        uuid4_fields=uuid4_fields)
+    return get_selectivity_of_filters_at_vertex(
+        schema_info, [filter_info], parameters, location_name)
 
 
 class FilterSelectivityUtilsTests(unittest.TestCase):
@@ -1119,6 +1124,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
         classname = 'Animal'
         between_filter = FilterInfo(fields=('uuid',), op_name='between',
                                     args=('$uuid_lower', '$uuid_upper',))
@@ -1135,7 +1141,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             type_equivalence_hints=type_equivalence_hints,
             schema_graph=schema_graph,
             statistics=empty_statistics,
-            pagination_keys=pagination_keys)
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
 
         result_counts = adjust_counts_for_filters(
             empty_statistics_schema_info, filter_info_list, params, classname, 32.0)
@@ -1165,11 +1172,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         result_counts = adjust_counts_for_filters(
             empty_statistics_schema_info, filter_info_list, params, classname, 32.0)
 
-        # There are 32 Animals, and an estimated (3.0 / 4.0) have a UUID greater or equal to
-        # uuid_lower, and an estimated (1.0 / 2.0) have a UUID less than or equal to uuid_upper. The
-        # cost estimator considers both of these filters independently, so the result size is 32 *
-        # (3.0 / 4.0) * (1.0 / 2.0) = 12.0 results.
-        expected_counts = 32.0 * (3.0 / 4.0) * (1.0 / 2.0)
+        # The pair of >= and <= filters should return the same result as the in_between filter.
+        expected_counts = 32.0 * (1.0 / 4.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
         between_filter = FilterInfo(fields=('uuid',), op_name='between',
