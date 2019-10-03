@@ -107,14 +107,14 @@ class QueryPaginationTests(unittest.TestCase):
         expected_second_remainder = None
 
         received_first_next_page, received_first_remainder = (
-            paginate_query(schema_graph, statistics, test_data, parameters, page_size)
+            paginate_query(schema_info, test_data, parameters, page_size)
         )
 
         # Then we page the remainder we've received, to ensure paginating more than once is handled
         # correctly.
         received_second_next_page, received_second_remainder = (
             paginate_query(
-                schema_graph, statistics,
+                schema_info,
                 received_first_remainder.query_string,
                 received_first_remainder.parameters, page_size
             )
@@ -153,6 +153,17 @@ class QueryPaginationTests(unittest.TestCase):
         }
 
         statistics = LocalStatistics(count_data)
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
 
         expected_first_next_page = QueryStringWithParameters(
             '''{
@@ -196,14 +207,14 @@ class QueryPaginationTests(unittest.TestCase):
         # making sure that the parameter name is changed to reflect that the filter is used for
         # pagination.
         received_first_next_page, received_first_remainder = (
-            paginate_query(schema_graph, statistics, test_data, parameters, page_size)
+            paginate_query(schema_info, test_data, parameters, page_size)
         )
 
         # Then we page the remainder we've received, to ensure paginating more than once is handled
         # correctly.
         received_second_next_page, received_second_remainder = (
             paginate_query(
-                schema_graph, statistics,
+                schema_info,
                 received_first_remainder.query_string,
                 received_first_remainder.parameters, page_size
             )
@@ -543,6 +554,17 @@ class QueryPaginationTests(unittest.TestCase):
             'Animal': 8,
         }
         statistics = LocalStatistics(count_data)
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
 
         num_pages = 4
 
@@ -557,7 +579,7 @@ class QueryPaginationTests(unittest.TestCase):
         # sets a filter that only allows a quarter of all UUIDs to pass through it.
         received_next_page_parameters, received_remainder_parameters = (
             generate_parameters_for_parameterized_query(
-                schema_graph, statistics, parameterized_queries, num_pages
+                schema_info, parameterized_queries, num_pages
             )
         )
 

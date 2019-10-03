@@ -391,7 +391,8 @@ def generate_parameters_for_parameterized_query(
 
     next_page_pagination_parameters, remainder_pagination_parameters = (
         _generate_parameters_for_pagination_filters(
-            schema_graph, statistics, pagination_filters, user_parameters, num_pages
+            schema_info.schema_graph, schema_info.statistics,
+            pagination_filters, user_parameters, num_pages
         )
     )
 

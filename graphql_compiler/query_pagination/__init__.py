@@ -217,8 +217,9 @@ def paginate_query_ast(schema_info, query_ast, parameters, page_size):
     graphql_query_string = print_ast(query_ast)
     num_pages = estimate_number_of_pages(schema_info, graphql_query_string, parameters, page_size)
     if num_pages > 1:
-        result_queries = split_into_page_query_and_remainder_query(
-            schema_info, query_ast, parameters, num_pages)
+        next_page_ast_with_parameters, remainder_ast_with_parameters = (
+            split_into_page_query_and_remainder_query(
+                schema_info, query_ast, parameters, num_pages))
 
     return next_page_ast_with_parameters, remainder_ast_with_parameters
 

@@ -46,13 +46,14 @@ def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters
                              u' of results, as the number of pages {} must be greater than 1: {}'
                              .format(query_ast, num_pages, parameters))
 
-    pagination_vertices = get_vertices_for_pagination(statistics, query_ast)
+    pagination_vertices = get_vertices_for_pagination(schema_info.statistics, query_ast)
     filter_modifications = get_modifications_needed_to_vertices_for_paging(
-        schema_graph, statistics, query_ast, parameters, pagination_vertices
+        schema_info.schema_graph, schema_info.statistics, query_ast, parameters, pagination_vertices
     )
 
     parameterized_queries = generate_parameterized_queries(
-        schema_info, query_ast, parameters, filter_modifications)
+        schema_info.schema_graph, schema_info.statistics,
+        query_ast, parameters, filter_modifications)
 
     next_page_parameters, remainder_parameters = generate_parameters_for_parameterized_query(
         schema_info, parameterized_queries, num_pages)
