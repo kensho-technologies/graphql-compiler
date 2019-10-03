@@ -242,7 +242,7 @@ def _parse_datetime_value(value):
         # Strip the "Z" and add an explicit time zone instead.
         value = value[:-1] + '+00:00'
 
-    return arrow.get(value, 'YYYY-MM-DDTHH:mm:ssZ').datetime
+    return arrow.get(value, 'YYYY-MM-DDTHH:mm:ssZZ').datetime
 
 
 GraphQLDate = GraphQLScalarType(
@@ -359,7 +359,7 @@ def insert_meta_fields_into_existing_schema(graphql_schema):
             type_obj.fields[meta_field_name] = meta_field
 
 
-def _check_for_nondefault_directive_names(directives):
+def check_for_nondefault_directive_names(directives):
     """Check if any user-created directives are present."""
     # Include compiler-supported directives, and the default directives GraphQL defines.
     expected_directive_names = {

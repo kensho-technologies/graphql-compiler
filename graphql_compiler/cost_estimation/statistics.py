@@ -82,13 +82,28 @@ class Statistics(object):
         """
         return None
 
+    def get_field_quantiles(self, vertex_name, field_name):
+        """Return a list dividing the field values in equally-sized groups.
+
+        Args:
+            vertex_name: str, name of a vertex defined in the GraphQL schema.
+            field_name: str, name of a vertex field. This field has to have a type on which
+                        the < operator makes sense.
+
+        Returns:
+            None or a sorted list of N quantiles dividing the values of the field
+            into N-1 groups of almost equal size. The first element of the list is the smallest
+            known value, and the last element is the largest known value.
+        """
+        return None
+
 
 class LocalStatistics(Statistics):
     """Statistics class that receives all statistics at initialization, storing them in-memory."""
 
     def __init__(
         self, class_counts, vertex_edge_vertex_counts=None,
-        distinct_field_values_counts=None
+        distinct_field_values_counts=None, field_quantiles=None
     ):
         """Initialize statistics with the given data.
 
@@ -102,15 +117,25 @@ class LocalStatistics(Statistics):
             distinct_field_values_counts: optional dict, (str, str) -> int, mapping vertex class
                                           name and property field name to the count of distinct
                                           values of that vertex class's property field.
+            field_quantiles: optional dict, (str, str) -> list, mapping vertex class name
+                             and property field name to a list of N quantiles, a sorted list of
+                             values separating the values of the field into N-1 groups of almost
+                             equal size. The first element of the list is the smallest known value,
+                             and the last element is the largest known value. The i-th
+                             element is a value greater than or equal to i/N of all present
+                             values. The number N can be different for each entry.
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
         if distinct_field_values_counts is None:
             distinct_field_values_counts = dict()
+        if field_quantiles is None:
+            field_quantiles = dict()
 
         self._class_counts = frozendict(class_counts)
         self._vertex_edge_vertex_counts = frozendict(vertex_edge_vertex_counts)
         self._distinct_field_values_counts = frozendict(distinct_field_values_counts)
+        self._field_quantiles = frozendict(field_quantiles)
 
     def get_class_count(self, class_name):
         """See base class."""
@@ -130,3 +155,8 @@ class LocalStatistics(Statistics):
         """See base class."""
         statistic_key = (vertex_name, field_name)
         return self._distinct_field_values_counts.get(statistic_key)
+
+    def get_field_quantiles(self, vertex_name, field_name):
+        """See base class."""
+        statistic_key = (vertex_name, field_name)
+        return self._field_quantiles.get(statistic_key)

@@ -19,9 +19,7 @@ ASTWithParameters = namedtuple(
 )
 
 
-def split_into_page_query_and_remainder_query(
-    schema_graph, statistics, query_ast, parameters, num_pages
-):
+def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters, num_pages):
     """Split a query into two equivalent queries, one of which will return roughly a page of data.
 
     First, two parameterized queries are generated that contain filters usable for pagination i.e.
@@ -31,8 +29,7 @@ def split_into_page_query_and_remainder_query(
     data is equivalent to the original query's result data.
 
     Args:
-        schema_graph: SchemaGraph instance.
-        statistics: Statistics object.
+        schema_info: QueryPlanningSchemaInfo
         query_ast: Document, AST of the GraphQL query that will be split.
         parameters: dict, parameters with which query will be estimated.
         num_pages: int, number of pages to split the query into.
@@ -55,12 +52,10 @@ def split_into_page_query_and_remainder_query(
     )
 
     parameterized_queries = generate_parameterized_queries(
-        schema_graph, statistics, query_ast, parameters, filter_modifications
-    )
+        schema_info, query_ast, parameters, filter_modifications)
 
     next_page_parameters, remainder_parameters = generate_parameters_for_parameterized_query(
-        schema_graph, statistics, parameterized_queries, num_pages
-    )
+        schema_info, parameterized_queries, num_pages)
 
     next_page_ast_with_parameters = ASTWithParameters(
         parameterized_queries.next_page_query,

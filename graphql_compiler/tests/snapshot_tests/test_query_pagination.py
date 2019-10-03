@@ -18,6 +18,8 @@ from ...query_pagination.modify_query import (
 )
 from ...query_pagination.parameter_generator import generate_parameters_for_parameterized_query
 from ..test_helpers import compare_graphql, generate_schema_graph
+from ...schema.schema_info import QueryPlanningSchemaInfo
+from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
@@ -44,6 +46,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_basic_pagination(self):
         """Ensure a basic pagination query is handled correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
         test_data = '''{
             Animal {
                 name @output(out_name: "animal")
@@ -57,6 +62,13 @@ class QueryPaginationTests(unittest.TestCase):
         }
 
         statistics = LocalStatistics(count_data)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
 
         expected_first_next_page = QueryStringWithParameters(
             '''{

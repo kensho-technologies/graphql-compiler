@@ -21,11 +21,9 @@ languages.
 
 Furthermore, the GraphQL compiler validates queries through the use of a
 GraphQL schema that specifies the underlying schema of the database. We
-can currently autogenerate a GraphQL schema by introspecting an OrientDB
-database, (see `End to End Example <#end-to-end-example>`__).
-
-In the near future, we plan to add schema autogeneration from SQLAlchemy
-metadata as well.
+we can currently autogenerate GraphQL schemas from OrientDB databases, (see `End-to-End Example
+<#end-to-end-example>`__) and from SQL databases, (see `End-to-End SQL Example
+<#end-to-end-sql-example>`__).
 
 For a more detailed overview and getting started guide, please see `our
 blog
@@ -35,7 +33,7 @@ Table of contents
 -----------------
 
 -  `Features <#features>`__
--  `End to End Example <#end-to-end-example>`__
+-  `End-to-End Example <#end-to-end-example>`__
 -  `Definitions <#definitions>`__
 -  `Directives <#directives>`__
 
@@ -75,6 +73,7 @@ Table of contents
 -  `SQL <#sql>`__
 
    -  `End-To-End SQL Example <#end-to-end-sql-example>`__
+   -  `Advanced Features <#advanced-features>`__
 
 -  `Miscellaneous <#miscellaneous>`__
 
@@ -553,7 +552,7 @@ whose names contain the substring :code:`substr`:
     {
         Animal {
             name @output(out_name: "animal_name")
-            out_Animal_ParentOf {
+            out_Animal_ParentOf @fold {
                 _x_count @filter(op_name: ">=", value: ["$count"])
                 name @filter(op_name: "has_substring", value: ["$substr"])
             }
@@ -1323,7 +1322,7 @@ and discarded.
             name @output(out_name: "species_name")
             out_Entity_Related {
                 ... on Species {
-                    name @output(out_name: "food_name")
+                    name @output(out_name: "entity_name")
                 }
             }
         }
@@ -1809,96 +1808,159 @@ SQL
 ---
 
 Relational databases are supported by compiling to SQLAlchemy core as an intermediate
-language, and then relying on SQLAlchemy's compilation of the dialect-specific SQL string to query
-the target database.
+language, and then relying on SQLAlchemy's compilation of the dialect-specific SQL query. The
+compiler does not return a string for SQL compilation, but instead a SQLAlchemy :code:`Query`
+object that can be executed through a SQLAlchemy `engine
+<https://docs.sqlalchemy.org/en/latest/core/engines.html>`__.
 
 Our SQL backend supports basic traversals, filters, tags and outputs, but there are still some
 pieces in development:
 
-- Directives: :code:`@optional`, :code:`@fold`, :code:`@recurse`
-- Filter operators: :code:`is_null`, :code:`is_not_null`, :code:`has_edge_degree`
+- Directives: :code:`@fold`
+- Filter operators: :code:`has_edge_degree`
 - Dialect-specific features, like Postgres array types, and use of filter operators
   specific to them: :code:`contains`, :code:`intersects`, :code:`name_or_alias`
 - Meta fields: :code:`__typename`, :code:`_x_count`
 
-End-To-End SQL Example
+End-to-End SQL Example
 ~~~~~~~~~~~~~~~~~~~~~~
 
-This section provides an end-to-end example including relevant GraphQL schema
-and SQLAlchemy engine preparation follows.
-
-This is intended as a basic example of the setup steps for the SQL
-backend of the GraphQL compiler. It does not represent best practices
-for configuring and running SQLAlchemy in a production system.
+To query a SQL backend simply reflect the needed schema data from the database using SQLAlchemy,
+compile the GraphQL query to a SQLAlchemy :code:`Query`, and execute the query against the engine
+as in the example below:
 
 .. code:: python
 
-    from graphql import parse
-    from graphql.utils.build_ast_schema import build_ast_schema
-    from sqlalchemy import MetaData, Table, Column, String, create_engine
-    from graphql_compiler.compiler.ir_lowering_sql.metadata import SqlMetadata
-    from graphql_compiler.schema.schema_info import make_sqlalchemy_schema_info
-    from graphql_compiler import graphql_to_sql
-    
-    # =================================================================================================
-    # Step 1: Provide schema information. Note that we are working on making this step automatic.
-    # =================================================================================================
-    
-    schema_text = '''
-    schema {
-        query: RootSchemaQuery
-    }
-    # IMPORTANT NOTE: all compiler directives are expected here, but not shown to keep the example brief
-    
-    directive @filter(op_name: String!, value: [String!]!) on FIELD | INLINE_FRAGMENT
-    
-    # < more directives here, see the GraphQL schema section of this README for more details. >
-    
-    directive @output(out_name: String!) on FIELD
-    
-    type Animal {
-        name: String
-    }
-    '''
-    schema = build_ast_schema(parse(schema_text))
-    
-    # Map all GraphQL types to sqlalchemy tables.
-    # See https://docs.sqlalchemy.org/en/latest/core/metadata.html for more details on this step.
-    tables = {
-        'Animal': Table(
-            'Animal',
-            MetaData(),
-            Column('name', String(length=12)),  # The name is the same as the one in the GraphQL schema
-        ),
-    }
-    
-    # Prepare a SQLAlchemy engine to query the target relational database.
-    # See https://docs.sqlalchemy.org/en/latest/core/engines.html for more detail on this step.
+    from graphql_compiler import get_sqlalchemy_schema_info_from_specified_metadata, graphql_to_sql
+    from sqlalchemy import MetaData, create_engine
+
     engine = create_engine('<connection string>')
-    
-    # Wrap the schema information into a SQLAlchemySchemaInfo object
-    sql_schema_info = make_sqlalchemy_schema_info(schema, {}, engine.dialect, tables, {})
-    
-    
-    # =================================================================================================
-    # Step 2: Compile and execute a GraphQL query against the schema
-    # =================================================================================================
-    
+
+    # Reflect the default database schema. Each table must have a primary key.
+    # See "Including tables without explicitly enforced primary keys" otherwise.
+    metadata = MetaData(bind=engine)
+    metadata.reflect()
+
+    # Wrap the schema information into a SQLAlchemySchemaInfo object.
+    sql_schema_info = get_sqlalchemy_schema_info_from_specified_metadata(
+        metadata.tables, {}, engine.dialect)
+
+    # Write GraphQL query.
     graphql_query = '''
     {
         Animal {
             name @output(out_name: "animal_name")
-                 @filter(op_name: "in_collection", value: ["$names"])
         }
     }
     '''
-    parameters = {
-        'names': ['animal name 1', 'animal name 2'],
-    }
-    
-    compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
-    query_results = [dict(result_proxy) for result_proxy in engine.execute(compilation_result.query)]
+    parameters = {}
 
+    # Compile and execute query.
+    compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
+    query_results = [dict(row) for row in engine.execute(compilation_result.query)]
+
+Advanced Features
+~~~~~~~~~~~~~~~~~
+
+SQL Edges
+^^^^^^^^^^^^^^^^^^^^
+Edges can be specified in SQL through the :code:`direct_edges` parameter as illustrated
+below. SQL edges gets rendered as :code:`out_edgeName` and :code:`in_edgeName` in the source and
+destination GraphQL objects respectively and edge traversals get compiled to SQL joins between the
+source and destination tables using the specified columns. We use the term :code:`direct_edges`
+below since the compiler may support other types of SQL edges in the future such as edges that are
+backed by SQL `association tables <https://en.wikipedia.org/wiki/Associative_entity>`__.
+
+.. code:: python
+
+    from graphql_compiler import get_sqlalchemy_schema_info_from_specified_metadata, graphql_to_sql
+    from graphql_compiler.schema_generation.sqlalchemy.edge_descriptors import DirectEdgeDescriptor
+    from sqlalchemy import MetaData, create_engine
+
+    # Set engine and reflect database metadata. (See example above for more details).
+    engine = create_engine('<connection string>')
+    metadata = MetaData(bind=engine)
+    metadata.reflect()
+
+    # Specify SQL edges.
+    direct_edges = {
+        'Animal_LivesIn': DirectEdgeDescriptor(
+            from_vertex='Animal',  # Name of the source GraphQL object as specified.
+            from_column='location',  # Name of the column of the underlying source table to join on.
+            to_vertex='Location',  # Name of the destination GraphQL object as specified.
+            to_column='uuid',   # Name of the column of the underlying destination table to join on.
+         )
+    }
+
+    # Wrap the schema information into a SQLAlchemySchemaInfo object.
+    sql_schema_info = get_sqlalchemy_schema_info_from_specified_metadata(
+        metadata.tables, direct_edges, engine.dialect)
+
+    # Write GraphQL query with edge traversal.
+    graphql_query = '''
+    {
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_LivesIn {
+                name @output(out_name: "location_name")
+            }
+        }
+    }
+    '''
+
+    # Compile query. Note that the edge traversal gets compiled to a SQL join.
+    compilation_result = graphql_to_sql(sql_schema_info, graphql_query, {})
+
+
+Including tables without explicitly enforced primary keys
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The compiler requires that each SQLAlchemy :code:`Table` object in the :code:`SQLALchemySchemaInfo`
+has a primary key. However, the primary key in the :code:`Table` need not be the primary key in
+the underlying table. It may simply be a non-null and unique identifier of each row. To override
+the primary key of SQLAlchemy :code:`Table` objects reflected from a database please follow the
+instructions in `this link
+<https://docs.sqlalchemy.org/en/13/core/reflection.html#overriding-reflected-columns>`__.
+
+Including tables from multiple schemas
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+SQLAlchemy and SQL database management systems support the concept of multiple `schemas
+<https://docs.sqlalchemy.org/en/13/core/metadata.html?highlight=schema#specifying-the-schema-name>`__.
+One can include :code:`Table` objects from multiple schemas in the same
+:code:`SQLAlchemySchemaInfo`. However, when doing so, one cannot simply use table names as
+GraphQL object names because two tables in different schemas can have the
+same the name. A solution that is not quite guaranteed to work, but will likely work in practice
+is to prepend the schema name as follows:
+
+.. code:: python
+
+    vertex_name_to_table = {}
+    for table in metadata.values():
+        # The schema field may be None if the database name is specified in the connection string
+        # and the table is in the default schema, (e.g. 'dbo' for mssql and 'public' for postgres).
+        if table.schema:
+            vertex_name = 'dbo' + table.name
+        else:
+            # If the database name is not specified in the connection string, then
+            # the schema field is of the form <databaseName>.<schemaName>.
+            # Since dots are not allowed in GraphQL type names we must remove them here.
+            vertex_name = table.schema.replace('.', '') + table.name
+
+        if vertex_name in vertex_name_to_table:
+            raise AssertionError('Found two tables with conflicting GraphQL object names.')
+
+        vertex_name_to_table[vertex_name] = table
+
+Including manually defined :code:`Table` objects
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :code:`Table` objects in the :code:`SQLAlchemySchemaInfo` do not need to be reflected from the
+database. They also can be manually specified as in `this link
+<https://docs.sqlalchemy.org/en/13/core/metadata.html#creating-and-dropping-database-tables>`__.
+However, if specifying :code:`Table` objects manually, please make sure to include a primary key
+for each table and to use only SQL types allowed for the dialect specified in the
+:code:`SQLAlchemySchemaInfo`.
 
 Miscellaneous
 -------------

@@ -24,7 +24,16 @@ def sort_db_results(results):
         """Convert None/Not None to avoid comparisons of None to a non-None type."""
         return tuple((result[col] is not None, result[col]) for col in sort_order)
 
-    return sorted(results, key=sort_key)
+    def sorted_value(value):
+        """Return a sorted version of a value, if it is a list."""
+        if isinstance(value, list):
+            return sorted(value)
+        return value
+
+    return sorted([
+        {k: sorted_value(v) for k, v in six.iteritems(row)}
+        for row in results
+    ], key=sort_key)
 
 
 def try_convert_decimal_to_string(value):
@@ -45,8 +54,15 @@ def compile_and_run_match_query(schema, graphql_query, parameters, orientdb_clie
     }
     compilation_result = graphql_to_match(schema, graphql_query, converted_parameters)
 
+    # Get results, adding None for optional columns with no matches
     query = compilation_result.query
-    results = [row.oRecordData for row in orientdb_client.command(query)]
+    results = []
+    for row in orientdb_client.command(query):
+        row_dict = row.oRecordData
+        for output_name in compilation_result.output_metadata:
+            if output_name not in row_dict:
+                row_dict[output_name] = None
+        results.append(row.oRecordData)
     return results
 
 

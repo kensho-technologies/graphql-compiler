@@ -11,9 +11,11 @@ import six
 import sqlalchemy
 from sqlalchemy.dialects import mssql
 
-from .. import get_graphql_schema_from_orientdb_schema_data
+from graphql_compiler.schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data
+
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
+from ..macros import create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
 from ..schema import CUSTOM_SCALAR_TYPES, is_vertex_field_name
 from ..schema.schema_info import CommonSchemaInfo, DirectJoinDescriptor, make_sqlalchemy_schema_info
@@ -203,6 +205,122 @@ SCHEMA_TEXT = '''
         uuid: ID
     }
 '''
+
+VALID_MACROS_TEXT = [
+    ('''\
+    {
+        Entity @macro_edge_definition(name: "out_Entity_AlmostRelated") {
+            out_Entity_Related {
+                out_Entity_Related @macro_edge_target{
+                    uuid
+                }
+            }
+        }
+    }
+    ''', {}),
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
+            out_Animal_ParentOf {
+                out_Animal_ParentOf @macro_edge_target {
+                    uuid
+                }
+            }
+        }
+    }''', {}),
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_GrandchildrenCalledNate") {
+            out_Animal_ParentOf {
+                out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"])
+                                    @macro_edge_target {
+                    uuid
+                }
+            }
+        }
+    }''', {
+        'wanted': 'Nate',
+    }),
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_RichSiblings") {
+            in_Animal_ParentOf {
+                net_worth @tag(tag_name: "parent_net_worth")
+                out_Animal_ParentOf @macro_edge_target {
+                    net_worth @filter(op_name: ">", value: ["%parent_net_worth"])
+                }
+            }
+        }
+    }''', {}),
+    ('''\
+    {
+        Location @macro_edge_definition(name: "out_Location_Orphans") {
+            in_Animal_LivesIn @macro_edge_target {
+                in_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$num_parents"])
+                                   @optional {
+                    uuid
+                }
+            }
+        }
+    }''', {
+        'num_parents': 0,
+    }),
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings") {
+            net_worth @tag(tag_name: "net_worth")
+            out_Animal_BornAt {
+                event_date @tag(tag_name: "birthday")
+            }
+            in_Animal_ParentOf {
+                out_Animal_ParentOf @macro_edge_target {
+                    net_worth @filter(op_name: ">", value: ["%net_worth"])
+                    out_Animal_BornAt {
+                        event_date @filter(op_name: "<", value: ["%birthday"])
+                    }
+                }
+            }
+        }
+    }''', {}),
+    # The same as out_AnimalRichYoungerSiblings, but with a filter after the target.
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings_2") {
+            net_worth @tag(tag_name: "net_worth")
+            in_Animal_ParentOf {
+                out_Animal_ParentOf @macro_edge_target {
+                    net_worth @filter(op_name: ">", value: ["%net_worth"])
+                    out_Animal_BornAt {
+                        event_date @tag(tag_name: "birthday")
+                    }
+                }
+            }
+            out_Animal_BornAt {
+                event_date @filter(op_name: ">", value: ["%birthday"])
+            }
+        }
+    }''', {}),
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_RelatedFood") {
+            in_Entity_Related {
+                ... on Food @macro_edge_target {
+                    uuid
+                }
+            }
+        }
+    }''', {}),
+    ('''\
+    {
+        Animal @macro_edge_definition(name: "out_Animal_RelatedEntity") {
+            in_Entity_Related {
+                ... on Entity @macro_edge_target {
+                    uuid
+                }
+            }
+        }
+    }''', {}),
+]
 
 
 # A class holding all necessary backend-specific testing utilities.
@@ -453,11 +571,12 @@ def get_sqlalchemy_schema_info():
         'Species': sqlalchemy.Table(
             'Species',
             sqlalchemy_metadata_2,
-            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('eats', uuid_type, nullable=True),
-            sqlalchemy.Column('limbs', sqlalchemy.Integer, nullable=False),
+            sqlalchemy.Column('limbs', sqlalchemy.Integer, nullable=True),
+            sqlalchemy.Column('related_entity', uuid_type, nullable=True),
             schema='db_1.schema_1'
         ),
         'UniquelyIdentifiable': sqlalchemy.Table(
@@ -483,8 +602,8 @@ def get_sqlalchemy_schema_info():
             'name': 'Animal_ParentOf',
             'from_table': 'Animal',
             'to_table': 'Animal',
-            'from_column': 'parent',
-            'to_column': 'uuid',
+            'from_column': 'uuid',
+            'to_column': 'parent',
         }, {
             'name': 'Animal_OfSpecies',
             'from_table': 'Animal',
@@ -585,3 +704,22 @@ def construct_location_types(location_types_as_strings):
         location: schema.get_type(type_name)
         for location, type_name in six.iteritems(location_types_as_strings)
     }
+
+
+def get_empty_test_macro_registry():
+    """Return a MacroRegistry with appropriate type_equivalence_hints and subclass_set."""
+    schema = get_schema()
+    type_equivalence_hints = {
+        schema.get_type('Event'): schema.get_type('Union__BirthEvent__Event__FeedingEvent'),
+    }
+    subclass_sets = compute_subclass_sets(schema, type_equivalence_hints)
+    macro_registry = create_macro_registry(schema, type_equivalence_hints, subclass_sets)
+    return macro_registry
+
+
+def get_test_macro_registry():
+    """Return a MacroRegistry object containing macros used in tests."""
+    macro_registry = get_empty_test_macro_registry()
+    for graphql, args in VALID_MACROS_TEXT:
+        register_macro_edge(macro_registry, graphql, args)
+    return macro_registry

@@ -38,3 +38,23 @@ class IllegalSchemaStateError(SchemaError):
 
 class EmptySchemaError(SchemaError):
     """Raised when there are no visible vertex types to import into the GraphQL schema object."""
+
+
+class InvalidSQLEdgeError(SchemaError):
+    """Raised when a SQL edge provided during SQLAlchemySchemaInfo generation is invalid.
+
+    This may be raised if the provided SQL edge refers to a non-existent vertex, or a non-exist
+    column in a table. In the future, this class might encompass other sort of issues in
+    specified SQL edges. For instance, it might be raised if an edge implies that we could execute
+    a SQL join between two columns, but the columns have non-comparable types.
+    """
+
+
+class MissingPrimaryKeyError(SchemaError):
+    """Raised when a SQLAlchemy Table object is missing a primary key.
+
+    The compiler requires that each SQLAlchemy Table object in the SQLALchemySchemaInfo
+    has a primary key. However, the primary key in the SQLAlchemy Table object need not be the
+    primary key in the underlying table. It may simply be a non-null and unique identifier of each
+    row.
+    """

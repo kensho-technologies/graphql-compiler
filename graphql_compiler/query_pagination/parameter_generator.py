@@ -367,13 +367,12 @@ def _validate_all_pagination_filters_have_parameters(
 
 
 def generate_parameters_for_parameterized_query(
-    schema_graph, statistics, parameterized_pagination_queries, num_pages
+    schema_info, parameterized_pagination_queries, num_pages
 ):
     """Generate parameters for the given parameterized pagination queries.
 
     Args:
-        schema_graph: SchemaGraph instance.
-        statistics: Statistics object.
+        schema_info: QueryPlanningSchemaInfo
         parameterized_pagination_queries: ParameterizedPaginationQueries namedtuple, parameterized
                                           queries for which parameters are being generated.
         num_pages: int, number of pages to split the query into.

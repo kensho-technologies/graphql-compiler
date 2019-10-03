@@ -1,13 +1,18 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 """Helpers for rewriting GraphQL AST objects using structural sharing."""
 from copy import copy
+from itertools import chain
 
 from graphql.language.ast import (
     Argument, Field, InlineFragment, ListValue, Name, OperationDefinition, SelectionSet,
     StringValue
 )
+import six
 
-from ...compiler.helpers import get_parameter_name, is_tagged_parameter
+from ...compiler.helpers import (
+    get_parameter_name, get_uniquely_named_objects_by_name, is_tagged_parameter
+)
+from ...exceptions import GraphQLCompilationError
 from ...schema import FilterDirective, TagDirective
 from ..macro_edge.directives import MacroEdgeTargetDirective
 
@@ -233,51 +238,6 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
     return new_ast
 
 
-def omit_ast_from_ast_selections(ast, ast_to_omit):
-    """Return an equivalent AST to the input, but with the specified AST omitted if it appears.
-
-    Args:
-        ast: GraphQL library AST object, such as a Field, InlineFragment, or OperationDefinition
-        ast_to_omit: GraphQL library AST object, the *exact same* object that should be omitted.
-                     This function uses reference equality, since deep equality can get expensive.
-
-    Returns:
-        GraphQL library AST object, equivalent to the input one, with all instances of
-        the specified AST omitted. If the specified AST does not appear in the input AST,
-        the returned object is the exact same object as the input.
-    """
-    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
-        return ast
-
-    if ast.selection_set is None:
-        return ast
-
-    made_changes = False
-
-    selections_to_keep = []
-    for selection_ast in ast.selection_set.selections:
-        if selection_ast is ast_to_omit:
-            # Drop the current selection.
-            made_changes = True
-        else:
-            new_selection_ast = omit_ast_from_ast_selections(selection_ast, ast_to_omit)
-            if new_selection_ast is not selection_ast:
-                # The current selection contained the AST to omit, and was altered as a result.
-                made_changes = True
-            selections_to_keep.append(new_selection_ast)
-
-    if not made_changes:
-        return ast
-
-    new_ast = copy(ast)
-    if not selections_to_keep:
-        new_ast.selection_set = None
-    else:
-        new_ast.selection_set = SelectionSet(selections_to_keep)
-
-    return new_ast
-
-
 def find_target_and_copy_path_to_it(ast):
     """Copy the AST objects on the path to the target, returning the copied AST and the target AST.
 
@@ -325,3 +285,109 @@ def find_target_and_copy_path_to_it(ast):
         new_ast = copy(ast)
         new_ast.selection_set = SelectionSet(new_selections)
         return new_ast, target_ast
+
+
+def merge_selection_sets(selection_set_a, selection_set_b):
+    """Merge selection sets, merging directives on name conflict.
+
+    Create a selection set that contains the selections of both inputs. If there is a name
+    collision on a property field, we take the directives from both inputs on that field and
+    merge them. We disallow name collision on a vertex field.
+
+    The value None represents an empty SelectionSet.
+
+    The order of selections in the resulting SelectionSet has the following properties:
+    - property fields are before vertex fields.
+    - property fields in selection_set_b come later than other property fields.
+    - vertex fields in selection_set_b come later than other vertex fields.
+    - ties are resolved by respecting the ordering of fields in the input arguments.
+
+    Args:
+        selection_set_a: SelectionSet or None to be merged with the other
+        selection_set_b: SelectionSet or None to be merged with the other
+
+    Returns:
+        SelectionSet or None with contents from both input selection sets
+    """
+    if selection_set_a is None:
+        return selection_set_b
+    if selection_set_b is None:
+        return selection_set_a
+
+    # Convert to dict
+    selection_dict_a = get_uniquely_named_objects_by_name(selection_set_a.selections)
+    selection_dict_b = get_uniquely_named_objects_by_name(selection_set_b.selections)
+
+    # Compute intersection by name
+    common_selection_dict = dict()
+    common_fields = set(selection_dict_a.keys()) & set(selection_dict_b.keys())
+    for field_name in common_fields:
+        field_a = selection_dict_a[field_name]
+        field_b = selection_dict_b[field_name]
+        if field_a.selection_set is not None or field_b.selection_set is not None:
+            raise GraphQLCompilationError(u'Macro edge expansion results in a query traversing the '
+                                          u'same edge {} twice, which is disallowed.'
+                                          .format(field_name))
+
+        # TODO(predrag): Find a way to avoid this situation by making the rewriting smarter.
+        field_a_has_tag_directive = any((
+            directive.name.value == TagDirective.name
+            for directive in field_a.directives
+        ))
+        field_b_has_tag_directive = any((
+            directive.name.value == TagDirective.name
+            for directive in field_b.directives
+        ))
+        if field_a_has_tag_directive and field_b_has_tag_directive:
+            raise GraphQLCompilationError(u'Macro edge expansion results in field {} having two '
+                                          u'@tag directives, which is disallowed.'
+                                          .format(field_name))
+
+        merged_field = copy(field_a)
+        merged_field.directives = list(chain(field_a.directives, field_b.directives))
+        common_selection_dict[field_name] = merged_field
+
+    # Merge dicts, using common_selection_dict for keys present in both selection sets.
+    merged_selection_dict = copy(selection_dict_a)
+    merged_selection_dict.update(selection_dict_b)
+    merged_selection_dict.update(common_selection_dict)  # Overwrite keys in the intersection.
+
+    # The macro or the user code could have an unused (pro-forma) field for the sake of not
+    # having an empty selection in a vertex field. We remove pro-forma fields if they are
+    # no longer necessary.
+    if len(merged_selection_dict) > 1:  # Otherwise we need a pro-forma field
+        non_pro_forma_fields = {
+            name: ast
+            for name, ast in six.iteritems(merged_selection_dict)
+            if ast.selection_set is not None or len(ast.directives) > 0
+            # If there's selections or directives under the field, it is not pro-forma.
+        }
+        if non_pro_forma_fields:
+            merged_selection_dict = non_pro_forma_fields
+        else:
+            # There's multiple pro-forma fields. Pick one of them (the one with smallest name).
+            lexicographically_first_name = min(merged_selection_dict.keys())
+            merged_selection_dict = {
+                lexicographically_first_name: merged_selection_dict[lexicographically_first_name]
+            }
+
+    # Get a deterministic ordering of the merged selections
+    selection_name_order = list(chain((
+        ast.name.value
+        for ast in selection_set_a.selections
+        if ast.name.value not in selection_dict_b
+    ), (
+        ast.name.value
+        for ast in selection_set_b.selections
+    )))
+
+    # Make sure that all property fields come before all vertex fields. Note that sort is stable.
+    merged_selections = [
+        merged_selection_dict[name]
+        for name in selection_name_order
+        if name in merged_selection_dict
+    ]
+    return SelectionSet(sorted(
+        merged_selections,
+        key=lambda ast: ast.selection_set is not None
+    ))
