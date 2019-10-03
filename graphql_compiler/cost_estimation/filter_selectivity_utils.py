@@ -391,8 +391,10 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                 interval = _get_intersection_of_intervals(interval, domain_interval)
                 interval_size = interval.upper_bound - interval.lower_bound + 1
                 fraction_of_domain_queried = float(interval_size) / domain_interval_size
-                selectivity_at_field = Selectivity(
+                selectivity = Selectivity(
                     kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried)
+                selectivity_at_field = _combine_filter_selectivities(
+                    [selectivity_at_field, selectivity])
 
         # Process in_collection filters
         for filter_info in filters_on_field:
