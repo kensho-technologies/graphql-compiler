@@ -1,4 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from __future__ import division
 from collections import namedtuple
 import sys
 from uuid import UUID
