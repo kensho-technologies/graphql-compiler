@@ -931,7 +931,8 @@ def _make_schema_info_and_get_filter_selectivity(schema_graph, statistics, filte
         statistics=statistics,
         pagination_keys=pagination_keys,
         uuid4_fields=uuid4_fields)
-    return get_selectivity_of_filters_at_vertex(schema_info, [filter_info], parameters, location_name)
+    return get_selectivity_of_filters_at_vertex(
+        schema_info, [filter_info], parameters, location_name)
 
 
 class FilterSelectivityUtilsTests(unittest.TestCase):
