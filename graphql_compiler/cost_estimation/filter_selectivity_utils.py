@@ -409,6 +409,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                     [selectivity_at_field, selectivity])
             elif is_int_field:
                 quantiles = schema_info.statistics.get_field_quantiles(location_name, field_name)
+                quantiles = quantiles[1:-1]  # Discard the min and max value
                 if quantiles is not None:
                     if interval.lower_bound is None:
                         lower_bound_rank = 0
@@ -418,8 +419,8 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                         upper_bound_rank = len(quantiles)
                     else:
                         upper_bound_rank = bisect.bisect_left(quantiles, interval.upper_bound)
-                    domain_interval_size = len(quantiles) - 1
-                    interval_size = upper_bound_rank - lower_bound_rank - 1
+                    domain_interval_size = len(quantiles) + 1
+                    interval_size = max(upper_bound_rank - lower_bound_rank, 1.0 / 3)
                     fraction_of_domain_queried = float(interval_size) / domain_interval_size
                     selectivity = Selectivity(
                         kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried)

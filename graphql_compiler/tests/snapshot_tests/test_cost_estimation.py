@@ -1211,15 +1211,60 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             pagination_keys=pagination_keys,
             uuid4_fields=uuid4_fields)
 
-        classname = 'Species'
+        # Test <= filter in the middle
         filter_info_list = [FilterInfo(fields=('limbs',), op_name='<=', args=('$limbs_upper',))]
         params = {'limbs_upper': 8}
-
         result_counts = adjust_counts_for_filters(
-            schema_info, filter_info_list, params, classname, 32.0)
-
+            schema_info, filter_info_list, params, 'Species', 32.0)
         # The value 8 is in the middle of the third quantile out of six.
         expected_counts = 32.0 * (2.0 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test strong <= filter
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='<=', args=('$limbs_upper',))]
+        params = {'limbs_upper': 0}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        # The value - is in the first quantile.
+        expected_counts = 32.0 * (0.5 / 6.0)
+        # TODO(bojanserafimov): The result is wrong.
+        # self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test weak <= filter
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='<=', args=('$limbs_upper',))]
+        params = {'limbs_upper': 90}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        # The value - is in the last quantile.
+        expected_counts = 32.0 * (5.5 / 6.0)
+        # TODO(bojanserafimov): The result is wrong.
+        # self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test weak between filter
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='between',
+                                       args=('$limbs_lower', '$limbs_upper'))]
+        params = {'limbs_lower': 0, 'limbs_upper': 90}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        expected_counts = 32.0 * (5.0 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test strong between filter in the middle
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='between',
+                                       args=('$limbs_lower', '$limbs_upper'))]
+        params = {'limbs_lower': 12, 'limbs_upper': 14}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        expected_counts = 32.0 * ((1.0 / 3.0) / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test strong between filter with small values
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='between',
+                                       args=('$limbs_lower', '$limbs_upper'))]
+        params = {'limbs_lower': -4, 'limbs_upper': -1}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        expected_counts = 32.0 * ((1.0 / 3.0) / 6.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
 
