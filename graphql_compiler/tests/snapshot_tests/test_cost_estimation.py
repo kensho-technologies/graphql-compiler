@@ -918,6 +918,48 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1.0) * 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_ast_rotation_invariance_basic(self):
+        """Test a filter that immediately follows a recursed edge."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        original_graphql = '''{
+            Animal {
+                uuid @filter(op_name: "=", value:["$uuid"])
+                     @output(out_name: "animal_uuid")
+                out_Animal_ParentOf {
+                    uuid
+                }
+            }
+        }'''
+        rotated_graphql = '''{
+            Animal {
+                in_Animal_ParentOf {
+                    uuid @filter(op_name: "=", value:["$uuid"])
+                         @output(out_name: "animal_uuid")
+                }
+            }
+        }'''
+        params = {
+            'uuid': '00000000-0000-0000-0000-000000000000',
+        }
+
+        count_data = {
+            'Animal': 8,
+            'Animal_ParentOf': 8,
+        }
+        statistics = LocalStatistics(count_data)
+
+        original_query_estimate = _make_schema_info_and_estimate_cardinality(
+            schema_graph, statistics, original_graphql, params)
+        rotated_query_estimate = _make_schema_info_and_estimate_cardinality(
+            schema_graph, statistics, rotated_graphql, params)
+
+        # There's 8 animals and 8 Animal_ParentOf edges. We expect an arbitrary animal to have
+        # one Animal_ParentOf edge.
+        expected_cardinality_estimate = 8.0 / 8.0
+        self.assertAlmostEqual(expected_cardinality_estimate, original_query_estimate)
+        self.assertAlmostEqual(expected_cardinality_estimate, rotated_query_estimate)
+
 
 def _make_schema_info_and_get_filter_selectivity(schema_graph, statistics, filter_info,
                                                  parameters, location_name):
