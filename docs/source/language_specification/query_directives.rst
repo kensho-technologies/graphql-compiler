@@ -39,8 +39,7 @@ Constraints and Rules
    vertex field.
 -  It is allowed to expand vertex fields within an :code:`@optional` scope.
    However, doing so is currently associated with a performance penalty
-   in :code:`MATCH`. For more detail, see: `Expanding @optional vertex
-   fields <#expanding-optional-vertex-fields>`__.
+   in :code:`MATCH`.
 -  :code:`@recurse`, :code:`@fold`, or :code:`@output_source` may not be used at the
    same vertex field as :code:`@optional`.
 -  :code:`@output_source` and :code:`@fold` may not be used anywhere within a
@@ -237,9 +236,7 @@ Constraints and Rules
       :code:`@output` directives are processed, selecting folded data for
       output.
 -  If the compiler is able to prove that a type coercion in the
-   :code:`@fold` scope is actually a no-op, it may optimize it away. See the
-   `Optional type_equivalence_hints compilation parameter
-   <#optional-type-equivalence-hints-parameter>`__ section for more details.
+   :code:`@fold` scope is actually a no-op, it may optimize it away.
 
 Example
 ~~~~~~~
@@ -646,8 +643,12 @@ Supported comparison operators:
 - Less than or equal to: :code:`<=`
 
 
+Example Use
+^^^^^^^^^^^
+
+
 Equal to (:code:`=`):
-^^^^^^^^^^^^^^^^^^^^^
+'''''''''''''''''''''
 
 .. code::
 
@@ -663,7 +664,7 @@ value of the :code:`$species_name` parameter. Each row contains the :code:`uuid`
 of the :code:`Species` in a column named :code:`species_uuid`.
 
 Greater than or equal to (:code:`>=`):
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+''''''''''''''''''''''''''''''''''''''
 
 .. code::
 
@@ -680,18 +681,18 @@ on a :code:`$point_in_time`. Each row contains the animal's name and
 birthday in columns named :code:`name` and :code:`birthday`, respectively.
 
 Constraints and Rules
-'''''''''''''''''''''
+^^^^^^^^^^^^^^^^^^^^^
 
 -  All comparison operators must be on a property field.
 
 name\_or\_alias
-^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~
 
 Allows you to filter on vertices which contain the exact string
 :code:`$wanted_name_or_alias` in their :code:`name` or :code:`alias` fields.
 
 Example Use
-'''''''''''
+^^^^^^^^^^^
 
 .. code::
 
@@ -709,15 +710,15 @@ The value provided for :code:`$wanted_name_or_alias` must be the full name
 and/or alias of the :code:`Animal`. Substrings will not be matched.
 
 Constraints and Rules
-'''''''''''''''''''''
+^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be on a vertex field that has :code:`name` and :code:`alias` properties.
 
 between
-
+~~~~~~~
 
 Example Use
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. code::
 
@@ -736,17 +737,17 @@ This returns:
   :code:`name`.
 
 Constraints and Rules
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be on a property field.
 -  The lower and upper bounds represent an inclusive interval, which
    means that the output may contain values that match them exactly.
 
 in\_collection
---------------
+~~~~~~~~~~~~~~
 
 Example Use
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. code::
 
@@ -763,15 +764,15 @@ contained in a list of colors. Each row contains the :code:`Animal`'s name
 and color in columns named :code:`animal_name` and :code:`color`, respectively.
 
 Constraints and Rules
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be on a property field that is not of list type.
 
 not\_in\_collection
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 Example Use
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. code::
 
@@ -788,15 +789,15 @@ contained in a list of colors. Each row contains the :code:`Animal`'s name
 and color in columns named :code:`animal_name` and :code:`color`, respectively.
 
 Constraints and Rules
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be on a property field that is not of list type.
 
 has\_substring
---------------
+~~~~~~~~~~~~~~
 
 Example Use
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. code::
 
@@ -812,15 +813,15 @@ value supplied for the :code:`$substring` parameter. Each row contains the
 matching :code:`Animal`'s name in a column named :code:`animal_name`.
 
 Constraints and Rules
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be on a property field of string type.
 
 starts\_with
---------------
+~~~~~~~~~~~~
 
 Example Use
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. code::
 
@@ -836,15 +837,15 @@ value supplied for the :code:`$prefix` parameter. Each row contains the
 matching :code:`Animal`'s name in a column named :code:`animal_name`.
 
 Constraints and Rules
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be on a property field of string type.
 
 ends\_with
---------------
+~~~~~~~~~~
 
 Example Use
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. code::
 
@@ -860,15 +861,15 @@ value supplied for the :code:`$suffix` parameter. Each row contains the
 matching :code:`Animal`'s name in a column named :code:`animal_name`.
 
 Constraints and Rules
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be on a property field of string type.
 
 contains
---------
+~~~~~~~~
 
 Example Use
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. code::
 
@@ -890,10 +891,10 @@ Constraints and Rules
 -  Must be on a property field of list type.
 
 not\_contains
--------------
+^^^^^^^^^^^^^
 
 Example Use
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. code::
 
@@ -910,15 +911,15 @@ row contains the matching :code:`Animal`'s name in a column named
 :code:`animal_name`.
 
 Constraints and Rules
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be on a property field of list type.
 
 intersects
-----------
+~~~~~~~~~~
 
 Example Use
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. code::
 
@@ -935,22 +936,21 @@ has a non-empty intersection with the list of values supplied for the
 in a column named :code:`animal_name`.
 
 Constraints and Rules
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be on a property field of list type.
 
 has\_edge\_degree
------------------
+~~~~~~~~~~~~~~~~~
 
 Example Use
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. code::
 
     {
         Animal {
             name @output(out_name: "animal_name")
-
             out_Animal_ParentOf @filter(op_name: "has_edge_degree", value: ["$child_count"]) @optional {
                 uuid
             }
@@ -978,7 +978,7 @@ valid result sets can be produced, and the resulting query will return
 no results.
 
 Constraints and Rules
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be on a vertex field that is not the root vertex of the query.
 -  Tagged values are not supported as parameters for this filter.
@@ -987,10 +987,10 @@ Constraints and Rules
    field being filtered (see N.B. above for details).
 
 is\_null
---------
+~~~~~~~~
 
 Example Use
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. code::
 
@@ -1005,16 +1005,16 @@ This returns one row for every :code:`Animal` that does not have a color
 defined.
 
 Constraints and Rules
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be applied on a property field.
 -  :code:`value` must be empty.
 
 is\_not\_null
--------------
+~~~~~~~~~~~~~
 
 Example Use
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. code::
 
@@ -1028,7 +1028,7 @@ Example Use
 This returns one row for every :code:`Animal` that has a color defined.
 
 Constraints and Rules
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be applied on a property field.
 -  :code:`value` must be empty.
