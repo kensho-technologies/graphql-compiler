@@ -60,20 +60,31 @@ class MacroValidationTests(unittest.TestCase):
             register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_with_target_at_optional(self):
-        macro_edge_definition = '''{
+        macro_edge_definition_template = '''{
             Animal @macro_edge_definition(name: "out_Animal_OptionalGrandparentOf_Invalid") {
                 out_Animal_ParentOf {
-                    out_Animal_ParentOf @optional @macro_edge_target {
+                    out_Animal_ParentOf %(target_and_optional)s {
                         uuid
                     }
                 }
             }
         }'''
+        target_and_optional_orders = (
+            # Ensure we test both directive orders, to ensure the validation is not sensitive
+            # to the directive order.
+            '@optional @macro_edge_target',
+            '@macro_edge_target @optional',
+        )
+
         args = {}
 
-        macro_registry = get_empty_test_macro_registry()
-        with self.assertRaises(GraphQLInvalidMacroError):
-            register_macro_edge(macro_registry, macro_edge_definition, args)
+        for target_and_optional in target_and_optional_orders:
+            macro_edge_definition = (
+                macro_edge_definition_template % {'target_and_optional': target_and_optional})
+
+            macro_registry = get_empty_test_macro_registry()
+            with self.assertRaises(GraphQLInvalidMacroError):
+                register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_with_target_inside_optional(self):
         macro_edge_definition = '''{
@@ -90,6 +101,35 @@ class MacroValidationTests(unittest.TestCase):
         macro_registry = get_empty_test_macro_registry()
         with self.assertRaises(GraphQLInvalidMacroError):
             register_macro_edge(macro_registry, macro_edge_definition, args)
+
+    def test_macro_with_target_at_fold(self):
+        macro_edge_definition_template = '''{
+            Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {
+                out_Animal_ParentOf {
+                    out_Animal_ParentOf %(target_and_fold)s {
+                        _x_count @filter(op_name: ">=", value: ["$min_count"])
+                    }
+                }
+            }
+        }'''
+        args = {
+            'min_count': 1,
+        }
+
+        target_and_fold_orders = (
+            # Ensure we test both directive orders, to ensure the validation is not sensitive
+            # to the directive order.
+            '@fold @macro_edge_target',
+            '@macro_edge_target @fold',
+        )
+
+        for target_and_fold in target_and_fold_orders:
+            macro_edge_definition = (
+                macro_edge_definition_template % {'target_and_fold': target_and_fold})
+
+            macro_registry = get_empty_test_macro_registry()
+            with self.assertRaises(GraphQLInvalidMacroError):
+                register_macro_edge(macro_registry, macro_edge_definition, args)
 
     def test_macro_with_target_inside_fold(self):
         macro_edge_definition = '''{
