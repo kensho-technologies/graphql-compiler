@@ -104,10 +104,8 @@ def _find_folded_outputs(ir):
 
 class SQLFoldObject(object):
     def __init__(self):
-        self._outer_vertex_location = None
         self._outer_vertex_field = None
-        self._folded_vertex_location = None
-        self._from_clause = None
+        self._outer_vertex_table = None
         self._outputs = []
         self._group_by = []
 
@@ -134,6 +132,10 @@ class SQLFoldObject(object):
     @property
     def outer_vertex_location(self):
         return self._outer_vertex_location
+
+    @property
+    def outer_vertex_table(self):
+        return self._outer_vertex_table
 
 
 class UniqueAliasGenerator(object):
@@ -179,6 +181,8 @@ class CompilationState(object):
 
         self._fold = SQLFoldObject()
         self._in_fold = False
+        self._fold_inner_vertex_location = None
+        self._fold_outer_vertex_location = None
 
         # Information to keep track of fold aliases
         self._fold_output_column_aliases = {}  # mapping FoldScopeLocations to their intermediate alias
@@ -341,89 +345,113 @@ class CompilationState(object):
 
     def fold(self, fold_scope_location):
         """Begin execution of a Fold Block"""
-        if self._fold._from_clause or self._in_fold:
-            raise AssertionError(u'Reached an invalid fold state.')
+        # Subquery will look as follows:
+        #
+        # SELECT
+        #   OuterVertex.uuid <- this value is determined from the edge descriptor
+        #   array_agg(InnerVertex.fold_output_column) AS fold_output
+        # FROM OuterVertex
+        # INNER JOIN ... <- INNER JOINs compiled during Unfold block
+        # ON ...
+        #          ...
+        # INNER JOIN InnerVertex <- INNER JOINs compiled during Unfold block
+        # ON ...
+        # GROUP BY OuterVertex.uuid
 
+        if self._in_fold:
+            raise AssertionError(u'Reached an invalid fold state.')
 
         # begin the fold
         self._in_fold = True
-        self._fold._outer_vertex_location = self._current_location
-        self._fold._folded_vertex_location = fold_scope_location
-        self._fold_location_info = self._ir.query_metadata_table.get_location_info(fold_scope_location)
-        self._fold_relocate(fold_scope_location.base_location)
-        self._fold._from_clause = self._current_alias
+        # outer vertex is whatever vertex occurs immediately before the fold
+        self._fold_outer_vertex_location = self._current_location
+        self._fold_inner_vertex_location = fold_scope_location
 
+
+
+        # basic info about the outer vertex and inner vertex
+        self._fold._inner_vertex_table = self._sql_schema_info.vertex_name_to_table[
+            self._ir.query_metadata_table.get_location_info(fold_scope_location).type.name
+        ].alias()
+        self._fold._outer_vertex_table = self._current_alias.alias()
+        self._fold.inner_vertex_type = self._ir.query_metadata_table.get_location_info(fold_scope_location).type.name
+        self._fold.outer_vertex_type = self._current_classname
+
+        self._aliases[(self._current_location.query_path, self._fold_inner_vertex_location)] = self._fold._inner_vertex_table
 
         # collect edge information to join the fold subquery to the main selectable
         edge_direction = fold_scope_location.fold_path[0][0]
         edge_name = fold_scope_location.fold_path[0][1]
-        self._fold._outer_vertex_field = "{}_{}".format(edge_direction, edge_name)
-        edge = self._sql_schema_info.join_descriptors[
-            self._current_classname][self._fold.outer_vertex_field]
+        full_edge_name = "{}_{}".format(edge_direction, edge_name)
 
+        edge = self._sql_schema_info.join_descriptors[
+            self._current_classname][full_edge_name]
+
+        # we will use this to make sure that the join inside the subquery uses one alias of the current table
+        # and that the join outside the subquery uses another alias
+        self._fold._join_info = (edge, self._fold._outer_vertex_table, self._fold.inner_vertex_type, self._current_alias)
 
         # find outputs for this fold in self._all_folded_outputs and add to self._fold_outputs
         if fold_scope_location.fold_path in self._all_folded_outputs:
             for fold_output in self._all_folded_outputs[fold_scope_location.fold_path]:
                 if fold_output.field == '_x_count':
                     raise NotImplementedError(u'_x_count not implemented in SQL')
-                # create an intermediate output name, store the alias, and increment the counter
-                # for the next intermediate alias
-                # TODO: give better fold output names
+
                 intermediate_fold_output_name = self._alias_generator.gen_output_column()
                 self._fold_output_column_aliases[fold_output] = intermediate_fold_output_name
                 # add array aggregated intermediate output to self._fold_outputs
                 self._fold.outputs.append(
                     sqlalchemy.func.array_agg(
-                        self._aliases[(
-                            fold_output.base_location.at_vertex().query_path, self._fold.folded_vertex_location
-                        )].c[fold_output.field]
+                        self._fold._inner_vertex_table.c[fold_output.field]
                     ).label(intermediate_fold_output_name)
                 )
 
-
-
-        # append the subquery field to group by/join on
-        self._fold.outputs.append(
-            self._aliases[fold_scope_location.base_location.at_vertex().query_path, self._fold.folded_vertex_location].c[
-                edge.to_column
-            ]
-        )
-        self._fold.group_by.append(
-            self._aliases[fold_scope_location.base_location.at_vertex().query_path, self._fold.folded_vertex_location].c[
-                edge.to_column
-            ]
-        )
+        # the group by field is the unique identifier for the outer vertex
+        self._fold.outputs.append(self._fold.outer_vertex_table.c[edge.from_column])
+        self._fold.group_by.append(self._fold.outer_vertex_table.c[edge.from_column])
 
     def unfold(self):
         """Complete the execution of a Fold Block"""
         # Create the folded select statement, updating the fold count and adding the subquery
         # to self._aliases
+        # left join to the self._from_clause on self._fold_join_vertex_field
+        edge = self._fold._join_info[0]
+        j = self._fold.outer_vertex_table
+        j = sqlalchemy.join(
+            j,
+            self._fold._inner_vertex_table,
+            onclause=(self._fold._outer_vertex_table.c[edge.from_column] == self._fold._inner_vertex_table.c[edge.to_column])
+        )
         folded_subquery = sqlalchemy.select(
             self._fold.outputs
         ).select_from(
-            self._fold.from_clause
+            j
         ).group_by(
             *self._fold.group_by
-        ).alias(self._alias_generator.gen_subquery())  # TODO: give better subquery names
-        self._aliases[(self._fold.folded_vertex_location.fold_path, None)] = folded_subquery
+        ).alias(self._alias_generator.gen_subquery())
 
-        # left join to the self._from_clause on self._fold_join_vertex_field
-        edge = self._sql_schema_info.join_descriptors[
-            self._current_classname][self._fold.outer_vertex_field]
-        parent_alias = self._aliases[(self._fold.outer_vertex_location.query_path, None)] # None because the parent existed outside a fold
-        self._from_clause = self._from_clause.outerjoin(
+        self._aliases[(self._fold_inner_vertex_location.fold_path, None)] = folded_subquery
+
+        outer_vertex = self._fold._join_info[3]
+        self._from_clause = sqlalchemy.join(
+            self._from_clause,
             folded_subquery,
-            onclause=(parent_alias.c[edge.from_column] == folded_subquery.c[edge.to_column])
+            onclause=(outer_vertex.c[edge.from_column] == folded_subquery.c[edge.from_column]),
+            isouter=True
         )
-
+        # this line is necessary because the column referenced in the outputs
+        # belongs to the innermost occurrence of the outer vertex's table
+        # but we have no aliased and referenced that table again, so we need
+        # to replace later substitutions of that column with ones
+        # taken from this new alias
+        self._aliases[(self._current_location.at_vertex().query_path, None)] = outer_vertex
         # reset the folded subquery
         self._fold = SQLFoldObject()
         self._in_fold = False
-        self._current_alias = parent_alias
+        self._current_alias = outer_vertex
     def mark_location(self):
         """Execute a MarkLocation Block."""
-        self._aliases[(self._current_location.query_path, self._fold.folded_vertex_location if self._in_fold else None)] = self._current_alias
+        self._aliases[(self._current_location.query_path, self._fold_inner_vertex_location if self._in_fold else None)] = self._current_alias
 
     def construct_result(self, output_name, field):
         """Execute a ConstructResult Block."""
