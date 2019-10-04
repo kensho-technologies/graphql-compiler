@@ -919,7 +919,54 @@ class CostEstimationTests(unittest.TestCase):
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
-    def test_ast_rotation_invariance_basic(self):
+    def test_ast_rotation_invariance_with_inequality(self):
+        """Test a filter that immediately follows a recursed edge."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        original_graphql = '''{
+            BirthEvent {
+                name @output(out_name: "birth_event")
+                uuid @filter(op_name: "<=", value: ["$uuid_upper"])
+                in_Animal_BornAt {
+                    out_Animal_FedAt @fold {
+                        name @output(out_name: "feeding_event")
+                    }
+                }
+            }
+        }'''
+        rotated_graphql = '''{
+            Animal {
+                out_Animal_BornAt @fold {
+                    name @output(out_name: "birth_event")
+                    uuid @filter(op_name: "<=", value: ["$uuid_upper"])
+                }
+                out_Animal_FedAt @fold {
+                    name @output(out_name: "feeding_event")
+                }
+            }
+        }'''
+        params = {
+            'uuid_upper': '7fffffff-ffff-ffff-ffff-ffffffffffff',
+        }
+
+        count_data = {
+            'BirthEvent': 8,
+            'Animal': 8,
+            'Animal_BornAt': 8,
+            'Animal_FedAt': 8,
+        }
+        statistics = LocalStatistics(count_data)
+
+        original_query_estimate = _make_schema_info_and_estimate_cardinality(
+            schema_graph, statistics, original_graphql, params)
+        rotated_query_estimate = _make_schema_info_and_estimate_cardinality(
+            schema_graph, statistics, rotated_graphql, params)
+
+        expected_cardinality_estimate = (8.0 / 2.0) * (8.0 / 8.0) * (8.0 / 8.0)
+        self.assertAlmostEqual(expected_cardinality_estimate, original_query_estimate)
+        self.assertAlmostEqual(expected_cardinality_estimate, rotated_query_estimate)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_ast_rotation_invariance_with_equality(self):
         """Test a filter that immediately follows a recursed edge."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         original_graphql = '''{
