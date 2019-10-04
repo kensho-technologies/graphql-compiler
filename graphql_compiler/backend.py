@@ -7,8 +7,8 @@ from .compiler import (
     emit_cypher, emit_gremlin, emit_match, emit_sql, ir_lowering_cypher, ir_lowering_gremlin,
     ir_lowering_match, ir_lowering_sql
 )
-from .schema import schema_info
 from .query_running import run_sql_query
+from .schema import schema_info
 
 
 # A backend is a compilation target (a language we can compile to)

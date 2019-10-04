@@ -9,8 +9,8 @@ from parameterized import parameterized
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table
 
-from ...compiler.common import compile_graphql_generic
 from ...backend import sql_backend
+from ...compiler.common import compile_graphql_generic
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
     fast_sql_server_reflect, get_first_column_in_table
@@ -23,7 +23,7 @@ from .integration_backend_config import (
 )
 from .integration_test_helpers import (
     compile_and_run_match_query, compile_and_run_neo4j_query, compile_and_run_redisgraph_query,
-    compile_and_run_sql_query, sort_db_results
+    sort_db_results
 )
 
 
