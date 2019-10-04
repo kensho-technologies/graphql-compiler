@@ -108,7 +108,8 @@ class IntegrationTests(TestCase):
         if backend_name in SQL_BACKENDS:
             backend = sql_backend
             engine = cls.sql_backend_name_to_engine[backend_name]
-            compilation_result = compile_graphql_generic(backend, cls.sql_schema_info, graphql_query)
+            compilation_result = compile_graphql_generic(
+                backend, cls.sql_schema_info, graphql_query)
             results = backend.run_func(engine, compilation_result, parameters)
         elif backend_name in MATCH_BACKENDS:
             results = compile_and_run_match_query(
