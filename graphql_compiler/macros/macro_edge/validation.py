@@ -14,7 +14,7 @@ from ...compiler.compiler_frontend import ast_to_ir
 from ...compiler.helpers import get_only_element_from_collection
 from ...exceptions import GraphQLInvalidMacroError
 from ...query_formatting.common import ensure_arguments_are_provided
-from ...schema import VERTEX_FIELD_PREFIXES, FoldDirective, is_vertex_field_name
+from ...schema import VERTEX_FIELD_PREFIXES, FoldDirective, OptionalDirective, is_vertex_field_name
 from .ast_rewriting import remove_directives_from_ast
 from .ast_traversal import get_directives_for_ast, get_type_at_macro_edge_target
 from .descriptor import create_descriptor_from_ast_and_args
@@ -65,7 +65,8 @@ def _validate_that_macro_edge_definition_and_target_directives_appear_once(macro
                 .format(directive_definition.name, len(macro_data)))
 
 
-def _validate_non_required_macro_definition_directives(ast, inside_fold_scope=False):
+def _validate_non_required_macro_definition_directives(ast, inside_optional_scope=False,
+                                                       inside_fold_scope=False):
     """Check that the macro is using non-required macro edge definition directives properly.
 
     Restrictions on use of directives:
@@ -75,13 +76,20 @@ def _validate_non_required_macro_definition_directives(ast, inside_fold_scope=Fa
 
     Args:
         ast: GraphQL AST describing a subtree of the macro
+        inside_optional_scope: bool, whether the subtree is within an @optional scope
         inside_fold_scope: bool, whether the subtree is within a @fold scope
     """
-    subselection_inside_fold_scope = inside_fold_scope
     names_of_allowed_directives = frozenset({
         directive.name
         for directive in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION
     })
+    names_of_directives_at_ast = frozenset({
+        directive.name.value
+        for directive in ast.directives
+    })
+
+    subselection_inside_optional_scope = inside_optional_scope
+    subselection_inside_fold_scope = inside_fold_scope
 
     for directive in ast.directives:
         name = directive.name.value
@@ -89,12 +97,24 @@ def _validate_non_required_macro_definition_directives(ast, inside_fold_scope=Fa
             raise GraphQLInvalidMacroError(u'Unexpected directive name found: {} {}'
                                            .format(name, directive))
 
-        if name == FoldDirective.name:
+        if name == OptionalDirective.name:
+            subselection_inside_optional_scope = True
+        elif name == FoldDirective.name:
             subselection_inside_fold_scope = True
         elif name == MacroEdgeTargetDirective.name:
+            if inside_optional_scope:
+                raise GraphQLInvalidMacroError(
+                    u'The @macro_edge_target cannot be inside an @optional scope.')
+            if OptionalDirective.name in names_of_directives_at_ast:
+                raise GraphQLInvalidMacroError(
+                    u'The @macro_edge_target cannot be placed at a field marked @optional.')
+
             if inside_fold_scope:
                 raise GraphQLInvalidMacroError(
-                    u'The @macro_edge_target cannot be inside a fold scope.')
+                    u'The @macro_edge_target cannot be inside a @fold scope.')
+            if FoldDirective.name in names_of_directives_at_ast:
+                raise GraphQLInvalidMacroError(
+                    u'The @macro_edge_target cannot be placed at a field marked @fold.')
 
             # Check that the target doesn't begin with a coercion. This also implicitly
             # checks that the macro is not on a union type, because union types always
@@ -109,7 +129,10 @@ def _validate_non_required_macro_definition_directives(ast, inside_fold_scope=Fa
         if ast.selection_set is not None:
             for selection in ast.selection_set.selections:
                 _validate_non_required_macro_definition_directives(
-                    selection, inside_fold_scope=subselection_inside_fold_scope)
+                    selection,
+                    inside_optional_scope=subselection_inside_optional_scope,
+                    inside_fold_scope=subselection_inside_fold_scope,
+                )
     else:
         raise AssertionError(u'Unexpected AST type received: {} {}'.format(type(ast), ast))
 
