@@ -16,6 +16,7 @@ from .helpers import (
     validate_safe_or_special_string, validate_safe_string
 )
 
+
 # Since MATCH uses $-prefixed keywords to indicate special values,
 # we must restrict those keywords from being used as variables.
 # For consistency, we blacklist these keywords in both Gremlin and MATCH.

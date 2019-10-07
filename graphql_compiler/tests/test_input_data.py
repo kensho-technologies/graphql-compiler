@@ -1654,31 +1654,6 @@ def fold_after_traverse_no_output_on_root():
         type_equivalence_hints=None)
 
 
-def fold_then_traverse_different_types():
-    graphql_input = '''{
-                Animal {
-                    name @output(out_name: "animal_name")
-                    out_Animal_LivesIn @fold {
-                        in_Animal_LivesIn {
-                            name @output(out_name: "neighbor_and_self_names_list")
-                        }
-                    }
-                }
-            }'''
-    expected_output_metadata = {
-        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
-        'neighbor_and_self_names_list': OutputMetadata(
-            type=GraphQLList(GraphQLString), optional=False),
-    }
-    expected_input_metadata = {}
-
-    return CommonTestData(
-        graphql_input=graphql_input,
-        expected_output_metadata=expected_output_metadata,
-        expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=None)
-
-
 def fold_after_traverse_different_types():
     graphql_input = '''{
             Animal {
@@ -1932,11 +1907,11 @@ def fold_date_and_datetime_fields():  # noqa: D103
     graphql_input = '''{
         Animal {
             name @output(out_name: "animal_name")
-            out_Animal_FedAt @fold {
-                event_date @output(out_name: "fed_at_datetimes_list")
-            }
             out_Animal_ParentOf @fold {
                 birthday @output(out_name: "child_birthdays_list")
+            }
+            out_Animal_FedAt @fold {
+                event_date @output(out_name: "fed_at_datetimes_list")
             }
         }
     }'''

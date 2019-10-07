@@ -105,6 +105,9 @@ def _find_folded_outputs(ir):
 
 class SQLFoldObject(object):
     def __init__(self):
+        self._outer_vertex_location = None
+        self._from_clause = None
+        self._folded_vertex_location = None
         self._outer_vertex_field = None
         self._outer_vertex_table = None
         self._outputs = []
@@ -112,30 +115,37 @@ class SQLFoldObject(object):
 
     @property
     def outer_vertex_field(self):
+        """Get the field type of the vertex immediately outside the fold"""
         return self._outer_vertex_field
 
     @property
     def folded_vertex_location(self):
+        """Get the IR location of the vertex being folded on."""
         return self._folded_vertex_location
 
     @property
     def outputs(self):
+        """Get the output columns for the fold subquery"""
         return self._outputs
 
     @property
     def group_by(self):
+        """Get the columns to group by for the fold subquery."""
         return self._group_by
 
     @property
     def from_clause(self):
+        """Get from clause for the fold subquery."""
         return self._from_clause
 
     @property
     def outer_vertex_location(self):
+        """Get the IR location of the vertex immediately outside the fold."""
         return self._outer_vertex_location
 
     @property
     def outer_vertex_table(self):
+        """Get the SQLAlchemy table corresponding to the vertex immediately outside the fold."""
         return self._outer_vertex_table
 
 
@@ -145,11 +155,13 @@ class UniqueAliasGenerator(object):
         self._fold_count = 1
 
     def gen_subquery(self):
+        """Generate a new subquery alias and increment the counter"""
         alias = 'folded_subquery_{}'.format(self._fold_count)
         self._fold_count += 1
         return alias
 
     def gen_output_column(self):
+        """Generate a new output column alias and increment the counter"""
         alias = 'fold_output_{}'.format(self._folded_output_count)
         self._folded_output_count += 1
         return alias
@@ -161,6 +173,7 @@ class CompilationState(object):
     def __init__(self, sql_schema_info, ir):
         """Initialize a CompilationState, setting the current location at the root of the query."""
         # Immutable metadata
+        self._fold_location_info = None
         self._sql_schema_info = sql_schema_info
         self._ir = ir
         self._used_columns = _find_columns_used_outside_folds(sql_schema_info, ir)
