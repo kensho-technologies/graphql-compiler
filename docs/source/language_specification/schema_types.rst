@@ -314,9 +314,8 @@ Meta fields
 -----------
 
 Meta fields are fields that do not represent a property/column in the underlying vertex type.
-They are also an advanced compiler feature. To use them, one needs to understand how certain
-compiler directives work. Before reading this section please go over the :doc:`query directives
-<query_directives>`.
+They are also an advanced compiler feature. Before continuing, readers should familiarize
+themselves with the various :doc:`query directives <query_directives>` supported by the compiler.
 
 \_\_typename
 ~~~~~~~~~~~~
