@@ -806,8 +806,7 @@ class CompilerTests(unittest.TestCase):
                           m.Animal__out_Animal_ParentOf___1.uuid : null)
             ])}
         '''
-        # I am getting different behavior between this and the test on line 7128 in terms of the cols used in the
-        # join predicate
+
         expected_sql = '''
             SELECT
                 [Animal_1].name AS animal_name,
@@ -4123,7 +4122,7 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 [Animal_1].name AS animal_name,
                 coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS child_names_list
-            FROM 
+            FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
             LEFT OUTER JOIN (
                 SELECT
@@ -4131,7 +4130,7 @@ class CompilerTests(unittest.TestCase):
                     [Animal_3].uuid AS uuid
                 FROM db_1.schema_1.[Animal] AS [Animal_3]
                 JOIN db_1.schema_1.[Animal] AS [Animal_2] ON [Animal_3].uuid = [Animal_2].parent
-                GROUP BY 
+                GROUP BY
                     [Animal_3].uuid
             ) AS folded_subquery_1
             ON [Animal_1].uuid = folded_subquery_1.uuid
@@ -4190,7 +4189,8 @@ class CompilerTests(unittest.TestCase):
         expected_sql = '''
             SELECT
                 [Animal_1].name AS animal_name,
-                coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS sibling_and_self_names_list
+                coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[])
+                    AS sibling_and_self_names_list
             FROM db_1.schema_1.[Animal] AS [Animal_1]
             JOIN db_1.schema_1.[Animal] AS [Animal_2]
             ON [Animal_1].parent = [Animal_2].uuid
@@ -4228,22 +4228,51 @@ class CompilerTests(unittest.TestCase):
         test_data = test_input_data.fold_after_traverse_different_types()
 
         expected_sql = '''
-            SELECT
-                [Animal_1].name AS animal_name,
-                coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS neighbor_and_self_names_list
-            FROM db_1.schema_1.[Animal] AS [Animal_1]
-            JOIN db_1.schema_1.[Location] AS [Location_1]
-            ON [Animal_1].lives_in = [Location_1].uuid
-            LEFT OUTER JOIN (
-                SELECT
-                    array_agg([Animal_2].name) AS fold_output_1,
-                    [Location_2].uuid AS uuid
-                FROM db_1.schema_1.[Location] AS [Location_2]
-                JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                ON [Location_2].uuid = [Animal_2].lives_in
-                GROUP BY [Location_2].uuid
-            ) AS folded_subquery_1
-            ON [Location_1].uuid = folded_subquery_1.uuid'''
+                    SELECT
+                        [Animal_1].name AS animal_name,
+                        coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[])
+                            AS neighbor_and_self_names_list
+                    FROM db_1.schema_1.[Animal] AS [Animal_1]
+                    JOIN db_1.schema_1.[Location] AS [Location_1]
+                    ON [Animal_1].lives_in = [Location_1].uuid
+                    LEFT OUTER JOIN (
+                        SELECT
+                            array_agg([Animal_2].name) AS fold_output_1,
+                            [Location_2].uuid AS uuid
+                        FROM db_1.schema_1.[Location] AS [Location_2]
+                        JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                        ON [Location_2].uuid = [Animal_2].lives_in
+                        GROUP BY [Location_2].uuid
+                    ) AS folded_subquery_1
+                    ON [Location_1].uuid = folded_subquery_1.uuid'''
+
+        result = compile_graphql_to_sql(self.sql_schema_info, test_data.graphql_input)
+        string_result = str(result.query.compile(dialect=self.sql_schema_info.dialect))
+        compare_sql(self, expected_sql, string_result)
+        self.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(self, test_data.expected_input_metadata,
+                               result.input_metadata)
+
+    def test_fold_then_traverse_different_types(self):
+        test_data = test_input_data.fold_then_traverse_different_types()
+        expected_sql = '''
+                    SELECT
+                        [Animal_1].name AS animal_name,
+                        coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[])
+                            AS neighbor_and_self_names_list
+                    FROM db_1.schema_1.[Animal] AS [Animal_1]
+                    LEFT OUTER JOIN (
+                        SELECT
+                            array_agg([Animal_2].name) AS fold_output_1,
+                            [Animal_3].uuid AS uuid
+                        FROM db_1.schema_1.[Animal] AS [Animal_3]
+                        JOIN db_1.schema_1.[Location] AS [Location_2]
+                        ON [Animal_3].lives_in = [Location_2].uuid
+                        JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                        ON [Location_2].uuid = [Animal_2].lives_in
+                        GROUP BY [Animal_3].uuid
+                    ) AS folded_subquery_1
+                    ON [Animal_1].uuid = folded_subquery_1.uuid'''
 
         result = compile_graphql_to_sql(self.sql_schema_info, test_data.graphql_input)
         string_result = str(result.query.compile(dialect=self.sql_schema_info.dialect))
@@ -4258,7 +4287,8 @@ class CompilerTests(unittest.TestCase):
         expected_sql = '''
             SELECT
                 [Location_1].name AS location_name,
-                coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS neighbor_and_self_names_list
+                coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[])
+                    AS neighbor_and_self_names_list
             FROM db_1.schema_1.[Animal] AS [Animal_1]
             JOIN db_1.schema_1.[Location] AS [Location_1]
             ON [Animal_1].lives_in = [Location_1].uuid
@@ -4320,9 +4350,10 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_sql = '''
-            SELECT 
+            SELECT
                 [Animal_1].name as animal_name,
-                coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS sibling_and_self_names_list
+                coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[])
+                    AS sibling_and_self_names_list
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
             LEFT JOIN (
@@ -4330,8 +4361,10 @@ class CompilerTests(unittest.TestCase):
                     [Animal_2].uuid,
                     array_agg([Animal_4].name) as sibling_and_self_names_list
                 FROM db_1.schema_1.[Animal] AS [Animal_2]
-                INNER JOIN db_1.schema_1.[Animal] AS [Animal_3] ON [Animal_2].parent = [Animal_3].uuid
-                INNER JOIN db_1.schema_1.[Animal] AS [Animal_4] ON [Animal_3].uuid = [Animal_4].parent
+                JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                ON [Animal_2].parent = [Animal_3].uuid
+                JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                ON [Animal_3].uuid = [Animal_4].parent
                 GROUP BY [Animal_2].uuid
             ) AS folded_subquery_1
             ON [Animal_1].uuid = folded_subquery_1.uuid
@@ -4834,14 +4867,18 @@ class CompilerTests(unittest.TestCase):
                 child_birthdays_list: (
                     (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
                         m.Animal___1.out_Animal_ParentOf.collect{
-                            entry -> entry.inV.next().birthday.format("yyyy-MM-dd")
+                            entry -> entry.inV
+                                .next().birthday
+                                .format("yyyy-MM-dd")
                         }
                     )
                 ),
                 fed_at_datetimes_list: (
                     (m.Animal___1.out_Animal_FedAt == null) ? [] : (
                         m.Animal___1.out_Animal_FedAt.collect{
-                            entry -> entry.inV.next().event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                            entry ->
+                                entry.inV.next()
+                                    .event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
                         }
                     )
                 )
@@ -4849,31 +4886,34 @@ class CompilerTests(unittest.TestCase):
         '''
         # TODO: needs alias dictionary keys update to work
         expected_sql = '''
-                    SELECT
-                        [Animal_1].name AS animal_name,
-                        coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS child_birthdays_list,
-                        coalesce(folded_subquery_2.fold_output_1, ARRAY[]::VARCHAR[]) AS fed_at_datetimes_list
-                    FROM
-                        db_1.schema_1.[Animal] AS [Animal_1]
-                    LEFT OUTER JOIN (
-                        SELECT
-                            array_agg([Animal_1].birthday) AS fold_output_1,
-                            [Animal_1].parent AS parent
-                        FROM
-                            db_1.schema_1.[Animal] AS [Animal_1]
-                        GROUP BY [Animal_1].parent
-                    ) AS folded_subquery_1
-                    ON [Animal_1].uuid = folded_subquery_1.parent
-                    LEFT OUTER JOIN (
-                        SELECT
-                            array_agg([FeedingEvent_1].event_date) AS fold_output_2,
-                            [FeedingEvent_1].uuid AS uuid
-                        FROM
-                            db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
-                        GROUP BY [FeedingEvent_1].uuid
-                    ) AS folded_subquery_2
-                    ON [Animal_1].fed_at = folded_subquery_1.uuid
-                '''
+            SELECT
+                [Animal_1].name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[])
+                    AS child_birthdays_list,
+                coalesce(folded_subquery_2.fold_output_1, ARRAY[]::VARCHAR[])
+                    AS fed_at_datetimes_list
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            LEFT OUTER JOIN (
+                SELECT
+                    array_agg([Animal_2].birthday) AS fold_output_1,
+                    [Animal_3].uuid AS uuid
+                FROM db_1.schema_1.[Animal] AS [Animal_3]
+                JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                ON [Animal_3].uuid = [Animal_2].parent
+                GROUP BY [Animal_3].uuid
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+            LEFT OUTER JOIN (
+                SELECT
+                    array_agg([FeedingEvent_1].event_date) AS fold_output_2,
+                    [Animal_4].uuid AS uuid
+                FROM db_1.schema_1.[Animal] AS [Animal_4]
+                JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
+                ON [Animal_4].fed_at = [FeedingEvent_1].uuid
+                GROUP BY [Animal_4].uuid
+            ) AS folded_subquery_2
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_FedAt]->(Animal__out_Animal_FedAt___1:FeedingEvent)
@@ -4976,7 +5016,7 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 array_agg([Entity_1].name) AS fold_output_1,
                 [Animal_2].uuid AS uuid
-            FROM db_1.schema_1.[Animal] AS [Animal_2] 
+            FROM db_1.schema_1.[Animal] AS [Animal_2]
             JOIN db_1.schema_1.[Entity] AS [Entity_1]
             ON [Animal_2].uuid = [Entity_1].related_entity
             GROUP BY [Animal_2].uuid

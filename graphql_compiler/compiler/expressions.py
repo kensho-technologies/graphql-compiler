@@ -3,8 +3,8 @@ import operator as python_operator
 
 from graphql import GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLString
 import six
-from sqlalchemy import bindparam, sql
 import sqlalchemy
+from sqlalchemy import bindparam, sql
 
 from . import cypher_helpers, sqlalchemy_extensions
 from ..exceptions import GraphQLCompilationError
@@ -15,7 +15,6 @@ from .helpers import (
     ensure_unicode_string, is_graphql_type, safe_or_special_quoted_string, strip_non_null_from_type,
     validate_safe_or_special_string, validate_safe_string
 )
-
 
 # Since MATCH uses $-prefixed keywords to indicate special values,
 # we must restrict those keywords from being used as variables.
@@ -33,6 +32,7 @@ RESERVED_MATCH_KEYWORDS = frozenset({
 
 def make_replacement_visitor(find_expression, replace_expression):
     """Return a visitor function that replaces every instance of one expression with another one."""
+
     def visitor_fn(expression):
         """Return the replacement if this expression matches the expression we're looking for."""
         if expression == find_expression:
@@ -45,6 +45,7 @@ def make_replacement_visitor(find_expression, replace_expression):
 
 def make_type_replacement_visitor(find_types, replacement_func):
     """Return a visitor function that replaces expressions of a given type with new expressions."""
+
     def visitor_fn(expression):
         """Return a replacement expression if the original expression is of the correct type."""
         if isinstance(expression, find_types):
@@ -724,9 +725,9 @@ class FoldedContextField(Expression):
         # get the type of the folded field
         inner_type = strip_non_null_from_type(self.field_type.of_type)
         if GraphQLInt.is_same_type(inner_type):
-            sql_array_type = "INT"
+            sql_array_type = 'INT'
         elif GraphQLString.is_same_type(inner_type):
-            sql_array_type = "VARCHAR"
+            sql_array_type = 'VARCHAR'
         else:
             raise NotImplementedError('Type {} not implemented for outputs inside a fold.'.format(
                 inner_type
@@ -736,7 +737,8 @@ class FoldedContextField(Expression):
         empty_array = 'ARRAY[]::{}[]'.format(sql_array_type)
         return sqlalchemy.func.coalesce(
             aliases[
-                self.fold_scope_location.fold_path, None].c[folded_output_aliases[self.fold_scope_location]],
+                self.fold_scope_location.fold_path, None
+            ].c[folded_output_aliases[self.fold_scope_location]],
             sqlalchemy.literal_column(empty_array)
         )
 
