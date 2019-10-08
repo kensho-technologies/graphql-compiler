@@ -109,6 +109,7 @@ class SQLFoldObject(object):
                  inner_vertex_type,
                  outer_vertex_type,
                  join_info):
+        """Create an SQLFoldObject with table, type, and join information supplied by the IR."""
         self._inner_vertex_table = inner_vertex_table
         self._outer_vertex_table = outer_vertex_table
         self._inner_vertex_type = inner_vertex_type
@@ -144,11 +145,13 @@ class SQLFoldObject(object):
 
     @property
     def join_info(self):
-        """Get a 4-tuple containing edge and table info for the joins within the subquery"""
+        """Get a 4-tuple containing edge and table info for the joins within the subquery."""
         return self._join_info
+
 
 class UniqueAliasGenerator(object):
     def __init__(self):
+        """Create unique subquery and column aliases by tracking counters."""
         self._folded_output_count = 1
         self._fold_count = 1
 

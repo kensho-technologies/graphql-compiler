@@ -33,7 +33,6 @@ RESERVED_MATCH_KEYWORDS = frozenset({
 
 def make_replacement_visitor(find_expression, replace_expression):
     """Return a visitor function that replaces every instance of one expression with another one."""
-
     def visitor_fn(expression):
         """Return the replacement if this expression matches the expression we're looking for."""
         if expression == find_expression:
@@ -46,7 +45,6 @@ def make_replacement_visitor(find_expression, replace_expression):
 
 def make_type_replacement_visitor(find_types, replacement_func):
     """Return a visitor function that replaces expressions of a given type with new expressions."""
-
     def visitor_fn(expression):
         """Return a replacement expression if the original expression is of the correct type."""
         if isinstance(expression, find_types):
