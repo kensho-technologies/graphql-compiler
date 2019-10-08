@@ -1629,7 +1629,7 @@ def fold_on_output_variable():  # noqa: D103
         type_equivalence_hints=None)
 
 
-def fold_after_traverse_no_output_on_root():
+def fold_after_traverse_no_output_on_root():  # noqa: D103
     graphql_input = '''{
                 Animal {
                     out_Animal_LivesIn {
@@ -1654,7 +1654,7 @@ def fold_after_traverse_no_output_on_root():
         type_equivalence_hints=None)
 
 
-def fold_after_traverse_different_types():
+def fold_after_traverse_different_types():  # noqa: D103
     graphql_input = '''{
             Animal {
                 name @output(out_name: "animal_name")
