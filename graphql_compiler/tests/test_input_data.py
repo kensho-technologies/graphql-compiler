@@ -1629,6 +1629,61 @@ def fold_on_output_variable():  # noqa: D103
         type_equivalence_hints=None)
 
 
+def fold_same_edge_type_in_different_locations():  # noqa: D103
+    graphql_input = '''{
+        Animal {
+            name @ output(out_name: "animal_name")
+            out_Animal_ParentOf @fold {
+                name @ output(out_name: "child_names_list")
+            }
+            in_Animal_ParentOf {
+                out_Animal_ParentOf @fold {
+                    name @output(out_name: "sibling_and_self_names_list")
+                }
+            }
+        }
+    }'''
+
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'child_names_list': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+        'sibling_and_self_names_list':
+            OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def fold_on_two_output_variables():  # noqa: D103
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_ParentOf @fold {
+                name @output(out_name: "child_names_list")
+                color @output(out_name: "child_color_list")
+            }
+        }
+    }'''
+
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'child_names_list': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+        'child_color_list': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def fold_after_traverse_no_output_on_root():  # noqa: D103
     graphql_input = '''{
                 Animal {
