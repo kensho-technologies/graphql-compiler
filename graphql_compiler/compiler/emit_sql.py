@@ -119,12 +119,12 @@ class SQLFoldObject(object):
     # visit_output_vertex, and end_fold.
     #
     # The SELECT clause for the fold subquery contains OuterVertex.SOME_COLUMN, a unique
-    # identifier for the OuterVertex determined by the edge descriptor from the vertex immediately
-    # outside the fold to the folded vertex.
+    # identifier (the primary key) for the OuterVertex determined by the edge descriptor
+    # from the vertex immediately outside the fold to the folded vertex.
     #
-    # SELECT will also contain an ARRAY_AGG for each column labeled for output inside the fold
+    # SELECT will also contain an ARRAY_AGG for each column labeled for output inside the fold.
     #
-    # TODO: SELECT will also contain a COUNT(*) if _x_count is referred to by the query
+    # TODO: SELECT will also contain a COUNT(*) if _x_count is referred to by the query.
     #
     # The GROUP BY clause is produced during initialization.
     #
@@ -148,7 +148,9 @@ class SQLFoldObject(object):
         """Create an SQLFoldObject with table, type, and join information supplied by the IR.
 
         Args:
-            outer_vertex_table: SQLAlchemy table alias for vertex outside of fold
+            outer_vertex_table: SQLAlchemy table alias for vertex outside of fold.
+            join_descriptor: DirectJoinDescriptor object from the schema, describing the
+            first join from the outer vertex to the folded vertex.
         """
         self._output_vertex_alias = None  # table containing output columns
 
@@ -160,8 +162,8 @@ class SQLFoldObject(object):
 
         # List of 3-tuples:
         #  edge: join descriptor for the columns used to join outer and output vertex
-        #  from_table: the table from the left part of the join
-        #  to_table: the table from the right part of the join
+        #  from_table: the table on the left side of the join
+        #  to_table: the table on the right side of the join
         self._join_info = []
         self._outputs = []  # output columns for fold
 
@@ -219,7 +221,7 @@ class SQLFoldObject(object):
 
     def _get_fold_outputs(self, fold_scope_location, join_descriptor, all_folded_outputs):
         """Generate output columns for innermost fold scope and add them to active SQLFoldObject."""
-        # find outputs for this fold in self._all_folded_outputs and add to self._fold_outputs
+        # find outputs for this fold in all_folded_outputs and add to self._outputs
         if fold_scope_location.fold_path in all_folded_outputs:
             for fold_output in all_folded_outputs[fold_scope_location.fold_path]:
                 # distinguish between folds with the same fold path but different query paths
@@ -230,7 +232,7 @@ class SQLFoldObject(object):
 
                     # explicit label forces column to have label as opposed to anon_label
                     intermediate_fold_output_name = 'fold_output_' + fold_output.field
-                    # add array aggregated intermediate output to self._fold_outputs
+                    # add array aggregated output column to self._outputs
                     self._outputs.append(
                         sqlalchemy.func.array_agg(
                             self.output_vertex_alias.c[fold_output.field]
@@ -309,7 +311,10 @@ class CompilationState(object):
         # Current query location state. Only mutable by calling _relocate.
         self._current_location = None  # the current location in the query. None means global.
         self._current_alias = None  # a sqlalchemy table Alias at the current location
-        self._aliases = {}  # mapping (query_path, fold_path) tuples to corresponding table _Aliases
+        # mapping (query_path, fold_path) tuples to corresponding table _Aliases
+        # query_path and fold_path (if in a fold, otherwise None) both come from the location
+        # of the IR block associated with the current alias at the time that location is visited.
+        self._aliases = {}
         self._relocate(ir.query_metadata_table.root_location)
         self._came_from = {}  # mapping aliases to the column used to join into them.
 
@@ -485,9 +490,8 @@ class CompilationState(object):
         Args:
             fold_scope_location: the location in the IR where the fold scope began
         Returns:
-            output_vertex_alias: the sqlalchemy alias corresponding to the output vertex
             outer_vertex_alias: the sqlalchemy alias corresponding to the vertex outside the fold
-            join_descriptor: JoinDescriptor from the schema describing how to join
+            join_descriptor: DirectJoinDescriptor from the schema describing how to join
             outer_vertex_alias and output_vertex_alias.
         """
         # basic info about the outer vertex and output vertex
@@ -533,21 +537,23 @@ class CompilationState(object):
         fold_subquery, from_clause, outer_vertex = self._fold.end_fold(self._alias_generator,
                                                                        self._from_clause,
                                                                        self._current_alias)
-        subquery_key = (self._fold_vertex_location.base_location.query_path,
-                        self._fold_vertex_location.fold_path)
 
-        # Replaces the table first placed in the dict during the MarkLocation
-        # following the open of the fold scope. It needs to be replaced because while
-        # inside the fold scope, locations referring to subquery_key access columns
-        # from the output vertex table, while after the Unfold, those locations refer to the
-        # subquery constructed for the fold.
-        self._aliases[subquery_key] = fold_subquery
+        # generate a key for self._aliases that maps to the fold subquery's alias
+        subquery_alias_key = (self._fold_vertex_location.base_location.query_path,
+                              self._fold_vertex_location.fold_path)
+
+        # Replace the table first placed in the dict during the MarkLocation
+        # following the start of the fold scope. It needs to be replaced because while
+        # inside the fold scope, columns accessed at the fold scope location refer
+        # to the folded vertex table, while after the Unfold, those column accesses refer to
+        # the subquery constructed for the fold.
+        self._aliases[subquery_alias_key] = fold_subquery
         self._from_clause = from_clause
 
-        # this line is necessary because the column referenced in the outputs belongs to the
-        # innermost occurrence of the outer vertex's table but we have now aliased and referenced
-        # that table again, so we need  to replace later substitutions of that column with ones
-        # taken from this new alias
+        # This line is necessary because otherwise references to the outer vertex table
+        # following the Unfold, would select columns from the copy of that table
+        # found in the fold subquery, when in actuality they should refer to a totally new
+        # copy of the outer vertex table.
         self._aliases[(self._current_location.at_vertex().query_path, None)] = outer_vertex
 
         # clear the fold from the compilation state
@@ -568,10 +574,7 @@ class CompilationState(object):
 
     def construct_result(self, output_name, field):
         """Execute a ConstructResult Block."""
-        self._outputs.append(field.to_sql(
-            self._aliases,
-            self._current_alias
-        ).label(output_name))
+        self._outputs.append(field.to_sql(self._aliases, self._current_alias).label(output_name))
 
     def get_query(self):
         """After all IR Blocks are processed, return the resulting sqlalchemy query."""
