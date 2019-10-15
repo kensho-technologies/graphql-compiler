@@ -106,22 +106,64 @@ def _find_folded_outputs(ir):
 class SQLFoldObject(object):
     """Object used to collect info for folds in order to ensure correct code emission."""
 
-    def __init__(self, outer_vertex_table):
+    # A SQLFoldObject consists of information related to the SELECT clause of the fold subquery,
+    # the GROUP BY clause, and the FROM clause which contains one JOIN per vertex traversed in
+    # the fold, including the traversal from the vertex outside the fold to the folded vertex
+    # itself.
+    #
+    # The life cycle for the SQLFoldObject is 1.) initializing it with the information for the
+    # outer vertex (the one outside the fold), 2.) at least one traversal, 3.) visiting the output
+    # vertex to collect the output columns, 4.) ending the fold by producing the resulting subquery.
+    #
+    # This life cycle is completed via calls to __init__, visit_traversed_vertex,
+    # visit_output_vertex, and end_fold.
+    #
+    # The SELECT clause for the fold subquery contains OuterVertex.SOME_COLUMN, a unique
+    # identifier for the OuterVertex determined by the edge descriptor from the vertex immediately
+    # outside the fold to the folded vertex.
+    #
+    # SELECT will also contain an ARRAY_AGG for each column labeled for output inside the fold
+    #
+    # TODO: SELECT will also contain a COUNT(*) if _x_count is referred to by the query
+    #
+    # The GROUP BY clause is produced during initialization.
+    #
+    # The FROM and JOIN clauses are constructed during end_fold using info from the
+    # visit_traversed_vertex function.
+    #
+    # The full subquery will look as follows:
+    #
+    # SELECT
+    #   OuterVertex.SOME_COLUMN <- this value is determined from the edge descriptor
+    #   ARRAY_AGG(OutputVertex.fold_output_column) AS fold_output
+    # FROM OuterVertex
+    # INNER JOIN ... <- INNER JOINs compiled during end_fold
+    # ON ...
+    #          ...
+    # INNER JOIN OutputVertex <- INNER JOINs compiled during end_fold
+    # ON ...
+    # GROUP BY OuterVertex.SOME_COLUMN
+
+    def __init__(self, outer_vertex_table, join_descriptor):
         """Create an SQLFoldObject with table, type, and join information supplied by the IR.
 
         Args:
             outer_vertex_table: SQLAlchemy table alias for vertex outside of fold
         """
-        self._output_vertex_alias = None
+        self._output_vertex_alias = None  # table containing output columns
+
+        # table for vertex immediately outside fold
         self._outer_vertex_alias = outer_vertex_table
 
-        # 2-tuple:
+        # group by column for fold subquery
+        self._group_by = [self._outer_vertex_alias.c[join_descriptor.from_column]]
+
+        # List of 3-tuples:
         #  edge: join descriptor for the columns used to join outer and output vertex
-        #  self._current_alias: unaliased version of the outer vertex table
-        #  used outside the subquery
+        #  from_table: the table from the left part of the join
+        #  to_table: the table from the right part of the join
         self._join_info = []
-        self._outputs = None  # output columns for fold
-        self._group_by = None  # group by column for fold subquery
+        self._outputs = []  # output columns for fold
 
     @property
     def outputs(self):
@@ -177,7 +219,6 @@ class SQLFoldObject(object):
 
     def _get_fold_outputs(self, fold_scope_location, join_descriptor, all_folded_outputs):
         """Generate output columns for innermost fold scope and add them to active SQLFoldObject."""
-        outputs = []
         # find outputs for this fold in self._all_folded_outputs and add to self._fold_outputs
         if fold_scope_location.fold_path in all_folded_outputs:
             for fold_output in all_folded_outputs[fold_scope_location.fold_path]:
@@ -190,16 +231,16 @@ class SQLFoldObject(object):
                     # explicit label forces column to have label as opposed to anon_label
                     intermediate_fold_output_name = 'fold_output_' + fold_output.field
                     # add array aggregated intermediate output to self._fold_outputs
-                    outputs.append(
+                    self._outputs.append(
                         sqlalchemy.func.array_agg(
                             self.output_vertex_alias.c[fold_output.field]
                         ).label(intermediate_fold_output_name)
                     )
 
-        # the group by field is the unique identifier for the outer vertex
-        outputs.append(self.outer_vertex_alias.c[join_descriptor.from_column])
+        # this is the unique identifier for the outer vertex used to join to the outer table
+        self._outputs.append(self.outer_vertex_alias.c[join_descriptor.from_column])
 
-        return sorted(outputs, key=lambda column: column.name, reverse=True)
+        return sorted(self._outputs, key=lambda column: column.name, reverse=True)
 
     def visit_output_vertex(self,
                             output_alias,
@@ -211,7 +252,6 @@ class SQLFoldObject(object):
         self._outputs = self._get_fold_outputs(fold_scope_location,
                                                join_descriptor,
                                                all_folded_outputs)
-        self._group_by = [self._outer_vertex_alias.c[join_descriptor.from_column]]
 
     def visit_traversed_vertex(self, join_descriptor, from_table, to_table):
         """Add a new join descriptor for every vertex traversed in the fold."""
@@ -222,7 +262,7 @@ class SQLFoldObject(object):
         # for now we only handle folds containing one traversal (i.e. join)
         edge, from_alias, to_alias = self.join_info.pop()
 
-        # produce the from clause (incl joins and group by) for the subquery
+        # produce the from clause/joins for the subquery
         subquery_from_clause = self._construct_fold_joins(edge, from_alias, to_alias)
 
         # produce full subquery
@@ -461,36 +501,8 @@ class CompilationState(object):
 
     def fold(self, fold_scope_location):
         """Begin execution of a Fold Block."""
-        # This method creates the SELECT clause and GROUP BY for the fold subquery.
-        #
-        # SELECT will contain OuterVertex.SOME_COLUMN, a unique identifier for the
-        # OuterVertex determined by the edge descriptor from the vertex immediately outside the fold
-        # to the output vertex where the fold outputs are.
-        #
-        # NOTE: right now output vertex denotes both the vertex which is folded on AND the vertex at
-        # which the outputs are placed. This is only accurate when there are no traversals inside of
-        # the fold. Once functionality for traversals inside folds is introduced the folded vertex
-        # will no longer necessarily be the one that has the outputs.
-        #
-        # SELECT will also contain an ARRAY_AGG for each columns labeled for output inside the fold
-        #
-        # TODO: SELECT will also contain a COUNT(*) if _x_count is referred to by the query
-        #
-        # The FROM and JOIN clauses are constructed during the Unfold block.
-        #
-        # The full subquery will look as follows:
-        #
-        # SELECT
-        #   OuterVertex.uuid <- this value is determined from the edge descriptor
-        #   array_agg(OutputVertex.fold_output_column) AS fold_output
-        # FROM OuterVertex
-        # INNER JOIN ... <- INNER JOINs compiled during Unfold block
-        # ON ...
-        #          ...
-        # INNER JOIN OutputVertex <- INNER JOINs compiled during Unfold block
-        # ON ...
-        # GROUP BY OuterVertex.SOME_COLUMN
-
+        # This method traverses the first vertex in the fold, and if applicable produces the
+        # output and group by clauses.
         if self._in_fold:
             raise AssertionError(u'Fold block {} entered while inside another '
                                  u'fold block at current location {}.'
@@ -503,16 +515,16 @@ class CompilationState(object):
         self._fold_vertex_location = fold_scope_location
         outer_alias = self._current_alias.alias()
 
-        # 2. initialize fold object
-        self._fold = SQLFoldObject(outer_alias)
-
-        # 3. get information on the folded vertex and its edge to the outer vertex
+        # 2. get information on the folded vertex and its edge to the outer vertex
         fold_vertex_alias, join_descriptor = self._get_fold_join_info(fold_scope_location)
+
+        # 3. initialize fold object
+        self._fold = SQLFoldObject(outer_alias, join_descriptor)
 
         # 4. add join information for this traversal to the fold object
         self._fold.visit_traversed_vertex(join_descriptor, outer_alias, fold_vertex_alias)
 
-        # 5. add output columns and group by to fold object
+        # 5. add output columns to fold object
         self._fold.visit_output_vertex(fold_vertex_alias, fold_scope_location, join_descriptor,
                                        self._all_folded_outputs)
 
