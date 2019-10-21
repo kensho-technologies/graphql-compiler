@@ -230,7 +230,7 @@ class SQLFoldObject(object):
                     if fold_output.field == '_x_count':
                         raise NotImplementedError(u'_x_count not implemented in SQL')
 
-                    # explicit label forces column to have label as opposed to anon_label
+                    # force column to have explicit label as opposed to anon_label
                     intermediate_fold_output_name = 'fold_output_' + fold_output.field
                     # add array aggregated output column to self._outputs
                     self._outputs.append(
@@ -249,7 +249,7 @@ class SQLFoldObject(object):
                             fold_scope_location,
                             join_descriptor,
                             all_folded_outputs):
-        """Update output and group by columns when visiting the vertex containing output columns."""
+        """Update output columns when visiting the vertex containing output directives."""
         self._output_vertex_alias = output_alias
         self._outputs = self._get_fold_outputs(fold_scope_location,
                                                join_descriptor,
@@ -262,6 +262,8 @@ class SQLFoldObject(object):
     def end_fold(self, alias_generator, from_clause, outer_from_table):
         """Produce the final subquery and join it onto the rest of the query."""
         # for now we only handle folds containing one traversal (i.e. join)
+        if len(self.join_info) > 1:
+            raise NotImplementedError('Folds containing multiple traversals are not implemented.')
         edge, from_alias, to_alias = self.join_info.pop()
 
         # produce the from clause/joins for the subquery
@@ -311,9 +313,9 @@ class CompilationState(object):
         # Current query location state. Only mutable by calling _relocate.
         self._current_location = None  # the current location in the query. None means global.
         self._current_alias = None  # a sqlalchemy table Alias at the current location
-        # mapping (query_path, fold_path) tuples to corresponding table _Aliases
-        # query_path and fold_path (if in a fold, otherwise None) both come from the location
-        # of the IR block associated with the current alias at the time that location is visited.
+
+        # Dict mapping (some_location.query_path, some_location.fold_path) tuples to corresponding table _Aliases.
+        # some_location is either self._current_location or an open fold scope location.
         self._aliases = {}
         self._relocate(ir.query_metadata_table.root_location)
         self._came_from = {}  # mapping aliases to the column used to join into them.
