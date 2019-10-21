@@ -1167,8 +1167,8 @@ class BinaryComposition(Expression):
             raise NotImplementedError(u'The SQL backend does not support operator {}.'
                                       .format(self.operator))
         return translation_table[self.operator](
-            self.left.to_sql(aliases, current_alias),
-            self.right.to_sql(aliases, current_alias),
+            self.left.to_sql(aliases, current_alias, is_mssql),
+            self.right.to_sql(aliases, current_alias, is_mssql),
         )
 
 

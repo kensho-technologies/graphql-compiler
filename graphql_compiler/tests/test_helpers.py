@@ -472,7 +472,7 @@ def _get_schema_without_list_valued_property_fields():
     return schema
 
 
-def get_sqlalchemy_schema_info():
+def get_sqlalchemy_schema_info(mssql_2014=False):
     """Get a SQLAlchemySchemaInfo for testing."""
     # We don't support list-valued property fields in SQL for now.
     schema = _get_schema_without_list_valued_property_fields()
@@ -676,7 +676,7 @@ def get_sqlalchemy_schema_info():
                 join_descriptors.setdefault(subclass, {})[edge_name] = join_info
 
     return make_sqlalchemy_schema_info(
-        schema, type_equivalence_hints, mssql.dialect(), tables, join_descriptors)
+        schema, type_equivalence_hints, mssql.dialect(), tables, join_descriptors, mssql_2014=mssql_2014)
 
 
 def generate_schema_graph(orientdb_client):

@@ -88,6 +88,8 @@ class CompilerTests(unittest.TestCase):
         self.maxDiff = None
         self.schema = get_schema()
         self.sql_schema_info = get_sqlalchemy_schema_info()
+        self.mssql_schema_info = get_sqlalchemy_schema_info(mssql_2014=True)
+
 
     def test_immediate_output(self):
         test_data = test_input_data.immediate_output()
@@ -4206,8 +4208,8 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_1
             ON [Animal_1].uuid = folded_subquery_1.uuid
         '''
-        result = compile_graphql_to_sql(self.sql_schema_info, test_data.graphql_input)
-        string_result = str(result.query.compile(dialect=self.sql_schema_info.dialect, compile_kwargs={"literal_binds": True}))
+        result = compile_graphql_to_sql(self.mssql_schema_info, test_data.graphql_input)
+        string_result = str(result.query.compile(dialect=self.mssql_schema_info.dialect, compile_kwargs={"literal_binds": True}))
         compare_sql(self, expected_sql, string_result)
         self.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(self, test_data.expected_input_metadata,
