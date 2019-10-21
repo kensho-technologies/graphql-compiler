@@ -6,7 +6,11 @@ import sqlalchemy
 from . import blocks
 from .expressions import FoldedContextField
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
-
+from sqlalchemy import select
+from sqlalchemy.sql.compiler import _CompileLabel
+from sqlalchemy.sql.expression import BinaryExpression
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.functions import func
 
 # Some reserved column names used in emitted SQL queries
 CTE_DEPTH_NAME = '__cte_depth'
@@ -103,6 +107,19 @@ def _find_folded_outputs(ir):
     return folded_outputs
 
 
+class XMLPathBinaryExpression(BinaryExpression):
+    pass
+
+
+@compiles(_CompileLabel, "mssql")
+def compile_xmlpath(element, compiler, **kw):
+    if type(element.element) == XMLPathBinaryExpression:
+        kw.update(
+            within_columns_clause=False
+        )
+    return compiler.visit_label(element, **kw)
+
+
 class SQLFoldObject(object):
     """Object used to collect info for folds in order to ensure correct code emission."""
 
@@ -144,7 +161,7 @@ class SQLFoldObject(object):
     # ON ...
     # GROUP BY OuterVertex.SOME_COLUMN
 
-    def __init__(self, outer_vertex_table, join_descriptor):
+    def __init__(self, outer_vertex_table, join_descriptor, dialect):
         """Create an SQLFoldObject with table, type, and join information supplied by the IR.
 
         Args:
@@ -166,6 +183,8 @@ class SQLFoldObject(object):
         #  to_table: the table on the right side of the join
         self._join_info = []
         self._outputs = []  # output columns for fold
+
+        self._dialect = dialect  # the sql dialect being compiled to (e.g. MSSQL, PostgreSQL)
 
     @property
     def outputs(self):
@@ -200,23 +219,58 @@ class SQLFoldObject(object):
         """Set output columns for the fold object."""
         self._group_by = group_by
 
-    def _construct_fold_joins(self, edge, from_alias, to_alias):
+    def _construct_fold_joins(self):
         """Use the edge descriptors to create the join clause between the tables in the fold."""
-        join_clause = sqlalchemy.join(
-            from_alias,
-            to_alias,
-            onclause=(from_alias.c[edge.from_column] == to_alias.c[edge.to_column])
-        )
+        _, from_alias, _ = self.join_info[-1]
+        join_clause = from_alias
+        if self._dialect.name == 'mssql':
+            self.join_info.pop(0)
+        while len(self.join_info) > 0:
+            edge, from_alias, to_alias = self.join_info.pop()
+            join_clause = sqlalchemy.join(
+                join_clause,
+                to_alias,
+                onclause=(from_alias.c[edge.from_column] == to_alias.c[edge.to_column])
+            )
         return join_clause
 
     def _construct_fold_subquery(self, subquery_from_clause):
         """Combine all parts of the fold object to produce the complete fold subquery."""
-        return sqlalchemy.select(
+        select_stmt = sqlalchemy.select(
             self.outputs
         ).select_from(
             subquery_from_clause
-        ).group_by(
-            *self.group_by
+        )
+
+        if self._dialect.name == 'mssql':
+            return select_stmt
+        else:
+            return select_stmt.group_by(
+                *self.group_by
+            )
+
+    def _append_default_column(self, intermediate_fold_output_name, fold_output):
+        self._outputs.append(
+            sqlalchemy.func.array_agg(
+                self.output_vertex_alias.c[fold_output.field]
+            ).label(intermediate_fold_output_name)
+        )
+
+    def _agg_table(self, output_column, where):
+        col = ('~|*' + func.REPLACE(output_column, '|', '||'))
+        col = XMLPathBinaryExpression(col.left, col.right, col.operator)
+        return func.REPLACE(func.REPLACE(func.REPLACE(func.COALESCE(func.STUFF(
+            select([col]).where(where).suffix_with("FOR XML PATH ('')").as_scalar(),
+            1, 3, ''), '!|#null!|#'),  '&gt;', '>'), '&lt;', '<'), '&amp;', '&')
+
+    def _append_mssql_column(self, intermediate_fold_output_name, fold_output, last_join):
+        edge = last_join[0]
+        from_alias = last_join[1]
+        to_alias = last_join[2]
+        self._outputs.append(
+            self._agg_table(self.output_vertex_alias.c[fold_output.field],
+                            (from_alias.c[edge.from_column] == to_alias.c[edge.to_column])
+                            ).label(intermediate_fold_output_name)
         )
 
     def _get_fold_outputs(self, fold_scope_location, join_descriptor, all_folded_outputs):
@@ -233,11 +287,10 @@ class SQLFoldObject(object):
                     # explicit label forces column to have label as opposed to anon_label
                     intermediate_fold_output_name = 'fold_output_' + fold_output.field
                     # add array aggregated output column to self._outputs
-                    self._outputs.append(
-                        sqlalchemy.func.array_agg(
-                            self.output_vertex_alias.c[fold_output.field]
-                        ).label(intermediate_fold_output_name)
-                    )
+                    if self._dialect.name == 'mssql':
+                        self._append_mssql_column(intermediate_fold_output_name, fold_output, self.join_info[-1])
+                    else:
+                        self._append_default_column(intermediate_fold_output_name, fold_output)
 
         # this is the unique identifier for the outer vertex used to join to the outer table
         self._outputs.append(self.outer_vertex_alias.c[join_descriptor.from_column])
@@ -262,10 +315,10 @@ class SQLFoldObject(object):
     def end_fold(self, alias_generator, from_clause, outer_from_table):
         """Produce the final subquery and join it onto the rest of the query."""
         # for now we only handle folds containing one traversal (i.e. join)
-        edge, from_alias, to_alias = self.join_info.pop()
-
         # produce the from clause/joins for the subquery
-        subquery_from_clause = self._construct_fold_joins(edge, from_alias, to_alias)
+        first_edge, _, _ = self.join_info[0]
+
+        subquery_from_clause = self._construct_fold_joins()
 
         # produce full subquery
         fold_subquery = self._construct_fold_subquery(subquery_from_clause).alias(
@@ -276,7 +329,7 @@ class SQLFoldObject(object):
         joined_from_clause = sqlalchemy.join(
             from_clause,
             fold_subquery,
-            onclause=(outer_from_table.c[edge.from_column] == fold_subquery.c[edge.from_column]),
+            onclause=(outer_from_table.c[first_edge.from_column] == fold_subquery.c[first_edge.from_column]),
             isouter=True
         )
 
@@ -523,7 +576,7 @@ class CompilationState(object):
         fold_vertex_alias, join_descriptor = self._get_fold_join_info(fold_scope_location)
 
         # 3. initialize fold object
-        self._fold = SQLFoldObject(outer_alias, join_descriptor)
+        self._fold = SQLFoldObject(outer_alias, join_descriptor, self._sql_schema_info.dialect)
 
         # 4. add join information for this traversal to the fold object
         self._fold.visit_traversed_vertex(join_descriptor, outer_alias, fold_vertex_alias)
@@ -572,14 +625,18 @@ class CompilationState(object):
             if self._in_fold else (self._current_location.query_path, None)
         ] = self._current_alias
 
-    def construct_result(self, output_name, field):
+    def construct_result(self, output_name, field, is_mssql):
         """Execute a ConstructResult Block."""
-        self._outputs.append(field.to_sql(self._aliases, self._current_alias).label(output_name))
+        self._outputs.append(field.to_sql(self._aliases, self._current_alias, is_mssql).label(output_name))
 
     def get_query(self):
         """After all IR Blocks are processed, return the resulting sqlalchemy query."""
         return sqlalchemy.select(self._outputs).select_from(
             self._from_clause).where(sqlalchemy.and_(*self._filters))
+
+    @property
+    def sql_schema_info(self):
+        return self._sql_schema_info
 
 
 def emit_code_from_ir(sql_schema_info, ir):
@@ -616,7 +673,7 @@ def emit_code_from_ir(sql_schema_info, ir):
             state.start_global_operations()
         elif isinstance(block, blocks.ConstructResult):
             for output_name, field in sorted(six.iteritems(block.fields)):
-                state.construct_result(output_name, field)
+                state.construct_result(output_name, field, state.sql_schema_info.dialect.name == 'mssql')
         else:
             raise NotImplementedError(u'Unsupported block {}.'.format(block))
 

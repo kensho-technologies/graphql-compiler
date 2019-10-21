@@ -4179,6 +4179,40 @@ class CompilerTests(unittest.TestCase):
         compare_input_metadata(self, test_data.expected_input_metadata,
                                result.input_metadata)
 
+    def test_fold_on_output_variable_mssql(self):
+        test_data = test_input_data.fold_on_output_variable()
+
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS child_names_list
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            LEFT OUTER JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    REPLACE(REPLACE(REPLACE(coalesce(
+                        STUFF(
+                            (SELECT
+                                N'~|*' + REPLACE([Animal_3].name, N'|', N'||')
+                            FROM db_1.schema_1.[Animal] AS [Animal_3]
+                            WHERE [Animal_2].uuid = [Animal_3].parent
+                            FOR XML PATH ('')), 
+                        1, 
+                        3, 
+                        N''), 
+                    N'!|#null!|#'), N'&gt;', N'>'), N'&lt;', N'<'), N'&amp;', N'&') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+        '''
+        result = compile_graphql_to_sql(self.sql_schema_info, test_data.graphql_input)
+        string_result = str(result.query.compile(dialect=self.sql_schema_info.dialect, compile_kwargs={"literal_binds": True}))
+        compare_sql(self, expected_sql, string_result)
+        self.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(self, test_data.expected_input_metadata,
+                               result.input_metadata)
+
     def test_fold_same_edge_type_in_different_locations(self):
         test_data = test_input_data.fold_same_edge_type_in_different_locations()
 

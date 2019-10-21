@@ -203,11 +203,12 @@ def get_folds(outer_table, inner_tables, outer_output_columns, inner_output_colu
 if __name__ == '__main__':
     print(get_folds(outer_table=OuterVertex,
                     inner_tables=[FoldedVertex],
-                    outer_output_columns=[OuterVertex.c.name, OuterVertex.c.population],
-                    inner_output_columns=[FoldedVertex.c.name, FoldedVertex.c.city],
+                    outer_output_columns=[OuterVertex.c.name],
+                    inner_output_columns=[FoldedVertex.c.name],
                     join_predicates={(OuterVertex, FoldedVertex): FoldedVertex.c.city == OuterVertex.c.name},
-                    outer_filter=OuterVertex.c.population >= 60000,
+                    # outer_filter=OuterVertex.c.population >= 60000,
                     group_by_cols=[[FoldedVertex.c.city]],
-                    x_count_filters={'x_count_Neighborhoods': [Column() > 1, Column() < 3]},
+                    # x_count_filters={'x_count_Neighborhoods': [Column() > 1, Column() < 3]},
                     # Column() is a placeholder, the lefthand column always gets replaced by the column name given
-                    inner_filters={FoldedVertex: FoldedVertex.c.name.like("B%")}))
+                    # inner_filters={FoldedVertex: FoldedVertex.c.name.like("B%")}
+                    ))
