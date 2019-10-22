@@ -90,7 +90,6 @@ class CompilerTests(unittest.TestCase):
         self.sql_schema_info = get_sqlalchemy_schema_info()
         self.mssql_schema_info = get_sqlalchemy_schema_info(mssql_2014=True)
 
-
     def test_immediate_output(self):
         test_data = test_input_data.immediate_output()
 
@@ -4181,6 +4180,52 @@ class CompilerTests(unittest.TestCase):
         compare_input_metadata(self, test_data.expected_input_metadata,
                                result.input_metadata)
 
+    def test_fold_on_two_output_variables_mssql(self):
+        test_data = test_input_data.fold_on_two_output_variables()
+
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_color AS child_color_list,
+                folded_subquery_1.fold_output_name AS child_names_list
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            LEFT OUTER JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    REPLACE(REPLACE(REPLACE(coalesce(
+                        STUFF(
+                            (SELECT
+                                N'~|*' + REPLACE([Animal_3].name, N'|', N'||')
+                            FROM db_1.schema_1.[Animal] AS [Animal_3]
+                            WHERE [Animal_2].uuid = [Animal_3].parent
+                            FOR XML PATH ('')), 
+                        1, 
+                        3, 
+                        N''), 
+                    N'!|#null!|#'), N'&gt;', N'>'), N'&lt;', N'<'), N'&amp;', N'&') AS fold_output_name,
+                    REPLACE(REPLACE(REPLACE(coalesce(
+                        STUFF(
+                            (SELECT
+                                N'~|*' + REPLACE([Animal_3].color, N'|', N'||')
+                            FROM db_1.schema_1.[Animal] AS [Animal_3]
+                            WHERE [Animal_2].uuid = [Animal_3].parent
+                            FOR XML PATH ('')), 
+                        1, 
+                        3, 
+                        N''), 
+                    N'!|#null!|#'), N'&gt;', N'>'), N'&lt;', N'<'), N'&amp;', N'&') AS fold_output_color
+                FROM db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+        '''
+        result = compile_graphql_to_sql(self.mssql_schema_info, test_data.graphql_input)
+        string_result = str(result.query.compile(dialect=self.mssql_schema_info.dialect, compile_kwargs={"literal_binds": True}))
+        compare_sql(self, expected_sql, string_result)
+        self.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(self, test_data.expected_input_metadata,
+                               result.input_metadata)
+
     def test_fold_on_output_variable_mssql(self):
         test_data = test_input_data.fold_on_output_variable()
 
@@ -4250,6 +4295,146 @@ class CompilerTests(unittest.TestCase):
         '''
         result = compile_graphql_to_sql(self.sql_schema_info, test_data.graphql_input)
         string_result = str(result.query.compile(dialect=self.sql_schema_info.dialect))
+        compare_sql(self, expected_sql, string_result)
+        self.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(self, test_data.expected_input_metadata,
+                               result.input_metadata)
+
+    def test_fold_same_edge_type_in_different_locations_mssql(self):
+        test_data = test_input_data.fold_same_edge_type_in_different_locations()
+
+        expected_sql = '''
+            SELECT
+              [Animal_1].name AS animal_name,
+              folded_subquery_1.fold_output_name AS child_names_list,
+              folded_subquery_2.fold_output_name AS sibling_and_self_names_list
+            FROM
+              db_1.schema_1.[Animal] AS [Animal_1]
+              LEFT OUTER JOIN (
+                SELECT
+                  [Animal_2].uuid AS uuid,
+                  REPLACE(
+                    REPLACE(
+                      REPLACE(
+                        coalesce(
+                          STUFF(
+                            (
+                              SELECT
+                                N'~|*' + REPLACE([Animal_3].name, N'|', N'||')
+                              FROM
+                                db_1.schema_1.[Animal] AS [Animal_3]
+                              WHERE
+                                [Animal_2].uuid = [Animal_3].parent FOR XML PATH ('')
+                            ),
+                            1,
+                            3,
+                            N''
+                          ),
+                          N'!|#null!|#'
+                        ),
+                        N'&gt;',
+                        N'>'
+                      ),
+                      N'&lt;',
+                      N'<'
+                    ),
+                    N'&amp;',
+                    N'&'
+                  ) AS fold_output_name
+                FROM
+                  db_1.schema_1.[Animal] AS [Animal_2]
+              ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+              JOIN db_1.schema_1.[Animal] AS [Animal_4] ON [Animal_1].parent = [Animal_4].uuid
+              LEFT OUTER JOIN (
+                SELECT
+                  [Animal_5].uuid AS uuid,
+                  REPLACE(
+                    REPLACE(
+                      REPLACE(
+                        coalesce(
+                          STUFF(
+                            (
+                              SELECT
+                                N'~|*' + REPLACE([Animal_6].name, N'|', N'||')
+                              FROM
+                                db_1.schema_1.[Animal] AS [Animal_6]
+                              WHERE
+                                [Animal_5].uuid = [Animal_6].parent FOR XML PATH ('')
+                            ),
+                            1,
+                            3,
+                            N''
+                          ),
+                          N'!|#null!|#'
+                        ),
+                        N'&gt;',
+                        N'>'
+                      ),
+                      N'&lt;',
+                      N'<'
+                    ),
+                    N'&amp;',
+                    N'&'
+                  ) AS fold_output_name
+                FROM
+                  db_1.schema_1.[Animal] AS [Animal_5] 
+              ) AS folded_subquery_2 ON [Animal_4].uuid = folded_subquery_2.uuid
+        '''
+        result = compile_graphql_to_sql(self.mssql_schema_info, test_data.graphql_input)
+        string_result = str(
+            result.query.compile(dialect=self.mssql_schema_info.dialect, compile_kwargs={"literal_binds": True}))
+        compare_sql(self, expected_sql, string_result)
+        self.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(self, test_data.expected_input_metadata,
+                               result.input_metadata)
+
+    def test_fold_after_traverse_mssql(self):
+        test_data = test_input_data.fold_after_traverse()
+
+        expected_sql = '''
+            SELECT
+              [Animal_1].name AS animal_name,
+              folded_subquery_1.fold_output_name AS sibling_and_self_names_list
+            FROM
+              db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN db_1.schema_1.[Animal] AS [Animal_2] ON [Animal_1].parent = [Animal_2].uuid
+            LEFT OUTER JOIN(
+                SELECT
+                  [Animal_3].uuid AS uuid,
+                  REPLACE(
+                    REPLACE(
+                      REPLACE(
+                        coalesce(
+                          STUFF(
+                            (
+                              SELECT
+                                N'~|*' + REPLACE([Animal_4].name, N'|', N'||')
+                              FROM
+                                db_1.schema_1.[Animal] AS [Animal_4]
+                              WHERE
+                                [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
+                            ),
+                            1,
+                            3,
+                            N''
+                          ),
+                          N'!|#null!|#'
+                        ),
+                        N'&gt;',
+                        N'>'
+                      ),
+                      N'&lt;',
+                      N'<'
+                    ),
+                    N'&amp;',
+                    N'&'
+                  ) AS fold_output_name
+                FROM
+                  db_1.schema_1.[Animal] AS [Animal_3]
+            ) AS folded_subquery_1 ON [Animal_2].uuid = folded_subquery_1.uuid
+        '''
+        result = compile_graphql_to_sql(self.mssql_schema_info, test_data.graphql_input)
+        string_result = str(result.query.compile(dialect=self.mssql_schema_info.dialect, compile_kwargs={"literal_binds": True}))
         compare_sql(self, expected_sql, string_result)
         self.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(self, test_data.expected_input_metadata,
@@ -4355,6 +4540,59 @@ class CompilerTests(unittest.TestCase):
 
         result = compile_graphql_to_sql(self.sql_schema_info, test_data.graphql_input)
         string_result = str(result.query.compile(dialect=self.sql_schema_info.dialect))
+        compare_sql(self, expected_sql, string_result)
+        self.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(self, test_data.expected_input_metadata,
+                               result.input_metadata)
+
+    def test_fold_after_traverse_no_output_on_root_mssql(self):
+        test_data = test_input_data.fold_after_traverse_no_output_on_root()
+
+        expected_sql = '''
+            SELECT
+              [Location_1].name AS location_name,
+              folded_subquery_1.fold_output_name AS neighbor_and_self_names_list
+            FROM
+              db_1.schema_1.[Animal] AS [Animal_1]
+              JOIN db_1.schema_1.[Location] AS [Location_1] 
+              ON [Animal_1].lives_in = [Location_1].uuid
+              LEFT OUTER JOIN(
+                SELECT
+                  [Location_2].uuid AS uuid,
+                  REPLACE(
+                    REPLACE(
+                      REPLACE(
+                        coalesce(
+                          STUFF(
+                            (
+                              SELECT
+                                N'~|*' + REPLACE([Animal_2].name, N'|', N'||')
+                              FROM
+                                db_1.schema_1.[Animal] AS [Animal_2]
+                              WHERE
+                                [Location_2].uuid = [Animal_2].lives_in FOR XML PATH('')
+                            ),
+                            1,
+                            3,
+                            N''
+                          ),
+                          N'!|#null!|#'
+                        ),
+                        N'&gt;',
+                        N'>'
+                      ),
+                      N'&lt;',
+                      N'<'
+                    ),
+                    N'&amp;',
+                    N'&'
+                  ) AS fold_output_name
+                FROM
+                  db_1.schema_1.[Location] AS [Location_2]
+              ) AS folded_subquery_1 ON [Location_1].uuid = folded_subquery_1.uuid
+        '''
+        result = compile_graphql_to_sql(self.mssql_schema_info, test_data.graphql_input)
+        string_result = str(result.query.compile(dialect=self.mssql_schema_info.dialect, compile_kwargs={"literal_binds": True}))
         compare_sql(self, expected_sql, string_result)
         self.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(self, test_data.expected_input_metadata,
@@ -7191,6 +7429,40 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
 
+    def test_optional_and_fold_mssql(self):
+        test_data = test_input_data.optional_and_fold()
+
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS child_names_list
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            LEFT OUTER JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    REPLACE(REPLACE(REPLACE(coalesce(
+                        STUFF(
+                            (SELECT
+                                N'~|*' + REPLACE([Animal_3].name, N'|', N'||')
+                            FROM db_1.schema_1.[Animal] AS [Animal_3]
+                            WHERE [Animal_2].uuid = [Animal_3].parent
+                            FOR XML PATH ('')), 
+                        1, 
+                        3, 
+                        N''), 
+                    N'!|#null!|#'), N'&gt;', N'>'), N'&lt;', N'<'), N'&amp;', N'&') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+        '''
+        result = compile_graphql_to_sql(self.mssql_schema_info, test_data.graphql_input)
+        string_result = str(result.query.compile(dialect=self.mssql_schema_info.dialect, compile_kwargs={"literal_binds": True}))
+        compare_sql(self, expected_sql, string_result)
+        self.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(self, test_data.expected_input_metadata,
+                               result.input_metadata)
+
     def test_optional_and_fold(self):
         test_data = test_input_data.optional_and_fold()
 
@@ -7283,6 +7555,40 @@ class CompilerTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
+
+    def test_fold_and_optional_mssql(self):
+        test_data = test_input_data.fold_and_optional()
+
+        expected_sql = '''
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS child_names_list
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            LEFT OUTER JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    REPLACE(REPLACE(REPLACE(coalesce(
+                        STUFF(
+                            (SELECT
+                                N'~|*' + REPLACE([Animal_3].name, N'|', N'||')
+                            FROM db_1.schema_1.[Animal] AS [Animal_3]
+                            WHERE [Animal_2].uuid = [Animal_3].parent
+                            FOR XML PATH ('')), 
+                        1, 
+                        3, 
+                        N''), 
+                    N'!|#null!|#'), N'&gt;', N'>'), N'&lt;', N'<'), N'&amp;', N'&') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+        '''
+        result = compile_graphql_to_sql(self.mssql_schema_info, test_data.graphql_input)
+        string_result = str(result.query.compile(dialect=self.mssql_schema_info.dialect, compile_kwargs={"literal_binds": True}))
+        compare_sql(self, expected_sql, string_result)
+        self.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(self, test_data.expected_input_metadata,
+                               result.input_metadata)
 
     def test_fold_and_optional(self):
         test_data = test_input_data.fold_and_optional()
