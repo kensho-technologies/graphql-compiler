@@ -150,9 +150,11 @@ class SQLFoldObject(object):
         Args:
             outer_vertex_table: SQLAlchemy table alias for vertex outside of fold.
             join_descriptor: DirectJoinDescriptor object from the schema, describing the
-            first join from the outer vertex to the folded vertex.
+                             first join from the outer vertex to the folded vertex.
         """
-        self._output_vertex_alias = None  # table containing output columns
+        # table containing output columns
+        # initially None because output table is unknown until call to visit_output_vertex
+        self._output_vertex_alias = None
 
         # table for vertex immediately outside fold
         self._outer_vertex_alias = outer_vertex_table
@@ -163,10 +165,11 @@ class SQLFoldObject(object):
         # List of 3-tuples describing the join required for each traversal in the fold
         # starting with the join from the vertex immediately outside the fold to the folded vertex:
         #
-        #  edge: join descriptor for the columns used to join outer and output vertex
+        #  edge: join descriptor for the columns used to join one vertex to the next in the fold
         #  from_table: the table on the left side of the join
         #  to_table: the table on the right side of the join
         self._join_info = []
+
         self._outputs = []  # output columns for fold
 
     @property
@@ -252,6 +255,8 @@ class SQLFoldObject(object):
                             join_descriptor,
                             all_folded_outputs):
         """Update output columns when visiting the vertex containing output directives."""
+        if self._output_vertex_alias is not None:
+            raise AssertionError('Cannot visit multiple output vertices in one fold.')
         self._output_vertex_alias = output_alias
         self._outputs = self._get_fold_outputs(fold_scope_location,
                                                join_descriptor,
@@ -263,6 +268,11 @@ class SQLFoldObject(object):
 
     def end_fold(self, alias_generator, from_clause, outer_from_table):
         """Produce the final subquery and join it onto the rest of the query."""
+        if self._output_vertex_alias is None:
+            raise AssertionError('No output vertex visited.')
+        if len(self._join_info) == 0:
+            raise AssertionError('No traversed vertices visited.')
+
         # for now we only handle folds containing one traversal (i.e. join)
         if len(self.join_info) > 1:
             raise NotImplementedError('Folds containing multiple traversals are not implemented.')
@@ -316,9 +326,9 @@ class CompilationState(object):
         self._current_location = None  # the current location in the query. None means global.
         self._current_alias = None  # a sqlalchemy table Alias at the current location
 
-        # Dict mapping (some_location.query_path, some_location.fold_path) tuples to
+        # Dict mapping (some_location.query_path, fold_scope_location.fold_path) tuples to
         # corresponding table _Aliases. some_location is either self._current_location
-        # or an open fold scope location.
+        # or the base location of an open FoldScopeLocation.
         self._aliases = {}
         self._relocate(ir.query_metadata_table.root_location)
         self._came_from = {}  # mapping aliases to the column used to join into them.
@@ -328,8 +338,7 @@ class CompilationState(object):
         self._outputs = []  # sqlalchemy Columns labelled correctly for output
         self._filters = []  # sqlalchemy Expressions to be used in the where clause
 
-        # SQLFoldObject used to collect fold information and guide output query
-        self._current_fold = None
+        self._current_fold = None  # SQLFoldObject to collect fold info and guide output query
         self._fold_vertex_location = None  # location in the IR tree where the fold starts
 
         self._alias_generator = UniqueAliasGenerator()  # generates aliases for the fold subqueries
