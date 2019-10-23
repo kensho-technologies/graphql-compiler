@@ -47,8 +47,10 @@ since we will immediately proceed to dissect the schema.
 
     type Animal implements Entity {
         _x_count: Int
+        uuid: ID
         name: String
         alias: [String]
+        color: String
         birthday: Date
         net_worth: Decimal
         in_Animal_ParentOf: [Animal]
@@ -61,6 +63,7 @@ since we will immediately proceed to dissect the schema.
 
     type Food implements Entity {
         _x_count: Int
+        uuid: ID
         name: String
         alias: [String]
         in_Entity_Related: [Entity]
@@ -70,9 +73,9 @@ since we will immediately proceed to dissect the schema.
 
     type Species implements Entity {
         _x_count: Int
+        uuid: ID
         name: String
         alias: [String]
-        description: String
         in_Animal_OfSpecies: [Animal]
         in_Entity_Related: [Entity]
         out_Entity_Related: [Entity]
@@ -82,12 +85,14 @@ since we will immediately proceed to dissect the schema.
 
     type Toy {
         _x_count: Int
+        uuid: ID
         name: String
         in_Animal_PlaysWith: [Animal]
     }
 
     interface Entity {
         _x_count: Int
+        uuid: ID
         name: String
         alias: [String]
         in_Entity_Related: [Entity]

@@ -626,6 +626,11 @@ Constraints and Rules
    depth 0, so the recursion scope always includes the vertex at the
    scope that encloses the vertex field marked :code:`@recurse`.
 
+@output_source
+--------------
+
+The documentation for this directive is in development.
+
 
 Supported filtering operations
 ------------------------------
@@ -886,12 +891,12 @@ contains the matching :code:`Animal`'s name in a column named
 :code:`animal_name`.
 
 Constraints and Rules
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be on a property field of list type.
 
 not\_contains
-^^^^^^^^^^^^^
+~~~~~~~~~~~~~
 
 Example Use
 ^^^^^^^^^^^
