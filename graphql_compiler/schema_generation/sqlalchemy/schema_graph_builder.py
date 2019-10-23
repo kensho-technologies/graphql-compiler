@@ -1,8 +1,4 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-import warnings
-
-from graphql.utils.assert_valid_name import COMPILED_NAME_PATTERN, NAME_PATTERN
-
 from ...global_utils import merge_non_overlapping_dicts
 from ..schema_graph import (
     EdgeType, InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType,
@@ -54,11 +50,6 @@ def _get_vertex_type_from_sqlalchemy_table(vertex_name, table):
         name = column.key
         maybe_property_type = try_get_graphql_scalar_type(name, column.type)
         if maybe_property_type is not None:
-            if COMPILED_NAME_PATTERN.match(column.name):
-                warnings.warn(u'Ignoring column {} of table {} with invalid name. '
-                              u'Column names must match /{}/ in order to be included in the schema.'
-                              .format(column, table.fullname, NAME_PATTERN))
-
             default = None
             properties[name] = PropertyDescriptor(maybe_property_type, default)
     return VertexType(vertex_name, False, properties, {})
