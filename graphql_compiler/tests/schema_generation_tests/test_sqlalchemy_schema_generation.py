@@ -13,6 +13,7 @@ from ...schema_generation.sqlalchemy.edge_descriptors import (
     DirectEdgeDescriptor, DirectJoinDescriptor
 )
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
+from ...schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_schema_graph
 
 
 def _get_test_vertex_name_to_table():
@@ -22,7 +23,7 @@ def _get_test_vertex_name_to_table():
         'Table1',
         metadata1,
         Column('column_with_supported_type', String(), primary_key=True),
-        Column('column_with_non_supported_type', LargeBinary()),
+        Column('column_with_non_supported_type', LargeBinary(), unique=True),
         Column('column_with_mssql_type', TINYINT()),
         Column('source_column', Integer()),
     )
@@ -57,6 +58,7 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
         direct_edges = _get_test_direct_edges()
         self.schema_info = get_sqlalchemy_schema_info_from_specified_metadata(
             vertex_name_to_table, direct_edges, dialect())
+        self.schema_graph = get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges)
 
     def test_table_vertex_representation(self):
         self.assertIsInstance(self.schema_info.schema.get_type('Table1'), GraphQLObjectType)
@@ -101,6 +103,10 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
             }
         }
         self.assertEqual(expected_join_descriptors, self.schema_info.join_descriptors)
+
+    def test_sqlalchemy_index_generation(self):
+        print(self.schema_graph.all_indexes)
+
 
 
 class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):

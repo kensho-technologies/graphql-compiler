@@ -5,6 +5,7 @@ from ..schema_graph import (
     link_schema_elements
 )
 from .scalar_type_mapper import try_get_graphql_scalar_type
+from ..schema_graph import IndexDefinition
 
 
 def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
@@ -40,7 +41,8 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
     direct_superclass_sets = {element_name: set() for element_name in elements}
     inheritance_structure = InheritanceStructure(direct_superclass_sets)
     link_schema_elements(elements, inheritance_structure)
-    return SchemaGraph(elements, inheritance_structure, set())
+    all_indexes = _get_sqlalchemy_indexes(vertex_name_to_table)
+    return SchemaGraph(elements, inheritance_structure, all_indexes)
 
 
 def _get_vertex_type_from_sqlalchemy_table(vertex_name, table):
@@ -60,3 +62,22 @@ def _get_edge_type_from_direct_edge(edge_name, direct_edge_descriptor):
     return EdgeType(edge_name, False, {}, {},
                     base_in_connection=direct_edge_descriptor.from_vertex,
                     base_out_connection=direct_edge_descriptor.to_vertex)
+
+
+def _get_sqlalchemy_indexes(vertex_name_to_table):
+    """Return the IndexDefinition objects corresponding to the indexes in the SQL tables."""
+    index_definitions = set()
+    for vertex_name, table in vertex_name_to_table.items():
+
+        for index in table.indexes:
+
+            # Some SQL backends allow duplicate nulls in columns with unique indexes.
+            # However, other backends do not. Therefore, we set ignore_nulls=True to indicate that
+            # the backend may have duplicate nulls.
+            #
+            # Also, since SQLAlchemy also does not contain information about whether an index is
+            # ordered or not, we set ordered=False.
+            index_definition = IndexDefinition(
+                index.name, vertex_name, set(index.columns), False, True)
+            index_definitions.add(index_definition)
+    return index_definitions
