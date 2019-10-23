@@ -24,6 +24,7 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
         test_data = '''{
             Animal {
                 name @output(out_name: "animal")
@@ -41,7 +42,8 @@ class QueryPaginationTests(unittest.TestCase):
             type_equivalence_hints=type_equivalence_hints,
             schema_graph=schema_graph,
             statistics=statistics,
-            pagination_keys=pagination_keys)
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
 
         # Since query pagination is still a skeleton, we expect a NotImplementedError for this test.
         # Once query pagination is fully implemented, the result of this call should be equal to

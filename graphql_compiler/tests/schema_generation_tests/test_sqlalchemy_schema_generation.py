@@ -5,7 +5,7 @@ from graphql.type import GraphQLInt, GraphQLObjectType, GraphQLString
 import pytest
 from sqlalchemy import Column, MetaData, Table
 from sqlalchemy.dialects.mssql import TINYINT, dialect
-from sqlalchemy.types import Binary, Integer, String
+from sqlalchemy.types import Integer, LargeBinary, String
 
 from ... import get_sqlalchemy_schema_info_from_specified_metadata
 from ...schema_generation.exceptions import InvalidSQLEdgeError, MissingPrimaryKeyError
@@ -22,7 +22,7 @@ def _get_test_vertex_name_to_table():
         'Table1',
         metadata1,
         Column('column_with_supported_type', String(), primary_key=True),
-        Column('column_with_non_supported_type', Binary()),
+        Column('column_with_non_supported_type', LargeBinary()),
         Column('column_with_mssql_type', TINYINT()),
         Column('source_column', Integer()),
     )
@@ -50,6 +50,7 @@ def _get_test_direct_edges():
     }
 
 
+@pytest.mark.filterwarnings('ignore: Ignoring column .* with unsupported SQL datatype.*')
 class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
     def setUp(self):
         vertex_name_to_table = _get_test_vertex_name_to_table()
@@ -75,7 +76,7 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
 
     def test_warn_when_type_is_not_supported(self):
         with pytest.warns(Warning):
-            try_get_graphql_scalar_type('binary', Binary)
+            try_get_graphql_scalar_type('binary', LargeBinary)
 
     def test_mssql_scalar_type_representation(self):
         table1_graphql_object = self.schema_info.schema.get_type('Table1')

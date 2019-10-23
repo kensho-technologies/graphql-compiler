@@ -57,7 +57,7 @@ setup(
     license='Apache 2.0',
     packages=find_packages(exclude=['tests*']),
     install_requires=[  # Make sure to keep in sync with Pipfile requirements.
-        'arrow>=0.10.0,<1',
+        'arrow>=0.15.0,<1',
         'frozendict>=1.2,<2',
         'funcy>=1.7.3,<2',
         'graphql-core>=2.1,<3',
