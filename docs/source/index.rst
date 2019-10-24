@@ -48,11 +48,6 @@ Directly compiled to the target database language
    Furthermore, by using schema information from the target database, the compiler is able to
    extensively validate queries, often more so than the DB-API, (e.g. :code:`pymssql`).
 
-Designed for cross-database querying
-   Since the query language always has the same semantics regardless of the underlying database,
-   we have been able to build a :doc:`schema stitching <advanced_features/schema_stitching>` system
-   that allows for seamless cross-database querying.
-
 .. _getting-started:
 
 Getting Started
@@ -210,10 +205,6 @@ To learn more about the advanced features in the GraphQL compiler see:
 - :doc:`Macro System <advanced_features/macro_system>`, to learn how to write "macro edges",
   which allow users to define new edges that become part of the GraphQL schema, using existing
   edges as building blocks.
-- :doc:`Schema Stitching <advanced_features/schema_stitching>`, to learn how to stitch-schemas
-  together and execute cross-database queries.
-- :doc:`Schema Transformations <advanced_features/schema_transformations>`, to learn how to
-  rename objects and prevent schema collisions when stitching schemas.
 - :doc:`Schema Graph <advanced_features/schema_graph>`, for an utility that makes it
   easy to explore the schema of a database, including the databases indexes.
 
@@ -222,6 +213,4 @@ To learn more about the advanced features in the GraphQL compiler see:
    :hidden:
 
    Macro System <advanced_features/macro_system>
-   Schema Stitching <advanced_features/schema_stitching>
-   Schema Transformations <advanced_features/schema_transformations>
    Schema Graph <advanced_features/schema_graph>
