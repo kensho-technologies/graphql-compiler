@@ -4,16 +4,16 @@ graphql-compiler
 |Build Status| |Coverage Status| |License| |PyPI Python| |PyPI Version|
 |PyPI Status| |PyPI Wheel|
 
-Turn complex GraphQL queries into optimized database queries.
+The GraphQL Compiler is a library that simplifies database querying and exploration by exposing one
+common query language that is written in GraphQL to target multiple database backends.
 
 ::
 
     pip install graphql-compiler
 
-See our `our
-blog
-post <https://blog.kensho.com/compiled-graphql-as-a-database-query-language-72e106844282>`__.
-
+See `our docs <https://graphql-compiler.readthedocs.io/en/latest/>`__ and
+`our blog post <https://blog.kensho.com/compiled-graphql-as-a-database-query-language-72e106844282>`__
+for more details.
 
 License
 -------
