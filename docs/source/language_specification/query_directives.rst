@@ -626,7 +626,6 @@ Constraints and Rules
    depth 0, so the recursion scope always includes the vertex at the
    scope that encloses the vertex field marked :code:`@recurse`.
 
-
 @output_source
 --------------
 
