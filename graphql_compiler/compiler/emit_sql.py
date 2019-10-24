@@ -198,15 +198,16 @@ class SQLFoldObject(object):
         # group by column for fold subquery
         self._group_by = [self._outer_vertex_alias.c[join_descriptor.from_column]]
 
-        # List of 3-tuples:
-        #  edge: join descriptor for the columns used to join outer and output vertex
+        # List of 3-tuples describing the join required for each traversal in the fold
+        # starting with the join from the vertex immediately outside the fold to the folded vertex:
+        #
+        #  edge: join descriptor for the columns used to join one vertex to the next in the fold
         #  from_table: the table on the left side of the join
         #  to_table: the table on the right side of the join
         self._join_info = []
         self._outputs = []  # output columns for fold
 
         self._is_mssql2014 = is_mssql2014  # indicate results should be compatible with MSSQL2014
-
 
     @property
     def outputs(self):
@@ -303,7 +304,7 @@ class SQLFoldObject(object):
                     if fold_output.field == '_x_count':
                         raise NotImplementedError(u'_x_count not implemented in SQL')
 
-                    # explicit label forces column to have label as opposed to anon_label
+                    # force column to have explicit label as opposed to anon_label
                     intermediate_fold_output_name = 'fold_output_' + fold_output.field
                     # add array aggregated output column to self._outputs
                     if self._is_mssql2014:
@@ -315,7 +316,7 @@ class SQLFoldObject(object):
                     else:
                         self._append_default_column(intermediate_fold_output_name, fold_output)
 
-        # this is the unique identifier for the outer vertex used to join to the outer table
+        # use to join unique identifier for the fold's outer vertex to the final table
         self._outputs.append(self.outer_vertex_alias.c[join_descriptor.from_column])
 
         return sorted(self._outputs, key=lambda column: column.name, reverse=True)
@@ -575,7 +576,6 @@ class CompilationState(object):
                                  u'fold block at current location {}.'
                                  .format(fold_scope_location, self._current_location_info))
         # begin the fold
-
 
         # 1. get fold metadata
         # location of vertex that is folded on
