@@ -560,7 +560,7 @@ class CompilationState(object):
         if self._current_fold is not None or left_predicate_folded or right_predicate_folded:
             raise NotImplementedError('Filters inside a fold are not implemented yet.')
 
-        sql_expression = predicate.to_sql(self._aliases, self._current_alias)
+        sql_expression = predicate.to_sql(self._aliases, self._current_alias, self.is_mssql2014)
         if self._is_in_optional_scope():
             sql_expression = sqlalchemy.or_(sql_expression,
                                             self._came_from[self._current_alias].is_(None))
@@ -597,7 +597,7 @@ class CompilationState(object):
         ][full_edge_name]
 
         # 3. initialize fold object
-        self._current_fold = SQLFoldObject(outer_alias, join_descriptor)
+        self._current_fold = SQLFoldObject(outer_alias, join_descriptor, self.is_mssql2014)
 
         # 4. add join information for this traversal to the fold object
         self._current_fold.visit_traversed_vertex(join_descriptor, outer_alias, fold_vertex_alias)
