@@ -244,7 +244,7 @@ class SQLFoldObject(object):
                         ).label(intermediate_fold_output_name)
                     )
 
-        # this is the unique identifier for the outer vertex used to join to the outer table
+        # use to join unique identifier for the fold's outer vertex to the final table
         self._outputs.append(self.outer_vertex_alias.c[join_descriptor.from_column])
 
         return sorted(self._outputs, key=lambda column: column.name, reverse=True)
@@ -550,10 +550,9 @@ class CompilationState(object):
         self._aliases[subquery_alias_key] = fold_subquery
         self._from_clause = from_cls
 
-        # This line is necessary because otherwise references to the outer vertex table
-        # following the Unfold, would select columns from the copy of that table
-        # found in the fold subquery, when in actuality they should refer to a totally new
-        # copy of the outer vertex table.
+        # Ensure references to the outer vertex table after the Unfold refer to a totally new
+        # copy of the outer vertex table. Otherwise references would select columns from the
+        # copy of that table found inside the fold subquery.
         self._aliases[(self._current_location.at_vertex().query_path, None)] = outer_vertex
 
         # clear the fold from the compilation state
