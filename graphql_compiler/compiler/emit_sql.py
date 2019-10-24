@@ -134,11 +134,11 @@ def agg_table(output_column, where):
         Joining to the correct output vertex from the preceding vertex
         is performed with the WHERE clause.
     """
-    col = ('~|*' + func.REPLACE(output_column, '|', '||'))
+    col = (u'~|*' + func.REPLACE(output_column, u'|', u'||'))
     col = XMLPathBinaryExpression(col.left, col.right, col.operator)
     return func.REPLACE(func.REPLACE(func.REPLACE(func.COALESCE(func.STUFF(
         select([col]).where(where).suffix_with("FOR XML PATH ('')").as_scalar(),
-        1, 3, ''), '!|#null!|#'), '&gt;', '>'), '&lt;', '<'), '&amp;', '&')
+        1, 3, u''), u'!|#null!|#'), u'&gt;', u'>'), u'&lt;', u'<'), u'&amp;', u'&')
 
 
 class SQLFoldObject(object):
