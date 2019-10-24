@@ -7,7 +7,8 @@ from .utils import validate_that_tables_have_primary_keys
 
 
 def get_sqlalchemy_schema_info_from_specified_metadata(
-    vertex_name_to_table, direct_edges, dialect, class_to_field_type_overrides=None
+    vertex_name_to_table, direct_edges,
+    dialect, class_to_field_type_overrides=None, is_mssql_2014 = False
 ):
     """Return a SQLAlchemySchemaInfo from the metadata.
 
@@ -68,4 +69,4 @@ def get_sqlalchemy_schema_info_from_specified_metadata(
     type_equivalence_hints = {}
 
     return SQLAlchemySchemaInfo(
-        graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors)
+        graphql_schema, type_equivalence_hints, dialect, is_mssql_2014, vertex_name_to_table, join_descriptors)
