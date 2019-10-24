@@ -711,3 +711,42 @@ class MacroExpansionTests(unittest.TestCase):
         expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
+
+    def test_macro_expansion_with_optional_directives(self):
+        query = '''{
+            Animal {
+                name @filter(op_name: "=", value: ["$name"])
+
+                out_Animal_MaybeYoungerSiblings {
+                    name @output(out_name: "sibling_name")
+                }
+            }
+        }'''
+        args = {
+            'name': 'Nate',
+        }
+
+        expected_query = '''{
+            Animal {
+                name @filter(op_name: "=", value: ["$name"])
+
+                out_Animal_BornAt @optional {
+                    event_date @tag(tag_name: "birthday")
+                }
+                in_Animal_ParentOf {
+                    out_Animal_ParentOf {
+                        name @output(out_name: "sibling_name")
+                        out_Animal_BornAt @optional {
+                            event_date @filter(op_name: ">", value: ["%birthday"])
+                        }
+                    }
+                }
+            }
+        }'''
+        expected_args = {
+            'name': 'Nate',
+        }
+
+        expanded_query, new_args = perform_macro_expansion(self.macro_registry, query, args)
+        compare_graphql(self, expected_query, expanded_query)
+        self.assertEqual(expected_args, new_args)

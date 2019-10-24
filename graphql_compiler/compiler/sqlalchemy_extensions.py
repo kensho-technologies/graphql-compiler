@@ -40,3 +40,26 @@ def not_contains_operator(collection, element):
                              .format(sqlalchemy.sql.schema.Column, type(element)))
 
     return element.notin_(collection)
+
+
+def print_sqlalchemy_query_string(query, dialect):
+    """Return a string form of the parameterized query.
+
+    Args:
+        query: sqlalchemy.sql.selectable.Select
+        dialect: sqlalchemy.engine.interfaces.Dialect
+
+    Returns:
+        string that can be ran using sqlalchemy.sql.text(result)
+    """
+    class BindparamCompiler(dialect.statement_compiler):
+        def visit_bindparam(self, bindparam, **kwargs):
+            # A bound parameter with name param is represented as ":param". However,
+            # if the parameter is expanding (list-valued) it is represented as
+            # "([EXPANDING_param])" by default. This is an internal sqlalchemy
+            # representation that is not understood by databases, so we explicitly
+            # make sure to print it as ":param".
+            bindparam.expanding = False
+            return super(BindparamCompiler, self).visit_bindparam(bindparam, **kwargs)
+
+    return str(BindparamCompiler(dialect, query).process(query))

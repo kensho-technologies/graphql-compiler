@@ -11,6 +11,7 @@ from ..compiler import (
     OutputMetadata, compile_graphql_to_cypher, compile_graphql_to_gremlin, compile_graphql_to_match,
     compile_graphql_to_sql
 )
+from ..compiler.sqlalchemy_extensions import print_sqlalchemy_query_string
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from .test_helpers import (
     SKIP_TEST, compare_cypher, compare_gremlin, compare_input_metadata, compare_match, compare_sql,
@@ -60,7 +61,8 @@ def check_test_data(
             compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
     else:
         result = compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
-        string_result = str(result.query.compile(dialect=test_case.sql_schema_info.dialect))
+        string_result = print_sqlalchemy_query_string(
+            result.query, test_case.sql_schema_info.dialect)
         compare_sql(test_case, expected_sql, string_result)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata,
@@ -1128,7 +1130,7 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 [Animal_1].name <= :upper
                 AND ([Animal_1].name LIKE '%' + :substring + '%')
-                AND [Animal_1].name IN ([EXPANDING_fauna])
+                AND [Animal_1].name IN :fauna
                 AND [Animal_1].name >= :lower
         '''
         expected_cypher = '''
@@ -2297,7 +2299,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                [Animal_1].name IN ([EXPANDING_wanted])
+                [Animal_1].name IN :wanted
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -2446,7 +2448,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                [Animal_1].name NOT IN ([EXPANDING_wanted])
+                [Animal_1].name NOT IN :wanted
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -5410,7 +5412,7 @@ class CompilerTests(unittest.TestCase):
                 JOIN db_1.schema_1.[Entity] AS [Entity_1]
                     ON [Animal_3].related_entity = [Entity_1].uuid
             WHERE
-                [Entity_1].name IN ([EXPANDING_entity_names])
+                [Entity_1].name IN :entity_names
         '''
         expected_cypher = SKIP_TEST
 

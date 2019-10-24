@@ -210,6 +210,10 @@ QueryPlanningSchemaInfo = namedtuple('QueryPlanningSchemaInfo', (
     # NOTE(bojanserafimov): The type of this property might be different in the
     #                       schema graph, due to the process of type overrides that happens
     #                       during schema generation.
-    # HACK(bojanserafimov): All ID types are assumed to be uniformly-distributed uuid4s.
     'pagination_keys',
+
+    # Dict mapping vertex names in the graphql schema to a set of property names that
+    # are known to contain uniformly distributed uppercase uuid values. The types of those
+    # fields are expected to be ID or String.
+    'uuid4_fields',
 ))
