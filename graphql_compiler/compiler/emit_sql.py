@@ -2,15 +2,16 @@
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
 import six
 import sqlalchemy
+from sqlalchemy import select
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.compiler import _CompileLabel
+from sqlalchemy.sql.expression import BinaryExpression
+from sqlalchemy.sql.functions import func
 
 from . import blocks
 from .expressions import FoldedContextField
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
-from sqlalchemy import select
-from sqlalchemy.sql.compiler import _CompileLabel
-from sqlalchemy.sql.expression import BinaryExpression
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.functions import func
+
 
 # Some reserved column names used in emitted SQL queries
 CTE_DEPTH_NAME = '__cte_depth'
@@ -111,8 +112,9 @@ class XMLPathBinaryExpression(BinaryExpression):
     pass
 
 
-@compiles(_CompileLabel, "mssql")
+@compiles(_CompileLabel, 'default')
 def compile_xmlpath(element, compiler, **kw):
+    """Suppress labeling when compiling XML PATH subqueries."""
     if type(element.element) == XMLPathBinaryExpression:
         kw.update(
             within_columns_clause=False
@@ -120,16 +122,17 @@ def compile_xmlpath(element, compiler, **kw):
     return compiler.visit_label(element, **kw)
 
 
-def _agg_table(output_column, where):
-    """Produce an MSSQL 2014-style XML PATH-based aggregation subquery
-        Args:
-            output_column: Column values being aggregated with XML PATH
-            where: Predicate used to filter
-        Returns:
-            An SQLAlchemy Selectable corresponding the XML PATH subquery
-            which aggregates the output_column from the output vertex.
-            Joining to the correct output vertex from the preceding vertex
-            is performed with the WHERE clause.
+def agg_table(output_column, where):
+    """Produce an MSSQL 2014-style XML PATH-based aggregation subquery.
+
+    Args:
+        output_column: Column values being aggregated with XML PATH
+        where: Predicate used to filter
+    Returns:
+        An SQLAlchemy Selectable corresponding the XML PATH subquery
+        which aggregates the output_column from the output vertex.
+        Joining to the correct output vertex from the preceding vertex
+        is performed with the WHERE clause.
     """
     col = ('~|*' + func.REPLACE(output_column, '|', '||'))
     col = XMLPathBinaryExpression(col.left, col.right, col.operator)
@@ -246,7 +249,8 @@ class SQLFoldObject(object):
             # is moved into the WHERE clause of the SELECT ... FOR XML PATH('')
             self.join_info.pop()
         while len(self.join_info) > 0:
-            edge, from_alias, to_alias = self.join_info.pop()  # more recent joins are at the end of the list
+            # more recent joins are at the end of the list
+            edge, from_alias, to_alias = self.join_info.pop()
             join_clause = sqlalchemy.join(
                 join_clause,
                 to_alias,
@@ -279,12 +283,12 @@ class SQLFoldObject(object):
         )
 
     def _append_mssql_column(self, intermediate_fold_output_name, fold_output, last_join):
-        """Select the MSSQL2014 XML PATH-style aggregation of the fold output field, labeled as requested."""
+        """Select the MSSQL2014 XML PATH agg of the fold output field, labeled as requested."""
         edge, from_alias, to_alias = last_join
         self._outputs.append(
-            _agg_table(self.output_vertex_alias.c[fold_output.field],
-                       (from_alias.c[edge.from_column] == to_alias.c[edge.to_column])
-                       ).label(intermediate_fold_output_name)
+            agg_table(self.output_vertex_alias.c[fold_output.field],
+                      (from_alias.c[edge.from_column] == to_alias.c[edge.to_column])
+                      ).label(intermediate_fold_output_name)
         )
 
     def _get_fold_outputs(self, fold_scope_location, join_descriptor, all_folded_outputs):
@@ -302,7 +306,11 @@ class SQLFoldObject(object):
                     intermediate_fold_output_name = 'fold_output_' + fold_output.field
                     # add array aggregated output column to self._outputs
                     if self._is_mssql2014:
-                        self._append_mssql_column(intermediate_fold_output_name, fold_output, self.join_info[-1])
+                        self._append_mssql_column(
+                            intermediate_fold_output_name,
+                            fold_output,
+                            self.join_info[-1]
+                        )
                     else:
                         self._append_default_column(intermediate_fold_output_name, fold_output)
 
@@ -326,7 +334,7 @@ class SQLFoldObject(object):
         """Add a new join descriptor for every vertex traversed in the fold."""
         self._join_info.append((join_descriptor, from_table, to_table))
 
-    def end_fold(self, alias_generator, from_clause, outer_from_table):
+    def end_fold(self, alias_generator, from_clause, outer_from_tbl):
         """Produce the final subquery and join it onto the rest of the query."""
         # for now we only handle folds containing one traversal (i.e. join)
         # produce the from clause/joins for the subquery
@@ -343,11 +351,13 @@ class SQLFoldObject(object):
         joined_from_clause = sqlalchemy.join(
             from_clause,
             fold_subquery,
-            onclause=(outer_from_table.c[first_edge.from_column] == fold_subquery.c[first_edge.from_column]),
+            onclause=(
+                outer_from_tbl.c[first_edge.from_column] == fold_subquery.c[first_edge.from_column]
+            ),
             isouter=True
         )
 
-        return fold_subquery, joined_from_clause, outer_from_table
+        return fold_subquery, joined_from_clause, outer_from_tbl
 
 
 class UniqueAliasGenerator(object):
@@ -396,7 +406,8 @@ class CompilationState(object):
 
         self._alias_generator = UniqueAliasGenerator()  # generates aliases for the fold subqueries
 
-        self._is_mssql2014 = self.sql_schema_info.mssql2014  # self.sql_schema_info.dialect.name == 'mssql'
+        # indicates whether to compile to MSSQL2014
+        self._is_mssql2014 = self.sql_schema_info.mssql2014
 
     def _relocate(self, new_location):
         """Move to a different location in the query, updating the _alias."""
@@ -643,7 +654,9 @@ class CompilationState(object):
 
     def construct_result(self, output_name, field, is_mssql2014):
         """Execute a ConstructResult Block."""
-        self._outputs.append(field.to_sql(self._aliases, self._current_alias, is_mssql2014).label(output_name))
+        self._outputs.append(field.to_sql(
+            self._aliases, self._current_alias, is_mssql2014
+        ).label(output_name))
 
     def get_query(self):
         """After all IR Blocks are processed, return the resulting sqlalchemy query."""
@@ -652,10 +665,12 @@ class CompilationState(object):
 
     @property
     def sql_schema_info(self):
+        """Get the SQLALchemySchemaInfo for the current query."""
         return self._sql_schema_info
 
     @property
     def is_mssql2014(self):
+        """Get whether the current query is written for MSSQL2014."""
         return self._is_mssql2014
 
 

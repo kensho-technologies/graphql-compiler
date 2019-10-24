@@ -475,12 +475,11 @@ def _get_schema_without_list_valued_property_fields():
 def get_sqlalchemy_schema_info(mssql_2014=False):
     """Get a SQLAlchemySchemaInfo for testing.
 
-        Args:
-            mssql_2014: Set to indicate whether compilation results compatible with MSSQL 2014
-                        are desired when compiling to SQL. Otherwise PostgreSQL/MSSQL 2017 compatible
-                        results are returned.
+    Args:
+        mssql_2014: Set to indicate whether compilation results compatible with MSSQL 2014
+                    are desired when compiling to SQL. Otherwise PostgreSQL/MSSQL 2017
+                    compatible results are returned.
     """
-
     # We don't support list-valued property fields in SQL for now.
     schema = _get_schema_without_list_valued_property_fields()
     type_equivalence_hints = get_type_equivalence_hints()
@@ -683,7 +682,8 @@ def get_sqlalchemy_schema_info(mssql_2014=False):
                 join_descriptors.setdefault(subclass, {})[edge_name] = join_info
 
     return make_sqlalchemy_schema_info(
-        schema, type_equivalence_hints, mssql.dialect(), tables, join_descriptors, mssql_2014=mssql_2014)
+        schema, type_equivalence_hints, mssql.dialect(),
+        tables, join_descriptors, mssql_2014=mssql_2014)
 
 
 def generate_schema_graph(orientdb_client):

@@ -733,9 +733,9 @@ class FoldedContextField(Expression):
             ))
 
         fold_output_column = aliases[
-                self.fold_scope_location.base_location.query_path,
-                self.fold_scope_location.fold_path
-            ].c['fold_output_' + self.fold_scope_location.field]
+            self.fold_scope_location.base_location.query_path,
+            self.fold_scope_location.fold_path
+        ].c['fold_output_' + self.fold_scope_location.field]
 
         if is_mssql:
             return fold_output_column
