@@ -1,10 +1,12 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import unittest
+
 import sqlalchemy
 import sqlalchemy.dialects.mssql as mssql
 
 from ..compiler.sqlalchemy_extensions import print_sqlalchemy_query_string
-from .test_helpers import get_sqlalchemy_schema_info, compare_sql
+from .test_helpers import compare_sql, get_sqlalchemy_schema_info
+
 
 class CommonIrLoweringTests(unittest.TestCase):
     def setUp(self):
