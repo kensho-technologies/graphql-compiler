@@ -52,7 +52,7 @@ def print_sqlalchemy_query_string(query, dialect):
     Returns:
         string that can be ran using sqlalchemy.sql.text(result)
     """
-    class BindparamCompiler(sqlalchemy.dialects.mssql.base.MSSQLCompiler):
+    class BindparamCompiler(dialect.statement_compiler):
         def visit_bindparam(self, bindparam, **kwargs):
             # A bound parameter with name param is represented as ":param". However,
             # if the parameter is expanding (list-valued) it is represented as
