@@ -120,6 +120,24 @@ def compile_xmlpath(element, compiler, **kw):
     return compiler.visit_label(element, **kw)
 
 
+def _agg_table(output_column, where):
+    """Produce an MSSQL 2014-style XML PATH-based aggregation subquery
+        Args:
+            output_column: Column values being aggregated with XML PATH
+            where: Predicate used to filter
+        Returns:
+            An SQLAlchemy Selectable corresponding the XML PATH subquery
+            which aggregates the output_column from the output vertex.
+            Joining to the correct output vertex from the preceding vertex
+            is performed with the WHERE clause.
+    """
+    col = ('~|*' + func.REPLACE(output_column, '|', '||'))
+    col = XMLPathBinaryExpression(col.left, col.right, col.operator)
+    return func.REPLACE(func.REPLACE(func.REPLACE(func.COALESCE(func.STUFF(
+        select([col]).where(where).suffix_with("FOR XML PATH ('')").as_scalar(),
+        1, 3, ''), '!|#null!|#'), '&gt;', '>'), '&lt;', '<'), '&amp;', '&')
+
+
 class SQLFoldObject(object):
     """Object used to collect info for folds in order to ensure correct code emission."""
 
@@ -184,7 +202,7 @@ class SQLFoldObject(object):
         self._join_info = []
         self._outputs = []  # output columns for fold
 
-        self._is_mssql2014 = is_mssql2014  # the sql dialect being compiled to (e.g. MSSQL, PostgreSQL)
+        self._is_mssql2014 = is_mssql2014  # indicate results should be compatible with MSSQL2014
 
     @property
     def outputs(self):
@@ -224,9 +242,11 @@ class SQLFoldObject(object):
         _, from_alias, _ = self.join_info[-1]
         join_clause = from_alias
         if self._is_mssql2014:
-            self.join_info.pop(0)
+            # The final join predicate (from the vertex preceding the output to the output vertex)
+            # is moved into the WHERE clause of the SELECT ... FOR XML PATH('')
+            self.join_info.pop()
         while len(self.join_info) > 0:
-            edge, from_alias, to_alias = self.join_info.pop()
+            edge, from_alias, to_alias = self.join_info.pop()  # more recent joins are at the end of the list
             join_clause = sqlalchemy.join(
                 join_clause,
                 to_alias,
@@ -243,6 +263,7 @@ class SQLFoldObject(object):
         )
 
         if self._is_mssql2014:
+            # mssql 2014 doesn't rely on a group by
             return select_stmt
         else:
             return select_stmt.group_by(
@@ -250,27 +271,20 @@ class SQLFoldObject(object):
             )
 
     def _append_default_column(self, intermediate_fold_output_name, fold_output):
+        """Select an array_agg of the fold output field, labeled as requested."""
         self._outputs.append(
             sqlalchemy.func.array_agg(
                 self.output_vertex_alias.c[fold_output.field]
             ).label(intermediate_fold_output_name)
         )
 
-    def _agg_table(self, output_column, where):
-        col = ('~|*' + func.REPLACE(output_column, '|', '||'))
-        col = XMLPathBinaryExpression(col.left, col.right, col.operator)
-        return func.REPLACE(func.REPLACE(func.REPLACE(func.COALESCE(func.STUFF(
-            select([col]).where(where).suffix_with("FOR XML PATH ('')").as_scalar(),
-            1, 3, ''), '!|#null!|#'),  '&gt;', '>'), '&lt;', '<'), '&amp;', '&')
-
     def _append_mssql_column(self, intermediate_fold_output_name, fold_output, last_join):
-        edge = last_join[0]
-        from_alias = last_join[1]
-        to_alias = last_join[2]
+        """Select the MSSQL2014 XML PATH-style aggregation of the fold output field, labeled as requested."""
+        edge, from_alias, to_alias = last_join
         self._outputs.append(
-            self._agg_table(self.output_vertex_alias.c[fold_output.field],
-                            (from_alias.c[edge.from_column] == to_alias.c[edge.to_column])
-                            ).label(intermediate_fold_output_name)
+            _agg_table(self.output_vertex_alias.c[fold_output.field],
+                       (from_alias.c[edge.from_column] == to_alias.c[edge.to_column])
+                       ).label(intermediate_fold_output_name)
         )
 
     def _get_fold_outputs(self, fold_scope_location, join_descriptor, all_folded_outputs):

@@ -7434,28 +7434,47 @@ class CompilerTests(unittest.TestCase):
 
         expected_sql = '''
             SELECT
-                [Animal_1].name AS animal_name,
-                folded_subquery_1.fold_output_name AS child_names_list
+              [Animal_1].name AS animal_name,
+              folded_subquery_1.fold_output_name AS child_names_list,
+              [Animal_2].name AS parent_name
             FROM
-                db_1.schema_1.[Animal] AS [Animal_1]
-            LEFT OUTER JOIN (
+              db_1.schema_1.[Animal] AS [Animal_1]
+              LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2] ON [Animal_1].parent = [Animal_2].uuid
+              LEFT OUTER JOIN(
                 SELECT
-                    [Animal_2].uuid AS uuid,
-                    REPLACE(REPLACE(REPLACE(coalesce(
-                        STUFF(
-                            (SELECT
-                                N'~|*' + REPLACE([Animal_3].name, N'|', N'||')
-                            FROM db_1.schema_1.[Animal] AS [Animal_3]
-                            WHERE [Animal_2].uuid = [Animal_3].parent
-                            FOR XML PATH ('')), 
-                        1, 
-                        3, 
-                        N''), 
-                    N'!|#null!|#'), N'&gt;', N'>'), N'&lt;', N'<'), N'&amp;', N'&') AS fold_output_name
-                FROM db_1.schema_1.[Animal] AS [Animal_2]
-            ) AS folded_subquery_1
-            ON [Animal_1].uuid = folded_subquery_1.uuid
-        '''
+                  [Animal_3].uuid AS uuid,
+                  REPLACE(
+                    REPLACE(
+                      REPLACE(
+                        coalesce(
+                          STUFF(
+                            (
+                              SELECT
+                                N'~|*' + REPLACE([Animal_4].name, N'|', N'||')
+                              FROM
+                                db_1.schema_1.[Animal] AS [Animal_4]
+                              WHERE
+                                [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
+                            ),
+                            1,
+                            3,
+                            N''
+                          ),
+                          N'!|#null!|#'
+                        ),
+                        N'&gt;',
+                        N'>'
+                      ),
+                      N'&lt;',
+                      N'<'
+                    ),
+                    N'&amp;',
+                    N'&'
+                  ) AS fold_output_name
+                FROM
+                  db_1.schema_1.[Animal] AS [Animal_3]
+              ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+            '''
         result = compile_graphql_to_sql(self.mssql_schema_info, test_data.graphql_input)
         string_result = str(result.query.compile(dialect=self.mssql_schema_info.dialect, compile_kwargs={"literal_binds": True}))
         compare_sql(self, expected_sql, string_result)
@@ -7561,27 +7580,47 @@ class CompilerTests(unittest.TestCase):
 
         expected_sql = '''
             SELECT
-                [Animal_1].name AS animal_name,
-                folded_subquery_1.fold_output_name AS child_names_list
+              [Animal_1].name AS animal_name,
+              folded_subquery_1.fold_output_name AS child_names_list,
+              [Animal_2].name AS parent_name
             FROM
-                db_1.schema_1.[Animal] AS [Animal_1]
-            LEFT OUTER JOIN (
+              db_1.schema_1.[Animal] AS [Animal_1]
+              LEFT OUTER JOIN (
                 SELECT
-                    [Animal_2].uuid AS uuid,
-                    REPLACE(REPLACE(REPLACE(coalesce(
-                        STUFF(
-                            (SELECT
-                                N'~|*' + REPLACE([Animal_3].name, N'|', N'||')
-                            FROM db_1.schema_1.[Animal] AS [Animal_3]
-                            WHERE [Animal_2].uuid = [Animal_3].parent
-                            FOR XML PATH ('')), 
-                        1, 
-                        3, 
-                        N''), 
-                    N'!|#null!|#'), N'&gt;', N'>'), N'&lt;', N'<'), N'&amp;', N'&') AS fold_output_name
-                FROM db_1.schema_1.[Animal] AS [Animal_2]
-            ) AS folded_subquery_1
-            ON [Animal_1].uuid = folded_subquery_1.uuid
+                  [Animal_3].uuid AS uuid,
+                  REPLACE(
+                    REPLACE(
+                      REPLACE(
+                        coalesce(
+                          STUFF(
+                            (
+                              SELECT
+                                N'~|*' + REPLACE([Animal_4].name, N'|', N'||')
+                              FROM
+                                db_1.schema_1.[Animal] AS [Animal_4]
+                              WHERE
+                                [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
+                            ),
+                            1,
+                            3,
+                            N''
+                          ),
+                          N'!|#null!|#'
+                        ),
+                        N'&gt;',
+                        N'>'
+                      ),
+                      N'&lt;',
+                      N'<'
+                    ),
+                    N'&amp;',
+                    N'&'
+                  ) AS fold_output_name
+                FROM
+                  db_1.schema_1.[Animal] AS [Animal_3]
+              ) AS folded_subquery_1 
+              ON [Animal_1].uuid = folded_subquery_1.uuid
+              LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2] ON [Animal_1].parent = [Animal_2].uuid
         '''
         result = compile_graphql_to_sql(self.mssql_schema_info, test_data.graphql_input)
         string_result = str(result.query.compile(dialect=self.mssql_schema_info.dialect, compile_kwargs={"literal_binds": True}))

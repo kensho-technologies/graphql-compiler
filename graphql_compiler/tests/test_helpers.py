@@ -473,7 +473,14 @@ def _get_schema_without_list_valued_property_fields():
 
 
 def get_sqlalchemy_schema_info(mssql_2014=False):
-    """Get a SQLAlchemySchemaInfo for testing."""
+    """Get a SQLAlchemySchemaInfo for testing.
+
+        Args:
+            mssql_2014: Set to indicate whether compilation results compatible with MSSQL 2014
+                        are desired when compiling to SQL. Otherwise PostgreSQL/MSSQL 2017 compatible
+                        results are returned.
+    """
+
     # We don't support list-valued property fields in SQL for now.
     schema = _get_schema_without_list_valued_property_fields()
     type_equivalence_hints = get_type_equivalence_hints()
