@@ -24,7 +24,7 @@ Performance Penalties
 ---------------------
 
 
-Compound :code:`optional` performance penalty
+Compound :code:`optional` Performance Penalty
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When compiling to MATCH, including an optional statement in GraphQL has no performance issues on
@@ -157,8 +157,8 @@ selections.
     optionals (we also have :code:`SELECT` statements within :code:`$match1` and
     :code:`$match2`), but it illustrates the the general idea.
 
-Analysis
-^^^^^^^^
+Performance Analysis
+^^^^^^^^^^^^^^^^^^^^
 
 If we have many *compound* optionals in the given :code:`GraphQL`, the above
 procedure results in the union of a large number of :code:`MATCH` queries.
