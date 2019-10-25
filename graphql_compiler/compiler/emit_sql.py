@@ -12,6 +12,7 @@ from . import blocks
 from .expressions import FoldedContextField
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
 
+
 # Some reserved column names used in emitted SQL queries
 CTE_DEPTH_NAME = '__cte_depth'
 CTE_KEY_NAME = '__cte_key'
@@ -373,7 +374,7 @@ class SQLFoldObject(object):
             from_clause,
             fold_subquery,
             onclause=(
-                    outer_from_tbl.c[first_edge.from_column] == fold_subquery.c[first_edge.from_column]
+                outer_from_tbl.c[first_edge.from_column] == fold_subquery.c[first_edge.from_column]
             ),
             isouter=True
         )
