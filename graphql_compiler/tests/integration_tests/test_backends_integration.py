@@ -375,7 +375,6 @@ class IntegrationTests(TestCase):
             self.assertResultsEqual(graphql_query, parameters, test_backend.MSSQL, expected_results)
 
     @use_all_backends(except_backends=(
-        test_backend.MSSQL,  # Not implemented yet
         test_backend.REDISGRAPH,  # Not implemented yet
     ))
     @integration_fixtures
