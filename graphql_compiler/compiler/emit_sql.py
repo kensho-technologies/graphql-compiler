@@ -12,7 +12,6 @@ from . import blocks
 from .expressions import FoldedContextField
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
 
-
 # Some reserved column names used in emitted SQL queries
 CTE_DEPTH_NAME = '__cte_depth'
 CTE_KEY_NAME = '__cte_key'
@@ -114,8 +113,9 @@ class XMLPathBinaryExpression(BinaryExpression):
 
 @compiles(_CompileLabel, 'default')
 def compile_xmlpath(element, compiler, **kw):
-    """Suppress labeling when compiling XML PATH subqueries."""
+    """Suppress labeling when compiling XML PATH subqueries, otherwise compile as usual."""
     if type(element.element) == XMLPathBinaryExpression:
+        # this indicates that no label should be inserted for this element
         kw.update(
             within_columns_clause=False
         )
@@ -129,16 +129,25 @@ def agg_table(output_column, where):
         output_column: Column values being aggregated with XML PATH
         where: Predicate used to filter
     Returns:
-        An SQLAlchemy Selectable corresponding the XML PATH subquery
-        which aggregates the output_column from the output vertex.
-        Joining to the correct output vertex from the preceding vertex
+        An SQLAlchemy Selectable corresponding to an XML PATH subquery
+        which aggregates the values of the output_column from the output vertex.
+        Joining from the preceding vertex to the correct output vertex
         is performed with the WHERE clause.
     """
     col = (u'~|*' + func.REPLACE(output_column, u'|', u'||'))
     col = XMLPathBinaryExpression(col.left, col.right, col.operator)
-    return func.REPLACE(func.REPLACE(func.REPLACE(func.COALESCE(func.STUFF(
-        select([col]).where(where).suffix_with("FOR XML PATH ('')").as_scalar(),
-        1, 3, u''), u'!|#null!|#'), u'&gt;', u'>'), u'&lt;', u'<'), u'&amp;', u'&')
+    return func.REPLACE(
+        func.REPLACE(
+            func.REPLACE(
+                func.COALESCE(
+                    func.STUFF(
+                        select([col]).where(where)
+                        .suffix_with("FOR XML PATH ('')").as_scalar(),
+                        1, 3, u''),
+                    u'!|#null!|#'),
+                u'&gt;', u'>'),
+            u'&lt;', u'<'),
+        u'&amp;', u'&')
 
 
 class SQLFoldObject(object):
@@ -311,7 +320,7 @@ class SQLFoldObject(object):
                         self._append_mssql_column(
                             intermediate_fold_output_name,
                             fold_output,
-                            self.join_info[-1]
+                            self.join_info[-1]  # output vertex was the most recently visited
                         )
                     else:
                         self._append_default_column(intermediate_fold_output_name, fold_output)
@@ -364,7 +373,7 @@ class SQLFoldObject(object):
             from_clause,
             fold_subquery,
             onclause=(
-                outer_from_tbl.c[first_edge.from_column] == fold_subquery.c[first_edge.from_column]
+                    outer_from_tbl.c[first_edge.from_column] == fold_subquery.c[first_edge.from_column]
             ),
             isouter=True
         )
