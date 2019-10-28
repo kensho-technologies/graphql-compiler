@@ -13,7 +13,7 @@ common query language that is written in GraphQL to target multiple database bac
 
 See `our docs <https://graphql-compiler.readthedocs.io/en/latest/>`__ and
 `our blog post <https://blog.kensho.com/compiled-graphql-as-a-database-query-language-72e106844282>`__
-for more details
+for more details.
 
 License
 -------
