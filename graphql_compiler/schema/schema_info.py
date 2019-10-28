@@ -80,7 +80,7 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
     # (e.g. sqlalchemy.dialects.mssql.dialect()).
     'dialect',
 
-    # boolean indicating whether the dialect we are compiling for is mssql 2014s
+    # boolean indicating whether we are compiling for MSSQL-2014
     'mssql2014',
 
     # dict mapping every graphql object type or interface type name in the schema to

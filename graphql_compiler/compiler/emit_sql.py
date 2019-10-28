@@ -127,22 +127,26 @@ def agg_table(output_column, where):
     """Produce an MSSQL 2014-style XML PATH-based aggregation subquery.
 
     Args:
-        output_column: Column values being aggregated with XML PATH
-        where: Predicate used to filter
+        output_column: SQLAlchemy Column, value being aggregated with XML PATH
+        where: SQLAlchemy BinaryExpression, predicate used to filter
     Returns:
         An SQLAlchemy Selectable corresponding to an XML PATH subquery
         which aggregates the values of the output_column from the output vertex.
         Joining from the preceding vertex to the correct output vertex
         is performed with the WHERE clause.
     """
-    col = (u'~|*' + func.REPLACE(output_column, u'|', u'||'))
-    col = XMLPathBinaryExpression(col.left, col.right, col.operator)
+    xml_column = (u'~|*' + func.REPLACE(output_column, u'|', u'||'))
+
+    # as a custom type, you can't directly construct an XMLPathBinaryExpression from plain text
+    xml_column = XMLPathBinaryExpression(xml_column.left, xml_column.right, xml_column.operator)
+
+    # REPLACEs to undo autoconversion of HTML special characters to entity reference shorthand
     return func.REPLACE(
         func.REPLACE(
             func.REPLACE(
-                func.COALESCE(
-                    func.STUFF(
-                        select([col]).where(where)
+                func.COALESCE(  # COALESCE to special null value
+                    func.STUFF(  # STUFF to remove first occurrence of '~|*'
+                        select([xml_column]).where(where)
                         .suffix_with("FOR XML PATH ('')").as_scalar(),
                         1, 3, u''),
                     u'!|#null!|#'),
@@ -198,9 +202,13 @@ class SQLFoldObject(object):
         Args:
             outer_vertex_table: SQLAlchemy table alias for vertex outside of fold.
             join_descriptor: DirectJoinDescriptor object from the schema, describing the
-            first join from the outer vertex to the folded vertex.
+                             first join from the outer vertex to the folded vertex.
+            is_mssql2014: boolean passed in from the schema indicating whether the fold should be
+                          MSSQL-2014 compliant
         """
-        self._output_vertex_alias = None  # table containing output columns
+        # table containing output columns
+        # initially None because output table is unknown until call to visit_output_vertex
+        self._output_vertex_alias = None
 
         # table for vertex immediately outside fold
         self._outer_vertex_alias = outer_vertex_table
@@ -254,11 +262,16 @@ class SQLFoldObject(object):
 
     def _construct_fold_joins(self):
         """Use the edge descriptors to create the join clause between the tables in the fold."""
-        _, from_alias, _ = self.join_info[-1]
-        join_clause = from_alias
+        # Start the join clause with the from_table of the first join descriptor
+        _, join_clause, _ = self.join_info[-1]
+
+        # Starting at the first from_table, join traversed vertices until the output vertex is
+        # reached.
+        #
+        # MSSQL doesn't use the last JOIN so we pop it off before construction the JOIN clause
         if self._is_mssql2014:
-            # The final join predicate (from the vertex preceding the output to the output vertex)
-            # is moved into the WHERE clause of the SELECT ... FOR XML PATH('')
+            # Move the final join predicate (from the vertex preceding the output to
+            # the output vertex) into the WHERE clause of the SELECT ... FOR XML PATH('')
             self.join_info.pop()
         while len(self.join_info) > 0:
             # more recent joins are at the end of the list
@@ -272,7 +285,7 @@ class SQLFoldObject(object):
 
     def _construct_fold_subquery(self, subquery_from_clause):
         """Combine all parts of the fold object to produce the complete fold subquery."""
-        select_stmt = sqlalchemy.select(
+        select_statement = sqlalchemy.select(
             self.outputs
         ).select_from(
             subquery_from_clause
@@ -280,9 +293,9 @@ class SQLFoldObject(object):
 
         if self._is_mssql2014:
             # mssql 2014 doesn't rely on a group by
-            return select_stmt
+            return select_statement
         else:
-            return select_stmt.group_by(
+            return select_statement.group_by(
                 *self.group_by
             )
 
@@ -348,7 +361,7 @@ class SQLFoldObject(object):
         """Add a new join descriptor for every vertex traversed in the fold."""
         self._join_info.append((join_descriptor, from_table, to_table))
 
-    def end_fold(self, alias_generator, from_clause, outer_from_tbl):
+    def end_fold(self, alias_generator, from_clause, outer_from_table):
         """Produce the final subquery and join it onto the rest of the query."""
         if self._output_vertex_alias is None:
             raise AssertionError('No output vertex visited.')
@@ -374,11 +387,13 @@ class SQLFoldObject(object):
             from_clause,
             fold_subquery,
             onclause=(
-                outer_from_tbl.c[first_edge.from_column] == fold_subquery.c[first_edge.from_column]
+                outer_from_table.c[first_edge.from_column] == fold_subquery.c[
+                    first_edge.from_column
+                ]
             ),
             isouter=True
         )
-        return fold_subquery, joined_from_clause, outer_from_tbl
+        return fold_subquery, joined_from_clause, outer_from_table
 
 
 class UniqueAliasGenerator(object):
