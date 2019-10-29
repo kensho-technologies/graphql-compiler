@@ -15,6 +15,11 @@ from ...schema_generation.sqlalchemy.edge_descriptors import (
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
 from ...schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_schema_graph
 from ...schema_generation.schema_graph import IndexDefinition
+from ...schema_generation.sqlalchemy import (
+    get_join_descriptors_from_edge_descriptors, SQLAlchemySchemaInfo,
+    get_graphql_schema_from_schema_graph
+)
+
 
 def _get_test_vertex_name_to_table():
     """Return a dict mapping the name of each VertexType to the underlying SQLAlchemy Table."""
@@ -45,9 +50,9 @@ def _get_test_vertex_name_to_table():
         Column('unique_column2', Integer()),
         Column('unique_column_with_invalid_type', Binary()),
 
-        PrimaryKeyConstraint({'primary_key_column1', 'primary_key_column2'}),
-        UniqueConstraint({'unique_column1', 'unique_column2'}),
-        UniqueConstraint({'unique_column_with_invalid_type'})
+        PrimaryKeyConstraint('primary_key_column1', 'primary_key_column2'),
+        UniqueConstraint('unique_column1', 'unique_column2'),
+        UniqueConstraint('unique_column_with_invalid_type')
     )
 
     return {'Table1': table1, 'ArbitraryObjectName': table2, 'Table3': table3}
@@ -70,9 +75,16 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
     def setUp(self):
         vertex_name_to_table = _get_test_vertex_name_to_table()
         direct_edges = _get_test_direct_edges()
-        self.schema_info = get_sqlalchemy_schema_info_from_specified_metadata(
-            vertex_name_to_table, direct_edges, dialect())
         self.schema_graph = get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges)
+
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(
+            self.schema_graph, class_to_field_type_overrides={},
+            hidden_classes=set()
+        )
+        join_descriptors = get_join_descriptors_from_edge_descriptors(direct_edges)
+
+        self.schema_info = SQLAlchemySchemaInfo(
+            graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors)
 
     def test_table_vertex_representation(self):
         self.assertIsInstance(self.schema_info.schema.get_type('Table1'), GraphQLObjectType)
@@ -125,7 +137,7 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
                 IndexDefinition(
                     name=None,
                     base_classname='Table3',
-                    fields={'primary_key_column1', 'primary_key_column1'},
+                    fields=frozenset({'primary_key_column1', 'primary_key_column2'}),
                     unique=True,
                     ordered=False,
                     ignore_nulls=True,
@@ -133,7 +145,7 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
                 IndexDefinition(
                     name=None,
                     base_classname='Table3',
-                    fields={'unique_column1', 'unique_column2'},
+                    fields=frozenset({'unique_column1', 'unique_column2'}),
                     unique=True,
                     ordered=False,
                     ignore_nulls=True,

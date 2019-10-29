@@ -1,12 +1,15 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from ...global_utils import merge_non_overlapping_dicts
+from sqlalchemy import UniqueConstraint, PrimaryKeyConstraint
+
+from .edge_descriptors import validate_edge_descriptors
+from .scalar_type_mapper import try_get_graphql_scalar_type
+from .utils import validate_that_tables_have_primary_keys
 from ..schema_graph import (
     EdgeType, InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType,
     link_schema_elements
 )
-from sqlalchemy import UniqueConstraint, PrimaryKeyConstraint
-from .scalar_type_mapper import try_get_graphql_scalar_type
 from ..schema_graph import IndexDefinition
+from ...global_utils import merge_non_overlapping_dicts
 
 
 def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
@@ -28,6 +31,9 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
     Returns:
         SchemaGraph reflecting the specified metadata.
     """
+    validate_edge_descriptors(vertex_name_to_table, direct_edges)
+    validate_that_tables_have_primary_keys(vertex_name_to_table.values())
+
     vertex_types = {
         vertex_name: _get_vertex_type_from_sqlalchemy_table(vertex_name, table)
         for vertex_name, table in vertex_name_to_table.items()
@@ -72,12 +78,17 @@ def _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types):
     for vertex_name, table in vertex_name_to_table.items():
         for constraint in table.constraints:
             if isinstance(constraint, (PrimaryKeyConstraint, UniqueConstraint)):
-                column_names = {column.name for column in constraint.columns}
+                column_names = frozenset(column.name for column in constraint.columns)
 
                 # Sometimes we ignore columns for having types without a matching GraphQL types.
+                invalid_columns = False
                 for name in column_names:
                     if name not in vertex_types[vertex_name].properties:
+                        invalid_columns = True
                         continue
+
+                if invalid_columns:
+                    continue
 
                 # Some SQL backends allow duplicate nulls in columns with unique indexes.
                 # However, other backends do not. Therefore, we set ignore_nulls=True to indicate
@@ -88,7 +99,7 @@ def _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types):
                 index_definition = IndexDefinition(
                     name=None,
                     base_classname=vertex_name,
-                    fileds={column_names},
+                    fields=column_names,
                     unique=True,
                     ordered=False,
                     ignore_nulls=True
