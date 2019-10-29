@@ -9,7 +9,7 @@ from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 import sqlalchemy
-from sqlalchemy.dialects import mssql
+from sqlalchemy.dialects import mssql, postgresql
 
 from graphql_compiler.schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data
 
@@ -488,7 +488,7 @@ def _get_schema_without_list_valued_property_fields():
     return schema
 
 
-def get_sqlalchemy_schema_info():
+def get_sqlalchemy_schema_info(dialect='mssql'):
     """Get a SQLAlchemySchemaInfo for testing."""
     # We don't support list-valued property fields in SQL for now.
     schema = _get_schema_without_list_valued_property_fields()
@@ -690,9 +690,12 @@ def get_sqlalchemy_schema_info():
         for subclass in subclass_set:
             for edge_name, join_info in six.iteritems(join_descriptors.get(class_name, {})):
                 join_descriptors.setdefault(subclass, {})[edge_name] = join_info
-
+    if dialect == 'postgresql':
+        sqlalchemy_compiler_dialect = postgresql.dialect()
+    else:
+        sqlalchemy_compiler_dialect = mssql.dialect()
     return make_sqlalchemy_schema_info(
-        schema, type_equivalence_hints, mssql.dialect(), tables, join_descriptors)
+        schema, type_equivalence_hints, sqlalchemy_compiler_dialect, tables, join_descriptors)
 
 
 def generate_schema_graph(orientdb_client):
