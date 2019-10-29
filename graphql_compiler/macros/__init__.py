@@ -226,11 +226,12 @@ def get_schema_for_macro_definition(schema):
     return macro_definition_schema
 
 
-def perform_macro_expansion(macro_registry, graphql_with_macro, graphql_args):
+def perform_macro_expansion(macro_registry, schema_with_macros, graphql_with_macro, graphql_args):
     """Return a new GraphQL query string and args, after expanding any encountered macros.
 
     Args:
         macro_registry: MacroRegistry, the registry of macro descriptors used for expansion
+        schema_with_macros: A schema obtained by running get_schema_with_macros(macro_registry)
         graphql_with_macro: string, GraphQL query that potentially requires macro expansion
         graphql_args: dict mapping strings to any type, containing the arguments for the query
 
@@ -240,7 +241,6 @@ def perform_macro_expansion(macro_registry, graphql_with_macro, graphql_args):
         the returned values are guaranteed to be identical to the input query and args.
     """
     query_ast = safe_parse_graphql(graphql_with_macro)
-    schema_with_macros = get_schema_with_macros(macro_registry)
     validation_errors = validate_schema_and_query_ast(schema_with_macros, query_ast)
     if validation_errors:
         raise GraphQLValidationError(u'The provided GraphQL input does not validate: {} {}'
