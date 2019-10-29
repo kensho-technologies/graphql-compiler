@@ -20,7 +20,7 @@ from .test_helpers import (
 
 
 def check_test_data(
-        test_case, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher):
+        test_case, test_data, expected_match, expected_gremlin, expected_postresql, expected_cypher, expected_mssql=SKIP_TEST):
     """Assert that the GraphQL input generates all expected output queries data."""
     if test_data.type_equivalence_hints:
         # For test convenience, we accept the type equivalence hints in string form.
@@ -32,15 +32,20 @@ def check_test_data(
     else:
         schema_based_type_equivalence_hints = None
 
-    result = compile_graphql_to_match(test_case.schema, test_data.graphql_input,
-                                      type_equivalence_hints=schema_based_type_equivalence_hints)
+    if expected_match == SKIP_TEST:
+        pass
+    else:
+        result = compile_graphql_to_match(test_case.schema, test_data.graphql_input,
+                                          type_equivalence_hints=schema_based_type_equivalence_hints)
 
-    compare_match(test_case, expected_match, result.query)
-    test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-    compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+        compare_match(test_case, expected_match, result.query)
+        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
     # Allow features to not be implemented in Gremlin and SQL, and instead raise compilation errors.
-    if expected_gremlin == NotImplementedError:
+    if expected_gremlin == SKIP_TEST:
+        pass
+    elif expected_gremlin == NotImplementedError:
         with test_case.assertRaises(NotImplementedError):
             compile_graphql_to_gremlin(
                 test_case.schema, test_data.graphql_input,
@@ -53,9 +58,9 @@ def check_test_data(
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
-    if expected_sql == SKIP_TEST:
+    if expected_postresql == SKIP_TEST:
         pass
-    elif expected_sql == NotImplementedError:
+    elif expected_postresql == NotImplementedError:
         not_supported = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
         with test_case.assertRaises(not_supported):
             compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
@@ -63,7 +68,23 @@ def check_test_data(
         result = compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
         string_result = print_sqlalchemy_query_string(
             result.query, test_case.sql_schema_info.dialect)
-        compare_sql(test_case, expected_sql, string_result)
+        compare_sql(test_case, expected_postresql, string_result)
+        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(test_case, test_data.expected_input_metadata,
+                               result.input_metadata)
+
+    if expected_mssql == SKIP_TEST:
+        pass
+    elif expected_mssql == NotImplementedError:
+        not_supported = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
+        with test_case.assertRaises(not_supported):
+            compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
+    else:
+        mssql_result = compile_graphql_to_sql(test_case.mssql_schema_info, test_data.graphql_input)
+        string_result = str(mssql_result.query.compile(
+            dialect=test_case.mssql_schema_info.dialect, compile_kwargs={'literal_binds': True}
+        ))
+        compare_sql(test_case, expected_mssql, string_result)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata,
                                result.input_metadata)
@@ -82,29 +103,6 @@ def check_test_data(
         compare_cypher(test_case, expected_cypher, result.query)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
-
-
-def check_sql_test(self, expected_postgresql, expected_mssql, test_data):
-    """Compare Postgres and MSSQL side-by-side for @fold, when their output syntax differs."""
-    # Test MSSQL output
-    mssql_result = compile_graphql_to_sql(self.mssql_schema_info, test_data.graphql_input)
-    mssql_string_result = str(mssql_result.query.compile(
-        dialect=self.mssql_schema_info.dialect, compile_kwargs={'literal_binds': True}
-    ))
-    compare_sql(self, expected_mssql, mssql_string_result)
-    self.assertEqual(test_data.expected_output_metadata, mssql_result.output_metadata)
-    compare_input_metadata(self, test_data.expected_input_metadata,
-                           mssql_result.input_metadata)
-
-    # Test PostgreSQL output
-    postgres_result = compile_graphql_to_sql(self.sql_schema_info, test_data.graphql_input)
-    postgres_string_result = str(postgres_result.query.compile(
-        dialect=self.sql_schema_info.dialect
-    ))
-    compare_sql(self, expected_postgresql, postgres_string_result)
-    self.assertEqual(test_data.expected_output_metadata, postgres_result.output_metadata)
-    compare_input_metadata(self, test_data.expected_input_metadata,
-                           postgres_result.input_metadata)
 
 
 class CompilerTests(unittest.TestCase):
@@ -4197,9 +4195,8 @@ class CompilerTests(unittest.TestCase):
             ON [Animal_1].uuid = folded_subquery_1.uuid
         '''
 
-        check_sql_test(self, expected_sql, expected_mssql, test_data)
-        check_test_data(self, test_data, expected_match, expected_gremlin, SKIP_TEST,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
+                        expected_cypher, expected_mssql)
 
     def test_fold_on_two_output_variables(self):
         test_data = test_input_data.fold_on_two_output_variables()
@@ -4262,7 +4259,11 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_1
             ON [Animal_1].uuid = folded_subquery_1.uuid
         '''
-        check_sql_test(self, expected_postgresql, expected_mssql, test_data)
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_postgresql,
+                        expected_cypher, expected_mssql)
 
     def test_fold_same_edge_type_in_different_locations(self):
         test_data = test_input_data.fold_same_edge_type_in_different_locations()
@@ -4374,7 +4375,11 @@ class CompilerTests(unittest.TestCase):
                   db_1.schema_1.[Animal] AS [Animal_5]
               ) AS folded_subquery_2 ON [Animal_4].uuid = folded_subquery_2.uuid
         '''
-        check_sql_test(self, expected_postgresql, expected_mssql, test_data)
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_postgresql,
+                        expected_cypher, expected_mssql)
 
     def test_fold_after_traverse(self):
         test_data = test_input_data.fold_after_traverse()
@@ -4490,14 +4495,13 @@ class CompilerTests(unittest.TestCase):
                   db_1.schema_1.[Animal] AS [Animal_3]
             ) AS folded_subquery_1 ON [Animal_2].uuid = folded_subquery_1.uuid
         '''
-        check_sql_test(self, expected_postgresql, expected_mssql, test_data)
         check_test_data(self, test_data, expected_match, expected_gremlin, SKIP_TEST,
                         expected_cypher)
 
     def test_fold_after_traverse_different_types(self):
         test_data = test_input_data.fold_after_traverse_different_types()
 
-        expected_sql = '''
+        expected_postgresql = '''
                     SELECT
                         [Animal_1].name AS animal_name,
                         coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
@@ -4516,12 +4520,53 @@ class CompilerTests(unittest.TestCase):
                     ) AS folded_subquery_1
                     ON [Location_1].uuid = folded_subquery_1.uuid'''
 
-        result = compile_graphql_to_sql(self.sql_schema_info, test_data.graphql_input)
-        string_result = str(result.query.compile(dialect=self.sql_schema_info.dialect))
-        compare_sql(self, expected_sql, string_result)
-        self.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(self, test_data.expected_input_metadata,
-                               result.input_metadata)
+        expected_mssql = '''
+            SELECT
+              [Animal_1].name AS animal_name,
+              folded_subquery_1.fold_output_name AS neighbor_and_self_names_list
+            FROM
+              db_1.schema_1.[Animal] AS [Animal_1]
+              JOIN db_1.schema_1.[Location] AS [Location_1] ON [Animal_1].lives_in = [Location_1].uuid
+              LEFT OUTER JOIN(
+                SELECT
+                  [Location_2].uuid AS uuid,
+                  REPLACE(
+                    REPLACE(
+                      REPLACE(
+                        coalesce(
+                          STUFF(
+                            (
+                              SELECT
+                                N'~|*' + REPLACE([Animal_2].name, N'|', N'||')
+                              FROM
+                                db_1.schema_1.[Animal] AS [Animal_2]
+                              WHERE
+                                [Location_2].uuid = [Animal_2].lives_in FOR XML PATH('')
+                            ),
+                            1,
+                            3,
+                            N''
+                          ),
+                          N'!|#null!|#'
+                        ),
+                        N'&gt;',
+                        N'>'
+                      ),
+                      N'&lt;',
+                      N'<'
+                    ),
+                    N'&amp;',
+                    N'&'
+                  ) AS fold_output_name
+                FROM
+                  db_1.schema_1.[Location] AS [Location_2]
+              ) AS folded_subquery_1 ON [Location_1].uuid = folded_subquery_1.uuid
+        '''
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_postgresql,
+                        expected_cypher, expected_mssql)
 
     def test_fold_after_traverse_no_output_on_root(self):
         test_data = test_input_data.fold_after_traverse_no_output_on_root()
@@ -4587,7 +4632,11 @@ class CompilerTests(unittest.TestCase):
                   db_1.schema_1.[Location] AS [Location_2]
               ) AS folded_subquery_1 ON [Location_1].uuid = folded_subquery_1.uuid
         '''
-        check_sql_test(self, expected_postgresql, expected_mssql, test_data)
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_postgresql,
+                        expected_cypher, expected_mssql)
 
     def test_fold_and_traverse(self):
         test_data = test_input_data.fold_and_traverse()
@@ -7524,9 +7573,11 @@ class CompilerTests(unittest.TestCase):
                   db_1.schema_1.[Animal] AS [Animal_3]
             ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
             '''
-        check_sql_test(self, expected_postgresql, expected_mssql, test_data)
-        check_test_data(self, test_data, expected_match, expected_gremlin, SKIP_TEST,
-                        expected_cypher)
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_postgresql,
+                        expected_cypher, expected_mssql)
 
     def test_fold_and_optional(self):
         test_data = test_input_data.fold_and_optional()
@@ -7662,9 +7713,11 @@ class CompilerTests(unittest.TestCase):
               LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
               ON [Animal_1].parent = [Animal_2].uuid
         '''
-        check_sql_test(self, expected_postgresql, expected_mssql, test_data)
-        check_test_data(self, test_data, expected_match, expected_gremlin, SKIP_TEST,
-                        expected_cypher)
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_postgresql,
+                        expected_cypher, expected_mssql)
 
     def test_optional_traversal_and_fold_traversal(self):
         test_data = test_input_data.optional_traversal_and_fold_traversal()
