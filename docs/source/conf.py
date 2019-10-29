@@ -57,8 +57,7 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 # This specifies how many header levels below the title should we include in the table of contents
-# navigation bar. With a navigation depth of 2 we only include the title and the top header of
-# each page.
+# navigation bar.
 html_theme_options = {
-    'navigation_depth': 2,
+    'navigation_depth': 3,
 }

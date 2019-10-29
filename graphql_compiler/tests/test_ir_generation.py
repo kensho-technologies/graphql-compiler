@@ -2948,6 +2948,73 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_fold_same_edge_type_in_different_locations(self):
+        test_data = test_input_data.fold_same_edge_type_in_different_locations()
+
+        base_location = helpers.Location(('Animal',))
+        base_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+        traverse = base_location.navigate_to_subpath('in_Animal_ParentOf')
+        second_fold = traverse.navigate_to_fold('out_Animal_ParentOf')
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_fold),
+            blocks.MarkLocation(base_fold),
+            blocks.Unfold(),
+            blocks.Traverse('in', 'Animal_ParentOf'),
+            blocks.MarkLocation(traverse),
+            blocks.Fold(second_fold),
+            blocks.MarkLocation(second_fold),
+            blocks.Unfold(),
+            blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'child_names_list': expressions.FoldedContextField(
+                    base_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+                'sibling_and_self_names_list': expressions.FoldedContextField(
+                    second_fold.navigate_to_field('name'), GraphQLList(GraphQLString))
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            base_fold: 'Animal',
+            traverse: 'Animal',
+            second_fold: 'Animal'
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_fold_on_two_output_variables(self):
+        test_data = test_input_data.fold_on_two_output_variables()
+
+        base_location = helpers.Location(('Animal',))
+        base_fold = base_location.navigate_to_fold('out_Animal_ParentOf')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_fold),
+            blocks.MarkLocation(base_fold),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'child_names_list': expressions.FoldedContextField(
+                    base_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+                'child_color_list': expressions.FoldedContextField(
+                    base_fold.navigate_to_field('color'), GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            base_fold: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_fold_on_output_variable(self):
         test_data = test_input_data.fold_on_output_variable()
 
@@ -3257,6 +3324,68 @@ class IrGenerationTests(unittest.TestCase):
             base_out_traversed_fold: 'Animal',
             base_in_fold: 'Animal',
             base_in_traversed_fold: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_fold_after_traverse_different_types(self):
+        test_data = test_input_data.fold_after_traverse_different_types()
+        base_location = helpers.Location(('Animal',))
+        parent_location = base_location.navigate_to_subpath('out_Animal_LivesIn')
+        parent_fold = parent_location.navigate_to_fold('in_Animal_LivesIn')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('out', 'Animal_LivesIn'),
+            blocks.MarkLocation(parent_location),
+            blocks.Fold(parent_fold),
+            blocks.MarkLocation(parent_fold),
+            blocks.Unfold(),
+            blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'neighbor_and_self_names_list': expressions.FoldedContextField(
+                    parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_location: 'Location',
+            parent_fold: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_fold_after_traverse_no_output_on_root(self):
+        test_data = test_input_data.fold_after_traverse_no_output_on_root()
+        base_location = helpers.Location(('Animal',))
+        parent_location = base_location.navigate_to_subpath('out_Animal_LivesIn')
+        parent_fold = parent_location.navigate_to_fold('in_Animal_LivesIn')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse('out', 'Animal_LivesIn'),
+            blocks.MarkLocation(parent_location),
+            blocks.Fold(parent_fold),
+            blocks.MarkLocation(parent_fold),
+            blocks.Unfold(),
+            blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'location_name': expressions.OutputContextField(
+                    parent_location.navigate_to_field('name'), GraphQLString),
+                'neighbor_and_self_names_list': expressions.FoldedContextField(
+                    parent_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            parent_location: 'Location',
+            parent_fold: 'Animal',
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
