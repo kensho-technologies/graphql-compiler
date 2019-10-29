@@ -3,9 +3,9 @@ import unittest
 
 from graphql.type import GraphQLInt, GraphQLObjectType, GraphQLString
 import pytest
-from sqlalchemy import Column, MetaData, Table
+from sqlalchemy import Column, MetaData, Table, UniqueConstraint, PrimaryKeyConstraint
 from sqlalchemy.dialects.mssql import TINYINT, dialect
-from sqlalchemy.types import Integer, LargeBinary, String
+from sqlalchemy.types import Integer, LargeBinary, String, Binary
 
 from ... import get_sqlalchemy_schema_info_from_specified_metadata
 from ...schema_generation.exceptions import InvalidSQLEdgeError, MissingPrimaryKeyError
@@ -14,7 +14,7 @@ from ...schema_generation.sqlalchemy.edge_descriptors import (
 )
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
 from ...schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_schema_graph
-
+from ...schema_generation.schema_graph import IndexDefinition
 
 def _get_test_vertex_name_to_table():
     """Return a dict mapping the name of each VertexType to the underlying SQLAlchemy Table."""
@@ -36,7 +36,21 @@ def _get_test_vertex_name_to_table():
         Column('destination_column', Integer(), primary_key=True),
     )
 
-    return {'Table1': table1, 'ArbitraryObjectName': table2}
+    table3 = Table(
+        'Table3',
+        metadata2,
+        Column('primary_key_column1', Integer()),
+        Column('primary_key_column2', Integer()),
+        Column('unique_column1', Integer()),
+        Column('unique_column2', Integer()),
+        Column('unique_column_with_invalid_type', Binary()),
+
+        PrimaryKeyConstraint({'primary_key_column1', 'primary_key_column2'}),
+        UniqueConstraint({'unique_column1', 'unique_column2'}),
+        UniqueConstraint({'unique_column_with_invalid_type'})
+    )
+
+    return {'Table1': table1, 'ArbitraryObjectName': table2, 'Table3': table3}
 
 
 def _get_test_direct_edges():
@@ -105,7 +119,29 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
         self.assertEqual(expected_join_descriptors, self.schema_info.join_descriptors)
 
     def test_sqlalchemy_index_generation(self):
-        print(self.schema_graph.all_indexes)
+        indexes = self.schema_graph.get_all_indexes_for_class('Table3')
+        self.assertEqual(
+            {
+                IndexDefinition(
+                    name=None,
+                    base_classname='Table3',
+                    fields={'primary_key_column1', 'primary_key_column1'},
+                    unique=True,
+                    ordered=False,
+                    ignore_nulls=True,
+                ),
+                IndexDefinition(
+                    name=None,
+                    base_classname='Table3',
+                    fields={'unique_column1', 'unique_column2'},
+                    unique=True,
+                    ordered=False,
+                    ignore_nulls=True,
+                ),
+            }
+            , indexes
+        )
+
 
 
 
