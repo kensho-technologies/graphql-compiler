@@ -1,15 +1,14 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from sqlalchemy import UniqueConstraint, PrimaryKeyConstraint
+from sqlalchemy import PrimaryKeyConstraint, UniqueConstraint
 
+from ...global_utils import merge_non_overlapping_dicts
+from ..schema_graph import (
+    EdgeType, IndexDefinition, InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType,
+    link_schema_elements
+)
 from .edge_descriptors import validate_edge_descriptors
 from .scalar_type_mapper import try_get_graphql_scalar_type
 from .utils import validate_that_tables_have_primary_keys
-from ..schema_graph import (
-    EdgeType, InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType,
-    link_schema_elements
-)
-from ..schema_graph import IndexDefinition
-from ...global_utils import merge_non_overlapping_dicts
 
 
 def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
@@ -73,14 +72,15 @@ def _get_edge_type_from_direct_edge(edge_name, direct_edge_descriptor):
 
 def _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types):
     """Return the IndexDefinition objects corresponding to the indexes in the SQL tables."""
-    # TODO: Add indexes other than the primary key and the unique constraints.
+    # TODO: Add indexes that do not correspond to neither the primary key nor the SQLAlchemy Table's
+    #       uniqueness constraints.
     index_definitions = set()
     for vertex_name, table in vertex_name_to_table.items():
         for constraint in table.constraints:
             if isinstance(constraint, (PrimaryKeyConstraint, UniqueConstraint)):
                 column_names = frozenset(column.name for column in constraint.columns)
 
-                # Sometimes we ignore columns for having types without a matching GraphQL types.
+                # We ignore columns that have a SQL type with no matching GraphQL type.
                 invalid_columns = False
                 for name in column_names:
                     if name not in vertex_types[vertex_name].properties:

@@ -3,22 +3,22 @@ import unittest
 
 from graphql.type import GraphQLInt, GraphQLObjectType, GraphQLString
 import pytest
-from sqlalchemy import Column, MetaData, Table, UniqueConstraint, PrimaryKeyConstraint
+from sqlalchemy import Column, MetaData, PrimaryKeyConstraint, Table, UniqueConstraint
 from sqlalchemy.dialects.mssql import TINYINT, dialect
-from sqlalchemy.types import Integer, LargeBinary, String, Binary
+from sqlalchemy.types import Binary, Integer, LargeBinary, String
 
 from ... import get_sqlalchemy_schema_info_from_specified_metadata
 from ...schema_generation.exceptions import InvalidSQLEdgeError, MissingPrimaryKeyError
+from ...schema_generation.schema_graph import IndexDefinition
+from ...schema_generation.sqlalchemy import (
+    SQLAlchemySchemaInfo, get_graphql_schema_from_schema_graph,
+    get_join_descriptors_from_edge_descriptors
+)
 from ...schema_generation.sqlalchemy.edge_descriptors import (
     DirectEdgeDescriptor, DirectJoinDescriptor
 )
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
 from ...schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_schema_graph
-from ...schema_generation.schema_graph import IndexDefinition
-from ...schema_generation.sqlalchemy import (
-    get_join_descriptors_from_edge_descriptors, SQLAlchemySchemaInfo,
-    get_graphql_schema_from_schema_graph
-)
 
 
 def _get_test_vertex_name_to_table():
@@ -28,7 +28,7 @@ def _get_test_vertex_name_to_table():
         'Table1',
         metadata1,
         Column('column_with_supported_type', String(), primary_key=True),
-        Column('column_with_non_supported_type', LargeBinary(), unique=True),
+        Column('column_with_non_supported_type', LargeBinary()),
         Column('column_with_mssql_type', TINYINT()),
         Column('source_column', Integer()),
     )
@@ -150,11 +150,8 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
                     ordered=False,
                     ignore_nulls=True,
                 ),
-            }
-            , indexes
+            }, indexes
         )
-
-
 
 
 class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
