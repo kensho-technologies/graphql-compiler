@@ -12,7 +12,7 @@ from .. import graphql_to_gremlin, graphql_to_match
 from ..compiler import compile_graphql_to_gremlin, compile_graphql_to_match
 from ..exceptions import GraphQLInvalidArgumentError
 from ..query_formatting import insert_arguments_into_query
-from ..query_formatting.common import validate_argument_type
+from ..query_formatting.common import deserialize_json_argument, validate_argument_type
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .test_helpers import compare_gremlin, compare_match, get_schema
 
@@ -217,3 +217,57 @@ class QueryFormattingTests(unittest.TestCase):
         arbitrary_argument_name = 'arbitrary_name'
         for graphql_type, value in type_and_value:
             validate_argument_type(arbitrary_argument_name, graphql_type, value)
+
+    def test_date_deserialization(self):
+        # Invalid month
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_json_argument('birthday', GraphQLDate, '2014-14-01')
+
+        # Invalid day
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_json_argument('birthday', GraphQLDate, '2014-02-31')
+
+        # Valid date
+        value = deserialize_json_argument('birthday', GraphQLDate, '2014-02-05')
+        self.assertEqual(datetime.date(2014, 2, 5), value)
+
+    def test_datetime_deserialization(self):
+        # No time provided
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_json_argument('birth_time', GraphQLDateTime, '2014-02-05')
+
+        # No timezone provided
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_json_argument('birth_time', GraphQLDateTime, '2014-02-05T03:20:55')
+
+        # Invalid format
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_json_argument('birth_time', GraphQLDateTime, '2014-02-05 03:20:55Z')
+
+        # Valid datetime
+        value = deserialize_json_argument('birth_time', GraphQLDateTime, '2014-02-05T03:20:55Z')
+        self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55, tzinfo=pytz.utc), value)
+
+    def test_float_deserialization(self):
+        # Invalid string
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_json_argument('amount', GraphQLFloat, 'sdg')
+
+        # Bool
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_json_argument('amount', GraphQLFloat, True)
+
+        # Valid string
+        self.assertEqual(float(5), deserialize_json_argument('amount', GraphQLFloat, '5'))
+
+        # Valid string with comma
+        self.assertEqual(float(5.1), deserialize_json_argument('amount', GraphQLFloat, '5.1'))
+
+        # Valid int
+        self.assertEqual(float(5), deserialize_json_argument('amount', GraphQLFloat, 5))
+
+        # Valid float
+        self.assertEqual(float(5), deserialize_json_argument('amount', GraphQLFloat, float(5)))
+
+        # Valid float with comma
+        self.assertEqual(float(5.1), deserialize_json_argument('amount', GraphQLFloat, float(5.1)))
