@@ -7248,7 +7248,7 @@ class CompilerTests(unittest.TestCase):
               coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names_list,
               "Animal_2".name AS parent_name
             FROM "db_1.schema_1"."Animal" AS "Animal_1"
-            LEFT OUTER JOIN 
+            LEFT OUTER JOIN
                 "db_1.schema_1"."Animal" AS "Animal_2"
             ON "Animal_1".parent = "Animal_2".uuid
             LEFT OUTER JOIN (
@@ -7353,7 +7353,7 @@ class CompilerTests(unittest.TestCase):
                 GROUP BY "Animal_3".uuid
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
-            LEFT OUTER JOIN 
+            LEFT OUTER JOIN
                 "db_1.schema_1"."Animal" AS "Animal_2"
             ON "Animal_1".parent = "Animal_2".uuid
         '''
