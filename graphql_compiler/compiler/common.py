@@ -135,7 +135,6 @@ def _compile_graphql_generic(target_backend, schema_info, graphql_string):
     ir_and_metadata = graphql_to_ir(
         schema_info.schema, graphql_string,
         type_equivalence_hints=schema_info.type_equivalence_hints)
-
     lowered_ir_blocks = target_backend.lower_func(schema_info, ir_and_metadata)
     query = target_backend.emit_func(schema_info, lowered_ir_blocks)
     return CompilationResult(

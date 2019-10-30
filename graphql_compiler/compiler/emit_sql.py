@@ -103,6 +103,25 @@ def _find_folded_outputs(ir):
     return folded_outputs
 
 
+def _find_x_count_filters(ir):
+    """For each fold path, find all filters involving _x_count."""
+    _x_count_filters = []
+    global_operation_start = False
+    for block in ir.ir_blocks:
+        # _x_count filters only occur after encountering a GlobalOperationStart block.
+        if isinstance(block, blocks.GlobalOperationsStart):
+            global_operation_start = True
+        # Check the left and right side of Filter predicates to see if _x_count is involved.
+        if global_operation_start and isinstance(block, blocks.Filter):
+            if (isinstance(block.predicate.left, FoldedContextField) and
+                    block.predicate.left.fold_scope_location.field == '_x_count'):
+                _x_count_filters.append(block.predicate.left)
+            if (isinstance(block.predicate.right, FoldedContextField) and
+                    block.predicate.right.fold_scope_location.field == '_x_count'):
+                _x_count_filters.append(block.predicate.right)
+    return _x_count_filters
+
+
 class SQLFoldObject(object):
     """Object used to collect info for folds in order to ensure correct code emission."""
 
@@ -124,7 +143,7 @@ class SQLFoldObject(object):
     #
     # SELECT will also contain an ARRAY_AGG for each column labeled for output inside the fold.
     #
-    # TODO: SELECT will also contain a COUNT(*) if _x_count is referred to by the query.
+    # SELECT will also contain a COUNT(*) if _x_count is referred to by the query.
     #
     # The GROUP BY clause is produced during initialization.
     #
@@ -224,8 +243,15 @@ class SQLFoldObject(object):
             *self.group_by
         )
 
-    def _get_fold_outputs(self, fold_scope_location, join_descriptor, all_folded_outputs):
+    def _get_fold_outputs(self,
+                          fold_scope_location,
+                          join_descriptor,
+                          all_folded_outputs,
+                          x_count_filters):
         """Generate output columns for innermost fold scope and add them to active SQLFoldObject."""
+        # keep track of whether or not an _x_count has been added to the outputs
+        has_x_count = False
+
         # find outputs for this fold in all_folded_outputs and add to self._outputs
         if fold_scope_location.fold_path in all_folded_outputs:
             for fold_output in all_folded_outputs[fold_scope_location.fold_path]:
@@ -233,19 +259,33 @@ class SQLFoldObject(object):
                 if (fold_output.base_location, fold_output.fold_path) == (
                         fold_scope_location.base_location, fold_scope_location.fold_path):
                     if fold_output.field == '_x_count':
-                        raise NotImplementedError(u'_x_count not implemented in SQL')
+                        has_x_count = True
+                        self._outputs.append(
+                            sqlalchemy.func.count().label('fold_output_x_count')
+                        )
 
-                    # force column to have explicit label as opposed to anon_label
-                    intermediate_fold_output_name = 'fold_output_' + fold_output.field
-                    # add array aggregated output column to self._outputs
-                    self._outputs.append(
-                        sqlalchemy.func.array_agg(
-                            self.output_vertex_alias.c[fold_output.field]
-                        ).label(intermediate_fold_output_name)
-                    )
+                    else:
+                        # force column to have explicit label as opposed to anon_label
+                        intermediate_fold_output_name = 'fold_output_' + fold_output.field
+                        # add array aggregated output column to self._outputs
+                        self._outputs.append(
+                            sqlalchemy.func.array_agg(
+                                self.output_vertex_alias.c[fold_output.field]
+                            ).label(intermediate_fold_output_name)
+                        )
 
         # use to join unique identifier for the fold's outer vertex to the final table
         self._outputs.append(self.outer_vertex_alias.c[join_descriptor.from_column])
+
+        # _x_count must be added if _x_count is used in filtering, but is not an output
+        if not has_x_count:
+            for x_count_filter in x_count_filters:
+                if (x_count_filter.fold_scope_location.at_vertex() ==
+                        fold_scope_location.at_vertex()):
+                    self._outputs.append(
+                        sqlalchemy.func.count().label('fold_output_x_count')
+                    )
+                    break
 
         return sorted(self._outputs, key=lambda column: column.name, reverse=True)
 
@@ -253,14 +293,16 @@ class SQLFoldObject(object):
                             output_alias,
                             fold_scope_location,
                             join_descriptor,
-                            all_folded_outputs):
+                            all_folded_outputs,
+                            x_count_filters):
         """Update output columns when visiting the vertex containing output directives."""
         if self._output_vertex_alias is not None:
             raise AssertionError('Cannot visit multiple output vertices in one fold.')
         self._output_vertex_alias = output_alias
         self._outputs = self._get_fold_outputs(fold_scope_location,
                                                join_descriptor,
-                                               all_folded_outputs)
+                                               all_folded_outputs,
+                                               x_count_filters)
 
     def visit_traversed_vertex(self, join_descriptor, from_table, to_table):
         """Add a new join descriptor for every vertex traversed in the fold."""
@@ -321,6 +363,7 @@ class CompilationState(object):
         self._ir = ir
         self._used_columns = _find_columns_used_outside_folds(sql_schema_info, ir)
         self._all_folded_outputs = _find_folded_outputs(ir)
+        self._x_count_filters = _find_x_count_filters(ir)
 
         # Current query location state. Only mutable by calling _relocate.
         self._current_location = None  # the current location in the query. None means global.
@@ -479,10 +522,8 @@ class CompilationState(object):
 
     def filter(self, predicate):
         """Execute a Filter Block."""
-        left_predicate_folded = isinstance(predicate.left, FoldedContextField)
-        right_predicate_folded = isinstance(predicate.right, FoldedContextField)
-        if self._current_fold is not None or left_predicate_folded or right_predicate_folded:
-            raise NotImplementedError('Filters inside a fold are not implemented yet.')
+        if self._current_fold is not None:
+            raise NotImplementedError('Non-_x_count filters inside a fold are not implemented yet.')
 
         sql_expression = predicate.to_sql(self._aliases, self._current_alias)
         if self._is_in_optional_scope():
@@ -530,7 +571,8 @@ class CompilationState(object):
         self._current_fold.visit_output_vertex(fold_vertex_alias,
                                                fold_scope_location,
                                                join_descriptor,
-                                               self._all_folded_outputs)
+                                               self._all_folded_outputs,
+                                               self._x_count_filters)
 
     def unfold(self):
         """Complete the execution of a Fold Block."""

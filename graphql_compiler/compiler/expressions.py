@@ -395,9 +395,18 @@ class GlobalContextField(Expression):
 
     def to_sql(self, aliases, current_alias):
         """Not implemented, should not be used."""
-        raise AssertionError(u'GlobalContextField is not used as part of the query emission '
-                             u'process in SQL, so this is a bug. This function '
-                             u'should not be called.')
+        self.validate()
+        if isinstance(self.field_type, GraphQLList):
+            raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
+                                      u'process field {}.'.format(self.location.field))
+
+        if self.location.field is not None:
+            if '@' in self.location.field:
+                raise NotImplementedError(u'The SQL backend does not support __typename.')
+            return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
+        else:
+            raise AssertionError(u'This is a bug. The SQL backend does not use '
+                                 u'global context fields to point to vertices.')
 
 
 class ContextField(Expression):
@@ -721,7 +730,17 @@ class FoldedContextField(Expression):
 
     def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
-        # get the type of the folded field
+        # _x_count is a special case that is coalesced to 0 instead of an empty array.
+        if self.fold_scope_location.field == '_x_count':
+            return sqlalchemy.func.coalesce(
+                aliases[
+                    self.fold_scope_location.base_location.query_path,
+                    self.fold_scope_location.fold_path
+                ].c['fold_output_x_count'],
+                sqlalchemy.literal_column("0")
+            )
+
+        # Otherwise, get the type of the folded field.
         inner_type = strip_non_null_from_type(self.field_type.of_type)
         if GraphQLInt.is_same_type(inner_type):
             sql_array_type = 'INT'
@@ -732,7 +751,7 @@ class FoldedContextField(Expression):
                 inner_type
             ))
 
-        # coalesce to an empty array of the corresponding type
+        # Coalesce to an empty array of the corresponding type.
         empty_array = 'ARRAY[]::{}[]'.format(sql_array_type)
         return sqlalchemy.func.coalesce(
             aliases[
@@ -806,8 +825,15 @@ class FoldCountContextField(Expression):
         raise NotImplementedError()
 
     def to_sql(self, aliases, current_alias):
-        """Not supported yet."""
-        raise NotImplementedError(u'The SQL backend does not support _x_count.')
+        """Return a SQLAlchemy column of a coalesced COUNT(*) from a folded subquery."""
+        # Coalesce to 0.
+        return sqlalchemy.func.coalesce(
+            aliases[
+                self.fold_scope_location.base_location.query_path,
+                self.fold_scope_location.fold_path
+            ].c['fold_output_x_count'],
+            sqlalchemy.literal_column("0")
+        )
 
 
 class ContextFieldExistence(Expression):
