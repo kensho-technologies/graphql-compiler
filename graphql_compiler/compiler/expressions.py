@@ -737,7 +737,7 @@ class FoldedContextField(Expression):
                     self.fold_scope_location.base_location.query_path,
                     self.fold_scope_location.fold_path
                 ].c['fold_output_x_count'],
-                sqlalchemy.literal_column("0")
+                sqlalchemy.literal_column('0')
             )
 
         # Otherwise, get the type of the folded field.
@@ -832,7 +832,7 @@ class FoldCountContextField(Expression):
                 self.fold_scope_location.base_location.query_path,
                 self.fold_scope_location.fold_path
             ].c['fold_output_x_count'],
-            sqlalchemy.literal_column("0")
+            sqlalchemy.literal_column('0')
         )
 
 
