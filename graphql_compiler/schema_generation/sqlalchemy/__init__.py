@@ -1,9 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from ...schema.schema_info import SQLAlchemySchemaInfo
 from ..graphql_schema import get_graphql_schema_from_schema_graph
-from .edge_descriptors import get_join_descriptors_from_edge_descriptors, validate_edge_descriptors
+from .edge_descriptors import get_join_descriptors_from_edge_descriptors
 from .schema_graph_builder import get_sqlalchemy_schema_graph
-from .utils import validate_that_tables_have_primary_keys
 
 
 def get_sqlalchemy_schema_info_from_specified_metadata(
@@ -50,22 +49,14 @@ def get_sqlalchemy_schema_info_from_specified_metadata(
     Return:
         SQLAlchemySchemaInfo containing the full information needed to compile SQL queries.
     """
-    validate_edge_descriptors(vertex_name_to_table, direct_edges)
-    validate_that_tables_have_primary_keys(vertex_name_to_table.values())
-
     schema_graph = get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges)
 
-    # Since there will be no inheritance in the GraphQL schema, it is simpler to omit the class.
-    hidden_classes = set()
-    graphql_schema, _ = get_graphql_schema_from_schema_graph(
-        schema_graph, class_to_field_type_overrides, hidden_classes)
+    graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(
+        schema_graph, class_to_field_type_overrides=class_to_field_type_overrides,
+        hidden_classes=set()
+    )
 
     join_descriptors = get_join_descriptors_from_edge_descriptors(direct_edges)
-
-    # type_equivalence_hints exists as field in SQLAlchemySchemaInfo to make testing easier for
-    # the SQL backend. However, there is no inheritance in SQLAlchemy and there will be no GraphQL
-    # union types in the schema, so we set the type_equivalence_hints to be an empty dict.
-    type_equivalence_hints = {}
 
     return SQLAlchemySchemaInfo(
         graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors)

@@ -237,11 +237,6 @@ def _serialize_datetime(value):
 
 def _parse_datetime_value(value):
     """Deserialize a DateTime object from its proper ISO-8601 representation."""
-    if value.endswith('Z'):
-        # Arrow doesn't support the "Z" literal to denote UTC time.
-        # Strip the "Z" and add an explicit time zone instead.
-        value = value[:-1] + '+00:00'
-
     return arrow.get(value, 'YYYY-MM-DDTHH:mm:ssZZ').datetime
 
 

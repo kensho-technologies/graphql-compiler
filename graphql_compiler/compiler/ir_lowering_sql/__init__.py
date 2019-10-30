@@ -33,7 +33,7 @@ def _find_non_null_columns(schema_info, query_metadata_table):
     for location, location_info in query_metadata_table.registered_locations:
         for child_location in query_metadata_table.get_child_locations(location):
             if isinstance(child_location, FoldScopeLocation):
-                raise NotImplementedError()
+                continue
 
             edge_direction, edge_name = get_edge_direction_and_name(child_location.query_path[-1])
             vertex_field_name = '{}_{}'.format(edge_direction, edge_name)
@@ -90,7 +90,7 @@ class ContextColumn(expressions.Expression):
     def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
         self.validate()
-        return aliases[self._vertex_query_path].c[self._column_name]
+        return aliases[(self._vertex_query_path, None)].c[self._column_name]
 
 
 def _lower_sql_context_field_existence(schema_info, ir_blocks, query_metadata_table):
