@@ -64,8 +64,8 @@ def deserialize_json_argument(name, expected_type, value):
     for integers if there are no decimals. This function takes in a value received from a json,
     and converts it to a standard python representation that can be used in the query. Below are
     examples of accepted json encodings of all the types:
-        GraphQLDate: "2018-02-01T05:11:54Z"
-        GraphQLDateTime: "2018-02-01"
+        GraphQLDate: "2018-02-01"
+        GraphQLDateTime: "2018-02-01T05:11:54Z"
         GraphQLFloat: 4.3, "5.0", 5
         GraphQLDecimal: "5.00000000000000000000000000001"
         GraphQLInt: 4
