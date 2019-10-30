@@ -80,14 +80,10 @@ def _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types):
             if isinstance(constraint, (PrimaryKeyConstraint, UniqueConstraint)):
                 column_names = frozenset(column.name for column in constraint.columns)
 
-                # We ignore columns that have a SQL type with no matching GraphQL type.
-                invalid_columns = False
-                for name in column_names:
-                    if name not in vertex_types[vertex_name].properties:
-                        invalid_columns = True
-                        continue
+                # We ignore indexes that reference columns that are not represented as properties
+                # in the corresponding vertex type.
 
-                if invalid_columns:
+                if _are_columns_vertex_properties(column_names, vertex_types[vertex_name].properties):
                     continue
 
                 # Some SQL backends allow duplicate nulls in columns with unique indexes.
@@ -107,3 +103,11 @@ def _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types):
                 index_definitions.add(index_definition)
 
     return index_definitions
+
+
+def _are_columns_valid(index_definition, vertex_type):
+    """Return bool indicating whether the fields in an Index are a subset ofthe corresponding vertex_type properties."""
+    for name in column_names:
+        if name not in properties:
+            return False
+    return True
