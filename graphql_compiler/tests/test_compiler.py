@@ -4223,7 +4223,7 @@ class CompilerTests(unittest.TestCase):
                     "Animal_2".uuid AS uuid,
                     array_agg("Animal_3".name) AS fold_output_name
                 FROM
-                    "db_1.schema_1"."Animal" AS "Animal_2"
+                  "db_1.schema_1"."Animal" AS "Animal_2"
                 JOIN "db_1.schema_1"."Animal" AS "Animal_3" ON "Animal_2".uuid = "Animal_3".parent
                 GROUP BY
                   "Animal_2".uuid
