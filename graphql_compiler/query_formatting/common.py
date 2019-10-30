@@ -37,7 +37,7 @@ def _deserialize_anonymous_json_argument(expected_type, value):
         GraphQLDecimal: (six.string_types, float, six.integer_types),
         GraphQLInt: (six.integer_types,),
         GraphQLString: (six.string_types,),
-        GraphQLBoolean: (bool,)
+        GraphQLBoolean: (bool,),
         GraphQLID: (six.string_types,),
     }
 
