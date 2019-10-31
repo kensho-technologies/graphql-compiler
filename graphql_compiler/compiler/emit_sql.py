@@ -196,15 +196,14 @@ class SQLFoldObject(object):
     # ON ...
     # GROUP BY OuterVertex.SOME_COLUMN
 
-    def __init__(self, outer_vertex_table, join_descriptor, is_mssql2014):
+    def __init__(self, outer_vertex_table, join_descriptor, dialect):
         """Create an SQLFoldObject with table, type, and join information supplied by the IR.
 
         Args:
             outer_vertex_table: SQLAlchemy table alias for vertex outside of fold.
             join_descriptor: DirectJoinDescriptor object from the schema, describing the
                              first join from the outer vertex to the folded vertex.
-            is_mssql2014: boolean passed in from the schema indicating whether the fold should be
-                          MSSQL-2014 compliant
+            dialect: string passed in from the schema indicating the target dialect
         """
         # table containing output columns
         # initially None because output table is unknown until call to visit_output_vertex
@@ -225,7 +224,7 @@ class SQLFoldObject(object):
         self._join_info = []
         self._outputs = []  # output columns for fold
 
-        self._is_mssql2014 = is_mssql2014  # indicate results should be compatible with MSSQL2014
+        self._dialect = dialect  # indicate results should be compatible with MSSQL2014
 
     @property
     def outputs(self):
@@ -269,7 +268,7 @@ class SQLFoldObject(object):
         # reached.
         #
         # MSSQL doesn't use the last JOIN so we pop it off before construction the JOIN clause
-        if self._is_mssql2014:
+        if self._dialect == 'mssql':
             # Move the final join predicate (from the vertex preceding the output to
             # the output vertex) into the WHERE clause of the SELECT ... FOR XML PATH('')
             self.join_info.pop()
@@ -291,7 +290,7 @@ class SQLFoldObject(object):
             subquery_from_clause
         )
 
-        if self._is_mssql2014:
+        if self._dialect == 'mssql':
             # mssql 2014 doesn't rely on a group by
             return select_statement
         else:
@@ -330,7 +329,7 @@ class SQLFoldObject(object):
                     # force column to have explicit label as opposed to anon_label
                     intermediate_fold_output_name = 'fold_output_' + fold_output.field
                     # add array aggregated output column to self._outputs
-                    if self._is_mssql2014:
+                    if self._dialect == 'mssql':
                         self._append_mssql_column(
                             intermediate_fold_output_name,
                             fold_output,
@@ -442,8 +441,8 @@ class CompilationState(object):
 
         self._alias_generator = UniqueAliasGenerator()  # generates aliases for the fold subqueries
 
-        # indicates whether to compile to MSSQL2014
-        self._is_mssql2014 = self.sql_schema_info.mssql2014
+        # indicates the target dialect
+        self._dialect = self.sql_schema_info.dialect.name
 
     def _relocate(self, new_location):
         """Move to a different location in the query, updating the _alias."""
@@ -586,7 +585,7 @@ class CompilationState(object):
         if self._current_fold is not None or left_predicate_folded or right_predicate_folded:
             raise NotImplementedError('Filters inside a fold are not implemented yet.')
 
-        sql_expression = predicate.to_sql(self._aliases, self._current_alias, self.is_mssql2014)
+        sql_expression = predicate.to_sql(self._aliases, self._current_alias, self.dialect)
         if self._is_in_optional_scope():
             sql_expression = sqlalchemy.or_(sql_expression,
                                             self._came_from[self._current_alias].is_(None))
@@ -622,7 +621,7 @@ class CompilationState(object):
         ][full_edge_name]
 
         # 3. initialize fold object
-        self._current_fold = SQLFoldObject(outer_alias, join_descriptor, self.is_mssql2014)
+        self._current_fold = SQLFoldObject(outer_alias, join_descriptor, self.dialect)
 
         # 4. add join information for this traversal to the fold object
         self._current_fold.visit_traversed_vertex(join_descriptor, outer_alias, fold_vertex_alias)
@@ -671,10 +670,10 @@ class CompilationState(object):
             if self._current_fold is not None else (self._current_location.query_path, None)
         ] = self._current_alias
 
-    def construct_result(self, output_name, field, is_mssql2014):
+    def construct_result(self, output_name, field, dialect):
         """Execute a ConstructResult Block."""
         self._outputs.append(field.to_sql(
-            self._aliases, self._current_alias, is_mssql2014
+            self._aliases, self._current_alias, dialect
         ).label(output_name))
 
     def get_query(self):
@@ -688,9 +687,9 @@ class CompilationState(object):
         return self._sql_schema_info
 
     @property
-    def is_mssql2014(self):
+    def dialect(self):
         """Get whether the current query is written for MSSQL2014."""
-        return self._is_mssql2014
+        return self._dialect
 
 
 def emit_code_from_ir(sql_schema_info, ir):
@@ -727,7 +726,7 @@ def emit_code_from_ir(sql_schema_info, ir):
             state.start_global_operations()
         elif isinstance(block, blocks.ConstructResult):
             for output_name, field in sorted(six.iteritems(block.fields)):
-                state.construct_result(output_name, field, state.is_mssql2014)
+                state.construct_result(output_name, field, state.dialect)
         else:
             raise NotImplementedError(u'Unsupported block {}.'.format(block))
 

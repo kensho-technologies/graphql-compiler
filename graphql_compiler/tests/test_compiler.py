@@ -20,7 +20,8 @@ from .test_helpers import (
 
 
 def check_test_data(
-        test_case, test_data, expected_match, expected_gremlin, expected_postresql, expected_cypher, expected_mssql=SKIP_TEST):
+        test_case, test_data, expected_match, expected_gremlin, expected_mssql, expected_cypher,
+        expected_postgresql=SKIP_TEST):
     """Assert that the GraphQL input generates all expected output queries data."""
     if test_data.type_equivalence_hints:
         # For test convenience, we accept the type equivalence hints in string form.
@@ -35,9 +36,10 @@ def check_test_data(
     if expected_match == SKIP_TEST:
         pass
     else:
-        result = compile_graphql_to_match(test_case.schema, test_data.graphql_input,
-                                          type_equivalence_hints=schema_based_type_equivalence_hints)
-
+        result = compile_graphql_to_match(
+            test_case.schema, test_data.graphql_input,
+            type_equivalence_hints=schema_based_type_equivalence_hints
+        )
         compare_match(test_case, expected_match, result.query)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
@@ -58,33 +60,32 @@ def check_test_data(
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
-    if expected_postresql == SKIP_TEST:
-        pass
-    elif expected_postresql == NotImplementedError:
-        not_supported = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
-        with test_case.assertRaises(not_supported):
-            compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
-    else:
-        result = compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
-        string_result = print_sqlalchemy_query_string(
-            result.query, test_case.sql_schema_info.dialect)
-        compare_sql(test_case, expected_postresql, string_result)
-        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata,
-                               result.input_metadata)
-
     if expected_mssql == SKIP_TEST:
         pass
     elif expected_mssql == NotImplementedError:
         not_supported = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
         with test_case.assertRaises(not_supported):
-            compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
+            compile_graphql_to_sql(test_case.mssql_schema_info, test_data.graphql_input)
     else:
-        mssql_result = compile_graphql_to_sql(test_case.mssql_schema_info, test_data.graphql_input)
-        string_result = str(mssql_result.query.compile(
-            dialect=test_case.mssql_schema_info.dialect, compile_kwargs={'literal_binds': True}
-        ))
+        result = compile_graphql_to_sql(test_case.mssql_schema_info, test_data.graphql_input)
+        string_result = print_sqlalchemy_query_string(
+            result.query, test_case.mssql_schema_info.dialect)
         compare_sql(test_case, expected_mssql, string_result)
+        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(test_case, test_data.expected_input_metadata,
+                               result.input_metadata)
+
+    if expected_postgresql == SKIP_TEST:
+        pass
+    elif expected_postgresql == NotImplementedError:
+        not_supported = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
+        with test_case.assertRaises(not_supported):
+            compile_graphql_to_sql(test_case.postgresql_schema_info, test_data.graphql_input)
+    else:
+        result = compile_graphql_to_sql(test_case.postgresql_schema_info, test_data.graphql_input)
+        string_result = print_sqlalchemy_query_string(
+            result.query, test_case.postgresql_schema_info.dialect)
+        compare_sql(test_case, expected_postgresql, string_result)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata,
                                result.input_metadata)
@@ -110,8 +111,8 @@ class CompilerTests(unittest.TestCase):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
         self.schema = get_schema()
-        self.sql_schema_info = get_sqlalchemy_schema_info()
-        self.mssql_schema_info = get_sqlalchemy_schema_info(mssql_2014=True)
+        self.mssql_schema_info = get_sqlalchemy_schema_info(dialect='mssql')
+        self.postgresql_schema_info = get_sqlalchemy_schema_info(dialect='postgresql')
 
     def test_immediate_output(self):
         test_data = test_input_data.immediate_output()
@@ -4142,22 +4143,22 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = '''
+        expected_postgresql = '''
             SELECT
-                [Animal_1].name AS animal_name,
+                "Animal_1".name AS animal_name,
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names_list
             FROM
-                db_1.schema_1.[Animal] AS [Animal_1]
+                schema_1."Animal" AS "Animal_1"
             LEFT OUTER JOIN (
                 SELECT
-                    [Animal_2].uuid AS uuid,
-                    array_agg([Animal_3].name) AS fold_output_name
-                FROM db_1.schema_1.[Animal] AS [Animal_2]
-                JOIN db_1.schema_1.[Animal] AS [Animal_3] ON [Animal_2].uuid = [Animal_3].parent
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3" ON "Animal_2".uuid = "Animal_3".parent
                 GROUP BY
-                    [Animal_2].uuid
+                    "Animal_2".uuid
             ) AS folded_subquery_1
-            ON [Animal_1].uuid = folded_subquery_1.uuid
+            ON "Animal_1".uuid = folded_subquery_1.uuid
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -4181,46 +4182,56 @@ class CompilerTests(unittest.TestCase):
                     REPLACE(REPLACE(REPLACE(coalesce(
                         STUFF(
                             (SELECT
-                                N'~|*' + REPLACE([Animal_3].name, N'|', N'||')
+                                :REPLACE_1 + REPLACE([Animal_3].name, :REPLACE_2, :REPLACE_3)
                             FROM db_1.schema_1.[Animal] AS [Animal_3]
                             WHERE [Animal_2].uuid = [Animal_3].parent
                             FOR XML PATH ('')),
-                        1,
-                        3,
-                        N''),
-                    N'!|#null!|#'),
-                    N'&gt;', N'>'), N'&lt;', N'<'), N'&amp;', N'&') AS fold_output_name
+                        :STUFF_1,
+                            :STUFF_2,
+                            :STUFF_3
+                          ),
+                          :coalesce_1
+                        ),
+                        :REPLACE_4,
+                        :REPLACE_5
+                      ),
+                      :REPLACE_6,
+                      :REPLACE_7
+                    ),
+                    :REPLACE_8,
+                    :REPLACE_9) AS fold_output_name
                 FROM db_1.schema_1.[Animal] AS [Animal_2]
             ) AS folded_subquery_1
             ON [Animal_1].uuid = folded_subquery_1.uuid
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher, expected_mssql)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_fold_on_two_output_variables(self):
         test_data = test_input_data.fold_on_two_output_variables()
 
         expected_postgresql = '''
             SELECT
-                [Animal_1].name AS animal_name,
-                coalesce(folded_subquery_1.fold_output_color, ARRAY[]::VARCHAR[])
-                    AS child_color_list,
-                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
-                    AS child_names_list
+              "Animal_1".name AS animal_name,
+              coalesce(folded_subquery_1.fold_output_color, ARRAY[]::VARCHAR[]) AS child_color_list,
+              coalesce(
+                folded_subquery_1.fold_output_name,
+                ARRAY [] :: VARCHAR []
+              ) AS child_names_list
             FROM
-                db_1.schema_1.[Animal] AS [Animal_1]
+                schema_1."Animal" AS "Animal_1"
             LEFT OUTER JOIN (
                 SELECT
-                    [Animal_2].uuid AS uuid,
-                    array_agg([Animal_3].name) AS fold_output_name,
-                    array_agg([Animal_3].color) AS fold_output_color
-                FROM db_1.schema_1.[Animal] AS [Animal_2]
-                JOIN db_1.schema_1.[Animal] AS [Animal_3] ON [Animal_2].uuid = [Animal_3].parent
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    array_agg("Animal_3".color) AS fold_output_color
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3" ON "Animal_2".uuid = "Animal_3".parent
                 GROUP BY
-                    [Animal_2].uuid
+                    "Animal_2".uuid
             ) AS folded_subquery_1
-            ON [Animal_1].uuid = folded_subquery_1.uuid
+            ON "Animal_1".uuid = folded_subquery_1.uuid
         '''
         expected_mssql = '''
             SELECT
@@ -4234,27 +4245,45 @@ class CompilerTests(unittest.TestCase):
                     REPLACE(REPLACE(REPLACE(coalesce(
                         STUFF(
                             (SELECT
-                                N'~|*' + REPLACE([Animal_3].name, N'|', N'||')
+                                :REPLACE_1 + REPLACE([Animal_3].name, :REPLACE_2, :REPLACE_3)
                             FROM db_1.schema_1.[Animal] AS [Animal_3]
                             WHERE [Animal_2].uuid = [Animal_3].parent
                             FOR XML PATH ('')),
-                            1,
-                            3,
-                            N''),
-                        N'!|#null!|#'),
-                        N'&gt;', N'>'), N'&lt;', N'<'), N'&amp;', N'&') AS fold_output_name,
+                            :STUFF_1,
+                            :STUFF_2,
+                            :STUFF_3
+                          ),
+                          :coalesce_1
+                        ),
+                        :REPLACE_4,
+                        :REPLACE_5
+                      ),
+                      :REPLACE_6,
+                      :REPLACE_7
+                    ),
+                    :REPLACE_8,
+                    :REPLACE_9) AS fold_output_name,
                     REPLACE(REPLACE(REPLACE(coalesce(
                         STUFF(
                             (SELECT
-                                N'~|*' + REPLACE([Animal_3].color, N'|', N'||')
+                                :REPLACE_10 + REPLACE([Animal_3].color, :REPLACE_11, :REPLACE_12)
                             FROM db_1.schema_1.[Animal] AS [Animal_3]
                             WHERE [Animal_2].uuid = [Animal_3].parent
                             FOR XML PATH ('')),
-                            1,
-                            3,
-                            N''),
-                        N'!|#null!|#'),
-                        N'&gt;', N'>'), N'&lt;', N'<'), N'&amp;', N'&') AS fold_output_color
+                            :STUFF_4,
+                            :STUFF_5,
+                            :STUFF_6
+                          ),
+                          :coalesce_2
+                        ),
+                        :REPLACE_13,
+                        :REPLACE_14
+                      ),
+                      :REPLACE_15,
+                      :REPLACE_16
+                    ),
+                    :REPLACE_17,
+                    :REPLACE_18) AS fold_output_color
                 FROM db_1.schema_1.[Animal] AS [Animal_2]
             ) AS folded_subquery_1
             ON [Animal_1].uuid = folded_subquery_1.uuid
@@ -4262,41 +4291,42 @@ class CompilerTests(unittest.TestCase):
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
         expected_cypher = SKIP_TEST
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_postgresql,
-                        expected_cypher, expected_mssql)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_fold_same_edge_type_in_different_locations(self):
         test_data = test_input_data.fold_same_edge_type_in_different_locations()
 
         expected_postgresql = '''
             SELECT
-              [Animal_1].name AS animal_name,
-              coalesce(folded_subquery_1.fold_output_name, ARRAY [] :: VARCHAR [])
+              "Animal_1".name AS animal_name,
+              coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
                 AS child_names_list,
-              coalesce(folded_subquery_2.fold_output_name, ARRAY [] :: VARCHAR [])
+              coalesce(folded_subquery_2.fold_output_name, ARRAY[]::VARCHAR[])
                 AS sibling_and_self_names_list
-            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            FROM
+              schema_1."Animal" AS "Animal_1"
             LEFT OUTER JOIN (
                 SELECT
-                    [Animal_2].uuid AS uuid,
-                    array_agg([Animal_3].name) AS fold_output_name
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name
                 FROM
-                  db_1.schema_1.[Animal] AS [Animal_2]
-                  JOIN db_1.schema_1.[Animal] AS [Animal_3] ON [Animal_2].uuid = [Animal_3].parent
+                  schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3" ON "Animal_2".uuid = "Animal_3".parent
                 GROUP BY
-                  [Animal_2].uuid
-            ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
-            JOIN db_1.schema_1.[Animal] AS [Animal_4] ON [Animal_1].parent = [Animal_4].uuid
+                  "Animal_2".uuid
+            ) AS folded_subquery_1 ON "Animal_1".uuid = folded_subquery_1.uuid
+            JOIN schema_1."Animal" AS "Animal_4" ON "Animal_1".parent = "Animal_4".uuid
             LEFT OUTER JOIN (
                 SELECT
-                    [Animal_5].uuid AS uuid,
-                    array_agg([Animal_6].name) AS fold_output_name
+                    "Animal_5".uuid AS uuid,
+                    array_agg("Animal_6".name) AS fold_output_name
                 FROM
-                  db_1.schema_1.[Animal] AS [Animal_5]
-                  JOIN db_1.schema_1.[Animal] AS [Animal_6] ON [Animal_5].uuid = [Animal_6].parent
+                  schema_1."Animal" AS "Animal_5"
+                JOIN schema_1."Animal" AS "Animal_6" ON "Animal_5".uuid = "Animal_6".parent
                 GROUP BY
-                  [Animal_5].uuid
-            ) AS folded_subquery_2 ON [Animal_4].uuid = folded_subquery_2.uuid
+                    "Animal_5".uuid
+            ) AS folded_subquery_2 ON "Animal_4".uuid = folded_subquery_2.uuid
         '''
         expected_mssql = '''
             SELECT
@@ -4315,26 +4345,26 @@ class CompilerTests(unittest.TestCase):
                           STUFF(
                             (
                               SELECT
-                                N'~|*' + REPLACE([Animal_3].name, N'|', N'||')
+                                :REPLACE_1 + REPLACE([Animal_3].name, :REPLACE_2, :REPLACE_3)
                               FROM
                                 db_1.schema_1.[Animal] AS [Animal_3]
                               WHERE
                                 [Animal_2].uuid = [Animal_3].parent FOR XML PATH ('')
                             ),
-                            1,
-                            3,
-                            N''
+                            :STUFF_1,
+                            :STUFF_2,
+                            :STUFF_3
                           ),
-                          N'!|#null!|#'
+                          :coalesce_1
                         ),
-                        N'&gt;',
-                        N'>'
+                        :REPLACE_4,
+                        :REPLACE_5
                       ),
-                      N'&lt;',
-                      N'<'
+                      :REPLACE_6,
+                      :REPLACE_7
                     ),
-                    N'&amp;',
-                    N'&'
+                    :REPLACE_8,
+                    :REPLACE_9
                   ) AS fold_output_name
                 FROM
                   db_1.schema_1.[Animal] AS [Animal_2]
@@ -4350,36 +4380,37 @@ class CompilerTests(unittest.TestCase):
                           STUFF(
                             (
                               SELECT
-                                N'~|*' + REPLACE([Animal_6].name, N'|', N'||')
+                                :REPLACE_10 + REPLACE([Animal_6].name, :REPLACE_11, :REPLACE_12)
                               FROM
                                 db_1.schema_1.[Animal] AS [Animal_6]
                               WHERE
                                 [Animal_5].uuid = [Animal_6].parent FOR XML PATH ('')
                             ),
-                            1,
-                            3,
-                            N''
+                            :STUFF_4,
+                            :STUFF_5,
+                            :STUFF_6
                           ),
-                          N'!|#null!|#'
+                          :coalesce_2
                         ),
-                        N'&gt;',
-                        N'>'
+                        :REPLACE_13,
+                        :REPLACE_14
                       ),
-                      N'&lt;',
-                      N'<'
+                      :REPLACE_15,
+                      :REPLACE_16
                     ),
-                    N'&amp;',
-                    N'&'
+                    :REPLACE_17,
+                    :REPLACE_18
                   ) AS fold_output_name
                 FROM
                   db_1.schema_1.[Animal] AS [Animal_5]
               ) AS folded_subquery_2 ON [Animal_4].uuid = folded_subquery_2.uuid
         '''
+
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
         expected_cypher = SKIP_TEST
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_postgresql,
-                        expected_cypher, expected_mssql)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_fold_after_traverse(self):
         test_data = test_input_data.fold_after_traverse()
@@ -4421,22 +4452,24 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_postgresql = '''
             SELECT
-                [Animal_1].name AS animal_name,
-                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
-                    AS sibling_and_self_names_list
-            FROM db_1.schema_1.[Animal] AS [Animal_1]
-            JOIN db_1.schema_1.[Animal] AS [Animal_2]
-            ON [Animal_1].parent = [Animal_2].uuid
-            LEFT OUTER JOIN (
+              "Animal_1".name AS animal_name,
+              coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                AS sibling_and_self_names_list
+            FROM
+              schema_1."Animal" AS "Animal_1"
+            JOIN schema_1."Animal" AS "Animal_2"
+            ON "Animal_1".parent = "Animal_2".uuid
+            LEFT OUTER JOIN(
                 SELECT
-                    [Animal_3].uuid AS uuid,
-                    array_agg([Animal_4].name) AS fold_output_name
-                FROM db_1.schema_1.[Animal] AS [Animal_3]
-                JOIN db_1.schema_1.[Animal] AS [Animal_4]
-                ON [Animal_3].uuid = [Animal_4].parent
-                GROUP BY [Animal_3].uuid
+                    "Animal_3".uuid AS uuid,
+                    array_agg("Animal_4".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_3"
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_3".uuid = "Animal_4".parent
+                GROUP BY "Animal_3".uuid
             ) AS folded_subquery_1
-            ON [Animal_2].uuid = folded_subquery_1.uuid'''
+            ON "Animal_2".uuid = folded_subquery_1.uuid
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -4470,55 +4503,36 @@ class CompilerTests(unittest.TestCase):
                           STUFF(
                             (
                               SELECT
-                                N'~|*' + REPLACE([Animal_4].name, N'|', N'||')
+                                :REPLACE_1 + REPLACE([Animal_4].name, :REPLACE_2,:REPLACE_3)
                               FROM
                                 db_1.schema_1.[Animal] AS [Animal_4]
                               WHERE
                                 [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
                             ),
-                            1,
-                            3,
-                            N''
+                            :STUFF_1,
+                            :STUFF_2,
+                            :STUFF_3
                           ),
-                          N'!|#null!|#'
+                          :coalesce_1
                         ),
-                        N'&gt;',
-                        N'>'
+                        :REPLACE_4,
+                        :REPLACE_5
                       ),
-                      N'&lt;',
-                      N'<'
+                      :REPLACE_6,
+                      :REPLACE_7
                     ),
-                    N'&amp;',
-                    N'&'
+                    :REPLACE_8,
+                    :REPLACE_9
                   ) AS fold_output_name
                 FROM
                   db_1.schema_1.[Animal] AS [Animal_3]
             ) AS folded_subquery_1 ON [Animal_2].uuid = folded_subquery_1.uuid
         '''
-        check_test_data(self, test_data, expected_match, expected_gremlin, SKIP_TEST,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_fold_after_traverse_different_types(self):
         test_data = test_input_data.fold_after_traverse_different_types()
-
-        expected_postgresql = '''
-                    SELECT
-                        [Animal_1].name AS animal_name,
-                        coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
-                            AS neighbor_and_self_names_list
-                    FROM db_1.schema_1.[Animal] AS [Animal_1]
-                    JOIN db_1.schema_1.[Location] AS [Location_1]
-                    ON [Animal_1].lives_in = [Location_1].uuid
-                    LEFT OUTER JOIN (
-                        SELECT
-                            [Location_2].uuid AS uuid,
-                            array_agg([Animal_2].name) AS fold_output_name
-                        FROM db_1.schema_1.[Location] AS [Location_2]
-                        JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                        ON [Location_2].uuid = [Animal_2].lives_in
-                        GROUP BY [Location_2].uuid
-                    ) AS folded_subquery_1
-                    ON [Location_1].uuid = folded_subquery_1.uuid'''
 
         expected_mssql = '''
             SELECT
@@ -4526,7 +4540,8 @@ class CompilerTests(unittest.TestCase):
               folded_subquery_1.fold_output_name AS neighbor_and_self_names_list
             FROM
               db_1.schema_1.[Animal] AS [Animal_1]
-              JOIN db_1.schema_1.[Location] AS [Location_1] ON [Animal_1].lives_in = [Location_1].uuid
+              JOIN db_1.schema_1.[Location] AS [Location_1]
+              ON [Animal_1].lives_in = [Location_1].uuid
               LEFT OUTER JOIN(
                 SELECT
                   [Location_2].uuid AS uuid,
@@ -4537,58 +4552,81 @@ class CompilerTests(unittest.TestCase):
                           STUFF(
                             (
                               SELECT
-                                N'~|*' + REPLACE([Animal_2].name, N'|', N'||')
+                                :REPLACE_1 + REPLACE([Animal_2].name,
+                                    :REPLACE_2,
+                                    :REPLACE_3)
                               FROM
                                 db_1.schema_1.[Animal] AS [Animal_2]
                               WHERE
                                 [Location_2].uuid = [Animal_2].lives_in FOR XML PATH('')
                             ),
-                            1,
-                            3,
-                            N''
+                            :STUFF_1,
+                            :STUFF_2,
+                            :STUFF_3
                           ),
-                          N'!|#null!|#'
+                          :coalesce_1
                         ),
-                        N'&gt;',
-                        N'>'
+                        :REPLACE_4,
+                        :REPLACE_5
                       ),
-                      N'&lt;',
-                      N'<'
+                      :REPLACE_6,
+                      :REPLACE_7
                     ),
-                    N'&amp;',
-                    N'&'
+                    :REPLACE_8,
+                    :REPLACE_9
                   ) AS fold_output_name
                 FROM
                   db_1.schema_1.[Location] AS [Location_2]
               ) AS folded_subquery_1 ON [Location_1].uuid = folded_subquery_1.uuid
         '''
+        expected_postgresql = '''
+            SELECT
+              "Animal_1".name AS animal_name,
+              coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                  AS neighbor_and_self_names_list
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN schema_1."Location" AS "Location_1"
+            ON "Animal_1".lives_in = "Location_1".uuid
+            LEFT OUTER JOIN (
+                SELECT
+                  "Location_2".uuid AS uuid,
+                  array_agg("Animal_2".name) AS fold_output_name
+                FROM schema_1."Location" AS "Location_2"
+                JOIN schema_1."Animal" AS "Animal_2"
+                ON "Location_2".uuid = "Animal_2".lives_in
+                GROUP BY "Location_2".uuid
+            ) AS folded_subquery_1
+            ON "Location_1".uuid = folded_subquery_1.uuid
+        '''
+
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
         expected_cypher = SKIP_TEST
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_postgresql,
-                        expected_cypher, expected_mssql)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_fold_after_traverse_no_output_on_root(self):
         test_data = test_input_data.fold_after_traverse_no_output_on_root()
 
         expected_postgresql = '''
             SELECT
-                [Location_1].name AS location_name,
+                "Location_1".name AS location_name,
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
                     AS neighbor_and_self_names_list
-            FROM db_1.schema_1.[Animal] AS [Animal_1]
-            JOIN db_1.schema_1.[Location] AS [Location_1]
-            ON [Animal_1].lives_in = [Location_1].uuid
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN schema_1."Location" AS "Location_1"
+            ON "Animal_1".lives_in = "Location_1".uuid
             LEFT OUTER JOIN (
                 SELECT
-                    [Location_2].uuid AS uuid,
-                    array_agg([Animal_2].name) AS fold_output_name
-                FROM db_1.schema_1.[Location] AS [Location_2]
-                JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                ON [Location_2].uuid = [Animal_2].lives_in
-                GROUP BY [Location_2].uuid
+                    "Location_2".uuid AS uuid,
+                    array_agg("Animal_2".name) AS fold_output_name
+                FROM schema_1."Location" AS "Location_2"
+                JOIN schema_1."Animal" AS "Animal_2"
+                ON "Location_2".uuid = "Animal_2".lives_in
+                GROUP BY "Location_2".uuid
             ) AS folded_subquery_1
-            ON [Location_1].uuid = folded_subquery_1.uuid'''
+            ON "Location_1".uuid = folded_subquery_1.uuid
+        '''
         expected_mssql = '''
             SELECT
               [Location_1].name AS location_name,
@@ -4607,26 +4645,26 @@ class CompilerTests(unittest.TestCase):
                           STUFF(
                             (
                               SELECT
-                                N'~|*' + REPLACE([Animal_2].name, N'|', N'||')
+                                :REPLACE_1 + REPLACE([Animal_2].name, :REPLACE_2, :REPLACE_3)
                               FROM
                                 db_1.schema_1.[Animal] AS [Animal_2]
                               WHERE
                                 [Location_2].uuid = [Animal_2].lives_in FOR XML PATH('')
                             ),
-                            1,
-                            3,
-                            N''
+                            :STUFF_1,
+                            :STUFF_2,
+                            :STUFF_3
                           ),
-                          N'!|#null!|#'
+                          :coalesce_1
                         ),
-                        N'&gt;',
-                        N'>'
+                        :REPLACE_4,
+                        :REPLACE_5
                       ),
-                      N'&lt;',
-                      N'<'
+                      :REPLACE_6,
+                      :REPLACE_7
                     ),
-                    N'&amp;',
-                    N'&'
+                    :REPLACE_8,
+                    :REPLACE_9
                   ) AS fold_output_name
                 FROM
                   db_1.schema_1.[Location] AS [Location_2]
@@ -4635,8 +4673,8 @@ class CompilerTests(unittest.TestCase):
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
         expected_cypher = SKIP_TEST
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_postgresql,
-                        expected_cypher, expected_mssql)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_fold_and_traverse(self):
         test_data = test_input_data.fold_and_traverse()
@@ -7494,24 +7532,25 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_postgresql = '''
-        SELECT
-            [Animal_1].name AS animal_name,
-            coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names_list,
-            [Animal_2].name AS parent_name
-        FROM db_1.schema_1.[Animal] AS [Animal_1]
-        LEFT OUTER JOIN
-            db_1.schema_1.[Animal] AS [Animal_2]
-        ON [Animal_1].parent = [Animal_2].uuid
-        LEFT OUTER JOIN (
             SELECT
-                [Animal_3].uuid AS uuid,
-                array_agg([Animal_4].name) AS fold_output_name
-            FROM db_1.schema_1.[Animal] AS [Animal_3]
-            JOIN db_1.schema_1.[Animal] AS [Animal_4]
-            ON [Animal_3].uuid = [Animal_4].parent
-            GROUP BY [Animal_3].uuid
-        ) AS folded_subquery_1
-        ON [Animal_1].uuid = folded_subquery_1.uuid'''
+              "Animal_1".name AS animal_name,
+              coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names_list,
+              "Animal_2".name AS parent_name
+            FROM schema_1."Animal" AS "Animal_1"
+            LEFT OUTER JOIN
+                schema_1."Animal" AS "Animal_2"
+            ON "Animal_1".parent = "Animal_2".uuid
+            LEFT OUTER JOIN (
+                SELECT
+                  "Animal_3".uuid AS uuid,
+                  array_agg("Animal_4".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_3"
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_3".uuid = "Animal_4".parent
+                GROUP BY "Animal_3".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -7548,36 +7587,33 @@ class CompilerTests(unittest.TestCase):
                           STUFF(
                             (
                               SELECT
-                                N'~|*' + REPLACE([Animal_4].name, N'|', N'||')
+                                :REPLACE_1 + REPLACE([Animal_4].name, :REPLACE_2, :REPLACE_3)
                               FROM
                                 db_1.schema_1.[Animal] AS [Animal_4]
                               WHERE
                                 [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
                             ),
-                            1,
-                            3,
-                            N''
+                            :STUFF_1,
+                            :STUFF_2,
+                            :STUFF_3
                           ),
-                          N'!|#null!|#'
+                          :coalesce_1
                         ),
-                        N'&gt;',
-                        N'>'
+                        :REPLACE_4,
+                        :REPLACE_5
                       ),
-                      N'&lt;',
-                      N'<'
+                      :REPLACE_6,
+                      :REPLACE_7
                     ),
-                    N'&amp;',
-                    N'&'
+                    :REPLACE_8,
+                    :REPLACE_9
                   ) AS fold_output_name
                 FROM
                   db_1.schema_1.[Animal] AS [Animal_3]
             ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
             '''
-        expected_match = SKIP_TEST
-        expected_gremlin = SKIP_TEST
-        expected_cypher = SKIP_TEST
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_postgresql,
-                        expected_cypher, expected_mssql)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_fold_and_optional(self):
         test_data = test_input_data.fold_and_optional()
@@ -7633,24 +7669,25 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         expected_postgresql = '''
-        SELECT
-            [Animal_1].name AS animal_name,
-            coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names_list,
-            [Animal_2].name AS parent_name
-        FROM db_1.schema_1.[Animal] AS [Animal_1]
-        LEFT OUTER JOIN (
             SELECT
-                [Animal_3].uuid AS uuid,
-                array_agg([Animal_4].name) AS fold_output_name
-            FROM db_1.schema_1.[Animal] AS [Animal_3]
-            JOIN db_1.schema_1.[Animal] AS [Animal_4]
-            ON [Animal_3].uuid = [Animal_4].parent
-            GROUP BY [Animal_3].uuid
-        ) AS folded_subquery_1
-        ON [Animal_1].uuid = folded_subquery_1.uuid
-        LEFT OUTER JOIN
-            db_1.schema_1.[Animal] AS [Animal_2]
-        ON [Animal_1].parent = [Animal_2].uuid'''
+              "Animal_1".name AS animal_name,
+              coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names_list,
+              "Animal_2".name AS parent_name
+            FROM schema_1."Animal" AS "Animal_1"
+            LEFT OUTER JOIN (
+                SELECT
+                  "Animal_3".uuid AS uuid,
+                  array_agg("Animal_4".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_3"
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_3".uuid = "Animal_4".parent
+                GROUP BY "Animal_3".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            LEFT OUTER JOIN
+                schema_1."Animal" AS "Animal_2"
+            ON "Animal_1".parent = "Animal_2".uuid
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -7685,26 +7722,26 @@ class CompilerTests(unittest.TestCase):
                           STUFF(
                             (
                               SELECT
-                                N'~|*' + REPLACE([Animal_4].name, N'|', N'||')
+                                :REPLACE_1 + REPLACE([Animal_4].name, :REPLACE_2, :REPLACE_3)
                               FROM
                                 db_1.schema_1.[Animal] AS [Animal_4]
                               WHERE
                                 [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
                             ),
-                            1,
-                            3,
-                            N''
+                            :STUFF_1,
+                            :STUFF_2,
+                            :STUFF_3
                           ),
-                          N'!|#null!|#'
+                          :coalesce_1
                         ),
-                        N'&gt;',
-                        N'>'
+                        :REPLACE_4,
+                        :REPLACE_5
                       ),
-                      N'&lt;',
-                      N'<'
+                      :REPLACE_6,
+                      :REPLACE_7
                     ),
-                    N'&amp;',
-                    N'&'
+                    :REPLACE_8,
+                    :REPLACE_9
                   ) AS fold_output_name
                 FROM
                   db_1.schema_1.[Animal] AS [Animal_3]
@@ -7713,11 +7750,8 @@ class CompilerTests(unittest.TestCase):
               LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
               ON [Animal_1].parent = [Animal_2].uuid
         '''
-        expected_match = SKIP_TEST
-        expected_gremlin = SKIP_TEST
-        expected_cypher = SKIP_TEST
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_postgresql,
-                        expected_cypher, expected_mssql)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_optional_traversal_and_fold_traversal(self):
         test_data = test_input_data.optional_traversal_and_fold_traversal()

@@ -191,7 +191,7 @@ We can now observe the process of macro expansion in action:
 
 .. code:: python
 
-    from graphql_compiler.macros import perform_macro_expansion
+    from graphql_compiler.macros import get_schema_with_macros, perform_macro_expansion
 
     query = '''{
         Animal {
@@ -205,7 +205,8 @@ We can now observe the process of macro expansion in action:
         'animal_name': 'Hedwig',
     }
 
-    new_query, new_args = perform_macro_expansion(your_macro_registry_object, query, args)
+    schema_with_macros = get_schema_with_macros(macro_registry)
+    new_query, new_args = perform_macro_expansion(macro_registry, schema_with_macros, query, args)
 
     print(new_query)
     # Prints out the following query:
@@ -296,7 +297,9 @@ automatically ensure that the macro edge's arguments become part of the expanded
         }
     }'''
     args = {}
-    expanded_query, new_args = perform_macro_expansion(your_macro_registry_object, query, args)
+    schema_with_macros = get_schema_with_macros(macro_registry)
+    expanded_query, new_args = perform_macro_expansion(
+          macro_registry, schema_with_macros, query, args)
 
     print(expanded_query)
     # Prints out the following query:

@@ -9,7 +9,7 @@ from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
 from graphql.utils.build_ast_schema import build_ast_schema
 import six
 import sqlalchemy
-from sqlalchemy.dialects import mssql
+from sqlalchemy.dialects import mssql, postgresql
 
 from graphql_compiler.schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data
 
@@ -488,14 +488,8 @@ def _get_schema_without_list_valued_property_fields():
     return schema
 
 
-def get_sqlalchemy_schema_info(mssql_2014=False):
-    """Get a SQLAlchemySchemaInfo for testing.
-
-    Args:
-        mssql_2014: Set to indicate whether compilation results compatible with MSSQL 2014
-                    are desired when compiling to SQL. Otherwise PostgreSQL/MSSQL 2017
-                    compatible results are returned.
-    """
+def get_sqlalchemy_schema_info(dialect='mssql'):
+    """Get a SQLAlchemySchemaInfo for testing."""
     # We don't support list-valued property fields in SQL for now.
     schema = _get_schema_without_list_valued_property_fields()
     type_equivalence_hints = get_type_equivalence_hints()
@@ -525,7 +519,7 @@ def get_sqlalchemy_schema_info(mssql_2014=False):
             sqlalchemy.Column('important_event', sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column('species', sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            schema='db_1.schema_1'
+            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'BirthEvent': sqlalchemy.Table(
             'BirthEvent',
@@ -535,7 +529,7 @@ def get_sqlalchemy_schema_info(mssql_2014=False):
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
             sqlalchemy.Column('related_event', uuid_type, primary_key=False),
-            schema='db_1.schema_1'
+            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'Entity': sqlalchemy.Table(
             'Entity',
@@ -544,7 +538,7 @@ def get_sqlalchemy_schema_info(mssql_2014=False):
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('related_entity', uuid_type, nullable=True),
-            schema='db_1.schema_1'
+            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'Event': sqlalchemy.Table(
             'Event',
@@ -554,7 +548,7 @@ def get_sqlalchemy_schema_info(mssql_2014=False):
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
             sqlalchemy.Column('related_event', uuid_type, primary_key=False),
-            schema='db_2.schema_1'
+            schema=('db_2.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'FeedingEvent': sqlalchemy.Table(
             'FeedingEvent',
@@ -564,7 +558,7 @@ def get_sqlalchemy_schema_info(mssql_2014=False):
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
             sqlalchemy.Column('related_event', uuid_type, primary_key=False),
-            schema='db_2.schema_1'
+            schema=('db_2.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'Food': sqlalchemy.Table(
             'Food',
@@ -572,7 +566,7 @@ def get_sqlalchemy_schema_info(mssql_2014=False):
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            schema='db_2.schema_2'
+            schema=('db_2.' if dialect == 'mssql' else '') + 'schema_2'
         ),
         'FoodOrSpecies': sqlalchemy.Table(
             'FoodOrSpecies',
@@ -580,7 +574,7 @@ def get_sqlalchemy_schema_info(mssql_2014=False):
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            schema='db_2.schema_2'
+            schema=('db_2.' if dialect == 'mssql' else '') + 'schema_2'
         ),
         'Location': sqlalchemy.Table(
             'Location',
@@ -588,7 +582,7 @@ def get_sqlalchemy_schema_info(mssql_2014=False):
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            schema='db_1.schema_1'
+            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'Species': sqlalchemy.Table(
             'Species',
@@ -599,13 +593,13 @@ def get_sqlalchemy_schema_info(mssql_2014=False):
             sqlalchemy.Column('eats', uuid_type, nullable=True),
             sqlalchemy.Column('limbs', sqlalchemy.Integer, nullable=True),
             sqlalchemy.Column('related_entity', uuid_type, nullable=True),
-            schema='db_1.schema_1'
+            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'UniquelyIdentifiable': sqlalchemy.Table(
             'UniquelyIdentifiable',
             sqlalchemy_metadata_1,
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            schema='db_1.schema_1'
+            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
     }
 
@@ -696,10 +690,14 @@ def get_sqlalchemy_schema_info(mssql_2014=False):
         for subclass in subclass_set:
             for edge_name, join_info in six.iteritems(join_descriptors.get(class_name, {})):
                 join_descriptors.setdefault(subclass, {})[edge_name] = join_info
-
+    if dialect == 'postgresql':
+        sqlalchemy_compiler_dialect = postgresql.dialect()
+    elif dialect == 'mssql':
+        sqlalchemy_compiler_dialect = mssql.dialect()
+    else:
+        raise AssertionError(u'Unrecognized dialect {}'.format(dialect))
     return make_sqlalchemy_schema_info(
-        schema, type_equivalence_hints, mssql.dialect(),
-        tables, join_descriptors, mssql_2014=mssql_2014)
+        schema, type_equivalence_hints, sqlalchemy_compiler_dialect, tables, join_descriptors)
 
 
 def generate_schema_graph(orientdb_client):
