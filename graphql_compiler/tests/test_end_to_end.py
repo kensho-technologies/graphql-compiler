@@ -248,6 +248,10 @@ class QueryFormattingTests(unittest.TestCase):
         value = deserialize_json_argument('birth_time', GraphQLDateTime, '2014-02-05T03:20:55Z')
         self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55, tzinfo=pytz.utc), value)
 
+        # Valid datetime alternate timezone format
+        value = deserialize_json_argument('birth_time', GraphQLDateTime, '2014-02-05T03:20:55+00:00')
+        self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55, tzinfo=pytz.utc), value)
+
     def test_float_deserialization(self):
         # Invalid string
         with self.assertRaises(GraphQLInvalidArgumentError):
@@ -260,7 +264,7 @@ class QueryFormattingTests(unittest.TestCase):
         # Valid string
         self.assertEqual(float(5), deserialize_json_argument('amount', GraphQLFloat, '5'))
 
-        # Valid string with comma
+        # Valid string with decimals
         self.assertEqual(float(5.1), deserialize_json_argument('amount', GraphQLFloat, '5.1'))
 
         # Valid int
@@ -271,3 +275,26 @@ class QueryFormattingTests(unittest.TestCase):
 
         # Valid float with comma
         self.assertEqual(float(5.1), deserialize_json_argument('amount', GraphQLFloat, float(5.1)))
+
+    def test_id_deserialization(self):
+        # Float
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_json_argument('amount', GraphQLID, 5.3)
+
+        # Int
+        self.assertEqual('5', deserialize_json_argument('amount', GraphQLID, 5))
+
+        # String
+        self.assertEqual('5', deserialize_json_argument('amount', GraphQLID, '5'))
+
+    def test_int_deserialization(self):
+        # Int
+        self.assertEqual(5, deserialize_json_argument('amount', GraphQLInt, 5))
+
+        # Long
+        self.assertEqual(50000000000000000000000000000000000000000, deserialize_json_argument(
+            'amount', GraphQLInt, 50000000000000000000000000000000000000000))
+
+        # Long string
+        self.assertEqual(50000000000000000000000000000000000000000, deserialize_json_argument(
+            'amount', GraphQLInt, '50000000000000000000000000000000000000000'))

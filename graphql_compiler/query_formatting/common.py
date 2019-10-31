@@ -1,5 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Safely insert runtime arguments into compiled GraphQL queries."""
+import builtins
 import datetime
 import decimal
 
@@ -29,17 +30,47 @@ def _raise_invalid_type_error(name, expected_python_type_name, value):
 
 
 def _deserialize_anonymous_json_argument(expected_type, value):
-    """Deserialize argument. See docstring of deserialize_json_argument."""
+    """Deserialize argument. See docstring of deserialize_json_argument.
+
+    Args:
+        expected_type: GraphQLType we expect. All GraphQLNonNull type wrappers are stripped.
+        value: object that can be interpreted as being of that type
+
+    Returns:
+        a value of the type produced by the parser of the expected type:
+            GraphQLDate: datetime.date
+            GraphQLDateTime: datetime.datetime with tzinfo=pytz.utc
+            GraphQLFloat: float
+            GraphQLDecimal: decimal.Decimal
+            GraphQLInt: six.integer_types, supporting long integers
+            GraphQLString: six.string_types
+            GraphQLBoolean: bool
+            GraphQLID: six.string_types
+
+    Raises:
+        ValueError or arrow.parser.ParserMatchError if the value is not appropriate for the type.
+        These are the exceptions that the GraphQL parsers raise for invalid values.
+    """
     allowed_types_for_graphql_type = {
         GraphQLDate: (six.string_types,),
         GraphQLDateTime: (six.string_types,),
         GraphQLFloat: (six.string_types, float, six.integer_types),
         GraphQLDecimal: (six.string_types, float, six.integer_types),
-        GraphQLInt: (six.integer_types,),
+        GraphQLInt: (six.integer_types, six.string_types),
         GraphQLString: (six.string_types,),
         GraphQLBoolean: (bool,),
-        GraphQLID: (six.string_types,),
+        GraphQLID: (six.integer_types, six.string_types,),
     }
+
+    # Check for long integers, bypassing the GraphQLInt parser
+    if GraphQLInt.is_same_type(expected_type):
+        if isinstance(value, six.integer_types):
+            return value
+        elif isinstance(value, six.string_types):
+            return builtins.int(value)
+        else:
+            raiseValueError(u'Unexpected type {}. Expected one of {}.'
+                            .format(type(value), (six.integer_types, six.string_types)))
 
     # Check if the type of the value is correct
     correct_type = True
@@ -68,7 +99,7 @@ def deserialize_json_argument(name, expected_type, value):
         GraphQLDateTime: "2018-02-01T05:11:54Z"
         GraphQLFloat: 4.3, "5.0", 5
         GraphQLDecimal: "5.00000000000000000000000000001"
-        GraphQLInt: 4
+        GraphQLInt: 4, "3803330000000000000000000000000000000000000000000"
         GraphQLString: "Hello"
         GraphQLBoolean: True
         GraphQLID: "13d72846-1777-6c3a-5743-5d9ced3032ed"
@@ -78,10 +109,21 @@ def deserialize_json_argument(name, expected_type, value):
               message if an error is raised.
         expected_type: GraphQLType we expect. All GraphQLNonNull type wrappers are stripped.
         value: object that can be interpreted as being of that type
+
+    Returns:
+        a value of the type produced by the parser of the expected type:
+            GraphQLDate: datetime.date
+            GraphQLDateTime: datetime.datetime with tzinfo=pytz.utc
+            GraphQLFloat: float
+            GraphQLDecimal: decimal.Decimal
+            GraphQLInt: six.integer_types, supporting long integers
+            GraphQLString: six.string_types
+            GraphQLBoolean: bool
+            GraphQLID: six.string_types
     """
     try:
         return _deserialize_anonymous_json_argument(strip_non_null_from_type(expected_type), value)
-    except ValueError as e:
+    except (ValueError, arrow.parser.ParserMatchError) as e:
         raise GraphQLInvalidArgumentError('Error parsing argument {}: {}'.format(name, e))
 
 
