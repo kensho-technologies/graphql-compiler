@@ -1,13 +1,13 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import datetime
 from decimal import Decimal
-import six
 import unittest
 
 from graphql import (
     GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLString
 )
 import pytz
+import six
 
 from .. import graphql_to_gremlin, graphql_to_match
 from ..compiler import compile_graphql_to_gremlin, compile_graphql_to_match
@@ -250,7 +250,8 @@ class QueryFormattingTests(unittest.TestCase):
         self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55, tzinfo=pytz.utc), value)
 
         # Valid datetime alternate timezone format
-        value = deserialize_json_argument('birth_time', GraphQLDateTime, '2014-02-05T03:20:55+00:00')
+        value = deserialize_json_argument(
+            'birth_time', GraphQLDateTime, '2014-02-05T03:20:55+00:00')
         self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55, tzinfo=pytz.utc), value)
 
     def test_float_deserialization(self):

@@ -69,7 +69,7 @@ def _deserialize_anonymous_json_argument(expected_type, value):
             return int(value)
         else:
             raise ValueError(u'Unexpected type {}. Expected one of {}.'
-                            .format(type(value), (six.integer_types, six.string_types)))
+                             .format(type(value), (six.integer_types, six.string_types)))
 
     # Check if the type of the value is correct
     correct_type = True
