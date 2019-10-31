@@ -394,7 +394,7 @@ class GlobalContextField(Expression):
                              u'should not be called.')
 
     def to_sql(self, aliases, current_alias):
-        """Not implemented, should not be used."""
+        """Return a sqlalchemy Column picked from the appropriate alias."""
         self.validate()
         if isinstance(self.field_type, GraphQLList):
             raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
@@ -730,15 +730,12 @@ class FoldedContextField(Expression):
 
     def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
-        # _x_count is a special case that is coalesced to 0 instead of an empty array.
+        # _x_count is a special case that has already been coalesced to 0.
         if self.fold_scope_location.field == '_x_count':
-            return sqlalchemy.func.coalesce(
-                aliases[
-                    self.fold_scope_location.base_location.query_path,
-                    self.fold_scope_location.fold_path
-                ].c['fold_output_x_count'],
-                sqlalchemy.literal_column('0')
-            )
+            return aliases[
+                self.fold_scope_location.base_location.query_path,
+                self.fold_scope_location.fold_path
+            ].c['fold_output_x_count']
 
         # Otherwise, get the type of the folded field.
         inner_type = strip_non_null_from_type(self.field_type.of_type)
@@ -826,14 +823,10 @@ class FoldCountContextField(Expression):
 
     def to_sql(self, aliases, current_alias):
         """Return a SQLAlchemy column of a coalesced COUNT(*) from a folded subquery."""
-        # Coalesce to 0.
-        return sqlalchemy.func.coalesce(
-            aliases[
-                self.fold_scope_location.base_location.query_path,
-                self.fold_scope_location.fold_path
-            ].c['fold_output_x_count'],
-            sqlalchemy.literal_column('0')
-        )
+        return aliases[
+            self.fold_scope_location.base_location.query_path,
+            self.fold_scope_location.fold_path
+        ].c['fold_output_x_count']
 
 
 class ContextFieldExistence(Expression):

@@ -894,7 +894,7 @@ class CompilerTests(unittest.TestCase):
             LEFT OUTER JOIN (
                 SELECT
                     [Species_2].uuid AS uuid,
-                    count(*) AS fold_output_x_count
+                    coalesce(count(*), 0) AS fold_output_x_count
                 FROM db_1.schema_1.[Species] AS [Species_2]
                 JOIN db_1.schema_1.[Species] AS [Species_3]
                 ON [Species_2].uuid = [Species_3].eats
@@ -903,7 +903,7 @@ class CompilerTests(unittest.TestCase):
             ON [Species_1].uuid = folded_subquery_1.uuid
             WHERE
                 ([Animal_1].name = :animal_name OR [Animal_1].species IS NULL) AND
-                coalesce(folded_subquery_1.fold_output_x_count, 0) >= :predators
+                folded_subquery_1.fold_output_x_count >= :predators
         '''
         expected_cypher = SKIP_TEST
 
@@ -5537,19 +5537,20 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
                 [Animal_1].name AS name,
-                coalesce(folded_subquery_1.fold_output_x_count, 0) AS number_of_children
+                folded_subquery_1.fold_output_x_count AS number_of_children
             FROM db_1.schema_1.[Animal] AS [Animal_1]
             LEFT OUTER JOIN (
                 SELECT
                     [Animal_2].uuid AS uuid,
-                    count(*) AS fold_output_x_count,
+                    coalesce(count(*), 0) AS fold_output_x_count,
                     array_agg([Animal_3].name) AS fold_output_name
                 FROM db_1.schema_1.[Animal] AS [Animal_2]
                 JOIN db_1.schema_1.[Animal] AS [Animal_3]
                 ON [Animal_2].uuid = [Animal_3].parent
                 GROUP BY [Animal_2].uuid
               ) AS folded_subquery_1
-              ON [Animal_1].uuid = folded_subquery_1.uuid'''
+              ON [Animal_1].uuid = folded_subquery_1.uuid
+              '''
 
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
@@ -5585,7 +5586,7 @@ class CompilerTests(unittest.TestCase):
             LEFT OUTER JOIN (
                 SELECT
                     [Animal_2].uuid AS uuid,
-                    count(*) AS fold_output_x_count,
+                    coalesce(count(*), 0) AS fold_output_x_count,
                     array_agg([Animal_3].name) AS fold_output_name
                 FROM db_1.schema_1.[Animal] AS [Animal_2]
                 JOIN db_1.schema_1.[Animal] AS [Animal_3]
@@ -5593,8 +5594,8 @@ class CompilerTests(unittest.TestCase):
                 GROUP BY [Animal_2].uuid
             ) AS folded_subquery_1
             ON [Animal_1].uuid = folded_subquery_1.uuid
-            WHERE coalesce(folded_subquery_1.fold_output_x_count, 0) >= :min_children
-'''
+            WHERE folded_subquery_1.fold_output_x_count >= :min_children
+        '''
 
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
@@ -5635,7 +5636,7 @@ class CompilerTests(unittest.TestCase):
             LEFT OUTER JOIN (
                 SELECT
                     [Animal_2].uuid AS uuid,
-                    count(*) AS fold_output_x_count,
+                    coalesce(count(*), 0) AS fold_output_x_count,
                     array_agg([Animal_3].name) AS fold_output_name
                 FROM db_1.schema_1.[Animal] AS [Animal_2]
                 JOIN db_1.schema_1.[Animal] AS [Animal_3]
@@ -5643,8 +5644,8 @@ class CompilerTests(unittest.TestCase):
                 GROUP BY [Animal_2].uuid
             ) AS folded_subquery_1
             ON [Animal_1].uuid = folded_subquery_1.uuid
-            WHERE coalesce(folded_subquery_1.fold_output_x_count, 0) >= [Species_1].limbs
-'''
+            WHERE [Species_1].limbs <= folded_subquery_1.fold_output_x_count
+        '''
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
@@ -5710,7 +5711,7 @@ class CompilerTests(unittest.TestCase):
             LEFT OUTER JOIN (
                 SELECT
                     [Animal_2].uuid AS uuid,
-                    count(*) AS fold_output_x_count
+                    coalesce(count(*), 0) AS fold_output_x_count
                 FROM db_1.schema_1.[Animal] AS [Animal_2]
                 JOIN db_1.schema_1.[Animal] AS [Animal_3]
                 ON [Animal_2].uuid = [Animal_3].parent
@@ -5720,7 +5721,7 @@ class CompilerTests(unittest.TestCase):
             LEFT OUTER JOIN (
                 SELECT
                     [Animal_4].related_entity AS related_entity,
-                    count(*) AS fold_output_x_count
+                    coalesce(count(*), 0) AS fold_output_x_count
                 FROM db_1.schema_1.[Animal] AS [Animal_4]
                 JOIN db_1.schema_1.[Entity] AS [Entity_1]
                 ON [Animal_4].related_entity = [Entity_1].uuid
@@ -5728,9 +5729,9 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_2
             ON [Animal_1].related_entity = folded_subquery_2.related_entity
             WHERE
-                coalesce(folded_subquery_1.fold_output_x_count, 0) >= :min_children AND
-                coalesce(folded_subquery_2.fold_output_x_count, 0) >= :min_related
-    '''
+                folded_subquery_1.fold_output_x_count >= :min_children AND
+                folded_subquery_2.fold_output_x_count >= :min_related
+        '''
         expected_cypher = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,

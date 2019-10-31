@@ -261,7 +261,10 @@ class SQLFoldObject(object):
                     if fold_output.field == '_x_count':
                         has_x_count = True
                         self._outputs.append(
-                            sqlalchemy.func.count().label('fold_output_x_count')
+                            sqlalchemy.func.coalesce(
+                                sqlalchemy.func.count(),
+                                sqlalchemy.literal_column('0')
+                            ).label('fold_output_x_count')
                         )
 
                     else:
@@ -283,7 +286,10 @@ class SQLFoldObject(object):
                 if (x_count_filter.fold_scope_location.at_vertex() ==
                         fold_scope_location.at_vertex()):
                     self._outputs.append(
-                        sqlalchemy.func.count().label('fold_output_x_count')
+                        sqlalchemy.func.coalesce(
+                            sqlalchemy.func.count(),
+                            sqlalchemy.literal_column('0')
+                        ).label('fold_output_x_count')
                     )
                     break
 
