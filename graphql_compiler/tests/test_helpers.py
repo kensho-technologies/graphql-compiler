@@ -519,7 +519,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
             sqlalchemy.Column('important_event', sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column('species', sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            schema='db_1.schema_1'
+            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'BirthEvent': sqlalchemy.Table(
             'BirthEvent',
@@ -529,7 +529,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
             sqlalchemy.Column('related_event', uuid_type, primary_key=False),
-            schema='db_1.schema_1'
+            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'Entity': sqlalchemy.Table(
             'Entity',
@@ -538,7 +538,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('related_entity', uuid_type, nullable=True),
-            schema='db_1.schema_1'
+            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'Event': sqlalchemy.Table(
             'Event',
@@ -548,7 +548,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
             sqlalchemy.Column('related_event', uuid_type, primary_key=False),
-            schema='db_2.schema_1'
+            schema=('db_2.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'FeedingEvent': sqlalchemy.Table(
             'FeedingEvent',
@@ -558,7 +558,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
             sqlalchemy.Column('related_event', uuid_type, primary_key=False),
-            schema='db_2.schema_1'
+            schema=('db_2.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'Food': sqlalchemy.Table(
             'Food',
@@ -566,7 +566,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            schema='db_2.schema_2'
+            schema=('db_2.' if dialect == 'mssql' else '') + 'schema_2'
         ),
         'FoodOrSpecies': sqlalchemy.Table(
             'FoodOrSpecies',
@@ -574,7 +574,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            schema='db_2.schema_2'
+            schema=('db_2.' if dialect == 'mssql' else '') + 'schema_2'
         ),
         'Location': sqlalchemy.Table(
             'Location',
@@ -582,7 +582,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            schema='db_1.schema_1'
+            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'Species': sqlalchemy.Table(
             'Species',
@@ -593,13 +593,13 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
             sqlalchemy.Column('eats', uuid_type, nullable=True),
             sqlalchemy.Column('limbs', sqlalchemy.Integer, nullable=True),
             sqlalchemy.Column('related_entity', uuid_type, nullable=True),
-            schema='db_1.schema_1'
+            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
         'UniquelyIdentifiable': sqlalchemy.Table(
             'UniquelyIdentifiable',
             sqlalchemy_metadata_1,
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            schema='db_1.schema_1'
+            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
     }
 
