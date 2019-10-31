@@ -6,6 +6,7 @@ import sqlalchemy
 from . import blocks
 from .expressions import FoldedContextField
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
+from ..schema import COUNT_META_FIELD_NAME
 
 
 # Some reserved column names used in emitted SQL queries
@@ -113,12 +114,10 @@ def _find_x_count_filters(ir):
             global_operation_start = True
         # Check the left and right side of Filter predicates to see if _x_count is involved.
         if global_operation_start and isinstance(block, blocks.Filter):
-            if (isinstance(block.predicate.left, FoldedContextField) and
-                    block.predicate.left.fold_scope_location.field == '_x_count'):
-                _x_count_filters.append(block.predicate.left)
-            if (isinstance(block.predicate.right, FoldedContextField) and
-                    block.predicate.right.fold_scope_location.field == '_x_count'):
-                _x_count_filters.append(block.predicate.right)
+            for subexpression in (block.predicate.left, block.predicate.right):
+                if (isinstance(subexpression, FoldedContextField) and
+                        subexpression.fold_scope_location.field == COUNT_META_FIELD_NAME):
+                    _x_count_filters.append(subexpression)
     return _x_count_filters
 
 
@@ -258,7 +257,7 @@ class SQLFoldObject(object):
                 # distinguish between folds with the same fold path but different query paths
                 if (fold_output.base_location, fold_output.fold_path) == (
                         fold_scope_location.base_location, fold_scope_location.fold_path):
-                    if fold_output.field == '_x_count':
+                    if fold_output.field == COUNT_META_FIELD_NAME:
                         has_x_count = True
                         self._outputs.append(
                             sqlalchemy.func.coalesce(

@@ -406,7 +406,10 @@ class GlobalContextField(Expression):
             return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
         else:
             raise AssertionError(u'This is a bug. The SQL backend does not use '
-                                 u'global context fields to point to vertices.')
+                                 u'global context fields to point to vertices. GlobalContextField '
+                                 u'at query_path {} and visit_counter {} did note have a valid '
+                                 u'field.'.format(self.location.query_path,
+                                                 self.location.visit_counter))
 
 
 class ContextField(Expression):
@@ -731,7 +734,7 @@ class FoldedContextField(Expression):
     def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
         # _x_count is a special case that has already been coalesced to 0.
-        if self.fold_scope_location.field == '_x_count':
+        if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
             return aliases[
                 self.fold_scope_location.base_location.query_path,
                 self.fold_scope_location.fold_path
