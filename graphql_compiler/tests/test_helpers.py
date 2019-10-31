@@ -692,8 +692,10 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
                 join_descriptors.setdefault(subclass, {})[edge_name] = join_info
     if dialect == 'postgresql':
         sqlalchemy_compiler_dialect = postgresql.dialect()
-    else:
+    elif dialect == 'mssql':
         sqlalchemy_compiler_dialect = mssql.dialect()
+    else:
+        raise AssertionError(u'Unrecognized dialect {}'.format(dialect))
     return make_sqlalchemy_schema_info(
         schema, type_equivalence_hints, sqlalchemy_compiler_dialect, tables, join_descriptors)
 
