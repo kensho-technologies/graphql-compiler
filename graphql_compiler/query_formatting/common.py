@@ -66,14 +66,9 @@ def _deserialize_anonymous_json_argument(expected_type, value):
         if isinstance(value, six.integer_types):
             return value
         elif isinstance(value, six.string_types):
-            if six.PY2:
-                return long(value)
-            elif six.PY3:
-                return int(value)
-            else:
-                raise AssertionError(u'Unreachable code. Neither py2 nor py3.')
+            return int(value)
         else:
-            raiseValueError(u'Unexpected type {}. Expected one of {}.'
+            raise ValueError(u'Unexpected type {}. Expected one of {}.'
                             .format(type(value), (six.integer_types, six.string_types)))
 
     # Check if the type of the value is correct

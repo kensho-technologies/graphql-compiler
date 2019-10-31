@@ -1,6 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import datetime
 from decimal import Decimal
+import six
 import unittest
 
 from graphql import (
@@ -291,10 +292,11 @@ class QueryFormattingTests(unittest.TestCase):
         # Int
         self.assertEqual(5, deserialize_json_argument('amount', GraphQLInt, 5))
 
-        # Long
-        self.assertEqual(50000000000000000000000000000000000000000, deserialize_json_argument(
-            'amount', GraphQLInt, 50000000000000000000000000000000000000000))
+        if six.PY3:
+            # Long
+            self.assertEqual(50000000000000000000000000000000000000000, deserialize_json_argument(
+                'amount', GraphQLInt, 50000000000000000000000000000000000000000))
 
-        # Long string
-        self.assertEqual(50000000000000000000000000000000000000000, deserialize_json_argument(
-            'amount', GraphQLInt, '50000000000000000000000000000000000000000'))
+            # Long string
+            self.assertEqual(50000000000000000000000000000000000000000, deserialize_json_argument(
+                'amount', GraphQLInt, '50000000000000000000000000000000000000000'))
