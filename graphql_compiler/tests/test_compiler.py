@@ -908,30 +908,31 @@ class CompilerTests(unittest.TestCase):
             )
         '''
         expected_gremlin = NotImplementedError
-        expected_sql = '''
+        expected_mssql = SKIP_TEST
+        expected_postgresql = '''
             SELECT
-                [Species_1].name AS species_name
-            FROM db_1.schema_1.[Species] AS [Species_1]
-            LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
-            ON [Species_1].uuid = [Animal_1].species
+                "Species_1".name AS species_name
+            FROM schema_1."Species" AS "Species_1"
+            LEFT OUTER JOIN schema_1."Animal" AS "Animal_1"
+            ON "Species_1".uuid = "Animal_1".species
             LEFT OUTER JOIN (
                 SELECT
-                    [Species_2].uuid AS uuid,
+                    "Species_2".uuid AS uuid,
                     coalesce(count(*), 0) AS fold_output_x_count
-                FROM db_1.schema_1.[Species] AS [Species_2]
-                JOIN db_1.schema_1.[Species] AS [Species_3]
-                ON [Species_2].uuid = [Species_3].eats
-                GROUP BY [Species_2].uuid
+                FROM schema_1."Species" AS "Species_2"
+                JOIN schema_1."Species" AS "Species_3"
+                ON "Species_2".uuid = "Species_3".eats
+                GROUP BY "Species_2".uuid
               ) AS folded_subquery_1
-            ON [Species_1].uuid = folded_subquery_1.uuid
+            ON "Species_1".uuid = folded_subquery_1.uuid
             WHERE
-                ([Animal_1].name = :animal_name OR [Animal_1].species IS NULL) AND
-                folded_subquery_1.fold_output_x_count >= :predators
+                ("Animal_1".name = %(animal_name)s OR "Animal_1".species IS NULL) AND
+                folded_subquery_1.fold_output_x_count >= %(predators)s
         '''
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_between_filter_on_simple_scalar(self):
         # The "between" filter emits different output depending on what the compared types are.
@@ -5564,29 +5565,30 @@ class CompilerTests(unittest.TestCase):
                 $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
         '''
         expected_gremlin = NotImplementedError
-        expected_sql = '''
+        expected_mssql = SKIP_TEST
+        expected_postgresql = '''
             SELECT
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
-                [Animal_1].name AS name,
+                "Animal_1".name AS name,
                 folded_subquery_1.fold_output_x_count AS number_of_children
-            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            FROM schema_1."Animal" AS "Animal_1"
             LEFT OUTER JOIN (
                 SELECT
-                    [Animal_2].uuid AS uuid,
+                    "Animal_2".uuid AS uuid,
                     coalesce(count(*), 0) AS fold_output_x_count,
-                    array_agg([Animal_3].name) AS fold_output_name
-                FROM db_1.schema_1.[Animal] AS [Animal_2]
-                JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                ON [Animal_2].uuid = [Animal_3].parent
-                GROUP BY [Animal_2].uuid
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
               ) AS folded_subquery_1
-              ON [Animal_1].uuid = folded_subquery_1.uuid
+              ON "Animal_1".uuid = folded_subquery_1.uuid
               '''
 
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_filter_count_with_runtime_parameter_in_fold_scope(self):
         test_data = test_input_data.filter_count_with_runtime_parameter_in_fold_scope()
@@ -5609,29 +5611,31 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_gremlin = NotImplementedError
 
-        expected_sql = '''
+        expected_mssql = SKIP_TEST
+
+        expected_postgresql = '''
             SELECT
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
-                [Animal_1].name AS name
-            FROM db_1.schema_1.[Animal] AS [Animal_1]
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
             LEFT OUTER JOIN (
                 SELECT
-                    [Animal_2].uuid AS uuid,
+                    "Animal_2".uuid AS uuid,
                     coalesce(count(*), 0) AS fold_output_x_count,
-                    array_agg([Animal_3].name) AS fold_output_name
-                FROM db_1.schema_1.[Animal] AS [Animal_2]
-                JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                ON [Animal_2].uuid = [Animal_3].parent
-                GROUP BY [Animal_2].uuid
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
             ) AS folded_subquery_1
-            ON [Animal_1].uuid = folded_subquery_1.uuid
-            WHERE folded_subquery_1.fold_output_x_count >= :min_children
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            WHERE folded_subquery_1.fold_output_x_count >= %(min_children)s
         '''
 
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_filter_count_with_tagged_parameter_in_fold_scope(self):
         test_data = test_input_data.filter_count_with_tagged_parameter_in_fold_scope()
@@ -5657,30 +5661,32 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_gremlin = NotImplementedError
 
-        expected_sql = '''
+        expected_mssql = SKIP_TEST
+
+        expected_postgresql = '''
             SELECT
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
-                [Animal_1].name AS name
-            FROM db_1.schema_1.[Animal] AS [Animal_1]
-            JOIN db_1.schema_1.[Species] AS [Species_1]
-            ON [Animal_1].species = [Species_1].uuid
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN schema_1."Species" AS "Species_1"
+            ON "Animal_1".species = "Species_1".uuid
             LEFT OUTER JOIN (
                 SELECT
-                    [Animal_2].uuid AS uuid,
+                    "Animal_2".uuid AS uuid,
                     coalesce(count(*), 0) AS fold_output_x_count,
-                    array_agg([Animal_3].name) AS fold_output_name
-                FROM db_1.schema_1.[Animal] AS [Animal_2]
-                JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                ON [Animal_2].uuid = [Animal_3].parent
-                GROUP BY [Animal_2].uuid
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
             ) AS folded_subquery_1
-            ON [Animal_1].uuid = folded_subquery_1.uuid
-            WHERE [Species_1].limbs <= folded_subquery_1.fold_output_x_count
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            WHERE "Species_1".limbs <= folded_subquery_1.fold_output_x_count
         '''
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_filter_count_and_other_filters_in_fold_scope(self):
         test_data = test_input_data.filter_count_and_other_filters_in_fold_scope()
@@ -5735,38 +5741,40 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_gremlin = NotImplementedError
 
-        expected_sql = '''
+        expected_mssql = SKIP_TEST
+
+        expected_postgresql = '''
             SELECT
-                [Animal_1].name AS name
-            FROM db_1.schema_1.[Animal] AS [Animal_1]
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
             LEFT OUTER JOIN (
                 SELECT
-                    [Animal_2].uuid AS uuid,
+                    "Animal_2".uuid AS uuid,
                     coalesce(count(*), 0) AS fold_output_x_count
-                FROM db_1.schema_1.[Animal] AS [Animal_2]
-                JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                ON [Animal_2].uuid = [Animal_3].parent
-                GROUP BY [Animal_2].uuid
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
             ) AS folded_subquery_1
-            ON [Animal_1].uuid = folded_subquery_1.uuid
+            ON "Animal_1".uuid = folded_subquery_1.uuid
             LEFT OUTER JOIN (
                 SELECT
-                    [Animal_4].related_entity AS related_entity,
+                    "Animal_4".related_entity AS related_entity,
                     coalesce(count(*), 0) AS fold_output_x_count
-                FROM db_1.schema_1.[Animal] AS [Animal_4]
-                JOIN db_1.schema_1.[Entity] AS [Entity_1]
-                ON [Animal_4].related_entity = [Entity_1].uuid
-                GROUP BY [Animal_4].related_entity
+                FROM schema_1."Animal" AS "Animal_4"
+                JOIN schema_1."Entity" AS "Entity_1"
+                ON "Animal_4".related_entity = "Entity_1".uuid
+                GROUP BY "Animal_4".related_entity
             ) AS folded_subquery_2
-            ON [Animal_1].related_entity = folded_subquery_2.related_entity
+            ON "Animal_1".related_entity = folded_subquery_2.related_entity
             WHERE
-                folded_subquery_1.fold_output_x_count >= :min_children AND
-                folded_subquery_2.fold_output_x_count >= :min_related
+                folded_subquery_1.fold_output_x_count >= %(min_children)s AND
+                folded_subquery_2.fold_output_x_count >= %(min_related)s
         '''
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_filter_on_count_with_nested_filter(self):
         test_data = test_input_data.filter_on_count_with_nested_filter()
