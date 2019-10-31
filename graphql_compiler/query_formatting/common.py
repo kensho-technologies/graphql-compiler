@@ -47,8 +47,8 @@ def _deserialize_anonymous_json_argument(expected_type, value):
             GraphQLID: six.string_types
 
     Raises:
-        ValueError or arrow.parser.ParserMatchError if the value is not appropriate for the type.
-        These are the exceptions that the GraphQL parsers raise for invalid values.
+        ValueError if the value is not appropriate for the type. Value error is chosen because
+        it is already the base case of exceptions raised by the GraphQL parsers.
     """
     allowed_types_for_graphql_type = {
         GraphQLDate: (six.string_types,),
@@ -122,7 +122,7 @@ def deserialize_json_argument(name, expected_type, value):
     """
     try:
         return _deserialize_anonymous_json_argument(strip_non_null_from_type(expected_type), value)
-    except (ValueError, arrow.parser.ParserMatchError) as e:
+    except ValueError as e:
         raise GraphQLInvalidArgumentError('Error parsing argument {}: {}'.format(name, e))
 
 
