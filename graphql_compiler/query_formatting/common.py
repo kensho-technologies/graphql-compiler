@@ -1,6 +1,5 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Safely insert runtime arguments into compiled GraphQL queries."""
-import builtins
 import datetime
 import decimal
 
@@ -67,7 +66,12 @@ def _deserialize_anonymous_json_argument(expected_type, value):
         if isinstance(value, six.integer_types):
             return value
         elif isinstance(value, six.string_types):
-            return builtins.int(value)
+            if six.PY2:
+                return long(value)
+            elif six.PY3:
+                return int(value)
+            else:
+                raise AssertionError(u'Unreachable code. Neither py2 nor py3.')
         else:
             raiseValueError(u'Unexpected type {}. Expected one of {}.'
                             .format(type(value), (six.integer_types, six.string_types)))
