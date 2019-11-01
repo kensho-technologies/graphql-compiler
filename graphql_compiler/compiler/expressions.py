@@ -409,7 +409,7 @@ class GlobalContextField(Expression):
                                  u'global context fields to point to vertices. GlobalContextField '
                                  u'at query_path {} and visit_counter {} did note have a valid '
                                  u'field.'.format(self.location.query_path,
-                                                 self.location.visit_counter))
+                                                  self.location.visit_counter))
 
 
 class ContextField(Expression):
