@@ -4,9 +4,9 @@ import six
 import sqlalchemy
 
 from . import blocks
+from ..schema import COUNT_META_FIELD_NAME
 from .expressions import FoldedContextField
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
-from ..schema import COUNT_META_FIELD_NAME
 
 
 # Some reserved column names used in emitted SQL queries
