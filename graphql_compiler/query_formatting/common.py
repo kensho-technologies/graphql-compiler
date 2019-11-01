@@ -47,7 +47,7 @@ def _deserialize_anonymous_json_argument(expected_type, value):
             GraphQLID: six.string_types
 
     Raises:
-        ValueError if the value is not appropriate for the type. Value error is chosen because
+        ValueError if the value is not appropriate for the type. ValueError is chosen because
         it is already the base case of exceptions raised by the GraphQL parsers.
     """
     allowed_types_for_graphql_type = {
