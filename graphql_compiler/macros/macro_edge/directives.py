@@ -8,7 +8,9 @@ from graphql import (
 )
 
 from ...schema import (
-    FilterDirective, FoldDirective, OptionalDirective, RecurseDirective, TagDirective
+    FilterDirective, FoldDirective,
+    check_for_nondefault_directive_names, OutputDirective, OutputSourceDirective, OptionalDirective,
+    TagDirective, RecurseDirective
 )
 
 
@@ -66,18 +68,29 @@ DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION = frozenset({
 }.union(DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION))
 
 
-def get_schema_for_macro_edge_definitions(querying_schema):
+def get_schema_for_macro_edge_definitions(query_schema):
     """Given a schema object used for querying, create a schema used for macro edge definitions."""
-    new_directives = list(chain(
-        querying_schema.get_directives(), DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION))
+    original_directives = query_schema.get_directives()
+    check_for_nondefault_directive_names(original_directives)
+
+    names_of_allowed_directives = {
+        directive.name for directive in
+        DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
+    }
+
+    macro_edge_schema_directives = [
+        directive
+        for directive in chain(original_directives, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION)
+        if directive.name in names_of_allowed_directives
+    ]
 
     # Unfortunately, GraphQLSchema objects do not easily allow creating derived schemas,
     # since the GraphQLSchema constructor takes a "types" parameter whose value is not preserved
     # in any of the constructed object's fields. To work around this, we rely on copying and
     # altering the object's internals directly.
-    macro_edge_schema = copy(querying_schema)
+    macro_edge_schema = copy(query_schema)
     # pylint: disable=protected-access
-    macro_edge_schema._directives = new_directives
+    macro_edge_schema._directives = macro_edge_schema_directives
     # pylint: enable=protected-access
 
     return macro_edge_schema

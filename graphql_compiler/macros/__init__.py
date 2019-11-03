@@ -16,11 +16,10 @@ from ..ast_manipulation import safe_parse_graphql
 from ..compiler.subclass import compute_subclass_sets
 from ..compiler.validation import validate_schema_and_query_ast
 from ..exceptions import GraphQLValidationError
-from ..schema import check_for_nondefault_directive_names
 from .macro_edge import make_macro_edge_descriptor
 from .macro_edge.directives import (
     DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
-    MacroEdgeDirective
+    MacroEdgeDirective, get_schema_for_macro_edge_definitions
 )
 from .macro_expansion import expand_macros_in_query_ast
 from .validation import (
@@ -212,18 +211,7 @@ def get_schema_for_macro_definition(schema):
     Raises:
         AssertionError, if the schema contains directive names that are non-default.
     """
-    macro_definition_schema = copy(schema)
-    macro_definition_schema_directives = schema.get_directives()
-    check_for_nondefault_directive_names(macro_definition_schema_directives)
-    macro_definition_schema_directives += DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
-    # Remove disallowed directives from directives list
-    macro_definition_schema_directives = list(set(macro_definition_schema_directives) &
-                                              set(DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION))
-
-    # pylint: disable=protected-access
-    macro_definition_schema._directives = macro_definition_schema_directives
-    # pylint: enable=protected-access
-    return macro_definition_schema
+    get_schema_for_macro_edge_definitions(schema)
 
 
 def perform_macro_expansion(macro_registry, schema_with_macros, graphql_with_macro, graphql_args):
