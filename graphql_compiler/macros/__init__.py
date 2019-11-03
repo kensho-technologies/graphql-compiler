@@ -1,6 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from copy import copy
 
 from graphql import parse
 from graphql.language.ast import (
@@ -17,10 +16,7 @@ from ..compiler.subclass import compute_subclass_sets
 from ..compiler.validation import validate_schema_and_query_ast
 from ..exceptions import GraphQLValidationError
 from .macro_edge import make_macro_edge_descriptor
-from .macro_edge.directives import (
-    DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION,
-    MacroEdgeDirective, get_schema_for_macro_edge_definitions
-)
+from .macro_edge.directives import MacroEdgeDirective, get_schema_for_macro_edge_definitions
 from .macro_expansion import expand_macros_in_query_ast
 from .validation import (
     check_macro_edge_for_definition_conflicts, check_macro_edge_for_reversal_definition_conflicts
@@ -211,7 +207,7 @@ def get_schema_for_macro_definition(schema):
     Raises:
         AssertionError, if the schema contains directive names that are non-default.
     """
-    get_schema_for_macro_edge_definitions(schema)
+    return get_schema_for_macro_edge_definitions(schema)
 
 
 def perform_macro_expansion(macro_registry, schema_with_macros, graphql_with_macro, graphql_args):
