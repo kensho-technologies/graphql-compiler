@@ -42,15 +42,21 @@ class MacroSchemaTests(unittest.TestCase):
     def test_get_schema_for_macro_definition_addition(self):
         original_schema = self.macro_registry.schema_without_macros
         macro_definition_schema = get_schema_for_macro_definition(original_schema)
+        macro_schema_directive_names = {
+            directive.name for directive in macro_definition_schema.get_directives()
+        }
         for directive in DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION:
-            self.assertTrue(directive in macro_definition_schema.get_directives())
+            self.assertIn(directive.name, macro_schema_directive_names)
 
     def test_get_schema_for_macro_definition_retain(self):
         original_schema = self.macro_registry.schema_without_macros
         macro_definition_schema = get_schema_for_macro_definition(original_schema)
+        macro_schema_directive_names = {
+            directive.name for directive in macro_definition_schema.get_directives()
+        }
         for directive in original_schema.get_directives():
             if directive in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION:
-                self.assertTrue(directive in macro_definition_schema.get_directives())
+                self.assertIn(directive.name, macro_schema_directive_names)
 
     def test_get_schema_for_macro_definition_removal(self):
         schema_with_macros = get_schema_with_macros(self.macro_registry)
