@@ -73,8 +73,7 @@ def get_schema_for_macro_edge_definitions(querying_schema):
     check_for_nondefault_directive_names(original_directives)
 
     names_of_allowed_directives = {
-        directive.name 
-        for directive in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION
+        directive.name for directive in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION
     }
 
     new_directives = [
