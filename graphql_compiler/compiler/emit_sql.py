@@ -116,6 +116,7 @@ class XMLPathBinaryExpression(BinaryExpression):
     Selectable without aliasing (aka labeling) it. This prevents the string resulting from
     the XML PATH from having extraneous XML tags based on the alias given to the column.
     """
+
     pass
 
 
