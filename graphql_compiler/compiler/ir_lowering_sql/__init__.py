@@ -87,7 +87,7 @@ class ContextColumn(expressions.Expression):
         raise AssertionError(u'ContextColumns are not used during the query emission process '
                              u'in cypher, so this is a bug. This function should not be called.')
 
-    def to_sql(self, aliases, current_alias, dialect):
+    def to_sql(self, dialect, aliases, current_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
         self.validate()
         return aliases[(self._vertex_query_path, None)].c[self._column_name]

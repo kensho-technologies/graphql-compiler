@@ -80,9 +80,6 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
     # (e.g. sqlalchemy.dialects.mssql.dialect()).
     'dialect',
 
-    # boolean indicating whether we are compiling for MSSQL-2014
-    'mssql2014',
-
     # dict mapping every graphql object type or interface type name in the schema to
     # a sqlalchemy table. Column types that do not exist for this dialect are not allowed.
     # All tables are expected to have primary keys.
@@ -97,7 +94,7 @@ SQLAlchemySchemaInfo = namedtuple('SQLAlchemySchemaInfo', (
 
 
 def make_sqlalchemy_schema_info(schema, type_equivalence_hints, dialect, vertex_name_to_table,
-                                join_descriptors, validate=True, mssql_2014=False):
+                                join_descriptors, validate=True):
     """Make a SQLAlchemySchemaInfo if the input provided is valid.
 
     See the documentation of SQLAlchemyschemaInfo for more detailed documentation of the args.
@@ -169,7 +166,7 @@ def make_sqlalchemy_schema_info(schema, type_equivalence_hints, dialect, vertex_
                                                      .format(type_name, field_name))
 
     return SQLAlchemySchemaInfo(
-        schema, type_equivalence_hints, dialect, mssql_2014, vertex_name_to_table, join_descriptors)
+        schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors)
 
 
 # All schema information sufficient for query cost estimation and auto pagination

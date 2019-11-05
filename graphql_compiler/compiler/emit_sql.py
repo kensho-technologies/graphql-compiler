@@ -114,45 +114,63 @@ class XMLPathBinaryExpression(BinaryExpression):
 
 @compiles(_CompileLabel, 'default')
 def compile_xmlpath(element, compiler, **kw):
-    """Suppress labeling when compiling XML PATH subqueries, otherwise compile as usual."""
-    if type(element.element) == XMLPathBinaryExpression:
+    """Suppress labeling when compiling XML PATH subqueries, otherwise compile as usual.
+
+    This method is needed because if XML PATH column is selected with an alias then each
+    entry in the resulting array is wrapped in XML tags bearing that alias.
+    e.g. `SELECT (SELECT ... FOR XML PATH ('')) AS blah ...` results in a string of the form
+    <blah>element1</blah><blah>element2</blah>. Since SQLAlchemy adds labels to all Selectables, we
+    must to suppress that labeling.
+    """
+    if isinstance(element.element, XMLPathBinaryExpression):
         # this indicates that no label should be inserted for this element
         kw.update(
-            within_columns_clause=False
+            within_columns_clause=False  # label always gets added if within_columns_clause is True
         )
     return compiler.visit_label(element, **kw)
 
 
-def agg_table(output_column, where):
-    """Produce an MSSQL 2014-style XML PATH-based aggregation subquery.
+def get_xml_path_clause(output_column, where):
+    """Produce an MSSQL-style XML PATH-based aggregation subquery.
 
     Args:
         output_column: SQLAlchemy Column, value being aggregated with XML PATH
         where: SQLAlchemy BinaryExpression, predicate used to filter
+
     Returns:
         An SQLAlchemy Selectable corresponding to an XML PATH subquery
         which aggregates the values of the output_column from the output vertex.
+        Empty arrays are represented as '', null values are represented as '^', array
+        entries are delimited using '@'.
+
+        All occurrences of '^', '@', and '|' in the original string values are
+        replaced with '|n', '|a', and '|p', resp.
+
+        Post-processing must split on '@', convert '^' to None, and both the encoding above
+        and the XML reference entity encoding auto performed by XML PATH. In particular, undo
+        '|p' -> '|', '|a' -> '@', '|n' -> '^', '&amp;' -> '&', '&gt;' -> '>', '&lt;' -> '<',
+        '&0xHEX;' -> u'0xHEX'
+
         Joining from the preceding vertex to the correct output vertex
         is performed with the WHERE clause.
     """
-    xml_column = (u'~|*' + func.REPLACE(output_column, u'|', u'||'))
-
+    # delimit elements in the array using '@'
+    xml_column = (u'@' + func.COALESCE(  # denote null values with '^'
+        func.REPLACE(  # replace all occurrences of '@' in the original with '|a'
+            func.REPLACE(  # replace all occurrences of '^' in the original with '|n'
+                func.REPLACE(  # replace all occurrences of '|'' in the original with '|p'
+                    output_column, '|', '|p'
+                ), '^', '|n'
+            ), '@', '|a'
+        ), '^'
+    ))  # allow unambiguously distinguishing (nullable) array elements using scheme above
     # as a custom type, you can't directly construct an XMLPathBinaryExpression from plain text
     xml_column = XMLPathBinaryExpression(xml_column.left, xml_column.right, xml_column.operator)
 
     # REPLACEs to undo autoconversion of HTML special characters to entity reference shorthand
-    return func.REPLACE(
-        func.REPLACE(
-            func.REPLACE(
-                func.COALESCE(  # COALESCE to special null value
-                    func.STUFF(  # STUFF to remove first occurrence of '~|*'
-                        select([xml_column]).where(where)
-                        .suffix_with("FOR XML PATH ('')").as_scalar(),
-                        1, 3, u''),
-                    u'!|#null!|#'),
-                u'&gt;', u'>'),
-            u'&lt;', u'<'),
-        u'&amp;', u'&')
+    return func.COALESCE(  # coalesce to represent empty arrays as ''
+        select([xml_column]).where(where).suffix_with("FOR XML PATH ('')").as_scalar(), ''
+    )
 
 
 class SQLFoldObject(object):
@@ -196,14 +214,14 @@ class SQLFoldObject(object):
     # ON ...
     # GROUP BY OuterVertex.SOME_COLUMN
 
-    def __init__(self, outer_vertex_table, join_descriptor, dialect):
+    def __init__(self, dialect, outer_vertex_table, join_descriptor):
         """Create an SQLFoldObject with table, type, and join information supplied by the IR.
 
         Args:
+            dialect: string passed in from the schema indicating the target dialect
             outer_vertex_table: SQLAlchemy table alias for vertex outside of fold.
             join_descriptor: DirectJoinDescriptor object from the schema, describing the
                              first join from the outer vertex to the folded vertex.
-            dialect: string passed in from the schema indicating the target dialect
         """
         # table containing output columns
         # initially None because output table is unknown until call to visit_output_vertex
@@ -224,7 +242,7 @@ class SQLFoldObject(object):
         self._join_info = []
         self._outputs = []  # output columns for fold
 
-        self._dialect = dialect  # indicate results should be compatible with MSSQL2014
+        self._dialect = dialect  # indicate results should be compatible with MSSQL
 
     @property
     def outputs(self):
@@ -267,14 +285,16 @@ class SQLFoldObject(object):
         # Starting at the first from_table, join traversed vertices until the output vertex is
         # reached.
         #
-        # MSSQL doesn't use the last JOIN so we pop it off before construction the JOIN clause
+        # MSSQL doesn't use the JOIN for the very last traversal,
+        # so we pop it off before construction the JOIN clause
         if self._dialect == 'mssql':
             # Move the final join predicate (from the vertex preceding the output to
             # the output vertex) into the WHERE clause of the SELECT ... FOR XML PATH('')
             self.join_info.pop()
         while len(self.join_info) > 0:
-            # more recent joins are at the end of the list
-            edge, from_alias, to_alias = self.join_info.pop()
+            # joins from earlier in the chain of traversals are at the end of the list
+            # b/c joins are appended in the order they are traversed
+            edge, from_alias, to_alias = self.join_info.pop(0)
             join_clause = sqlalchemy.join(
                 join_clause,
                 to_alias,
@@ -291,29 +311,31 @@ class SQLFoldObject(object):
         )
 
         if self._dialect == 'mssql':
-            # mssql 2014 doesn't rely on a group by
+            # mssql doesn't rely on a group by
             return select_statement
-        else:
+        elif self._dialect == 'postgresql':
             return select_statement.group_by(
                 *self.group_by
             )
+        else:
+            raise NotImplementedError(
+                u'Fold only supported for MSSQL and '
+                u'PostgreSQL, dialect was set to {}'.format(self._dialect)
+            )
 
-    def _append_default_column(self, intermediate_fold_output_name, fold_output):
+    def _get_default_column(self, intermediate_fold_output_name, fold_output):
         """Select an array_agg of the fold output field, labeled as requested."""
-        self._outputs.append(
-            sqlalchemy.func.array_agg(
-                self.output_vertex_alias.c[fold_output.field]
-            ).label(intermediate_fold_output_name)
-        )
+        return sqlalchemy.func.array_agg(
+            self.output_vertex_alias.c[fold_output.field]
+        ).label(intermediate_fold_output_name)
 
-    def _append_mssql_column(self, intermediate_fold_output_name, fold_output, last_join):
-        """Select the MSSQL2014 XML PATH agg of the fold output field, labeled as requested."""
+    def _get_mssql_column(self, intermediate_fold_output_name, fold_output, last_join):
+        """Select the MSSQL XML PATH agg of the fold output field, labeled as requested."""
+        # use join info tuple for most recent traversal to set WHERE clause for XML PATH subquery
         edge, from_alias, to_alias = last_join
-        self._outputs.append(
-            agg_table(self.output_vertex_alias.c[fold_output.field],
-                      (from_alias.c[edge.from_column] == to_alias.c[edge.to_column])
-                      ).label(intermediate_fold_output_name)
-        )
+        return get_xml_path_clause(self.output_vertex_alias.c[fold_output.field],
+                                   (from_alias.c[edge.from_column] == to_alias.c[edge.to_column])
+                                   ).label(intermediate_fold_output_name)
 
     def _get_fold_outputs(self, fold_scope_location, join_descriptor, all_folded_outputs):
         """Generate output columns for innermost fold scope and add them to active SQLFoldObject."""
@@ -330,13 +352,17 @@ class SQLFoldObject(object):
                     intermediate_fold_output_name = 'fold_output_' + fold_output.field
                     # add array aggregated output column to self._outputs
                     if self._dialect == 'mssql':
-                        self._append_mssql_column(
-                            intermediate_fold_output_name,
-                            fold_output,
-                            self.join_info[-1]  # output vertex was the most recently visited
+                        self._outputs.append(
+                            self._get_mssql_column(
+                                intermediate_fold_output_name,
+                                fold_output,
+                                self.join_info[-1]  # output vertex was most recently traversed
+                            )
                         )
                     else:
-                        self._append_default_column(intermediate_fold_output_name, fold_output)
+                        self._outputs.append(
+                            self._get_default_column(intermediate_fold_output_name, fold_output)
+                        )
 
         # use to join unique identifier for the fold's outer vertex to the final table
         self._outputs.append(self.outer_vertex_alias.c[join_descriptor.from_column])
@@ -585,7 +611,7 @@ class CompilationState(object):
         if self._current_fold is not None or left_predicate_folded or right_predicate_folded:
             raise NotImplementedError('Filters inside a fold are not implemented yet.')
 
-        sql_expression = predicate.to_sql(self._aliases, self._current_alias, self.dialect)
+        sql_expression = predicate.to_sql(self.dialect, self._aliases, self._current_alias)
         if self._is_in_optional_scope():
             sql_expression = sqlalchemy.or_(sql_expression,
                                             self._came_from[self._current_alias].is_(None))
@@ -621,7 +647,7 @@ class CompilationState(object):
         ][full_edge_name]
 
         # 3. initialize fold object
-        self._current_fold = SQLFoldObject(outer_alias, join_descriptor, self.dialect)
+        self._current_fold = SQLFoldObject(self.dialect, outer_alias, join_descriptor)
 
         # 4. add join information for this traversal to the fold object
         self._current_fold.visit_traversed_vertex(join_descriptor, outer_alias, fold_vertex_alias)
@@ -673,7 +699,7 @@ class CompilationState(object):
     def construct_result(self, output_name, field, dialect):
         """Execute a ConstructResult Block."""
         self._outputs.append(field.to_sql(
-            self._aliases, self._current_alias, dialect
+            dialect, self._aliases, self._current_alias
         ).label(output_name))
 
     def get_query(self):
@@ -688,7 +714,7 @@ class CompilationState(object):
 
     @property
     def dialect(self):
-        """Get whether the current query is written for MSSQL2014."""
+        """Get whether the current query is written for MSSQL."""
         return self._dialect
 
 

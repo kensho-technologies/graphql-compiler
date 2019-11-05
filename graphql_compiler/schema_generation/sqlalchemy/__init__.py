@@ -7,8 +7,7 @@ from .schema_graph_builder import get_sqlalchemy_schema_graph
 
 def get_sqlalchemy_schema_info_from_specified_metadata(
     vertex_name_to_table, direct_edges,
-    dialect, class_to_field_type_overrides=None,
-    is_mssql_2014=False
+    dialect, class_to_field_type_overrides=None
 ):
     """Return a SQLAlchemySchemaInfo from the metadata.
 
@@ -48,7 +47,6 @@ def get_sqlalchemy_schema_info_from_specified_metadata(
                                        (string -> {string -> GraphQLType}). Used to override the
                                        type of a field in the class where it's first defined and all
                                        the class's subclasses.
-        is_mssql_2014: boolean indicating whether the target version of the dialect is MSSQL2014
     Return:
         SQLAlchemySchemaInfo containing the full information needed to compile SQL queries.
     """
@@ -63,5 +61,5 @@ def get_sqlalchemy_schema_info_from_specified_metadata(
 
     return SQLAlchemySchemaInfo(
         graphql_schema, type_equivalence_hints, dialect,
-        is_mssql_2014, vertex_name_to_table, join_descriptors
+        vertex_name_to_table, join_descriptors
     )
