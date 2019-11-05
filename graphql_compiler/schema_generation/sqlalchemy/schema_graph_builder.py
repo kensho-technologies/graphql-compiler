@@ -72,42 +72,49 @@ def _get_edge_type_from_direct_edge(edge_name, direct_edge_descriptor):
 
 def _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types):
     """Return the IndexDefinition objects corresponding to the indexes in the SQL tables."""
-    # TODO: Add indexes that do not correspond to neither the primary key nor the SQLAlchemy Table's
-    #       uniqueness constraints.
     index_definitions = set()
     for vertex_name, table in vertex_name_to_table.items():
+        vertex_type = vertex_types[vertex_name]
+
+        for index in table.indexes:
+            index_definition = _build_index_definition(index.columns, index.unique, vertex_name)
+            if _is_index_representable(index_definition, vertex_type):
+                index_definitions.add(index_definition)
+
         for constraint in table.constraints:
             if isinstance(constraint, (PrimaryKeyConstraint, UniqueConstraint)):
-                column_names = frozenset(column.name for column in constraint.columns)
-
-                # We ignore indexes that reference columns that are not represented as properties
-                # in the corresponding vertex type.
-
-                if _are_columns_vertex_properties(column_names, vertex_types[vertex_name].properties):
-                    continue
-
-                # Some SQL backends allow duplicate nulls in columns with unique indexes.
-                # However, other backends do not. Therefore, we set ignore_nulls=True to indicate
-                # that the backend may have duplicate nulls.
-                #
-                # Also, since SQLAlchemy also does not contain information about whether an index is
-                # ordered or not, we set ordered=False.
-                index_definition = IndexDefinition(
-                    name=None,
-                    base_classname=vertex_name,
-                    fields=column_names,
-                    unique=True,
-                    ordered=False,
-                    ignore_nulls=True
-                )
-                index_definitions.add(index_definition)
+                index_definition = _build_index_definition(constraint.columns, True, vertex_name)
+                if _is_index_representable(index_definition, vertex_type):
+                    index_definitions.add(index_definition)
 
     return index_definitions
 
 
-def _are_columns_valid(index_definition, vertex_type):
-    """Return bool indicating whether the fields in an Index are a subset ofthe corresponding vertex_type properties."""
-    for name in column_names:
-        if name not in properties:
+def _build_index_definition(columns, unique, vertex_name):
+    """Return an IndexDefinition encompassing specified columns."""
+    column_names = frozenset(column.name for column in columns)
+
+    # Some SQL backends allow duplicate nulls in columns with unique indexes.
+    # However, other backends do not. Therefore, we set ignore_nulls=True to indicate
+    # that the backend may have duplicate nulls.
+    #
+    # Also, since SQLAlchemy also does not contain information about whether an index is
+    # ordered or not, we set ordered=False.
+    index_definition = IndexDefinition(
+        name=None,
+        base_classname=vertex_name,
+        fields=column_names,
+        unique=unique,
+        ordered=False,
+        ignore_nulls=True
+    )
+    return index_definition
+
+
+def _is_index_representable(index_definition, vertex_type):
+    """Return True if all the fields in the index are represented as vertex_type properties."""
+    for field in index_definition.fields:
+        if field not in vertex_type.properties:
             return False
     return True
+
