@@ -109,6 +109,13 @@ def _find_folded_outputs(ir):
 
 
 class XMLPathBinaryExpression(BinaryExpression):
+    """Special override of BinaryExpression used to trigger `compile_xmlpath` during compile.
+
+    This type of binary expression is used to describe the Selectable selected inside the
+    XML PATH subquery. Using an XMLPathBinaryExpression forces the compiler to produce that
+    Selectable without aliasing (aka labeling) it. This prevents the string resulting from
+    the XML PATH from having extraneous XML tags based on the alias given to the column.
+    """
     pass
 
 
@@ -145,6 +152,10 @@ def get_xml_path_clause(output_column, where):
 
         All occurrences of '^', '@', and '|' in the original string values are
         replaced with '|n', '|a', and '|p', resp.
+
+        Undoing the encoding above as well as the XML reference entity encoding performed
+        by the XML PATH statement is deferred to post-processing when the list is retrieved
+        from the string representation produced by the subquery.
 
         Post-processing must split on '@', convert '^' to None, and both the encoding above
         and the XML reference entity encoding auto performed by XML PATH. In particular, undo
