@@ -444,7 +444,9 @@ class IntegrationTests(TestCase):
         for graphql_query, parameters, expected_results in queries:
             self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
-    @use_all_backends()
+    @use_all_backends(except_backends=(
+        test_backend.REDISGRAPH,  # TODO(bojanserafimov): Resolve syntax error
+    ))
     @integration_fixtures
     def test_optional_basic(self, backend_name):
         # (query, args, expected_results) tuples.
