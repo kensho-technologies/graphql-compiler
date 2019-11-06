@@ -3,7 +3,7 @@ import unittest
 
 from graphql.type import GraphQLInt, GraphQLObjectType, GraphQLString
 import pytest
-from sqlalchemy import Column, Index, MetaData, PrimaryKeyConstraint, Table, UniqueConstraint
+from sqlalchemy import Column, MetaData, PrimaryKeyConstraint, Table
 from sqlalchemy.dialects.mssql import TINYINT, dialect
 from sqlalchemy.types import Binary, Integer, LargeBinary, String
 
