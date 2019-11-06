@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from sqlalchemy import PrimaryKeyConstraint, UniqueConstraint
+from sqlalchemy import PrimaryKeyConstraint
 
 from ...global_utils import merge_non_overlapping_dicts
 from ..schema_graph import (
@@ -47,8 +47,8 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
     direct_superclass_sets = {element_name: set() for element_name in elements}
     inheritance_structure = InheritanceStructure(direct_superclass_sets)
     link_schema_elements(elements, inheritance_structure)
-    all_indexes = _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types)
-    return SchemaGraph(elements, inheritance_structure, all_indexes)
+    indexes = _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types)
+    return SchemaGraph(elements, inheritance_structure, indexes)
 
 
 def _get_vertex_type_from_sqlalchemy_table(vertex_name, table):
@@ -75,46 +75,33 @@ def _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types):
     index_definitions = set()
     for vertex_name, table in vertex_name_to_table.items():
         vertex_type = vertex_types[vertex_name]
-
-        for index in table.indexes:
-            index_definition = _build_index_definition(index.columns, index.unique, vertex_name)
-            if _is_index_representable(index_definition, vertex_type):
-                index_definitions.add(index_definition)
-
         for constraint in table.constraints:
-            if isinstance(constraint, (PrimaryKeyConstraint, UniqueConstraint)):
-                index_definition = _build_index_definition(constraint.columns, True, vertex_name)
-                if _is_index_representable(index_definition, vertex_type):
+            # When a primary key constraint is created in a SQL database, an accompanying
+            # primary key index is also created. However, SQLAlchemy explicitly does not include
+            # primary key indexes in table.indexes. Therefore, we use the PrimaryKeyConstraint
+            # to create the IndexDefinition. The only issue with doing so is that technically
+            # the index name is incorrect.
+            if isinstance(constraint, PrimaryKeyConstraint):
+                index_definition = IndexDefinition(
+                    name=constraint.name,
+                    base_classname=vertex_name,
+                    fields=frozenset(column.name for column in constraint.columns),
+                    unique=True,
+                    ordered=False,
+                    # Since primary keys don't have nulls, we use the stronger constraint.
+                    ignore_nulls=False
+                )
+                if _is_vertex_type_index_representable(index_definition, vertex_type):
                     index_definitions.add(index_definition)
 
     return index_definitions
 
 
-def _build_index_definition(columns, unique, vertex_name):
-    """Return an IndexDefinition encompassing specified columns."""
-    column_names = frozenset(column.name for column in columns)
-
-    # Some SQL backends allow duplicate nulls in columns with unique indexes.
-    # However, other backends do not. Therefore, we set ignore_nulls=True to indicate
-    # that the backend may have duplicate nulls.
-    #
-    # Also, since SQLAlchemy also does not contain information about whether an index is
-    # ordered or not, we set ordered=False.
-    index_definition = IndexDefinition(
-        name=None,
-        base_classname=vertex_name,
-        fields=column_names,
-        unique=unique,
-        ordered=False,
-        ignore_nulls=True
-    )
-    return index_definition
-
-
-def _is_index_representable(index_definition, vertex_type):
-    """Return True if all the fields in the index are represented as vertex_type properties."""
+# The function below only works for indexes corresponding to VertexType objects since EdgeType
+# objects have special 'in' and 'out' fields that reference base connections.
+def _is_vertex_type_index_representable(index_definition, vertex_type):
+    """Return True if all the index fields are represented as properties in the VertexType."""
     for field in index_definition.fields:
         if field not in vertex_type.properties:
             return False
     return True
-

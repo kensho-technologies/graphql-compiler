@@ -3,7 +3,7 @@ import unittest
 
 from graphql.type import GraphQLInt, GraphQLObjectType, GraphQLString
 import pytest
-from sqlalchemy import Column, MetaData, PrimaryKeyConstraint, Table, UniqueConstraint
+from sqlalchemy import Column, Index, MetaData, PrimaryKeyConstraint, Table, UniqueConstraint
 from sqlalchemy.dialects.mssql import TINYINT, dialect
 from sqlalchemy.types import Binary, Integer, LargeBinary, String
 
@@ -46,16 +46,24 @@ def _get_test_vertex_name_to_table():
         metadata2,
         Column('primary_key_column1', Integer()),
         Column('primary_key_column2', Integer()),
-        Column('unique_column1', Integer()),
-        Column('unique_column2', Integer()),
-        Column('unique_column_with_invalid_type', Binary()),
 
         PrimaryKeyConstraint('primary_key_column1', 'primary_key_column2'),
-        UniqueConstraint('unique_column1', 'unique_column2'),
-        UniqueConstraint('unique_column_with_invalid_type')
     )
 
-    return {'Table1': table1, 'ArbitraryObjectName': table2, 'Table3': table3}
+    table4 = Table(
+        'Table4',
+        metadata2,
+        Column('primary_key_column_with_unsupported_type', Binary()),
+
+        PrimaryKeyConstraint('primary_key_column_with_unsupported_type'),
+    )
+
+    return {
+        'Table1': table1,
+        'ArbitraryObjectName': table2,
+        'TableWithMultiplePrimaryKeyColumns': table3,
+        'TableWithNonSupportedPrimaryKeyType': table4,
+    }
 
 
 def _get_test_direct_edges():
@@ -73,6 +81,7 @@ def _get_test_direct_edges():
 @pytest.mark.filterwarnings('ignore: Ignoring column .* with unsupported SQL datatype.*')
 class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
     def setUp(self):
+        self.maxDiff = None
         vertex_name_to_table = _get_test_vertex_name_to_table()
         direct_edges = _get_test_direct_edges()
         self.schema_graph = get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges)
@@ -130,28 +139,39 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
         }
         self.assertEqual(expected_join_descriptors, self.schema_info.join_descriptors)
 
-    def test_sqlalchemy_index_generation(self):
-        indexes = self.schema_graph.get_all_indexes_for_class('Table3')
+    def test_basic_index_generation_from_primary_key(self):
+        indexes = self.schema_graph.get_all_indexes_for_class('Table1')
         self.assertEqual(
             {
                 IndexDefinition(
                     name=None,
-                    base_classname='Table3',
-                    fields=frozenset({'primary_key_column1', 'primary_key_column2'}),
+                    base_classname='Table1',
+                    fields=frozenset({'column_with_supported_type'}),
                     unique=True,
                     ordered=False,
-                    ignore_nulls=True,
-                ),
-                IndexDefinition(
-                    name=None,
-                    base_classname='Table3',
-                    fields=frozenset({'unique_column1', 'unique_column2'}),
-                    unique=True,
-                    ordered=False,
-                    ignore_nulls=True,
+                    ignore_nulls=False,
                 ),
             }, indexes
         )
+
+    def test_index_generation_from_multi_column_primary_key(self):
+        indexes = self.schema_graph.get_all_indexes_for_class('TableWithMultiplePrimaryKeyColumns')
+        self.assertEqual(
+            {
+                IndexDefinition(
+                    name=None,
+                    base_classname='TableWithMultiplePrimaryKeyColumns',
+                    fields=frozenset({'primary_key_column1', 'primary_key_column2'}),
+                    unique=True,
+                    ordered=False,
+                    ignore_nulls=False,
+                ),
+            }, indexes
+        )
+
+    def test_index_generation_from_primary_key_with_an_unsupported_column_type(self):
+        indexes = self.schema_graph.get_all_indexes_for_class('TableWithNonSupportedPrimaryKeyType')
+        self.assertEqual(frozenset(), indexes)
 
 
 class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
