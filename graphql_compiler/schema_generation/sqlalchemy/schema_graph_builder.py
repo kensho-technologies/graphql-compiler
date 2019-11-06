@@ -72,6 +72,7 @@ def _get_edge_type_from_direct_edge(edge_name, direct_edge_descriptor):
 
 def _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types):
     """Return the IndexDefinition objects corresponding to the indexes in the SQL tables."""
+    # TODO(pmantica): Add non-primary key indexes.
     index_definitions = set()
     for vertex_name, table in vertex_name_to_table.items():
         vertex_type = vertex_types[vertex_name]
