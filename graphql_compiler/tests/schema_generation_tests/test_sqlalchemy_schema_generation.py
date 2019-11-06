@@ -19,7 +19,7 @@ def _get_test_vertex_name_to_table():
     """Return a dict mapping the name of each VertexType to the underlying SQLAlchemy Table."""
     metadata1 = MetaData()
     basic_table = Table(
-        'BasicTable',
+        'BasicVertex',
         metadata1,
         Column('column_with_supported_type', String(), primary_key=True),
         Column('column_with_non_supported_type', LargeBinary()),
@@ -35,16 +35,16 @@ def _get_test_vertex_name_to_table():
         Column('destination_column', Integer(), primary_key=True),
     )
 
-    return {'BasicTable': basic_table, 'ArbitraryObjectName': table_with_arbitrary_name}
+    return {'BasicVertex': basic_table, 'ArbitraryVertexName': table_with_arbitrary_name}
 
 
 def _get_test_direct_edges():
     """Return a dict mapping direct edge names to DirectEdgeDescriptor objects."""
     return {
         'test_edge': DirectEdgeDescriptor(
-            'BasicTable',
+            'BasicVertex',
             'source_column',
-            'ArbitraryObjectName',
+            'ArbitraryVertexName',
             'destination_column'
         )
     }
@@ -59,19 +59,19 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
             vertex_name_to_table, direct_edges, dialect())
 
     def test_table_vertex_representation(self):
-        self.assertIsInstance(self.schema_info.schema.get_type('BasicTable'), GraphQLObjectType)
+        self.assertIsInstance(self.schema_info.schema.get_type('BasicVertex'), GraphQLObjectType)
 
     def test_table_vertex_representation_with_non_default_name(self):
         self.assertIsInstance(
-            self.schema_info.schema.get_type('ArbitraryObjectName'), GraphQLObjectType)
+            self.schema_info.schema.get_type('ArbitraryVertexName'), GraphQLObjectType)
 
     def test_represent_supported_fields(self):
-        table1_graphql_object = self.schema_info.schema.get_type('BasicTable')
+        table1_graphql_object = self.schema_info.schema.get_type('BasicVertex')
         self.assertEqual(
             table1_graphql_object.fields['column_with_supported_type'].type, GraphQLString)
 
     def test_ignored_fields_not_supported(self):
-        table1_graphql_object = self.schema_info.schema.get_type('BasicTable')
+        table1_graphql_object = self.schema_info.schema.get_type('BasicVertex')
         self.assertTrue('column_with_non_supported_type' not in table1_graphql_object.fields)
 
     def test_warn_when_type_is_not_supported(self):
@@ -79,24 +79,24 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
             try_get_graphql_scalar_type('binary', LargeBinary)
 
     def test_mssql_scalar_type_representation(self):
-        table1_graphql_object = self.schema_info.schema.get_type('BasicTable')
+        table1_graphql_object = self.schema_info.schema.get_type('BasicVertex')
         self.assertEqual(
             table1_graphql_object.fields['column_with_mssql_type'].type, GraphQLInt)
 
     def test_direct_sql_edge_representation(self):
-        table1_graphql_object = self.schema_info.schema.get_type('BasicTable')
-        arbitrarily_named_graphql_object = self.schema_info.schema.get_type('ArbitraryObjectName')
+        table1_graphql_object = self.schema_info.schema.get_type('BasicVertex')
+        arbitrarily_named_graphql_object = self.schema_info.schema.get_type('ArbitraryVertexName')
         self.assertEqual(
-            table1_graphql_object.fields['out_test_edge'].type.of_type.name, 'ArbitraryObjectName')
+            table1_graphql_object.fields['out_test_edge'].type.of_type.name, 'ArbitraryVertexName')
         self.assertEqual(
-            arbitrarily_named_graphql_object.fields['in_test_edge'].type.of_type.name, 'BasicTable')
+            arbitrarily_named_graphql_object.fields['in_test_edge'].type.of_type.name, 'BasicVertex')
 
     def test_get_join_descriptors(self):
         expected_join_descriptors = {
-            'BasicTable': {
+            'BasicVertex': {
                 'out_test_edge': DirectJoinDescriptor('source_column', 'destination_column')
             },
-            'ArbitraryObjectName': {
+            'ArbitraryVertexName': {
                 'in_test_edge': DirectJoinDescriptor('destination_column', 'source_column')
             }
         }
@@ -112,7 +112,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             'invalid_source_vertex': DirectEdgeDescriptor(
                 'InvalidVertexName',
                 'source_column',
-                'ArbitraryObjectName',
+                'ArbitraryVertexName',
                 'destination_column'
             )
         }
@@ -123,7 +123,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
     def test_reference_to_non_existent_destination_vertex(self):
         direct_edges = {
             'invalid_source_vertex': DirectEdgeDescriptor(
-                'BasicTable',
+                'BasicVertex',
                 'source_column',
                 'InvalidVertexName',
                 'destination_column'
@@ -136,9 +136,9 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
     def test_reference_to_non_existent_source_column(self):
         direct_edges = {
             'invalid_source_vertex': DirectEdgeDescriptor(
-                'BasicTable',
+                'BasicVertex',
                 'invalid_column_name',
-                'ArbitraryObjectName',
+                'ArbitraryVertexName',
                 'destination_column'
             )
         }
@@ -149,9 +149,9 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
     def test_reference_to_non_existent_destination_column(self):
         direct_edges = {
             'invalid_destination_column': DirectEdgeDescriptor(
-                'BasicTable',
+                'BasicVertex',
                 'source_column',
-                'ArbitraryObjectName',
+                'ArbitraryVertexName',
                 'invalid_column_name'
             )
         }
