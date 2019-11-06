@@ -17,20 +17,20 @@ def merge_non_overlapping_dicts(merge_target, new_data):
     return result
 
 
-class Tristate:
+class TriState:
     """A class designed to implement three-value logic."""
 
     def __init__(self, value):
-        """Return a Tristate instance.
+        """Return a TriState instance.
 
         Args:
             value: Optional[bool, None]
 
         Returns:
-            A Tristate instance.
+            A TriState instance.
         """
         if value not in [True, False, None]:
-            raise AssertionError("Tristate value must be either True, False, or None.")
+            raise AssertionError('Tristate value must be either True, False, or None.')
         self._value = value
 
     @property
@@ -38,23 +38,29 @@ class Tristate:
         """Return True, False or None depending on whether the value is True, False or Unknown."""
         return self._value
 
-    def __bool__(self):
-        raise ValueError("Cannot implicitly convert Tristate to a boolean.")
+    def __bool__(self):  # python3
+        """Called to implement truth value testing."""
+        raise ValueError('Cannot implicitly convert Tristate to a boolean.')
 
-    def __nonzero__(self):  # Python2 bool function.
+    def __nonzero__(self):  # python2
+        """Called to implement truth value testing."""
         return self.__bool__()
 
     def __eq__(self, other):
-        if not isinstance(other, Tristate):
+        """Return True if the TriState is equal to other. Else return False."""
+        if not isinstance(other, TriState):
             return False
         else:
             return self.value == other.value
 
     def __ne__(self, other):
+        """Return True if the TriState is not equal to other. Else return False."""
         return not self == other
 
     def __str__(self):
+        """Return a human-readable unicode representation of this TriState."""
         return str(self.value)
 
     def __repr__(self):
+        """Return the "official" representation of the TriState."""
         return 'Tristate({})'.format(self.value)
