@@ -43,7 +43,7 @@ class TriState:
         raise ValueError('Cannot implicitly convert TriState to a boolean.')
 
     # pylint: disable=nonzero-method
-    def __nonzero__(self):  # noqa
+    def __nonzero__(self):  # python2
         """Raise a ValueError since TriState cannot be implicitly converted to a boolean."""
         return self.__bool__()
     # pylint: enable=nonzero-method
