@@ -90,37 +90,6 @@ def compile_and_run_redisgraph_query(schema, graphql_query, parameters, redisgra
     """Compile and run a Cypher query against the supplied graph client."""
     compilation_result = graphql_to_redisgraph_cypher(schema, graphql_query, parameters)
     query = compilation_result.query
-    q1 = '''
-        MATCH (Animal___1:Animal)
-            WHERE (Animal___1.name = "Animal 1")
-        MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
-        RETURN Animal__out_Animal_ParentOf___1.name AS `child_name`
-    '''
-    q2 = '''
-        MATCH (Animal___1:Animal) WHERE (Animal___1.name = "Animal 1")
-        RETURN Animal___1.name AS `animal_name`
-    '''
-    q3 = '''
-        MATCH
-            (Animal___1:Animal)
-                WHERE (Animal___1.name = "Animal 1"),
-            (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
-        RETURN
-            Animal__out_Animal_ParentOf___1.name AS `child_name`
-    '''
-    q4 = '''
-        MATCH (Animal___1:Animal)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
-            WHERE (Animal___1.name = "Animal 1")
-        RETURN
-            Animal___1.name as `animal_name`,
-            Animal__out_Animal_ParentOf___1.name AS `child_name`
-    '''
-    q5 = '''
-        MATCH (Animal___1:Animal)-[:Animal_ParentOf]->(Animal__1:Animal)
-            WHERE (Animal___1.name = "Animal 1")
-        RETURN Animal___1.name AS `animal_name`
-    '''
-    import pdb; pdb.set_trace()
     result_set = redisgraph_client.query(query).result_set
 
     # result_set is a list containing two items. The first is a list of property names that a
