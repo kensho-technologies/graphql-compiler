@@ -60,9 +60,9 @@ class TriState:
         return not self == other
 
     def __str__(self):
-        """Return a human-readable unicode representation of this TriState."""
+        """Return a human-readable unicode representation of the TriState."""
         return str(self.value)
 
     def __repr__(self):
-        """Return the "official" representation of this TriState."""
+        """Return the "official" representation of the TriState."""
         return 'Tristate({})'.format(self.value)
