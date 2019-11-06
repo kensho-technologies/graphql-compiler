@@ -80,11 +80,10 @@ def _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types):
             # When a primary key constraint is created in a SQL database, an accompanying
             # primary key index is also created. However, SQLAlchemy explicitly does not include
             # primary key indexes in table.indexes. Therefore, we use the PrimaryKeyConstraint
-            # to create the IndexDefinition. The only issue with doing so is that technically
-            # the index name is incorrect.
+            # to create the IndexDefinition.
             if isinstance(constraint, PrimaryKeyConstraint):
                 index_definition = IndexDefinition(
-                    name=constraint.name,
+                    name=None,
                     base_classname=vertex_name,
                     fields=frozenset(column.name for column in constraint.columns),
                     unique=True,
