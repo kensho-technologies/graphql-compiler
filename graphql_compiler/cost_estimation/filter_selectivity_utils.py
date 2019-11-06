@@ -340,8 +340,9 @@ def _combine_filter_selectivities(selectivities):
 
 
 def _is_int_field_type(schema_info, location_name, field_name):
+    """Return whether the field is of type GraphQLInt."""
     field_type = schema_info.schema.get_type(location_name).fields[field_name].type
-    return field_type == GraphQLInt
+    return GraphQLInt.is_same_type(field_type)
 
 
 def _get_selectivity_fraction_of_interval(interval, quantiles):
@@ -354,7 +355,7 @@ def _get_selectivity_fraction_of_interval(interval, quantiles):
 
     Args:
         interval: IntegerInterval defining the range of values
-        quantiles: Sorted list of N quantiles dividing the values into N+1 groups of
+        quantiles: sorted list of N quantiles dividing the values into N+1 groups of
                    almost equal size.
 
     Returns:
@@ -368,7 +369,7 @@ def _get_selectivity_fraction_of_interval(interval, quantiles):
         interval_size = 0.5 + upper_bound_quantile
     elif interval.upper_bound is None:
         lower_bound_quantile = bisect.bisect_left(quantiles, interval.lower_bound)
-        interval_size = len(quantiles) - lower_bound_quantile
+        interval_size = 0.5 + len(quantiles) - lower_bound_quantile
     else:
         lower_bound_quantile = bisect.bisect_left(quantiles, interval.lower_bound)
         upper_bound_quantile = bisect.bisect_left(quantiles, interval.upper_bound)
@@ -448,11 +449,17 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
             elif is_int_field:
                 # int fields are not uniformly distributed but we have quantile information.
                 quantiles = schema_info.statistics.get_field_quantiles(location_name, field_name)
-                quantiles = quantiles[1:-1]  # Discard the min and max value
                 if quantiles is not None:
                     selectivity = Selectivity(
                         kind=FRACTIONAL_SELECTIVITY,
-                        value=_get_selectivity_fraction_of_interval(interval, quantiles))
+                        value=_get_selectivity_fraction_of_interval(
+                            interval,
+                            # Since we can't be sure the minimum observed value is the
+                            # actual minimum value, we treat values less than it as part
+                            # of the first quantile. That's why we drop the minimum and
+                            # maximum observed values from the quantile list.
+                            quantiles[1:-1],
+                        ))
                     selectivity_at_field = _combine_filter_selectivities(
                         [selectivity_at_field, selectivity])
             else:

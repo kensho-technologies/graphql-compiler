@@ -1216,8 +1216,17 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         params = {'limbs_upper': 8}
         result_counts = adjust_counts_for_filters(
             schema_info, filter_info_list, params, 'Species', 32.0)
-        # The value 8 is in the middle of the third quantile out of six.
+        # The value 8 is in the middle of the third bucket out of six.
         expected_counts = 32.0 * (2.5 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test >= filter in the middle
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='>=', args=('$limbs_lower',))]
+        params = {'limbs_lower': 8}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        # The value 8 is in the middle of the third bucket out of six.
+        expected_counts = 32.0 * (3.5 / 6.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
         # Test strong <= filter
@@ -1225,7 +1234,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         params = {'limbs_upper': 0}
         result_counts = adjust_counts_for_filters(
             schema_info, filter_info_list, params, 'Species', 32.0)
-        # The value 0 is in the middle of the first quantile.
+        # The value 0 is in the middle of the first bucket.
         expected_counts = 32.0 * (0.5 / 6.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
@@ -1234,7 +1243,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         params = {'limbs_upper': 90}
         result_counts = adjust_counts_for_filters(
             schema_info, filter_info_list, params, 'Species', 32.0)
-        # The value 90 is in the middle of the last quantile.
+        # The value 90 is in the middle of the last bucket.
         expected_counts = 32.0 * (5.5 / 6.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
@@ -1244,7 +1253,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         params = {'limbs_lower': 0, 'limbs_upper': 90}
         result_counts = adjust_counts_for_filters(
             schema_info, filter_info_list, params, 'Species', 32.0)
-        # The range goes from the middle of the first to the middle of the last quantile.
+        # The range goes from the middle of the first to the middle of the last bucket.
         expected_counts = 32.0 * (5.0 / 6.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
@@ -1255,7 +1264,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         result_counts = adjust_counts_for_filters(
             schema_info, filter_info_list, params, 'Species', 32.0)
         expected_counts = 32.0 * ((1.0 / 3.0) / 6.0)
-        # The range is contained inside a quantile. The expected value is 1/3 of the size of it.
+        # The range is contained inside a bucket. The expected value is 1/3 of the size of it.
         # https://math.stackexchange.com/questions/195245/
         self.assertAlmostEqual(expected_counts, result_counts)
 
@@ -1266,7 +1275,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         result_counts = adjust_counts_for_filters(
             schema_info, filter_info_list, params, 'Species', 32.0)
         expected_counts = 32.0 * ((1.0 / 3.0) / 6.0)
-        # The range is contained inside a quantile. The expected value is 1/3 of the size of it.
+        # The range is contained inside a bucket. The expected value is 1/3 of the size of it.
         # https://math.stackexchange.com/questions/195245/
         self.assertAlmostEqual(expected_counts, result_counts)
 
