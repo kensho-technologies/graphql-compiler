@@ -30,7 +30,7 @@ class TriState:
             A TriState instance.
         """
         if value not in [True, False, None]:
-            raise AssertionError('Tristate value must be either True, False, or None.')
+            raise AssertionError('TriState value must be either True, False, or None.')
         self._value = value
 
     @property
@@ -39,12 +39,14 @@ class TriState:
         return self._value
 
     def __bool__(self):  # python3
-        """Called to implement truth value testing."""
-        raise ValueError('Cannot implicitly convert Tristate to a boolean.')
+        """Raise a ValueError since TriState cannot be implicitly converted to a boolean."""
+        raise ValueError('Cannot implicitly convert TriState to a boolean.')
 
-    def __nonzero__(self):  # python2
-        """Called to implement truth value testing."""
+    # pylint: disable=nonzero-method
+    def __nonzero__(self):  # noqa
+        """Raise a ValueError since TriState cannot be implicitly converted to a boolean."""
         return self.__bool__()
+    # pylint: enable=nonzero-method
 
     def __eq__(self, other):
         """Return True if the TriState is equal to other. Else return False."""
@@ -62,5 +64,5 @@ class TriState:
         return str(self.value)
 
     def __repr__(self):
-        """Return the "official" representation of the TriState."""
+        """Return the "official" representation of this TriState."""
         return 'Tristate({})'.format(self.value)
