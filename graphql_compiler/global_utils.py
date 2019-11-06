@@ -39,12 +39,12 @@ class TriState:
         return self._value
 
     def __bool__(self):  # python3
-        """Raise a ValueError since TriState cannot be implicitly converted to a boolean."""
+        """Raise a ValueError since a TriState instance cannot be implicitly converted to a bool."""
         raise ValueError('Cannot implicitly convert TriState to a boolean.')
 
     # pylint: disable=nonzero-method
     def __nonzero__(self):  # python2
-        """Raise a ValueError since TriState cannot be implicitly converted to a boolean."""
+        """Raise a ValueError since TriState instance cannot be implicitly converted to a bool."""
         return self.__bool__()
     # pylint: enable=nonzero-method
 
