@@ -918,7 +918,7 @@ class CompilerTests(unittest.TestCase):
             LEFT OUTER JOIN (
                 SELECT
                     "Species_2".uuid AS uuid,
-                    coalesce(count(*), 0) AS fold_output_x_count
+                    coalesce(count(*), 0) AS fold_output__x_count
                 FROM schema_1."Species" AS "Species_2"
                 JOIN schema_1."Species" AS "Species_3"
                 ON "Species_2".uuid = "Species_3".eats
@@ -927,7 +927,7 @@ class CompilerTests(unittest.TestCase):
             ON "Species_1".uuid = folded_subquery_1.uuid
             WHERE
                 ("Animal_1".name = %(animal_name)s OR "Animal_1".species IS NULL) AND
-                folded_subquery_1.fold_output_x_count >= %(predators)s
+                folded_subquery_1.fold_output__x_count >= %(predators)s
         '''
         expected_cypher = SKIP_TEST
 
@@ -5570,13 +5570,13 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
                 "Animal_1".name AS name,
-                folded_subquery_1.fold_output_x_count AS number_of_children
+                folded_subquery_1.fold_output__x_count AS number_of_children
             FROM schema_1."Animal" AS "Animal_1"
             LEFT OUTER JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
-                    coalesce(count(*), 0) AS fold_output_x_count,
-                    array_agg("Animal_3".name) AS fold_output_name
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    coalesce(count(*), 0) AS fold_output__x_count
                 FROM schema_1."Animal" AS "Animal_2"
                 JOIN schema_1."Animal" AS "Animal_3"
                 ON "Animal_2".uuid = "Animal_3".parent
@@ -5621,15 +5621,15 @@ class CompilerTests(unittest.TestCase):
             LEFT OUTER JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
-                    coalesce(count(*), 0) AS fold_output_x_count,
-                    array_agg("Animal_3".name) AS fold_output_name
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    coalesce(count(*), 0) AS fold_output__x_count
                 FROM schema_1."Animal" AS "Animal_2"
                 JOIN schema_1."Animal" AS "Animal_3"
                 ON "Animal_2".uuid = "Animal_3".parent
                 GROUP BY "Animal_2".uuid
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
-            WHERE folded_subquery_1.fold_output_x_count >= %(min_children)s
+            WHERE folded_subquery_1.fold_output__x_count >= %(min_children)s
         '''
 
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
@@ -5673,15 +5673,15 @@ class CompilerTests(unittest.TestCase):
             LEFT OUTER JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
-                    coalesce(count(*), 0) AS fold_output_x_count,
-                    array_agg("Animal_3".name) AS fold_output_name
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    coalesce(count(*), 0) AS fold_output__x_count
                 FROM schema_1."Animal" AS "Animal_2"
                 JOIN schema_1."Animal" AS "Animal_3"
                 ON "Animal_2".uuid = "Animal_3".parent
                 GROUP BY "Animal_2".uuid
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
-            WHERE "Species_1".limbs <= folded_subquery_1.fold_output_x_count
+            WHERE "Species_1".limbs <= folded_subquery_1.fold_output__x_count
         '''
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
@@ -5750,7 +5750,7 @@ class CompilerTests(unittest.TestCase):
             LEFT OUTER JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
-                    coalesce(count(*), 0) AS fold_output_x_count
+                    coalesce(count(*), 0) AS fold_output__x_count
                 FROM schema_1."Animal" AS "Animal_2"
                 JOIN schema_1."Animal" AS "Animal_3"
                 ON "Animal_2".uuid = "Animal_3".parent
@@ -5760,7 +5760,7 @@ class CompilerTests(unittest.TestCase):
             LEFT OUTER JOIN (
                 SELECT
                     "Animal_4".related_entity AS related_entity,
-                    coalesce(count(*), 0) AS fold_output_x_count
+                    coalesce(count(*), 0) AS fold_output__x_count
                 FROM schema_1."Animal" AS "Animal_4"
                 JOIN schema_1."Entity" AS "Entity_1"
                 ON "Animal_4".related_entity = "Entity_1".uuid
@@ -5768,8 +5768,8 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_2
             ON "Animal_1".related_entity = folded_subquery_2.related_entity
             WHERE
-                folded_subquery_1.fold_output_x_count >= %(min_children)s AND
-                folded_subquery_2.fold_output_x_count >= %(min_related)s
+                folded_subquery_1.fold_output__x_count >= %(min_children)s AND
+                folded_subquery_2.fold_output__x_count >= %(min_related)s
         '''
         expected_cypher = SKIP_TEST
 

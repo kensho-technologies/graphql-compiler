@@ -13,6 +13,10 @@ from .helpers import FoldScopeLocation, get_edge_direction_and_name
 CTE_DEPTH_NAME = '__cte_depth'
 CTE_KEY_NAME = '__cte_key'
 
+# Formatting strings for intermediate queries/outputs from folds
+FOLD_OUTPUT_FORMAT_STRING = 'fold_output_{}'
+FOLD_SUBQUERY_FORMAT_STRING = 'folded_subquery_{}'
+
 
 def _traverse_and_validate_blocks(ir):
     """Yield all blocks, while validating consistency."""
@@ -263,12 +267,13 @@ class SQLFoldObject(object):
                             sqlalchemy.func.coalesce(
                                 sqlalchemy.func.count(),
                                 sqlalchemy.literal_column('0')
-                            ).label('fold_output_x_count')
+                            ).label(FOLD_OUTPUT_FORMAT_STRING.format(COUNT_META_FIELD_NAME))
                         )
 
                     else:
                         # force column to have explicit label as opposed to anon_label
-                        intermediate_fold_output_name = 'fold_output_' + fold_output.field
+                        intermediate_fold_output_name = FOLD_OUTPUT_FORMAT_STRING.format(
+                            fold_output.field)
                         # add array aggregated output column to self._outputs
                         self._outputs.append(
                             sqlalchemy.func.array_agg(
@@ -288,7 +293,7 @@ class SQLFoldObject(object):
                         sqlalchemy.func.coalesce(
                             sqlalchemy.func.count(),
                             sqlalchemy.literal_column('0')
-                        ).label('fold_output_x_count')
+                        ).label(FOLD_OUTPUT_FORMAT_STRING.format(COUNT_META_FIELD_NAME))
                     )
                     break
 
@@ -353,7 +358,7 @@ class UniqueAliasGenerator(object):
 
     def generate_subquery(self):
         """Generate a new subquery alias and increment the counter."""
-        alias = 'folded_subquery_{}'.format(self._fold_count)
+        alias = FOLD_SUBQUERY_FORMAT_STRING.format(self._fold_count)
         self._fold_count += 1
         return alias
 

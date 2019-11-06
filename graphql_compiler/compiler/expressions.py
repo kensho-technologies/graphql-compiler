@@ -734,11 +734,12 @@ class FoldedContextField(Expression):
     def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
         # _x_count is a special case that has already been coalesced to 0.
+        # _x_count's intermediate output name is always fold_output__x_count
         if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
             return aliases[
                 self.fold_scope_location.base_location.query_path,
                 self.fold_scope_location.fold_path
-            ].c['fold_output_x_count']
+            ].c['fold_output__x_count']
 
         # Otherwise, get the type of the folded field.
         inner_type = strip_non_null_from_type(self.field_type.of_type)
@@ -826,10 +827,11 @@ class FoldCountContextField(Expression):
 
     def to_sql(self, aliases, current_alias):
         """Return a SQLAlchemy column of a coalesced COUNT(*) from a folded subquery."""
+        # _x_count's intermediate output name is always fold_output__x_count
         return aliases[
             self.fold_scope_location.base_location.query_path,
             self.fold_scope_location.fold_path
-        ].c['fold_output_x_count']
+        ].c['fold_output__x_count']
 
 
 class ContextFieldExistence(Expression):
