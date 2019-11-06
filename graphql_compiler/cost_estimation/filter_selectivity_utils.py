@@ -344,6 +344,41 @@ def _is_int_field_type(schema_info, location_name, field_name):
     return field_type == GraphQLInt
 
 
+def _get_selectivity_fraction_of_interval(interval, quantiles):
+    """Get the fraction of values contained in an interval.
+
+    We ignore the interval endpoint values, and only consider the quantile they
+    are in. We treat the endpoints as uniform random variables within their quantile
+    and compute the expected value of the length of the interval divided by the size
+    of the whole domain.
+
+    Args:
+        interval: IntegerInterval defining the range of values
+        quantiles: Sorted list of N quantiles dividing the values into N+1 groups of
+                   almost equal size.
+
+    Returns:
+        float, the fraction of the values contained in the interval.
+    """
+    domain_interval_size = len(quantiles) + 1
+    if interval.lower_bound is None and interval.upper_bound is None:
+        interval_size = domain_interval_size
+    elif interval.lower_bound is None:
+        upper_bound_quantile = bisect.bisect_left(quantiles, interval.upper_bound)
+        interval_size = 0.5 + upper_bound_quantile
+    elif interval.upper_bound is None:
+        lower_bound_quantile = bisect.bisect_left(quantiles, interval.lower_bound)
+        interval_size = len(quantiles) - lower_bound_quantile
+    else:
+        lower_bound_quantile = bisect.bisect_left(quantiles, interval.lower_bound)
+        upper_bound_quantile = bisect.bisect_left(quantiles, interval.upper_bound)
+        if lower_bound_quantile == upper_bound_quantile:
+            interval_size = 1.0 / 3
+        else:
+            interval_size = upper_bound_quantile - lower_bound_quantile
+    return float(interval_size) / domain_interval_size
+
+
 def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, location_name):
     """Get the combined selectivity of all filters at the vertex.
 
@@ -398,6 +433,8 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
             if interval is None:
                 selectivity_at_field = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=0.0)
             elif is_uuid4_field:
+                # uuid4 fields are uniformly distributed, so we simply divide the fraction of
+                # the domain queried with the size of the domain.
                 domain_interval = _create_integer_interval(MIN_UUID_INT, MAX_UUID_INT)
                 domain_interval_size = domain_interval.upper_bound - domain_interval.lower_bound + 1
                 interval = _get_intersection_of_intervals(interval, domain_interval)
@@ -408,22 +445,13 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                 selectivity_at_field = _combine_filter_selectivities(
                     [selectivity_at_field, selectivity])
             elif is_int_field:
+                # int fields are not uniformly distributed but we have quantile information.
                 quantiles = schema_info.statistics.get_field_quantiles(location_name, field_name)
                 quantiles = quantiles[1:-1]  # Discard the min and max value
                 if quantiles is not None:
-                    if interval.lower_bound is None:
-                        lower_bound_rank = 0
-                    else:
-                        lower_bound_rank = bisect.bisect_left(quantiles, interval.lower_bound)
-                    if interval.upper_bound is None:
-                        upper_bound_rank = len(quantiles)
-                    else:
-                        upper_bound_rank = bisect.bisect_left(quantiles, interval.upper_bound)
-                    domain_interval_size = len(quantiles) + 1
-                    interval_size = max(upper_bound_rank - lower_bound_rank, 1.0 / 3)
-                    fraction_of_domain_queried = float(interval_size) / domain_interval_size
                     selectivity = Selectivity(
-                        kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried)
+                        kind=FRACTIONAL_SELECTIVITY,
+                        value=_get_selectivity_fraction_of_interval(interval, quantiles))
                     selectivity_at_field = _combine_filter_selectivities(
                         [selectivity_at_field, selectivity])
             else:
