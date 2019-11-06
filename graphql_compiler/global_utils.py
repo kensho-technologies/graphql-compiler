@@ -44,7 +44,7 @@ class TriState:
 
     # pylint: disable=nonzero-method
     def __nonzero__(self):  # python2
-        """Raise a ValueError since TriState instance cannot be implicitly converted to a bool."""
+        """Raise a ValueError since a TriState instance cannot be implicitly converted to a bool."""
         return self.__bool__()
     # pylint: enable=nonzero-method
 
