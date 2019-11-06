@@ -1256,6 +1256,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_info, filter_info_list, params, 'Species', 32.0)
         expected_counts = 32.0 * ((1.0 / 3.0) / 6.0)
         # The range is contained inside a quantile. The expected value is 1/3 of the size of it.
+        # https://math.stackexchange.com/questions/195245/
         self.assertAlmostEqual(expected_counts, result_counts)
 
         # Test strong between filter with small values
@@ -1266,6 +1267,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_info, filter_info_list, params, 'Species', 32.0)
         expected_counts = 32.0 * ((1.0 / 3.0) / 6.0)
         # The range is contained inside a quantile. The expected value is 1/3 of the size of it.
+        # https://math.stackexchange.com/questions/195245/
         self.assertAlmostEqual(expected_counts, result_counts)
 
 

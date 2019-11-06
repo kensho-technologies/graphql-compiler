@@ -373,6 +373,7 @@ def _get_selectivity_fraction_of_interval(interval, quantiles):
         lower_bound_quantile = bisect.bisect_left(quantiles, interval.lower_bound)
         upper_bound_quantile = bisect.bisect_left(quantiles, interval.upper_bound)
         if lower_bound_quantile == upper_bound_quantile:
+            # https://math.stackexchange.com/questions/195245/
             interval_size = 1.0 / 3
         else:
             interval_size = upper_bound_quantile - lower_bound_quantile
