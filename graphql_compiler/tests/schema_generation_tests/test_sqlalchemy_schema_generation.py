@@ -31,6 +31,7 @@ def _get_test_vertex_name_to_table():
         Column('column_with_non_supported_type', LargeBinary()),
         Column('column_with_mssql_type', TINYINT()),
         Column('source_column', Integer()),
+        Column('unique_column', Integer(), unique=True)
     )
 
     # We use a different metadata object to test there is no dependency on the metadata object.
@@ -141,17 +142,15 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
 
     def test_basic_index_generation_from_primary_key(self):
         indexes = self.schema_graph.get_all_indexes_for_class('Table1')
-        self.assertEqual(
-            {
-                IndexDefinition(
-                    name=None,
-                    base_classname='Table1',
-                    fields=frozenset({'column_with_supported_type'}),
-                    unique=True,
-                    ordered=False,
-                    ignore_nulls=False,
-                ),
-            }, indexes
+        self.assertIn(
+            IndexDefinition(
+                name=None,
+                base_classname='Table1',
+                fields=frozenset({'column_with_supported_type'}),
+                unique=True,
+                ordered=False,
+                ignore_nulls=False,
+            ), indexes
         )
 
     def test_index_generation_from_multi_column_primary_key(self):
@@ -172,6 +171,19 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
     def test_index_generation_from_primary_key_with_an_unsupported_column_type(self):
         indexes = self.schema_graph.get_all_indexes_for_class('TableWithNonSupportedPrimaryKeyType')
         self.assertEqual(frozenset(), indexes)
+
+    def test_index_generation_from_unique_constraint(self):
+        indexes = self.schema_graph.get_all_indexes_for_class('Table1')
+        self.assertIn(
+            IndexDefinition(
+                name=None,
+                base_classname='Table1',
+                fields=frozenset({'unique_column'}),
+                unique=True,
+                ordered=False,
+                ignore_nulls=True,
+            ), indexes
+        )
 
 
 class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
