@@ -123,7 +123,8 @@ class LocalStatistics(Statistics):
                              equal size. The first element of the list is the smallest known value,
                              and the last element is the largest known value. The i-th
                              element is a value greater than or equal to i/N of all present
-                             values. The number N can be different for each entry.
+                             values. The number N can be different for each entry. N has to be at
+                             least 2 for every entry present in the dict.
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
@@ -131,6 +132,12 @@ class LocalStatistics(Statistics):
             distinct_field_values_counts = dict()
         if field_quantiles is None:
             field_quantiles = dict()
+
+        # Validate arguments
+        for vertex_name, quantile_list in six.iteritems(field_quantiles):
+            if len(quantile_list) < 2:
+                raise AssertionError(u'The number of quantiles should be at least 2. Vertex '
+                                     u'{} has {}.'.format(vertex_name, len(quantile_list)))
 
         self._class_counts = frozendict(class_counts)
         self._vertex_edge_vertex_counts = frozendict(vertex_edge_vertex_counts)

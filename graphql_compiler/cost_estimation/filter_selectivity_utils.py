@@ -1,10 +1,12 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from __future__ import division
 
+import bisect
 from collections import namedtuple
 import sys
 from uuid import UUID
 
+from graphql import GraphQLInt
 import six
 
 from ..compiler.helpers import get_parameter_name
@@ -337,6 +339,58 @@ def _combine_filter_selectivities(selectivities):
     return Selectivity(kind=combined_selectivity_kind, value=combined_selectivity_value)
 
 
+def _is_int_field_type(schema_info, location_name, field_name):
+    """Return whether the field is of type GraphQLInt."""
+    field_type = schema_info.schema.get_type(location_name).fields[field_name].type
+    return GraphQLInt.is_same_type(field_type)
+
+
+def _get_selectivity_fraction_of_interval(interval, quantiles):
+    """Get the fraction of values contained in an interval.
+
+    We ignore the interval endpoint values, and only consider the quantile they
+    are in. We treat the endpoints as uniform random variables within their quantile
+    and compute the expected value of the length of the interval divided by the size
+    of the whole domain.
+
+    Args:
+        interval: IntegerInterval defining the range of values
+        quantiles: a sorted list of N values separating the values of the field into N-1
+                   groups of almost equal size. The first element of the list is the
+                   smallest known value, and the last element is the largest known value.
+                   The i-th element is a value greater than or equal to i/N of all present values.
+                   N has to be at least 2.
+
+    Returns:
+        float, the fraction of the values contained in the interval.
+    """
+    if len(quantiles) < 2:
+        raise AssertionError(u'Need at least 2 quantiles: {}'.format(len(quantiles)))
+    # Since we can't be sure the minimum observed value is the
+    # actual minimum value, we treat values less than it as part
+    # of the first quantile. That's why we drop the minimum and
+    # maximum observed values from the quantile list.
+    proper_quantiles = quantiles[1:-1]
+    domain_interval_size = len(proper_quantiles) + 1
+    if interval.lower_bound is None and interval.upper_bound is None:
+        interval_size = domain_interval_size
+    elif interval.lower_bound is None:
+        upper_bound_quantile = bisect.bisect_left(proper_quantiles, interval.upper_bound)
+        interval_size = 0.5 + upper_bound_quantile
+    elif interval.upper_bound is None:
+        lower_bound_quantile = bisect.bisect_left(proper_quantiles, interval.lower_bound)
+        interval_size = 0.5 + len(proper_quantiles) - lower_bound_quantile
+    else:
+        lower_bound_quantile = bisect.bisect_left(proper_quantiles, interval.lower_bound)
+        upper_bound_quantile = bisect.bisect_left(proper_quantiles, interval.upper_bound)
+        if lower_bound_quantile == upper_bound_quantile:
+            # https://math.stackexchange.com/questions/195245/
+            interval_size = 1.0 / 3
+        else:
+            interval_size = upper_bound_quantile - lower_bound_quantile
+    return float(interval_size) / domain_interval_size
+
+
 def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, location_name):
     """Get the combined selectivity of all filters at the vertex.
 
@@ -368,7 +422,9 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
 
         # Process inequality filters
         is_uuid4_field = field_name in schema_info.uuid4_fields.get(location_name, {})
-        if is_uuid4_field:
+        is_int_field = _is_int_field_type(schema_info, location_name, field_name)
+        is_inequality_filter_estimation_supported = is_uuid4_field or is_int_field
+        if is_inequality_filter_estimation_supported:
             for filter_info in filters_on_field:
                 if filter_info.op_name in INEQUALITY_OPERATORS:
                     parameter_values = [
@@ -377,9 +433,10 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                     ]
 
                     # Map uuid4 values to their corresponding integer values
-                    parameter_values = [
-                        _convert_uuid_string_to_int(value) for value in parameter_values
-                    ]
+                    if is_uuid4_field:
+                        parameter_values = [
+                            _convert_uuid_string_to_int(value) for value in parameter_values
+                        ]
 
                     filter_interval = _get_query_interval_of_integer_inequality_filter(
                         parameter_values, filter_info.op_name)
@@ -387,7 +444,9 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
 
             if interval is None:
                 selectivity_at_field = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=0.0)
-            else:
+            elif is_uuid4_field:
+                # uuid4 fields are uniformly distributed, so we simply divide the fraction of
+                # the domain queried with the size of the domain.
                 domain_interval = _create_integer_interval(MIN_UUID_INT, MAX_UUID_INT)
                 domain_interval_size = domain_interval.upper_bound - domain_interval.lower_bound + 1
                 interval = _get_intersection_of_intervals(interval, domain_interval)
@@ -397,6 +456,19 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                     kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried)
                 selectivity_at_field = _combine_filter_selectivities(
                     [selectivity_at_field, selectivity])
+            elif is_int_field:
+                # int fields are not uniformly distributed but we have quantile information.
+                quantiles = schema_info.statistics.get_field_quantiles(location_name, field_name)
+                if quantiles is not None:
+                    selectivity = Selectivity(
+                        kind=FRACTIONAL_SELECTIVITY,
+                        value=_get_selectivity_fraction_of_interval(
+                            interval, quantiles))
+                    selectivity_at_field = _combine_filter_selectivities(
+                        [selectivity_at_field, selectivity])
+            else:
+                raise AssertionError(u'Field {}.{} is not uuid4 or int. Inequality filters are '
+                                     u'not supported'.format(location_name, field_name))
 
         # Process in_collection filters
         for filter_info in filters_on_field:
