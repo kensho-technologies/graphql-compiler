@@ -355,24 +355,34 @@ def _get_selectivity_fraction_of_interval(interval, quantiles):
 
     Args:
         interval: IntegerInterval defining the range of values
-        quantiles: sorted list of N quantiles dividing the values into N+1 groups of
-                   almost equal size.
+        quantiles: a sorted list of N values separating the values of the field into N-1
+                   groups of almost equal size. The first element of the list is the
+                   smallest known value, and the last element is the largest known value.
+                   The i-th element is a value greater than or equal to i/N of all present values.
+                   N has to be at least 2.
 
     Returns:
         float, the fraction of the values contained in the interval.
     """
-    domain_interval_size = len(quantiles) + 1
+    if len(quantiles) < 2:
+        raise AssertionError(u'Need at least 2 quantiles: {}'.format(len(quantiles)))
+    # Since we can't be sure the minimum observed value is the
+    # actual minimum value, we treat values less than it as part
+    # of the first quantile. That's why we drop the minimum and
+    # maximum observed values from the quantile list.
+    proper_quantiles = quantiles[1:-1]
+    domain_interval_size = len(proper_quantiles) + 1
     if interval.lower_bound is None and interval.upper_bound is None:
         interval_size = domain_interval_size
     elif interval.lower_bound is None:
-        upper_bound_quantile = bisect.bisect_left(quantiles, interval.upper_bound)
+        upper_bound_quantile = bisect.bisect_left(proper_quantiles, interval.upper_bound)
         interval_size = 0.5 + upper_bound_quantile
     elif interval.upper_bound is None:
-        lower_bound_quantile = bisect.bisect_left(quantiles, interval.lower_bound)
-        interval_size = 0.5 + len(quantiles) - lower_bound_quantile
+        lower_bound_quantile = bisect.bisect_left(proper_quantiles, interval.lower_bound)
+        interval_size = 0.5 + len(proper_quantiles) - lower_bound_quantile
     else:
-        lower_bound_quantile = bisect.bisect_left(quantiles, interval.lower_bound)
-        upper_bound_quantile = bisect.bisect_left(quantiles, interval.upper_bound)
+        lower_bound_quantile = bisect.bisect_left(proper_quantiles, interval.lower_bound)
+        upper_bound_quantile = bisect.bisect_left(proper_quantiles, interval.upper_bound)
         if lower_bound_quantile == upper_bound_quantile:
             # https://math.stackexchange.com/questions/195245/
             interval_size = 1.0 / 3
@@ -453,13 +463,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                     selectivity = Selectivity(
                         kind=FRACTIONAL_SELECTIVITY,
                         value=_get_selectivity_fraction_of_interval(
-                            interval,
-                            # Since we can't be sure the minimum observed value is the
-                            # actual minimum value, we treat values less than it as part
-                            # of the first quantile. That's why we drop the minimum and
-                            # maximum observed values from the quantile list.
-                            quantiles[1:-1],
-                        ))
+                            interval, quantiles))
                     selectivity_at_field = _combine_filter_selectivities(
                         [selectivity_at_field, selectivity])
             else:
