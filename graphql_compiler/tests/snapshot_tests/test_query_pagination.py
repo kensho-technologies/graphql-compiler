@@ -7,7 +7,7 @@ from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
 from ...query_pagination import QueryStringWithParameters, paginate_query
 from ...query_pagination.pagination_planning import (
-    PaginationPlan, VertexPartition, get_vertices_for_pagination
+    PaginationPlan, VertexPartition, get_pagination_plan
 )
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
@@ -43,7 +43,7 @@ class QueryPaginationTests(unittest.TestCase):
         }'''
         number_of_pages = 100
         query_ast = safe_parse_graphql(query)
-        pagination_plan = get_vertices_for_pagination(schema_info, query_ast, number_of_pages)
+        pagination_plan = get_pagination_plan(schema_info, query_ast, number_of_pages)
 
         # NOTE(bojanserafimov): This is a white box test for the current pagination planner.
         #                       When it improves, this test will need to be generalized.
