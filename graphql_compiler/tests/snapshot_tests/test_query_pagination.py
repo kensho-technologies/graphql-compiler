@@ -50,7 +50,6 @@ class QueryPaginationTests(unittest.TestCase):
         ])
         self.assertEqual(expected_plan, pagination_plan)
 
-
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_basic_pagination(self):
