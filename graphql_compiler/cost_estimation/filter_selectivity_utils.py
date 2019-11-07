@@ -6,10 +6,10 @@ from collections import namedtuple
 import sys
 from uuid import UUID
 
-from graphql import GraphQLInt
 import six
 
 from ..compiler.helpers import get_parameter_name
+from ..cost_estimation.helpers import is_int_field_type, is_uniform_uuid4_type
 
 
 # The Selectivity represents the selectivity of a filter or a set of filters
@@ -339,12 +339,6 @@ def _combine_filter_selectivities(selectivities):
     return Selectivity(kind=combined_selectivity_kind, value=combined_selectivity_value)
 
 
-def _is_int_field_type(schema_info, location_name, field_name):
-    """Return whether the field is of type GraphQLInt."""
-    field_type = schema_info.schema.get_type(location_name).fields[field_name].type
-    return GraphQLInt.is_same_type(field_type)
-
-
 def _get_selectivity_fraction_of_interval(interval, quantiles):
     """Get the fraction of values contained in an interval.
 
@@ -421,8 +415,8 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
         interval = _create_integer_interval(None, None)
 
         # Process inequality filters
-        is_uuid4_field = field_name in schema_info.uuid4_fields.get(location_name, {})
-        is_int_field = _is_int_field_type(schema_info, location_name, field_name)
+        is_uuid4_field = is_uniform_uuid4_type(schema_info, location_name, field_name)
+        is_int_field = is_int_field_type(schema_info, location_name, field_name)
         is_inequality_filter_estimation_supported = is_uuid4_field or is_int_field
         if is_inequality_filter_estimation_supported:
             for filter_info in filters_on_field:
