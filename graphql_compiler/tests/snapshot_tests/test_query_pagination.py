@@ -48,7 +48,7 @@ class QueryPaginationTests(unittest.TestCase):
         # NOTE(bojanserafimov): This is a white box test for the current pagination planner.
         #                       When it improves, this test will need to be generalized.
         expected_plan = PaginationPlan([
-            VertexPartition(['Animal', 'uuid'], number_of_pages)
+            VertexPartition(['Animal'], number_of_pages)
         ])
         self.assertEqual(expected_plan, pagination_plan)
 
