@@ -4497,6 +4497,51 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
 
+    def test_traverse_different_types_after_fold(self):
+        test_data = test_input_data.traverse_different_types_after_fold()
+
+        expected_mssql = '''
+            SELECT
+              [Animal_1].name AS animal_name,
+              folded_subquery_1.fold_output_name AS neighbor_and_self_names_list
+            FROM
+              db_1.schema_1.[Animal] AS [Animal_1]
+              LEFT OUTER JOIN(
+                SELECT
+                  [Animal_2].uuid AS uuid,
+                  coalesce((
+                    SELECT
+                      :coalesce_1 + coalesce(
+                        REPLACE(
+                          REPLACE(
+                            REPLACE([Animal_3].name, :REPLACE_1, :REPLACE_2),
+                            :REPLACE_3,
+                            :REPLACE_4
+                          ),
+                          :REPLACE_5,
+                          :REPLACE_6
+                        ),
+                        :coalesce_2
+                      )
+                    FROM
+                      db_1.schema_1.[Animal] AS [Animal_3]
+                    WHERE
+                      [Location_1].uuid = [Animal_3].lives_in FOR XML PATH('')
+                  ), :coalesce_3) AS fold_output_name
+                FROM
+                  db_1.schema_1.[Animal] AS [Animal_2]
+                JOIN db_1.schema_1.[Location] AS [Location_1]
+                ON [Animal_2].lives_in = [Location_1].uuid
+              ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+        '''
+        expected_postgresql = NotImplementedError
+
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
+
     def test_fold_after_traverse_different_types(self):
         test_data = test_input_data.fold_after_traverse_different_types()
 
@@ -4662,8 +4707,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         '''
         # TODO: implement multiple traversals in a separate PR
-        expected_sql = NotImplementedError
-        # expected_sql = '''
+        # expected_postrgresql = '''
         #     SELECT
         #         [Animal_1].name as animal_name,
         #         coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[])
@@ -4683,6 +4727,40 @@ class CompilerTests(unittest.TestCase):
         #     ) AS folded_subquery_1
         #     ON [Animal_1].uuid = folded_subquery_1.uuid
         # '''
+        expected_mssql = '''
+            SELECT
+            [Animal_1].name as animal_name,
+            folded_subquery_1.fold_output_name AS sibling_and_self_names_list
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            LEFT JOIN (
+                SELECT
+                    [Animal_2].uuid,
+                    coalesce((
+                        SELECT
+                          :coalesce_1 + coalesce(
+                            REPLACE(
+                              REPLACE(
+                                REPLACE([Animal_4].name, :REPLACE_1, :REPLACE_2),
+                                :REPLACE_3,
+                                :REPLACE_4
+                              ),
+                              :REPLACE_5,
+                              :REPLACE_6
+                            ),
+                            :coalesce_2
+                          )
+                        FROM
+                          db_1.schema_1.[Animal] AS [Animal_4]
+                        WHERE
+                          [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
+                      ), :coalesce_3)
+                FROM db_1.schema_1.[Animal] AS [Animal_2]
+                JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                ON [Animal_2].parent = [Animal_3].uuid
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -4701,7 +4779,7 @@ class CompilerTests(unittest.TestCase):
                 `sibling_and_self_names_list`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher)
 
     def test_fold_and_deep_traverse(self):
