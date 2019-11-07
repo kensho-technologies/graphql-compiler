@@ -148,33 +148,33 @@ def get_xml_path_clause(output_column, where):
     Returns:
         An SQLAlchemy Selectable corresponding to an XML PATH subquery
         which aggregates the values of the output_column from the output vertex.
-        Empty arrays are represented as '', null values are represented as '^', array
-        entries are delimited using '@'.
+        Empty arrays are represented as '', null values are represented as '~', array
+        entries are delimited using '|'.
 
-        All occurrences of '^', '@', and '|' in the original string values are
-        replaced with '|n', '|a', and '|p', resp.
+        All occurrences of '^', '~', and '|' in the original string values are
+        replaced with '^e', '^n', and '^d', resp.
 
         Undoing the encoding above as well as the XML reference entity encoding performed
         by the XML PATH statement is deferred to post-processing when the list is retrieved
         from the string representation produced by the subquery.
 
-        Post-processing must split on '@', convert '^' to None, and both the encoding above
+        Post-processing must split on '|', convert '~' to None, and both the encoding above
         and the XML reference entity encoding auto performed by XML PATH. In particular, undo
-        '|p' -> '|', '|a' -> '@', '|n' -> '^', '&amp;' -> '&', '&gt;' -> '>', '&lt;' -> '<',
+        '^d' -> '|', '^e' -> '^', '^n' -> '~', '&amp;' -> '&', '&gt;' -> '>', '&lt;' -> '<',
         '&0xHEX;' -> u'0xHEX'
 
         Joining from the preceding vertex to the correct output vertex
         is performed with the WHERE clause.
     """
-    # delimit elements in the array using '@'
-    xml_column = (u'@' + func.COALESCE(  # denote null values with '^'
-        func.REPLACE(  # replace all occurrences of '@' in the original with '|a'
-            func.REPLACE(  # replace all occurrences of '^' in the original with '|n'
-                func.REPLACE(  # replace all occurrences of '|'' in the original with '|p'
-                    output_column, '|', '|p'
-                ), '^', '|n'
-            ), '@', '|a'
-        ), '^'
+    # delimit elements in the array using '|'
+    xml_column = (u'|' + func.COALESCE(  # denote null values with '~'
+        func.REPLACE(  # replace all occurrences of '|' in the original with '|d'
+            func.REPLACE(  # replace all occurrences of '~' in the original with '|n'
+                func.REPLACE(  # replace all occurrences of '^' in the original with '|e'
+                    output_column, '^', '^e'
+                ), '~', '^n'
+            ), '|', '^d'
+        ), '~'
     ))  # allow unambiguously distinguishing (nullable) array elements using scheme above
     # as a custom type, you can't directly construct an XMLPathBinaryExpression from plain text
     xml_column = XMLPathBinaryExpression(xml_column.left, xml_column.right, xml_column.operator)
@@ -292,7 +292,7 @@ class SQLFoldObject(object):
     def _construct_fold_joins(self):
         """Use the edge descriptors to create the join clause between the tables in the fold."""
         # Start the join clause with the from_table of the first join descriptor
-        _, join_clause, _ = self.join_info[-1]
+        _, join_clause, _ = self.join_info[0]
 
         # Starting at the first from_table, join traversed vertices until the output vertex is
         # reached.
