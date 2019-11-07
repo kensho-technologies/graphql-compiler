@@ -6,7 +6,9 @@ import pytest
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
 from ...query_pagination import QueryStringWithParameters, paginate_query
-from ...query_pagination.pagination_planning import get_vertices_for_pagination
+from ...query_pagination.pagination_planning import (
+    PaginationPlan, VertexPartition, get_vertices_for_pagination
+)
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
@@ -39,14 +41,16 @@ class QueryPaginationTests(unittest.TestCase):
                 name @output(out_name: "animal_name")
             }
         }'''
-        number_of_pages = 100  # Irrelevant for now
+        number_of_pages = 100
         query_ast = safe_parse_graphql(query)
         pagination_plan = get_vertices_for_pagination(schema_info, query_ast, number_of_pages)
 
         # NOTE(bojanserafimov): This is a white box test for the current pagination planner.
         #                       When it improves, this test will need to be generalized.
-        self.assertEqual(1, len(pagination_plan.vertex_partitions))
-        self.assertEqual('uuid', pagination_plan.vertex_partitions[0].field_name)
+        expected_plan = PaginationPlan([
+            VertexPartition(['Animal', 'uuid'], number_of_pages)
+        ])
+        self.assertEqual(expected_plan, pagination_plan)
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures('snapshot_orientdb_client')

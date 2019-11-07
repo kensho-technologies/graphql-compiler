@@ -8,8 +8,7 @@ from ..exceptions import GraphQLError
 # The intent to split the query at a certain vertex into a certain number of pages.
 VertexPartition = namedtuple(
     'ValueRangeSplit', (
-        'vertex',  # Field, the vertex in the query AST that should be partitioned
-        'field_name',  # str, the field on the vertex on which the filter should be applied
+        'query_path',  # List[class name : str] leading to the field to be filtered
         'number_of_splits',  # The number of subdivisions intended for this vertex
     )
 )
@@ -43,11 +42,13 @@ def get_vertices_for_pagination(schema_info, query_ast, number_of_pages):
     #                       - The root node has a unique index
     #                       - There are only a few different vertices at the root
     pagination_node = get_only_selection_from_ast(definition_ast, GraphQLError)
+    query_path = [pagination_node.name.value]
 
     # Find the field to use on the pagination node, or return None if there are no viable ones
     field_name = schema_info.pagination_keys.get(pagination_node.name.value, None)
     if field_name is None:
         return None
+    query_path.append(field_name)
     return PaginationPlan([
-        VertexPartition(pagination_node, field_name, number_of_pages)
+        VertexPartition(query_path, number_of_pages)
     ])
