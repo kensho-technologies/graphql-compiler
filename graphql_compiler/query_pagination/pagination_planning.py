@@ -2,6 +2,7 @@
 from collections import namedtuple
 
 from ..ast_manipulation import get_only_query_definition, get_only_selection_from_ast
+from ..cost_estimation.helpers import is_int_field_type, is_uniform_uuid4_type
 from ..exceptions import GraphQLError
 
 
@@ -22,6 +23,8 @@ PaginationPlan = namedtuple(
 )
 
 
+# TODO(bojanserafimov): Make this function return a best effort pagination plan
+#                       when a good one is not found instead of returning None.
 def get_pagination_plan(schema_info, query_ast, number_of_pages):
     """Make a PaginationPlan for the given query and number of desired pages."""
     definition_ast = get_only_query_definition(query_ast, GraphQLError)
@@ -38,14 +41,15 @@ def get_pagination_plan(schema_info, query_ast, number_of_pages):
     if pagination_field is None:
         return None
 
-    if is_uuid_field:
+    if is_uniform_uuid4_type(schema_info, pagination_node.name.value, pagination_field):
         pass
-    elif is_int_field:
+    elif is_int_field_type(schema_info, pagination_node.name.value, pagination_field):
         quantiles = schema_info.pagination_keys.statistics.get_field_quantiles(
             pagination_node, pagination_field)
+        # We make sure there's more than enough quantiles because we don't interpolate.
         if quantiles is None or len(quantiles) < 10 * number_of_pages:
             return None
     else:
         return None
 
-    return PaginationPlan([VertexPartition([pagination_node], number_of_pages)])
+    return PaginationPlan([VertexPartition((pagination_node.name.value), number_of_pages)])

@@ -36,6 +36,7 @@ class QueryPaginationTests(unittest.TestCase):
             pagination_keys=pagination_keys,
             uuid4_fields=uuid4_fields)
 
+        # Check that the correct plan is generated when it's obvious (page the root)
         query = '''{
             Animal {
                 name @output(out_name: "animal_name")
@@ -45,9 +46,10 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         pagination_plan = get_pagination_plan(schema_info, query_ast, number_of_pages)
         expected_plan = PaginationPlan([
-            VertexPartition(['Animal'], number_of_pages)
+            VertexPartition(('Animal'), number_of_pages)
         ])
         self.assertEqual(expected_plan, pagination_plan)
+
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures('snapshot_orientdb_client')
