@@ -26,7 +26,7 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
         uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
-        class_counts = {'Animal': 4}
+        class_counts = {'Animal': 1000}
         statistics = LocalStatistics(class_counts)
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -41,12 +41,9 @@ class QueryPaginationTests(unittest.TestCase):
                 name @output(out_name: "animal_name")
             }
         }'''
-        number_of_pages = 100
+        number_of_pages = 10
         query_ast = safe_parse_graphql(query)
         pagination_plan = get_pagination_plan(schema_info, query_ast, number_of_pages)
-
-        # NOTE(bojanserafimov): This is a white box test for the current pagination planner.
-        #                       When it improves, this test will need to be generalized.
         expected_plan = PaginationPlan([
             VertexPartition(['Animal'], number_of_pages)
         ])
