@@ -8,7 +8,10 @@ from sqlalchemy import bindparam, sql
 
 from . import cypher_helpers, sqlalchemy_extensions
 from ..exceptions import GraphQLCompilationError
-from ..schema import COUNT_META_FIELD_NAME, TYPENAME_META_FIELD_NAME, GraphQLDate, GraphQLDateTime
+from ..schema import (
+    ALL_SUPPORTED_META_FIELDS, COUNT_META_FIELD_NAME, TYPENAME_META_FIELD_NAME, GraphQLDate,
+    GraphQLDateTime
+)
 from .compiler_entities import Expression
 from .helpers import (
     STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
@@ -336,9 +339,10 @@ class LocalField(Expression):
             raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
                                       u'process field {}.'.format(self.field_name))
 
-        if self.field_name == TYPENAME_META_FIELD_NAME:
-            raise NotImplementedError(u'The SQL backend does not support {}.'.format(
-                TYPENAME_META_FIELD_NAME))
+        # Meta fields are special cases; assume all meta fields are not implemented.
+        if self.field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                self.field_name))
 
         return current_alias.c[self.field_name]
 
@@ -505,9 +509,10 @@ class ContextField(Expression):
                                       u'process field {}.'.format(self.location.field))
 
         if self.location.field is not None:
-            if self.location.field == TYPENAME_META_FIELD_NAME:
-                raise NotImplementedError(u'The SQL backend does not support {}.'.format(
-                    TYPENAME_META_FIELD_NAME))
+            # Meta fields are special cases; assume all meta fields are not implemented.
+            if self.location.field in ALL_SUPPORTED_META_FIELDS:
+                raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                    self.location.field))
             return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
         else:
             raise AssertionError(u'This is a bug. The SQL backend does not use '
@@ -624,9 +629,10 @@ class OutputContextField(Expression):
             raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
                                       u'output field {}.'.format(self.location.field))
 
-        if self.location.field == TYPENAME_META_FIELD_NAME:
-            raise NotImplementedError(u'The sql backend does not support {}.'.format(
-                TYPENAME_META_FIELD_NAME))
+        # Meta fields are special cases; assume all meta fields are not implemented.
+        if self.location.field in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The sql backend does not support meta field {}.'.format(
+                self.location.field))
 
         return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
 
