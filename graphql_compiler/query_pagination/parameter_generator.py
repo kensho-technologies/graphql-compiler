@@ -1,24 +1,20 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 
 
-def generate_parameters_for_parameterized_query(
-    schema_info, parameterized_pagination_queries, num_pages
-):
-    """Generate parameters for the given parameterized pagination queries.
+def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters, vertex_partition):
+    """ """
+    vertex_type = TODO_get_from_(vertex_partition.query_path)
+    pagination_field = schema_info.pagination_keys.get(vertex_type)
 
-    Args:
-        schema_info: QueryPlanningSchemaInfo
-        parameterized_pagination_queries: ParameterizedPaginationQueries namedtuple, parameterized
-                                          queries for which parameters are being generated.
-        num_pages: int, number of pages to split the query into.
+    # See what are the min and max values currently imposed by existing filters.
+    # TODO(bojanserafimov): Assuming no existing filters for now.
+    min_value = None
+    max_value = None
 
-    Returns:
-        two dicts:
-            - dict, parameters with which to execute the page query. The next page query's
-              parameters are generated such that only a page of the original query's result data is
-              produced when executed.
-            - dict, parameters with which to execute the remainder query. The remainder query
-              parameters are generated such that they produce the remainder of the original query's
-              result data when executed.
-    """
-    raise NotImplementedError()
+    if is_uuid_field:
+        pass  # XXX subdivide evenly
+    elif is_int_field:
+        quantiles = schema_info.pagination_keys.statistics.get_field_quantiles(
+        # XXX use quantiles
+    else:
+        raise AssertionError()
