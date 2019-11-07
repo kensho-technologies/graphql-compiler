@@ -5,6 +5,8 @@ from graphql import GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLString
 import six
 import sqlalchemy
 from sqlalchemy import bindparam, sql
+from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
+from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 
 from . import cypher_helpers, sqlalchemy_extensions
 from ..exceptions import GraphQLCompilationError
@@ -737,14 +739,19 @@ class FoldedContextField(Expression):
             self.fold_scope_location.fold_path
         ].c['fold_output_' + self.fold_scope_location.field]
 
-        if dialect == 'mssql':
+        if isinstance(dialect, MSDialect_pyodbc):
             return fold_output_column
-        else:
+        elif isinstance(dialect, PGDialect_psycopg2):
             # coalesce to an empty array of the corresponding type
             empty_array = 'ARRAY[]::{}[]'.format(sql_array_type)
             return sqlalchemy.func.coalesce(
                 fold_output_column,
                 sqlalchemy.literal_column(empty_array)
+            )
+        else:
+            raise NotImplementedError(
+                u'Fold only supported for MSSQL and '
+                u'PostgreSQL, dialect was set to {}'.format(dialect.name)
             )
 
     def __eq__(self, other):

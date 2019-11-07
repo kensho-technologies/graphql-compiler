@@ -4318,7 +4318,7 @@ class CompilerTests(unittest.TestCase):
                   schema_1."Animal" AS "Animal_5"
                 JOIN schema_1."Animal" AS "Animal_6" ON "Animal_5".uuid = "Animal_6".parent
                 GROUP BY
-                    "Animal_5".uuid
+                  "Animal_5".uuid
             ) AS folded_subquery_2 ON "Animal_4".uuid = folded_subquery_2.uuid
         '''
         expected_mssql = '''
