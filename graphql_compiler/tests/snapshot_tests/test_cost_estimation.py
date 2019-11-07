@@ -1312,7 +1312,6 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         self.assertAlmostEqual(expected_counts, result_counts)
 
 
-
 # pylint: enable=no-member
 
 class IntegerIntervalTests(unittest.TestCase):
