@@ -311,6 +311,11 @@ class LocalField(Expression):
 
         if self.field_name == TYPENAME_META_FIELD_NAME:
             return six.text_type('@class')
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif self.field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                self.field_name))
 
         return six.text_type(self.field_name)
 
@@ -325,6 +330,11 @@ class LocalField(Expression):
 
         if self.field_name == TYPENAME_META_FIELD_NAME:
             return u'{}[\'{}\']'.format(local_object_name, '@class')
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif self.field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                self.field_name))
 
         if '@' in self.field_name:
             return u'{}[\'{}\']'.format(local_object_name, self.field_name)
@@ -391,6 +401,11 @@ class GlobalContextField(Expression):
         mark_name, field_name = self.location.get_location_name()
         if field_name == TYPENAME_META_FIELD_NAME:
             field_name = '@class'
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                field_name))
         validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
 
@@ -455,6 +470,11 @@ class ContextField(Expression):
 
         if field_name == TYPENAME_META_FIELD_NAME:
             field_name = '@class'
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                field_name))
 
         if field_name is None:
             return u'$matched.%s' % (mark_name,)
@@ -470,6 +490,11 @@ class ContextField(Expression):
 
         if field_name == TYPENAME_META_FIELD_NAME:
             field_name = '@class'
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                field_name))
 
         if field_name is not None:
             validate_safe_or_special_string(field_name)
@@ -572,6 +597,11 @@ class OutputContextField(Expression):
         mark_name, field_name = self.location.get_location_name()
         if field_name == TYPENAME_META_FIELD_NAME:
             field_name = '@class'
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                field_name))
         validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
 
@@ -593,6 +623,11 @@ class OutputContextField(Expression):
 
         if field_name == TYPENAME_META_FIELD_NAME:
             field_name = '@class'
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                field_name))
 
         if '@' in field_name:
             template = u'm.{mark_name}[\'{field_name}\']'
