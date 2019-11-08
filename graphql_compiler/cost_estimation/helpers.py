@@ -8,6 +8,6 @@ def is_int_field_type(schema_info, vertex_name, field_name):
     return GraphQLInt.is_same_type(field_type)
 
 
-def is_uniform_uuid4_type(schema_info, vertex_name, field_name):
+def is_uuid4_type(schema_info, vertex_name, field_name):
     """Return whether the field is a uniformly distributed uuid4 type."""
     return field_name in schema_info.uuid4_fields.get(vertex_name, {})

@@ -2,7 +2,7 @@
 from collections import namedtuple
 
 from ..ast_manipulation import get_only_query_definition, get_only_selection_from_ast
-from ..cost_estimation.helpers import is_int_field_type, is_uniform_uuid4_type
+from ..cost_estimation.helpers import is_int_field_type, is_uuid4_type
 from ..exceptions import GraphQLError
 
 
@@ -41,7 +41,7 @@ def try_get_pagination_plan(schema_info, query_ast, number_of_pages):
     if pagination_field is None:
         return None
 
-    if is_uniform_uuid4_type(schema_info, pagination_node.name.value, pagination_field):
+    if is_uuid4_type(schema_info, pagination_node.name.value, pagination_field):
         pass
     elif is_int_field_type(schema_info, pagination_node.name.value, pagination_field):
         quantiles = schema_info.pagination_keys.statistics.get_field_quantiles(
