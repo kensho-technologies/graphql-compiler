@@ -25,7 +25,7 @@ PaginationPlan = namedtuple(
 
 # TODO(bojanserafimov): Make this function return a best effort pagination plan
 #                       when a good one is not found instead of returning None.
-def get_pagination_plan(schema_info, query_ast, number_of_pages):
+def try_get_pagination_plan(schema_info, query_ast, number_of_pages):
     """Make a PaginationPlan for the given query and number of desired pages."""
     definition_ast = get_only_query_definition(query_ast, GraphQLError)
 
@@ -52,4 +52,4 @@ def get_pagination_plan(schema_info, query_ast, number_of_pages):
     else:
         return None
 
-    return PaginationPlan([VertexPartition((pagination_node.name.value), number_of_pages)])
+    return PaginationPlan([VertexPartition((pagination_node.name.value,), number_of_pages)])
