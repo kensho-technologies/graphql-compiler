@@ -158,7 +158,7 @@ def get_xml_path_clause(output_column, where):
     by the XML PATH statement is deferred to post-processing when the list is retrieved
     from the string representation produced by the subquery.
 
-    Post-processing must split on '|', convert '~' to None, and both the encoding above
+    Post-processing must split on '|', convert '~' to None, and undo both the encoding above
     and the XML reference entity encoding auto performed by XML PATH. In particular, undo
     '^d' -> '|', '^e' -> '^', '^n' -> '~', '&amp;' -> '&', '&gt;' -> '>', '&lt;' -> '<',
     '&0xHEX;' -> u'0xHEX'. XML post processing can be done with
@@ -190,10 +190,10 @@ def get_xml_path_clause(output_column, where):
     xml_column = (u'|' + func.COALESCE(  # denote null values with '~'
         encoded_column, '~'
     ))  # allow unambiguously distinguishing (nullable) array elements using scheme above
-    # as a custom type, you can't directly construct an XMLPathBinaryExpression from plain text
+
+    # use constructor: you can't directly construct an XMLPathBinaryExpression from plain text
     xml_column = XMLPathBinaryExpression(xml_column.left, xml_column.right, xml_column.operator)
 
-    # REPLACEs to undo autoconversion of XML special characters to entity reference shorthand
     return func.COALESCE(  # coalesce to represent empty arrays as ''
         select([xml_column]).where(where).suffix_with("FOR XML PATH ('')").as_scalar(), ''
     )
@@ -232,7 +232,8 @@ class SQLFoldObject(object):
     #
     # The SELECT clause for the fold subquery contains OuterVertex.SOME_COLUMN, a unique
     # identifier (the primary key) for the OuterVertex determined by the edge descriptor
-    # from the vertex immediately outside the fold to the folded vertex.
+    # from the vertex immediately outside the fold to the folded vertex. This presently
+    # only supports non-composite primary keys.
     #
     # SELECT will also contain an ARRAY_AGG for each column labeled for output inside the fold if
     # compiling to PostgreSQL. For compilation to MSSQL an XML PATH-based aggregation is performed.
@@ -278,6 +279,7 @@ class SQLFoldObject(object):
             outer_vertex_table: SQLAlchemy table alias for vertex outside of fold.
             primary_key: primary_key of the vertex immediately outside the fold. Used to set the
                         group by as well as join the fold subquery to the rest of the query.
+                        Composite keys unsupported.
         """
         # table containing output columns
         # initially None because output table is unknown until call to visit_output_vertex
@@ -294,9 +296,9 @@ class SQLFoldObject(object):
         # name of the field used in the primary key for the vertex outside the fold
         # current implementation does not support composite primary keys
         #
-        # we must use the name of the column because primary key refers to the column
-        # from the original table, while we need the identically named column from its
-        # alias
+        # we must use the name of the column as opposed to the column itself because
+        # primary key refers to the column from the original table, while we need the
+        # identically named column from its alias
         self._outer_vertex_primary_key = primary_key.columns_autoinc_first[0].description
 
         # group by column for fold subquery
@@ -317,11 +319,11 @@ class SQLFoldObject(object):
             return u'Invalid fold: no vertex preceding fold'
         elif self._output_vertex_alias is None:
             return u'Vertex outside fold: {}\nOutput vertex for fold: None'.format(
-                str(self._outer_vertex_alias.original)
+                self._outer_vertex_alias.original
             )
         else:
             return u'Vertex outside fold: {}\nOutput vertex for fold: {}'.format(
-                str(self._outer_vertex_alias.original), str(self._output_vertex_alias.original)
+                self._outer_vertex_alias.original, self._output_vertex_alias.original
             )
 
     @property
@@ -374,7 +376,7 @@ class SQLFoldObject(object):
         # vertex (PostgreSQL) is reached, or until the last vertex preceding the output
         # vertex (MSSQL) is reached
         for i in range(0, terminating_idx):
-            # joins from earlier in the chain of traversals are at the end of the list
+            # joins from earlier in the chain of traversals are at the beginning of the list
             # b/c joins are appended in the order they are traversed
             from_table = self._traversal_descriptors[i].from_table
             to_table = self._traversal_descriptors[i].to_table
@@ -508,11 +510,11 @@ class SQLFoldObject(object):
         if self._ended:
             raise AssertionError(u'Invalid state encountered for fold: {}'
                                  u'Cannot visit output vertices after end_fold has been '
-                                 u'called.'.format(str(self)))
+                                 u'called.'.format(self))
         if self._output_vertex_alias is not None:
             raise AssertionError(u'Invalid state encountered for fold: {}'
                                  u'Cannot visit multiple output vertices in one'
-                                 u' fold.'.format(str(self)))
+                                 u' fold.'.format(self))
         self._output_vertex_alias = output_alias
         self._outputs = self._get_fold_outputs(fold_scope_location,
                                                all_folded_outputs)
@@ -529,19 +531,19 @@ class SQLFoldObject(object):
         """Produce the final subquery and join it onto the rest of the query."""
         if self._ended:
             raise AssertionError(u'Invalid state encountered for fold: {}'
-                                 u'Cannot call end_fold more than once.'.format(str(self)))
+                                 u'Cannot call end_fold more than once.'.format(self))
         if self._output_vertex_alias is None:
             raise AssertionError(u'Invalid state encountered for fold: {}'
-                                 u'No output vertex visited.'.format(str(self)))
+                                 u'No output vertex visited.'.format(self))
         if len(self._traversal_descriptors) == 0:
             raise AssertionError(u'Invalid state encountered for fold: {}'
-                                 u'No traversed vertices visited.'.format(str(self)))
+                                 u'No traversed vertices visited.'.format(self))
 
         # for now we only handle folds containing one traversal (i.e. join)
         if len(self._traversal_descriptors) > 1:
             raise NotImplementedError(u'Not implemented error encountered for fold: {}'
                                       u'Folds containing multiple traversals are not '
-                                      u'implemented.'.format(str(self)))
+                                      u'implemented.'.format(self))
 
         # join together all vertices traversed
         subquery_from_clause = self._construct_fold_joins()
@@ -562,7 +564,7 @@ class SQLFoldObject(object):
             ),
             isouter=True
         )
-        self._ended = True  # prevent any more public functions being called on this fold
+        self._ended = True  # prevent any more functions being called on this fold
         return fold_subquery, joined_from_clause, outer_from_table
 
 
@@ -678,7 +680,7 @@ class CompilationState(object):
         if self._current_fold is not None:
             raise NotImplementedError('Not implemented error encountered for fold: {}'
                                       'Traversals inside a fold are not implemented'
-                                      ' yet.'.format(str(self)))
+                                      ' yet.'.format(self))
         # Follow the edge
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]

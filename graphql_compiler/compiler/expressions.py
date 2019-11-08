@@ -740,8 +740,10 @@ class FoldedContextField(Expression):
         ].c['fold_output_' + self.fold_scope_location.field]
 
         if isinstance(dialect, MSDialect_pyodbc):
+            # MSSQL
             return fold_output_column
         elif isinstance(dialect, PGDialect_psycopg2):
+            # PostgreSQL
             # coalesce to an empty array of the corresponding type
             empty_array = 'ARRAY[]::{}[]'.format(sql_array_type)
             return sqlalchemy.func.coalesce(
