@@ -68,9 +68,15 @@ def _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
     return False
 
 
-def _convert_uuid_string_to_int(uuid_string):
+def convert_uuid_string_to_int(uuid_string):
     """Return the integer representation of a UUID string."""
     return UUID(uuid_string).int
+
+
+def convert_int_to_uuid_string(int_value):
+    """Return the integer representation of a UUID string."""
+    # XXX needs more care
+    return str(UUID(int=int(int_value)))
 
 
 def _create_integer_interval(lower_bound, upper_bound):
@@ -429,7 +435,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                     # Map uuid4 values to their corresponding integer values
                     if is_uuid4_field:
                         parameter_values = [
-                            _convert_uuid_string_to_int(value) for value in parameter_values
+                            convert_uuid_string_to_int(value) for value in parameter_values
                         ]
 
                     filter_interval = _get_query_interval_of_integer_inequality_filter(

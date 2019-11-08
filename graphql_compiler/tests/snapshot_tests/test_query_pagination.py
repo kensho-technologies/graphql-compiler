@@ -9,6 +9,7 @@ from ...query_pagination import QueryStringWithParameters, paginate_query
 from ...query_pagination.pagination_planning import (
     PaginationPlan, VertexPartition, try_get_pagination_plan
 )
+from ...query_pagination.parameter_generator import generate_parameters_for_vertex_partition
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
@@ -77,9 +78,11 @@ class QueryPaginationTests(unittest.TestCase):
             schema_info, query_ast, args, vertex_partition)
 
         expected_parameters = [
-            # XXX 4 even uuids
+            '40000000-0000-0000-0000-000000000000',
+            '80000000-0000-0000-0000-000000000000',
+            'c0000000-0000-0000-0000-000000000000',
         ]
-        self.assertEqual(expected_parameters, generated_parameters)
+        self.assertEqual(expected_parameters, list(generated_parameters))
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures('snapshot_orientdb_client')
