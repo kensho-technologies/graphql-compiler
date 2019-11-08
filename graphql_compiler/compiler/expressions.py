@@ -314,7 +314,7 @@ class LocalField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif self.field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The match backend does not support meta field {}.'.format(
                 self.field_name))
 
         return six.text_type(self.field_name)
@@ -333,7 +333,7 @@ class LocalField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif self.field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The gremlin backend does not support meta field {}.'.format(
                 self.field_name))
 
         if '@' in self.field_name:
@@ -404,7 +404,7 @@ class GlobalContextField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The match backend does not support meta field {}.'.format(
                 field_name))
         validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
@@ -487,7 +487,7 @@ class ContextField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The match backend does not support meta field {}.'.format(
                 field_name))
 
         if field_name is None:
@@ -507,7 +507,7 @@ class ContextField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The gremlin backend does not support meta field {}.'.format(
                 field_name))
 
         if field_name is not None:
@@ -614,7 +614,7 @@ class OutputContextField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The match backend does not support meta field {}.'.format(
                 field_name))
         validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
@@ -640,7 +640,7 @@ class OutputContextField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The gremlin backend does not support meta field {}.'.format(
                 field_name))
 
         if '@' in field_name:
@@ -680,7 +680,7 @@ class OutputContextField(Expression):
 
         # Meta fields are special cases; assume all meta fields are not implemented.
         if self.location.field in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The sql backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
                 self.location.field))
 
         return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
@@ -806,6 +806,9 @@ class FoldedContextField(Expression):
                 self.fold_scope_location.base_location.query_path,
                 self.fold_scope_location.fold_path
             ].c['fold_output__x_count']
+        elif self.fold_scope_location.field in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                self.fold_scope_location.field))
 
         # Otherwise, get the type of the folded field.
         inner_type = strip_non_null_from_type(self.field_type.of_type)

@@ -1826,7 +1826,7 @@ pieces in development:
 - Filter operators: :code:`has_edge_degree`
 - Dialect-specific features, like Postgres array types, and use of filter operators
   specific to them: :code:`contains`, :code:`intersects`, :code:`name_or_alias`
-- Meta fields: :code:`__typename`, :code:`_x_count`
+- Meta fields: :code:`__typename`
 
 End-to-End SQL Example
 ~~~~~~~~~~~~~~~~~~~~~~
