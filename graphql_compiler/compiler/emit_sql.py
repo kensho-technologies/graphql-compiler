@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql import expression
 from sqlalchemy.sql.compiler import _CompileLabel
 from sqlalchemy.sql.expression import BinaryExpression
 from sqlalchemy.sql.functions import func
@@ -177,25 +178,26 @@ def get_xml_path_clause(output_column, where):
         A SQLAlchemy Selectable corresponding to the XML PATH subquery
     """
     encoded_column = func.REPLACE(  # replace all occurrences of '^' in the original with '^e'
-        output_column, '^', '^e'
+        output_column, expression.literal_column('\'^\''), expression.literal_column('\'^e\'')
     )
     encoded_column = func.REPLACE(  # replace all occurrences of '~' in the original with '^n'
-        encoded_column, '~', '^n'
+        encoded_column, expression.literal_column('\'~\''), expression.literal_column('\'^n\'')
     )
     encoded_column = func.REPLACE(  # replace all occurrences of '|' in the original with '^d'
-        encoded_column, '|', '^d'
+        encoded_column, expression.literal_column('\'|\''), expression.literal_column('\'^d\'')
     )
 
     # delimit elements in the array using '|'and mark nulls with `~`
-    xml_column = (u'|' + func.COALESCE(  # denote null values with '~'
-        encoded_column, '~'
+    xml_column = (expression.literal_column('\'|\'') + func.COALESCE(  # denote null values with '~'
+        encoded_column, expression.literal_column('\'~\'')
     ))  # allow unambiguously distinguishing (nullable) array elements using scheme above
 
     # use constructor: you can't directly construct an XMLPathBinaryExpression from plain text
     xml_column = XMLPathBinaryExpression(xml_column.left, xml_column.right, xml_column.operator)
 
     return func.COALESCE(  # coalesce to represent empty arrays as ''
-        select([xml_column]).where(where).suffix_with("FOR XML PATH ('')").as_scalar(), ''
+        select([xml_column]).where(where).suffix_with("FOR XML PATH ('')").as_scalar(),
+        expression.literal_column('\'\'')
     )
 
 
@@ -204,14 +206,16 @@ def get_xml_path_clause(output_column, where):
 # Contains join descriptor naming the columns used in the join predicate,
 # the source/from table, and the destination/to table
 SQLFoldTraversalDescriptor = namedtuple('SQLFoldJoinInfo', (
-    # SQLAlchemySchemaInfo join descriptor giving columns used to join from_table/to_table
+    # SQLAlchemySchemaInfo join descriptor giving columns used to join from_vertex/to_vertex
     'join_descriptor',
 
-    # Table on the left side of the join, corresponding to the outside vertex of the traversal
-    'from_table',
+    # SQLAlchemy table corresponding to corresponding to the outside vertex of the traversal,
+    # appears on the left side of the join.
+    'from_vertex',
 
-    # Table on the right side of the join, corresponding to inside vertex
-    'to_table'
+    # SQLAlchemy table corresponding to corresponding to the inside vertex of the traversal,
+    # appears on the right side of the join.
+    'to_vertex'
 ))
 
 
@@ -288,10 +292,10 @@ class SQLFoldObject(object):
         # table for vertex immediately outside fold
         self._outer_vertex_alias = outer_vertex_table
         if len(primary_key.columns) > 1:
-            raise NotImplementedError(u'While extracting primary key for vertex outside fold, '
-                                      u'a composite primary key was found for table {}. '
+            raise NotImplementedError(u'Composite keys not supported. '
+                                      u'A composite primary key {} was found for table {}. '
                                       u'SQL fold only supports non-composite primary '
-                                      u'keys'.format(str(outer_vertex_table.original)))
+                                      u'keys'.format(primary_key, outer_vertex_table.original))
 
         # name of the field used in the primary key for the vertex outside the fold
         # current implementation does not support composite primary keys
@@ -316,13 +320,13 @@ class SQLFoldObject(object):
     def __str__(self):
         """Produce string used to customize error messages."""
         if self._outer_vertex_alias is None:
-            return u'Invalid fold: no vertex preceding fold'
+            return u'Invalid fold: no vertex preceding fold.'
         elif self._output_vertex_alias is None:
-            return u'Vertex outside fold: {}\nOutput vertex for fold: None'.format(
+            return u'Vertex outside fold: {}. Output vertex for fold: None'.format(
                 self._outer_vertex_alias.original
             )
         else:
-            return u'Vertex outside fold: {}\nOutput vertex for fold: {}'.format(
+            return u'Vertex outside fold: {}. Output vertex for fold: {}'.format(
                 self._outer_vertex_alias.original, self._output_vertex_alias.original
             )
 
@@ -356,9 +360,9 @@ class SQLFoldObject(object):
 
     def _construct_fold_joins(self):
         """Use the edge descriptors to create the join clause between the tables in the fold."""
-        # Start the join clause with the from_table of the first traversal descriptor,
+        # Start the join clause with the from_vertex of the first traversal descriptor,
         # which is the vertex immediately preceding the fold
-        join_clause = self._traversal_descriptors[0].from_table
+        join_clause = self._traversal_descriptors[0].from_vertex
         if isinstance(self._sqlalchemy_compiler, MSDialect_pyodbc):
             # The logic of the final join predicate (from the vertex preceding the output to
             # the output vertex) occurs in the WHERE clause of the SELECT ... FOR XML PATH('')
@@ -372,19 +376,19 @@ class SQLFoldObject(object):
                 u'PostgreSQL, dialect was set to {}'.format(self._sqlalchemy_compiler.name)
             )
 
-        # Starting at the first from_table, join traversed vertices in order until the output
+        # Starting at the first from_vertex, join traversed vertices in order until the output
         # vertex (PostgreSQL) is reached, or until the last vertex preceding the output
         # vertex (MSSQL) is reached
         for i in range(0, terminating_idx):
             # joins from earlier in the chain of traversals are at the beginning of the list
             # b/c joins are appended in the order they are traversed
-            from_table = self._traversal_descriptors[i].from_table
-            to_table = self._traversal_descriptors[i].to_table
+            from_vertex = self._traversal_descriptors[i].from_vertex
+            to_vertex = self._traversal_descriptors[i].to_vertex
             join_descriptor = self._traversal_descriptors[i].join_descriptor
             join_clause = sqlalchemy.join(
                 join_clause,
-                to_table,
-                onclause=(from_table.c[join_descriptor.from_column] == to_table.c[
+                to_vertex,
+                onclause=(from_vertex.c[join_descriptor.from_column] == to_vertex.c[
                     join_descriptor.to_column
                 ])
             )
@@ -440,7 +444,7 @@ class SQLFoldObject(object):
 
         - VertexPrecedingOutput is the vertex immediately preceding the output vertex in the
         chain of traversals beginning at the vertex immediately outside the fold.
-        VertexPrecedingOutput is the `from_table` of the last traversal descriptor tuple
+        VertexPrecedingOutput is the `from_vertex` of the last traversal descriptor tuple
         added to the fold's `traversal_descriptors` list.
 
         - The join predicate may have primary_key and foreign_key reversed according to the
@@ -508,42 +512,39 @@ class SQLFoldObject(object):
                             all_folded_outputs):
         """Update output columns when visiting the vertex containing output directives."""
         if self._ended:
-            raise AssertionError(u'Invalid state encountered for fold: {}'
-                                 u'Cannot visit output vertices after end_fold has been '
-                                 u'called.'.format(self))
+            raise AssertionError(u'Cannot visit output vertices after end_fold has been called. '
+                                 u'Invalid state encountered during fold {}'.format(self))
         if self._output_vertex_alias is not None:
-            raise AssertionError(u'Invalid state encountered for fold: {}'
-                                 u'Cannot visit multiple output vertices in one'
-                                 u' fold.'.format(self))
+            raise AssertionError(u'Cannot visit multiple output vertices in one fold. '
+                                 u'Invalid state encountered during fold {}'.format(self))
         self._output_vertex_alias = output_alias
         self._outputs = self._get_fold_outputs(fold_scope_location,
                                                all_folded_outputs)
 
-    def visit_traversed_vertex(self, join_descriptor, from_table, to_table):
+    def visit_traversed_vertex(self, join_descriptor, from_vertex, to_vertex):
         """Add a new traversal descriptor for every vertex traversed in the fold."""
         if self._ended:
             raise AssertionError(u'Cannot visit traversed vertices after end_fold has been called.')
         self._traversal_descriptors.append(SQLFoldTraversalDescriptor(join_descriptor,
-                                                                      from_table,
-                                                                      to_table))
+                                                                      from_vertex,
+                                                                      to_vertex))
 
     def end_fold(self, alias_generator, from_clause, outer_from_table):
         """Produce the final subquery and join it onto the rest of the query."""
         if self._ended:
-            raise AssertionError(u'Invalid state encountered for fold: {}'
-                                 u'Cannot call end_fold more than once.'.format(self))
+            raise AssertionError(u'Cannot call end_fold more than once. '
+                                 u'Invalid state encountered during fold {}'.format(self))
         if self._output_vertex_alias is None:
-            raise AssertionError(u'Invalid state encountered for fold: {}'
-                                 u'No output vertex visited.'.format(self))
+            raise AssertionError(u'No output vertex visited. '
+                                 u'Invalid state encountered during fold {}'.format(self))
         if len(self._traversal_descriptors) == 0:
-            raise AssertionError(u'Invalid state encountered for fold: {}'
-                                 u'No traversed vertices visited.'.format(self))
+            raise AssertionError(u'No traversed vertices visited. '
+                                 u'Invalid state encountered during fold {}'.format(self))
 
         # for now we only handle folds containing one traversal (i.e. join)
         if len(self._traversal_descriptors) > 1:
-            raise NotImplementedError(u'Not implemented error encountered for fold: {}'
-                                      u'Folds containing multiple traversals are not '
-                                      u'implemented.'.format(self))
+            raise NotImplementedError(u'Folds containing multiple traversals are not '
+                                      u'implemented {}.'.format(self))
 
         # join together all vertices traversed
         subquery_from_clause = self._construct_fold_joins()
@@ -678,9 +679,8 @@ class CompilationState(object):
     def traverse(self, vertex_field, optional):
         """Execute a Traverse Block."""
         if self._current_fold is not None:
-            raise NotImplementedError('Not implemented error encountered for fold: {}'
-                                      'Traversals inside a fold are not implemented'
-                                      ' yet.'.format(self))
+            raise NotImplementedError('Traversals inside a fold are not implemented '
+                                      'yet {}.'.format(self))
         # Follow the edge
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]

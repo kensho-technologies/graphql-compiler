@@ -1650,6 +1650,7 @@ def fold_on_foreign_key():  # noqa: D103
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=None)
 
+
 def fold_same_edge_type_in_different_locations():  # noqa: D103
     graphql_input = '''{
         Animal {
