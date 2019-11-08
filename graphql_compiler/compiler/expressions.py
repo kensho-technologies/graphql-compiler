@@ -1,13 +1,17 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import operator as python_operator
 
-from graphql import GraphQLInt, GraphQLList, GraphQLNonNull
+from graphql import GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLString
 import six
+import sqlalchemy
 from sqlalchemy import bindparam, sql
 
 from . import cypher_helpers, sqlalchemy_extensions
 from ..exceptions import GraphQLCompilationError
-from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime
+from ..schema import (
+    ALL_SUPPORTED_META_FIELDS, COUNT_META_FIELD_NAME, TYPENAME_META_FIELD_NAME, GraphQLDate,
+    GraphQLDateTime
+)
 from .compiler_entities import Expression
 from .helpers import (
     STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
@@ -304,6 +308,15 @@ class LocalField(Expression):
     def to_match(self):
         """Return a unicode object with the MATCH representation of this LocalField."""
         self.validate()
+
+        if self.field_name == TYPENAME_META_FIELD_NAME:
+            return six.text_type('@class')
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif self.field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                self.field_name))
+
         return six.text_type(self.field_name)
 
     def to_gremlin(self):
@@ -314,6 +327,14 @@ class LocalField(Expression):
 
         if self.field_name == '@this':
             return local_object_name
+
+        if self.field_name == TYPENAME_META_FIELD_NAME:
+            return u'{}[\'{}\']'.format(local_object_name, '@class')
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif self.field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                self.field_name))
 
         if '@' in self.field_name:
             return u'{}[\'{}\']'.format(local_object_name, self.field_name)
@@ -328,8 +349,10 @@ class LocalField(Expression):
             raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
                                       u'process field {}.'.format(self.field_name))
 
-        if '@' in self.field_name:
-            raise NotImplementedError(u'The SQL backend does not support __typename.')
+        # Meta fields are special cases; assume all meta fields are not implemented.
+        if self.field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                self.field_name))
 
         return current_alias.c[self.field_name]
 
@@ -376,6 +399,13 @@ class GlobalContextField(Expression):
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
+        if field_name == TYPENAME_META_FIELD_NAME:
+            field_name = '@class'
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                field_name))
         validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
 
@@ -438,6 +468,14 @@ class ContextField(Expression):
         mark_name, field_name = self.location.get_location_name()
         validate_safe_string(mark_name)
 
+        if field_name == TYPENAME_META_FIELD_NAME:
+            field_name = '@class'
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                field_name))
+
         if field_name is None:
             return u'$matched.%s' % (mark_name,)
         else:
@@ -449,6 +487,14 @@ class ContextField(Expression):
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
+
+        if field_name == TYPENAME_META_FIELD_NAME:
+            field_name = '@class'
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                field_name))
 
         if field_name is not None:
             validate_safe_or_special_string(field_name)
@@ -488,9 +534,11 @@ class ContextField(Expression):
                                       u'process field {}.'.format(self.location.field))
 
         if self.location.field is not None:
-            if '@' in self.location.field:
-                raise NotImplementedError(u'The SQL backend does not support __typename.')
-            return aliases[self.location.at_vertex().query_path].c[self.location.field]
+            # Meta fields are special cases; assume all meta fields are not implemented.
+            if self.location.field in ALL_SUPPORTED_META_FIELDS:
+                raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                    self.location.field))
+            return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
         else:
             raise AssertionError(u'This is a bug. The SQL backend does not use '
                                  u'context fields to point to vertices.')
@@ -547,6 +595,13 @@ class OutputContextField(Expression):
         self.validate()
 
         mark_name, field_name = self.location.get_location_name()
+        if field_name == TYPENAME_META_FIELD_NAME:
+            field_name = '@class'
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                field_name))
         validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
 
@@ -565,6 +620,14 @@ class OutputContextField(Expression):
         mark_name, field_name = self.location.get_location_name()
         validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
+
+        if field_name == TYPENAME_META_FIELD_NAME:
+            field_name = '@class'
+        # Meta fields are special cases; assume all meta fields are not implemented unless
+        # otherwise specified.
+        elif field_name in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                field_name))
 
         if '@' in field_name:
             template = u'm.{mark_name}[\'{field_name}\']'
@@ -601,10 +664,12 @@ class OutputContextField(Expression):
             raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
                                       u'output field {}.'.format(self.location.field))
 
-        if '@' in self.location.field:
-            raise NotImplementedError(u'The sql backend does not support typename.')
+        # Meta fields are special cases; assume all meta fields are not implemented.
+        if self.location.field in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The sql backend does not support meta field {}.'.format(
+                self.location.field))
 
-        return aliases[self.location.at_vertex().query_path].c[self.location.field]
+        return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
@@ -719,8 +784,27 @@ class FoldedContextField(Expression):
         return template.format(mark_name=mark_name, field_name=field_name)
 
     def to_sql(self, aliases, current_alias):
-        """Not supported yet."""
-        raise NotImplementedError(u'The SQL backend does not support @fold.')
+        """Return a sqlalchemy Column picked from the appropriate alias."""
+        # get the type of the folded field
+        inner_type = strip_non_null_from_type(self.field_type.of_type)
+        if GraphQLInt.is_same_type(inner_type):
+            sql_array_type = 'INT'
+        elif GraphQLString.is_same_type(inner_type):
+            sql_array_type = 'VARCHAR'
+        else:
+            raise NotImplementedError('Type {} not implemented for outputs inside a fold.'.format(
+                inner_type
+            ))
+
+        # coalesce to an empty array of the corresponding type
+        empty_array = 'ARRAY[]::{}[]'.format(sql_array_type)
+        return sqlalchemy.func.coalesce(
+            aliases[
+                self.fold_scope_location.base_location.query_path,
+                self.fold_scope_location.fold_path
+            ].c['fold_output_' + self.fold_scope_location.field],
+            sqlalchemy.literal_column(empty_array)
+        )
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
@@ -787,7 +871,7 @@ class FoldCountContextField(Expression):
 
     def to_sql(self, aliases, current_alias):
         """Not supported yet."""
-        raise NotImplementedError(u'The SQL backend does not support @fold.')
+        raise NotImplementedError(u'The SQL backend does not support _x_count.')
 
 
 class ContextFieldExistence(Expression):

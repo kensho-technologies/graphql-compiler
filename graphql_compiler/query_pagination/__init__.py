@@ -98,9 +98,11 @@ def paginate_query(schema_info, query_string, parameters, page_size):
         print_ast(next_page_ast_with_parameters.query_ast),
         next_page_ast_with_parameters.parameters,
     )
-    remainder_query_with_parameters = QueryStringWithParameters(
-        print_ast(remainder_ast_with_parameters.query_ast),
-        remainder_ast_with_parameters.parameters,
-    )
+    remainder_query_with_parameters = None
+    if remainder_ast_with_parameters is not None:
+        remainder_query_with_parameters = QueryStringWithParameters(
+            print_ast(remainder_ast_with_parameters.query_ast),
+            remainder_ast_with_parameters.parameters,
+        )
 
     return page_query_with_parameters, remainder_query_with_parameters

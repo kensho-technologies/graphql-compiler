@@ -9,8 +9,8 @@ from ...compiler.metadata import FilterInfo
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.filter_selectivity_utils import (
     ABSOLUTE_SELECTIVITY, FRACTIONAL_SELECTIVITY, Selectivity, _combine_filter_selectivities,
-    _create_integer_interval, _get_filter_selectivity, _get_intersection_of_intervals,
-    adjust_counts_for_filters
+    _create_integer_interval, _get_intersection_of_intervals, adjust_counts_for_filters,
+    get_selectivity_of_filters_at_vertex
 )
 from ...cost_estimation.statistics import LocalStatistics
 from ...schema.schema_info import QueryPlanningSchemaInfo
@@ -21,12 +21,14 @@ from ..test_helpers import generate_schema_graph
 def _make_schema_info_and_estimate_cardinality(schema_graph, statistics, graphql_input, args):
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
     pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+    uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
     schema_info = QueryPlanningSchemaInfo(
         schema=graphql_schema,
         type_equivalence_hints=type_equivalence_hints,
         schema_graph=schema_graph,
         statistics=statistics,
-        pagination_keys=pagination_keys)
+        pagination_keys=pagination_keys,
+        uuid4_fields=uuid4_fields)
     return estimate_query_result_cardinality(schema_info, graphql_input, args)
 
 
@@ -921,13 +923,16 @@ def _make_schema_info_and_get_filter_selectivity(schema_graph, statistics, filte
                                                  parameters, location_name):
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
     pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+    uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
     schema_info = QueryPlanningSchemaInfo(
         schema=graphql_schema,
         type_equivalence_hints=type_equivalence_hints,
         schema_graph=schema_graph,
         statistics=statistics,
-        pagination_keys=pagination_keys)
-    return _get_filter_selectivity(schema_info, filter_info, parameters, location_name)
+        pagination_keys=pagination_keys,
+        uuid4_fields=uuid4_fields)
+    return get_selectivity_of_filters_at_vertex(
+        schema_info, [filter_info], parameters, location_name)
 
 
 class FilterSelectivityUtilsTests(unittest.TestCase):
@@ -1119,6 +1124,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
         classname = 'Animal'
         between_filter = FilterInfo(fields=('uuid',), op_name='between',
                                     args=('$uuid_lower', '$uuid_upper',))
@@ -1135,7 +1141,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             type_equivalence_hints=type_equivalence_hints,
             schema_graph=schema_graph,
             statistics=empty_statistics,
-            pagination_keys=pagination_keys)
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
 
         result_counts = adjust_counts_for_filters(
             empty_statistics_schema_info, filter_info_list, params, classname, 32.0)
@@ -1165,11 +1172,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         result_counts = adjust_counts_for_filters(
             empty_statistics_schema_info, filter_info_list, params, classname, 32.0)
 
-        # There are 32 Animals, and an estimated (3.0 / 4.0) have a UUID greater or equal to
-        # uuid_lower, and an estimated (1.0 / 2.0) have a UUID less than or equal to uuid_upper. The
-        # cost estimator considers both of these filters independently, so the result size is 32 *
-        # (3.0 / 4.0) * (1.0 / 2.0) = 12.0 results.
-        expected_counts = 32.0 * (3.0 / 4.0) * (1.0 / 2.0)
+        # The pair of >= and <= filters should return the same result as the in_between filter.
+        expected_counts = 32.0 * (1.0 / 4.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
         between_filter = FilterInfo(fields=('uuid',), op_name='between',
@@ -1188,6 +1192,123 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         # It's impossible for a UUID to simultaneously be below uuid_upper and above uuid_lower as
         # uuid_upper is smaller than uuid_lower, so the result set is empty.
         expected_counts = 0.0
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_inequality_filters_on_int(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        statistics = LocalStatistics(dict(), field_quantiles={
+            ('Species', 'limbs'): [3, 6, 7, 9, 11, 55, 80],
+
+        })
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        # Test <= filter in the middle
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='<=', args=('$limbs_upper',))]
+        params = {'limbs_upper': 8}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        # The value 8 is in the middle of the third bucket out of six.
+        expected_counts = 32.0 * (2.5 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test >= filter in the middle
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='>=', args=('$limbs_lower',))]
+        params = {'limbs_lower': 8}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        # The value 8 is in the middle of the third bucket out of six.
+        expected_counts = 32.0 * (3.5 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test strong <= filter
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='<=', args=('$limbs_upper',))]
+        params = {'limbs_upper': 0}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        # The value 0 is in the middle of the first bucket.
+        expected_counts = 32.0 * (0.5 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test weak <= filter
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='<=', args=('$limbs_upper',))]
+        params = {'limbs_upper': 90}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        # The value 90 is in the middle of the last bucket.
+        expected_counts = 32.0 * (5.5 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test weak between filter
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='between',
+                                       args=('$limbs_lower', '$limbs_upper'))]
+        params = {'limbs_lower': 0, 'limbs_upper': 90}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        # The range goes from the middle of the first to the middle of the last bucket.
+        expected_counts = 32.0 * (5.0 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test strong between filter in the middle
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='between',
+                                       args=('$limbs_lower', '$limbs_upper'))]
+        params = {'limbs_lower': 12, 'limbs_upper': 14}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        expected_counts = 32.0 * ((1.0 / 3.0) / 6.0)
+        # The range is contained inside a bucket. The expected value is 1/3 of the size of it.
+        # https://math.stackexchange.com/questions/195245/
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test strong between filter with small values
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='between',
+                                       args=('$limbs_lower', '$limbs_upper'))]
+        params = {'limbs_lower': -4, 'limbs_upper': -1}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        expected_counts = 32.0 * ((1.0 / 3.0) / 6.0)
+        # The range is contained inside a bucket. The expected value is 1/3 of the size of it.
+        # https://math.stackexchange.com/questions/195245/
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test with small quantile list
+        small_statistics = LocalStatistics(dict(), field_quantiles={
+            ('Species', 'limbs'): [3, 80],
+
+        })
+        small_schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=small_statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        # Test with <=
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='<=', args=('$limbs_upper',))]
+        params = {'limbs_upper': 40}
+        result_counts = adjust_counts_for_filters(
+            small_schema_info, filter_info_list, params, 'Species', 32.0)
+        expected_counts = 32.0 * (1.0 / 2.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test with between
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='between',
+                                       args=('$limbs_lower', '$limbs_upper'))]
+        params = {'limbs_lower': 0, 'limbs_upper': 90}
+        result_counts = adjust_counts_for_filters(
+            small_schema_info, filter_info_list, params, 'Species', 32.0)
+        # The range goes from the middle of the first to the middle of the last bucket.
+        expected_counts = 32.0 * (1.0 / 3.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
 

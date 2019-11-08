@@ -11,7 +11,10 @@ from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, Gra
 import six
 
 from ..exceptions import GraphQLCompilationError
-from ..schema import INBOUND_EDGE_FIELD_PREFIX, OUTBOUND_EDGE_FIELD_PREFIX, is_vertex_field_name
+from ..schema import (
+    INBOUND_EDGE_FIELD_PREFIX, OUTBOUND_EDGE_FIELD_PREFIX, TYPENAME_META_FIELD_NAME,
+    is_vertex_field_name
+)
 
 
 # These are the Java (OrientDB) representations of the ISO-8601 standard date and datetime formats.
@@ -40,7 +43,7 @@ def get_only_element_from_collection(one_element_collection):
 
 def get_field_type_from_schema(schema_type, field_name):
     """Return the type of the field in the given type, accounting for field name normalization."""
-    if field_name == '@class':
+    if field_name == TYPENAME_META_FIELD_NAME:
         return GraphQLString
     else:
         if field_name not in schema_type.fields:

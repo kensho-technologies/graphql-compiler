@@ -2,7 +2,7 @@
 import unittest
 
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
-from ..macros import perform_macro_expansion
+from ..macros import get_schema_with_macros, perform_macro_expansion
 from .test_helpers import get_test_macro_registry
 
 
@@ -11,6 +11,7 @@ class MacroExpansionTests(unittest.TestCase):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
         self.macro_registry = get_test_macro_registry()
+        self.schema_with_macros = get_schema_with_macros(self.macro_registry)
 
     def test_macro_edge_duplicate_edge_traversal(self):
         query = '''{
@@ -26,7 +27,7 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         with self.assertRaises(GraphQLCompilationError):
-            perform_macro_expansion(self.macro_registry, query, args)
+            perform_macro_expansion(self.macro_registry, self.schema_with_macros, query, args)
 
     def test_macro_edge_duplicate_macro_traversal(self):
         query = '''{
@@ -42,7 +43,7 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         with self.assertRaises(GraphQLCompilationError):
-            perform_macro_expansion(self.macro_registry, query, args)
+            perform_macro_expansion(self.macro_registry, self.schema_with_macros, query, args)
 
     def test_macro_edge_target_coercion_invalid_1(self):
         query = '''{
@@ -57,7 +58,7 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         with self.assertRaises(GraphQLValidationError):
-            perform_macro_expansion(self.macro_registry, query, args)
+            perform_macro_expansion(self.macro_registry, self.schema_with_macros, query, args)
 
     def test_macro_edge_invalid_coercion_2(self):
         query = '''{
@@ -72,7 +73,7 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         with self.assertRaises(GraphQLValidationError):
-            perform_macro_expansion(self.macro_registry, query, args)
+            perform_macro_expansion(self.macro_registry, self.schema_with_macros, query, args)
 
     def test_macro_edge_nonexistent(self):
         query = '''{
@@ -85,7 +86,7 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         with self.assertRaises(GraphQLValidationError):
-            perform_macro_expansion(self.macro_registry, query, args)
+            perform_macro_expansion(self.macro_registry, self.schema_with_macros, query, args)
 
     def test_incorrect_schema_usage(self):
         # Test with fields that don't exist in the schema
@@ -99,7 +100,7 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         with self.assertRaises(GraphQLValidationError):
-            perform_macro_expansion(self.macro_registry, query, args)
+            perform_macro_expansion(self.macro_registry, self.schema_with_macros, query, args)
 
     def test_recurse_at_expansion_is_not_supported(self):
         query = '''{
@@ -112,7 +113,7 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         with self.assertRaises(GraphQLCompilationError):
-            perform_macro_expansion(self.macro_registry, query, args)
+            perform_macro_expansion(self.macro_registry, self.schema_with_macros, query, args)
 
     def test_optional_at_expansion_is_not_supported(self):
         query = '''{
@@ -125,7 +126,7 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         with self.assertRaises(GraphQLCompilationError):
-            perform_macro_expansion(self.macro_registry, query, args)
+            perform_macro_expansion(self.macro_registry, self.schema_with_macros, query, args)
 
     def test_fold_at_expansion_is_not_supported(self):
         query = '''{
@@ -139,7 +140,7 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         with self.assertRaises(GraphQLCompilationError):
-            perform_macro_expansion(self.macro_registry, query, args)
+            perform_macro_expansion(self.macro_registry, self.schema_with_macros, query, args)
 
     def test_output_source_at_expansion_is_not_supported(self):
         query = '''{
@@ -153,4 +154,4 @@ class MacroExpansionTests(unittest.TestCase):
         args = {}
 
         with self.assertRaises(GraphQLCompilationError):
-            perform_macro_expansion(self.macro_registry, query, args)
+            perform_macro_expansion(self.macro_registry, self.schema_with_macros, query, args)

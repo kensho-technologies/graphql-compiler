@@ -3,16 +3,22 @@ import unittest
 
 from graphql.type import GraphQLInt, GraphQLObjectType, GraphQLString
 import pytest
-from sqlalchemy import Column, MetaData, Table
+from sqlalchemy import Column, MetaData, PrimaryKeyConstraint, Table
 from sqlalchemy.dialects.mssql import TINYINT, dialect
-from sqlalchemy.types import Binary, Integer, String
+from sqlalchemy.types import Binary, Integer, LargeBinary, String
 
 from ... import get_sqlalchemy_schema_info_from_specified_metadata
 from ...schema_generation.exceptions import InvalidSQLEdgeError, MissingPrimaryKeyError
+from ...schema_generation.schema_graph import IndexDefinition
+from ...schema_generation.sqlalchemy import (
+    SQLAlchemySchemaInfo, get_graphql_schema_from_schema_graph,
+    get_join_descriptors_from_edge_descriptors
+)
 from ...schema_generation.sqlalchemy.edge_descriptors import (
     DirectEdgeDescriptor, DirectJoinDescriptor
 )
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
+from ...schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_schema_graph
 
 
 def _get_test_vertex_name_to_table():
@@ -22,9 +28,10 @@ def _get_test_vertex_name_to_table():
         'Table1',
         metadata1,
         Column('column_with_supported_type', String(), primary_key=True),
-        Column('column_with_non_supported_type', Binary()),
+        Column('column_with_non_supported_type', LargeBinary()),
         Column('column_with_mssql_type', TINYINT()),
         Column('source_column', Integer()),
+        Column('unique_column', Integer(), unique=True)
     )
 
     # We use a different metadata object to test there is no dependency on the metadata object.
@@ -35,7 +42,29 @@ def _get_test_vertex_name_to_table():
         Column('destination_column', Integer(), primary_key=True),
     )
 
-    return {'Table1': table1, 'ArbitraryObjectName': table2}
+    table3 = Table(
+        'Table3',
+        metadata2,
+        Column('primary_key_column1', Integer()),
+        Column('primary_key_column2', Integer()),
+
+        PrimaryKeyConstraint('primary_key_column1', 'primary_key_column2'),
+    )
+
+    table4 = Table(
+        'Table4',
+        metadata2,
+        Column('primary_key_column_with_unsupported_type', Binary()),
+
+        PrimaryKeyConstraint('primary_key_column_with_unsupported_type'),
+    )
+
+    return {
+        'Table1': table1,
+        'ArbitraryObjectName': table2,
+        'TableWithMultiplePrimaryKeyColumns': table3,
+        'TableWithNonSupportedPrimaryKeyType': table4,
+    }
 
 
 def _get_test_direct_edges():
@@ -50,12 +79,22 @@ def _get_test_direct_edges():
     }
 
 
+@pytest.mark.filterwarnings('ignore: Ignoring column .* with unsupported SQL datatype.*')
 class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
     def setUp(self):
+        self.maxDiff = None
         vertex_name_to_table = _get_test_vertex_name_to_table()
         direct_edges = _get_test_direct_edges()
-        self.schema_info = get_sqlalchemy_schema_info_from_specified_metadata(
-            vertex_name_to_table, direct_edges, dialect())
+        self.schema_graph = get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges)
+
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(
+            self.schema_graph, class_to_field_type_overrides={},
+            hidden_classes=set()
+        )
+        join_descriptors = get_join_descriptors_from_edge_descriptors(direct_edges)
+
+        self.schema_info = SQLAlchemySchemaInfo(
+            graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors)
 
     def test_table_vertex_representation(self):
         self.assertIsInstance(self.schema_info.schema.get_type('Table1'), GraphQLObjectType)
@@ -75,7 +114,7 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
 
     def test_warn_when_type_is_not_supported(self):
         with pytest.warns(Warning):
-            try_get_graphql_scalar_type('binary', Binary)
+            try_get_graphql_scalar_type('binary', LargeBinary)
 
     def test_mssql_scalar_type_representation(self):
         table1_graphql_object = self.schema_info.schema.get_type('Table1')
@@ -100,6 +139,51 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
             }
         }
         self.assertEqual(expected_join_descriptors, self.schema_info.join_descriptors)
+
+    def test_basic_index_generation_from_primary_key(self):
+        indexes = self.schema_graph.get_all_indexes_for_class('Table1')
+        self.assertIn(
+            IndexDefinition(
+                name=None,
+                base_classname='Table1',
+                fields=frozenset({'column_with_supported_type'}),
+                unique=True,
+                ordered=False,
+                ignore_nulls=False,
+            ), indexes
+        )
+
+    def test_index_generation_from_multi_column_primary_key(self):
+        indexes = self.schema_graph.get_all_indexes_for_class('TableWithMultiplePrimaryKeyColumns')
+        self.assertEqual(
+            {
+                IndexDefinition(
+                    name=None,
+                    base_classname='TableWithMultiplePrimaryKeyColumns',
+                    fields=frozenset({'primary_key_column1', 'primary_key_column2'}),
+                    unique=True,
+                    ordered=False,
+                    ignore_nulls=False,
+                ),
+            }, indexes
+        )
+
+    def test_index_generation_from_primary_key_with_an_unsupported_column_type(self):
+        indexes = self.schema_graph.get_all_indexes_for_class('TableWithNonSupportedPrimaryKeyType')
+        self.assertEqual(frozenset(), indexes)
+
+    def test_index_generation_from_unique_constraint(self):
+        indexes = self.schema_graph.get_all_indexes_for_class('Table1')
+        self.assertIn(
+            IndexDefinition(
+                name=None,
+                base_classname='Table1',
+                fields=frozenset({'unique_column'}),
+                unique=True,
+                ordered=False,
+                ignore_nulls=True,
+            ), indexes
+        )
 
 
 class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
