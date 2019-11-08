@@ -4204,6 +4204,64 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
 
+    def test_fold_on_foreign_key(self):
+        test_data = test_input_data.fold_on_foreign_key()
+
+        expected_postgresql = '''
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS homes_list
+            FROM
+                schema_1."Animal" AS "Animal_1"
+            LEFT OUTER JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Location_1".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Location" AS "Location_1" ON "Animal_2".lives_in = "Location_1".uuid
+                GROUP BY
+                    "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        '''
+
+        expected_mssql = '''
+            SELECT
+              [Animal_1].name AS animal_name,
+              folded_subquery_1.fold_output_name AS homes_list
+            FROM
+              db_1.schema_1.[Animal] AS [Animal_1]
+              LEFT OUTER JOIN(
+                SELECT
+                  [Animal_2].uuid AS uuid,
+                  coalesce((
+                    SELECT
+                      :coalesce_1 + coalesce(
+                        REPLACE(
+                          REPLACE(
+                            REPLACE([Location_1].name, :REPLACE_1, :REPLACE_2),
+                            :REPLACE_3,
+                            :REPLACE_4
+                          ),
+                          :REPLACE_5,
+                          :REPLACE_6
+                        ),
+                        :coalesce_2
+                      ) FROMdb_1.schema_1.[Location] AS [Location_1]
+                    WHERE
+                      [Animal_2].lives_in = [Location_1].uuid FOR XML PATH('')
+                  ), :coalesce_3) AS fold_output_name
+                FROM
+                  db_1.schema_1.[Animal] AS [Animal_2]
+              ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+        '''
+
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
+
     def test_fold_on_two_output_variables(self):
         test_data = test_input_data.fold_on_two_output_variables()
 
