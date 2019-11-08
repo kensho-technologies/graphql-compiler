@@ -767,7 +767,7 @@ def _validate_all_tags_are_used(metadata):
     filter_arg_names = set()
     for location, _ in metadata.registered_locations:
         for filter_info in metadata.get_filter_infos(location):
-            for filter_arg in filter_info.args if filter_info.args else []:
+            for filter_arg in filter_info.args:
                 if is_tagged_parameter(filter_arg):
                     filter_arg_names.add(get_parameter_name(filter_arg))
 
