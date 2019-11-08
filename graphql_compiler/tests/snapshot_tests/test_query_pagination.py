@@ -7,7 +7,7 @@ from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
 from ...query_pagination import QueryStringWithParameters, paginate_query
 from ...query_pagination.pagination_planning import (
-    PaginationPlan, VertexPartition, get_pagination_plan
+    PaginationPlan, VertexPartition, try_get_pagination_plan
 )
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
@@ -36,6 +36,7 @@ class QueryPaginationTests(unittest.TestCase):
             pagination_keys=pagination_keys,
             uuid4_fields=uuid4_fields)
 
+        # Check that the correct plan is generated when it's obvious (page the root)
         query = '''{
             Animal {
                 name @output(out_name: "animal_name")
@@ -43,9 +44,9 @@ class QueryPaginationTests(unittest.TestCase):
         }'''
         number_of_pages = 10
         query_ast = safe_parse_graphql(query)
-        pagination_plan = get_pagination_plan(schema_info, query_ast, number_of_pages)
+        pagination_plan = try_get_pagination_plan(schema_info, query_ast, number_of_pages)
         expected_plan = PaginationPlan([
-            VertexPartition(['Animal'], number_of_pages)
+            VertexPartition(('Animal',), number_of_pages)
         ])
         self.assertEqual(expected_plan, pagination_plan)
 

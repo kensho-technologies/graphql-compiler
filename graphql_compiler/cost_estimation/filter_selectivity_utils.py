@@ -9,7 +9,7 @@ from uuid import UUID
 import six
 
 from ..compiler.helpers import get_parameter_name
-from ..cost_estimation.helpers import is_int_field_type, is_uniform_uuid4_type
+from ..cost_estimation.helpers import is_int_field_type, is_uuid4_type
 
 
 # The Selectivity represents the selectivity of a filter or a set of filters
@@ -415,7 +415,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
         interval = _create_integer_interval(None, None)
 
         # Process inequality filters
-        is_uuid4_field = is_uniform_uuid4_type(schema_info, location_name, field_name)
+        is_uuid4_field = is_uuid4_type(schema_info, location_name, field_name)
         is_int_field = is_int_field_type(schema_info, location_name, field_name)
         is_inequality_filter_estimation_supported = is_uuid4_field or is_int_field
         if is_inequality_filter_estimation_supported:
