@@ -833,8 +833,8 @@ def _get_filter_op_name_and_values(directive):
     op_name = args['op_name'].value.value
     if 'value' not in args and args['op_name'].value.value not in UNARY_FILTERS:
         raise GraphQLValidationError(u'Filter directive value argument omitted for non-unary '
-                                     u'filter operation: {}. Please provide a value argument'
-                                     u' for all filters not in the following list: {}'
+                                     u'filter operation: {}. Please provide a value argument '
+                                     u'for all filters not in the following list: {}'
                                      .format(args['op_name'].value.value, list(UNARY_FILTERS)))
     elif 'value' not in args and args['op_name'].value.value in UNARY_FILTERS:
         operator_params = []
