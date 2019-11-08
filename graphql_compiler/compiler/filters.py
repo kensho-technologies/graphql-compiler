@@ -70,10 +70,10 @@ def takes_parameters(count):
         @wraps(f)
         def wrapper(filter_operation_info, location, context, parameters, *args, **kwargs):
             """Check that the supplied number of parameters equals the expected number."""
-            if (len(parameters) if parameters else 0) != count:
+            if len(parameters) != count:
                 raise GraphQLCompilationError(u'Incorrect number of parameters, expected {} got '
                                               u'{}: {}'.format(count,
-                                                               len(parameters) if parameters else 0,
+                                                               len(parameters),
                                                                parameters))
 
             return f(filter_operation_info, location, context, parameters, *args, **kwargs)
@@ -783,7 +783,7 @@ def _process_is_null_filter_directive(filter_operation_info, location, context, 
     filtered_field_type = filter_operation_info.field_type
     filtered_field_name = filter_operation_info.field_name
 
-    if (len(parameters) if parameters else 0) != 0:
+    if len(parameters) != 0:
         raise GraphQLCompilationError(u'No parameters should be passed to "is_null" filter. '
                                       u'Received parameter(s) {}'.format(parameters))
 
@@ -813,7 +813,7 @@ def _process_is_not_null_filter_directive(filter_operation_info, location, conte
     filtered_field_type = filter_operation_info.field_type
     filtered_field_name = filter_operation_info.field_name
 
-    if (len(parameters) if parameters else 0) != 0:
+    if len(parameters) != 0:
         raise GraphQLCompilationError(u'No parameters should be passed to "is_not_null" filter. '
                                       u'Received parameter(s) {}'.format(parameters))
 
@@ -832,19 +832,21 @@ def _get_filter_op_name_and_values(directive):
         raise AssertionError(u'op_name not found in filter directive arguments!'
                              u'Validation should have caught this: {}'.format(directive))
 
-    if args['op_name'].value.value not in UNARY_FILTERS and 'value' not in args:
+    op_name = args['op_name'].value.value
+    if 'value' not in args and args['op_name'].value.value not in UNARY_FILTERS:
         raise GraphQLValidationError(u'Filter directive value argument omitted for non-unary '
-                                     u'filter operation: {} \nPlease provide a value argument'
+                                     u'filter operation: {}. Please provide a value argument'
                                      u' for all filters not in the following list: {}'
                                      .format(args['op_name'].value.value, list(UNARY_FILTERS)))
-    op_name = args['op_name'].value.value
-    if args['op_name'].value.value in UNARY_FILTERS:
-        return (op_name, None)
-    # HACK(predrag): Workaround for graphql-core validation issue
-    #                https://github.com/graphql-python/graphql-core/issues/97
-    if not isinstance(args['value'].value, ListValue):
-        raise GraphQLValidationError(u'Filter directive value was not a list: {}'.format(directive))
-    operator_params = [x.value for x in args['value'].value.values]
+    elif 'value' not in args and args['op_name'].value.value in UNARY_FILTERS:
+        operator_params = []
+    else:
+        # HACK(predrag): Workaround for graphql-core validation issue
+        #                https://github.com/graphql-python/graphql-core/issues/97
+        if not isinstance(args['value'].value, ListValue):
+            raise GraphQLValidationError(u'Filter directive value was '
+                                         u'not a list: {}'.format(directive))
+        operator_params = [x.value for x in args['value'].value.values]
 
     return (op_name, operator_params)
 
@@ -963,7 +965,7 @@ def process_filter_directive(filter_operation_info, location, context):
         location,
         FilterInfo(fields=fields,
                    op_name=op_name,
-                   args=tuple(operator_params) if operator_params else None)
+                   args=tuple(operator_params))
     )
 
     return process_func(filter_operation_info, location, context, operator_params)
