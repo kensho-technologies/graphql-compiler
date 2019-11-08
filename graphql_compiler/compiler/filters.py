@@ -961,9 +961,7 @@ def process_filter_directive(filter_operation_info, location, context):
 
     context['metadata'].record_filter_info(
         location,
-        FilterInfo(fields=fields,
-                   op_name=op_name,
-                   args=tuple(operator_params))
+        FilterInfo(fields=fields, op_name=op_name, args=tuple(operator_params))
     )
 
     return process_func(filter_operation_info, location, context, operator_params)
