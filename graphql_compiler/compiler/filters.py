@@ -72,9 +72,7 @@ def takes_parameters(count):
             """Check that the supplied number of parameters equals the expected number."""
             if len(parameters) != count:
                 raise GraphQLCompilationError(u'Incorrect number of parameters, expected {} got '
-                                              u'{}: {}'.format(count,
-                                                               len(parameters),
-                                                               parameters))
+                                              u'{}: {}'.format(count, len(parameters), parameters))
 
             return f(filter_operation_info, location, context, parameters, *args, **kwargs)
 
