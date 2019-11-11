@@ -1,4 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from functools import reduce
 import warnings
 
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLString
@@ -7,9 +8,8 @@ import sqlalchemy.dialects.postgresql as postgrestypes
 import sqlalchemy.sql.sqltypes as sqltypes
 
 from ...global_utils import merge_non_overlapping_dicts
-from functools import reduce
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
-from
+
 
 # The following quote from https://docs.sqlalchemy.org/en/13/core/type_basics.html
 # explains what makes all-caps classes particular:
@@ -98,34 +98,27 @@ UNSUPPORTED_MSSQL_TYPES = frozenset({
 
 
 POSTGRES_CLASS_TO_GRAPHQL_TYPES = {
-    postgrestypes.INTEGER: GraphQLInt,
-    postgrestypes.BIGINT: GraphQLInt,
-    postgrestypes.SMALLINT: GraphQLInt,
-    postgrestypes.VARCHAR: GraphQLString,
-    postgrestypes.CHAR: GraphQLString,
-    postgrestypes.TEXT: GraphQLString,
-    postgrestypes.NUMERIC: GraphQLDecimal,
-    postgrestypes.FLOAT: GraphQLFloat,
-    postgrestypes.REAL: GraphQLFloat,
     postgrestypes.UUID: GraphQLID,
     postgrestypes.DOUBLE_PRECISION: GraphQLFloat,
     postgrestypes.TIMESTAMP: GraphQLDateTime,
-    postgrestypes.TIME: GraphQLDateTime,
-    postgrestypes.DATE: GraphQLDate,
-    postgrestypes.BOOLEAN: GraphQLBoolean,
+    postgrestypes.ENUM: GraphQLString,
 }
 
 UNSUPPORTED_POSTGRES_TYPES = frozenset({
+    # We shouldn't map the Postgresql bit type to the GraphQLBoolean type. The Postgresql bit type
+    # is used to represent a bit string of variable length.
+    # https://www.postgresql.org/docs/8.1/datatype-bit.html
+    postgrestypes.TIME,
+    postgrestypes.BIT,
     postgrestypes.INET,
     postgrestypes.CIDR,
     postgrestypes.MACADDR,
     postgrestypes.MONEY,
     postgrestypes.OID,
     postgrestypes.REGCLASS,
-    postgrestypes.BYTEA
+    postgrestypes.BYTEA,
     postgrestypes.INTERVAL,
     postgrestypes.ARRAY,
-    postgrestypes.ENUM,
     postgrestypes.INT4RANGE,
     postgrestypes.INT8RANGE,
     postgrestypes.NUMRANGE,
