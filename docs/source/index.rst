@@ -189,6 +189,7 @@ types of database backends:
 
 - :doc:`OrientDB <supported_databases/orientdb>`
 - :doc:`SQL Databases <supported_databases/sql>`, including SQL Server, Postgres and more.
+- :doc:`Neo4j/Redisgraph <supported_databases/neo4j_and_redisgraph>`
 
 .. toctree::
    :caption: Supported Databases
@@ -196,6 +197,7 @@ types of database backends:
 
    OrientDB <supported_databases/orientdb>
    SQL <supported_databases/sql>
+   Neo4j/Redisgraph <supported_databases/neo4j_and_redisgraph>
 
 Advanced Features
 ~~~~~~~~~~~~~~~~~
