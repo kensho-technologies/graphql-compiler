@@ -1194,6 +1194,123 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_counts = 0.0
         self.assertAlmostEqual(expected_counts, result_counts)
 
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_inequality_filters_on_int(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        statistics = LocalStatistics(dict(), field_quantiles={
+            ('Species', 'limbs'): [3, 6, 7, 9, 11, 55, 80],
+
+        })
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        # Test <= filter in the middle
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='<=', args=('$limbs_upper',))]
+        params = {'limbs_upper': 8}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        # The value 8 is in the middle of the third bucket out of six.
+        expected_counts = 32.0 * (2.5 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test >= filter in the middle
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='>=', args=('$limbs_lower',))]
+        params = {'limbs_lower': 8}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        # The value 8 is in the middle of the third bucket out of six.
+        expected_counts = 32.0 * (3.5 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test strong <= filter
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='<=', args=('$limbs_upper',))]
+        params = {'limbs_upper': 0}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        # The value 0 is in the middle of the first bucket.
+        expected_counts = 32.0 * (0.5 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test weak <= filter
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='<=', args=('$limbs_upper',))]
+        params = {'limbs_upper': 90}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        # The value 90 is in the middle of the last bucket.
+        expected_counts = 32.0 * (5.5 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test weak between filter
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='between',
+                                       args=('$limbs_lower', '$limbs_upper'))]
+        params = {'limbs_lower': 0, 'limbs_upper': 90}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        # The range goes from the middle of the first to the middle of the last bucket.
+        expected_counts = 32.0 * (5.0 / 6.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test strong between filter in the middle
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='between',
+                                       args=('$limbs_lower', '$limbs_upper'))]
+        params = {'limbs_lower': 12, 'limbs_upper': 14}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        expected_counts = 32.0 * ((1.0 / 3.0) / 6.0)
+        # The range is contained inside a bucket. The expected value is 1/3 of the size of it.
+        # https://math.stackexchange.com/questions/195245/
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test strong between filter with small values
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='between',
+                                       args=('$limbs_lower', '$limbs_upper'))]
+        params = {'limbs_lower': -4, 'limbs_upper': -1}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, 'Species', 32.0)
+        expected_counts = 32.0 * ((1.0 / 3.0) / 6.0)
+        # The range is contained inside a bucket. The expected value is 1/3 of the size of it.
+        # https://math.stackexchange.com/questions/195245/
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test with small quantile list
+        small_statistics = LocalStatistics(dict(), field_quantiles={
+            ('Species', 'limbs'): [3, 80],
+
+        })
+        small_schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=small_statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        # Test with <=
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='<=', args=('$limbs_upper',))]
+        params = {'limbs_upper': 40}
+        result_counts = adjust_counts_for_filters(
+            small_schema_info, filter_info_list, params, 'Species', 32.0)
+        expected_counts = 32.0 * (1.0 / 2.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
+        # Test with between
+        filter_info_list = [FilterInfo(fields=('limbs',), op_name='between',
+                                       args=('$limbs_lower', '$limbs_upper'))]
+        params = {'limbs_lower': 0, 'limbs_upper': 90}
+        result_counts = adjust_counts_for_filters(
+            small_schema_info, filter_info_list, params, 'Species', 32.0)
+        # The range goes from the middle of the first to the middle of the last bucket.
+        expected_counts = 32.0 * (1.0 / 3.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
 
 # pylint: enable=no-member
 

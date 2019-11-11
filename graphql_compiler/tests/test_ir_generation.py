@@ -7,7 +7,9 @@ import six
 from . import test_input_data
 from ..compiler import blocks, expressions, helpers
 from ..compiler.compiler_frontend import OutputMetadata, graphql_to_ir
-from ..schema import COUNT_META_FIELD_NAME, GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ..schema import (
+    COUNT_META_FIELD_NAME, TYPENAME_META_FIELD_NAME, GraphQLDate, GraphQLDateTime, GraphQLDecimal
+)
 from .test_helpers import compare_input_metadata, compare_ir_blocks, get_schema
 
 
@@ -1543,9 +1545,9 @@ class IrGenerationTests(unittest.TestCase):
             blocks.GlobalOperationsStart(),
             blocks.ConstructResult({
                 'base_cls': expressions.OutputContextField(
-                    base_location.navigate_to_field('@class'), GraphQLString),
+                    base_location.navigate_to_field(TYPENAME_META_FIELD_NAME), GraphQLString),
                 'child_cls': expressions.OutputContextField(
-                    species_location.navigate_to_field('@class'), GraphQLString),
+                    species_location.navigate_to_field(TYPENAME_META_FIELD_NAME), GraphQLString),
             }),
         ]
         expected_location_types = {
@@ -1565,7 +1567,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Filter(
                 expressions.BinaryComposition(
                     u'=',
-                    expressions.LocalField('@class', GraphQLString),
+                    expressions.LocalField(TYPENAME_META_FIELD_NAME, GraphQLString),
                     expressions.Variable('$base_cls', GraphQLString)
                 )
             ),
