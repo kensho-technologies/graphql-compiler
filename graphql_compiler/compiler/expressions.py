@@ -5,9 +5,6 @@ from graphql import GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLString
 import six
 import sqlalchemy
 from sqlalchemy import bindparam, sql
-from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
-from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
-
 from . import cypher_helpers, sqlalchemy_extensions
 from ..exceptions import GraphQLCompilationError
 from ..schema import (
@@ -136,7 +133,7 @@ class Literal(Expression):
     to_match = _to_output_code
     to_cypher = _to_output_code
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, aliases, current_alias):
         """Return the value."""
         self.validate()
         return self.value
@@ -257,7 +254,7 @@ class Variable(Expression):
         # [1] https://oss.redislabs.com/redisgraph/cypher_support/#types
         return u'{}'.format(self.variable_name)
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy BindParameter."""
         self.validate()
 
@@ -343,7 +340,7 @@ class LocalField(Expression):
         else:
             return u'{}.{}'.format(local_object_name, self.field_name)
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Column picked from the current_alias."""
         self.validate()
 
@@ -424,7 +421,7 @@ class GlobalContextField(Expression):
                              u'process in Cypher, so this is a bug. This function '
                              u'should not be called.')
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, aliases, current_alias):
         """Not implemented, should not be used."""
         raise AssertionError(u'GlobalContextField is not used as part of the query emission '
                              u'process in SQL, so this is a bug. This function '
@@ -527,7 +524,7 @@ class ContextField(Expression):
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
         self.validate()
 
@@ -660,7 +657,7 @@ class OutputContextField(Expression):
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
         if isinstance(self.field_type, GraphQLList):
             raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
@@ -785,7 +782,7 @@ class FoldedContextField(Expression):
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
         # get the type of the folded field
         inner_type = strip_non_null_from_type(self.field_type.of_type)
@@ -803,22 +800,13 @@ class FoldedContextField(Expression):
             self.fold_scope_location.fold_path
         ].c['fold_output_' + self.fold_scope_location.field]
 
-        if isinstance(dialect, MSDialect_pyodbc):
-            # MSSQL
-            return fold_output_column
-        elif isinstance(dialect, PGDialect_psycopg2):
-            # PostgreSQL
-            # coalesce to an empty array of the corresponding type
-            empty_array = 'ARRAY[]::{}[]'.format(sql_array_type)
-            return sqlalchemy.func.coalesce(
-                fold_output_column,
-                sqlalchemy.literal_column(empty_array)
-            )
-        else:
-            raise NotImplementedError(
-                u'Fold only supported for MSSQL and '
-                u'PostgreSQL, dialect was set to {}'.format(dialect.name)
-            )
+        # PostgreSQL
+        # coalesce to an empty array of the corresponding type
+        empty_array = 'ARRAY[]::{}[]'.format(sql_array_type)
+        return sqlalchemy.func.coalesce(
+            fold_output_column,
+            sqlalchemy.literal_column(empty_array)
+        )
 
     def __eq__(self, other):
         """Return True if the given object is equal to this one, and False otherwise."""
@@ -883,7 +871,7 @@ class FoldCountContextField(Expression):
         """Not supported yet."""
         raise NotImplementedError()
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, aliases, current_alias):
         """Not supported yet."""
         raise NotImplementedError(u'The SQL backend does not support _x_count.')
 
@@ -931,7 +919,7 @@ class ContextFieldExistence(Expression):
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
         raise AssertionError(u'ContextFieldExistence.to_cypher() was called: {}'.format(self))
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, aliases, current_alias):
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
         raise AssertionError(u'ContextFieldExistence.to_sql() was called: {}'.format(self))
 
@@ -1016,7 +1004,7 @@ class UnaryTransformation(Expression):
         """Not implemented yet."""
         raise NotImplementedError()
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, aliases, current_alias):
         """Not implemented yet."""
         raise NotImplementedError(u'Unary operators are not implemented in the SQL backend.')
 
@@ -1214,7 +1202,7 @@ class BinaryComposition(Expression):
                                   left=self.left.to_cypher(),
                                   right=self.right.to_cypher())
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy BinaryExpression representing this BinaryComposition."""
         self.validate()
 
@@ -1240,8 +1228,8 @@ class BinaryComposition(Expression):
             raise NotImplementedError(u'The SQL backend does not support operator {}.'
                                       .format(self.operator))
         return translation_table[self.operator](
-            self.left.to_sql(dialect, aliases, current_alias),
-            self.right.to_sql(dialect, aliases, current_alias),
+            self.left.to_sql(aliases, current_alias),
+            self.right.to_sql(aliases, current_alias),
         )
 
 
@@ -1339,10 +1327,10 @@ class TernaryConditional(Expression):
             if_true=self.if_true.to_cypher(),
             if_false=self.if_false.to_cypher())
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Case representing this TernaryConditional."""
         self.validate()
-        sql_predicate = self.predicate.to_sql(dialect, aliases, current_alias)
-        sql_if_true = self.if_true.to_sql(dialect, aliases, current_alias)
-        sql_else = self.if_false.to_sql(dialect, aliases, current_alias)
+        sql_predicate = self.predicate.to_sql(aliases, current_alias)
+        sql_if_true = self.if_true.to_sql(aliases, current_alias)
+        sql_else = self.if_false.to_sql(aliases, current_alias)
         return sql.expression.case([(sql_predicate, sql_if_true)], else_=sql_else)

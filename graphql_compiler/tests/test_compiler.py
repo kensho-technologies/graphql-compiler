@@ -4170,38 +4170,7 @@ class CompilerTests(unittest.TestCase):
               Animal___1.name AS `animal_name`,
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_names_list`
         '''
-        expected_mssql = '''
-            SELECT
-              [Animal_1].name AS animal_name,
-              folded_subquery_1.fold_output_name AS child_names_list
-            FROM
-              db_1.schema_1.[Animal] AS [Animal_1]
-              LEFT OUTER JOIN(
-                SELECT
-                  [Animal_2].uuid AS uuid,
-                  coalesce((
-                    SELECT
-                      '|' + coalesce(
-                        REPLACE(
-                          REPLACE(
-                            REPLACE([Animal_3].name, '^', '^e'),
-                            '~',
-                            '^n'
-                          ),
-                          '|',
-                          '^d'
-                        ),
-                        '~'
-                      )
-                    FROM
-                      db_1.schema_1.[Animal] AS [Animal_3]
-                    WHERE
-                      [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')
-                  ), '') AS fold_output_name
-                FROM
-                  db_1.schema_1.[Animal] AS [Animal_2]
-              ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
-        '''
+        expected_mssql = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
@@ -4227,37 +4196,7 @@ class CompilerTests(unittest.TestCase):
             ON "Animal_1".uuid = folded_subquery_1.uuid
         '''
 
-        expected_mssql = '''
-            SELECT
-              [Animal_1].name AS animal_name,
-              folded_subquery_1.fold_output_name AS homes_list
-            FROM
-              db_1.schema_1.[Animal] AS [Animal_1]
-              LEFT OUTER JOIN(
-                SELECT
-                  [Animal_2].uuid AS uuid,
-                  coalesce((
-                    SELECT
-                      '|' + coalesce(
-                        REPLACE(
-                          REPLACE(
-                            REPLACE([Location_1].name, '^', '^e'),
-                            '~',
-                            '^n'
-                          ),
-                          '|',
-                          '^d'
-                        ),
-                        '~'
-                      ) FROMdb_1.schema_1.[Location] AS [Location_1]
-                    WHERE
-                      [Animal_2].lives_in = [Location_1].uuid FOR XML PATH('')
-                  ), '') AS fold_output_name
-                FROM
-                  db_1.schema_1.[Animal] AS [Animal_2]
-              ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
-        '''
-
+        expected_mssql = SKIP_TEST
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
         expected_cypher = SKIP_TEST
@@ -4289,58 +4228,7 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
         '''
-        expected_mssql = '''
-            SELECT
-              [Animal_1].name AS animal_name,
-              folded_subquery_1.fold_output_color AS child_color_list,
-              folded_subquery_1.fold_output_name AS child_names_list
-            FROM
-              db_1.schema_1.[Animal] AS [Animal_1]
-              LEFT OUTER JOIN(
-                SELECT
-                  [Animal_2].uuid AS uuid,
-                  coalesce((
-                    SELECT
-                      '|' + coalesce(
-                        REPLACE(
-                          REPLACE(
-                            REPLACE([Animal_3].name, '^', '^e'),
-                            '~',
-                            '^n'
-                          ),
-                          '|',
-                          '^d'
-                        ),
-                        '~'
-                      )
-                    FROM
-                      db_1.schema_1.[Animal] AS [Animal_3]
-                    WHERE
-                      [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')
-                  ), '') AS fold_output_name,
-                  coalesce((
-                    SELECT
-                      '|' + coalesce(
-                        REPLACE(
-                          REPLACE(
-                            REPLACE([Animal_3].color, '^', '^e'),
-                            '~',
-                            '^n'
-                          ),
-                          '|',
-                          '^d'
-                        ),
-                        '~'
-                      )
-                    FROM
-                      db_1.schema_1.[Animal] AS [Animal_3]
-                    WHERE
-                      [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')
-                  ), '') AS fold_output_color
-                FROM
-                  db_1.schema_1.[Animal] AS [Animal_2]
-              ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
-        '''
+        expected_mssql = SKIP_TEST
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
         expected_cypher = SKIP_TEST
@@ -4381,66 +4269,7 @@ class CompilerTests(unittest.TestCase):
                   "Animal_5".uuid
             ) AS folded_subquery_2 ON "Animal_4".uuid = folded_subquery_2.uuid
         '''
-        expected_mssql = '''
-            SELECT
-              [Animal_1].name AS animal_name,
-              folded_subquery_1.fold_output_name AS child_names_list,
-              folded_subquery_2.fold_output_name AS sibling_and_self_names_list
-            FROM
-              db_1.schema_1.[Animal] AS [Animal_1]
-              LEFT OUTER JOIN(
-                SELECT
-                  [Animal_2].uuid AS uuid,
-                  coalesce((
-                    SELECT
-                      '|' + coalesce(
-                        REPLACE(
-                          REPLACE(
-                            REPLACE([Animal_3].name, '^', '^e'),
-                            '~',
-                            '^n'
-                          ),
-                          '|',
-                          '^d'
-                        ),
-                        '~'
-                      )
-                    FROM
-                      db_1.schema_1.[Animal] AS [Animal_3]
-                    WHERE
-                      [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')
-                  ), '') AS fold_output_name
-                FROM
-                  db_1.schema_1.[Animal] AS [Animal_2]
-              ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
-              JOIN db_1.schema_1.[Animal] AS [Animal_4] ON [Animal_1].parent = [Animal_4].uuid
-              LEFT OUTER JOIN(
-                SELECT
-                  [Animal_5].uuid AS uuid,
-                  coalesce((
-                    SELECT
-                      '|' + coalesce(
-                        REPLACE(
-                          REPLACE(
-                            REPLACE([Animal_6].name, '^', '^e'),
-                            '~',
-                            '^n'
-                          ),
-                          '|',
-                          '^d'
-                        ),
-                        '~'
-                      )
-                    FROM
-                      db_1.schema_1.[Animal] AS [Animal_6]
-                    WHERE
-                      [Animal_5].uuid = [Animal_6].parent FOR XML PATH('')
-                  ), '') AS fold_output_name
-                FROM
-                  db_1.schema_1.[Animal] AS [Animal_5]
-              ) AS folded_subquery_2 ON [Animal_4].uuid = folded_subquery_2.uuid
-        '''
-
+        expected_mssql = SKIP_TEST
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
         expected_cypher = SKIP_TEST
@@ -4521,79 +4350,14 @@ class CompilerTests(unittest.TestCase):
               [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.name] AS
                 `sibling_and_self_names_list`
         '''
-        expected_mssql = '''
-            SELECT
-              [Animal_1].name AS animal_name,
-              folded_subquery_1.fold_output_name AS sibling_and_self_names_list
-            FROM
-              db_1.schema_1.[Animal] AS [Animal_1]
-              JOIN db_1.schema_1.[Animal] AS [Animal_2] ON [Animal_1].parent = [Animal_2].uuid
-              LEFT OUTER JOIN(
-                SELECT
-                  [Animal_3].uuid AS uuid,
-                  coalesce((
-                    SELECT
-                      '|' + coalesce(
-                        REPLACE(
-                          REPLACE(
-                            REPLACE([Animal_4].name, '^', '^e'),
-                            '~',
-                            '^n'
-                          ),
-                          '|',
-                          '^d'
-                        ),
-                        '~'
-                      )
-                    FROM
-                      db_1.schema_1.[Animal] AS [Animal_4]
-                    WHERE
-                      [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
-                  ), '') AS fold_output_name
-                FROM
-                  db_1.schema_1.[Animal] AS [Animal_3]
-              ) AS folded_subquery_1 ON [Animal_2].uuid = folded_subquery_1.uuid
-        '''
+        expected_mssql = SKIP_TEST
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
 
     def test_fold_after_traverse_different_types(self):
         test_data = test_input_data.fold_after_traverse_different_types()
 
-        expected_mssql = '''
-            SELECT
-              [Animal_1].name AS animal_name,
-              folded_subquery_1.fold_output_name AS neighbor_and_self_names_list
-            FROM
-              db_1.schema_1.[Animal] AS [Animal_1]
-              JOIN db_1.schema_1.[Location] AS [Location_1]
-              ON [Animal_1].lives_in = [Location_1].uuid
-              LEFT OUTER JOIN(
-                SELECT
-                  [Location_2].uuid AS uuid,
-                  coalesce((
-                    SELECT
-                      '|' + coalesce(
-                        REPLACE(
-                          REPLACE(
-                            REPLACE([Animal_2].name, '^', '^e'),
-                            '~',
-                            '^n'
-                          ),
-                          '|',
-                          '^d'
-                        ),
-                        '~'
-                      )
-                    FROM
-                      db_1.schema_1.[Animal] AS [Animal_2]
-                    WHERE
-                      [Location_2].uuid = [Animal_2].lives_in FOR XML PATH('')
-                  ), '') AS fold_output_name
-                FROM
-                  db_1.schema_1.[Location] AS [Location_2]
-              ) AS folded_subquery_1 ON [Location_1].uuid = folded_subquery_1.uuid
-        '''
+        expected_mssql = SKIP_TEST
         expected_postgresql = '''
             SELECT
               "Animal_1".name AS animal_name,
@@ -4642,40 +4406,7 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_1
             ON "Location_1".uuid = folded_subquery_1.uuid
         '''
-        expected_mssql = '''
-            SELECT
-              [Location_1].name AS location_name,
-              folded_subquery_1.fold_output_name AS neighbor_and_self_names_list
-            FROM
-              db_1.schema_1.[Animal] AS [Animal_1]
-              JOIN db_1.schema_1.[Location] AS [Location_1]
-              ON [Animal_1].lives_in = [Location_1].uuid
-              LEFT OUTER JOIN(
-                SELECT
-                  [Location_2].uuid AS uuid,
-                  coalesce((
-                    SELECT
-                      '|' + coalesce(
-                        REPLACE(
-                          REPLACE(
-                            REPLACE([Animal_2].name, '^', '^e'),
-                            '~',
-                            '^n'
-                          ),
-                          '|',
-                          '^d'
-                        ),
-                        '~'
-                      )
-                    FROM
-                      db_1.schema_1.[Animal] AS [Animal_2]
-                    WHERE
-                      [Location_2].uuid = [Animal_2].lives_in FOR XML PATH('')
-                  ), '') AS fold_output_name
-                FROM
-                  db_1.schema_1.[Location] AS [Location_2]
-              ) AS folded_subquery_1 ON [Location_1].uuid = folded_subquery_1.uuid
-        '''
+        expected_mssql = SKIP_TEST
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
         expected_cypher = SKIP_TEST
@@ -7574,41 +7305,7 @@ class CompilerTests(unittest.TestCase):
                   ELSE null
                 END) AS `parent_name`
         '''
-        expected_mssql = '''
-            SELECT
-              [Animal_1].name AS animal_name,
-              folded_subquery_1.fold_output_name AS child_names_list,
-              [Animal_2].name AS parent_name
-            FROM
-              db_1.schema_1.[Animal] AS [Animal_1]
-              LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
-              ON [Animal_1].parent = [Animal_2].uuid
-              LEFT OUTER JOIN(
-                SELECT
-                  [Animal_3].uuid AS uuid,
-                  coalesce((
-                    SELECT
-                      '|' + coalesce(
-                        REPLACE(
-                          REPLACE(
-                            REPLACE([Animal_4].name, '^', '^e'),
-                            '~',
-                            '^n'
-                          ),
-                          '|',
-                          '^d'
-                        ),
-                        '~'
-                      )
-                    FROM
-                      db_1.schema_1.[Animal] AS [Animal_4]
-                    WHERE
-                      [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
-                  ), '') AS fold_output_name
-                FROM
-                  db_1.schema_1.[Animal] AS [Animal_3]
-              ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
-            '''
+        expected_mssql = SKIP_TEST
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
 
@@ -7702,41 +7399,7 @@ class CompilerTests(unittest.TestCase):
                   ELSE null
                 END) AS `parent_name`
         '''
-        expected_mssql = '''
-            SELECT
-              [Animal_1].name AS animal_name,
-              folded_subquery_1.fold_output_name AS child_names_list,
-              [Animal_2].nameASparent_name
-            FROM
-              db_1.schema_1.[Animal] AS [Animal_1]
-              LEFT OUTER JOIN(
-                SELECT
-                  [Animal_3].uuid AS uuid,
-                  coalesce((
-                    SELECT
-                      '|' + coalesce(
-                        REPLACE(
-                          REPLACE(
-                            REPLACE([Animal_4].name, '^', '^e'),
-                            '~',
-                            '^n'
-                          ),
-                          '|',
-                          '^d'
-                        ),
-                        '~'
-                      )
-                    FROM
-                      db_1.schema_1.[Animal] AS [Animal_4]
-                    WHERE
-                      [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
-                  ), '') AS fold_output_name
-                FROM
-                  db_1.schema_1.[Animal] AS [Animal_3]
-              ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
-              LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
-              ON [Animal_1].parent = [Animal_2].uuid
-        '''
+        expected_mssql = SKIP_TEST
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
 
