@@ -4228,7 +4228,6 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
         '''
-
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
         expected_mssql = SKIP_TEST
@@ -4270,7 +4269,6 @@ class CompilerTests(unittest.TestCase):
                   "Animal_5".uuid
             ) AS folded_subquery_2 ON "Animal_4".uuid = folded_subquery_2.uuid
         '''
-
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
         expected_mssql = SKIP_TEST
@@ -4316,6 +4314,7 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
+        expected_mssql = SKIP_TEST
         expected_postgresql = '''
             SELECT
               "Animal_1".name AS animal_name,
@@ -4352,7 +4351,7 @@ class CompilerTests(unittest.TestCase):
               [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.name] AS
                 `sibling_and_self_names_list`
         '''
-        expected_mssql = SKIP_TEST
+
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
 
