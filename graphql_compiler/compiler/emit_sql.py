@@ -4,6 +4,7 @@ from collections import namedtuple
 
 import six
 import sqlalchemy
+
 from . import blocks
 from .expressions import FoldedContextField
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
@@ -290,8 +291,8 @@ class SQLFoldObject(object):
             subquery_from_clause
         )
         return select_statement.group_by(
-           *self.group_by
-       )
+            *self.group_by
+        )
 
     def _get_array_agg_column(self, intermediate_fold_output_name, fold_output_field):
         """Select an array_agg of the fold output field, labeled as requested."""
@@ -575,8 +576,7 @@ class CompilationState(object):
         if self._current_fold is not None or left_predicate_folded or right_predicate_folded:
             raise NotImplementedError('Filters inside a fold are not implemented yet.')
 
-        sql_expression = predicate.to_sql(self._aliases,
-                                          self._current_alias)
+        sql_expression = predicate.to_sql(self._aliases, self._current_alias)
         if self._is_in_optional_scope():
             sql_expression = sqlalchemy.or_(sql_expression,
                                             self._came_from[self._current_alias].is_(None))

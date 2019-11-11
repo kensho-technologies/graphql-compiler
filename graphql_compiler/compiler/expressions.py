@@ -5,6 +5,7 @@ from graphql import GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLString
 import six
 import sqlalchemy
 from sqlalchemy import bindparam, sql
+
 from . import cypher_helpers, sqlalchemy_extensions
 from ..exceptions import GraphQLCompilationError
 from ..schema import (

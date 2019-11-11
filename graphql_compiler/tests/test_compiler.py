@@ -4228,9 +4228,10 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
         '''
-        expected_mssql = SKIP_TEST
+
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
+        expected_mssql = SKIP_TEST
         expected_cypher = SKIP_TEST
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
@@ -4269,9 +4270,10 @@ class CompilerTests(unittest.TestCase):
                   "Animal_5".uuid
             ) AS folded_subquery_2 ON "Animal_4".uuid = folded_subquery_2.uuid
         '''
-        expected_mssql = SKIP_TEST
+
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
+        expected_mssql = SKIP_TEST
         expected_cypher = SKIP_TEST
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
@@ -4357,7 +4359,6 @@ class CompilerTests(unittest.TestCase):
     def test_fold_after_traverse_different_types(self):
         test_data = test_input_data.fold_after_traverse_different_types()
 
-        expected_mssql = SKIP_TEST
         expected_postgresql = '''
             SELECT
               "Animal_1".name AS animal_name,
@@ -4380,6 +4381,7 @@ class CompilerTests(unittest.TestCase):
 
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
+        expected_mssql = SKIP_TEST
         expected_cypher = SKIP_TEST
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
@@ -4406,9 +4408,10 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_1
             ON "Location_1".uuid = folded_subquery_1.uuid
         '''
-        expected_mssql = SKIP_TEST
+
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
+        expected_mssql = SKIP_TEST
         expected_cypher = SKIP_TEST
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
@@ -7268,6 +7271,7 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
+        expected_mssql = SKIP_TEST
         expected_postgresql = '''
             SELECT
               "Animal_1".name AS animal_name,
@@ -7305,7 +7309,7 @@ class CompilerTests(unittest.TestCase):
                   ELSE null
                 END) AS `parent_name`
         '''
-        expected_mssql = SKIP_TEST
+
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
 
@@ -7362,6 +7366,7 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
+        expected_mssql = SKIP_TEST
         expected_postgresql = '''
             SELECT
               "Animal_1".name AS animal_name,
@@ -7399,7 +7404,7 @@ class CompilerTests(unittest.TestCase):
                   ELSE null
                 END) AS `parent_name`
         '''
-        expected_mssql = SKIP_TEST
+
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
 
