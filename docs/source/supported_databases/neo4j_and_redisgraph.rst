@@ -3,7 +3,7 @@ Neo4j/Redisgraph
 
 .. important
 
-    Documentation on how to use the compiler to target cypher-based datatabase backends is still a
+    Documentation on how to use the compiler to target cypher-based database backends is still a
     work in progress.
 
 Cypher query parameters
