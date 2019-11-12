@@ -6,18 +6,11 @@ from graphql.language.ast import (
 from graphql.language.parser import parse
 
 from .exceptions import GraphQLParsingError
-from .schema import TYPENAME_META_FIELD_NAME
 
 
 def get_ast_field_name(ast):
-    """Return the normalized field name for the given AST node."""
-    replacements = {
-        # We always rewrite the following field names into their proper underlying counterparts.
-        TYPENAME_META_FIELD_NAME: '@class'
-    }
-    base_field_name = ast.name.value
-    normalized_name = replacements.get(base_field_name, base_field_name)
-    return normalized_name
+    """Return the field name for the given AST node."""
+    return ast.name.value
 
 
 def get_ast_field_name_or_none(ast):

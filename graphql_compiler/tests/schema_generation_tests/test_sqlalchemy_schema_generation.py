@@ -3,7 +3,7 @@ import unittest
 
 from graphql.type import GraphQLInt, GraphQLObjectType, GraphQLString
 import pytest
-from sqlalchemy import Column, MetaData, PrimaryKeyConstraint, Table
+from sqlalchemy import Column, MetaData, PrimaryKeyConstraint, Table, ForeignKey
 from sqlalchemy.dialects.mssql import TINYINT, dialect
 from sqlalchemy.types import Binary, Integer, LargeBinary, String
 
@@ -15,7 +15,8 @@ from ...schema_generation.sqlalchemy import (
     get_join_descriptors_from_edge_descriptors
 )
 from ...schema_generation.sqlalchemy.edge_descriptors import (
-    DirectEdgeDescriptor, DirectJoinDescriptor
+    DirectEdgeDescriptor, DirectJoinDescriptor, get_names_for_direct_edge_descriptors,
+    generate_direct_edge_descriptors_from_foreign_keys
 )
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
 from ...schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_schema_graph
@@ -23,27 +24,26 @@ from ...schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_
 
 def _get_test_vertex_name_to_table():
     """Return a dict mapping the name of each VertexType to the underlying SQLAlchemy Table."""
-    metadata1 = MetaData()
+    metadata = MetaData()
     table1 = Table(
         'Table1',
-        metadata1,
+        metadata,
         Column('column_with_supported_type', String(), primary_key=True),
         Column('column_with_non_supported_type', LargeBinary()),
         Column('column_with_mssql_type', TINYINT()),
-        Column('source_column', Integer()),
+        Column('source_column', Integer(), ForeignKey('Table2.destination_column')),
+        Column('unique_column', Integer(), unique=True),
     )
 
-    # We use a different metadata object to test there is no dependency on the metadata object.
-    metadata2 = MetaData()
     table2 = Table(
         'Table2',
-        metadata2,
+        metadata,
         Column('destination_column', Integer(), primary_key=True),
     )
 
     table3 = Table(
         'Table3',
-        metadata2,
+        metadata,
         Column('primary_key_column1', Integer()),
         Column('primary_key_column2', Integer()),
 
@@ -52,10 +52,22 @@ def _get_test_vertex_name_to_table():
 
     table4 = Table(
         'Table4',
-        metadata2,
+        metadata,
         Column('primary_key_column_with_unsupported_type', Binary()),
 
         PrimaryKeyConstraint('primary_key_column_with_unsupported_type'),
+    )
+
+    table5 = Table(
+        'Table5',
+        metadata,
+        Column('foreign_key_column', Integer(), ForeignKey('Table6.primary_key_column')),
+    )
+
+    table6 = Table(
+        'Table6',
+        metadata,
+        Column('primary_key_column', Integer, primary_key=True)
     )
 
     return {
@@ -63,6 +75,8 @@ def _get_test_vertex_name_to_table():
         'ArbitraryObjectName': table2,
         'TableWithMultiplePrimaryKeyColumns': table3,
         'TableWithNonSupportedPrimaryKeyType': table4,
+        'TableWithForeignKey': table5,
+        'TableWithReferencedPrimaryKey': table6,
     }
 
 
@@ -141,17 +155,15 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
 
     def test_basic_index_generation_from_primary_key(self):
         indexes = self.schema_graph.get_all_indexes_for_class('Table1')
-        self.assertEqual(
-            {
-                IndexDefinition(
-                    name=None,
-                    base_classname='Table1',
-                    fields=frozenset({'column_with_supported_type'}),
-                    unique=True,
-                    ordered=False,
-                    ignore_nulls=False,
-                ),
-            }, indexes
+        self.assertIn(
+            IndexDefinition(
+                name=None,
+                base_classname='Table1',
+                fields=frozenset({'column_with_supported_type'}),
+                unique=True,
+                ordered=False,
+                ignore_nulls=False,
+            ), indexes
         )
 
     def test_index_generation_from_multi_column_primary_key(self):
@@ -173,8 +185,35 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
         indexes = self.schema_graph.get_all_indexes_for_class('TableWithNonSupportedPrimaryKeyType')
         self.assertEqual(frozenset(), indexes)
 
-    def test_edge_descriptor_generation_from_foreign_keys(self):
+    def test_index_generation_from_unique_constraint(self):
+        indexes = self.schema_graph.get_all_indexes_for_class('Table1')
+        self.assertIn(
+            IndexDefinition(
+                name=None,
+                base_classname='Table1',
+                fields=frozenset({'unique_column'}),
+                unique=True,
+                ordered=False,
+                ignore_nulls=True,
+            ), indexes
+        )
 
+    def test_edge_generation_from_foreign_keys(self):
+        direct_edge_descriptors  = generate_direct_edge_descriptors_from_foreign_keys(
+            self.schema_info.vertex_name_to_table
+        )
+        direct_edges = get_names_for_direct_edge_descriptors(direct_edge_descriptors)
+        self.assertEqual(
+            direct_edges,
+            {
+                'TableWithForeignKey_foreign_key_column': DirectEdgeDescriptor(
+                    from_vertex='TableWithForeignKey',
+                    from_column='foreign_key_column',
+                    to_vertex='TableWithReferencedPrimaryKey',
+                    to_column='primary_key_column'
+                ),
+            }
+        )
 
 
 class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):

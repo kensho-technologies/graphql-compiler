@@ -494,18 +494,14 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
     schema = _get_schema_without_list_valued_property_fields()
     type_equivalence_hints = get_type_equivalence_hints()
 
-    # Every SQLAlchemy Table needs to be attached to a MetaData object. We don't actually use it.
-    # We use a mixture of two metadata objects to make sure our implementation does not rely
-    # on all the tables sharing a metadata object.
-    sqlalchemy_metadata_1 = sqlalchemy.MetaData()
-    sqlalchemy_metadata_2 = sqlalchemy.MetaData()
+    sqlalchemy_metadata = sqlalchemy.MetaData()
 
     uuid_type = sqlalchemy.String(36)
 
     tables = {
         'Animal': sqlalchemy.Table(
             'Animal',
-            sqlalchemy_metadata_1,
+            sqlalchemy_metadata,
             sqlalchemy.Column('birthday', sqlalchemy.DateTime, nullable=False),
             sqlalchemy.Column('color', sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=True),
@@ -523,7 +519,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
         ),
         'BirthEvent': sqlalchemy.Table(
             'BirthEvent',
-            sqlalchemy_metadata_2,
+            sqlalchemy_metadata,
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -533,7 +529,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
         ),
         'Entity': sqlalchemy.Table(
             'Entity',
-            sqlalchemy_metadata_2,
+            sqlalchemy_metadata,
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -542,7 +538,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
         ),
         'Event': sqlalchemy.Table(
             'Event',
-            sqlalchemy_metadata_2,
+            sqlalchemy_metadata,
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -552,7 +548,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
         ),
         'FeedingEvent': sqlalchemy.Table(
             'FeedingEvent',
-            sqlalchemy_metadata_1,
+            sqlalchemy_metadata,
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -562,7 +558,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
         ),
         'Food': sqlalchemy.Table(
             'Food',
-            sqlalchemy_metadata_1,
+            sqlalchemy_metadata,
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -570,7 +566,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
         ),
         'FoodOrSpecies': sqlalchemy.Table(
             'FoodOrSpecies',
-            sqlalchemy_metadata_1,
+            sqlalchemy_metadata,
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -578,7 +574,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
         ),
         'Location': sqlalchemy.Table(
             'Location',
-            sqlalchemy_metadata_1,
+            sqlalchemy_metadata,
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -586,7 +582,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
         ),
         'Species': sqlalchemy.Table(
             'Species',
-            sqlalchemy_metadata_2,
+            sqlalchemy_metadata,
             sqlalchemy.Column('description', sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
@@ -597,7 +593,7 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
         ),
         'UniquelyIdentifiable': sqlalchemy.Table(
             'UniquelyIdentifiable',
-            sqlalchemy_metadata_1,
+            sqlalchemy_metadata,
             sqlalchemy.Column('uuid', uuid_type, primary_key=True),
             schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
