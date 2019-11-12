@@ -51,14 +51,14 @@ def _deserialize_anonymous_json_argument(expected_type, value):
         it is already the base case of exceptions raised by the GraphQL parsers.
     """
     allowed_types_for_graphql_type = {
-        GraphQLDate: (six.string_types,),
-        GraphQLDateTime: (six.string_types,),
-        GraphQLFloat: (six.string_types, float, six.integer_types),
-        GraphQLDecimal: (six.string_types, float, six.integer_types),
-        GraphQLInt: (six.integer_types, six.string_types),
-        GraphQLString: (six.string_types,),
-        GraphQLBoolean: (bool,),
-        GraphQLID: (six.integer_types, six.string_types,),
+        GraphQLDate.name: (six.string_types,),
+        GraphQLDateTime.name: (six.string_types,),
+        GraphQLFloat.name: (six.string_types, float, six.integer_types),
+        GraphQLDecimal.name: (six.string_types, float, six.integer_types),
+        GraphQLInt.name: (six.integer_types, six.string_types),
+        GraphQLString.name: (six.string_types,),
+        GraphQLBoolean.name: (bool,),
+        GraphQLID.name: (six.integer_types, six.string_types,),
     }
 
     # Check for long integers, bypassing the GraphQLInt parser
@@ -73,7 +73,7 @@ def _deserialize_anonymous_json_argument(expected_type, value):
 
     # Check if the type of the value is correct
     correct_type = True
-    expected_python_types = allowed_types_for_graphql_type[expected_type]
+    expected_python_types = allowed_types_for_graphql_type[expected_type.name]
     if isinstance(value, bool) and not GraphQLBoolean.is_same_type(expected_type):
         correct_type = False  # We explicitly disallow passing boolean values for non-boolean types
     if not isinstance(value, expected_python_types):

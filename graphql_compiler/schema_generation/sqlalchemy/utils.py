@@ -25,3 +25,15 @@ def validate_that_sqlalchemy_tables_have_a_single_vertex_name(vertex_name_to_tab
                                  .format(table.fullname, vertex_name, other_vertex_name))
         else:
             table_to_vertex_name[table] = vertex_name
+
+
+def validate_that_tables_belong_to_the_same_metadata_object(tables):
+    """Validate that all the SQLAlchemy Table objects belong to the same MetaData object."""
+    metadata = None
+    for table in tables:
+        if metadata is None:
+            metadata = table.metadata
+        else:
+            if table.metadata is not metadata:
+                raise AssertionError('Multiple SQLAlchemy MetaData objects used for schema '
+                                     'generation.')
