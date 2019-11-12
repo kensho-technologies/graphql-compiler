@@ -173,6 +173,9 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
         indexes = self.schema_graph.get_all_indexes_for_class('TableWithNonSupportedPrimaryKeyType')
         self.assertEqual(frozenset(), indexes)
 
+    def test_edge_descriptor_generation_from_foreign_keys(self):
+        ge
+
 
 class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
     def setUp(self):
