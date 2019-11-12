@@ -1918,35 +1918,6 @@ backed by SQL `association tables <https://en.wikipedia.org/wiki/Associative_ent
     compilation_result = graphql_to_sql(sql_schema_info, graphql_query, {})
 
 
-Generating SQL Edges from foreign keys
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The compiler includes a function that generates edge descriptors from foreign keys in the
-SQLAlchemy Table objects:
-
-.. code:: python
-
-    from graphql_compiler.schema_generation.sqlalchemy.edge_descriptors import (
-        generate_direct_edge_descriptors_from_foreign_keys
-    )
-
-    direct_edge_descriptors = generate_direct_edge_descriptors_from_foreign_keys(
-        your_vertex_name_to_table_mapping
-    )
-
-Once you have the edge descriptors, you need to assign each of these edge descriptors a name to
-include them in the schema info. The compiler has a function that assigns names to direct edge
-descriptors of the format <from_vertex>_<from_column>. Feel free to assign them any name you'd
-like though.
-
-.. code:: python
-
-    from graphql_compiler.schema_generation.sqlalchemy.edge_descriptors import (
-        get_names_for_direct_edge_descriptor_objects
-    )
-
-    direct_edges = get_names_for_direct_edge_descriptor_objects(direct_edge_descriptors)
-
 Including tables without explicitly enforced primary keys
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

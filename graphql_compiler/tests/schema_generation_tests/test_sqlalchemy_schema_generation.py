@@ -4,7 +4,7 @@ import unittest
 from graphql.type import GraphQLInt, GraphQLObjectType, GraphQLString
 import pytest
 from sqlalchemy import (
-    Column, ForeignKey, MetaData, PrimaryKeyConstraint, Table, ForeignKeyConstraint
+    Column, ForeignKey, ForeignKeyConstraint, MetaData, PrimaryKeyConstraint, Table
 )
 from sqlalchemy.dialects.mssql import TINYINT, dialect
 from sqlalchemy.types import Binary, Integer, LargeBinary, String
@@ -17,8 +17,7 @@ from ...schema_generation.sqlalchemy import (
     get_join_descriptors_from_edge_descriptors
 )
 from ...schema_generation.sqlalchemy.edge_descriptors import (
-    DirectEdgeDescriptor, DirectJoinDescriptor, generate_direct_edge_descriptors_from_foreign_keys,
-    get_names_for_direct_edge_descriptors
+    DirectEdgeDescriptor, DirectJoinDescriptor, generate_direct_edge_descriptors_from_foreign_keys
 )
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
 from ...schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_schema_graph
@@ -213,12 +212,11 @@ class SQLAlchemyForeignKeyEdgeGenerationTests(unittest.TestCase):
         direct_edge_descriptors = generate_direct_edge_descriptors_from_foreign_keys(
             vertex_name_to_table
         )
-        direct_edges = get_names_for_direct_edge_descriptors(direct_edge_descriptors)
 
         self.assertEqual(
-            direct_edges,
+            direct_edge_descriptors,
             {
-                'TableWithForeignKey_foreign_key_column': DirectEdgeDescriptor(
+                DirectEdgeDescriptor(
                     from_vertex='TableWithForeignKey',
                     from_column='foreign_key_column',
                     to_vertex='TableWithReferencedPrimaryKey',
@@ -258,9 +256,8 @@ class SQLAlchemyForeignKeyEdgeGenerationTests(unittest.TestCase):
             direct_edge_descriptors = generate_direct_edge_descriptors_from_foreign_keys(
                 vertex_name_to_table
             )
-            direct_edges = get_names_for_direct_edge_descriptors(direct_edge_descriptors)
 
-        self.assertEqual(direct_edges, {})
+        self.assertEqual(direct_edge_descriptors, set())
 
 
 class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
