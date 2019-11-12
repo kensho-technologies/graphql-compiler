@@ -20,7 +20,7 @@ def validate_that_sqlalchemy_tables_have_a_single_vertex_name(vertex_name_to_tab
 
     for vertex_name, table in vertex_name_to_table.items():
         if table in table_to_vertex_name:
-            other_vertex_name = vertex_name_to_table[table.fullname]
+            other_vertex_name = vertex_name_to_table[table]
             raise AssertionError('Table {} is associated with multiple vertex types: {} and {}.'
                                  .format(table.fullname, vertex_name, other_vertex_name))
         else:
