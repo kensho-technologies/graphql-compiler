@@ -60,7 +60,6 @@ def _get_test_vertex_name_to_table():
         PrimaryKeyConstraint('primary_key_column_with_unsupported_type'),
     )
 
-
     return {
         'Table1': table1,
         'ArbitraryObjectName': table2,
