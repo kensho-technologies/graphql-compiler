@@ -62,11 +62,6 @@ def validate_edge_descriptors(vertex_name_to_table, direct_edges):
 def generate_direct_edge_descriptors_from_foreign_keys(vertex_name_to_table):
     """Return a set of DirectEdgeDescriptor objects from the table's foreign keys.
 
-    Prerequisites:
-        1. All tables in vertex_name_to_table must to belong to the same Metadata object.
-        2. All tables in vertex_name_to_table must have an unique vertex type name. In other words,
-           vertex_name_to_table must be a one-to-one mapping.
-
     Args:
         vertex_name_to_table: Dict[str, Table], a mapping of vertex type names to the underlying
                               SQLAlchemy table objects.
@@ -74,9 +69,7 @@ def generate_direct_edge_descriptors_from_foreign_keys(vertex_name_to_table):
     Return:
         set of DirectEdgeDescriptor objects extrapolated from the foreign keys.
     """
-    # TODO: Move these assertions to get_sqlalchemy_from_specified_metadata
-    _validate_that_tables_belong_to_the_same_metadata_object(vertex_name_to_table.tables())
-    table_fullname_to_vertex_name = _get_table_full_name_to_vertex_name(vertex_name_to_table)
+    table_to_vertex_name = _get_table_to_vertex_name(vertex_name_to_table)
     direct_edge_descriptors = set()
 
     number_of_composite_foreign_keys = 0
@@ -88,7 +81,7 @@ def generate_direct_edge_descriptors_from_foreign_keys(vertex_name_to_table):
                 column = next(iter(table.foreign_key_constraints.columns))
                 referenced_column = next(next(iter(table.foreign_key_constraints.columns)))
                 referenced_table = referenced_column.table
-                referenced_vertex_name = table_fullname_to_vertex_name[referenced_table.fullname]
+                referenced_vertex_name = table_to_vertex_name[referenced_table.fullname]
                 direct_edge_descriptors.add(
                     DirectEdgeDescriptor(
                         from_vertex=vertex_name,
@@ -118,25 +111,11 @@ def get_names_for_direct_edge_descriptors(direct_edge_descriptors):
     return direct_edges
 
 
-def _validate_that_tables_belong_to_the_same_metadata_object(tables):
-    """Validate that all the SQLAlchemy Table belong to the same MetaData object."""
-    metadata = None
-    for table in tables:
-        if metadata is None:
-            metadata = table.metadata
-        else:
-            if table.metadata is not metadata:
-                raise AssertionError('Multiple SQLAlchemy MetaData objects used for schema '
-                                     'generation.')
+def _get_table_to_vertex_name(vertex_name_to_table):
+    """Return a mapping of SQLAlchemy Table objects to their vertex type names."""
+    table_to_vertex_name = {}
 
-
-def _get_table_full_name_to_vertex_name(vertex_name_to_table):
-    """Return a mapping of the table "fullnames", e.g. Db.dbo.TableName, to vertex names."""
-    table_fullname_to_vertex_name = {}
     for vertex_name, table in vertex_name_to_table.items():
-        if table.fullname in table_fullname_to_vertex_name:
-            other_vertex_name = vertex_name_to_table[table.fullname]
-            raise AssertionError('Table {} is associated with multiple vertex types: {} and {}.'
-                                 .format(table.fullname, vertex_name, other_vertex_name))
-        else:
-            table_fullname_to_vertex_name[table.fullname] = vertex_name
+        table_to_vertex_name[table] = vertex_name
+
+    return table_to_vertex_name

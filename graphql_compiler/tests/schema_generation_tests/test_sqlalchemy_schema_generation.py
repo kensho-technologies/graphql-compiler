@@ -174,7 +174,7 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
         self.assertEqual(frozenset(), indexes)
 
     def test_edge_descriptor_generation_from_foreign_keys(self):
-        ge
+
 
 
 class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
