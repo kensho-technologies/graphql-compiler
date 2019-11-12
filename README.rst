@@ -1934,8 +1934,8 @@ SQLAlchemy Table objects:
         your_vertex_name_to_table_mapping
     )
 
-Once you have the edge descriptors, you need to assign each of these edge descriptors include
-them in the schema info. The compiler has a function that assigns names to direct edge
+Once you have the edge descriptors, you need to assign each of these edge descriptors a name to
+include them in the schema info. The compiler has a function that assigns names to direct edge
 descriptors of the format <from_vertex>_<from_column>. Feel free to assign them any name you'd
 like though.
 
@@ -1986,8 +1986,6 @@ is to prepend the schema name as follows:
             raise AssertionError('Found two tables with conflicting GraphQL object names.')
 
         vertex_name_to_table[vertex_name] = table
-
-
 
 Including manually defined :code:`Table` objects
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

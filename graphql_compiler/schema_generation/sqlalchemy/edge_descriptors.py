@@ -73,26 +73,28 @@ def generate_direct_edge_descriptors_from_foreign_keys(vertex_name_to_table):
     direct_edge_descriptors = set()
 
     number_of_composite_foreign_keys = 0
-    for vertex_name, table in vertex_name_to_table:
-        for fk_constraints in table.foreign_key_constraints:
-            if len(fk_constraints.columns != 1) or len(fk_constraints.refcolumns != 1):
+    for vertex_name, table in vertex_name_to_table.items():
+        for fk_constraint in table.foreign_key_constraints:
+            foreign_key_columns = fk_constraint.columns
+            referenced_columns = [element.column for element in fk_constraint.elements]
+            if len(foreign_key_columns) != 1 or len(referenced_columns) != 1:
                 number_of_composite_foreign_keys += 1
             else:
-                column = next(iter(table.foreign_key_constraints.columns))
-                referenced_column = next(next(iter(table.foreign_key_constraints.columns)))
+                foreign_key_column = next(iter(foreign_key_columns))
+                referenced_column = next(iter(referenced_columns))
                 referenced_table = referenced_column.table
-                referenced_vertex_name = table_to_vertex_name[referenced_table.fullname]
+                referenced_vertex_name = table_to_vertex_name[referenced_table]
                 direct_edge_descriptors.add(
                     DirectEdgeDescriptor(
                         from_vertex=vertex_name,
-                        from_column=column.name,
+                        from_column=foreign_key_column.name,
                         to_vertex=referenced_vertex_name,
                         to_column=referenced_column.name
                     ))
 
     if number_of_composite_foreign_keys:
-        warnings.warn("Ignored {} edges implied by composite foreign keys. We currently do not "
-                      "support SQL edges with multiple source/destination columns.")
+        warnings.warn('Ignored {} edges implied by composite foreign keys. We currently do not '
+                      'support SQL edges with multiple source/destination columns.')
 
     return direct_edge_descriptors
 

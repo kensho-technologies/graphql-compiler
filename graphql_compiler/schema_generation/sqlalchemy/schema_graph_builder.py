@@ -9,7 +9,7 @@ from ..schema_graph import (
 from .edge_descriptors import validate_edge_descriptors
 from .scalar_type_mapper import try_get_graphql_scalar_type
 from .utils import (
-    validate_that_tables_have_primary_keys, validate_that_tables_belong_to_the_same_metadata_object
+    validate_that_tables_belong_to_the_same_metadata_object, validate_that_tables_have_primary_keys
 )
 
 
