@@ -60,7 +60,7 @@ def validate_edge_descriptors(vertex_name_to_table, direct_edges):
 
 
 def generate_direct_edge_descriptors_from_foreign_keys(vertex_name_to_table):
-    """Return a set of DirectEdgeDescriptor objects from the table's foreign keys.
+    """Return a set of DirectEdgeDescriptor objects from the foreign keys in the SQLAlchemy tables.
 
     Args:
         vertex_name_to_table: Dict[str, Table], a mapping of vertex type names to the underlying
