@@ -76,6 +76,7 @@ def generate_direct_edge_descriptors_from_foreign_keys(vertex_name_to_table):
     for vertex_name, table in vertex_name_to_table.items():
         for fk_constraint in table.foreign_key_constraints:
             foreign_key_columns = fk_constraint.columns
+            # The .elements attribute refers to a list of ForeignKey objects.
             referenced_columns = [element.column for element in fk_constraint.elements]
             if len(foreign_key_columns) != 1 or len(referenced_columns) != 1:
                 number_of_composite_foreign_keys += 1
