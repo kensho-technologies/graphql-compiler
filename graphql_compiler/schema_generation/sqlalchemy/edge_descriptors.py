@@ -78,9 +78,7 @@ def generate_direct_edge_descriptors_from_foreign_keys(vertex_name_to_table):
             foreign_key_columns = fk_constraint.columns
             # The .elements attribute refers to a list of ForeignKey objects.
             referenced_columns = [element.column for element in fk_constraint.elements]
-            if len(foreign_key_columns) != 1 or len(referenced_columns) != 1:
-                number_of_composite_foreign_keys += 1
-            else:
+            if len(foreign_key_columns) == 1 and len(referenced_columns) == 1:
                 foreign_key_column = next(iter(foreign_key_columns))
                 referenced_column = next(iter(referenced_columns))
                 referenced_table = referenced_column.table
@@ -92,6 +90,13 @@ def generate_direct_edge_descriptors_from_foreign_keys(vertex_name_to_table):
                         to_vertex=referenced_vertex_name,
                         to_column=referenced_column.name
                     ))
+            elif len(foreign_key_columns) == 0 or len(referenced_columns) == 0:
+                raise AssertionError('Found invalid foreign key in table {}. Foreign key '
+                                     'columns {}. Referenced primary key columns {}.'
+                                     .format(table.fullname, foreign_key_columns,
+                                             referenced_columns))
+            else:
+                number_of_composite_foreign_keys += 1
 
     if number_of_composite_foreign_keys:
         warnings.warn('Ignored {} edges implied by composite foreign keys. We currently do not '
@@ -105,6 +110,10 @@ def _get_table_to_vertex_name(vertex_name_to_table):
     table_to_vertex_name = {}
 
     for vertex_name, table in vertex_name_to_table.items():
+        if table in table_to_vertex_name:
+            other_vertex_name = table_to_vertex_name[table]
+            raise AssertionError('Table {} is associated with multiple vertex types: {} and {}.'
+                                 .format(table.fullname, vertex_name, other_vertex_name))
         table_to_vertex_name[table] = vertex_name
 
     return table_to_vertex_name

@@ -186,7 +186,7 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
         )
 
 
-@pytest.mark.filterwarnings('ignore: Ignored * edges implied by composite foreign keys*')
+@pytest.mark.filterwarnings('ignore: Ignored .* edges implied by composite foreign keys.*')
 class SQLAlchemyForeignKeyEdgeGenerationTests(unittest.TestCase):
     def test_edge_generation_from_foreign_keys(self):
         metadata = MetaData()
