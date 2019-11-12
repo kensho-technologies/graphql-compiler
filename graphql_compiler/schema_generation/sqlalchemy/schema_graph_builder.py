@@ -8,7 +8,10 @@ from ..schema_graph import (
 )
 from .edge_descriptors import validate_edge_descriptors
 from .scalar_type_mapper import try_get_graphql_scalar_type
-from .utils import validate_that_tables_have_primary_keys
+from .utils import (
+    validate_that_sqlalchemy_tables_have_a_single_vertex_name,
+    validate_that_tables_have_primary_keys
+)
 
 
 def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
@@ -32,6 +35,7 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
     """
     validate_edge_descriptors(vertex_name_to_table, direct_edges)
     validate_that_tables_have_primary_keys(vertex_name_to_table.values())
+    validate_that_sqlalchemy_tables_have_a_single_vertex_name(vertex_name_to_table)
 
     vertex_types = {
         vertex_name: _get_vertex_type_from_sqlalchemy_table(vertex_name, table)
