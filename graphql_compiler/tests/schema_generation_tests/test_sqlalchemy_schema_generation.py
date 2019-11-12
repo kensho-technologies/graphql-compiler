@@ -23,10 +23,10 @@ from ...schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_
 
 def _get_test_vertex_name_to_table():
     """Return a dict mapping the name of each VertexType to the underlying SQLAlchemy Table."""
-    metadata1 = MetaData()
+    metadata = MetaData()
     table1 = Table(
         'Table1',
-        metadata1,
+        metadata,
         Column('column_with_supported_type', String(), primary_key=True),
         Column('column_with_non_supported_type', LargeBinary()),
         Column('column_with_mssql_type', TINYINT()),
@@ -34,17 +34,15 @@ def _get_test_vertex_name_to_table():
         Column('unique_column', Integer(), unique=True)
     )
 
-    # We use a different metadata object to test there is no dependency on the metadata object.
-    metadata2 = MetaData()
     table2 = Table(
         'Table2',
-        metadata2,
+        metadata,
         Column('destination_column', Integer(), primary_key=True),
     )
 
     table3 = Table(
         'Table3',
-        metadata2,
+        metadata,
         Column('primary_key_column1', Integer()),
         Column('primary_key_column2', Integer()),
 
@@ -53,7 +51,7 @@ def _get_test_vertex_name_to_table():
 
     table4 = Table(
         'Table4',
-        metadata2,
+        metadata,
         Column('primary_key_column_with_unsupported_type', Binary()),
 
         PrimaryKeyConstraint('primary_key_column_with_unsupported_type'),
