@@ -3,7 +3,9 @@ import unittest
 
 from graphql.type import GraphQLInt, GraphQLObjectType, GraphQLString
 import pytest
-from sqlalchemy import Column, MetaData, PrimaryKeyConstraint, Table
+from sqlalchemy import (
+    Column, ForeignKey, ForeignKeyConstraint, MetaData, PrimaryKeyConstraint, Table
+)
 from sqlalchemy.dialects.mssql import TINYINT, dialect
 from sqlalchemy.types import Binary, Integer, LargeBinary, String
 
@@ -15,7 +17,7 @@ from ...schema_generation.sqlalchemy import (
     get_join_descriptors_from_edge_descriptors
 )
 from ...schema_generation.sqlalchemy.edge_descriptors import (
-    DirectEdgeDescriptor, DirectJoinDescriptor
+    DirectEdgeDescriptor, DirectJoinDescriptor, generate_direct_edge_descriptors_from_foreign_keys
 )
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
 from ...schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_schema_graph
@@ -30,8 +32,8 @@ def _get_test_vertex_name_to_table():
         Column('column_with_supported_type', String(), primary_key=True),
         Column('column_with_non_supported_type', LargeBinary()),
         Column('column_with_mssql_type', TINYINT()),
-        Column('source_column', Integer()),
-        Column('unique_column', Integer(), unique=True)
+        Column('source_column', Integer(), ForeignKey('Table2.destination_column')),
+        Column('unique_column', Integer(), unique=True),
     )
 
     table2 = Table(
@@ -182,6 +184,80 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
                 ignore_nulls=True,
             ), indexes
         )
+
+
+@pytest.mark.filterwarnings('ignore: Ignored .* edges implied by composite foreign keys.*')
+class SQLAlchemyForeignKeyEdgeGenerationTests(unittest.TestCase):
+    def test_edge_generation_from_foreign_keys(self):
+        metadata = MetaData()
+
+        table1 = Table(
+            'Table1',
+            metadata,
+            Column('primary_key_column', Integer(), primary_key=True),
+            Column('foreign_key_column', Integer(), ForeignKey('Table2.primary_key_column')),
+        )
+
+        table2 = Table(
+            'Table2',
+            metadata,
+            Column('primary_key_column', Integer, primary_key=True)
+        )
+
+        vertex_name_to_table = {
+            'TableWithForeignKey': table1,
+            'TableWithReferencedPrimaryKey': table2,
+        }
+
+        direct_edge_descriptors = generate_direct_edge_descriptors_from_foreign_keys(
+            vertex_name_to_table
+        )
+
+        self.assertEqual(
+            direct_edge_descriptors,
+            {
+                DirectEdgeDescriptor(
+                    from_vertex='TableWithForeignKey',
+                    from_column='foreign_key_column',
+                    to_vertex='TableWithReferencedPrimaryKey',
+                    to_column='primary_key_column'
+                ),
+            }
+        )
+
+    def test_warning_for_ignored_foreign_keys(self):
+        metadata = MetaData()
+
+        table1 = Table(
+            'Table1',
+            metadata,
+            Column('primary_key_column', Integer(), primary_key=True),
+            Column('foreign_key_column1', Integer()),
+            Column('foreign_key_column2', Integer()),
+
+            ForeignKeyConstraint(
+                ('foreign_key_column1', 'foreign_key_column2'),
+                ('Table2.primary_key_column1', 'Table2.primary_key_column2'))
+        )
+
+        table2 = Table(
+            'Table2',
+            metadata,
+            Column('primary_key_column1', Integer, primary_key=True),
+            Column('primary_key_column2', Integer, primary_key=True),
+        )
+
+        vertex_name_to_table = {
+            'TableWithForeignKey': table1,
+            'TableWithReferencedPrimaryKey': table2,
+        }
+
+        with pytest.warns(Warning):
+            direct_edge_descriptors = generate_direct_edge_descriptors_from_foreign_keys(
+                vertex_name_to_table
+            )
+
+        self.assertEqual(direct_edge_descriptors, set())
 
 
 class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
