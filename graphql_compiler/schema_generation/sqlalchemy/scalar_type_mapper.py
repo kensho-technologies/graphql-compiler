@@ -45,8 +45,6 @@ GENERIC_SQL_CLASS_TO_GRAPHQL_TYPE = {
     sqltypes.String: GraphQLString,
     sqltypes.Text: GraphQLString,
     sqltypes.TEXT: GraphQLString,
-    sqltypes.Time: GraphQLDateTime,
-    sqltypes.TIME: GraphQLDateTime,
     sqltypes.TIMESTAMP: GraphQLDateTime,
     sqltypes.Unicode: GraphQLString,
     sqltypes.UnicodeText: GraphQLString,
@@ -63,6 +61,8 @@ UNSUPPORTED_GENERIC_SQL_TYPES = frozenset({
     sqltypes.JSON,
     sqltypes.LargeBinary,
     sqltypes.PickleType,
+    sqltypes.Time,
+    sqltypes.TIME,
     sqltypes.VARBINARY,
 })
 
@@ -72,7 +72,6 @@ MSSQL_CLASS_TO_GRAPHQL_TYPE = {
     mssqltypes.REAL: GraphQLFloat,
     mssqltypes.NTEXT: GraphQLString,
     mssqltypes.SMALLDATETIME: GraphQLDateTime,
-    mssqltypes.TIME: GraphQLDateTime,
     mssqltypes.TINYINT: GraphQLInt,
     mssqltypes.UNIQUEIDENTIFIER: GraphQLID,
 }
@@ -84,6 +83,7 @@ UNSUPPORTED_MSSQL_TYPES = frozenset({
     mssqltypes.ROWVERSION,
     mssqltypes.SQL_VARIANT,
     mssqltypes.SMALLMONEY,
+    mssqltypes.TIME,
     # The mssqltypes.TIMESTAMP class inherits from SQL._Binary class, which is not supported.
     # TIMESTAMP docstring:
     #     Note this is completely different than the SQL Standard
