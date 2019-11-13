@@ -4,6 +4,7 @@ import warnings
 
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLString
 import sqlalchemy.dialects.mssql.base as mssqltypes
+import sqlalchemy.dialects.mysql.base as mysqltypes
 import sqlalchemy.dialects.postgresql as postgrestypes
 import sqlalchemy.sql.sqltypes as sqltypes
 
@@ -130,6 +131,30 @@ UNSUPPORTED_POSTGRES_TYPES = frozenset({
     postgrestypes.JSONB,
 })
 
+# TODO: Show unsupported types for mysql.
+MYSQL_CLASS_TO_GRAPHQL_TYPE = {
+    mysqltypes.BIGINT: GraphQLInt,
+    mysqltypes.CHAR: GraphQLString,
+    mysqltypes.DATETIME: GraphQLDateTime,
+    mysqltypes.DECIMAL: GraphQLDecimal,
+    mysqltypes.FLOAT: GraphQLFloat,
+    mysqltypes.DOUBLE: GraphQLFloat,
+    mysqltypes.VARBINARY: GraphQLString,
+    mysqltypes.INTEGER: GraphQLInt,
+    mysqltypes.LONGTEXT: GraphQLString,
+    mysqltypes.MEDIUMTEXT: GraphQLString,
+    mysqltypes.NCHAR: GraphQLString,
+    mysqltypes.NVARCHAR: GraphQLString,
+    mysqltypes.NUMERIC: GraphQLDecimal,
+    mysqltypes.SMALLINT: GraphQLInt,
+    mysqltypes.REAL: GraphQLFloat,
+    mysqltypes.TEXT: GraphQLString,
+    mysqltypes.TIMESTAMP: GraphQLDateTime,
+    mysqltypes.TINYINT: GraphQLInt,
+    mysqltypes.TINYTEXT: GraphQLString,
+    mysqltypes.VARCHAR: GraphQLString,
+}
+
 
 SQL_CLASS_TO_GRAPHQL_TYPE = reduce(
     merge_non_overlapping_dicts,
@@ -137,6 +162,7 @@ SQL_CLASS_TO_GRAPHQL_TYPE = reduce(
         GENERIC_SQL_CLASS_TO_GRAPHQL_TYPE,
         MSSQL_CLASS_TO_GRAPHQL_TYPE,
         POSTGRES_CLASS_TO_GRAPHQL_TYPES,
+        MYSQL_CLASS_TO_GRAPHQL_TYPE,
     ),
     {}
 )
