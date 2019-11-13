@@ -134,7 +134,6 @@ UNSUPPORTED_POSTGRES_TYPES = frozenset({
 # TODO: Show unsupported types for mysql.
 MYSQL_CLASS_TO_GRAPHQL_TYPE = {
     mysqltypes.BIGINT: GraphQLInt,
-    mysqltypes.BIT: GraphQLBoolean,
     mysqltypes.CHAR: GraphQLString,
     mysqltypes.DATETIME: GraphQLDateTime,
     mysqltypes.DECIMAL: GraphQLDecimal,
