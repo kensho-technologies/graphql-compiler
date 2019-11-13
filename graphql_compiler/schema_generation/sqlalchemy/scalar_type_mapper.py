@@ -4,7 +4,6 @@ import warnings
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLString
 import sqlalchemy.dialects.mssql.base as mssqltypes
 import sqlalchemy.sql.sqltypes as sqltypes
-import sqlalchemy.dialects.mysql as mysqltypes
 
 from ...global_utils import merge_non_overlapping_dicts
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
@@ -94,33 +93,6 @@ UNSUPPORTED_MSSQL_TYPES = frozenset({
     mssqltypes.VARBINARY,
     mssqltypes.XML,
 })
-
-# TODO: Show unsupported types for mysql.
-MYSQL_CLASS_TO_GRAPHQL_TYPE = {
-    mysqltypes.BIGINT: GraphQLInt,
-    mysqltypes.BIT: GraphQLBoolean,
-    mysqltypes.BOOLEAN: GraphQLBoolean,
-    mysqltypes.CHAR: GraphQLString,
-    mysqltypes.DATE: GraphQLDate,
-    mysqltypes.DATETIME: GraphQLDateTime,
-    mysqltypes.DECIMAL: GraphQLDecimal,
-    mysqltypes.FLOAT: GraphQLFloat,
-    mysqltypes.DOUBLE: GraphQLFloat,
-    mysqltypes.VARBINARY: GraphQLString,
-    mysqltypes.INTEGER: GraphQLInt,
-    mysqltypes.LONGTEXT: GraphQLString,
-    mysqltypes.MEDIUMTEXT: GraphQLString,
-    mysqltypes.NCHAR: GraphQLString,
-    mysqltypes.NVARCHAR: GraphQLString,
-    mysqltypes.NUMERIC: GraphQLDecimal,
-    mysqltypes.SMALLINT: GraphQLInt,
-    mysqltypes.REAL: GraphQLFloat,
-    mysqltypes.TEXT: GraphQLString,
-    mysqltypes.TIMESTAMP: GraphQLDateTime,
-    mysqltypes.TINYINT: GraphQLInt,
-    mysqltypes.TINYTEXT: GraphQLString,
-    mysqltypes.VARCHAR: GraphQLString,
-}
 
 SQL_CLASS_TO_GRAPHQL_TYPE = merge_non_overlapping_dicts(
     GENERIC_SQL_CLASS_TO_GRAPHQL_TYPE, MSSQL_CLASS_TO_GRAPHQL_TYPE)
