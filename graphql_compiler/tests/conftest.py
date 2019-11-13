@@ -125,6 +125,15 @@ def pytest_addoption(parser):
     parser.addoption('--skip-slow', action='store_true', default=False, help='Skip slow tests.')
 
 
+def pytest_configure(config):
+    """Initialize the pytest configuration. Executed prior to any tests."""
+    config.addinivalue_line(
+        # Define the "slow" pytest mark, to avoid PytestUnknownMarkWarning being generated.
+        'markers',
+        'slow: marks tests as slow (deselect with \'-m "not slow"\' or --skip-slow)',
+    )
+
+
 def pytest_collection_modifyitems(config, items):
     """Modify py.test behavior based on command line options."""
     if not config.getoption('--skip-slow'):

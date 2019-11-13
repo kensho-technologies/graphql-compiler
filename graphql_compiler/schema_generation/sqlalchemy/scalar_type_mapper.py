@@ -1,8 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from functools import reduce
 import warnings
 
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLString
 import sqlalchemy.dialects.mssql.base as mssqltypes
+import sqlalchemy.dialects.postgresql as postgrestypes
 import sqlalchemy.sql.sqltypes as sqltypes
 
 from ...global_utils import merge_non_overlapping_dicts
@@ -94,8 +96,50 @@ UNSUPPORTED_MSSQL_TYPES = frozenset({
     mssqltypes.XML,
 })
 
-SQL_CLASS_TO_GRAPHQL_TYPE = merge_non_overlapping_dicts(
-    GENERIC_SQL_CLASS_TO_GRAPHQL_TYPE, MSSQL_CLASS_TO_GRAPHQL_TYPE)
+
+POSTGRES_CLASS_TO_GRAPHQL_TYPES = {
+    postgrestypes.UUID: GraphQLID,
+    postgrestypes.DOUBLE_PRECISION: GraphQLFloat,
+    postgrestypes.TIMESTAMP: GraphQLDateTime,
+    postgrestypes.ENUM: GraphQLString,
+}
+
+UNSUPPORTED_POSTGRES_TYPES = frozenset({
+    # We shouldn't map the Postgresql bit type to the GraphQLBoolean type. The Postgresql bit type
+    # is used to represent a bit string of variable length.
+    # https://www.postgresql.org/docs/8.1/datatype-bit.html
+    postgrestypes.BIT,
+    postgrestypes.TIME,
+    postgrestypes.INET,
+    postgrestypes.CIDR,
+    postgrestypes.MACADDR,
+    postgrestypes.MONEY,
+    postgrestypes.OID,
+    postgrestypes.REGCLASS,
+    postgrestypes.BYTEA,
+    postgrestypes.INTERVAL,
+    postgrestypes.ARRAY,
+    postgrestypes.INT4RANGE,
+    postgrestypes.INT8RANGE,
+    postgrestypes.NUMRANGE,
+    postgrestypes.DATERANGE,
+    postgrestypes.TSVECTOR,
+    postgrestypes.TSTZRANGE,
+    postgrestypes.TSTZRANGE,
+    postgrestypes.JSON,
+    postgrestypes.JSONB,
+})
+
+
+SQL_CLASS_TO_GRAPHQL_TYPE = reduce(
+    merge_non_overlapping_dicts,
+    (
+        GENERIC_SQL_CLASS_TO_GRAPHQL_TYPE,
+        MSSQL_CLASS_TO_GRAPHQL_TYPE,
+        POSTGRES_CLASS_TO_GRAPHQL_TYPES,
+    ),
+    {}
+)
 
 
 def try_get_graphql_scalar_type(column_name, column_type):
