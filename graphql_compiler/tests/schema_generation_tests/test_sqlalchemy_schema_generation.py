@@ -9,7 +9,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.mssql import TINYINT, dialect
 from sqlalchemy.types import Binary, Integer, LargeBinary, String
 
-from ... import get_sqlalchemy_schema_info_from_specified_metadata
+from ... import get_sqlalchemy_schema_info
 from ...schema_generation.exceptions import InvalidSQLEdgeError, MissingPrimaryKeyError
 from ...schema_generation.schema_graph import IndexDefinition
 from ...schema_generation.sqlalchemy import (
@@ -274,7 +274,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info_from_specified_metadata(
+            get_sqlalchemy_schema_info(
                 self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_destination_vertex(self):
@@ -287,7 +287,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info_from_specified_metadata(
+            get_sqlalchemy_schema_info(
                 self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_source_column(self):
@@ -300,7 +300,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info_from_specified_metadata(
+            get_sqlalchemy_schema_info(
                 self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_destination_column(self):
@@ -313,7 +313,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info_from_specified_metadata(
+            get_sqlalchemy_schema_info(
                 self.vertex_name_to_table, direct_edges, dialect())
 
     def test_missing_primary_key(self):
@@ -326,5 +326,5 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             table_without_primary_key.name: table_without_primary_key
         }
         with self.assertRaises(MissingPrimaryKeyError):
-            get_sqlalchemy_schema_info_from_specified_metadata(
+            get_sqlalchemy_schema_info(
                 faulty_vertex_name_to_table, {}, dialect())

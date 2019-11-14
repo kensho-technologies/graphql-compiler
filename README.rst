@@ -1837,7 +1837,7 @@ as in the example below:
 
 .. code:: python
 
-    from graphql_compiler import get_sqlalchemy_schema_info_from_specified_metadata, graphql_to_sql
+    from graphql_compiler import get_sqlalchemy_schema_info, graphql_to_sql
     from sqlalchemy import MetaData, create_engine
 
     engine = create_engine('<connection string>')
@@ -1848,7 +1848,7 @@ as in the example below:
     metadata.reflect()
 
     # Wrap the schema information into a SQLAlchemySchemaInfo object.
-    sql_schema_info = get_sqlalchemy_schema_info_from_specified_metadata(
+    sql_schema_info = get_sqlalchemy_schema_info(
         metadata.tables, {}, engine.dialect)
 
     # Write GraphQL query.
@@ -1879,7 +1879,7 @@ backed by SQL `association tables <https://en.wikipedia.org/wiki/Associative_ent
 
 .. code:: python
 
-    from graphql_compiler import get_sqlalchemy_schema_info_from_specified_metadata, graphql_to_sql
+    from graphql_compiler import get_sqlalchemy_schema_info, graphql_to_sql
     from graphql_compiler.schema_generation.sqlalchemy.edge_descriptors import DirectEdgeDescriptor
     from sqlalchemy import MetaData, create_engine
 
@@ -1899,7 +1899,7 @@ backed by SQL `association tables <https://en.wikipedia.org/wiki/Associative_ent
     }
 
     # Wrap the schema information into a SQLAlchemySchemaInfo object.
-    sql_schema_info = get_sqlalchemy_schema_info_from_specified_metadata(
+    sql_schema_info = get_sqlalchemy_schema_info(
         metadata.tables, direct_edges, engine.dialect)
 
     # Write GraphQL query with edge traversal.
