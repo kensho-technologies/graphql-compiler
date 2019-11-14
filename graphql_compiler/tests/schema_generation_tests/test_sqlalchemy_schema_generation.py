@@ -274,8 +274,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info(
-                self.vertex_name_to_table, direct_edges, dialect())
+            get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_destination_vertex(self):
         direct_edges = {
@@ -287,8 +286,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info(
-                self.vertex_name_to_table, direct_edges, dialect())
+            get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_source_column(self):
         direct_edges = {
@@ -300,8 +298,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info(
-                self.vertex_name_to_table, direct_edges, dialect())
+            get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_destination_column(self):
         direct_edges = {
@@ -313,8 +310,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info(
-                self.vertex_name_to_table, direct_edges, dialect())
+            get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_missing_primary_key(self):
         table_without_primary_key = Table(
@@ -326,5 +322,4 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             table_without_primary_key.name: table_without_primary_key
         }
         with self.assertRaises(MissingPrimaryKeyError):
-            get_sqlalchemy_schema_info(
-                faulty_vertex_name_to_table, {}, dialect())
+            get_sqlalchemy_schema_info(faulty_vertex_name_to_table, {}, dialect())

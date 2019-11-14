@@ -36,8 +36,7 @@ as in the example below:
     metadata.reflect()
 
     # Wrap the schema information into a SQLAlchemySchemaInfo object.
-    sql_schema_info = get_sqlalchemy_schema_info(
-        metadata.tables, {}, engine.dialect)
+    sql_schema_info = get_sqlalchemy_schema_info(metadata.tables, {}, engine.dialect)
 
     # Write GraphQL query.
     graphql_query = '''
@@ -88,8 +87,7 @@ backed by SQL `association tables <https://en.wikipedia.org/wiki/Associative_ent
     }
 
     # Wrap the schema information into a SQLAlchemySchemaInfo object.
-    sql_schema_info = get_sqlalchemy_schema_info(
-        metadata.tables, direct_edges, engine.dialect)
+    sql_schema_info = get_sqlalchemy_schema_info(metadata.tables, direct_edges, engine.dialect)
 
     # Write GraphQL query with edge traversal.
     graphql_query = '''
