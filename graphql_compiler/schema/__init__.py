@@ -28,7 +28,7 @@ FilterDirective = GraphQLDirective(
             description='Name of the filter operation to perform.',
         )),
         ('value', GraphQLArgument(
-            type=GraphQLNonNull(GraphQLList(GraphQLNonNull(GraphQLString))),
+            type=GraphQLList(GraphQLNonNull(GraphQLString)),
             description='List of string operands for the operator.',
         ))]
     ),

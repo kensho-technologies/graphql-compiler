@@ -255,6 +255,76 @@ class CompilerTests(unittest.TestCase):
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
 
+    def test_colocated_filter_with_differently_named_column_and_tag(self):
+        test_data = test_input_data.colocated_filter_with_differently_named_column_and_tag()
+
+        expected_match = '''
+            SELECT Animal__out_Entity_Related___1.name AS `related_name` FROM (MATCH {{
+                where: ((@this INSTANCEOF 'Animal')),
+                as: Animal___1
+            }}.out('Entity_Related') {{
+                class: Entity,
+                where: ((alias CONTAINS name)),
+                as: Animal__out_Entity_Related___1
+            }} RETURN $matches)
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .out('Entity_Related')
+                .filter{it, m -> it.alias.contains(it.name)}
+                .as('Animal__out_Entity_Related___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                related_name: m.Animal__out_Entity_Related___1.name
+            ])}
+        '''
+        expected_sql = NotImplementedError
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
+                WHERE (Animal__out_Entity_Related___1.name IN Animal__out_Entity_Related___1.alias)
+            RETURN Animal__out_Entity_Related___1.name AS `related_name`
+        '''
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+
+    def test_colocated_filter_and_tag_sharing_name_with_other_column(self):
+        test_data = test_input_data.colocated_filter_and_tag_sharing_name_with_other_column()
+
+        expected_match = '''
+            SELECT Animal__out_Entity_Related___1.name AS `related_name` FROM (MATCH {{
+                where: ((@this INSTANCEOF 'Animal')),
+                as: Animal___1
+            }}.out('Entity_Related') {{
+                class: Entity,
+                where: ((alias CONTAINS name)),
+                as: Animal__out_Entity_Related___1
+            }} RETURN $matches)
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .out('Entity_Related')
+                .filter{it, m -> it.alias.contains(it.name)}
+                .as('Animal__out_Entity_Related___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                related_name: m.Animal__out_Entity_Related___1.name
+            ])}
+        '''
+        expected_sql = NotImplementedError
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
+                WHERE (Animal__out_Entity_Related___1.name IN Animal__out_Entity_Related___1.alias)
+            RETURN Animal__out_Entity_Related___1.name AS `related_name`
+        '''
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+
     def test_colocated_out_of_order_filter_and_tag(self):
         test_data = test_input_data.colocated_out_of_order_filter_and_tag()
 
@@ -3679,6 +3749,86 @@ class CompilerTests(unittest.TestCase):
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             WHERE (Animal___1.net_worth IS NOT null)
+            RETURN Animal___1.name AS `name`
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
+                        expected_cypher)
+
+    def test_is_not_null_op_filter_missing_value_argument(self):
+        test_data = test_input_data.is_not_null_op_filter_missing_value_argument()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((net_worth IS NOT null)),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (it.net_worth != null)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        expected_sql = '''
+            SELECT [Animal_1].name AS name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE [Animal_1].net_worth IS NOT NULL
+        '''
+
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            WHERE (Animal___1.net_worth IS NOT null)
+            RETURN Animal___1.name AS `name`
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
+                        expected_cypher)
+
+    def test_is_null_op_filter_missing_value_argument(self):
+        test_data = test_input_data.is_null_op_filter_missing_value_argument()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((net_worth IS null)),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (it.net_worth == null)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        expected_sql = '''
+            SELECT [Animal_1].name AS name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE [Animal_1].net_worth IS NULL
+        '''
+
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            WHERE (Animal___1.net_worth IS null)
             RETURN Animal___1.name AS `name`
         '''
 
