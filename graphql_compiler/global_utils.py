@@ -1,4 +1,5 @@
 # Copyright 2017-present Kensho Technologies, LLC.
+from graphql import GraphQLScalarType
 import six
 
 
@@ -15,3 +16,12 @@ def merge_non_overlapping_dicts(merge_target, new_data):
         result[key] = value
 
     return result
+
+
+def get_scalar_types(schema):
+    """Return the scalar types in a GraphQLSchema."""
+    return {
+        type for type in
+        schema.get_type_map().values()
+        if isinstance(type, GraphQLScalarType)
+    }

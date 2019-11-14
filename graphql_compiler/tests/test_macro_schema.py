@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from decimal import Decimal
+from datetime import date
 import unittest
 
 from graphql.type import GraphQLList
@@ -40,11 +40,11 @@ class MacroSchemaTests(unittest.TestCase):
         self.assertTrue(isinstance(related_food_target_type, GraphQLList))
         self.assertEqual('Food', related_food_target_type.of_type.name)
 
-    def test_schema_with_macro_does_not_lose_directive_serialization_logic(self):
+    def test_macro_schema_does_not_lose_scalar_serialization_info(self):
         # Addresses: https://github.com/kensho-technologies/graphql-compiler/issues/661
         schema_with_macros = get_schema_with_macros(self.macro_registry)
-        decimal_scalar = schema_with_macros.get_type('Decimal')
-        self.assertEqual(Decimal(1.23), decimal_scalar.parse_value(1.23))
+        date_scalar = schema_with_macros.get_type('Date')
+        self.assertEqual(date(2017, 1, 1), date_scalar.parse_value('2017-01-01'))
 
     def test_get_schema_for_macro_definition_addition(self):
         original_schema = self.macro_registry.schema_without_macros

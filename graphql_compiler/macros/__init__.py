@@ -15,6 +15,7 @@ from ..ast_manipulation import safe_parse_graphql
 from ..compiler.subclass import compute_subclass_sets
 from ..compiler.validation import validate_schema_and_query_ast
 from ..exceptions import GraphQLValidationError
+from ..global_utils import get_scalar_types
 from ..schema_generation.utils import amend_custom_scalar_types
 from .macro_edge import make_macro_edge_descriptor
 from .macro_edge.directives import MacroEdgeDirective, get_schema_for_macro_edge_definitions
@@ -184,8 +185,9 @@ def get_schema_with_macros(macro_registry):
             directives = [Directive(Name(MacroEdgeDirective.name))]
             definitions_by_name[class_name].fields.append(FieldDefinition(
                 Name(macro_edge_name), arguments, list_type_at_target, directives=directives))
+
     schema = build_ast_schema(schema_ast)
-    amend_custom_scalar_types(schema, macro_registry.schema_without_macros.get_directives())
+    amend_custom_scalar_types(schema, get_scalar_types(macro_registry.schema_without_macros))
     return schema
 
 
