@@ -290,8 +290,8 @@ class CompilerTests(unittest.TestCase):
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
 
-    def test_colocated_filter_tag_sharing_name_with_other_column(self):
-        test_data = test_input_data.colocated_filter_tag_sharing_name_with_other_column()
+    def test_colocated_filter_and_tag_sharing_name_with_other_column(self):
+        test_data = test_input_data.colocated_filter_and_tag_sharing_name_with_other_column()
 
         expected_match = '''
             SELECT Animal__out_Entity_Related___1.name AS `related_name` FROM (MATCH {{

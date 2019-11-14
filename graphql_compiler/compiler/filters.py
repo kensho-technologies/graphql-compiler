@@ -906,12 +906,6 @@ def process_filter_directive(filter_operation_info, location, context):
     """
     op_name, operator_params = _get_filter_op_name_and_values(filter_operation_info.directive)
 
-    # for idx, param in enumerate(operator_params):
-    #     if param[0] == '%':
-    #         tag_name = param[1:]
-    #         tagged_column = context['metadata']._tags[tag_name].location.field
-    #         operator_params[idx] = tagged_column
-
     non_comparison_filters = {
         u'name_or_alias': _process_name_or_alias_filter_directive,
         u'between': _process_between_filter_directive,
