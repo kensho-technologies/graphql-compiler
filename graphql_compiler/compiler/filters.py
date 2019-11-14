@@ -830,13 +830,21 @@ def _get_filter_op_name_and_values(directive):
         raise AssertionError(u'op_name not found in filter directive arguments!'
                              u'Validation should have caught this: {}'.format(directive))
 
-    # HACK(predrag): Workaround for graphql-core validation issue
-    #                https://github.com/graphql-python/graphql-core/issues/97
-    if not isinstance(args['value'].value, ListValue):
-        raise GraphQLValidationError(u'Filter directive value was not a list: {}'.format(directive))
-
     op_name = args['op_name'].value.value
-    operator_params = [x.value for x in args['value'].value.values]
+    if 'value' not in args and args['op_name'].value.value not in UNARY_FILTERS:
+        raise GraphQLValidationError(u'Filter directive value argument omitted for non-unary '
+                                     u'filter operation: {}. Please provide a value argument '
+                                     u'for all filters not in the following list: {}'
+                                     .format(args['op_name'].value.value, list(UNARY_FILTERS)))
+    elif 'value' not in args and args['op_name'].value.value in UNARY_FILTERS:
+        operator_params = []
+    else:
+        # HACK(predrag): Workaround for graphql-core validation issue
+        #                https://github.com/graphql-python/graphql-core/issues/97
+        if not isinstance(args['value'].value, ListValue):
+            raise GraphQLValidationError(u'Filter directive value was '
+                                         u'not a list: {}'.format(directive))
+        operator_params = [x.value for x in args['value'].value.values]
 
     return (op_name, operator_params)
 
@@ -859,6 +867,10 @@ PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset({
     u'has_edge_degree',
     u'is_null',
     u'is_not_null',
+})
+UNARY_FILTERS = frozenset({
+    u'is_null',
+    u'is_not_null'
 })
 
 # Vertex field filtering operators can apply to the inner scope or the outer scope.

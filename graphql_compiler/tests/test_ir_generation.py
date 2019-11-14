@@ -2923,6 +2923,33 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_is_null_op_filter_missing_value_argument(self):
+        test_data = test_input_data.is_null_op_filter_missing_value_argument()
+
+        base_location = helpers.Location(('Animal',))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'=',
+                    expressions.LocalField('net_worth', GraphQLDecimal),
+                    expressions.NullLiteral
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString)
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_is_not_null_op_filter(self):
         test_data = test_input_data.is_not_null_op_filter()
 
@@ -2943,6 +2970,32 @@ class IrGenerationTests(unittest.TestCase):
                 'name': expressions.OutputContextField(
                     base_location.navigate_to_field('name'), GraphQLString)
             }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_is_not_null_op_filter_missing_value_argument(self):
+        test_data = test_input_data.is_not_null_op_filter_missing_value_argument()
+
+        base_location = helpers.Location(('Animal',))
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u'!=',
+                    expressions.LocalField('net_worth', GraphQLDecimal),
+                    expressions.NullLiteral
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString)}),
         ]
         expected_location_types = {
             base_location: 'Animal',

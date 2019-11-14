@@ -188,6 +188,17 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, graphql)
 
+    def test_starts_with_op_filter_missing_value_argument(self):
+        graphql_input = '''{
+            Animal {
+                name @filter(op_name: "starts_with")
+                     @output(out_name: "animal_name")
+            }
+        }'''
+
+        with self.assertRaises(GraphQLValidationError):
+            graphql_to_ir(self.schema, graphql_input)
+
     def test_fold_directive_constraints(self):
         fold_on_property_field = '''{
             Animal @filter(op_name: "name_or_alias", value: ["$animal_name"]) {
