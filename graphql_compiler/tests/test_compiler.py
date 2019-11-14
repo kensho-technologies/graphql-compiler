@@ -255,6 +255,41 @@ class CompilerTests(unittest.TestCase):
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
 
+    def test_colocated_filter_with_differently_named_column_and_tag(self):
+        test_data = test_input_data.colocated_filter_with_differently_named_column_and_tag()
+
+        expected_match = '''
+            SELECT Animal__out_Entity_Related___1.name AS `related_name` FROM (MATCH {{
+                where: ((@this INSTANCEOF 'Animal')),
+                as: Animal___1
+            }}.out('Entity_Related') {{
+                class: Entity,
+                where: ((alias CONTAINS name)),
+                as: Animal__out_Entity_Related___1
+            }} RETURN $matches)
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .out('Entity_Related')
+                .filter{it, m -> it.alias.contains(it.name)}
+                .as('Animal__out_Entity_Related___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                related_name: m.Animal__out_Entity_Related___1.name
+            ])}
+        '''
+        expected_sql = NotImplementedError
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
+                WHERE (Animal__out_Entity_Related___1.name IN Animal__out_Entity_Related___1.alias)
+            RETURN Animal__out_Entity_Related___1.name AS `related_name`
+        '''
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+
     def test_colocated_out_of_order_filter_and_tag(self):
         test_data = test_input_data.colocated_out_of_order_filter_and_tag()
 

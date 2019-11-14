@@ -151,7 +151,8 @@ def _represent_argument(directive_location, context, argument, inferred_type):
                     expressions.FalseLiteral)
 
         if field_is_local:
-            representation = expressions.LocalField(argument_name, inferred_type)
+            underlying_column_name = tag_info.location.field
+            representation = expressions.LocalField(underlying_column_name, inferred_type)
         else:
             representation = expressions.ContextField(location, inferred_type)
 
@@ -904,6 +905,12 @@ def process_filter_directive(filter_operation_info, location, context):
         a Filter basic block that performs the requested filtering operation
     """
     op_name, operator_params = _get_filter_op_name_and_values(filter_operation_info.directive)
+
+    # for idx, param in enumerate(operator_params):
+    #     if param[0] == '%':
+    #         tag_name = param[1:]
+    #         tagged_column = context['metadata']._tags[tag_name].location.field
+    #         operator_params[idx] = tagged_column
 
     non_comparison_filters = {
         u'name_or_alias': _process_name_or_alias_filter_directive,
