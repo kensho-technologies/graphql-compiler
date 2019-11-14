@@ -122,6 +122,28 @@ def colocated_filter_with_differently_named_column_and_tag():  # noqa: D103
         type_equivalence_hints=None)
 
 
+def colocated_filter_and_tag_sharing_name_with_other_column():  # noqa: D103
+    graphql_input = '''{
+        Animal {
+            out_Entity_Related {
+                name @output(out_name: "related_name")
+                     @tag(tag_name: "parent")
+                alias @filter(op_name: "contains", value: ["%parent"])
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'related_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def colocated_out_of_order_filter_and_tag():  # noqa: D103
     graphql_input = '''{
         Animal {
