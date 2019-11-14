@@ -151,7 +151,8 @@ def _represent_argument(directive_location, context, argument, inferred_type):
                     expressions.FalseLiteral)
 
         if field_is_local:
-            representation = expressions.LocalField(argument_name, inferred_type)
+            underlying_column_name = tag_info.location.field
+            representation = expressions.LocalField(underlying_column_name, inferred_type)
         else:
             representation = expressions.ContextField(location, inferred_type)
 
