@@ -4143,6 +4143,7 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
+        expected_mssql = SKIP_TEST
         expected_postgresql = '''
             SELECT
                 "Animal_1".name AS animal_name,
@@ -4170,7 +4171,6 @@ class CompilerTests(unittest.TestCase):
               Animal___1.name AS `animal_name`,
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_names_list`
         '''
-        expected_mssql = SKIP_TEST
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
@@ -4196,6 +4196,7 @@ class CompilerTests(unittest.TestCase):
             ON "Animal_1".uuid = folded_subquery_1.uuid
         '''
 
+        # TODO: write these tests
         expected_mssql = SKIP_TEST
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST

@@ -183,9 +183,9 @@ class SQLFoldObject(object):
 
         Args:
             outer_vertex_table: SQLAlchemy table alias for vertex outside of fold.
-            primary_key: primary_key of the vertex immediately outside the fold. Used to set the
-                        group by as well as join the fold subquery to the rest of the query.
-                        Composite keys unsupported.
+            primary_key: PrimaryKeyConstraint, primary_key of the vertex immediately outside the
+                        fold. Used to set the group by as well as join the fold subquery to the
+                        rest of the query. Composite keys unsupported.
         """
         # table containing output columns
         # initially None because output table is unknown until call to visit_output_vertex
@@ -197,7 +197,7 @@ class SQLFoldObject(object):
             raise NotImplementedError(u'Composite keys not supported. '
                                       u'A composite primary key {} was found for table {}. '
                                       u'SQL fold only supports non-composite primary '
-                                      u'keys'.format(primary_key, outer_vertex_table.original))
+                                      u'keys.'.format(primary_key, outer_vertex_table.original))
 
         # name of the field used in the primary key for the vertex outside the fold
         # current implementation does not support composite primary keys
@@ -205,7 +205,7 @@ class SQLFoldObject(object):
         # we must use the name of the column as opposed to the column itself because
         # primary key refers to the column from the original table, while we need the
         # identically named column from its alias
-        self._outer_vertex_primary_key = primary_key.columns_autoinc_first[0].description
+        self._outer_vertex_primary_key = list(primary_key.columns)[0].description
 
         # group by column for fold subquery
         self._group_by = [self._outer_vertex_alias.c[self._outer_vertex_primary_key]]
@@ -220,13 +220,13 @@ class SQLFoldObject(object):
     def __str__(self):
         """Produce string used to customize error messages."""
         if self._outer_vertex_alias is None:
-            return u'Invalid fold: no vertex preceding fold.'
+            return u'"Invalid fold: no vertex preceding fold."'
         elif self._output_vertex_alias is None:
-            return u'Vertex outside fold: {}. Output vertex for fold: None'.format(
+            return u'"Vertex outside fold: {}. Output vertex for fold: None."'.format(
                 self._outer_vertex_alias.original
             )
         else:
-            return u'Vertex outside fold: {}. Output vertex for fold: {}'.format(
+            return u'"Vertex outside fold: {}. Output vertex for fold: {}."'.format(
                 self._outer_vertex_alias.original, self._output_vertex_alias.original
             )
 
@@ -259,20 +259,23 @@ class SQLFoldObject(object):
         self._group_by = group_by
 
     def _construct_fold_joins(self):
-        """Use the edge descriptors to create the join clause between the tables in the fold."""
+        """Use the traversal descriptors to create the join clause for the tables in the fold."""
         # Start the join clause with the from_vertex of the first traversal descriptor,
         # which is the vertex immediately preceding the fold
         join_clause = self._traversal_descriptors[0].from_vertex
-        terminating_idx = len(self._traversal_descriptors)
+
+        # MSSQL and PostgreSQL have different terminating indices
+        terminating_index = len(self._traversal_descriptors)
+        traversal_descriptors = self._traversal_descriptors[:terminating_index]
 
         # Starting at the first from_vertex, join traversed vertices in order until the output
         # vertex (PostgreSQL) is reached
-        for i in range(0, terminating_idx):
+        for travel_descriptor in traversal_descriptors:
             # joins from earlier in the chain of traversals are at the beginning of the list
             # b/c joins are appended in the order they are traversed
-            from_vertex = self._traversal_descriptors[i].from_vertex
-            to_vertex = self._traversal_descriptors[i].to_vertex
-            join_descriptor = self._traversal_descriptors[i].join_descriptor
+            from_vertex = travel_descriptor.from_vertex
+            to_vertex = travel_descriptor.to_vertex
+            join_descriptor = travel_descriptor.join_descriptor
             join_clause = sqlalchemy.join(
                 join_clause,
                 to_vertex,
@@ -290,6 +293,7 @@ class SQLFoldObject(object):
         ).select_from(
             subquery_from_clause
         )
+        # Factor our GROUP BY because MSSQL won't use it
         return select_statement.group_by(
             *self.group_by
         )
@@ -343,7 +347,8 @@ class SQLFoldObject(object):
     def visit_traversed_vertex(self, join_descriptor, from_vertex, to_vertex):
         """Add a new traversal descriptor for every vertex traversed in the fold."""
         if self._ended:
-            raise AssertionError(u'Cannot visit traversed vertices after end_fold has been called.')
+            raise AssertionError(u'Cannot visit traversed vertices after end_fold has been called.'
+                                 u'Invalid state encountered during fold {}'.format(self))
         self._traversal_descriptors.append(SQLFoldTraversalDescriptor(join_descriptor,
                                                                       from_vertex,
                                                                       to_vertex))
@@ -663,9 +668,7 @@ class CompilationState(object):
 
     def construct_result(self, output_name, field):
         """Execute a ConstructResult Block."""
-        self._outputs.append(field.to_sql(
-            self._aliases, self._current_alias
-        ).label(output_name))
+        self._outputs.append(field.to_sql(self._aliases, self._current_alias).label(output_name))
 
     def get_query(self):
         """After all IR Blocks are processed, return the resulting sqlalchemy query."""
