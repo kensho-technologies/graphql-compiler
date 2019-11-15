@@ -216,3 +216,20 @@ To learn more about the advanced features in the GraphQL compiler see:
 
    Macro System <advanced_features/macro_system>
    Schema Graph <advanced_features/schema_graph>
+
+About the GraphQL Compiler
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To learn more about the GraphQL project:
+
+- :doc:`Contributing <about/contributing>` for instructions on how you can contribute.
+- :doc:`FAQ <about/faq>` for a list of frequently asked questions.
+- :doc:`Changelog <about/changelog>` to see a history of changes.
+
+.. toctree::
+   :caption: About the GraphQL Compiler
+   :hidden:
+
+   Contributing <about/contributing>
+   FAQ <about/faq>
+   Changelog <about/changelog>
