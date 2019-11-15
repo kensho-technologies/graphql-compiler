@@ -1,9 +1,14 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
+from collections import namedtuple
+
 import six
 import sqlalchemy
 from sqlalchemy import select
+from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
+from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql import expression
 from sqlalchemy.sql.compiler import _CompileLabel
 from sqlalchemy.sql.expression import BinaryExpression
 from sqlalchemy.sql.functions import func
@@ -108,7 +113,13 @@ def _find_folded_outputs(ir):
 
 
 class XMLPathBinaryExpression(BinaryExpression):
-    pass
+    """Special override of BinaryExpression used to trigger `compile_xmlpath` during compile.
+
+    This type of binary expression is used to describe the Selectable selected inside the
+    XML PATH subquery. Using an XMLPathBinaryExpression forces the compiler to produce that
+    Selectable without aliasing (aka labeling) it. This prevents the string resulting from
+    the XML PATH from having extraneous XML tags based on the alias given to the column.
+    """
 
 
 @compiles(_CompileLabel, 'default')
@@ -132,44 +143,79 @@ def compile_xmlpath(element, compiler, **kw):
 def get_xml_path_clause(output_column, where):
     """Produce an MSSQL-style XML PATH-based aggregation subquery.
 
+    XML PATH clause aggregates the values of the output_column from the output vertex
+    properly encoded to ensure that we can reconstruct a list of the original values
+    regardless of what characters they contain, whether they are empty or null, and
+    regardless of their data type.
+
+    Empty arrays are represented as '', null values are represented as '~', array
+    entries are delimited using '|'.
+
+    All occurrences of '^', '~', and '|' in the original string values are
+    replaced with '^e' (escape), '^n' (null), and '^d' (delimiter), resp.
+
+    Undoing the encoding above as well as the XML reference entity encoding performed
+    by the XML PATH statement is deferred to post-processing when the list is retrieved
+    from the string representation produced by the subquery.
+
+    Post-processing must split on '|', convert '~' to None, and undo both the encoding above
+    and the XML reference entity encoding auto performed by XML PATH. In particular, undo
+    '^d' -> '|', '^e' -> '^', '^n' -> '~', '&amp;' -> '&', '&gt;' -> '>', '&lt;' -> '<',
+    '&0xHEX;' -> u'0xHEX'. XML post processing can be done with
+    https://docs.python.org/3/library/html.html#html.unescape
+
+    Joining from the preceding vertex to the correct output vertex
+    is performed with the WHERE clause. This is contrasted with PostgreSQL subqueries,
+    in which the join from penultimate vertex to output vertex is done within
+    the FROM/JOIN clause of the aggregation subquery.
+
     Args:
         output_column: SQLAlchemy Column, value being aggregated with XML PATH
         where: SQLAlchemy BinaryExpression, predicate used to filter
 
     Returns:
-        An SQLAlchemy Selectable corresponding to an XML PATH subquery
-        which aggregates the values of the output_column from the output vertex.
-        Empty arrays are represented as '', null values are represented as '^', array
-        entries are delimited using '@'.
-
-        All occurrences of '^', '@', and '|' in the original string values are
-        replaced with '|n', '|a', and '|p', resp.
-
-        Post-processing must split on '@', convert '^' to None, and both the encoding above
-        and the XML reference entity encoding auto performed by XML PATH. In particular, undo
-        '|p' -> '|', '|a' -> '@', '|n' -> '^', '&amp;' -> '&', '&gt;' -> '>', '&lt;' -> '<',
-        '&0xHEX;' -> u'0xHEX'
-
-        Joining from the preceding vertex to the correct output vertex
-        is performed with the WHERE clause.
+        A SQLAlchemy Selectable corresponding to the XML PATH subquery
     """
-    # delimit elements in the array using '@'
-    xml_column = (u'@' + func.COALESCE(  # denote null values with '^'
-        func.REPLACE(  # replace all occurrences of '@' in the original with '|a'
-            func.REPLACE(  # replace all occurrences of '^' in the original with '|n'
-                func.REPLACE(  # replace all occurrences of '|'' in the original with '|p'
-                    output_column, '|', '|p'
-                ), '^', '|n'
-            ), '@', '|a'
-        ), '^'
+    encoded_column = func.REPLACE(  # replace all occurrences of '^' in the original with '^e'
+        output_column, expression.literal_column('\'^\''), expression.literal_column('\'^e\'')
+    )
+    encoded_column = func.REPLACE(  # replace all occurrences of '~' in the original with '^n'
+        encoded_column, expression.literal_column('\'~\''), expression.literal_column('\'^n\'')
+    )
+    encoded_column = func.REPLACE(  # replace all occurrences of '|' in the original with '^d'
+        encoded_column, expression.literal_column('\'|\''), expression.literal_column('\'^d\'')
+    )
+
+    # delimit elements in the array using '|'and mark nulls with `~`
+    xml_column = (expression.literal_column('\'|\'') + func.COALESCE(  # denote null values with '~'
+        encoded_column, expression.literal_column('\'~\'')
     ))  # allow unambiguously distinguishing (nullable) array elements using scheme above
-    # as a custom type, you can't directly construct an XMLPathBinaryExpression from plain text
+
+    # use constructor: you can't directly construct an XMLPathBinaryExpression from plain text
     xml_column = XMLPathBinaryExpression(xml_column.left, xml_column.right, xml_column.operator)
 
-    # REPLACEs to undo autoconversion of HTML special characters to entity reference shorthand
     return func.COALESCE(  # coalesce to represent empty arrays as ''
-        select([xml_column]).where(where).suffix_with("FOR XML PATH ('')").as_scalar(), ''
+        select([xml_column]).where(where).suffix_with("FOR XML PATH ('')").as_scalar(),
+        expression.literal_column('\'\'')
     )
+
+
+# 3-tuple describing the join information for each traversal in a fold.
+#
+# Contains join descriptor naming the columns used in the join predicate,
+# the source/from table, and the destination/to table
+SQLFoldTraversalDescriptor = namedtuple('SQLFoldJoinInfo', (
+    # SQLAlchemySchemaInfo join descriptor giving columns used to join from_vertex/to_vertex
+    'join_descriptor',
+
+    # SQLAlchemy table corresponding to corresponding to the outside vertex of the traversal,
+    # appears on the left side of the join.
+    'from_vertex',
+
+    # SQLAlchemy table corresponding to corresponding to the inside vertex of the traversal,
+    # appears on the right side of the join.
+    'to_vertex'
+))
 
 
 class SQLFoldObject(object):
@@ -189,10 +235,12 @@ class SQLFoldObject(object):
     #
     # The SELECT clause for the fold subquery contains OuterVertex.SOME_COLUMN, a unique
     # identifier (the primary key) for the OuterVertex determined by the edge descriptor
-    # from the vertex immediately outside the fold to the folded vertex.
+    # from the vertex immediately outside the fold to the folded vertex. This presently
+    # only supports non-composite primary keys.
     #
-    # SELECT will also contain an ARRAY_AGG for each column labeled for output inside the fold.
-    #
+    # SELECT will also contain an ARRAY_AGG for each column labeled for output inside the fold if
+    # compiling to PostgreSQL. For compilation to MSSQL an XML PATH-based aggregation is performed.
+
     # TODO: SELECT will also contain a COUNT(*) if _x_count is referred to by the query.
     #
     # The GROUP BY clause is produced during initialization.
@@ -200,10 +248,10 @@ class SQLFoldObject(object):
     # The FROM and JOIN clauses are constructed during end_fold using info from the
     # visit_traversed_vertex function.
     #
-    # The full subquery will look as follows:
+    # The full subquery will look as follows for PostgreSQL:
     #
     # SELECT
-    #   OuterVertex.SOME_COLUMN <- this value is determined from the edge descriptor
+    #   OuterVertex.SOME_COLUMN <- this value is the primary key
     #   ARRAY_AGG(OutputVertex.fold_output_column) AS fold_output
     # FROM OuterVertex
     # INNER JOIN ... <- INNER JOINs compiled during end_fold
@@ -212,15 +260,28 @@ class SQLFoldObject(object):
     # INNER JOIN OutputVertex <- INNER JOINs compiled during end_fold
     # ON ...
     # GROUP BY OuterVertex.SOME_COLUMN
-
-    def __init__(self, dialect, outer_vertex_table_alias, outer_vertex_table, join_descriptor):
+    #
+    # and as follows for MSSQL:
+    #
+    # SELECT
+    #   OuterVertex.SOME_COLUMN <- this value is the primary key
+    #   COALESCE((SELECT ... FOR XML PATH(''), '~') AS fold_output
+    # FROM OuterVertex
+    # INNER JOIN ...
+    # ON ...
+    #          ...
+    # INNER JOIN VertexPrecedingOutput
+    # ON ...
+    def __init__(self, sqlalchemy_compiler, outer_vertex_table, primary_key):
         """Create an SQLFoldObject with table, type, and join information supplied by the IR.
 
         Args:
-            dialect: string passed in from the schema indicating the target dialect
+            sqlalchemy_compiler: SQLAlchemy compiler object passed in from the schema, indicating
+            the target dialect of SQL
             outer_vertex_table: SQLAlchemy table alias for vertex outside of fold.
-            join_descriptor: DirectJoinDescriptor object from the schema, describing the
-                             first join from the outer vertex to the folded vertex.
+            primary_key: primary_key of the vertex immediately outside the fold. Used to set the
+                        group by as well as join the fold subquery to the rest of the query.
+                        Composite keys unsupported.
         """
         # table containing output columns
         # initially None because output table is unknown until call to visit_output_vertex
@@ -228,21 +289,45 @@ class SQLFoldObject(object):
 
         self._outer_vertex_table = outer_vertex_table
         # table for vertex immediately outside fold
-        self._outer_vertex_alias = outer_vertex_table_alias
+        self._outer_vertex_alias = outer_vertex_table
+        if len(primary_key.columns) > 1:
+            raise NotImplementedError(u'Composite keys not supported. '
+                                      u'A composite primary key {} was found for table {}. '
+                                      u'SQL fold only supports non-composite primary '
+                                      u'keys'.format(primary_key, outer_vertex_table.original))
+
+        # name of the field used in the primary key for the vertex outside the fold
+        # current implementation does not support composite primary keys
+        #
+        # we must use the name of the column as opposed to the column itself because
+        # primary key refers to the column from the original table, while we need the
+        # identically named column from its alias
+        self._outer_vertex_primary_key = primary_key.columns_autoinc_first[0].description
 
         # group by column for fold subquery
-        self._group_by = [self._outer_vertex_alias.c[join_descriptor.from_column]]
+        self._group_by = [self._outer_vertex_alias.c[self._outer_vertex_primary_key]]
 
-        # List of 3-tuples describing the join required for each traversal in the fold
+        # List of SQLFoldTraversalDescriptor namedtuples describing each traversal in the fold
         # starting with the join from the vertex immediately outside the fold to the folded vertex:
-        #
-        #  edge: join descriptor for the columns used to join one vertex to the next in the fold
-        #  from_table: the table on the left side of the join
-        #  to_table: the table on the right side of the join
-        self._join_info = []
+        self._traversal_descriptors = []
         self._outputs = []  # output columns for fold
 
-        self._dialect = dialect  # indicate results should be compatible with MSSQL
+        # SQLAlchemy compiler object determining which dialect to target
+        self._sqlalchemy_compiler = sqlalchemy_compiler
+        self._ended = False  # indicates whether `end_fold` has been called on this object
+
+    def __str__(self):
+        """Produce string used to customize error messages."""
+        if self._outer_vertex_alias is None:
+            return u'Invalid fold: no vertex preceding fold.'
+        elif self._output_vertex_alias is None:
+            return u'Vertex outside fold: {}. Output vertex for fold: None'.format(
+                self._outer_vertex_alias.original
+            )
+        else:
+            return u'Vertex outside fold: {}. Output vertex for fold: {}'.format(
+                self._outer_vertex_alias.original, self._output_vertex_alias.original
+            )
 
     @property
     def outputs(self):
@@ -264,11 +349,6 @@ class SQLFoldObject(object):
         """Get the SQLAlchemy table corresponding to vertex immediately outside the fold."""
         return self._outer_vertex_alias
 
-    @property
-    def join_info(self):
-        """Get a tuple containing edge and table info for the joins within the subquery."""
-        return self._join_info
-
     def _set_outputs(self, outputs):
         """Set output columns for the fold object."""
         self._outputs = outputs
@@ -279,27 +359,39 @@ class SQLFoldObject(object):
 
     def _construct_fold_joins(self):
         """Use the edge descriptors to create the join clause between the tables in the fold."""
-        # Start the join clause with the from_table of the first join descriptor
-        _, join_clause, _ = self.join_info[0]
+        # Start the join clause with the from_vertex of the first traversal descriptor,
+        # which is the vertex immediately preceding the fold
+        join_clause = self._traversal_descriptors[0].from_vertex
+        if isinstance(self._sqlalchemy_compiler, MSDialect_pyodbc):
+            # The logic of the final join predicate (from the vertex preceding the output to
+            # the output vertex) occurs in the WHERE clause of the SELECT ... FOR XML PATH('')
+            # so we don't iterate all n joins for MSSQL, just the first n-1.
+            terminating_idx = len(self._traversal_descriptors) - 1
+        elif isinstance(self._sqlalchemy_compiler, PGDialect_psycopg2):
+            terminating_idx = len(self._traversal_descriptors)
+        else:
+            raise NotImplementedError(
+                u'Fold only supported for MSSQL and '
+                u'PostgreSQL, dialect was set to {}'.format(self._sqlalchemy_compiler.name)
+            )
 
-        # Starting at the first from_table, join traversed vertices until the output vertex is
-        # reached.
-        #
-        # MSSQL doesn't use the JOIN for the very last traversal,
-        # so we pop it off before construction the JOIN clause
-        if self._dialect == 'mssql':
-            # Move the final join predicate (from the vertex preceding the output to
-            # the output vertex) into the WHERE clause of the SELECT ... FOR XML PATH('')
-            self.join_info.pop()
-        while len(self.join_info) > 0:
-            # joins from earlier in the chain of traversals are at the end of the list
+        # Starting at the first from_vertex, join traversed vertices in order until the output
+        # vertex (PostgreSQL) is reached, or until the last vertex preceding the output
+        # vertex (MSSQL) is reached
+        for i in range(0, terminating_idx):
+            # joins from earlier in the chain of traversals are at the beginning of the list
             # b/c joins are appended in the order they are traversed
-            edge, from_alias, to_alias = self.join_info.pop(0)
+            from_vertex = self._traversal_descriptors[i].from_vertex
+            to_vertex = self._traversal_descriptors[i].to_vertex
+            join_descriptor = self._traversal_descriptors[i].join_descriptor
             join_clause = sqlalchemy.join(
                 join_clause,
-                to_alias,
-                onclause=(from_alias.c[edge.from_column] == to_alias.c[edge.to_column])
+                to_vertex,
+                onclause=(from_vertex.c[join_descriptor.from_column] == to_vertex.c[
+                    join_descriptor.to_column
+                ])
             )
+
         return join_clause
 
     def _construct_fold_subquery(self, subquery_from_clause):
@@ -310,39 +402,74 @@ class SQLFoldObject(object):
             subquery_from_clause
         )
 
-        if self._dialect == 'mssql':
+        if isinstance(self._sqlalchemy_compiler, MSDialect_pyodbc):
             # mssql doesn't rely on a group by
             return select_statement
-        elif self._dialect == 'postgresql':
+        elif isinstance(self._sqlalchemy_compiler, PGDialect_psycopg2):
             return select_statement.group_by(
                 *self.group_by
             )
         else:
             raise NotImplementedError(
                 u'Fold only supported for MSSQL and '
-                u'PostgreSQL, dialect was set to {}'.format(self._dialect)
+                u'PostgreSQL, dialect was set to {}'.format(self._sqlalchemy_compiler.name)
             )
 
-    def _get_default_column(self, intermediate_fold_output_name, fold_output):
+    def _get_array_agg_column(self, intermediate_fold_output_name, fold_output_field):
         """Select an array_agg of the fold output field, labeled as requested."""
         return sqlalchemy.func.array_agg(
-            self.output_vertex_alias.c[fold_output.field]
+            self.output_vertex_alias.c[fold_output_field]
         ).label(intermediate_fold_output_name)
 
-    def _get_mssql_column(self, intermediate_fold_output_name, fold_output, last_join):
-        """Select the MSSQL XML PATH agg of the fold output field, labeled as requested."""
+    def _get_mssql_xml_path_column(self,
+                                   intermediate_fold_output_name,
+                                   fold_output_field,
+                                   last_traversal):
+        """Select the MSSQL XML PATH aggregation of the fold output field, labeled as requested.
+
+        The MSSQL equivalent of array aggregation is performed using an XML PATH subquery that has
+        the basic structure outlined below.
+
+        SELECT
+            COALESCE('|' + ENCODE(OutputVertex.output_field), '~')
+        FROM
+            OutputVertex
+        WHERE
+            VertexPrecedingOutput.primary_key = OutputVertex.foreign_key
+        FOR XML PATH ('')
+
+        - ENCODE is shorthand for a function composition which replaces '~' (null),
+        '|' (list delimiter), '^' (escape) with '^n', '^d', '^e'.
+
+        - VertexPrecedingOutput is the vertex immediately preceding the output vertex in the
+        chain of traversals beginning at the vertex immediately outside the fold.
+        VertexPrecedingOutput is the `from_vertex` of the last traversal descriptor tuple
+        added to the fold's `traversal_descriptors` list.
+
+        - The join predicate may have primary_key and foreign_key reversed according to the
+        direction of the edge connecting VertexPrecedingOutput to OutputVertex.
+
+        Args:
+            intermediate_fold_output_name: String label to give to the resulting XML PATH
+            subquery built
+            fold_output_field: String name of the column requested from the output vertex.
+            last_traversal: SQLFoldTraversalDescriptor describing tables/WHERE predicate
+            used in subquery.
+
+        Returns: Selectable for XML PATH aggregation subquery
+        """
         # use join info tuple for most recent traversal to set WHERE clause for XML PATH subquery
-        edge, from_alias, to_alias = last_join
-        return get_xml_path_clause(self.output_vertex_alias.c[fold_output.field],
+        edge, from_alias, to_alias = last_traversal
+        return get_xml_path_clause(self.output_vertex_alias.c[fold_output_field],
                                    (from_alias.c[edge.from_column] == to_alias.c[edge.to_column])
                                    ).label(intermediate_fold_output_name)
 
-    def _get_fold_outputs(self, fold_scope_location, join_descriptor, all_folded_outputs):
+    def _get_fold_outputs(self, fold_scope_location, all_folded_outputs):
         """Generate output columns for innermost fold scope and add them to active SQLFoldObject."""
         # find outputs for this fold in all_folded_outputs and add to self._outputs
         if fold_scope_location.fold_path in all_folded_outputs:
             for fold_output in all_folded_outputs[fold_scope_location.fold_path]:
-                # distinguish between folds with the same fold path but different query paths
+                # distinguish folds with the same fold path but different query paths
                 if (fold_output.base_location, fold_output.fold_path) == (
                         fold_scope_location.base_location, fold_scope_location.fold_path):
                     if fold_output.field == '_x_count':
@@ -350,54 +477,75 @@ class SQLFoldObject(object):
 
                     # force column to have explicit label as opposed to anon_label
                     intermediate_fold_output_name = 'fold_output_' + fold_output.field
-                    # add array aggregated output column to self._outputs
-                    if self._dialect == 'mssql':
+                    # add aggregated output column to self._outputs
+                    if isinstance(self._sqlalchemy_compiler, MSDialect_pyodbc):
+                        # MSSQL uses XML PATH aggregation
                         self._outputs.append(
-                            self._get_mssql_column(
+                            self._get_mssql_xml_path_column(
                                 intermediate_fold_output_name,
-                                fold_output,
-                                self.join_info[-1]  # output vertex was most recently traversed
+                                fold_output.field,
+                                self._traversal_descriptors[-1]  # output is last vertex traversed
                             )
                         )
-                    else:
+                    elif isinstance(self._sqlalchemy_compiler, PGDialect_psycopg2):
+                        # PostgreSQL uses ARRAY_AGG
                         self._outputs.append(
-                            self._get_default_column(intermediate_fold_output_name, fold_output)
+                            self._get_array_agg_column(intermediate_fold_output_name,
+                                                       fold_output.field)
+                        )
+                    else:
+                        raise NotImplementedError(
+                            u'Fold only supported for MSSQL and PostgreSQL, '
+                            u'dialect was set to {}'.format(self._sqlalchemy_compiler.name)
                         )
 
         # use to join unique identifier for the fold's outer vertex to the final table
-        self._outputs.append(self.outer_vertex_alias.c['uuid'])
+        self._outputs.append(self.outer_vertex_alias.c[self._outer_vertex_primary_key])
 
+        # sort to make select order deterministic
         return sorted(self._outputs, key=lambda column: column.name, reverse=True)
 
     def visit_output_vertex(self,
                             output_alias,
                             fold_scope_location,
-                            join_descriptor,
                             all_folded_outputs):
         """Update output columns when visiting the vertex containing output directives."""
+        if self._ended:
+            raise AssertionError(u'Cannot visit output vertices after end_fold has been called. '
+                                 u'Invalid state encountered during fold {}'.format(self))
         if self._output_vertex_alias is not None:
-            raise AssertionError('Cannot visit multiple output vertices in one fold.')
+            raise AssertionError(u'Cannot visit multiple output vertices in one fold. '
+                                 u'Invalid state encountered during fold {}'.format(self))
         self._output_vertex_alias = output_alias
         self._outputs = self._get_fold_outputs(fold_scope_location,
-                                               join_descriptor,
                                                all_folded_outputs)
 
-    def visit_traversed_vertex(self, join_descriptor, from_table, to_table):
-        """Add a new join descriptor for every vertex traversed in the fold."""
-        self._join_info.append((join_descriptor, from_table, to_table))
+    def visit_traversed_vertex(self, join_descriptor, from_vertex, to_vertex):
+        """Add a new traversal descriptor for every vertex traversed in the fold."""
+        if self._ended:
+            raise AssertionError(u'Cannot visit traversed vertices after end_fold has been called.')
+        self._traversal_descriptors.append(SQLFoldTraversalDescriptor(join_descriptor,
+                                                                      from_vertex,
+                                                                      to_vertex))
 
     def end_fold(self, alias_generator, from_clause):
         """Produce the final subquery and join it onto the rest of the query."""
+        if self._ended:
+            raise AssertionError(u'Cannot call end_fold more than once. '
+                                 u'Invalid state encountered during fold {}'.format(self))
         if self._output_vertex_alias is None:
-            raise AssertionError('No output vertex visited.')
-        if len(self._join_info) == 0:
-            raise AssertionError('No traversed vertices visited.')
+            raise AssertionError(u'No output vertex visited. '
+                                 u'Invalid state encountered during fold {}'.format(self))
+        if len(self._traversal_descriptors) == 0:
+            raise AssertionError(u'No traversed vertices visited. '
+                                 u'Invalid state encountered during fold {}'.format(self))
 
         # for now we only handle folds containing one traversal (i.e. join)
+        if len(self._traversal_descriptors) > 1:
+            raise NotImplementedError(u'Folds containing multiple traversals are not '
+                                      u'implemented {}.'.format(self))
 
-        # produce the from clause/joins for the subquery
-        first_edge, _, _ = self.join_info[0]
-
+        # join together all vertices traversed
         subquery_from_clause = self._construct_fold_joins()
 
         # produce full subquery
@@ -410,11 +558,14 @@ class SQLFoldObject(object):
             from_clause,
             fold_subquery,
             onclause=(
-                    self._outer_vertex_alias.c['uuid'] == fold_subquery.c['uuid']
+                outer_from_table.c[self._outer_vertex_primary_key] == fold_subquery.c[
+                    self._outer_vertex_primary_key
+                ]  # only support a single primary key field, no composite keys
             ),
             isouter=True
         )
-        return fold_subquery, joined_from_clause, self._outer_vertex_alias
+        self._ended = True  # prevent any more functions being called on this fold
+        return fold_subquery, joined_from_clause, outer_from_table
 
 
 class UniqueAliasGenerator(object):
@@ -466,6 +617,17 @@ class CompilationState(object):
         self._outputs = []  # sqlalchemy Columns labelled correctly for output
         self._filters = []  # sqlalchemy Expressions to be used in the where clause
 
+<<<<<<< HEAD
+=======
+        self._current_fold = None  # SQLFoldObject to collect fold info and guide output query
+        self._fold_vertex_location = None  # location in the IR tree where the fold starts
+
+        self._alias_generator = UniqueAliasGenerator()  # generates aliases for the fold subqueries
+
+        # indicates the sqlalchemy compiler determining the query's dialect
+        self._sqlalchemy_compiler = self.sql_schema_info.dialect
+
+>>>>>>> mssql_fold
     def _relocate(self, new_location):
         """Move to a different location in the query, updating the _alias."""
         self._current_location = new_location
@@ -533,6 +695,12 @@ class CompilationState(object):
 
     def traverse(self, vertex_field, optional):
         """Execute a Traverse Block."""
+<<<<<<< HEAD
+=======
+        if self._current_fold is not None:
+            raise NotImplementedError('Traversals inside a fold are not implemented '
+                                      'yet {}.'.format(self))
+>>>>>>> mssql_fold
         # Follow the edge
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
@@ -619,7 +787,9 @@ class CompilationState(object):
         if self._current_fold is not None or left_predicate_folded or right_predicate_folded:
             raise NotImplementedError('Filters inside a fold are not implemented yet.')
 
-        sql_expression = predicate.to_sql(self.dialect, self._aliases, self._current_alias)
+        sql_expression = predicate.to_sql(self._sqlalchemy_compiler,
+                                          self._aliases,
+                                          self._current_alias)
         if self._is_in_optional_scope():
             sql_expression = sqlalchemy.or_(sql_expression,
                                             self._came_from[self._current_alias].is_(None))
@@ -634,12 +804,13 @@ class CompilationState(object):
                                  u'fold block at current location {}.'
                                  .format(fold_scope_location, self._current_location_info))
         # begin the fold
-
         # 1. get fold metadata
         # location of vertex that is folded on
         self._fold_vertex_location = fold_scope_location
         outer_alias = self._current_alias.alias()
-
+        outer_vertex_primary_key = self._sql_schema_info.vertex_name_to_table[
+            self._current_classname
+        ].primary_key
         # 2. get information on the folded vertex and its edge to the outer vertex
         # basic info about the folded vertex
         fold_vertex_alias = self._sql_schema_info.vertex_name_to_table[
@@ -655,13 +826,26 @@ class CompilationState(object):
         ][full_edge_name]
 
         # 3. initialize fold object
+<<<<<<< HEAD
         self._current_fold = SQLFoldObject(self.dialect, outer_alias, self._current_alias, join_descriptor)
+=======
+        self._current_fold = SQLFoldObject(self._sqlalchemy_compiler,
+                                           outer_alias,
+                                           outer_vertex_primary_key)
+>>>>>>> mssql_fold
 
         # 4. add join information for this traversal to the fold object
         self._current_fold.visit_traversed_vertex(join_descriptor, outer_alias, fold_vertex_alias)
 
+<<<<<<< HEAD
         self._current_alias = fold_vertex_alias
         self._current_location = fold_scope_location
+=======
+        # 5. add output columns to fold object
+        self._current_fold.visit_output_vertex(fold_vertex_alias,
+                                               fold_scope_location,
+                                               self._all_folded_outputs)
+>>>>>>> mssql_fold
 
     def unfold(self):
         """Complete the execution of a Fold Block."""
@@ -737,9 +921,9 @@ class CompilationState(object):
         return self._sql_schema_info
 
     @property
-    def dialect(self):
-        """Get whether the current query is written for MSSQL."""
-        return self._dialect
+    def sqlalchemy_compiler(self):
+        """Get the SQLAlchemyCompiler determining the dialect the query compiles to."""
+        return self._sqlalchemy_compiler
 
 
 def emit_code_from_ir(sql_schema_info, ir):
@@ -777,7 +961,7 @@ def emit_code_from_ir(sql_schema_info, ir):
             state.start_global_operations()
         elif isinstance(block, blocks.ConstructResult):
             for output_name, field in sorted(six.iteritems(block.fields)):
-                state.construct_result(output_name, field, state.dialect)
+                state.construct_result(output_name, field, state.sqlalchemy_compiler)
         else:
             raise NotImplementedError(u'Unsupported block {}.'.format(block))
 

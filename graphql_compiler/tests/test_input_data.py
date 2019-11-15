@@ -1629,6 +1629,28 @@ def fold_on_output_variable():  # noqa: D103
         type_equivalence_hints=None)
 
 
+def fold_on_foreign_key():  # noqa: D103
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_LivesIn @fold {
+                name @output(out_name: "homes_list")
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'homes_list': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def fold_same_edge_type_in_different_locations():  # noqa: D103
     graphql_input = '''{
         Animal {

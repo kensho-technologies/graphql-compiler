@@ -4181,26 +4181,86 @@ class CompilerTests(unittest.TestCase):
                   [Animal_2].uuid AS uuid,
                   coalesce((
                     SELECT
-                      :coalesce_1 + coalesce(
+                      '|' + coalesce(
                         REPLACE(
                           REPLACE(
-                            REPLACE([Animal_3].name, :REPLACE_1, :REPLACE_2),
-                            :REPLACE_3,
-                            :REPLACE_4
+                            REPLACE([Animal_3].name, '^', '^e'),
+                            '~',
+                            '^n'
                           ),
-                          :REPLACE_5,
-                          :REPLACE_6
+                          '|',
+                          '^d'
                         ),
-                        :coalesce_2
-                      ) FROMdb_1.schema_1.[Animal] AS [Animal_3]
+                        '~'
+                      )
+                    FROM
+                      db_1.schema_1.[Animal] AS [Animal_3]
                     WHERE
                       [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')
-                  ), :coalesce_3) AS fold_output_name
+                  ), '') AS fold_output_name
                 FROM
                   db_1.schema_1.[Animal] AS [Animal_2]
               ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
         '''
 
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
+
+    def test_fold_on_foreign_key(self):
+        test_data = test_input_data.fold_on_foreign_key()
+
+        expected_postgresql = '''
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS homes_list
+            FROM
+                schema_1."Animal" AS "Animal_1"
+            LEFT OUTER JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Location_1".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Location" AS "Location_1" ON "Animal_2".lives_in = "Location_1".uuid
+                GROUP BY
+                    "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        '''
+
+        expected_mssql = '''
+            SELECT
+              [Animal_1].name AS animal_name,
+              folded_subquery_1.fold_output_name AS homes_list
+            FROM
+              db_1.schema_1.[Animal] AS [Animal_1]
+              LEFT OUTER JOIN(
+                SELECT
+                  [Animal_2].uuid AS uuid,
+                  coalesce((
+                    SELECT
+                      '|' + coalesce(
+                        REPLACE(
+                          REPLACE(
+                            REPLACE([Location_1].name, '^', '^e'),
+                            '~',
+                            '^n'
+                          ),
+                          '|',
+                          '^d'
+                        ),
+                        '~'
+                      ) FROMdb_1.schema_1.[Location] AS [Location_1]
+                    WHERE
+                      [Animal_2].lives_in = [Location_1].uuid FOR XML PATH('')
+                  ), '') AS fold_output_name
+                FROM
+                  db_1.schema_1.[Animal] AS [Animal_2]
+              ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+        '''
+
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
 
@@ -4241,42 +4301,42 @@ class CompilerTests(unittest.TestCase):
                   [Animal_2].uuid AS uuid,
                   coalesce((
                     SELECT
-                      :coalesce_1 + coalesce(
+                      '|' + coalesce(
                         REPLACE(
                           REPLACE(
-                            REPLACE([Animal_3].name, :REPLACE_1, :REPLACE_2),
-                            :REPLACE_3,
-                            :REPLACE_4
+                            REPLACE([Animal_3].name, '^', '^e'),
+                            '~',
+                            '^n'
                           ),
-                          :REPLACE_5,
-                          :REPLACE_6
+                          '|',
+                          '^d'
                         ),
-                        :coalesce_2
+                        '~'
                       )
                     FROM
                       db_1.schema_1.[Animal] AS [Animal_3]
                     WHERE
                       [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')
-                  ), :coalesce_3) AS fold_output_name,
+                  ), '') AS fold_output_name,
                   coalesce((
                     SELECT
-                      :coalesce_4 + coalesce(
+                      '|' + coalesce(
                         REPLACE(
                           REPLACE(
-                            REPLACE([Animal_3].color, :REPLACE_7, :REPLACE_8),
-                            :REPLACE_9,
-                            :REPLACE_10
+                            REPLACE([Animal_3].color, '^', '^e'),
+                            '~',
+                            '^n'
                           ),
-                          :REPLACE_11,
-                          :REPLACE_12
+                          '|',
+                          '^d'
                         ),
-                        :coalesce_5
+                        '~'
                       )
                     FROM
                       db_1.schema_1.[Animal] AS [Animal_3]
                     WHERE
                       [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')
-                  ), :coalesce_6) AS fold_output_color
+                  ), '') AS fold_output_color
                 FROM
                   db_1.schema_1.[Animal] AS [Animal_2]
               ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
@@ -4318,7 +4378,7 @@ class CompilerTests(unittest.TestCase):
                   schema_1."Animal" AS "Animal_5"
                 JOIN schema_1."Animal" AS "Animal_6" ON "Animal_5".uuid = "Animal_6".parent
                 GROUP BY
-                    "Animal_5".uuid
+                  "Animal_5".uuid
             ) AS folded_subquery_2 ON "Animal_4".uuid = folded_subquery_2.uuid
         '''
         expected_mssql = '''
@@ -4333,23 +4393,23 @@ class CompilerTests(unittest.TestCase):
                   [Animal_2].uuid AS uuid,
                   coalesce((
                     SELECT
-                      :coalesce_1 + coalesce(
+                      '|' + coalesce(
                         REPLACE(
                           REPLACE(
-                            REPLACE([Animal_3].name, :REPLACE_1, :REPLACE_2),
-                            :REPLACE_3,
-                            :REPLACE_4
+                            REPLACE([Animal_3].name, '^', '^e'),
+                            '~',
+                            '^n'
                           ),
-                          :REPLACE_5,
-                          :REPLACE_6
+                          '|',
+                          '^d'
                         ),
-                        :coalesce_2
+                        '~'
                       )
                     FROM
                       db_1.schema_1.[Animal] AS [Animal_3]
                     WHERE
                       [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')
-                  ), :coalesce_3) AS fold_output_name
+                  ), '') AS fold_output_name
                 FROM
                   db_1.schema_1.[Animal] AS [Animal_2]
               ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
@@ -4359,23 +4419,23 @@ class CompilerTests(unittest.TestCase):
                   [Animal_5].uuid AS uuid,
                   coalesce((
                     SELECT
-                      :coalesce_4 + coalesce(
+                      '|' + coalesce(
                         REPLACE(
                           REPLACE(
-                            REPLACE([Animal_6].name, :REPLACE_7, :REPLACE_8),
-                            :REPLACE_9,
-                            :REPLACE_10
+                            REPLACE([Animal_6].name, '^', '^e'),
+                            '~',
+                            '^n'
                           ),
-                          :REPLACE_11,
-                          :REPLACE_12
+                          '|',
+                          '^d'
                         ),
-                        :coalesce_5
+                        '~'
                       )
                     FROM
                       db_1.schema_1.[Animal] AS [Animal_6]
                     WHERE
                       [Animal_5].uuid = [Animal_6].parent FOR XML PATH('')
-                  ), :coalesce_6) AS fold_output_name
+                  ), '') AS fold_output_name
                 FROM
                   db_1.schema_1.[Animal] AS [Animal_5]
               ) AS folded_subquery_2 ON [Animal_4].uuid = folded_subquery_2.uuid
@@ -4473,23 +4533,23 @@ class CompilerTests(unittest.TestCase):
                   [Animal_3].uuid AS uuid,
                   coalesce((
                     SELECT
-                      :coalesce_1 + coalesce(
+                      '|' + coalesce(
                         REPLACE(
                           REPLACE(
-                            REPLACE([Animal_4].name, :REPLACE_1, :REPLACE_2),
-                            :REPLACE_3,
-                            :REPLACE_4
+                            REPLACE([Animal_4].name, '^', '^e'),
+                            '~',
+                            '^n'
                           ),
-                          :REPLACE_5,
-                          :REPLACE_6
+                          '|',
+                          '^d'
                         ),
-                        :coalesce_2
+                        '~'
                       )
                     FROM
                       db_1.schema_1.[Animal] AS [Animal_4]
                     WHERE
                       [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
-                  ), :coalesce_3) AS fold_output_name
+                  ), '') AS fold_output_name
                 FROM
                   db_1.schema_1.[Animal] AS [Animal_3]
               ) AS folded_subquery_1 ON [Animal_2].uuid = folded_subquery_1.uuid
@@ -4558,23 +4618,23 @@ class CompilerTests(unittest.TestCase):
                   [Location_2].uuid AS uuid,
                   coalesce((
                     SELECT
-                      :coalesce_1 + coalesce(
+                      '|' + coalesce(
                         REPLACE(
                           REPLACE(
-                            REPLACE([Animal_2].name, :REPLACE_1, :REPLACE_2),
-                            :REPLACE_3,
-                            :REPLACE_4
+                            REPLACE([Animal_2].name, '^', '^e'),
+                            '~',
+                            '^n'
                           ),
-                          :REPLACE_5,
-                          :REPLACE_6
+                          '|',
+                          '^d'
                         ),
-                        :coalesce_2
+                        '~'
                       )
                     FROM
                       db_1.schema_1.[Animal] AS [Animal_2]
                     WHERE
                       [Location_2].uuid = [Animal_2].lives_in FOR XML PATH('')
-                  ), :coalesce_3) AS fold_output_name
+                  ), '') AS fold_output_name
                 FROM
                   db_1.schema_1.[Location] AS [Location_2]
               ) AS folded_subquery_1 ON [Location_1].uuid = folded_subquery_1.uuid
@@ -4640,23 +4700,23 @@ class CompilerTests(unittest.TestCase):
                   [Location_2].uuid AS uuid,
                   coalesce((
                     SELECT
-                      :coalesce_1 + coalesce(
+                      '|' + coalesce(
                         REPLACE(
                           REPLACE(
-                            REPLACE([Animal_2].name, :REPLACE_1, :REPLACE_2),
-                            :REPLACE_3,
-                            :REPLACE_4
+                            REPLACE([Animal_2].name, '^', '^e'),
+                            '~',
+                            '^n'
                           ),
-                          :REPLACE_5,
-                          :REPLACE_6
+                          '|',
+                          '^d'
                         ),
-                        :coalesce_2
+                        '~'
                       )
                     FROM
                       db_1.schema_1.[Animal] AS [Animal_2]
                     WHERE
                       [Location_2].uuid = [Animal_2].lives_in FOR XML PATH('')
-                  ), :coalesce_3) AS fold_output_name
+                  ), '') AS fold_output_name
                 FROM
                   db_1.schema_1.[Location] AS [Location_2]
               ) AS folded_subquery_1 ON [Location_1].uuid = folded_subquery_1.uuid
@@ -7606,23 +7666,23 @@ class CompilerTests(unittest.TestCase):
                   [Animal_3].uuid AS uuid,
                   coalesce((
                     SELECT
-                      :coalesce_1 + coalesce(
+                      '|' + coalesce(
                         REPLACE(
                           REPLACE(
-                            REPLACE([Animal_4].name, :REPLACE_1, :REPLACE_2),
-                            :REPLACE_3,
-                            :REPLACE_4
+                            REPLACE([Animal_4].name, '^', '^e'),
+                            '~',
+                            '^n'
                           ),
-                          :REPLACE_5,
-                          :REPLACE_6
+                          '|',
+                          '^d'
                         ),
-                        :coalesce_2
+                        '~'
                       )
                     FROM
                       db_1.schema_1.[Animal] AS [Animal_4]
                     WHERE
                       [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
-                  ), :coalesce_3) AS fold_output_name
+                  ), '') AS fold_output_name
                 FROM
                   db_1.schema_1.[Animal] AS [Animal_3]
               ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
@@ -7732,23 +7792,23 @@ class CompilerTests(unittest.TestCase):
                   [Animal_3].uuid AS uuid,
                   coalesce((
                     SELECT
-                      :coalesce_1 + coalesce(
+                      '|' + coalesce(
                         REPLACE(
                           REPLACE(
-                            REPLACE([Animal_4].name, :REPLACE_1, :REPLACE_2),
-                            :REPLACE_3,
-                            :REPLACE_4
+                            REPLACE([Animal_4].name, '^', '^e'),
+                            '~',
+                            '^n'
                           ),
-                          :REPLACE_5,
-                          :REPLACE_6
+                          '|',
+                          '^d'
                         ),
-                        :coalesce_2
+                        '~'
                       )
                     FROM
                       db_1.schema_1.[Animal] AS [Animal_4]
                     WHERE
                       [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
-                  ), :coalesce_3) AS fold_output_name
+                  ), '') AS fold_output_name
                 FROM
                   db_1.schema_1.[Animal] AS [Animal_3]
               ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
