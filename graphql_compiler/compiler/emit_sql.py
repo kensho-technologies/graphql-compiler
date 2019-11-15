@@ -202,19 +202,19 @@ def get_xml_path_clause(output_column, where):
 
 # 3-tuple describing the join information for each traversal in a fold.
 #
-# Contains join descriptor naming the columns used in the join predicate,
+# Contains DirectJoinDescriptor naming the columns used in the join predicate,
 # the source/from table, and the destination/to table
 SQLFoldTraversalDescriptor = namedtuple('SQLFoldJoinInfo', (
-    # SQLAlchemySchemaInfo join descriptor giving columns used to join from_vertex/to_vertex
+    # DirectJoinDescriptor giving columns used to join from_table/to_table
     'join_descriptor',
 
     # SQLAlchemy table corresponding to corresponding to the outside vertex of the traversal,
     # appears on the left side of the join.
-    'from_vertex',
+    'from_table',
 
     # SQLAlchemy table corresponding to corresponding to the inside vertex of the traversal,
     # appears on the right side of the join.
-    'to_vertex'
+    'to_table'
 ))
 
 
@@ -359,9 +359,9 @@ class SQLFoldObject(object):
 
     def _construct_fold_joins(self):
         """Use the edge descriptors to create the join clause between the tables in the fold."""
-        # Start the join clause with the from_vertex of the first traversal descriptor,
+        # Start the join clause with the from_table of the first traversal descriptor,
         # which is the vertex immediately preceding the fold
-        join_clause = self._traversal_descriptors[0].from_vertex
+        join_clause = self._traversal_descriptors[0].from_table
         if isinstance(self._sqlalchemy_compiler, MSDialect_pyodbc):
             # The logic of the final join predicate (from the vertex preceding the output to
             # the output vertex) occurs in the WHERE clause of the SELECT ... FOR XML PATH('')
@@ -375,19 +375,19 @@ class SQLFoldObject(object):
                 u'PostgreSQL, dialect was set to {}'.format(self._sqlalchemy_compiler.name)
             )
 
-        # Starting at the first from_vertex, join traversed vertices in order until the output
+        # Starting at the first from_table, join traversed vertices in order until the output
         # vertex (PostgreSQL) is reached, or until the last vertex preceding the output
         # vertex (MSSQL) is reached
         for i in range(0, terminating_idx):
             # joins from earlier in the chain of traversals are at the beginning of the list
             # b/c joins are appended in the order they are traversed
-            from_vertex = self._traversal_descriptors[i].from_vertex
-            to_vertex = self._traversal_descriptors[i].to_vertex
+            from_table = self._traversal_descriptors[i].from_table
+            to_table = self._traversal_descriptors[i].to_table
             join_descriptor = self._traversal_descriptors[i].join_descriptor
             join_clause = sqlalchemy.join(
                 join_clause,
-                to_vertex,
-                onclause=(from_vertex.c[join_descriptor.from_column] == to_vertex.c[
+                to_table,
+                onclause=(from_table.c[join_descriptor.from_column] == to_table.c[
                     join_descriptor.to_column
                 ])
             )
@@ -443,7 +443,7 @@ class SQLFoldObject(object):
 
         - VertexPrecedingOutput is the vertex immediately preceding the output vertex in the
         chain of traversals beginning at the vertex immediately outside the fold.
-        VertexPrecedingOutput is the `from_vertex` of the last traversal descriptor tuple
+        VertexPrecedingOutput is the `from_table` of the last traversal descriptor tuple
         added to the fold's `traversal_descriptors` list.
 
         - The join predicate may have primary_key and foreign_key reversed according to the
@@ -520,13 +520,13 @@ class SQLFoldObject(object):
         self._outputs = self._get_fold_outputs(fold_scope_location,
                                                all_folded_outputs)
 
-    def visit_traversed_vertex(self, join_descriptor, from_vertex, to_vertex):
+    def visit_traversed_vertex(self, join_descriptor, from_table, to_table):
         """Add a new traversal descriptor for every vertex traversed in the fold."""
         if self._ended:
             raise AssertionError(u'Cannot visit traversed vertices after end_fold has been called.')
         self._traversal_descriptors.append(SQLFoldTraversalDescriptor(join_descriptor,
-                                                                      from_vertex,
-                                                                      to_vertex))
+                                                                      from_table,
+                                                                      to_table))
 
     def end_fold(self, alias_generator, from_clause, outer_from_table):
         """Produce the final subquery and join it onto the rest of the query."""
