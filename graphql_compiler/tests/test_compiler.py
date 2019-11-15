@@ -4766,27 +4766,6 @@ class CompilerTests(unittest.TestCase):
                     ))
             ])}
         '''
-        # TODO: implement multiple traversals in a separate PR
-        # expected_postrgresql = '''
-        #     SELECT
-        #         [Animal_1].name as animal_name,
-        #         coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[])
-        #             AS sibling_and_self_names_list
-        #     FROM
-        #         db_1.schema_1.[Animal] AS [Animal_1]
-        #     LEFT JOIN (
-        #         SELECT
-        #             [Animal_2].uuid,
-        #             array_agg([Animal_4].name) as sibling_and_self_names_list
-        #         FROM db_1.schema_1.[Animal] AS [Animal_2]
-        #         JOIN db_1.schema_1.[Animal] AS [Animal_3]
-        #         ON [Animal_2].parent = [Animal_3].uuid
-        #         JOIN db_1.schema_1.[Animal] AS [Animal_4]
-        #         ON [Animal_3].uuid = [Animal_4].parent
-        #         GROUP BY [Animal_2].uuid
-        #     ) AS folded_subquery_1
-        #     ON [Animal_1].uuid = folded_subquery_1.uuid
-        # '''
         expected_mssql = '''
             SELECT
             [Animal_1].name as animal_name,
@@ -4798,23 +4777,23 @@ class CompilerTests(unittest.TestCase):
                     [Animal_2].uuid,
                     coalesce((
                         SELECT
-                          :coalesce_1 + coalesce(
+                          '|' + coalesce(
                             REPLACE(
                               REPLACE(
-                                REPLACE([Animal_4].name, :REPLACE_1, :REPLACE_2),
-                                :REPLACE_3,
-                                :REPLACE_4
+                                REPLACE([Animal_4].name, '^', '^e'),
+                                '~',
+                                '^n'
                               ),
-                              :REPLACE_5,
-                              :REPLACE_6
+                              '|',
+                              '^d'
                             ),
-                            :coalesce_2
+                            '~''
                           )
                         FROM
                           db_1.schema_1.[Animal] AS [Animal_4]
                         WHERE
                           [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')
-                      ), :coalesce_3)
+                      ), '')
                 FROM db_1.schema_1.[Animal] AS [Animal_2]
                 JOIN db_1.schema_1.[Animal] AS [Animal_3]
                 ON [Animal_2].parent = [Animal_3].uuid
