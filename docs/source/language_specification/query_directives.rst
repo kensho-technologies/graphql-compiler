@@ -154,7 +154,7 @@ captured in a :code:`@fold`. The :code:`_x_count` meta field that is available
 within :code:`@fold` scopes represents the number of elements in the fold,
 and may be filtered or output as usual. As :code:`_x_count` represents a
 count of elements, marking it :code:`@output` will produce an integer value.
-See the `\_x\_count <#x-count>`__ section for more details.
+See the :ref:`\_x\_count <x_count>` section for more details.
 
 Example Use
 ~~~~~~~~~~~
@@ -332,7 +332,7 @@ used as part of a :code:`@filter` directive.
 
 To supply a tagged value to a :code:`@filter` directive, place the tag name
 (prefixed with a :code:`%` symbol) in the :code:`@filter`'s :code:`value` array. See
-`Passing parameters <#passing-parameters>`__ for more details.
+:ref:`Passing parameters <passing_parameters>` for more details.
 
 Example Use
 ~~~~~~~~~~~
@@ -373,7 +373,7 @@ Allows filtering of the data to be returned, based on any of a set of
 filtering operations. Conceptually, it is the GraphQL equivalent of the
 SQL :code:`WHERE` keyword.
 
-See `Supported filtering operations <#supported-filtering-operations>`__
+See `Supported filtering operations <supported_filtering_operations>`__
 for details on the various types of filtering that the compiler
 currently supports. These operations are currently hardcoded in the
 compiler; in the future, we may enable the addition of custom filtering
@@ -386,6 +386,8 @@ were joined by SQL :code:`AND` keywords.
 Using a :code:`@tag` and a :code:`@filter` that references the tag within the
 same vertex is allowed, so long as the two do not appear on the exact
 same property field.
+
+.. _passing_parameters:
 
 Passing Parameters
 ~~~~~~~~~~~~~~~~~~
@@ -751,6 +753,7 @@ Constraints and Rules
    used in the query.
 -  Cannot be used within a scope marked :code:`@optional` or :code:`@fold`.
 
+.. _supported_filtering_operations:
 
 Supported filtering operations
 ------------------------------

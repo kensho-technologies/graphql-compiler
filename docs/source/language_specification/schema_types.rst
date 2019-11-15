@@ -127,7 +127,7 @@ Lets go over a toy example of a GraphQL object type:
 
 Here are some of the details:
 
-- :code:`_x_count`: is a `meta field <#meta-fields>`__. Meta fields are an advanced compiler
+- :code:`_x_count`: is a `meta field <meta_fields>`__. Meta fields are an advanced compiler
   feature.
 - :code:`name` is a **property field** that represents concrete data.
 - :code:`in_Animal_PlaysWith` is a **vertex field** representing an inbound edge.
@@ -222,7 +222,7 @@ implementation in the GraphQL schema to model the abstract inheritance in the un
         in_Species_Eats: [Species]
     }
 
-Querying an interface type without any `type coercion <#type-coercion>`__ returns all of the
+Querying an interface type without any `type coercion <type_coercion>`__ returns all of the
 the objects implemented by the interface. For instance, the following query returns the name of all
 :code:`Food`, :code:`Species` and :code:`Animal` objects.
 
@@ -263,6 +263,8 @@ as well an entry in :code:`type_equivalence_hints` mapping :code:`Food` to
 
 To query an union type, one must always type coerce to one of the encompassed object types as
 illustrated in the section below.
+
+.. _type_coercion:
 
 Type coercions
 ~~~~~~~~~~~~~~
@@ -314,6 +316,7 @@ In this query, the :code:`out_Entity_Related` is of :code:`Entity` type.
 However, the query only wants to return results where the related entity
 is a :code:`Species`, which :code:`... on Species` ensures is the case.
 
+.. _meta_fields:
 
 Meta fields
 -----------
@@ -356,6 +359,8 @@ others. Vertices of all subtypes of :code:`Entity` will therefore be
 returned, and the :code:`entity_type` column that outputs the :code:`__typename`
 field will show their runtime type: :code:`Animal`, :code:`Species`, :code:`Food`,
 etc.
+
+.. _x_count:
 
 \_x\_count
 ~~~~~~~~~~

@@ -314,7 +314,7 @@ class LocalField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif self.field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The match backend does not support meta field {}.'.format(
                 self.field_name))
 
         return six.text_type(self.field_name)
@@ -333,7 +333,7 @@ class LocalField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif self.field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The gremlin backend does not support meta field {}.'.format(
                 self.field_name))
 
         if '@' in self.field_name:
@@ -404,7 +404,7 @@ class GlobalContextField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The match backend does not support meta field {}.'.format(
                 field_name))
         validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
@@ -423,10 +423,24 @@ class GlobalContextField(Expression):
                              u'should not be called.')
 
     def to_sql(self, aliases, current_alias):
-        """Not implemented, should not be used."""
-        raise AssertionError(u'GlobalContextField is not used as part of the query emission '
-                             u'process in SQL, so this is a bug. This function '
-                             u'should not be called.')
+        """Return a sqlalchemy Column picked from the appropriate alias."""
+        self.validate()
+        if isinstance(self.field_type, GraphQLList):
+            raise NotImplementedError(u'The SQL backend does not support lists. Cannot '
+                                      u'process field {}.'.format(self.location.field))
+
+        if self.location.field is not None:
+            # Meta fields are special cases; assume all meta fields are not implemented.
+            if self.location.field in ALL_SUPPORTED_META_FIELDS:
+                raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                    self.location.field))
+            return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
+        else:
+            raise AssertionError(u'This is a bug. The SQL backend does not use '
+                                 u'global context fields to point to vertices. GlobalContextField '
+                                 u'at query_path {} and visit_counter {} did note have a valid '
+                                 u'field.'.format(self.location.query_path,
+                                                  self.location.visit_counter))
 
 
 class ContextField(Expression):
@@ -473,7 +487,7 @@ class ContextField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The match backend does not support meta field {}.'.format(
                 field_name))
 
         if field_name is None:
@@ -493,7 +507,7 @@ class ContextField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The gremlin backend does not support meta field {}.'.format(
                 field_name))
 
         if field_name is not None:
@@ -600,7 +614,7 @@ class OutputContextField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The match backend does not support meta field {}.'.format(
                 field_name))
         validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
@@ -626,7 +640,7 @@ class OutputContextField(Expression):
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The gremlin backend does not support meta field {}.'.format(
                 field_name))
 
         if '@' in field_name:
@@ -666,7 +680,7 @@ class OutputContextField(Expression):
 
         # Meta fields are special cases; assume all meta fields are not implemented.
         if self.location.field in ALL_SUPPORTED_META_FIELDS:
-            raise NotImplementedError(u'The sql backend does not support meta field {}.'.format(
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
                 self.location.field))
 
         return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
@@ -785,7 +799,18 @@ class FoldedContextField(Expression):
 
     def to_sql(self, aliases, current_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
-        # get the type of the folded field
+        # _x_count is a special case that has already been coalesced to 0.
+        # _x_count's intermediate output name is always fold_output__x_count
+        if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
+            return aliases[
+                self.fold_scope_location.base_location.query_path,
+                self.fold_scope_location.fold_path
+            ].c['fold_output__x_count']
+        elif self.fold_scope_location.field in ALL_SUPPORTED_META_FIELDS:
+            raise NotImplementedError(u'The SQL backend does not support meta field {}.'.format(
+                self.fold_scope_location.field))
+
+        # Otherwise, get the type of the folded field.
         inner_type = strip_non_null_from_type(self.field_type.of_type)
         if GraphQLInt.is_same_type(inner_type):
             sql_array_type = 'INT'
@@ -873,8 +898,12 @@ class FoldCountContextField(Expression):
         raise NotImplementedError()
 
     def to_sql(self, aliases, current_alias):
-        """Not supported yet."""
-        raise NotImplementedError(u'The SQL backend does not support _x_count.')
+        """Return a SQLAlchemy column of a coalesced COUNT(*) from a folded subquery."""
+        # _x_count's intermediate output name is always fold_output__x_count
+        return aliases[
+            self.fold_scope_location.base_location.query_path,
+            self.fold_scope_location.fold_path
+        ].c['fold_output__x_count']
 
 
 class ContextFieldExistence(Expression):
