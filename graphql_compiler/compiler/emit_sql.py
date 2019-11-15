@@ -539,12 +539,6 @@ class SQLFoldObject(object):
         if len(self._traversal_descriptors) == 0:
             raise AssertionError(u'No traversed vertices visited. '
                                  u'Invalid state encountered during fold {}'.format(self))
-
-        # for now we only handle folds containing one traversal (i.e. join)
-        if len(self._traversal_descriptors) > 1:
-            raise NotImplementedError(u'Folds containing multiple traversals are not '
-                                      u'implemented {}.'.format(self))
-
         # join together all vertices traversed
         subquery_from_clause = self._construct_fold_joins()
 
@@ -692,13 +686,11 @@ class CompilationState(object):
 
     def traverse(self, vertex_field, optional):
         """Execute a Traverse Block."""
-        if self._current_fold is not None:
-            raise NotImplementedError('Traversals inside a fold are not implemented '
-                                      'yet {}.'.format(self))
         # Follow the edge
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
+        # TODO: should current location be fold_vertex_location???
         # traversal from previous alias to current alias needs to be added to the relevant join
         if self._current_fold is not None:
             self._fold_vertex_location = self._current_location
@@ -826,16 +818,14 @@ class CompilationState(object):
 
         # 4. add join information for this traversal to the fold object
         self._current_fold.visit_traversed_vertex(join_descriptor, outer_alias, fold_vertex_alias)
-
-        # 5. add output columns to fold object
-        self._current_fold.visit_output_vertex(fold_vertex_alias,
-                                               fold_scope_location,
-                                               self._all_folded_outputs)
+        self._current_location = self._fold_vertex_location
+        # TODO: self._current_alias = fold_vertex_alias
 
     def unfold(self):
         """Complete the execution of a Fold Block."""
         fold_subquery, from_cls, outer_vertex = self._current_fold.end_fold(self._alias_generator,
-                                                                            self._from_clause)
+                                                                            self._from_clause,
+                                                                            self._aliases[(self._fold_vertex_location.base_location.query_path, None)])
 
         # generate a key for self._aliases that maps to the fold subquery's alias
         subquery_alias_key = (self._fold_vertex_location.base_location.query_path,
@@ -877,15 +867,13 @@ class CompilationState(object):
 
             self._current_fold.visit_output_vertex(self._current_alias,
                                                    self._current_location,
-                                                   join_descriptor,
                                                    self._all_folded_outputs)
-            self._relocate(self._fold_vertex_location)
 
         # If the current location is the beginning of a fold, the current alias
         # will eventually be replaced by the resulting fold subquery during Unfold.
         self._aliases[
             (self._current_location.base_location.query_path,
-             self._current_location.fold_path)  # should this be current location or fold scope location ??? really dinks you dink
+             self._current_location.fold_path)  # should this be  current location or fold scope location ??? really dinks you dink
             if self._current_fold is not None else (self._current_location.query_path, None)
         ] = self._current_alias
 
