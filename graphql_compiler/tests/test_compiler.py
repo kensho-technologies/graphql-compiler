@@ -4300,7 +4300,7 @@ class CompilerTests(unittest.TestCase):
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names_list
             FROM
                 schema_1."Animal" AS "Animal_1"
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
                     array_agg("Animal_3".name) AS fold_output_name
@@ -4337,7 +4337,7 @@ class CompilerTests(unittest.TestCase):
               ) AS child_names_list
             FROM
                 schema_1."Animal" AS "Animal_1"
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
                     array_agg("Animal_3".name) AS fold_output_name,
@@ -4368,7 +4368,7 @@ class CompilerTests(unittest.TestCase):
                 AS sibling_and_self_names_list
             FROM
               schema_1."Animal" AS "Animal_1"
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
                     array_agg("Animal_3".name) AS fold_output_name
@@ -4379,7 +4379,7 @@ class CompilerTests(unittest.TestCase):
                   "Animal_2".uuid
             ) AS folded_subquery_1 ON "Animal_1".uuid = folded_subquery_1.uuid
             JOIN schema_1."Animal" AS "Animal_4" ON "Animal_1".parent = "Animal_4".uuid
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_5".uuid AS uuid,
                     array_agg("Animal_6".name) AS fold_output_name
@@ -4445,7 +4445,7 @@ class CompilerTests(unittest.TestCase):
               schema_1."Animal" AS "Animal_1"
             JOIN schema_1."Animal" AS "Animal_2"
             ON "Animal_1".parent = "Animal_2".uuid
-            LEFT OUTER JOIN(
+            JOIN(
                 SELECT
                     "Animal_3".uuid AS uuid,
                     array_agg("Animal_4".name) AS fold_output_name
@@ -4487,7 +4487,7 @@ class CompilerTests(unittest.TestCase):
             FROM schema_1."Animal" AS "Animal_1"
             JOIN schema_1."Location" AS "Location_1"
             ON "Animal_1".lives_in = "Location_1".uuid
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                   "Location_2".uuid AS uuid,
                   array_agg("Animal_2".name) AS fold_output_name
@@ -4517,7 +4517,7 @@ class CompilerTests(unittest.TestCase):
             FROM schema_1."Animal" AS "Animal_1"
             JOIN schema_1."Location" AS "Location_1"
             ON "Animal_1".lives_in = "Location_1".uuid
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Location_2".uuid AS uuid,
                     array_agg("Animal_2".name) AS fold_output_name
@@ -7401,7 +7401,7 @@ class CompilerTests(unittest.TestCase):
             LEFT OUTER JOIN
                 schema_1."Animal" AS "Animal_2"
             ON "Animal_1".parent = "Animal_2".uuid
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                   "Animal_3".uuid AS uuid,
                   array_agg("Animal_4".name) AS fold_output_name
@@ -7493,7 +7493,7 @@ class CompilerTests(unittest.TestCase):
               coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names_list,
               "Animal_2".name AS parent_name
             FROM schema_1."Animal" AS "Animal_1"
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                   "Animal_3".uuid AS uuid,
                   array_agg("Animal_4".name) AS fold_output_name

@@ -291,7 +291,7 @@ class SQLFoldObject(object):
             from_clause,
             fold_subquery,
             onclause=(outer_from_table.c[edge.from_column] == fold_subquery.c[edge.from_column]),
-            isouter=True
+            isouter=False
         )
 
         return fold_subquery, joined_from_clause, outer_from_table
