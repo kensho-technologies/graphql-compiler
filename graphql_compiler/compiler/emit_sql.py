@@ -819,7 +819,7 @@ class CompilationState(object):
         # 4. add join information for this traversal to the fold object
         self._current_fold.visit_traversed_vertex(join_descriptor, outer_alias, fold_vertex_alias)
         self._current_location = self._fold_vertex_location
-        # TODO: self._current_alias = fold_vertex_alias
+        self._current_alias = fold_vertex_alias
 
     def unfold(self):
         """Complete the execution of a Fold Block."""
