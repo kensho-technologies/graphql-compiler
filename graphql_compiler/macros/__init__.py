@@ -186,9 +186,9 @@ def get_schema_with_macros(macro_registry):
             definitions_by_name[class_name].fields.append(FieldDefinition(
                 Name(macro_edge_name), arguments, list_type_at_target, directives=directives))
 
-    schema = build_ast_schema(schema_ast)
-    amend_custom_scalar_types(schema, get_scalar_types(macro_registry.schema_without_macros))
-    return schema
+    macro_schema = build_ast_schema(schema_ast)
+    amend_custom_scalar_types(macro_schema, get_scalar_types(macro_registry.schema_without_macros))
+    return macro_schema
 
 
 def get_schema_for_macro_definition(schema):
