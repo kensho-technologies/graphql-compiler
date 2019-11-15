@@ -220,13 +220,13 @@ class SQLFoldObject(object):
     def __str__(self):
         """Produce string used to customize error messages."""
         if self._outer_vertex_alias is None:
-            return u'"Invalid fold: no vertex preceding fold."'
+            return u'SQLFoldObject("Invalid fold: no vertex preceding fold.")'
         elif self._output_vertex_alias is None:
-            return u'"Vertex outside fold: {}. Output vertex for fold: None."'.format(
+            return u'SQLFoldObject("Vertex outside fold: {}. Output vertex for fold: None.")'.format(
                 self._outer_vertex_alias.original
             )
         else:
-            return u'"Vertex outside fold: {}. Output vertex for fold: {}."'.format(
+            return u'SQLFoldObject("Vertex outside fold: {}. Output vertex for fold: {}.")'.format(
                 self._outer_vertex_alias.original, self._output_vertex_alias.original
             )
 
