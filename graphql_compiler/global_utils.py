@@ -21,7 +21,7 @@ def merge_non_overlapping_dicts(merge_target, new_data):
 def get_scalar_types(schema):
     """Return the scalar types in a GraphQLSchema."""
     return {
-        type for type in
+        graphql_type for graphql_type in
         schema.get_type_map().values()
-        if isinstance(type, GraphQLScalarType)
+        if isinstance(graphql_type, GraphQLScalarType)
     }
