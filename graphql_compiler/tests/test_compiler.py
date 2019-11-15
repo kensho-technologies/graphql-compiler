@@ -983,7 +983,7 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 "Species_1".name AS species_name
             FROM schema_1."Species" AS "Species_1"
-            JOIN schema_1."Animal" AS "Animal_1"
+            LEFT OUTER JOIN schema_1."Animal" AS "Animal_1"
             ON "Species_1".uuid = "Animal_1".species
             JOIN (
                 SELECT
@@ -5929,7 +5929,7 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 "Animal_1".name AS name
             FROM schema_1."Animal" AS "Animal_1"
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
                     coalesce(count(*), 0) AS fold_output__x_count
@@ -5941,14 +5941,14 @@ class CompilerTests(unittest.TestCase):
             ON "Animal_1".uuid = folded_subquery_1.uuid
             JOIN (
                 SELECT
-                    "Animal_4".related_entity AS related_entity,
+                    "Animal_4".uuid AS uuid,
                     coalesce(count(*), 0) AS fold_output__x_count
                 FROM schema_1."Animal" AS "Animal_4"
                 JOIN schema_1."Entity" AS "Entity_1"
                 ON "Animal_4".related_entity = "Entity_1".uuid
-                GROUP BY "Animal_4".related_entity
+                GROUP BY "Animal_4".uuid
             ) AS folded_subquery_2
-            ON "Animal_1".related_entity = folded_subquery_2.related_entity
+            ON "Animal_1".uuid = folded_subquery_2.uuid
             WHERE
                 folded_subquery_1.fold_output__x_count >= %(min_children)s AND
                 folded_subquery_2.fold_output__x_count >= %(min_related)s
