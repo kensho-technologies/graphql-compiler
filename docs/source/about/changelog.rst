@@ -182,7 +182,7 @@ This feature implements a workaround for a limitation of OrientDB, where
 subsequent traversals from them. To work around this issue, the compiler
 rewrites the query into several disjoint queries whose union produces
 the exact same results as a single query that allows optional
-traversals.
+traversals. See this :ref:`link <compound_optional_performance_penalty>` for more details.
 
 v1.4.1
 ------
