@@ -10,8 +10,9 @@ GraphQL core library for parsing and type checking. However, since the
 database queries produced by compiling GraphQL are subject to the
 limitations of the database system they run on, our execution model is
 somewhat different compared to the one described in the standard GraphQL
-specification. See the `Execution model <#execution-model>`__ section
-for more details.
+specification.
+
+.. TODO: Add a link to the execution model section. Once it is added.
 
 **Q: Does this project come with a GraphQL server implementation?**
 
