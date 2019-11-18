@@ -59,6 +59,5 @@ def get_sqlalchemy_schema_info(
     join_descriptors = get_join_descriptors_from_edge_descriptors(direct_edges)
 
     return SQLAlchemySchemaInfo(
-        graphql_schema, type_equivalence_hints, dialect,
-        vertex_name_to_table, join_descriptors
+        graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors
     )

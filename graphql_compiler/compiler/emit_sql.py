@@ -380,7 +380,7 @@ class SQLFoldObject(object):
         self._group_by = group_by
 
     def _construct_fold_joins(self):
-        """Use the edge descriptors to create the join clause between the tables in the fold."""
+        """Use the traversal descriptors to create the join clause for the tables in the fold."""
         # Start the join clause with the from_table of the first traversal descriptor,
         # which is the vertex immediately preceding the fold
         join_clause = self._traversal_descriptors[0].from_table
@@ -400,7 +400,7 @@ class SQLFoldObject(object):
         traversal_descriptors = self._traversal_descriptors[:terminating_index]
         # Starting at the first from_table, join traversed vertices in order until the output
         # vertex (PostgreSQL) is reached, or until the last vertex preceding the output
-        # vertex (MSSQL) is reached
+        # vertex (MSSQL) is reached.
         for travel_descriptor in traversal_descriptors:
             # joins from earlier in the chain of traversals are at the beginning of the list
             # b/c joins are appended in the order they are traversed
@@ -469,7 +469,7 @@ class SQLFoldObject(object):
         VertexPrecedingOutput is the `from_table` of the last traversal descriptor tuple
         added to the fold's `traversal_descriptors` list.
 
-        - The join predicate may have primary_key and foreign_key reversed according to the
+        - The join predicate may have primary_key and foreign_key reversed depending on the
         direction of the edge connecting VertexPrecedingOutput to OutputVertex.
 
         Args:
@@ -495,6 +495,7 @@ class SQLFoldObject(object):
                 # distinguish folds with the same fold path but different query paths
                 if (fold_output.base_location, fold_output.fold_path) == (
                         fold_scope_location.base_location, fold_scope_location.fold_path):
+
                     if fold_output.field == COUNT_META_FIELD_NAME:
                         self._outputs.append(
                             sqlalchemy.func.coalesce(
