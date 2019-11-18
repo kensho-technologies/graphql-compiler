@@ -4341,6 +4341,38 @@ class CompilerTests(unittest.TestCase):
               Animal___1.name AS `animal_name`,
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_names_list`
         '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
+
+    def test_fold_on_many_to_one_edge(self):
+        test_data = test_input_data.fold_on_many_to_one_edge()
+
+        # Even though out_Animal_LivesIn is a many to one edge, primary key should
+        # be the join predicate for the folded subquery.
+        expected_postgresql = '''
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS homes_list
+            FROM
+                schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Location_1".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Location" AS "Location_1" ON "Animal_2".lives_in = "Location_1".uuid
+                GROUP BY
+                    "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        '''
+
+        # TODO: write these tests
+        expected_mssql = SKIP_TEST
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
 
@@ -5909,14 +5941,14 @@ class CompilerTests(unittest.TestCase):
             ON "Animal_1".uuid = folded_subquery_1.uuid
             JOIN (
                 SELECT
-                    "Animal_4".related_entity AS related_entity,
+                    "Animal_4".uuid AS uuid,
                     coalesce(count(*), 0) AS fold_output__x_count
                 FROM schema_1."Animal" AS "Animal_4"
                 JOIN schema_1."Entity" AS "Entity_1"
                 ON "Animal_4".related_entity = "Entity_1".uuid
-                GROUP BY "Animal_4".related_entity
+                GROUP BY "Animal_4".uuid
             ) AS folded_subquery_2
-            ON "Animal_1".related_entity = folded_subquery_2.related_entity
+            ON "Animal_1".uuid = folded_subquery_2.uuid
             WHERE
                 folded_subquery_1.fold_output__x_count >= %(min_children)s AND
                 folded_subquery_2.fold_output__x_count >= %(min_related)s

@@ -821,13 +821,16 @@ class FoldedContextField(Expression):
                 inner_type
             ))
 
-        # Coalesce to an empty array of the corresponding type.
+        fold_output_column = aliases[
+            self.fold_scope_location.base_location.query_path,
+            self.fold_scope_location.fold_path
+        ].c['fold_output_' + self.fold_scope_location.field]
+
+        # PostgreSQL
+        # coalesce to an empty array of the corresponding type
         empty_array = 'ARRAY[]::{}[]'.format(sql_array_type)
         return sqlalchemy.func.coalesce(
-            aliases[
-                self.fold_scope_location.base_location.query_path,
-                self.fold_scope_location.fold_path
-            ].c['fold_output_' + self.fold_scope_location.field],
+            fold_output_column,
             sqlalchemy.literal_column(empty_array)
         )
 
