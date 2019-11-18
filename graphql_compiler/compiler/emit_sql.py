@@ -516,7 +516,8 @@ class SQLFoldObject(object):
                                 self._get_mssql_xml_path_column(
                                     intermediate_fold_output_name,
                                     fold_output.field,
-                                    self._traversal_descriptors[-1]  # output's last vertex traversed
+                                    # output is last vertex traversed
+                                    self._traversal_descriptors[-1]
                                 )
                             )
                         elif isinstance(self._sqlalchemy_compiler, PGDialect_psycopg2):
