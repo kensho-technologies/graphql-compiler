@@ -880,10 +880,10 @@ class CompilationState(object):
             if self._current_fold is not None else (self._current_location.query_path, None)
         ] = self._current_alias
 
-    def construct_result(self, output_name, field, dialect):
+    def construct_result(self, output_name, field):
         """Execute a ConstructResult Block."""
         self._outputs.append(field.to_sql(
-            dialect, self._aliases, self._current_alias
+            self.sqlalchemy_compiler, self._aliases, self._current_alias
         ).label(output_name))
 
     def get_query(self):
@@ -936,7 +936,7 @@ def emit_code_from_ir(sql_schema_info, ir):
             state.start_global_operations()
         elif isinstance(block, blocks.ConstructResult):
             for output_name, field in sorted(six.iteritems(block.fields)):
-                state.construct_result(output_name, field, state.sqlalchemy_compiler)
+                state.construct_result(output_name, field)
         else:
             raise NotImplementedError(u'Unsupported block {}.'.format(block))
 
