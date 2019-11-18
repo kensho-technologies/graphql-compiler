@@ -4348,8 +4348,8 @@ class CompilerTests(unittest.TestCase):
     def test_fold_on_many_to_one_edge(self):
         test_data = test_input_data.fold_on_many_to_one_edge()
 
-        # Even though this is a many to one edge, primary key should
-        # be the join predicate for the folded subquery
+        # Even though out_Animal_LivesIn is a many to one edge, primary key should
+        # be the join predicate for the folded subquery.
         expected_postgresql = '''
             SELECT
                 "Animal_1".name AS animal_name,
