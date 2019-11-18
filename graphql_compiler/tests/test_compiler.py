@@ -985,7 +985,7 @@ class CompilerTests(unittest.TestCase):
             FROM schema_1."Species" AS "Species_1"
             LEFT OUTER JOIN schema_1."Animal" AS "Animal_1"
             ON "Species_1".uuid = "Animal_1".species
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Species_2".uuid AS uuid,
                     coalesce(count(*), 0) AS fold_output__x_count
@@ -5722,7 +5722,7 @@ class CompilerTests(unittest.TestCase):
                 "Animal_1".name AS name,
                 folded_subquery_1.fold_output__x_count AS number_of_children
             FROM schema_1."Animal" AS "Animal_1"
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
                     array_agg("Animal_3".name) AS fold_output_name,
@@ -5768,7 +5768,7 @@ class CompilerTests(unittest.TestCase):
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
                 "Animal_1".name AS name
             FROM schema_1."Animal" AS "Animal_1"
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
                     array_agg("Animal_3".name) AS fold_output_name,
@@ -5820,7 +5820,7 @@ class CompilerTests(unittest.TestCase):
             FROM schema_1."Animal" AS "Animal_1"
             JOIN schema_1."Species" AS "Species_1"
             ON "Animal_1".species = "Species_1".uuid
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
                     array_agg("Animal_3".name) AS fold_output_name,
@@ -5897,7 +5897,7 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 "Animal_1".name AS name
             FROM schema_1."Animal" AS "Animal_1"
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
                     coalesce(count(*), 0) AS fold_output__x_count
@@ -5907,7 +5907,7 @@ class CompilerTests(unittest.TestCase):
                 GROUP BY "Animal_2".uuid
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_4".related_entity AS related_entity,
                     coalesce(count(*), 0) AS fold_output__x_count
